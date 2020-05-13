@@ -1,0 +1,3 @@
+# Compiled source #
+###################
+dynamite_src/__pycache__/*.pyc
