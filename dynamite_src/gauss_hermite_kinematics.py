@@ -16,7 +16,7 @@ class Histogram(object):
             self.normalised = False
 
     def normalise(self):
-        norm = np.sum(self.y*self.dx, axis=-1)
+        norm = np.sum(self.y*self.dx, axis=0)
         self.y /= norm
         self.normalised = True
 
@@ -121,7 +121,11 @@ class GaussHermite(Integrated, Kinematic):
         return coeffients
 
     def standardise_velocities(self, v, v_mu, v_sig):
-        w = (v - v_mu)/v_sig
+        v = np.atleast_2d(v)
+        v_mu = np.atleast_1d(v_mu)
+        v_sig = np.atleast_1d(v_sig)
+        w = (v.T - v_mu)/v_sig
+        w = w.T
         return w
 
     def evaluate_hermite_polynomials(self, coeffients, w,
@@ -146,17 +150,21 @@ class GaussHermite(Integrated, Kinematic):
         if not standardised:
             w = self.standardise_velocities(w, v_mu, v_sig)
         n_herm = coeffients.shape[0]
-        w_pow_i = np.vstack([w**i for i in range(n_herm)])
-        result = np.dot(coeffients, w_pow_i)
+        w_pow_i = np.stack([w**i for i in range(n_herm)])
+        result = np.einsum('ij,j...->i...', coeffients, w_pow_i, optimize=True)
         return result
 
     def evaluate_losvd(self, v, v_mu, v_sig, h):
         w = self.standardise_velocities(v, v_mu, v_sig)
-        n_herm = h.shape[0]
+        n_herm = h.shape[2]
         coef = self.get_hermite_polynomial_coeffients(max_order=n_herm-1)
         nrm = stats.norm()
         hpolys = self.evaluate_hermite_polynomials(coef, w)
-        losvd = nrm.pdf(w) * np.dot(h, hpolys)
+        losvd = np.einsum('ij,kil,lij->kij',
+                          nrm.pdf(w),
+                          h,
+                          hpolys,
+                          optimize=True)
         return losvd
 
     def get_gh_expansion_coefficients(self,
@@ -165,7 +173,7 @@ class GaussHermite(Integrated, Kinematic):
                                       vel_hist=None,
                                       max_order=4):
         """Calcuate coeffients of gauss hermite expansion of histogrammed LOSVD
-        around a given v_mu and v_sig
+        around a given v_mu and v_sig i.e. evaluate qn 7 of vd Marel & Franx 93
 
         Parameters
         ----------
@@ -188,9 +196,13 @@ class GaussHermite(Integrated, Kinematic):
         coef = self.get_hermite_polynomial_coeffients(max_order=max_order)
         nrm = stats.norm()
         hpolys = self.evaluate_hermite_polynomials(coef, w)
-        h = vel_hist.y * nrm.pdf(w) * hpolys        # integrand
-        h = np.sum(h * vel_hist.dx, 1)              # integral
-        h *= 2 * np.pi**0.5                         # pre-factor
+        h = np.einsum('ij,kj,lkj,j->ikl',           # integral in eqn 7
+                      np.atleast_2d(vel_hist.y),
+                      nrm.pdf(w),
+                      hpolys,
+                      vel_hist.dx,
+                      optimize=True)
+        h *= 2 * np.pi**0.5                         # pre-factor in eqn 7
         losvd_unnorm = self.evaluate_losvd(vel_hist.x, v_mu, v_sig, h)
         gamma = np.sum(losvd_unnorm * vel_hist.dx)
         h /= gamma
