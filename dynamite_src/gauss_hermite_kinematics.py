@@ -1,7 +1,8 @@
 import numpy as np
 from . data import Integrated, Kinematic
 from scipy import special, stats
-
+from astropy import table
+from astropy.io import ascii
 
 class Histogram(object):
     def __init__(self, xedg, y, normalise=True):
@@ -36,14 +37,11 @@ class GauusianMixture1D(object):
 
 
 class GaussHermite(Integrated, Kinematic):
-    def __init__(self,
-                 filename=None):
-        self.filename = filename
-        if filename is not None:
-            self.read_file()
+    def __init__(self):
+        pass
 
-    def read_file(self):
-        f = open(self.filename)
+    def read_file_old_format(self, filename):
+        f = open(filename)
         header = f.readline()
         f.close()
         header = header.split()
@@ -56,19 +54,32 @@ class GaussHermite(Integrated, Kinematic):
         self.n_gh = 4
         # TODO: move names/dtypes to the file header
         names = ['vbin_id', 'v', 'dv', 'sigma', 'dsigma', 'n_gh']
-        for i_gh in range(3, self.n_gh):
-            names += ['h{i_gh}', 'dh{i_gh}']
+        for i_gh in range(3, self.n_gh+1):
+            names += [f'h{i_gh}', f'dh{i_gh}']
         ncols = len(names)
         dtype = [float for i in range(ncols)]
         dtype[0] = int
         dtype[5] = int
-        data = np.genfromtxt(self.filename,
+        data = np.genfromtxt(filename,
                              skip_header=1,
                              names=names,
                              dtype=dtype)
         # 6th column of kin_data.dat is == (unused and incorrect?) n_gh
         # TODO: remove it
-        self.data = data
+        return data
+
+    def convert_file_from_old_format(self,
+                                     filename_old_format,
+                                     filename_new_format):
+        data = self.read_file_old_format(filename_old_format)
+        data = table.Table(data)
+        data.remove_column('n_gh')
+        data.write(filename_new_format, format='ascii.ecsv')
+        return
+
+    def read_file(self, filename):
+        data = ascii.read(filename)
+        return data
 
     def getgauher(self,
                   vm, sg,
