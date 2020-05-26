@@ -1,0 +1,97 @@
+[
+    {
+        "name":"ml", 'extra' parameter not attached to a component
+        "lo":0.8,
+        "hi":7.5,
+        "step":1.0
+        "fixed":false,
+        "value":3.0,
+        "minstep":0.5,
+        "text":"$Y_{r}$",
+        "sformat":"%6.2f"
+    },
+    {
+        "name":"bh",
+        "params":
+        {
+            {
+                "name":"bhmass",
+                "lo":5.0,
+                "hi":9.0,
+                "step":0.5,
+                "fixed":true,
+                "value":6.0,
+                "minstep":0.2,
+                "text":"$M_{BH}$",
+                "sformat":"%6.2f"
+            },
+            {
+                "name":"bhradius",
+                "lo":0.0,
+                "hi":2.0,
+                "step":0.3,
+                "fixed":true,
+                "value":1.0,
+                "minstep":0.1,
+                "text":"$C$",
+                "sformat":"%6.2f"
+            }
+        }
+    },
+   {
+        "name":"dc", belongs to dark halo
+        "lo":1.5,
+        "hi":3.0,
+        "step":0.4,
+        "fixed":false,
+        "value":2.0,
+        "minstep":0.2,
+        "text":"$log(M_{200}/M_{star})$",
+        "sformat":"%6.2f"
+    },
+   {
+        "name":"f", belongs to dark halo
+        "lo":1.5,
+        "hi":3.0,
+        "step":0.4,
+        "fixed":false,
+        "value":2.0,
+        "minstep":0.2,
+        "text":"$log(M_{200}/M_{star})$",
+        "sformat":"%6.2f"
+    },
+    {
+        "name":"q", viewing angle, belongs to stars
+        "lo":0.05,
+        "hi":0.99,
+        "step":0.04,
+        "fixed":false,
+        "value":0.99,
+        "minstep":0.02,
+        "text":"$q_{min}$",
+        "sformat":"%6.2f"
+    },
+    {
+        "name":"p", viewing angle, belongs to stars
+        "fixed":false,
+        "value":0.99,
+        "lo":0.99,
+        "hi":0.999,
+        "step":0.02,
+        "minstep":0.01,
+        "text":"$p_{min}$",
+        "sformat":"%6.3f"
+    },
+    {
+        "name":"u", viewing angle, belongs to stars
+        "lo":0.95,
+        "hi":1.0,
+        "step":0.01,
+        "fixed":false,
+        "value":0.9999,
+        "minstep":0.01,
+        "text":"$u_{min}$",
+        "sformat":"%7.4f"
+    }
+    
+]
