@@ -5,6 +5,27 @@ from astropy import table
 from astropy.io import ascii
 
 class Histogram(object):
+    """Class to hold histograms
+
+    Parameters
+    ----------
+    xedg : array (n_bins+1,)
+        histogram bin edges
+    y : (n_histograms, n_bins+1,)
+        histogram values
+    normalise : bool, default=True
+        whether to normalise to pdf
+
+    Attributes
+    ----------
+    x : array (n_bins,)
+        bin centers
+    dx : array (n_bins,)
+        bin widths
+    normalised : bool
+        whether or not has been normalised to pdf
+
+    """
     def __init__(self, xedg, y, normalise=True):
         self.xedg = xedg
         self.x = (xedg[:-1] + xedg[1:])/2.
@@ -16,17 +37,29 @@ class Histogram(object):
             self.normalised = False
 
     def normalise(self):
-        norm = np.sum(self.y*self.dx, axis=0)
-        self.y /= norm
+        norm = np.sum(self.y*self.dx, axis=-1)
+        self.y = (self.y.T/norm).T
         self.normalised = True
 
-
 class GauusianMixture1D(object):
+    """Class to hold 1D Gaussian mixture models
+
+    Parameters
+    ----------
+    weights : array (n_cmp,)
+        componenent weights
+    means : array (n_cmp,)
+        componenent means
+    sigmas : array (n_cmp,)
+        componenent sigmas
+
+    """
     def __init__(self,
                  weights=None,
                  means=None,
                  sigmas=None):
         assert (len(weights)==len(means)) & (len(means)==len(sigmas))
+        self.n_cmp = len(weights)
         self.nrm = stats.norm(means, sigmas)
         self.weights = weights
 
@@ -37,7 +70,7 @@ class GauusianMixture1D(object):
 
 
 class GaussHermite(Integrated, Kinematic):
-    def __init__(self):
+    def __init__(self, a=1):
         pass
 
     def read_file_old_format(self, filename):
@@ -85,7 +118,7 @@ class GaussHermite(Integrated, Kinematic):
                   vm, sg,
                   veltemp, Nvhist, Nvmax, dvhist,
                   hh, Nhermmax, gam, ingam):
-        # wrapper to the fortran routine here
+        # wrapper to the fortran routine here?
         pass
 
     def get_hermite_polynomial_coeffients(self, max_order=None):
@@ -95,7 +128,9 @@ class GaussHermite(Integrated, Kinematic):
         Parameters
         ----------
         max_order : int
-            The maximum order hermite polynomial desired
+            maximum order hermite polynomial desired
+            e.g. max_order = 1 --> use h0, h1
+            i.e. number of hermite polys = max_order + 1
 
         Returns
         -------
@@ -121,43 +156,90 @@ class GaussHermite(Integrated, Kinematic):
         return coeffients
 
     def standardise_velocities(self, v, v_mu, v_sig):
+        """
+
+        Parameters
+        ----------
+        v : array
+            input velocity array
+        v_mu : array (n_regions,)
+            gauss hermite v parameters
+        v_sig : array (n_regions,)
+            gauss hermite sigma parameters
+
+        Returns
+        -------
+        array (n_regions,) + v.shape
+            velocities whitened by array v_mu, v_sigma
+
+        """
         v = np.atleast_2d(v)
         v_mu = np.atleast_1d(v_mu)
         v_sig = np.atleast_1d(v_sig)
+        assert v_mu.shape==v_mu.shape
         w = (v.T - v_mu)/v_sig
         w = w.T
         return w
 
-    def evaluate_hermite_polynomials(self, coeffients, w,
+    def evaluate_hermite_polynomials(self,
+                                     coeffients,
+                                     w,
                                      standardised=True,
                                      v_mu=None,
                                      v_sig=None):
         """
+
         Parameters
         ----------
-        coeffients : array
-            coeffients of hermite polynomials as given by method
+        coeffients : array (n_herm, n_herm)
+            coefficients of hermite polynomials as given by method
             get_hermite_polynomial_coeffients
         w : array
-            if standardised==True, standardised velocities,
-            else physical velocities and v_mu and v_sig must also be set
+            if standardised==True
+                shape (n_regions, n_vbins), standardised velocities
+            else
+                shape (n_vbins,), physical velocities
+                and arrays v_mu and v_sig with shape (n_regions,) must be set
 
         Returns
         -------
-        polynomials evaluated at w in array of shape (n_herm_max,) + w.shape
+        array shape (n_hists, n_regions, n_vbins)
+            Hermite polynomials evaluated at w in array of
 
         """
         if not standardised:
             w = self.standardise_velocities(w, v_mu, v_sig)
         n_herm = coeffients.shape[0]
         w_pow_i = np.stack([w**i for i in range(n_herm)])
-        result = np.einsum('ij,j...->i...', coeffients, w_pow_i, optimize=True)
+        # coeffients has shape (n_herm, n_herm)
+        # w_pow_i has shape (n_herm, n_regions, n_vbins)
+        result = np.einsum('ij,jkl->ikl', coeffients, w_pow_i, optimize=True)
         return result
 
     def evaluate_losvd(self, v, v_mu, v_sig, h):
+        """
+
+        Parameters
+        ----------
+        v : array
+            input velocity array
+        v_mu : array (n_regions,)
+            gauss hermite v parameters
+        v_sig : array (n_regions,)
+            gauss hermite sigma parameters
+        h : array (n_hists, n_regions, n_herm)
+            gauss hermite expansion coefficients
+
+        Returns
+        -------
+        array shape same as v
+            values of gauss hermite expansion evaluated at v
+
+        """
         w = self.standardise_velocities(v, v_mu, v_sig)
         n_herm = h.shape[2]
-        coef = self.get_hermite_polynomial_coeffients(max_order=n_herm-1)
+        max_order = n_herm - 1
+        coef = self.get_hermite_polynomial_coeffients(max_order=max_order)
         nrm = stats.norm()
         hpolys = self.evaluate_hermite_polynomials(coef, w)
         losvd = np.einsum('ij,kil,lij->kij',
@@ -168,8 +250,8 @@ class GaussHermite(Integrated, Kinematic):
         return losvd
 
     def get_gh_expansion_coefficients(self,
-                                      v_mu=0,
-                                      v_sig=1,
+                                      v_mu=None,
+                                      v_sig=None,
                                       vel_hist=None,
                                       max_order=4):
         """Calcuate coeffients of gauss hermite expansion of histogrammed LOSVD
@@ -177,21 +259,24 @@ class GaussHermite(Integrated, Kinematic):
 
         Parameters
         ----------
-        v_mu : float/array
-            observed mean velocity
-        v_sig : float/array
-            observed velocity dispersion
-        vel_hist : Histogram
-            velocity histogram
+        v_mu : array (n_regions,)
+            gauss hermite v parameters
+        v_sig : array (n_regions,)
+            gauss hermite sigma parameters
+        vel_hist : Histogram object
+            velocity histograms where vel_hist.y has shape (n_hists, n_vbins)
         max_order : int
-            The maximum order hermite polynomial desired in the expansion
+            maximum order hermite polynomial desired in the expansion
+            e.g. max_order = 1 --> use h0, h1
+            i.e. number of hermite polys = max_order + 1
 
         Returns
         -------
-        array shape v_mu.shape + (n_herm_max,)
-            expansion coeffients
+        h : array (n_hists, n_regions, max_order+1)
+            where h[i,j,k] is order k GH coeffient of histogram i in region j
 
         """
+        assert max_order>=0
         w = self.standardise_velocities(vel_hist.x, v_mu, v_sig)
         coef = self.get_hermite_polynomial_coeffients(max_order=max_order)
         nrm = stats.norm()
@@ -204,8 +289,8 @@ class GaussHermite(Integrated, Kinematic):
                       optimize=True)
         h *= 2 * np.pi**0.5                         # pre-factor in eqn 7
         losvd_unnorm = self.evaluate_losvd(vel_hist.x, v_mu, v_sig, h)
-        gamma = np.sum(losvd_unnorm * vel_hist.dx)
-        h /= gamma
+        gamma = np.sum(losvd_unnorm * vel_hist.dx, -1)
+        h = (h.T/gamma.T).T
         return h
 
     def transform_orbits_to_observables(self, orb_lib):
