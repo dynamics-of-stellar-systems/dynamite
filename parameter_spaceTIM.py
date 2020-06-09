@@ -51,43 +51,17 @@ class Parameter(object):
         return np.clip(p,self.lo,self.up)
 
 
-class Parameters(object):
-
+class ConfigurationReader(object):
+    """
+    Reads the configuration file
+    """
     def __init__(self, filename=None):
-        self.params = []
         if filename:
             with open(filename, 'r') as f:
-                data = json.load(f)
-            for i in data:
-                self.params.append(Parameter(
-                    name=i['name'],
-                    lo=i['lo'],
-                    hi=i['hi'],
-                    step=i['step'],
-                    fixed=i['fixed'],
-                    value=i['value'],
-                    minstep=i['minstep'],
-                    text=i['text'],
-                    sformat=i['sformat']))
-
-    def add(self,filename=None):
-        if filename == None:
-            return None
-        k=0
-        with open(filename, 'r') as f:
-            data = json.load(f)
-        for i in data:
-            self.params.append(Parameter(
-                name=i['name'],
-                lo=i['lo'],
-                hi=i['hi'],
-                step=i['step'],
-                fixed=i['fixed'],
-                value=i['value'],
-                minstep=i['minstep'],
-                text=i['text'],
-                sformat=i['sformat']))
-            k+=1
-        return k
-            
-new class "configuration reader"
+                par = json.load(f)
+        else:
+            raise FileNotFoundError(filename)
+        self.params={}
+        for p in par:
+            self.params.update(p)
+        
