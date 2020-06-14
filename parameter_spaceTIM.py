@@ -8,6 +8,7 @@ Created on Mon May 25 11:18:18 2020
 
 import numpy as np
 import json
+import yaml
 
 class Parameter(object):
 
@@ -51,7 +52,21 @@ class Parameter(object):
         return np.clip(p,self.lo,self.up)
 
 
-class ConfigurationReader(object):
+class ConfigurationReaderJson(object):
+    """
+    Reads the configuration file
+    """
+    def __init__(self, filename=None):
+        if filename:
+            with open(filename, 'r') as f:
+                par = json.load(f)
+        else:
+            raise FileNotFoundError(filename)
+        self.params={}
+        for p in par:
+            self.params.update(p)
+
+class ConfigurationReaderYaml(object):
     """
     Reads the configuration file
     """
