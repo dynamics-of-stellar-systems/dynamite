@@ -32,24 +32,24 @@ class Parameter(object):
         self.text = text
         self.sformat = sformat
 
-    def validate(self, p):
-        """
-        Validates p against parameter limits and returns:
-            p clipped to [Parameter.lo,Parameter.hi]
-            None if abs(Parameter.value - p) > Parameter.minstep and Parameter.fixed == False
+    # def validate(self, p):
+    #     """
+    #     Validates p against parameter limits and returns:
+    #         p clipped to [Parameter.lo,Parameter.hi]
+    #         None if abs(Parameter.value - p) > Parameter.minstep and Parameter.fixed == False
 
-        Parameters
-        ----------
-        p : float or int
+    #     Parameters
+    #     ----------
+    #     p : float or int
 
-        Returns
-        -------
-        p clipped to Parameter range (float) or None
+    #     Returns
+    #     -------
+    #     p clipped to Parameter range (float) or None
 
-        """
-        if abs(self.value - p) > self.minstep and not self.fixed:
-            return None
-        return np.clip(p,self.lo,self.up)
+    #     """
+    #     if abs(self.value - p) > self.minstep and not self.fixed:
+    #         return None
+    #     return np.clip(p,self.lo,self.up)
 
 
 class ConfigurationReaderJson(object):
@@ -73,7 +73,7 @@ class ConfigurationReaderYaml(object):
     def __init__(self, filename=None):
         if filename:
             with open(filename, 'r') as f:
-                par = json.load(f)
+                par = yaml.safe_load(f)
         else:
             raise FileNotFoundError(filename)
         self.params={}
