@@ -102,20 +102,4 @@ class GaussianProcessEmulator(ParameterGenerator):
         return []
 
 
-
-class ConfigurationReaderYaml(object):
-    """
-    Reads the configuration file
-    """
-    def __init__(self, filename=None):
-        if filename:
-            with open(filename, 'r') as f:
-                par = yaml.safe_load(f)
-        else:
-            raise FileNotFoundError(filename)
-        self.params=par
-        # for p in par:
-        #     self.params.update(p)
-
-
 # end

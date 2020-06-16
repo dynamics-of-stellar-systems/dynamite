@@ -23,6 +23,11 @@ model_components:
                 minstep: 0.1
                 LaTeX: "$C$"
                 sformat: "%6.2f"
+        type: "Plummer"
+    gas:
+        parameters:
+            one: 1
+        type: "VisibleComponent" # class name
     stars:
         parameters:
             q:
@@ -55,7 +60,7 @@ model_components:
                 minstep: 0.01
                 LaTeX: "$u_{min}$"
                 sformat: "%7.4f"
-
+        type: VisibleComponent # will need to correspond to the class name
         mge_file: "path and name"
     dark_halo:
         parameters:
