@@ -33,27 +33,48 @@ class ParameterGenerator(object):
                  param_list=[]):
         self.param_list = param_list
 
-    def generate(self, current_models):
-        # placeholder function
+    def generate(self, current_models, n_new):
+        # placeholder function to generate a list of "n_new" parameters
         # return new_parameter_list
+        stop = self.check_stopping_critera()
+        if stop:
+            return []
+        # else ...
         return []
+
+    def check_stopping_critera(self, current_models):
+        stop_generic = self.check_generic_stopping_critera()
+        stop_specific = self.check_specific_stopping_critera()
+        stop = stop_generic or stop_specific
+        return stop
+
+    def check_generic_stopping_critera(self, current_models):
+        stop = True # or false
+        return stop
 
 
 class GridSearch(ParameterGenerator):
 
-    def generate(self, current_models=None):
+    def generate(self, current_models=None, n):
         # actual code to do grid search
-        # return new_parameter_list
+        # return new_parameter_list of length n_new
         return []
+
+    def check_specific_stopping_critera(self, current_models):
+        stop = True # or false
+        return stop
 
 
 class GaussianProcessEmulator(ParameterGenerator):
 
-    def generate(self, current_models):
+    def generate(self, current_models, n):
         # actual code to do gaussian process emulation
-        # return new_parameter_list
+        # return new_parameter_list of length n_new
         return []
 
+    def check_specific_stopping_critera(self, current_models):
+        stop = True # or false
+        return stop
 
 
 # end
