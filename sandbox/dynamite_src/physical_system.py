@@ -1,6 +1,7 @@
 # classes to hold the physical components of the system
 # e.g. the stellar light, dark matter, black hole, globular clusters
 
+import numpy as np
 
 class System(object):
 
@@ -70,7 +71,7 @@ class DarkComponent(Component):
         # fit an MGE for a given set of parameters
         # will be used in potential calculation
         rho = self.density.evaluate(xyz_grid, parameters)
-        self.mge = MGES.intrinsic_MGE_from_xyz_grid(xyz_grid, rho)
+#        self.mge = MGES.intrinsic_MGE_from_xyz_grid(xyz_grid, rho)
 
 
 class Plummer(DarkComponent):

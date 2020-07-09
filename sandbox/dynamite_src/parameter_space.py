@@ -4,24 +4,54 @@ class Parameter(object):
 
     def __init__(self,
                  desc=None,
-                 lo=None,
-                 hi=None,
-                 step=None,
                  fixed=False,
-                 value=None,
-                 minstep=None,
                  LaTeX=None,
-                 sformat="%g"):
-#        self.name = name
+                 sformat="%g",
+                 value=None,
+                 grid_parspace_settings=None,
+                 gpe_parspace_settings=None
+                 # lo=None,
+                 # hi=None,
+                 # step=None,
+                 # minstep=None,
+                 ):
+        self.valid = ('desc', 'fixed', 'LaTeX', 'sformat', 'value', 'grid_parspace_settings', 'gpe_parspace_settings')
         self.desc = desc
-        self.lo = lo
-        self.hi = hi
-        self.step = step
         self.fixed = fixed
-        self.value = value
-        self.minstep = minstep
         self.LaTeX = LaTeX
         self.sformat = sformat
+        self.value = value
+        self.grid_parspace_settings = None
+        self.gpe_parspace_settings = None
+        # self.lo = lo
+        # self.hi = hi
+        # self.step = step
+        # self.minstep = minstep
+
+    def update(self, **kwargs):
+        for k, v in kwargs.items():
+            if k not in self.valid:
+                raise ValueError('Invalid parameter key', k, '. Allowed keys: ', self.valid)
+            self.k = v
+
+
+class BlackHoleParameters(object):
+#    def __init__(self, *, name, **kwargs):
+    def __init__(self, name=None, **kwargs):
+        self.mass = None
+        self.radius = None
+        if name is not None:
+            self.add(self, name, **kwargs)
+
+#    def add(self, *, name, **kwargs):
+    def add(self, name, **kwargs):
+        if name == 'mass':
+            self.mass = Parameter(**kwargs)
+        elif name == 'radius':
+            self.radius = Parameter(**kwargs)
+        else:
+            raise ValueError('Unknown black hole parameter:', name)
+
 
 class StellarParameters(object):
     def __init__(self, *, name, **kwargs):
@@ -80,26 +110,48 @@ class ParameterGenerator(object):
                  param_list=[]):
         self.param_list = param_list
 
-    def generate(self, current_models):
-        # placeholder function
+    def generate(self, current_models, n_new):
+        # placeholder function to generate a list of "n_new" parameters
         # return new_parameter_list
+        stop = self.check_stopping_critera()
+        if stop:
+            return []
+        # else ...
         return []
+
+    def check_stopping_critera(self, current_models):
+        stop_generic = self.check_generic_stopping_critera()
+        stop_specific = self.check_specific_stopping_critera()
+        stop = stop_generic or stop_specific
+        return stop
+
+    def check_generic_stopping_critera(self, current_models):
+        stop = True # or false
+        return stop
 
 
 class GridSearch(ParameterGenerator):
 
-    def generate(self, current_models=None):
+    def generate(self, current_models=None, n_new=0):
         # actual code to do grid search
-        # return new_parameter_list
+        # return new_parameter_list of length n_new
         return []
+
+    def check_specific_stopping_critera(self, current_models):
+        stop = True # or false
+        return stop
 
 
 class GaussianProcessEmulator(ParameterGenerator):
 
-    def generate(self, current_models):
+    def generate(self, current_models=None, n_new=0):
         # actual code to do gaussian process emulation
-        # return new_parameter_list
+        # return new_parameter_list of length n_new
         return []
+
+    def check_specific_stopping_critera(self, current_models):
+        stop = True # or false
+        return stop
 
 
 # end

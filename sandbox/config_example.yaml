@@ -1,102 +1,161 @@
 # Example configuration file
 
 model_components:
+
     black_hole:
         parameters:
             mass:
                 desc: "log(BHmass)"
-                lo: 5.0
-                hi: 9.0
-                step: 0.5
+                grid_parspace_settings:
+                    lo: 5.0
+                    hi: 9.0
+                    step: 0.5
+                    minstep: 0.2
                 fixed: true
                 value: 6.0
-                minstep: 0.2
                 LaTeX: "$M_{BH}$"
                 sformat: "%6.2f"
             radius:
                 desc: "BH radius"
-                lo: 0.0
-                hi: 2.0
-                step: 0.3
+                grid_parspace_settings:
+                    lo: 0.0
+                    hi: 2.0
+                    step: 0.3
+                    minstep: 0.1
+                gpe_parspace_settings:
+                    kernel: "to be defined"
                 fixed: true
                 value: 1.0
-                minstep: 0.1
                 LaTeX: "$C$"
                 sformat: "%6.2f"
-        type: "Plummer"
+        type: "Plummer" # class name
+        include: true
+        contributes_to_potential: True
+
     gas:
         parameters:
             one: 1
         type: "VisibleComponent" # class name
+        include: false
+        contributes_to_potential: True
+
     stars:
         parameters:
             q:
                 desc: "intrinsic flattening (C/A)"
-                lo: 0.05
-                hi: 0.99
-                step: 0.04
+                grid_parspace_settings:
+                    lo: 0.05
+                    hi: 0.99
+                    step: 0.04
+                    minstep: 0.02
                 fixed: false
                 value: 0.99
-                minstep: 0.02
                 LaTeX: "$q_{min}$"
                 sformat: "%6.2f"
             p:
                 desc: "intrinsic B/A"
+                grid_parspace_settings:
+                    lo: 0.99
+                    hi: 0.999
+                    step: 0.02
+                    minstep: 0.01
                 fixed: false
                 value: 0.99
-                lo: 0.99
-                hi: 0.999
-                step: 0.02
-                minstep: 0.01
                 LaTeX: "$p_{min}$"
                 sformat: "%6.3f"
             u:
                 desc: "sigma_obs / sigma_intrinsic"
-                lo: 0.95
-                hi: 1.0
-                step: 0.01
+                grid_parspace_settings:
+                    lo: 0.95
+                    hi: 1.0
+                    step: 0.01
+                    minstep: 0.01
                 fixed: false
                 value: 0.9999
-                minstep: 0.01
                 LaTeX: "$u_{min}$"
                 sformat: "%7.4f"
-        type: VisibleComponent # will need to correspond to the class name
+        type: "VisibleComponent" # will need to correspond to the class name
         mge_file: "path and name"
+        include: true
+        contributes_to_potential: true
+        kinematics: # optional, only specified for components that have kinematics
+            name: "narrow-field mode"           # necessary because there can be more sets of kinematic data
+                weight: 1                       # weight of kinematics data specified by name
+                type: integrated                # or discrete (then there is no parametrization)
+                parametrization: GaussHermite   # only for type integrated! This is the class name in data.py
+                datafile: kin_data.dat          # for both discrete and integrated types (actual example file)
+                aperturefile: aperture.dat      # integrated only (actual example file)
+                binfile: bins.dat               # integrated only (actual example file)
+                maskfile: maskfile.dat          # made-up filename
+                PSF: kinpsffile.dat             # may be there, too (PSFs apply to any Data class object)
+        population: # optional, components may have population data, all data below is dummy data
+            name: "pop1"                        # necessary because there can be more sets of population data
+                weight: 1                       # weight of population data specified by name
+                type: integrated                # or discrete (then there is no parametrization)
+                datafile: pop_data.dat          # for both discrete and integrated types
+                aperturefile: popaperture.dat   # integrated only
+                binfile: popbins.dat            # integrated only
+                maskfile: popmaskfile.dat       # made-up filename
+                PSF: poppsffile.dat             # may be there, too (PSFs apply to any Data class object)
+
     dark_halo:
         parameters:
             dc:
                 desc: "NFW Darkmatter concentrion (in log)"
-                lo: 1.5
-                hi: 3.0
-                step: 0.4
-                fixed: false
-                value: 2.0
-                minstep: 0.2
-                LaTeX: "$log(M_{200}/M_{star})$"
+                grid_parspace_settings:
+                    lo: 0.0
+                    hi: 2.0
+                    step: 0.3
+                    minstep: 0.1
+                fixed: true
+                value: 1.0
+                LaTeX: "$log(C)$"
                 sformat: "%6.2f"
             f:
                 desc: "NFW Darkmatter fraction (in log)"
-                lo: 1.5
-                hi: 3.0
-                step: 0.4
+                grid_parspace_settings:
+                    lo: 1.5
+                    hi: 3.0
+                    step: 0.4
+                    minstep: 0.2
                 fixed: false
                 value: 2.0
-                minstep: 0.2
                 LaTeX: "$log(M_{200}/M_{star})$"
                 sformat: "%6.2f"
         type: NFW
+        include: true
+        contributes_to_potential: True
 
-other_parameters:
+    globular_clusters:
+        type: "VisibleComponent"
+        include: false
+        contributes_to_potential: True
+
+other_parameters: # these go into the physical system as a standalone atribute (i.e., not one of the components)
     ml:
         desc: "M/L"
-        lo: 0.8
-        hi: 7.5
-        step: 1.0
+        grid_parspace_settings:
+            lo: 0.8
+            hi: 7.5
+            step: 1.0
+            minstep: 0.5
         fixed: false
         value: 3.0
-        minstep: 0.5
         LaTeX: "$Y_{r}$"
         sformat: "%6.2f"
     distMPc: 38.82
+    galname: "NGC4210"
+    position_angle: 97.69
+    
+orblib_settings: # don't put in physical system -> config object
+    nE: 21
+    logrmin: -0.307153
+    logrmax: 1.89192
+    nI2: 10
+    nI3: 7
+    dithering: 3
 
-orblib_settings:
+parameter_space_settings: # don't put in physical system -> config object
+#    generator_type: "gaussian_process_emulator"
+    generator_type: "GridSearch"
+    stopping_criteria: TBD
