@@ -217,7 +217,10 @@ class GaussHermite(Integrated, Kinematic):
         return result
 
     def evaluate_losvd(self, v, v_mu, v_sig, h):
-        """
+        """ evaluate
+            losvd(v) = 1/v_sig norm(w; 0, 1^2) Sum_{m=0}^{M} h_m H_m(w)
+        where normalised velocity
+            w = (v-v_mu)/v_sig
 
         Parameters
         ----------
@@ -242,12 +245,51 @@ class GaussHermite(Integrated, Kinematic):
         coef = self.get_hermite_polynomial_coeffients(max_order=max_order)
         nrm = stats.norm()
         hpolys = self.evaluate_hermite_polynomials(coef, w)
-        losvd = np.einsum('ij,kil,lij->kij',
+        losvd = np.einsum('i,ij,kil,lij->kij',
+                          1./v_sig,
                           nrm.pdf(w),
                           h,
                           hpolys,
                           optimize=True)
         return losvd
+
+    def evaluate_losvd_normalisation(self, h):
+        """Evaluate the normalising integral
+            int_{-inf}^{inf} losvd(v) dv
+        which is given by
+            Sum_{m=0}^{M} b_m a_m
+        where:
+        - a_m are the coefficients of w in the polynomial
+                Sum_{m=0}^{M} h_m H_m(w)
+        -       { 1          if m=0
+          b_m = { 0          if m is odd
+                { (m-1)!!    if m is non-zero and even
+        and !! is a 'double factorial' - which does *NOT* mean two factorials
+        but the product integers < n with same even/odd parity as n
+
+        Parameters
+        ----------
+        v_sig : array (n_regions,)
+            gauss hermite sigma parameters
+        h : array (n_hists, n_regions, n_herm)
+            gauss hermite expansion coefficients for some number of histograms
+            and regions
+
+        Returns
+        -------
+        array (n_hists, n_regions)
+        """
+        n_herm = h.shape[2]
+        max_order = n_herm - 1
+        # coeffients[i,j] = coef of x^j in polynomial of order i
+        coef = self.get_hermite_polynomial_coeffients(max_order=max_order)
+        a_m = np.einsum('ijk,kl', h, coef)
+        b_m = np.arange(0, max_order+1, 1)
+        b_m = special.factorial2(b_m - 1)
+        b_m[0] = 1.
+        b_m[1::2] = 0.
+        normalisation = np.sum(b_m * a_m, 2)
+        return normalisation
 
     def get_gh_expansion_coefficients(self,
                                       v_mu=None,
@@ -288,9 +330,6 @@ class GaussHermite(Integrated, Kinematic):
                       vel_hist.dx,
                       optimize=True)
         h *= 2 * np.pi**0.5                         # pre-factor in eqn 7
-        losvd_unnorm = self.evaluate_losvd(vel_hist.x, v_mu, v_sig, h)
-        gamma = np.sum(losvd_unnorm * vel_hist.dx, -1)
-        h = (h.T/gamma.T).T
         return h
 
     def transform_orbits_to_observables(self, orb_lib):
