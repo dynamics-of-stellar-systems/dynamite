@@ -79,7 +79,8 @@ model_components:
         include: true
         contributes_to_potential: true
         kinematics: # optional, only specified for components that have kinematics
-            name: "narrow-field mode"           # necessary because there can be more sets of kinematic data
+            set1:
+                name: "narrow-field mode"       # necessary because there can be more sets of kinematic data
                 weight: 1                       # weight of kinematics data specified by name
                 type: integrated                # or discrete (then there is no parametrization)
                 parametrization: GaussHermite   # only for type integrated! This is the class name in data.py
@@ -89,7 +90,8 @@ model_components:
                 maskfile: maskfile.dat          # made-up filename
                 PSF: kinpsffile.dat             # may be there, too (PSFs apply to any Data class object)
         population: # optional, components may have population data, all data below is dummy data
-            name: "pop1"                        # necessary because there can be more sets of population data
+            set1:
+                name: "pop1"                    # necessary because there can be more sets of population data
                 weight: 1                       # weight of population data specified by name
                 type: integrated                # or discrete (then there is no parametrization)
                 datafile: pop_data.dat          # for both discrete and integrated types
@@ -123,7 +125,7 @@ model_components:
                 LaTeX: "$log(M_{200}/M_{star})$"
                 sformat: "%6.2f"
         type: NFW
-        include: true
+        include: false
         contributes_to_potential: True
 
     globular_clusters:

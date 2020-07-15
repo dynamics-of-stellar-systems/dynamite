@@ -50,24 +50,34 @@ class BlackHoleParameters(object):
         elif name == 'radius':
             self.radius = Parameter(**kwargs)
         else:
-            raise ValueError('Unknown black hole parameter:', name)
+            raise ValueError('Unknown black hole parameter', name, ', use mass or radius')
+
+    def validate(self):
+        if (self.mass is not None and self.radius is not None):
+            return True
+        else:
+            return False
 
 
 class StellarParameters(object):
-    def __init__(self, *, name, **kwargs):
+#    def __init__(self, *, name, **kwargs):
+    def __init__(self, name=None, **kwargs):
         self.q = None
         self.p = None
         self.u = None
-        if (name == 'q'):
-            self.q = Parameter(**kwargs)
-        elif (name == 'p'):
-            self.p = Parameter(**kwargs)
-        elif (name == 'u'):
-            self.u = Parameter(**kwargs)
-        else:
-            raise ValueError('Unknown stellar parameter, use q, p, or u')
+        if name is not None:
+            self.add(self, name, **kwargs)
+        # if (name == 'q'):
+        #     self.q = Parameter(**kwargs)
+        # elif (name == 'p'):
+        #     self.p = Parameter(**kwargs)
+        # elif (name == 'u'):
+        #     self.u = Parameter(**kwargs)
+        # else:
+        #     raise ValueError('Unknown stellar parameter ', name, ', use q, p, or u')
 
-    def add(self, *, name, **kwargs):
+#    def add(self, *, name, **kwargs):
+    def add(self, name, **kwargs):
         update = False
         if (name == 'q'):
             if (self.q is None):
@@ -82,7 +92,7 @@ class StellarParameters(object):
                 update = True
             self.u = Parameter(**kwargs)
         else:
-            raise ValueError('Unknown stellar parameter, use q, p, or u')
+            raise ValueError('Unknown stellar parameter ', name, ', use q, p, or u')
         return update
 
     def validate(self):

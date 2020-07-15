@@ -32,6 +32,8 @@ class ConfigurationReaderYaml(object):
                     if comp == 'black_hole':
                         if data['type'] != 'Plummer':
                             raise ValueError('Black hole must be of type Plummer')
+                        print('gas = physys.VisibleComponent(data)', data['contributes_to_potential'])
+                        bh = physys.DarkComponent(contributes_to_potential=data['contributes_to_potential'])
                         par = parspace.BlackHoleParameters()
 #                            print(par.mass.desc)
                         # instantiate Plummer object here, something like bh = physys.Plummer(data)
@@ -40,21 +42,26 @@ class ConfigurationReaderYaml(object):
                         if data['type'] != 'VisibleComponent':
                             raise ValueError('Gas must be of type VisibleComponent')
                         else: # code to come
-                            print('gas = physys.VisibleComponent(data)',data)
+                            print('gas = physys.VisibleComponent(data)', data)
+                        par = parspace.GasParameters()
                         # instantiate VisibleComponent object here
                         # add to self.system
                     elif comp == 'stars':
                         if data['type'] != 'VisibleComponent':
                             raise ValueError('Stars must be of type VisibleComponent')
                         else: # code to come
-                            print('stars = physys.VisibleComponent(data)',data)
+                            print('stars = physys.VisibleComponent(data)', data)
+                        par = parspace.StellarParameters()
                         # instantiate VisibleComponent object here
                         # add to self.system
                     # elif... add other components...
                     else:
                         raise ValueError('Unknown component:', comp)
+
                     for p,v in data['parameters'].items():
                         par.add(name=p,**v)
+
+                    
 
                     print('', comp, ' ...read')
                     

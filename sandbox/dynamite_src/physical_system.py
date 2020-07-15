@@ -5,37 +5,45 @@ import numpy as np
 
 class System(object):
 
-  def __init__(self, *args):
-      self.n_cmp = 0
-      self.cmp_list = []
-      self.n_pot = 0
-      self.n_kin = 0
-      self.n_pop = 0
-      self.n_par = 0
-      for idx, component in enumerate(args):
-          self.n_cmp += 1
-          self.cmp_list += [component]
-          self.n_pot += component.contributes_to_potential
-          self.n_kin += len(component.kinematic_data)
-          self.n_pop += len(component.population_data)
-          self.n_par += len(component.parameters)
+    def __init__(self, *args):
+        self.n_cmp = 0
+        self.cmp_list = []
+        self.n_pot = 0
+        self.n_kin = 0
+        self.n_pop = 0
+        self.n_par = 0
+        for idx, component in enumerate(args):
+            self.n_cmp += 1
+            self.cmp_list += [component]
+            self.n_pot += component.contributes_to_potential
+            self.n_kin += len(component.kinematic_data)
+            self.n_pop += len(component.population_data)
+            self.n_par += len(component.parameters)
 
+    def add_component(self, cmp):
+        self.cmp_list += [cmp]
+        self.n_cmp += 1
+        self.npot += cmp.contributes_to_potential
+        self.n_kin += len(cmp.kinematic_data)
+        self.n_pop += len(cmp.population_data)
+        self.n_par += len(cmp.parameters)
+    
 
 class Component(object):
 
-  def __init__(self,
-               visible=None,                    # Boolean
-               contributes_to_potential=None,   # Boolean
-               symmetry=None,                   # spherical, axisymm, or triax
-               kinematic_data=[],             # a list of Kinematic objects
-               population_data=[],            # a list of Population objects
-               parameters=[]):                # a list of Parameter objects
-      self.visible = visible
-      self.contributes_to_potential = contributes_to_potential
-      self.symmetry = symmetry
-      self.kinematic_data = kinematic_data
-      self.population_data = population_data
-      self.parameters = parameters
+    def __init__(self,
+                 visible=None,                    # Boolean
+                 contributes_to_potential=None,   # Boolean
+                 symmetry=None,                   # spherical, axisymm, or triax
+                 kinematic_data=[],             # a list of Kinematic objects
+                 population_data=[],            # a list of Population objects
+                 parameters=[]):                # a list of Parameter objects
+        self.visible = visible
+        self.contributes_to_potential = contributes_to_potential
+        self.symmetry = symmetry
+        self.kinematic_data = kinematic_data
+        self.population_data = population_data
+        self.parameters = parameters
 
 
 class VisibleComponent(Component):
@@ -59,7 +67,7 @@ class DarkComponent(Component):
         self.density = density
         self.mge = 'self.fit_mge()'
         super(DarkComponent, self).__init__(visible=False,
-                                            contributes_to_potential=True,
+#                                            contributes_to_potential=True,
                                             kinematic_data=[],
                                             population_data=[],
                                             **kwds)
