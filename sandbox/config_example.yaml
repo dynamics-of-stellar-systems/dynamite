@@ -1,8 +1,8 @@
-# Example configuration file
+# Example configuration file config_example.yaml
 
 model_components:
 
-    black_hole:
+    black_hole: # ignore these descriptive names in config reader, just instantiate objets defined by type
         parameters:
             mass:
                 desc: "log(BHmass)"
@@ -11,7 +11,7 @@ model_components:
                     hi: 9.0
                     step: 0.5
                     minstep: 0.2
-                fixed: true
+                fixed: True
                 value: 6.0
                 LaTeX: "$M_{BH}$"
                 sformat: "%6.2f"
@@ -24,19 +24,19 @@ model_components:
                     minstep: 0.1
                 gpe_parspace_settings:
                     kernel: "to be defined"
-                fixed: true
+                fixed: True
                 value: 1.0
                 LaTeX: "$C$"
                 sformat: "%6.2f"
-        type: "Plummer" # class name
-        include: true
+        type: "Plummer" # class name, can be: Plummer, needs to correspond to th class name -> instantiated automatically
+        include: True
         contributes_to_potential: True
 
     gas:
         parameters:
             one: 1
         type: "VisibleComponent" # class name
-        include: false
+        include: False
         contributes_to_potential: True
 
     stars:
@@ -48,18 +48,20 @@ model_components:
                     hi: 0.99
                     step: 0.04
                     minstep: 0.02
-                fixed: false
+                fixed: False
                 value: 0.99
                 LaTeX: "$q_{min}$"
                 sformat: "%6.2f"
             p:
                 desc: "intrinsic B/A"
+                gpe_parspace_settings:
+                    kernel: "to be defined"
                 grid_parspace_settings:
                     lo: 0.99
                     hi: 0.999
                     step: 0.02
                     minstep: 0.01
-                fixed: false
+                fixed: False
                 value: 0.99
                 LaTeX: "$p_{min}$"
                 sformat: "%6.3f"
@@ -70,18 +72,18 @@ model_components:
                     hi: 1.0
                     step: 0.01
                     minstep: 0.01
-                fixed: false
+                fixed: False
                 value: 0.9999
                 LaTeX: "$u_{min}$"
                 sformat: "%7.4f"
         type: "VisibleComponent" # will need to correspond to the class name
         mge_file: "path and name"
-        include: true
-        contributes_to_potential: true
+        include: True
+        contributes_to_potential: True
         kinematics: # optional, only specified for components that have kinematics
             set1:
                 name: "narrow-field mode"       # necessary because there can be more sets of kinematic data
-                weight: 1                       # weight of kinematics data specified by name
+                weight: 0.6                       # weight of kinematics data specified by name
                 type: integrated                # or discrete (then there is no parametrization)
                 parametrization: GaussHermite   # only for type integrated! This is the class name in data.py
                 datafile: kin_data.dat          # for both discrete and integrated types (actual example file)
@@ -89,16 +91,35 @@ model_components:
                 binfile: bins.dat               # integrated only (actual example file)
                 maskfile: maskfile.dat          # made-up filename
                 PSF: kinpsffile.dat             # may be there, too (PSFs apply to any Data class object)
+            set2:
+                name: "narrow-field mode2"       # necessary because there can be more sets of kinematic data
+                weight: 0.4                       # weight of kinematics data specified by name
+                type: integrated                # or discrete (then there is no parametrization)
+                parametrization: GaussHermite   # only for type integrated! This is the class name in data.py
+                datafile: kin_data2.dat          # for both discrete and integrated types (actual example file)
+                aperturefile: aperture2.dat      # integrated only (actual example file)
+                binfile: bins2.dat               # integrated only (actual example file)
+                maskfile: maskfile2.dat          # made-up filename
+                PSF: kinpsffile2.dat             # may be there, too (PSFs apply to any Data class object)
         population: # optional, components may have population data, all data below is dummy data
             set1:
                 name: "pop1"                    # necessary because there can be more sets of population data
-                weight: 1                       # weight of population data specified by name
+                weight: 0.7                       # weight of population data specified by name
                 type: integrated                # or discrete (then there is no parametrization)
                 datafile: pop_data.dat          # for both discrete and integrated types
                 aperturefile: popaperture.dat   # integrated only
                 binfile: popbins.dat            # integrated only
                 maskfile: popmaskfile.dat       # made-up filename
                 PSF: poppsffile.dat             # may be there, too (PSFs apply to any Data class object)
+            set2:
+                name: "pop2"                    # necessary because there can be more sets of population data
+                weight: 0.3                       # weight of population data specified by name
+                type: integrated                # or discrete (then there is no parametrization)
+                datafile: pop_data2.dat          # for both discrete and integrated types
+                aperturefile: popaperture2.dat   # integrated only
+                binfile: popbins2.dat            # integrated only
+                maskfile: popmaskfile2.dat       # made-up filename
+                PSF: poppsffile2.dat             # may be there, too (PSFs apply to any Data class object)
 
     dark_halo:
         parameters:
@@ -109,7 +130,7 @@ model_components:
                     hi: 2.0
                     step: 0.3
                     minstep: 0.1
-                fixed: true
+                fixed: True
                 value: 1.0
                 LaTeX: "$log(C)$"
                 sformat: "%6.2f"
@@ -120,17 +141,17 @@ model_components:
                     hi: 3.0
                     step: 0.4
                     minstep: 0.2
-                fixed: false
+                fixed: False
                 value: 2.0
                 LaTeX: "$log(M_{200}/M_{star})$"
                 sformat: "%6.2f"
         type: NFW
-        include: false
+        include: True
         contributes_to_potential: True
 
     globular_clusters:
         type: "VisibleComponent"
-        include: false
+        include: False
         contributes_to_potential: True
 
 other_parameters: # these go into the physical system as a standalone atribute (i.e., not one of the components)
@@ -141,7 +162,7 @@ other_parameters: # these go into the physical system as a standalone atribute (
             hi: 7.5
             step: 1.0
             minstep: 0.5
-        fixed: false
+        fixed: False
         value: 3.0
         LaTeX: "$Y_{r}$"
         sformat: "%6.2f"

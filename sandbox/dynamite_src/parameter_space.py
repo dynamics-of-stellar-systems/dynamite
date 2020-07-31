@@ -21,8 +21,8 @@ class Parameter(object):
         self.LaTeX = LaTeX
         self.sformat = sformat
         self.value = value
-        self.grid_parspace_settings = None
-        self.gpe_parspace_settings = None
+        self.grid_parspace_settings = grid_parspace_settings
+        self.gpe_parspace_settings = gpe_parspace_settings
         # self.lo = lo
         # self.hi = hi
         # self.step = step
@@ -31,7 +31,7 @@ class Parameter(object):
     def update(self, **kwargs):
         for k, v in kwargs.items():
             if k not in self.valid:
-                raise ValueError('Invalid parameter key', k, '. Allowed keys: ', self.valid)
+                raise ValueError('Invalid parameter key' + k + '. Allowed keys: ' + self.valid)
             self.k = v
 
 
@@ -50,13 +50,32 @@ class BlackHoleParameters(object):
         elif name == 'radius':
             self.radius = Parameter(**kwargs)
         else:
-            raise ValueError('Unknown black hole parameter', name, ', use mass or radius')
+            raise ValueError('Unknown black hole parameter ' + name + ', use mass or radius')
 
     def validate(self):
-        if (self.mass is not None and self.radius is not None):
-            return True
+        if self.mass is None or self.radius is None:
+            raise ValueError('Black hole parameters require mass and radius')
+
+
+class DarkHaloParameters(object):
+    def __init__(self, name=None, **kwargs):
+        self.dc = None
+        self.f = None
+        if name is not None:
+            self.add(self, name, **kwargs)
+
+#    def add(self, *, name, **kwargs):
+    def add(self, name, **kwargs):
+        if name == 'dc':
+            self.dc = Parameter(**kwargs)
+        elif name == 'f':
+            self.f = Parameter(**kwargs)
         else:
-            return False
+            raise ValueError('Unknown dark matter parameter ' + name + ', use dc or f')
+
+    def validate(self):
+        if self.dc is None or self.f is None:
+            raise ValueError('Dark matter parameters require dc and f')
 
 
 class StellarParameters(object):
