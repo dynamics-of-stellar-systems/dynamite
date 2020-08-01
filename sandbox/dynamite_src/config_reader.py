@@ -7,8 +7,11 @@ Created on Tue Jun 16 15:14:17 2020
 """
 
 import yaml
-import dynamite_src.physical_system as physys
+#import dynamite_src.physical_system as physys
+from dynamite_src.physical_system import *
 import dynamite_src.parameter_space as parspace
+import dynamite_src.kinematics as kinem
+import dynamite_src.populations as popul
 
 class Configuration(object):
     """
@@ -30,13 +33,16 @@ class Configuration(object):
         if not(self.orblib_settings and self.parameter_space_settings):
             raise ValueError('Config needs orblib_settings and parameter_space_settings')
 
+    def __repr__(self):
+        return (f'{self.__class__.__name__}({self.__dict__})')
+
 
 class ConfigurationReaderYaml(object):
     """
     Reads the configuration file and instantiates the objects
     self.system, ...
     """
-    def __init__(self, filename=None): # instantiate the objects here. instead of the dict, self.system will be a System object, etc.
+    def __init__(self, filename=None, silent=False): # instantiate the objects here. instead of the dict, self.system will be a System object, etc.
         """
         Reads onfiguration file and instantiates objects. Does some rudimentary
         checks for consistency.
@@ -44,6 +50,7 @@ class ConfigurationReaderYaml(object):
         Parameters
         ----------
         filename : string, needs to refer to an existing file including path
+        silent : True suppresses output, default=False
 
         Raises
         ------
@@ -62,7 +69,7 @@ class ConfigurationReaderYaml(object):
         else:
             raise FileNotFoundError('Please specify filename')
 
-        self.system = physys.System() # instantiate System object
+        self.system = System() # instantiate System object
         self.config = Configuration() # instantiate Configuration object
 #        self.__dict__ = par
 
@@ -71,130 +78,119 @@ class ConfigurationReaderYaml(object):
             # add components to system
 
             if key == 'model_components':
-                print('model_components:')
-                for comp, data in value.items():
-                    if not data['include']:
-                            print('', comp, '  ...ignored')
+                if not silent:
+                    print('model_components:')
+                for comp, data_comp in value.items():
+                    if not data_comp['include']:
+                            if not silent:
+                                print('', comp, '  ...ignored')
                             continue
 
-                    # read black hole data and instantiate Plummer object
+                    # instantiate the component
 
-                    if comp == 'black_hole':
-                        if data['type'] != 'Plummer':
-                            raise ValueError('Black hole must be of type Plummer')
-                        c = physys.Plummer(contributes_to_potential=data['contributes_to_potential'])
-                        c.parameters = parspace.BlackHoleParameters()
-                        self.read_parameters(c.parameters, data['parameters'].items())
+                    if not silent:
+                        print(f" {comp}... instantiating {data_comp['type']} object")
+                    if 'contributes_to_potential' not in data_comp:
+                        raise ValueError(f'Component {comp} needs contributes_to_potential attribute')
+                    c = globals()[data_comp['type']](contributes_to_potential = data_comp['contributes_to_potential'])
 
-                    # read gas data and instantiate VisibleComponent object, not implemented yet...
+                    # initialize the componnt's paramaters, kinematics, and populations
 
-                    elif comp == 'gas': # placeholder, not implemented yet...
-                        if data['type'] != 'VisibleComponent':
-                            raise ValueError('Gas must be of type VisibleComponent')
-                        else: # code to come
-                            print('gas = physys.VisibleComponent(data)', data)
-                        par = parspace.GasParameters()
-                        # instantiate VisibleComponent object here
-                        # add to self.system
+                    par_list, kin_list, pop_list = [], [], []
 
-                    # read stars data and instantiate VisibleComponent object
+                    # read parameters
 
-                    elif comp == 'stars':
-                        if data['type'] != 'VisibleComponent':
-                            raise ValueError('Stars must be of type VisibleComponent')
-                        # assume triaxial symmetry
-                        c = physys.VisibleComponent(mge_file = data['mge_file'], symmetry='triax', contributes_to_potential=data['contributes_to_potential'])
-                        c.parameters = parspace.StellarParameters()
-                        self.read_parameters(c.parameters, data['parameters'].items())
+                    if 'parameters' not in data_comp:
+                        raise ValueError('Component ' + comp + ' needs parameters')
+                    if not silent:
+                        print(f" Has parameters {tuple(data_comp['parameters'].keys())}")
+                    for par, data_par in data_comp['parameters'].items():
+                        the_parameter = parspace.Parameter(name=par, **data_par)
+                        par_list.append(the_parameter)
+                    c.parameters = par_list
 
-                    # read dark halo data and instantiate NFW object
+                    # read kinematics
 
-                    elif comp == 'dark_halo':
-                        if data['type'] != 'NFW':
-                            raise ValueError('Dark halo must be of type NFW')
-                        c = physys.NFW(contributes_to_potential=data['contributes_to_potential'])
-                        c.parameters = parspace.DarkHaloParameters()
-                        self.read_parameters(c.parameters, data['parameters'].items())
+                    if 'kinematics' in data_comp:   # shall we include a check here (e.g., only VisibleComponent can have kinematics?)
+                        if not silent:
+                            print(f" Has kinematics {tuple(data_comp['kinematics'].keys())}")
+                        for kin, data_kin in data_comp['kinematics'].items():
+                            kinematics_set = kinem.Kinematics(**data_kin)
+                            kin_list.append(kinematics_set)
+                        c.kinematic_data = kin_list
 
-                    # elif... add other components...
+                    # read populations
 
-                    else:
-                        raise ValueError('Unknown component: ' + comp)
-
-                    # fill in common attributes
-
-                    c.contributes_to_potential = data['contributes_to_potential']
-                    if 'kinematics' in data:
-                        # print('Kinematics!')
-                        # print(data['kinematics'])
-                        k = []
-                        for i, kin in data['kinematics'].items():
-                            k.append(kin)
-                        # print(k)
-                        c.kinematic_data = k
-                    if 'population' in data:
-                        k = []
-                        for i, kin in data['population'].items():
-                            k.append(kin)
-                        c.population_data = k
+                    if 'populations' in data_comp:   # shall we include a check here (e.g., only VisibleComponent can have populations?)
+                        if not silent:
+                            print(f" Has populations {tuple(data_comp['populations'].keys())}")
+                        for pop, data_pop in data_comp['populations'].items():
+                            populations_set = popul.Populations(**data_pop)
+                            pop_list.append(populations_set)
+                        c.population_data = pop_list
 
                     # add component to system
-
+    
                     self.system.add_component(c)
-
-                    print('', comp, ' ...read')
-
+    
             # add other parameters to system
 
             elif key == 'other_parameters':
-                print('other_parameters...')
+                if not silent:
+                    print('other_parameters...')
+                    print(f' {tuple(value.keys())}')
                 for other, data in value.items():
                     if other == 'ml':
                         self.system.ml = parspace.Parameter(**data)
-                    elif other == 'distMPc':
-                        self.system.distMPc = data
-                    elif other == 'galname':
-                        self.system.galname = data
-                    elif other == 'position_angle':
-                        self.system.position_angle = data
+                    else:
+                        setattr(self.system, other, data)
 
             # add orbit library settings to config object
 
             elif key == 'orblib_settings':
-                print('orblib_settings...')
+                if not silent:
+                    print('orblib_settings...')
+                    print(f' {tuple(value.keys())}')
                 self.config.add('orblib_settings', value)
 
             # add parameter space settings to config object
 
             elif key == 'parameter_space_settings':
-                print('parameter_space_settings...')
+                if not silent:
+                    print('parameter_space_settings...')
+                    print(f' {tuple(value.keys())}')
                 self.config.add('parameter_space_settings', value)
 
             else:
-                raise ValueError('Unknown configuration key: ' + key)
+                raise ValueError(f'Unknown configuration key: {key}')
 
-        self.system.validate()
-        self.config.validate()
+        #self.system.validate()
+        #self.config.validate()
+
+        if not silent:
+            print(f'**** System assembled:\n{self.system}')
+            print(f'**** Configuration data:\n{self.config}')
 
 
-    def read_parameters(self, par=None, items=None):
-        """
-        Will add each key-value pair in items to parameters object par by calling
-        par.add(...) and subsequently calls the par.validate() method.
 
-        Parameters
-        ----------
-        par : ...parameters object, optional
-            The default is None.
-        items : dictionary, optional
-            The default is None.
+    # def read_parameters(self, par=None, items=None):
+    #     """
+    #     Will add each key-value pair in items to parameters object par by calling
+    #     par.add(...) and subsequently calls the par.validate() method.
 
-        Returns
-        -------
-        None.
+    #     Parameters
+    #     ----------
+    #     par : ...parameters object, optional
+    #         The default is None.
+    #     items : dictionary, optional
+    #         The default is None.
 
-        """
+    #     Returns
+    #     -------
+    #     None.
+
+    #     """
         
-        for p, v in items:
-            par.add(name=p, **v)
-        par.validate()
+    #     for p, v in items:
+    #         par.add(name=p, **v)
+    #     par.validate()

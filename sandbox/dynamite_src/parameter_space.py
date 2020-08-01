@@ -3,6 +3,7 @@ import yaml
 class Parameter(object):
 
     def __init__(self,
+                 name=None,
                  desc=None,
                  fixed=False,
                  LaTeX=None,
@@ -15,7 +16,7 @@ class Parameter(object):
                  # step=None,
                  # minstep=None,
                  ):
-        self.valid = ('desc', 'fixed', 'LaTeX', 'sformat', 'value', 'grid_parspace_settings', 'gpe_parspace_settings')
+        self.name = name
         self.desc = desc
         self.fixed = fixed
         self.LaTeX = LaTeX
@@ -27,98 +28,106 @@ class Parameter(object):
         # self.hi = hi
         # self.step = step
         # self.minstep = minstep
+        self.attributes = list(self.__dict__.keys())
 
     def update(self, **kwargs):
         for k, v in kwargs.items():
-            if k not in self.valid:
-                raise ValueError('Invalid parameter key' + k + '. Allowed keys: ' + self.valid)
-            self.k = v
-
-
-class BlackHoleParameters(object):
-#    def __init__(self, *, name, **kwargs):
-    def __init__(self, name=None, **kwargs):
-        self.mass = None
-        self.radius = None
-        if name is not None:
-            self.add(self, name, **kwargs)
-
-#    def add(self, *, name, **kwargs):
-    def add(self, name, **kwargs):
-        if name == 'mass':
-            self.mass = Parameter(**kwargs)
-        elif name == 'radius':
-            self.radius = Parameter(**kwargs)
-        else:
-            raise ValueError('Unknown black hole parameter ' + name + ', use mass or radius')
+            if k not in self.attributes:
+                raise ValueError('Invalid parameter key ' + k + '. Allowed keys: ' + str(tuple(self.values)))
+            setattr(self, k, v)
 
     def validate(self):
-        if self.mass is None or self.radius is None:
-            raise ValueError('Black hole parameters require mass and radius')
+        if sorted(self.attributes) != sorted(self.__dict__.keys()):
+            raise ValueError('Parameter attributes can only be ' + str(tuple(self.values)) + ', not ' + str(tuple(self.__dict__.keys())))
+
+    def __repr__(self):
+        return (f'{self.__class__.__name__}({self.__dict__})')
 
 
-class DarkHaloParameters(object):
-    def __init__(self, name=None, **kwargs):
-        self.dc = None
-        self.f = None
-        if name is not None:
-            self.add(self, name, **kwargs)
+# class BlackHoleParameters(object):
+# #    def __init__(self, *, name, **kwargs):
+#     def __init__(self, name=None, **kwargs):
+#         self.mass = None
+#         self.radius = None
+#         if name is not None:
+#             self.add(self, name, **kwargs)
 
-#    def add(self, *, name, **kwargs):
-    def add(self, name, **kwargs):
-        if name == 'dc':
-            self.dc = Parameter(**kwargs)
-        elif name == 'f':
-            self.f = Parameter(**kwargs)
-        else:
-            raise ValueError('Unknown dark matter parameter ' + name + ', use dc or f')
+# #    def add(self, *, name, **kwargs):
+#     def add(self, name, **kwargs):
+#         if name == 'mass':
+#             self.mass = Parameter(**kwargs)
+#         elif name == 'radius':
+#             self.radius = Parameter(**kwargs)
+#         else:
+#             raise ValueError('Unknown black hole parameter ' + name + ', use mass or radius')
 
-    def validate(self):
-        if self.dc is None or self.f is None:
-            raise ValueError('Dark matter parameters require dc and f')
+#     def validate(self):
+#         if self.mass is None or self.radius is None:
+#             raise ValueError('Black hole parameters require mass and radius')
 
 
-class StellarParameters(object):
-#    def __init__(self, *, name, **kwargs):
-    def __init__(self, name=None, **kwargs):
-        self.q = None
-        self.p = None
-        self.u = None
-        if name is not None:
-            self.add(self, name, **kwargs)
-        # if (name == 'q'):
-        #     self.q = Parameter(**kwargs)
-        # elif (name == 'p'):
-        #     self.p = Parameter(**kwargs)
-        # elif (name == 'u'):
-        #     self.u = Parameter(**kwargs)
-        # else:
-        #     raise ValueError('Unknown stellar parameter ', name, ', use q, p, or u')
+# class DarkHaloParameters(object):
+#     def __init__(self, name=None, **kwargs):
+#         self.dc = None
+#         self.f = None
+#         if name is not None:
+#             self.add(self, name, **kwargs)
 
-#    def add(self, *, name, **kwargs):
-    def add(self, name, **kwargs):
-        update = False
-        if (name == 'q'):
-            if (self.q is None):
-                update = True
-            self.q = Parameter(**kwargs)
-        elif (name == 'p'):
-            if (self.p is None):
-                update = True
-            self.p = Parameter(**kwargs)
-        elif (name == 'u'):
-            if (self.u is None):
-                update = True
-            self.u = Parameter(**kwargs)
-        else:
-            raise ValueError('Unknown stellar parameter ', name, ', use q, p, or u')
-        return update
+# #    def add(self, *, name, **kwargs):
+#     def add(self, name, **kwargs):
+#         if name == 'dc':
+#             self.dc = Parameter(**kwargs)
+#         elif name == 'f':
+#             self.f = Parameter(**kwargs)
+#         else:
+#             raise ValueError('Unknown dark matter parameter ' + name + ', use dc or f')
 
-    def validate(self):
-        if (self.q is not None and self.p is not None and self.u is not None):
-            return True
-        else:
-            return False
+#     def validate(self):
+#         if self.dc is None or self.f is None:
+#             raise ValueError('Dark matter parameters require dc and f')
+
+
+# class StellarParameters(object):
+# #    def __init__(self, *, name, **kwargs):
+#     def __init__(self, name=None, **kwargs):
+#         self.q = None
+#         self.p = None
+#         self.u = None
+#         if name is not None:
+#             self.add(self, name, **kwargs)
+#         # if (name == 'q'):
+#         #     self.q = Parameter(**kwargs)
+#         # elif (name == 'p'):
+#         #     self.p = Parameter(**kwargs)
+#         # elif (name == 'u'):
+#         #     self.u = Parameter(**kwargs)
+#         # else:
+#         #     raise ValueError('Unknown stellar parameter ', name, ', use q, p, or u')
+
+# #    def add(self, *, name, **kwargs):
+#     def add(self, name, **kwargs):
+#         update = False
+#         if (name == 'q'):
+#             if (self.q is None):
+#                 update = True
+#             self.q = Parameter(**kwargs)
+#         elif (name == 'p'):
+#             if (self.p is None):
+#                 update = True
+#             self.p = Parameter(**kwargs)
+#         elif (name == 'u'):
+#             if (self.u is None):
+#                 update = True
+#             self.u = Parameter(**kwargs)
+#         else:
+#             raise ValueError('Unknown stellar parameter ', name, ', use q, p, or u')
+#         return update
+
+#     def validate(self):
+#         if (self.q is not None and self.p is not None and self.u is not None):
+#             return True
+#         else:
+#             return False
 
 
 class ParameterSpace(object):

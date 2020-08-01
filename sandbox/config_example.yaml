@@ -101,7 +101,7 @@ model_components:
                 binfile: bins2.dat               # integrated only (actual example file)
                 maskfile: maskfile2.dat          # made-up filename
                 PSF: kinpsffile2.dat             # may be there, too (PSFs apply to any Data class object)
-        population: # optional, components may have population data, all data below is dummy data
+        populations: # optional, components may have population data, all data below is dummy data
             set1:
                 name: "pop1"                    # necessary because there can be more sets of population data
                 weight: 0.7                       # weight of population data specified by name

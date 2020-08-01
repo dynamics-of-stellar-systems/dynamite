@@ -37,7 +37,10 @@ class System(object):
     def validate(self):
         if not(self.ml and self.distMPc and self.galname and self.position_angle):
             raise ValueError('System needs ml, distMPc, galname, and position_angle attributes')
-    
+
+    def __repr__(self):
+        return f'{self.__class__.__name__} with {self.__dict__}'
+
 
 class Component(object):
 
@@ -61,6 +64,9 @@ class Component(object):
         if self.symmetry not in self.symmetries:
             raise ValueError('Illegal symmetry ' + str(self.symmetry) + '. Allowed: ' + str(self.symmetries))
 
+    def __repr__(self):
+        return (f'{self.__class__.__name__}({self.__dict__})')
+
 
 class VisibleComponent(Component):
 
@@ -69,7 +75,7 @@ class VisibleComponent(Component):
                  **kwds):
          # visible components are MGE surface density
         self.mge_file = mge_file
-        super(VisibleComponent, self).__init__(visible=True,
+        super(VisibleComponent, self).__init__(visible=True, symmetry='triax',
                                                **kwds)
 
 
