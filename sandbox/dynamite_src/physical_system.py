@@ -45,12 +45,17 @@ class System(object):
 class Component(object):
 
     def __init__(self,
+                 name = None,                     # string
                  visible=None,                    # Boolean
                  contributes_to_potential=None,   # Boolean
                  symmetry=None,                   # spherical, axisymm, or triax
                  kinematic_data=[],             # a list of Kinematic objects
                  population_data=[],            # a list of Population objects
                  parameters=[]):                # a list of Parameter objects
+        if name == None:
+            self.name = self.__class__.__name__
+        else:
+            self.name = name
         self.symmetries = ['spherical', 'axisymm', 'triax']
         self.visible = visible
         self.contributes_to_potential = contributes_to_potential
@@ -65,7 +70,7 @@ class Component(object):
             raise ValueError('Illegal symmetry ' + str(self.symmetry) + '. Allowed: ' + str(self.symmetries))
 
     def __repr__(self):
-        return (f'{self.__class__.__name__}({self.__dict__})')
+        return (f'\n{self.__class__.__name__}({self.__dict__}\n)')
 
 
 class VisibleComponent(Component):

@@ -2,6 +2,7 @@ class Populations(object):
     """
     Populations class holding attributes and methods pertaining to population data
     """
+    values = []
     def __init__(self,
                  name=None,
                  weight=None,
@@ -20,7 +21,7 @@ class Populations(object):
         self.binfile = binfile
         self.maskfile = maskfile
         self.PSF = PSF
-        self.values = list(self.__dict__.keys())
+        self.__class__.values = list(self.__dict__.keys())
 
     def update(self, **kwargs):
         """
@@ -42,12 +43,15 @@ class Populations(object):
         """
         
         for k, v in kwargs.items():
-            if k not in self.values:
-                raise ValueError('Invalid population key ' + k + '. Allowed keys: ' + str(tuple(self.values)))
+            if k not in self.__class__.values:
+                raise ValueError('Invalid population key ' + k + '. Allowed keys: ' + str(tuple(self.__class__.values)))
             setattr(self, k, v)
 
     def validate(self): # here we can put more validation...
-        if sorted(self.values) != sorted(self.__dict__.keys()):
-            raise ValueError('Population attributes can only be ' + str(tuple(self.values)) + ', not ' + str(tuple(self.__dict__.keys())))
+        if sorted(self.__class__.values) != sorted(self.__dict__.keys()):
+            raise ValueError('Population attributes can only be ' + str(tuple(self.__class__.values)) + ', not ' + str(tuple(self.__dict__.keys())))
+
+    def __repr__(self):
+        return f'{self.__class__.__name__}({self.__dict__})'
 
 # end

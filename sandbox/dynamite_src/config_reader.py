@@ -7,8 +7,8 @@ Created on Tue Jun 16 15:14:17 2020
 """
 
 import yaml
-#import dynamite_src.physical_system as physys
-from dynamite_src.physical_system import *
+import dynamite_src.physical_system as physys
+#from dynamite_src.physical_system import *
 import dynamite_src.parameter_space as parspace
 import dynamite_src.kinematics as kinem
 import dynamite_src.populations as popul
@@ -55,7 +55,7 @@ class ConfigurationReaderYaml(object):
         Raises
         ------
         FileNotFoundError
-            DESCRIPTION. If file does not exist or filename is None or not given.
+            If file does not exist or filename is None or not given.
 
         Returns
         -------
@@ -69,7 +69,7 @@ class ConfigurationReaderYaml(object):
         else:
             raise FileNotFoundError('Please specify filename')
 
-        self.system = System() # instantiate System object
+        self.system = physys.System() # instantiate System object
         self.config = Configuration() # instantiate Configuration object
 #        self.__dict__ = par
 
@@ -92,7 +92,8 @@ class ConfigurationReaderYaml(object):
                         print(f" {comp}... instantiating {data_comp['type']} object")
                     if 'contributes_to_potential' not in data_comp:
                         raise ValueError(f'Component {comp} needs contributes_to_potential attribute')
-                    c = globals()[data_comp['type']](contributes_to_potential = data_comp['contributes_to_potential'])
+#                    c = globals()[data_comp['type']](contributes_to_potential = data_comp['contributes_to_potential'])
+                    c = getattr(physys,data_comp['type'])(name = comp, contributes_to_potential = data_comp['contributes_to_potential'])
 
                     # initialize the componnt's paramaters, kinematics, and populations
 
@@ -115,7 +116,7 @@ class ConfigurationReaderYaml(object):
                         if not silent:
                             print(f" Has kinematics {tuple(data_comp['kinematics'].keys())}")
                         for kin, data_kin in data_comp['kinematics'].items():
-                            kinematics_set = kinem.Kinematics(**data_kin)
+                            kinematics_set = kinem.Kinematics(name=kin, **data_kin)
                             kin_list.append(kinematics_set)
                         c.kinematic_data = kin_list
 
@@ -125,7 +126,7 @@ class ConfigurationReaderYaml(object):
                         if not silent:
                             print(f" Has populations {tuple(data_comp['populations'].keys())}")
                         for pop, data_pop in data_comp['populations'].items():
-                            populations_set = popul.Populations(**data_pop)
+                            populations_set = popul.Populations(name=pop, **data_pop)
                             pop_list.append(populations_set)
                         c.population_data = pop_list
 
@@ -141,7 +142,7 @@ class ConfigurationReaderYaml(object):
                     print(f' {tuple(value.keys())}')
                 for other, data in value.items():
                     if other == 'ml':
-                        self.system.ml = parspace.Parameter(**data)
+                        self.system.ml = parspace.Parameter(name=other, **data)
                     else:
                         setattr(self.system, other, data)
 
@@ -171,6 +172,40 @@ class ConfigurationReaderYaml(object):
             print(f'**** System assembled:\n{self.system}')
             print(f'**** Configuration data:\n{self.config}')
 
+        self.validate()
+        if not silent:
+            print('**** Configuration validated')
+
+
+    def validate(self):
+        """
+        Validates the system and configuration. This method is still VERY
+        rudimentary and will be adjusted as we add new functionality to dynamite
+
+        Returns
+        -------
+        None.
+
+        """
+        if len([1 for i in self.system.cmp_list if isinstance(i, physys.Plummer)]) != 1:
+            raise ValueError('System needs to have exactly one Plummer object')
+        if len([1 for i in self.system.cmp_list if isinstance(i, physys.NFW)]) != 1:
+            raise ValueError('System needs to have exactly one NFW object')
+        if len([1 for i in self.system.cmp_list if isinstance(i, physys.VisibleComponent)]) != 1:
+            raise ValueError('System needs to have exactly one VisibleComponent object')
+        if len(self.system.cmp_list) != 3:
+            raise ValueError('System needs to comprise exactly one Plummer, one VisibleComponent, and one NFW object')
+        else:
+            for c in self.system.cmp_list:
+                if isinstance(c, physys.VisibleComponent):
+                    if c.symmetry != 'triax':
+                        raise ValueError('VisibleComponent symmetry must be triax')
+                    try:
+                        for kin_data in c.kinematic_data:
+                            if kin_data.parametrization != 'GaussHermite':
+                                raise ValueError('VisibleComponent kinematics need GaussHermite parametrization')
+                    except:
+                        raise ValueError('VisibleComponent must have kinematics with parametrization GaussHermite')
 
 
     # def read_parameters(self, par=None, items=None):

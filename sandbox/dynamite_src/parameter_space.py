@@ -2,6 +2,7 @@ import yaml
 
 class Parameter(object):
 
+    attributes = []
     def __init__(self,
                  name=None,
                  desc=None,
@@ -28,17 +29,17 @@ class Parameter(object):
         # self.hi = hi
         # self.step = step
         # self.minstep = minstep
-        self.attributes = list(self.__dict__.keys())
+        self.__class__.attributes = list(self.__dict__.keys())
 
     def update(self, **kwargs):
         for k, v in kwargs.items():
-            if k not in self.attributes:
-                raise ValueError('Invalid parameter key ' + k + '. Allowed keys: ' + str(tuple(self.values)))
+            if k not in self.__class__.attributes:
+                raise ValueError(f'Invalid parameter key {k}. Allowed keys: {str(tuple(self.__class__.attributes))}')
             setattr(self, k, v)
 
     def validate(self):
-        if sorted(self.attributes) != sorted(self.__dict__.keys()):
-            raise ValueError('Parameter attributes can only be ' + str(tuple(self.values)) + ', not ' + str(tuple(self.__dict__.keys())))
+        if sorted(self.__class__.attributes) != sorted(self.__dict__.keys()):
+            raise ValueError(f'Parameter attributes can only be {str(tuple(self.__class__.attributes))} , not {str(tuple(self.__dict__.keys()))}')
 
     def __repr__(self):
         return (f'{self.__class__.__name__}({self.__dict__})')

@@ -1,5 +1,5 @@
 # Example configuration file config_example.yaml
-
+---
 model_components:
 
     black_hole: # ignore these descriptive names in config reader, just instantiate objets defined by type
@@ -81,8 +81,7 @@ model_components:
         include: True
         contributes_to_potential: True
         kinematics: # optional, only specified for components that have kinematics
-            set1:
-                name: "narrow-field mode"       # necessary because there can be more sets of kinematic data
+            "narrow-field mode":
                 weight: 0.6                       # weight of kinematics data specified by name
                 type: integrated                # or discrete (then there is no parametrization)
                 parametrization: GaussHermite   # only for type integrated! This is the class name in data.py
@@ -91,8 +90,7 @@ model_components:
                 binfile: bins.dat               # integrated only (actual example file)
                 maskfile: maskfile.dat          # made-up filename
                 PSF: kinpsffile.dat             # may be there, too (PSFs apply to any Data class object)
-            set2:
-                name: "narrow-field mode2"       # necessary because there can be more sets of kinematic data
+            "narrow-field mode2":
                 weight: 0.4                       # weight of kinematics data specified by name
                 type: integrated                # or discrete (then there is no parametrization)
                 parametrization: GaussHermite   # only for type integrated! This is the class name in data.py
@@ -102,8 +100,7 @@ model_components:
                 maskfile: maskfile2.dat          # made-up filename
                 PSF: kinpsffile2.dat             # may be there, too (PSFs apply to any Data class object)
         populations: # optional, components may have population data, all data below is dummy data
-            set1:
-                name: "pop1"                    # necessary because there can be more sets of population data
+            pop1:
                 weight: 0.7                       # weight of population data specified by name
                 type: integrated                # or discrete (then there is no parametrization)
                 datafile: pop_data.dat          # for both discrete and integrated types
@@ -111,8 +108,7 @@ model_components:
                 binfile: popbins.dat            # integrated only
                 maskfile: popmaskfile.dat       # made-up filename
                 PSF: poppsffile.dat             # may be there, too (PSFs apply to any Data class object)
-            set2:
-                name: "pop2"                    # necessary because there can be more sets of population data
+            pop2:
                 weight: 0.3                       # weight of population data specified by name
                 type: integrated                # or discrete (then there is no parametrization)
                 datafile: pop_data2.dat          # for both discrete and integrated types
@@ -182,3 +178,4 @@ parameter_space_settings: # don't put in physical system -> config object
 #    generator_type: "gaussian_process_emulator"
     generator_type: "GridSearch"
     stopping_criteria: TBD
+    weight_solver: "FortranGalahad"
