@@ -6,13 +6,23 @@ Created on Tue Jun 16 15:14:17 2020
 @author: maindl
 """
 
+# some tricks to add the current path to sys.path (so the imports below work)
+
+import os.path
+import sys
+
+this_dir = os.path.dirname(__file__)
+sys.path.append(this_dir)
+
+# import required modules/packages
+
 import yaml
-import dynamite_src.physical_system as physys
+import physical_system as physys
 #from dynamite_src.physical_system import *
-import dynamite_src.parameter_space as parspace
-import dynamite_src.kinematics as kinem
-import dynamite_src.populations as popul
-import dynamite_src.mges as mge
+import parameter_space as parspace
+import kinematics as kinem
+import populations as popul
+import mges as mge
 
 class Configuration(object):
     """
