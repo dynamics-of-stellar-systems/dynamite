@@ -12,6 +12,7 @@ import dynamite_src.physical_system as physys
 import dynamite_src.parameter_space as parspace
 import dynamite_src.kinematics as kinem
 import dynamite_src.populations as popul
+import dynamite_src.mges as mge
 
 class Configuration(object):
     """
@@ -130,8 +131,11 @@ class ConfigurationReaderYaml(object):
                             pop_list.append(populations_set)
                         c.population_data = pop_list
 
+                    if 'mge_file' in data_comp:
+                        c.mge_data = mge.MGE() #(data_comp['mge_file'])
+
                     # add component to system
-    
+                    c.validate()
                     self.system.add_component(c)
     
             # add other parameters to system

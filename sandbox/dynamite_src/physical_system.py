@@ -76,12 +76,15 @@ class Component(object):
 class VisibleComponent(Component):
 
     def __init__(self,
-                 mge_file=None,
+                 mge_data=None,
                  **kwds):
          # visible components are MGE surface density
-        self.mge_file = mge_file
+        self.mge_data = mge_data
         super(VisibleComponent, self).__init__(visible=True, symmetry='triax',
                                                **kwds)
+    # def validate(self):
+    #     super(VisibleComponent, self).validate()
+    #     check for valid MGE data
 
 
 class DarkComponent(Component):

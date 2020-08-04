@@ -1,10 +1,12 @@
 class MGE(object):
 
-    def __init__(self, n, I, sigma, q):
-        self.n = n
-        self.I = I				    # intensity e.g. L/pc^2, kpc^-2, M/m^2
-        self.sigma = sigma			# angular sigma
-        self.q = q				    # flattenings
+    def __init__(self):
+        pass
+    # def __init__(self, n, I, sigma, q):
+    #     self.n = n
+    #     self.I = I				    # intensity e.g. L/pc^2, kpc^-2, M/m^2
+    #     self.sigma = sigma			# angular sigma
+    #     self.q = q				    # flattenings
 
     # def surface_brightness(self, x, y):
     #     # function to calculate surface_brightness at (x,y)
