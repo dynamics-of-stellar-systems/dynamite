@@ -70,8 +70,18 @@ class GauusianMixture1D(object):
 
 
 class GaussHermite(Integrated, Kinematic):
-    def __init__(self, a=1):
-        pass
+    def __init__(self, filename=None):
+        if filename is not None:
+            data = self.read_file(filename)
+            self.vbin_id = data['vbin_id']
+            self.v = data['v']
+            self.dv = data['dv']
+            self.sigma = data['sigma']
+            self.sigma = data['dsigma']
+            self.h3 = data['h3']
+            self.dh3 = data['dh3']
+            self.h4 = data['h4']
+            self.dh4 = data['dh4']
 
     def read_file_old_format(self, filename):
         f = open(filename)
