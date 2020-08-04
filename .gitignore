@@ -7,3 +7,4 @@ sandbox/.spyproject
 notebooks/.ipynb_checkpoints/*
 *.orig
 __pycache__
+*.gitignore
