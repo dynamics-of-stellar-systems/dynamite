@@ -1,6 +1,6 @@
 # classes to hold the physical components of the system
 # e.g. the stellar light, dark matter, black hole, globular clusters
-
+from . mges import MGE
 
 class System(object):
 
@@ -40,10 +40,10 @@ class Component(object):
 class VisibleComponent(Component):
 
     def __init__(self,
-                 mge=None,
+                 mgefile=None,
                  **kwds):
-         # visible components are MGE surface density
-        self.mge = mge
+         # visible components have MGE surface density
+        self.mge = MGE(mgefile)
         super(VisibleComponent, self).__init__(visible=True,
                                                **kwds)
 
