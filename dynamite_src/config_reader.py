@@ -127,7 +127,9 @@ class ConfigurationReaderYaml(object):
                         if not silent:
                             print(f" Has kinematics {tuple(data_comp['kinematics'].keys())}")
                         for kin, data_kin in data_comp['kinematics'].items():
-                            kinematics_set = kinem.Kinematics(name=kin, **data_kin)
+                            # kinematics_set = kinem.Kinematics(name=kin, **data_kin)
+                            # TODO: use 'type' here instead of 'parameterization' to refer to the required object class? More consistent with above!
+                            kinematics_set = getattr(kinem,data_kin['parametrization'])(name = kin, **data_kin)
                             kin_list.append(kinematics_set)
                         c.kinematic_data = kin_list
 
@@ -142,12 +144,12 @@ class ConfigurationReaderYaml(object):
                         c.population_data = pop_list
 
                     if 'mge_file' in data_comp:
-                        c.mge_data = mge.MGE() #(data_comp['mge_file'])
+                        c.mge_data = mge.MGE(filename=data_comp['mge_file'])
 
                     # add component to system
                     c.validate()
                     self.system.add_component(c)
-    
+
             # add other parameters to system
 
             elif key == 'other_parameters':
@@ -239,7 +241,7 @@ class ConfigurationReaderYaml(object):
     #     None.
 
     #     """
-        
+
     #     for p, v in items:
     #         par.add(name=p, **v)
     #     par.validate()

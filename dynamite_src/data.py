@@ -6,41 +6,42 @@ class Data(object):
         pass
 
 
-# class Discrete(Data):
+class Discrete(Data):
 
-#     def __init__(self, x, y, values, errors):
-#         self.x = x
-#         self.y = y
-#         self.values = values
+    def __init__(self, x, y, values, errors):
+        self.x = x
+        self.y = y
+        self.values = values
 
 
 class Integrated(Data):
 
-    def __init__(self, aperture, values, errors):
-        self.aperture = aperture
-        self.values = values
-        self.errors = errors
-
-
-class Kinematic(Data):
-
-    def __init__(self):
+    def __init__(self, **kwargs):#aperture, values, errors):
+        # self.aperture = aperture
+        # self.values = values
+        # self.errors = errors
         pass
 
-    # def transform_orbits_to_observables(orb_lib):
-    #     # placeholder for code to transform orbits
-    #     return observables
 
-
-class GaussHermite(Integrated, Kinematic):
-
-    def __init__(self,
-                 filename=None):
-        pass
-
-    # def transform_orbits_to_observables(orb_lib):
-    #     # actual code to transform orbits to GH coefficients
-    #     return gauss_hermite_coefficients
+# class Kinematic(Data):
+#
+#     def __init__(self):
+#         pass
+#
+#     # def transform_orbits_to_observables(orb_lib):
+#     #     # placeholder for code to transform orbits
+#     #     return observables
+#
+#
+# class GaussHermite(Integrated, Kinematic):
+#
+#     def __init__(self,
+#                  filename=None):
+#         pass
+#
+#     def transform_orbits_to_observables(orb_lib):
+#         # actual code to transform orbits to GH coefficients
+#         return gauss_hermite_coefficients
 
 
 # class BSplines(Integrated, Kinematic):
