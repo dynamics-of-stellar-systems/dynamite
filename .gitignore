@@ -1,4 +1,9 @@
 # Compiled source #
 ###################
-dynamite_src/__pycache__/*.pyc
+dynamite_src/__pycache__
+sandbox/dynamite_src/__pycache__
+sandbox/.spyproject
+.spyproject
 notebooks/.ipynb_checkpoints/*
+*.orig
+__pycache__

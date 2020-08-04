@@ -1,0 +1,13 @@
+#MGE for the r band sdss img
+#---------------------------------------------
+#name  unit   description
+#I     L_sun/pc^2 (M_sun/pc^2)   the central surface brightness
+#sigma arcs         the dispersion of gaussian
+#q     flattering   randomly set, from 1D fit
+#---------------------------------------------
+       26819.14         0.49416    0.89541       0.00
+        2456.39         2.04299    0.79093       0.00
+         456.80         2.44313    0.99990       0.00
+         645.49         6.53050    0.55097       0.00
+          14.73        17.41488    0.99990       0.00
+         123.85        21.84711    0.55097       0.00
