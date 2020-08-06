@@ -1,16 +1,14 @@
+import data
 import numpy as np
 from astropy import table
 from astropy.io import ascii
 
-class MGE(object):
 
-    def __init__(self, filename=None):
-        if filename is not None:
-            data = self.read_file(filename)
-            self.I = data['I']
-            self.sigma = data['sigma']
-            self.q = data['q']
-            self.PA_twist = data['PA_twist']
+class MGE(data.Data):
+
+    def __init__(self, **kwargs):
+        print('HAI')
+        super().__init__(**kwargs)
 
     def read_file_old_format(self, filename):
         with open(filename) as fp:
@@ -28,10 +26,6 @@ class MGE(object):
         data = self.read_file_old_format(filename_old_format)
         data = table.Table(data)
         data.write(filename_new_format, format='ascii.ecsv')
-
-    def read_file(self, filename):
-        data = ascii.read(filename)
-        return data
 
 
 # TODO:

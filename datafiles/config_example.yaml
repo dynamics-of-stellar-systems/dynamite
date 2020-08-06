@@ -83,8 +83,7 @@ model_components:
         kinematics: # optional, only specified for components that have kinematics
             "narrow-field mode":
                 weight: 0.6                       # weight of kinematics data specified by name
-                type: integrated                # or discrete (then there is no parametrization)
-                parametrization: GaussHermite   # only for type integrated! This is the class name in data.py
+                type: GaussHermite                # specifies which object class to create
                 datafile: "datafiles/gauss_hermite_kins.ecvs"  # for both discrete and integrated types (actual example file)
                 aperturefile: aperture.dat      # integrated only (actual example file)
                 binfile: bins.dat               # integrated only (actual example file)
@@ -92,8 +91,7 @@ model_components:
                 PSF: kinpsffile.dat             # may be there, too (PSFs apply to any Data class object)
             "narrow-field mode2":
                 weight: 0.4                       # weight of kinematics data specified by name
-                type: integrated                # or discrete (then there is no parametrization)
-                parametrization: GaussHermite   # only for type integrated! This is the class name in data.py
+                type: GaussHermite    # only for type integrated! This is the class name in data.py
                 datafile: "datafiles/gauss_hermite_kins.ecvs"  # for both discrete and integrated types (actual example file)
                 aperturefile: aperture2.dat      # integrated only (actual example file)
                 binfile: bins2.dat               # integrated only (actual example file)

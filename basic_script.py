@@ -92,7 +92,8 @@ weight_solver.set_kinematics(system)
 schw_models = dyn.schwarzschild.SchwarzschildModelLoop(
     system=system,
     parset_list=parset_list0,
-    weight_solver=weight_solver
+    weight_solver=weight_solver,
+    config=config
 )
 schw_models.models
 

@@ -76,11 +76,12 @@ class Component(object):
 class VisibleComponent(Component):
 
     def __init__(self,
-                 mge_data=None,
+                 mge=None,
                  **kwds):
-         # visible components are MGE surface density
-        self.mge_data = mge_data
-        super(VisibleComponent, self).__init__(visible=True, symmetry='triax',
+         # visible components have MGE surface density
+        self.mge = mge
+        super(VisibleComponent, self).__init__(visible=True,
+                                               symmetry='triax',
                                                **kwds)
     # def validate(self):
     #     super(VisibleComponent, self).validate()
@@ -95,7 +96,7 @@ class DarkComponent(Component):
         # these have no observed properties (MGE/kinematics/populations)
         # instead they are initialised with an input density function
         self.density = density
-        self.mge = 'self.fit_mge()'
+        # self.mge = 'self.fit_mge()'
         super(DarkComponent, self).__init__(visible=False,
 #                                            contributes_to_potential=True,
                                             kinematic_data=[],

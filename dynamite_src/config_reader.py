@@ -128,8 +128,7 @@ class ConfigurationReaderYaml(object):
                             print(f" Has kinematics {tuple(data_comp['kinematics'].keys())}")
                         for kin, data_kin in data_comp['kinematics'].items():
                             # kinematics_set = kinem.Kinematics(name=kin, **data_kin)
-                            # TODO: use 'type' here instead of 'parameterization' to refer to the required object class? More consistent with above!
-                            kinematics_set = getattr(kinem,data_kin['parametrization'])(name = kin, **data_kin)
+                            kinematics_set = getattr(kinem,data_kin['type'])(name = kin, **data_kin)
                             kin_list.append(kinematics_set)
                         c.kinematic_data = kin_list
 
@@ -144,7 +143,7 @@ class ConfigurationReaderYaml(object):
                         c.population_data = pop_list
 
                     if 'mge_file' in data_comp:
-                        c.mge_data = mge.MGE(filename=data_comp['mge_file'])
+                        c.mge = mge.MGE(datafile=data_comp['mge_file'])
 
                     # add component to system
                     c.validate()
@@ -218,10 +217,10 @@ class ConfigurationReaderYaml(object):
                         raise ValueError('VisibleComponent symmetry must be triax')
                     try:
                         for kin_data in c.kinematic_data:
-                            if kin_data.parametrization != 'GaussHermite':
-                                raise ValueError('VisibleComponent kinematics need GaussHermite parametrization')
+                            if kin_data.type != 'GaussHermite':
+                                raise ValueError('VisibleComponent kinematics need GaussHermite type')
                     except:
-                        raise ValueError('VisibleComponent must have kinematics with parametrization GaussHermite')
+                        raise ValueError('VisibleComponent must have kinematics with type GaussHermite')
 
 
     # def read_parameters(self, par=None, items=None):
