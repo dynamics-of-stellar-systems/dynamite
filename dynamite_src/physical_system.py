@@ -110,7 +110,7 @@ class DarkComponent(Component):
         # fit an MGE for a given set of parameters
         # will be used in potential calculation
         rho = self.density.evaluate(xyz_grid, parameters)
-#        self.mge = MGES.intrinsic_MGE_from_xyz_grid(xyz_grid, rho)
+        # self.mge = MGES.intrinsic_MGE_from_xyz_grid(xyz_grid, rho)
 
 
 class Plummer(DarkComponent):
