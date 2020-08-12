@@ -39,12 +39,20 @@ class Configuration(object):
             self.parameter_space_settings = values
         elif kind == 'output_settings':
             self.output_settings = values
+        elif kind == 'weight_solver_settings':
+            self.weight_solver_settings = values
         else:
-            raise ValueError('Config only takes orblib_settings and parameter_space_settings and output_settings')
+            raise ValueError("""Config only takes orblib_settings
+                             and parameter_space_settings
+                             and output_settings
+                             and weight_solver_settings""")
 
     def validate(self):
         if not(self.orblib_settings and self.parameter_space_settings):
-            raise ValueError('Config needs orblib_settings and parameter_space_settings and output_settings')
+            raise ValueError("""Config needs orblib_settings
+                             and parameter_space_settings
+                             and output_settings
+                             and weight_solver_settings""")
 
     def __repr__(self):
         return (f'{self.__class__.__name__}({self.__dict__})')
@@ -198,6 +206,14 @@ class ConfigurationReaderYaml(object):
                     print('output_settings...')
                     print(f' {tuple(value.keys())}')
                 self.config.add('output_settings', value)
+
+            # add weight_solver_settings to config object
+
+            elif key == 'weight_solver_settings':
+                if not silent:
+                    print('weight_solver_settings...')
+                    print(f' {tuple(value.keys())}')
+                self.config.add('weight_solver_settings', value)
 
             else:
                 raise ValueError(f'Unknown configuration key: {key}')
