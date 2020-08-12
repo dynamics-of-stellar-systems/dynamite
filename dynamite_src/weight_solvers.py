@@ -50,4 +50,23 @@ class LatentPosterior(WeightSolver):
         # actual code to sample posterior of weights
         return 0, 0
 
+
+class LegacyWeightSolver(WeightSolver):
+
+    def __init__(self,
+                 mod_dir=None,
+                 settings=None):
+        self.mod_dir = mod_dir
+        self.settings = settings
+
+    def solve(self):
+        orb_wts, chi2 = 0., 0.
+        return orb_wts, chi2
+
+
+
+
+
+
+
 # end

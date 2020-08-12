@@ -53,4 +53,21 @@ class OrbitLibrary(object):
         pass
 
 
+class LegacyOrbitLibrary(object):
+
+    def __init__(self,
+                 system=None,
+                 settings=None,
+                 parset=None):
+        self.system = system
+        self.settings = settings
+        self.parset = parset
+
+    def generate_ics(self):
+        pass
+
+    def integrate_loop(self):
+        pass
+
+
 # end
