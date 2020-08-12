@@ -24,11 +24,12 @@ for i in range(sys.n_cmp):
         print(cmp.mge.data)
     print('\n')
 
+import dynamite_src.schwarzschild as schw
 
-
-
-
-
+mod = schw.LegacySchwarzschildModel(
+    system=c.system,
+    config=c.config,
+    parset=[])
 
 
 
