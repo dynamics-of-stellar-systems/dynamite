@@ -17,6 +17,7 @@ print('The components are:')
 for i in range(sys.n_cmp):
     cmp = sys.cmp_list[i]
     print(f'{i}) {cmp.name}')
+    print(f'   of type {type(cmp).__name__}')
     print(f'   with {len(cmp.parameters)} parameters')
     if hasattr(cmp, 'mge'):
         print(f'   with mgefile {cmp.mge.datafile} containing data:')
