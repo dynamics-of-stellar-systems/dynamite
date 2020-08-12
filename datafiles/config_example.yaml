@@ -181,7 +181,7 @@ parameter_space_settings: # don't put in physical system -> config object
     stopping_criteria: TBD
 
 output_settings:
-    directory: "output/"
+    directory: "outputs/"
     setting1: True
     setting2: False
 
