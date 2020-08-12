@@ -12,9 +12,9 @@ class System(object):
         self.n_kin = 0
         self.n_pop = 0
 #        self.n_par = 0
-        self.ml = None
+        self.parameters = None
         self.distMPc = None
-        self.galname = None
+        self.name = None
         self.position_angle = None
 #        for idx, component in enumerate(args):
         for component in args:
@@ -48,15 +48,15 @@ class Component(object):
                  name = None,                     # string
                  visible=None,                    # Boolean
                  contributes_to_potential=None,   # Boolean
-                 symmetry=None,                   # spherical, axisymm, or triax
-                 kinematic_data=[],             # a list of Kinematic objects
-                 population_data=[],            # a list of Population objects
-                 parameters=[]):                # a list of Parameter objects
+                 symmetry=None,                   # OPTIONAL, spherical, axisymm, or triax
+                 kinematic_data=[],               # a list of Kinematic objects
+                 population_data=[],              # a list of Population objects
+                 parameters=[]):                  # a list of Parameter objects
         if name == None:
             self.name = self.__class__.__name__
         else:
             self.name = name
-        self.symmetries = ['spherical', 'axisymm', 'triax']
+#        self.symmetries = ['spherical', 'axisymm', 'triax']
         self.visible = visible
         self.contributes_to_potential = contributes_to_potential
         self.symmetry = symmetry
@@ -66,8 +66,10 @@ class Component(object):
         self.validate()
 
     def validate(self):
-        if self.symmetry not in self.symmetries:
-            raise ValueError('Illegal symmetry ' + str(self.symmetry) + '. Allowed: ' + str(self.symmetries))
+        # if self.symmetry not in self.symmetries:
+        #     raise ValueError('Illegal symmetry ' + str(self.symmetry) + '. Allowed: ' + str(self.symmetries))
+        if self.contributes_to_potential is None:
+            raise ValueError(f'Component {self.__class__.__name__} needs contributes_to_potential entry')
 
     def __repr__(self):
         return (f'\n{self.__class__.__name__}({self.__dict__}\n)')
@@ -80,9 +82,28 @@ class VisibleComponent(Component):
                  **kwds):
          # visible components have MGE surface density
         self.mge = mge
-        super(VisibleComponent, self).__init__(visible=True,
-                                               symmetry='triax',
-                                               **kwds)
+        super().__init__(visible=True, **kwds)
+
+    # def validate(self):
+    #     super(VisibleComponent, self).validate()
+    #     check for valid MGE data
+
+
+class AxisymmetricVisibleComponent(VisibleComponent):
+
+    def __init__(self, **kwds):
+        super().__init__(symmetry='axisymm', **kwds)
+
+    # def validate(self):
+    #     super(VisibleComponent, self).validate()
+    #     check for valid MGE data
+
+
+class TriaxialVisibleComponent(VisibleComponent):
+
+    def __init__(self, **kwds):
+        super().__init__(symmetry='triax', **kwds)
+
     # def validate(self):
     #     super(VisibleComponent, self).validate()
     #     check for valid MGE data
@@ -97,11 +118,10 @@ class DarkComponent(Component):
         # instead they are initialised with an input density function
         self.density = density
         # self.mge = 'self.fit_mge()'
-        super(DarkComponent, self).__init__(visible=False,
-#                                            contributes_to_potential=True,
-                                            kinematic_data=[],
-                                            population_data=[],
-                                            **kwds)
+        super().__init__(visible=False,
+                         kinematic_data=[],
+                         population_data=[],
+                         **kwds)
 
     def fit_mge(self,
                 density,
@@ -115,14 +135,8 @@ class DarkComponent(Component):
 
 class Plummer(DarkComponent):
 
-    def __init__(self,
-                 parameter_M=None,
-                 parameter_a=None,
-                 **kwds):
-        super(Plummer, self).__init__(symmetry='spherical',
-                                      parameters=[parameter_M,
-                                                  parameter_a],
-                                      **kwds)
+    def __init__(self, **kwds):
+        super().__init__(symmetry='spherical', **kwds)
 
     def density(x, y, z, pars):
         M, a = pars
@@ -133,14 +147,8 @@ class Plummer(DarkComponent):
 
 class NFW(DarkComponent):
 
-    def __init__(self,
-                 parameter_M=None,
-                 parameter_c=None,
-                 **kwds):
-        super(NFW, self).__init__(symmetry='spherical',
-                                  parameters=[parameter_M,
-                                              parameter_c],
-                                  **kwds)
+    def __init__(self, **kwds):
+        super().__init__(symmetry='spherical', **kwds)
 
     def density(x, y, z, pars):
         M, c = pars

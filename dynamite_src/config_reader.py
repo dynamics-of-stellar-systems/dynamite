@@ -88,7 +88,7 @@ class ConfigurationReaderYaml(object):
 
             # add components to system
 
-            if key == 'model_components':
+            if key == 'system_components':
                 if not silent:
                     print('model_components:')
                 for comp, data_comp in value.items():
@@ -149,17 +149,29 @@ class ConfigurationReaderYaml(object):
                     c.validate()
                     self.system.add_component(c)
 
-            # add other parameters to system
+            # add system parameters
 
-            elif key == 'other_parameters':
+            elif key == 'system_parameters':
                 if not silent:
-                    print('other_parameters...')
+                    print('system_parameters...')
+                    print(f' {tuple(value.keys())}')
+                par_list = []
+                for other, data in value.items():
+                    par_list.append(parspace.Parameter(name=other, **data))
+                setattr(self.system, 'parameters', par_list)
+                    # if other == 'ml':
+                    #     self.system.ml = parspace.Parameter(name=other, **data)
+                    # else:
+                    #     setattr(self.system, other, data)
+
+            # add system attributes
+
+            elif key == 'system_attributes':
+                if not silent:
+                    print('system_attributes...')
                     print(f' {tuple(value.keys())}')
                 for other, data in value.items():
-                    if other == 'ml':
-                        self.system.ml = parspace.Parameter(name=other, **data)
-                    else:
-                        setattr(self.system, other, data)
+                    setattr(self.system, other, data)
 
             # add orbit library settings to config object
 
@@ -212,14 +224,12 @@ class ConfigurationReaderYaml(object):
             raise ValueError('System needs to comprise exactly one Plummer, one VisibleComponent, and one NFW object')
         else:
             for c in self.system.cmp_list:
-                if isinstance(c, physys.VisibleComponent):
-                    if c.symmetry != 'triax':
-                        raise ValueError('VisibleComponent symmetry must be triax')
-                    try:
+                if issubclass(type(c), physys.VisibleComponent):
+                    if c.kinematic_data:
                         for kin_data in c.kinematic_data:
                             if kin_data.type != 'GaussHermite':
                                 raise ValueError('VisibleComponent kinematics need GaussHermite type')
-                    except:
+                    else:
                         raise ValueError('VisibleComponent must have kinematics with type GaussHermite')
 
 
