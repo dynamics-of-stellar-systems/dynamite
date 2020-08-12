@@ -37,12 +37,14 @@ class Configuration(object):
             self.orblib_settings = values
         elif kind == 'parameter_space_settings':
             self.parameter_space_settings = values
+        elif kind == 'output_settings':
+            self.output_settings = values
         else:
-            raise ValueError('Config only takes orblib_settings and parameter_space_settings')
+            raise ValueError('Config only takes orblib_settings and parameter_space_settings and output_settings')
 
     def validate(self):
         if not(self.orblib_settings and self.parameter_space_settings):
-            raise ValueError('Config needs orblib_settings and parameter_space_settings')
+            raise ValueError('Config needs orblib_settings and parameter_space_settings and output_settings')
 
     def __repr__(self):
         return (f'{self.__class__.__name__}({self.__dict__})')
@@ -188,6 +190,14 @@ class ConfigurationReaderYaml(object):
                     print('parameter_space_settings...')
                     print(f' {tuple(value.keys())}')
                 self.config.add('parameter_space_settings', value)
+
+            # add output settings to config object
+
+            elif key == 'output_settings':
+                if not silent:
+                    print('output_settings...')
+                    print(f' {tuple(value.keys())}')
+                self.config.add('output_settings', value)
 
             else:
                 raise ValueError(f'Unknown configuration key: {key}')
