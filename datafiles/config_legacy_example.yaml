@@ -127,7 +127,12 @@ orblib_settings: # don't put in physical system -> config object
 parameter_space_settings: # don't put in physical system -> config object
 #    generator_type: "gaussian_process_emulator"
     generator_type: "GridSearch"
-    stopping_criteria: TBD
+    generator_settings:
+
+    stopping_criteria:
+        min_delta_chi2 : 0.5
+        n_max_mods : 1000
+        n_max_iter : 10
 
 output_settings:
     directory: "outputs/legacy/"
