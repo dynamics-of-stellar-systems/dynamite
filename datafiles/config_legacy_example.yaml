@@ -113,7 +113,7 @@ system_parameters: # these go into the physical system as a standalone atribute 
 
 system_attributes:
     distMPc: 38.82
-    name: "NGC4210"
+    name: "NGC6278"
     position_angle: 97.69
 
 orblib_settings: # don't put in physical system -> config object
@@ -130,7 +130,7 @@ parameter_space_settings: # don't put in physical system -> config object
     stopping_criteria: TBD
 
 output_settings:
-    directory: "outputs/"
+    directory: "outputs/legacy/"
     setting1: True
     setting2: False
 

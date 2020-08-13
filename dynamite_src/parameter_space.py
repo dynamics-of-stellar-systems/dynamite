@@ -129,17 +129,27 @@ class Parameter(object):
 #             return False
 
 
-class ParameterSpace(object):
+class ParameterSpace(list):
 
     def __init__(self, system):
 
-        self.n_par = system.n_par
-        self.n_par_fixed = 0
-        for cmp in system.cmp_list:
-            for par in cmp.parameters:
-                self.n_par_fixed += par.fixed
-        self.n_par_free = self.n_par - self.n_par_fixed
+        # self.n_par = system.n_par
+        # self.n_par_fixed = 0
+        # for cmp in system.cmp_list:
+        #     for par in cmp.parameters:
+        #         self.n_par_fixed += par.fixed
+        # self.n_par_free = self.n_par - self.n_par_fixed
+        par_list = []
+        for cmp0 in system.cmp_list:
+            for par0 in cmp0.parameters:
+                self.append(par0)
+        for par0 in system.parameters:
+            self.append(par0)
 
+        par_names = []
+        for par0 in self:
+            par_names += [par0.name]
+        self.par_names = par_names
 
 class ParameterGenerator(object):
 

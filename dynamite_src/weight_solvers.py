@@ -1,3 +1,4 @@
+import numpy as np
 from . import dynamics
 
 class WeightSolver(object):
@@ -40,17 +41,6 @@ class NNLS(WeightSolver):
         return 0, 0
 
 
-class LatentPosterior(WeightSolver):
-
-    def __init__(self,
-                 **kwargs):
-        super(LatentPosterior, self).__init__(*kwargs) # initialise parent class
-
-    def solve(self):
-        # actual code to sample posterior of weights
-        return 0, 0
-
-
 class LegacyWeightSolver(WeightSolver):
 
     def __init__(self,
@@ -60,13 +50,54 @@ class LegacyWeightSolver(WeightSolver):
         self.settings = settings
 
     def solve(self):
-        orb_wts, chi2 = 0., 0.
-        return orb_wts, chi2
+        # self.write_executable()
+        # self.execute()
+        chi2, kinchi2 = self.read_output()
+        return chi2, kinchi2
 
+    def write_executable(self):
+        # code to write the fortran executable here
+        pass
 
+    def execute(self):
+        # code to run the executable here
+        pass
 
+    def read_output(self):
+        ''' taken useful parts from triax_extract_chi2_iter in schw_domoditer,
+        in particular lines 181-212
+        '''
+        # read amount of observables and kinematic moments
+        fname = self.mod_dir + 'nn_kinem.out'
+        a = self.__read_file_element(fname, [1, 1], [1, 2])
+        ngh = np.int64(a[1])  # number of 'observables'
+        nobs = np.int64(a[1])
+        nvel = np.int64(a[0])
+        ncon = np.int64(a[0])
+        rows = 3 + np.arange(nobs)  # rows 1- 9
+        cols = 3 + np.zeros(nobs, dtype=int)  # skip over text
+        fname = self.mod_dir + 'nn_nnls.out'
+        chi2vec = self.__read_file_element(fname, rows, cols)
+        chi2vec = np.double(chi2vec)
+        chi2 = sum(chi2vec)
+        fname = self.mod_dir + 'nn_kinem.out'
+        ka = np.genfromtxt(fname, skip_header=1)
+        k = np.arange(ngh) * 3 + 3
+        kinchi2 = sum(sum(pow(((ka[:, k] - ka[:, k + 1]) / ka[:, k + 2]), 2.0)))
+        return chi2, kinchi2
 
-
-
+    def __read_file_element(self, infile, rows, cols):
+        """Taken from schw_misc
+        !@brief read fields in a tabular data according to the their row/column.
+        @details Function description.
+        @param[in] infile input file
+        @param[in] row array of locations (row), indexing starts from 1.
+        @param[in] cols array of locations (column), indexing starts from 1.
+        """
+        lines = [line.rstrip('\n').split() for line in open(infile)]
+        output=[]
+        for i in range(0, len(rows)):
+            output.append(lines[rows[i] - 1][cols[i] - 1])
+        return output
 
 # end
