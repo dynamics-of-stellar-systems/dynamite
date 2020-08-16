@@ -12,7 +12,8 @@ import os.path
 import sys
 
 this_dir = os.path.dirname(__file__)
-sys.path.append(this_dir)
+if not this_dir in sys.path:
+    sys.path.append(this_dir)
 
 # import required modules/packages
 

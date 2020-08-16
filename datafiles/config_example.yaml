@@ -77,7 +77,7 @@ system_components:
                 LaTeX: "$u_{min}$"
                 sformat: "%7.4f"
         type: "TriaxialVisibleComponent" # will need to correspond to the class name
-#        type: "AxisymmetricVisibleComponent" # will need to correspond to the class name
+        # type: "AxisymmetricVisibleComponent" # will need to correspond to the class name
         mge_file: "datafiles/mge.ecvs"
         include: True
         contributes_to_potential: True

@@ -3,6 +3,18 @@
 
 import numpy as np
 
+# some tricks to add the current path to sys.path (so the imports below work)
+
+import os.path
+import sys
+
+this_dir = os.path.dirname(__file__)
+if not this_dir in sys.path:
+    sys.path.append(this_dir)
+
+import mges as mge
+
+
 class System(object):
 
     def __init__(self, *args):
@@ -37,6 +49,8 @@ class System(object):
     def validate(self):
         if not(self.ml and self.distMPc and self.galname and self.position_angle):
             raise ValueError('System needs ml, distMPc, galname, and position_angle attributes')
+        if not self.cmp_list:
+            raise ValueError('System has no components')
 
     def __repr__(self):
         return f'{self.__class__.__name__} with {self.__dict__}'
@@ -63,13 +77,24 @@ class Component(object):
         self.kinematic_data = kinematic_data
         self.population_data = population_data
         self.parameters = parameters
-        self.validate()
+        # self.validate()
 
-    def validate(self):
+    def validate(self, par=None):
         # if self.symmetry not in self.symmetries:
         #     raise ValueError('Illegal symmetry ' + str(self.symmetry) + '. Allowed: ' + str(self.symmetries))
+        errstr = f'Component {self.__class__.__name__} needs attribute '
+        if self.visible is None:
+            raise ValueError(errstr + 'visible')
         if self.contributes_to_potential is None:
-            raise ValueError(f'Component {self.__class__.__name__} needs contributes_to_potential entry')
+            raise ValueError(errstr + 'contributes_to_potential')
+        if not self.parameters:
+            raise ValueError(errstr + 'parameters')
+            
+        if len(self.parameters) != len(par):
+            raise ValueError(f'{self.__class__.__name__} needs exactly {len(par)} paramaters, not {len(self.parameters)}')
+        if set([p.name for p in self.parameters]) != set(par):
+            raise ValueError(f'{self.__class__.__name__} needs parameters {par}, not {[p.name for p in self.parameters]}')
+
 
     def __repr__(self):
         return (f'\n{self.__class__.__name__}({self.__dict__}\n)')
@@ -84,9 +109,10 @@ class VisibleComponent(Component):
         self.mge = mge
         super().__init__(visible=True, **kwds)
 
-    # def validate(self):
-    #     super(VisibleComponent, self).validate()
-    #     check for valid MGE data
+    def validate(self, **kwds):
+        super().validate(**kwds)
+        if not isinstance(self.mge, mge.MGE):
+            raise ValueError(f'{self.__class__.__name__}.mge must be mges.MGE object')
 
 
 class AxisymmetricVisibleComponent(VisibleComponent):
@@ -94,9 +120,9 @@ class AxisymmetricVisibleComponent(VisibleComponent):
     def __init__(self, **kwds):
         super().__init__(symmetry='axisymm', **kwds)
 
-    # def validate(self):
-    #     super(VisibleComponent, self).validate()
-    #     check for valid MGE data
+    def validate(self):
+        par = ['par1', 'par2']
+        super().validate(par=par)
 
 
 class TriaxialVisibleComponent(VisibleComponent):
@@ -104,9 +130,9 @@ class TriaxialVisibleComponent(VisibleComponent):
     def __init__(self, **kwds):
         super().__init__(symmetry='triax', **kwds)
 
-    # def validate(self):
-    #     super(VisibleComponent, self).validate()
-    #     check for valid MGE data
+    def validate(self):
+        par = ['q', 'p', 'u']
+        super().validate(par=par)
 
 
 class DarkComponent(Component):
@@ -144,6 +170,12 @@ class Plummer(DarkComponent):
         rho = 3*M/4/np.pi/a**3 * (1. + (r/a)**2)**-2.5
         return rho
 
+    def validate(self):
+        par = ['mass', 'radius']
+        super().validate(par=par)
+        # if len(self.parameters) != 2:
+        #     raise ValueError(f'{self.__class__.__name__} needs exactly 2 paramaters, not {len(self.parameters)}')
+
 
 class NFW(DarkComponent):
 
@@ -154,6 +186,12 @@ class NFW(DarkComponent):
         M, c = pars
         # rho = ...
         # return rho
+
+    def validate(self):
+        par = ['dc', 'f']
+        super().validate(par=par)
+        # if len(self.parameters) != 2:
+        #     raise ValueError(f'{self.__class__.__name__} needs exactly 2 paramaters, not {len(self.parameters)}')
 
 
 # end
