@@ -53,6 +53,7 @@ system_components:
                 LaTeX: "$q_{min}$"
                 sformat: "%6.2f"
             p:
+            # par1:
                 desc: "intrinsic B/A"
                 gpe_parspace_settings:
                     kernel: "to be defined"
@@ -66,6 +67,7 @@ system_components:
                 LaTeX: "$p_{min}$"
                 sformat: "%6.3f"
             u:
+            # par2:
                 desc: "sigma_obs / sigma_intrinsic"
                 grid_parspace_settings:
                     lo: 0.95

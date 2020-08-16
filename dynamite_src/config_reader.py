@@ -232,6 +232,8 @@ class ConfigurationReaderYaml(object):
                                 raise ValueError('VisibleComponent kinematics need GaussHermite type')
                     else:
                         raise ValueError('VisibleComponent must have kinematics with type GaussHermite')
+                    if c.symmetry != 'triax':
+                        raise ValueError('Legacy mode: VisibleComponent must be triaxial')
 
 
     # def read_parameters(self, par=None, items=None):
