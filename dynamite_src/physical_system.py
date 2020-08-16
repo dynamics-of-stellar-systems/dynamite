@@ -47,8 +47,8 @@ class System(object):
 #        self.n_par += len(cmp.parameters)
 
     def validate(self):
-        if not(self.ml and self.distMPc and self.galname and self.position_angle):
-            raise ValueError('System needs ml, distMPc, galname, and position_angle attributes')
+        if not(self.ml and self.distMPc and self.name and self.position_angle):
+            raise ValueError('System needs ml, distMPc, name, and position_angle attributes')
         if not self.cmp_list:
             raise ValueError('System has no components')
 

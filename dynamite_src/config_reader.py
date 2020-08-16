@@ -25,9 +25,9 @@ import kinematics as kinem
 import populations as popul
 import mges as mge
 
-class Configuration(object):
+class Settings(object):
     """
-    Class that collect misc configuration settings
+    Class that collects misc configuration settings
     """
     def __init__(self):
         self.orblib_settings = {}
@@ -39,11 +39,11 @@ class Configuration(object):
         elif kind == 'parameter_space_settings':
             self.parameter_space_settings = values
         else:
-            raise ValueError('Config only takes orblib_settings and parameter_space_settings')
+            raise ValueError('Settings only take orblib_settings and parameter_space_settings')
 
     def validate(self):
         if not(self.orblib_settings and self.parameter_space_settings):
-            raise ValueError('Config needs orblib_settings and parameter_space_settings')
+            raise ValueError('Settings need orblib_settings and parameter_space_settings')
 
     def __repr__(self):
         return (f'{self.__class__.__name__}({self.__dict__})')
@@ -82,7 +82,7 @@ class ConfigurationReaderYaml(object):
             raise FileNotFoundError('Please specify filename')
 
         self.system = physys.System() # instantiate System object
-        self.config = Configuration() # instantiate Configuration object
+        self.settings = Settings() # instantiate Configuration object
 #        self.__dict__ = par
 
         for key, value in self.params.items(): # walk through the file contents...
@@ -180,7 +180,7 @@ class ConfigurationReaderYaml(object):
                 if not silent:
                     print('orblib_settings...')
                     print(f' {tuple(value.keys())}')
-                self.config.add('orblib_settings', value)
+                self.settings.add('orblib_settings', value)
 
             # add parameter space settings to config object
 
@@ -188,7 +188,7 @@ class ConfigurationReaderYaml(object):
                 if not silent:
                     print('parameter_space_settings...')
                     print(f' {tuple(value.keys())}')
-                self.config.add('parameter_space_settings', value)
+                self.settings.add('parameter_space_settings', value)
 
             else:
                 raise ValueError(f'Unknown configuration key: {key}')
@@ -198,7 +198,7 @@ class ConfigurationReaderYaml(object):
 
         if not silent:
             print(f'**** System assembled:\n{self.system}')
-            print(f'**** Configuration data:\n{self.config}')
+            print(f'**** Settings:\n{self.settings}')
 
         self.validate()
         if not silent:
@@ -207,8 +207,9 @@ class ConfigurationReaderYaml(object):
 
     def validate(self):
         """
-        Validates the system and configuration. This method is still VERY
+        Validates the system and settings. This method is still VERY
         rudimentary and will be adjusted as we add new functionality to dynamite
+        Currently, this method is geared towards legacy mode
 
         Returns
         -------
@@ -234,6 +235,8 @@ class ConfigurationReaderYaml(object):
                         raise ValueError('VisibleComponent must have kinematics with type GaussHermite')
                     if c.symmetry != 'triax':
                         raise ValueError('Legacy mode: VisibleComponent must be triaxial')
+        if self.settings.parameter_space_settings["generator_type"] != 'GridSearch':
+            raise ValueError('Legacy mode: parameter space generator_type must be GridSearch')
 
 
     # def read_parameters(self, par=None, items=None):

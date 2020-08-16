@@ -169,7 +169,7 @@ system_attributes:
     name: "NGC4210"
     position_angle: 97.69
 
-orblib_settings: # don't put in physical system -> config object
+orblib_settings: # don't put in physical system -> settings object
     nE: 21
     logrmin: -0.307153
     logrmax: 1.89192
@@ -177,7 +177,7 @@ orblib_settings: # don't put in physical system -> config object
     nI3: 7
     dithering: 3
 
-parameter_space_settings: # don't put in physical system -> config object
+parameter_space_settings: # don't put in physical system -> settings object
 #    generator_type: "gaussian_process_emulator"
     generator_type: "GridSearch"
     stopping_criteria: TBD
