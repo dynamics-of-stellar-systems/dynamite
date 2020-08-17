@@ -140,6 +140,20 @@ class ParameterSpace(object):
                 self.n_par_fixed += par.fixed
         self.n_par_free = self.n_par - self.n_par_fixed
 
+    def add(self, par):
+        """
+        Adds Parameter par to ParameterSpace
+
+        Parameters
+        ----------
+        par : Parameter object to add
+
+        Returns
+        -------
+        None.
+
+        """
+        pass
 
 class ParameterGenerator(object):
 

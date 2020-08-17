@@ -205,6 +205,23 @@ class ConfigurationReaderYaml(object):
             print('**** Configuration validated')
 
 
+    def make_parameter_space(self, system):
+        """
+        Instantiates a ParameterSpace object based on the parameters
+        defined in System object system.
+
+        Parameters
+        ----------
+        system : System object with component and system parameters
+
+        Returns
+        -------
+        None.
+
+        """
+        pass
+
+
     def validate(self):
         """
         Validates the system and settings. This method is still VERY
