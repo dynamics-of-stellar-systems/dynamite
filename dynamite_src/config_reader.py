@@ -38,12 +38,30 @@ class Settings(object):
             self.orblib_settings = values
         elif kind == 'parameter_space_settings':
             self.parameter_space_settings = values
+        elif kind == 'output_settings':
+            self.output_settings = values
+        elif kind == 'weight_solver_settings':
+            self.weight_solver_settings = values
         else:
+<<<<<<< .merge_file_jqKU34
             raise ValueError('Settings only take orblib_settings and parameter_space_settings')
 
     def validate(self):
         if not(self.orblib_settings and self.parameter_space_settings):
             raise ValueError('Settings need orblib_settings and parameter_space_settings')
+=======
+            raise ValueError("""Config only takes orblib_settings
+                             and parameter_space_settings
+                             and output_settings
+                             and weight_solver_settings""")
+
+    def validate(self):
+        if not(self.orblib_settings and self.parameter_space_settings):
+            raise ValueError("""Config needs orblib_settings
+                             and parameter_space_settings
+                             and output_settings
+                             and weight_solver_settings""")
+>>>>>>> .merge_file_37Gmen
 
     def __repr__(self):
         return (f'{self.__class__.__name__}({self.__dict__})')
@@ -189,6 +207,22 @@ class ConfigurationReaderYaml(object):
                     print('parameter_space_settings...')
                     print(f' {tuple(value.keys())}')
                 self.settings.add('parameter_space_settings', value)
+
+            # add output settings to config object
+
+            elif key == 'output_settings':
+                if not silent:
+                    print('output_settings...')
+                    print(f' {tuple(value.keys())}')
+                self.config.add('output_settings', value)
+
+            # add weight_solver_settings to config object
+
+            elif key == 'weight_solver_settings':
+                if not silent:
+                    print('weight_solver_settings...')
+                    print(f' {tuple(value.keys())}')
+                self.config.add('weight_solver_settings', value)
 
             else:
                 raise ValueError(f'Unknown configuration key: {key}')

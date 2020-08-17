@@ -181,4 +181,16 @@ parameter_space_settings: # don't put in physical system -> settings object
 #    generator_type: "gaussian_process_emulator"
     generator_type: "GridSearch"
     stopping_criteria: TBD
-    weight_solver: "FortranGalahad"
+
+output_settings:
+    directory: "outputs/"
+    setting1: True
+    setting2: False
+
+weight_solver_settings:
+    type: "LegacyWeightSolver"
+    setting1: True
+    setting2: False
+
+
+# end

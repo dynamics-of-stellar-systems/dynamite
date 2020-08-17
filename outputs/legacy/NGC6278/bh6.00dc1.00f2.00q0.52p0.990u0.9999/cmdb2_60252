@@ -1,0 +1,19 @@
+#!/bin/bash
+#$ -N lNGC62781_90852
+#$ -l mem_free=1.5G
+#$ -wd /Users/pjethwa/Astro/Science/dynamite/triaxschwarz/model_example_sabine/NGC6278/bh6.00dc1.00f2.00q0.52p0.990u0.9999/
+#$ -V 
+#$ -o datfil/orblib.log                 
+#$ -e datfil/orblib.log             
+#$ -r yes
+#$ -m n
+#$ -j y
+#$ -l h_rt=100:00:00
+#$ -hold_jid  sNGC62781_90852
+grep Writing datfil/orblib.dat.tmp && rm -f datfil/orblib.dat.tmp datfil/orblib.dat
+/Users/pjethwa/Astro/Science/dynamite/triaxschwarz/triaxschwarzschild/orblib < infil/orblib.in 
+rm datfil/mass_qgrid.dat datfil/mass_radmass.dat datfil/mass_aper.dat infil/mass_aper.dat
+/Users/pjethwa/Astro/Science/dynamite/triaxschwarz/triaxschwarzschild/triaxmass       < infil/triaxmass.in 
+/Users/pjethwa/Astro/Science/dynamite/triaxschwarz/triaxschwarzschild/triaxmassbin    < infil/triaxmassbin.in 
+# if the gzipped orbit library does not exist zip it
+test -e datfil/orblib.dat.bz2 || bzip2 -k datfil/orblib.dat

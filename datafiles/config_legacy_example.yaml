@@ -1,0 +1,148 @@
+# Example configuration file config_example.yaml
+---
+system_components:
+
+    black_hole: # ignore these descriptive names in config reader, just instantiate objets defined by type
+        parameters:
+            bh:
+                desc: "log(BHmass)"
+                grid_parspace_settings:
+                    lo: 5.0
+                    hi: 9.0
+                    step: 0.5
+                    minstep: 0.2
+                fixed: True
+                value: 6.0
+                LaTeX: "$M_{BH}$"
+                sformat: "6.2f"
+        type: "Plummer" # class name, can be: Plummer, needs to correspond to th class name -> instantiated automatically
+        include: True
+        contributes_to_potential: True
+
+    dark_halo:
+        parameters:
+            dc:
+                desc: "NFW Darkmatter concentrion (in log)"
+                grid_parspace_settings:
+                    lo: 0.0
+                    hi: 2.0
+                    step: 0.3
+                    minstep: 0.1
+                fixed: True
+                value: 1.0
+                LaTeX: "$log(C)$"
+                sformat: "6.2f"
+            f:
+                desc: "NFW Darkmatter fraction (in log)"
+                grid_parspace_settings:
+                    lo: 1.5
+                    hi: 3.0
+                    step: 0.4
+                    minstep: 0.2
+                fixed: False
+                value: 2.0
+                LaTeX: "$log(M_{200}/M_{star})$"
+                sformat: "6.2f"
+        type: NFW
+        include: True
+        contributes_to_potential: True
+
+    stars:
+        parameters:
+            q:
+                desc: "intrinsic flattening (C/A)"
+                grid_parspace_settings:
+                    lo: 0.05
+                    hi: 0.99
+                    step: 0.04
+                    minstep: 0.02
+                fixed: False
+                value: 0.99
+                LaTeX: "$q_{min}$"
+                sformat: "6.2f"
+            p:
+                desc: "intrinsic B/A"
+                gpe_parspace_settings:
+                    kernel: "to be defined"
+                grid_parspace_settings:
+                    lo: 0.99
+                    hi: 0.999
+                    step: 0.02
+                    minstep: 0.01
+                fixed: False
+                value: 0.99
+                LaTeX: "$p_{min}$"
+                sformat: "6.3f"
+            u:
+                desc: "sigma_obs / sigma_intrinsic"
+                grid_parspace_settings:
+                    lo: 0.95
+                    hi: 1.0
+                    step: 0.01
+                    minstep: 0.01
+                fixed: False
+                value: 0.9999
+                LaTeX: "$u_{min}$"
+                sformat: "7.4f"
+        type: "TriaxialVisibleComponent" # will need to correspond to the class name
+        mge_file: "datafiles/mge.ecvs"
+        include: True
+        contributes_to_potential: True
+        kinematics: # optional, only specified for components that have kinematics
+            set1:
+                weight: 1.0                       # weight of kinematics data specified by name
+                type: GaussHermite                # specifies which object class to create
+                datafile: "datafiles/gauss_hermite_kins.ecvs"  # for both discrete and integrated types (actual example file)
+                aperturefile: aperture.dat      # integrated only (actual example file)
+                binfile: bins.dat               # integrated only (actual example file)
+                maskfile: maskfile.dat          # made-up filename
+                PSF: kinpsffile.dat             # may be there, too (PSFs apply to any Data class object)
+
+system_parameters: # these go into the physical system as a standalone atribute (i.e., not one of the components)
+    ml:
+        desc: "M/L"
+        grid_parspace_settings:
+            lo: 0.8
+            hi: 7.5
+            step: 1.0
+            minstep: 0.5
+        fixed: False
+        value: 3.0
+        LaTeX: "$Y_{r}$"
+        sformat: "6.2f"
+
+system_attributes:
+    distMPc: 38.82
+    name: "NGC6278"
+    position_angle: 97.69
+
+orblib_settings: # don't put in physical system -> config object
+    nE: 21
+    logrmin: -0.307153
+    logrmax: 1.89192
+    nI2: 10
+    nI3: 7
+    dithering: 3
+
+parameter_space_settings: # don't put in physical system -> config object
+#    generator_type: "gaussian_process_emulator"
+    generator_type: "GridSearch"
+    generator_settings:
+
+    stopping_criteria:
+        min_delta_chi2 : 0.5
+        n_max_mods : 1000
+        n_max_iter : 10
+
+output_settings:
+    directory: "outputs/legacy/"
+    setting1: True
+    setting2: False
+
+weight_solver_settings:
+    type: "LegacyWeightSolver"
+    setting1: True
+    setting2: False
+
+
+# end
