@@ -48,7 +48,7 @@ class System(object):
 
     def validate(self):
         if not(self.ml and self.distMPc and self.name and self.position_angle):
-            raise ValueError('System needs ml, distMPc, name, and position_angle attributes')
+            raise ValueError('System needs ml parameter and distMPc, name, and position_angle attributes')
         if not self.cmp_list:
             raise ValueError('System has no components')
 
@@ -91,7 +91,7 @@ class Component(object):
             raise ValueError(errstr + 'parameters')
             
         if len(self.parameters) != len(par):
-            raise ValueError(f'{self.__class__.__name__} needs exactly {len(par)} paramaters, not {len(self.parameters)}')
+            raise ValueError(f'{self.__class__.__name__} needs exactly {len(par)} paramater(s), not {len(self.parameters)}')
         if set([p.name for p in self.parameters]) != set(par):
             raise ValueError(f'{self.__class__.__name__} needs parameters {par}, not {[p.name for p in self.parameters]}')
 
@@ -171,7 +171,7 @@ class Plummer(DarkComponent):
         return rho
 
     def validate(self):
-        par = ['mass', 'radius']
+        par = ['bh']
         super().validate(par=par)
         # if len(self.parameters) != 2:
         #     raise ValueError(f'{self.__class__.__name__} needs exactly 2 paramaters, not {len(self.parameters)}')
