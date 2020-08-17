@@ -43,25 +43,18 @@ class Settings(object):
         elif kind == 'weight_solver_settings':
             self.weight_solver_settings = values
         else:
-<<<<<<< .merge_file_jqKU34
-            raise ValueError('Settings only take orblib_settings and parameter_space_settings')
-
-    def validate(self):
-        if not(self.orblib_settings and self.parameter_space_settings):
-            raise ValueError('Settings need orblib_settings and parameter_space_settings')
-=======
             raise ValueError("""Config only takes orblib_settings
                              and parameter_space_settings
                              and output_settings
                              and weight_solver_settings""")
 
     def validate(self):
-        if not(self.orblib_settings and self.parameter_space_settings):
+        if not(self.orblib_settings and self.parameter_space_settings and
+               self.output_settings and self.weight_solver_settings):
             raise ValueError("""Config needs orblib_settings
                              and parameter_space_settings
                              and output_settings
                              and weight_solver_settings""")
->>>>>>> .merge_file_37Gmen
 
     def __repr__(self):
         return (f'{self.__class__.__name__}({self.__dict__})')
@@ -214,7 +207,7 @@ class ConfigurationReaderYaml(object):
                 if not silent:
                     print('output_settings...')
                     print(f' {tuple(value.keys())}')
-                self.config.add('output_settings', value)
+                self.settings.add('output_settings', value)
 
             # add weight_solver_settings to config object
 
@@ -222,7 +215,7 @@ class ConfigurationReaderYaml(object):
                 if not silent:
                     print('weight_solver_settings...')
                     print(f' {tuple(value.keys())}')
-                self.config.add('weight_solver_settings', value)
+                self.settings.add('weight_solver_settings', value)
 
             else:
                 raise ValueError(f'Unknown configuration key: {key}')
@@ -238,23 +231,10 @@ class ConfigurationReaderYaml(object):
         if not silent:
             print('**** Configuration validated')
 
-
-    def make_parameter_space(self, system):
-        """
-        Instantiates a ParameterSpace object based on the parameters
-        defined in System object system.
-
-        Parameters
-        ----------
-        system : System object with component and system parameters
-
-        Returns
-        -------
-        None.
-
-        """
-        pass
-
+        self.parspace = parspace.ParameterSpace(self.system)
+        if not silent:
+            print(f'**** Instantiated parameter space')
+            print(f'**** Parameter space:\n{self.parspace}')
 
     def validate(self):
         """
