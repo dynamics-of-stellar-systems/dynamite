@@ -132,24 +132,22 @@ class Parameter(object):
 class ParameterSpace(list):
 
     def __init__(self, system):
+        for cmp in system.cmp_list:
+            for par in cmp.parameters:
+                self.append(par)
+        for par in system.parameters:
+            self.append(par)
 
-        # self.n_par = system.n_par
-        # self.n_par_fixed = 0
-        # for cmp in system.cmp_list:
-        #     for par in cmp.parameters:
-        #         self.n_par_fixed += par.fixed
-        # self.n_par_free = self.n_par - self.n_par_fixed
-        par_list = []
-        for cmp0 in system.cmp_list:
-            for par0 in cmp0.parameters:
-                self.append(par0)
-        for par0 in system.parameters:
-            self.append(par0)
+        self.par_names = []
+        for par in self:
+            self.par_names.append(par.name)
 
-        par_names = []
-        for par0 in self:
-            par_names += [par0.name]
-        self.par_names = par_names
+        self.n_par = len(self)
+        self.n_par_fixed = len([p for p in self if p.fixed])
+        self.n_par_free = self.n_par - self.n_par_fixed
+
+    def __repr__(self):
+        return (f'{self.__class__.__name__}({[p for p in self]}, {self.__dict__})')
 
 
 class ParameterGenerator(object):

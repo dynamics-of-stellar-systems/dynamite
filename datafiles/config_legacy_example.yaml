@@ -1,8 +1,15 @@
-# Example configuration file config_example.yaml
+# Example yaml configuration file for the legacy implementation
+# All relevant input is in one file with two sections: SYSTEM and SETTINGS
+
+# Start of yaml document
 ---
+
+# SECTION 1
+# Data defining the PHYSICAL SYSTEM (e.g., the galaxy)
+
 system_components:
 
-    black_hole: # ignore these descriptive names in config reader, just instantiate objets defined by type
+    black_hole:
         parameters:
             bh:
                 desc: "log(BHmass)"
@@ -84,7 +91,7 @@ system_components:
                 value: 0.9999
                 LaTeX: "$u_{min}$"
                 sformat: "7.4f"
-        type: "TriaxialVisibleComponent" # will need to correspond to the class name
+        type: "TriaxialVisibleComponent" # class name
         mge_file: "datafiles/mge.ecvs"
         include: True
         contributes_to_potential: True
@@ -98,7 +105,7 @@ system_components:
                 maskfile: maskfile.dat          # made-up filename
                 PSF: kinpsffile.dat             # may be there, too (PSFs apply to any Data class object)
 
-system_parameters: # these go into the physical system as a standalone atribute (i.e., not one of the components)
+system_parameters: # these go into the physical system as a standalone parameter (i.e., not one of the components)
     ml:
         desc: "M/L"
         grid_parspace_settings:
@@ -116,7 +123,10 @@ system_attributes:
     name: "NGC6278"
     position_angle: 97.69
 
-orblib_settings: # don't put in physical system -> config object
+# SECTION 2
+# Data defining DYNAMITE SETTINGS
+
+orblib_settings: # don't put in physical system -> settings object
     nE: 21
     logrmin: -0.307153
     logrmax: 1.89192
@@ -124,7 +134,7 @@ orblib_settings: # don't put in physical system -> config object
     nI3: 7
     dithering: 3
 
-parameter_space_settings: # don't put in physical system -> config object
+parameter_space_settings: # don't put in physical system -> settings object
 #    generator_type: "gaussian_process_emulator"
     generator_type: "GridSearch"
     generator_settings:

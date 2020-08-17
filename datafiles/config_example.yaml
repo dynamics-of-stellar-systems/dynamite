@@ -53,6 +53,7 @@ system_components:
                 LaTeX: "$q_{min}$"
                 sformat: "%6.2f"
             p:
+            # par1:
                 desc: "intrinsic B/A"
                 gpe_parspace_settings:
                     kernel: "to be defined"
@@ -66,6 +67,7 @@ system_components:
                 LaTeX: "$p_{min}$"
                 sformat: "%6.3f"
             u:
+            # par2:
                 desc: "sigma_obs / sigma_intrinsic"
                 grid_parspace_settings:
                     lo: 0.95
@@ -77,7 +79,7 @@ system_components:
                 LaTeX: "$u_{min}$"
                 sformat: "%7.4f"
         type: "TriaxialVisibleComponent" # will need to correspond to the class name
-#        type: "AxisymmetricVisibleComponent" # will need to correspond to the class name
+        # type: "AxisymmetricVisibleComponent" # will need to correspond to the class name
         mge_file: "datafiles/mge.ecvs"
         include: True
         contributes_to_potential: True
@@ -167,7 +169,7 @@ system_attributes:
     name: "NGC4210"
     position_angle: 97.69
 
-orblib_settings: # don't put in physical system -> config object
+orblib_settings: # don't put in physical system -> settings object
     nE: 21
     logrmin: -0.307153
     logrmax: 1.89192
@@ -175,7 +177,7 @@ orblib_settings: # don't put in physical system -> config object
     nI3: 7
     dithering: 3
 
-parameter_space_settings: # don't put in physical system -> config object
+parameter_space_settings: # don't put in physical system -> settings object
 #    generator_type: "gaussian_process_emulator"
     generator_type: "GridSearch"
     stopping_criteria: TBD

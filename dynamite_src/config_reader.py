@@ -12,7 +12,8 @@ import os.path
 import sys
 
 this_dir = os.path.dirname(__file__)
-sys.path.append(this_dir)
+if not this_dir in sys.path:
+    sys.path.append(this_dir)
 
 # import required modules/packages
 
@@ -24,9 +25,9 @@ import kinematics as kinem
 import populations as popul
 import mges as mge
 
-class Configuration(object):
+class Settings(object):
     """
-    Class that collect misc configuration settings
+    Class that collects misc configuration settings
     """
     def __init__(self):
         self.orblib_settings = {}
@@ -48,7 +49,8 @@ class Configuration(object):
                              and weight_solver_settings""")
 
     def validate(self):
-        if not(self.orblib_settings and self.parameter_space_settings):
+        if not(self.orblib_settings and self.parameter_space_settings and
+               self.output_settings and self.weight_solver_settings):
             raise ValueError("""Config needs orblib_settings
                              and parameter_space_settings
                              and output_settings
@@ -91,7 +93,7 @@ class ConfigurationReaderYaml(object):
             raise FileNotFoundError('Please specify filename')
 
         self.system = physys.System() # instantiate System object
-        self.config = Configuration() # instantiate Configuration object
+        self.settings = Settings() # instantiate Configuration object
 #        self.__dict__ = par
 
         for key, value in self.params.items(): # walk through the file contents...
@@ -189,7 +191,7 @@ class ConfigurationReaderYaml(object):
                 if not silent:
                     print('orblib_settings...')
                     print(f' {tuple(value.keys())}')
-                self.config.add('orblib_settings', value)
+                self.settings.add('orblib_settings', value)
 
             # add parameter space settings to config object
 
@@ -197,7 +199,7 @@ class ConfigurationReaderYaml(object):
                 if not silent:
                     print('parameter_space_settings...')
                     print(f' {tuple(value.keys())}')
-                self.config.add('parameter_space_settings', value)
+                self.settings.add('parameter_space_settings', value)
 
             # add output settings to config object
 
@@ -205,7 +207,7 @@ class ConfigurationReaderYaml(object):
                 if not silent:
                     print('output_settings...')
                     print(f' {tuple(value.keys())}')
-                self.config.add('output_settings', value)
+                self.settings.add('output_settings', value)
 
             # add weight_solver_settings to config object
 
@@ -213,7 +215,7 @@ class ConfigurationReaderYaml(object):
                 if not silent:
                     print('weight_solver_settings...')
                     print(f' {tuple(value.keys())}')
-                self.config.add('weight_solver_settings', value)
+                self.settings.add('weight_solver_settings', value)
 
             else:
                 raise ValueError(f'Unknown configuration key: {key}')
@@ -223,17 +225,22 @@ class ConfigurationReaderYaml(object):
 
         if not silent:
             print(f'**** System assembled:\n{self.system}')
-            print(f'**** Configuration data:\n{self.config}')
+            print(f'**** Settings:\n{self.settings}')
 
         self.validate()
         if not silent:
             print('**** Configuration validated')
 
+        self.parspace = parspace.ParameterSpace(self.system)
+        if not silent:
+            print(f'**** Instantiated parameter space')
+            print(f'**** Parameter space:\n{self.parspace}')
 
     def validate(self):
         """
-        Validates the system and configuration. This method is still VERY
+        Validates the system and settings. This method is still VERY
         rudimentary and will be adjusted as we add new functionality to dynamite
+        Currently, this method is geared towards legacy mode
 
         Returns
         -------
@@ -257,6 +264,10 @@ class ConfigurationReaderYaml(object):
                                 raise ValueError('VisibleComponent kinematics need GaussHermite type')
                     else:
                         raise ValueError('VisibleComponent must have kinematics with type GaussHermite')
+                    if c.symmetry != 'triax':
+                        raise ValueError('Legacy mode: VisibleComponent must be triaxial')
+        if self.settings.parameter_space_settings["generator_type"] != 'GridSearch':
+            raise ValueError('Legacy mode: parameter space generator_type must be GridSearch')
 
 
     # def read_parameters(self, par=None, items=None):
