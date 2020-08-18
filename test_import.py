@@ -19,17 +19,20 @@ parspace[0]
 # parspace is a list of parameter objects
 parspace[0]
 
+c.settings.orblib_settings
+
+
 # extract parameter space
 all_models = dyn.schwarzschild.AllModels(from_file=False,
                                          parspace=parspace,
-                                         config=c.config)
+                                         settings=c.settings)
 
 all_models.table
 
 all_models.convert_legacy_chi2_file(
     legacy_filename='outputs/legacy/NGC6278/griddata/_chi2.cat',
 )
-all_models = dyn.schwarzschild.AllModels(config=c.config)
+all_models = dyn.schwarzschild.AllModels(settings=c.settings)
 
 all_models.table
 
@@ -45,7 +48,7 @@ parset0
 # create a model object
 mod = dyn.schwarzschild.LegacySchwarzschildModel(
     system=c.system,
-    config=c.config,
+    settings=c.settings,
     parspace=parspace,
     parset=parset0)
 
@@ -53,9 +56,6 @@ c.system.cmp_list[0].parameters
 
 mod.chi2
 mod.kinchi2
-
-
-
 
 
 

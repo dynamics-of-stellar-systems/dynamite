@@ -12,11 +12,11 @@ class AllModels(object):
     def __init__(self,
                  from_file=True,
                  filename='all_models.ecsv',
-                 config=None,
+                 settings=None,
                  parspace=None,
                  *args,
                  **kwargs):
-        outdir = config.output_settings['directory']
+        outdir = settings.output_settings['directory']
         filename = f'{outdir}{filename}'
         self.filename = filename
         print(filename)
@@ -119,17 +119,17 @@ class SchwarzschildModel(object):
 
     def __init__(self,
                  system=None,
-                 config=None,
+                 settings=None,
                  parset=None,
                  parspace=None):
         self.system = system
-        self.config = config
+        self.settings = settings
         self.parset = parset
         self.parspace = parspace
 
         # orb_lib = dyn.OrbitLibrary(
         #     system=system,
-        #     settings=config.orblib_settings)
+        #     settings=settings.orblib_settings)
 
         # weight_solver = ... instantiate the selected solver
         # weight_solver.set_orb_lib(orb_lib)
@@ -151,7 +151,7 @@ class SchwarzschildModel(object):
         # self.orb_labels = orb_labels
 
     def get_model_directory(self):
-        out_dir = self.config.output_settings['directory']
+        out_dir = self.settings.output_settings['directory']
         out_dir += self.system.name
         out_dir += '/'
         # add all parameters to directory name except ml
@@ -179,18 +179,18 @@ class LegacySchwarzschildModel(SchwarzschildModel):
 
     def __init__(self,
                  system=None,
-                 config=None,
+                 settings=None,
                  parset=None,
                  parspace=None):
 
         self.system = system
-        self.config = config
+        self.settings = settings
         self.parset = parset
         self.parspace = parspace
 
         # In general, arguments for:
-        #    - OrbitLibrary = system, config.orblib_settings
-        #    - WeightSolver = orb_lib, system, config.weight_solver_settings
+        #    - OrbitLibrary = system, settings.orblib_settings
+        #    - WeightSolver = orb_lib, system, settings.weight_solver_settings
         # Legacy versions however access these quantities through files which
         # are saved in mod_dir, so we can just pass the directory name instead
 
@@ -202,11 +202,11 @@ class LegacySchwarzschildModel(SchwarzschildModel):
 
         orb_lib = dyn.LegacyOrbitLibrary(
             mod_dir=self.directory,
-            settings=config.orblib_settings)
+            settings=settings.orblib_settings)
 
         weight_solver = ws.LegacyWeightSolver(
             mod_dir=self.directory,
-            settings=config.weight_solver_settings)
+            settings=settings.weight_solver_settings)
 
         chi2, kinchi2 = weight_solver.solve()
         # TODO: extract other outputs e.g. orbital weights
@@ -222,23 +222,23 @@ class SchwarzschildModelLoop(object):
                  system=None,
                  parset_list=None,
                  weight_solver=None,
-                 config=None
+                 settings=None
                  ):
         pass
-        # self.models = []
+        self.models = []
         # for parset0 in parset_list:
-        #     if config.legacy_mode:
+        #     if settings.legacy_mode:
         #         mod0 = LegacySchwarzschildModel(
         #             system=system,
+        #             settings=settings
         #             parset=parset0,
-        #             weight_solver=weight_solver,
-        #             orblib_pars = orblib_pars)
+        #             parspace=parspace)
         #     else:
         #         mod0 = SchwarzschildModel(
         #             system=system,
+        #             settings=settings,
         #             parset=parset0,
-        #             weight_solver=weight_solver,
-        #             orblib_pars = orblib_pars)
+        #             parspace=parspace)
         #     self.models += [mod0]
 
 
