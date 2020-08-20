@@ -57,7 +57,7 @@ system_components:
                     step: 0.04
                     minstep: 0.02
                 fixed: False
-                value: 0.99
+                value: 0.54
                 LaTeX: "$q_{min}$"
                 sformat: "6.2f"
             p:
@@ -112,17 +112,17 @@ system_parameters: # these go into the physical system as a standalone atribute 
         sformat: "6.2f"
 
 system_attributes:
-    distMPc: 38.82
+    distMPc: 39.96
     name: "NGC6278"
     position_angle: 97.69
 
 orblib_settings: # don't put in physical system -> config object
-    nE: 21
-    logrmin: -0.307153
-    logrmax: 1.89192
-    nI2: 10
-    nI3: 7
-    dithering: 3
+    nE: 5
+    logrmin: -0.101275
+    logrmax: 1.99123
+    nI2: 4
+    nI3: 3
+    dithering: 1
 
 parameter_space_settings: # don't put in physical system -> config object
 #    generator_type: "gaussian_process_emulator"
@@ -144,5 +144,8 @@ weight_solver_settings:
     setting1: True
     setting2: False
 
+#ask thomas
+#legacy_settings:
+    
 
 # end
