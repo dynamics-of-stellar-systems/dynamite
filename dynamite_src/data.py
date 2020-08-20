@@ -1,9 +1,15 @@
-# import numpy as np
+from astropy.io import ascii
 
 class Data(object):
 
-    def __init__(self):
-        pass
+    def __init__(self,
+                 name=None,
+                 datafile=None
+                 ):
+        self.name = name
+        self.datafile = datafile
+        if datafile is not None:
+            self.data = ascii.read(self.datafile)
 
 
 class Discrete(Data):
@@ -16,10 +22,18 @@ class Discrete(Data):
 
 class Integrated(Data):
 
-    def __init__(self, **kwargs):#aperture, values, errors):
-        # self.aperture = aperture
-        # self.values = values
-        # self.errors = errors
+    def __init__(self,
+                 aperturefile=None,
+                 binfile=None,
+                 maskfile=None,
+                 PSF=None,
+                 **kwargs
+                 ):
+        self.aperturefile = aperturefile
+        self.binfile = binfile
+        self.maskfile = maskfile
+        self.PSF = PSF
+        super().__init__(**kwargs)
         pass
 
 

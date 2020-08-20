@@ -3,6 +3,18 @@
 
 import numpy as np
 
+# some tricks to add the current path to sys.path (so the imports below work)
+
+import os.path
+import sys
+
+this_dir = os.path.dirname(__file__)
+if not this_dir in sys.path:
+    sys.path.append(this_dir)
+
+import mges as mge
+
+
 class System(object):
 
     def __init__(self, *args):
@@ -12,9 +24,9 @@ class System(object):
         self.n_kin = 0
         self.n_pop = 0
 #        self.n_par = 0
-        self.ml = None
+        self.parameters = None
         self.distMPc = None
-        self.galname = None
+        self.name = None
         self.position_angle = None
 #        for idx, component in enumerate(args):
         for component in args:
@@ -35,8 +47,10 @@ class System(object):
 #        self.n_par += len(cmp.parameters)
 
     def validate(self):
-        if not(self.ml and self.distMPc and self.galname and self.position_angle):
-            raise ValueError('System needs ml, distMPc, galname, and position_angle attributes')
+        if not(self.ml and self.distMPc and self.name and self.position_angle):
+            raise ValueError('System needs ml parameter and distMPc, name, and position_angle attributes')
+        if not self.cmp_list:
+            raise ValueError('System has no components')
 
     def __repr__(self):
         return f'{self.__class__.__name__} with {self.__dict__}'
@@ -48,26 +62,39 @@ class Component(object):
                  name = None,                     # string
                  visible=None,                    # Boolean
                  contributes_to_potential=None,   # Boolean
-                 symmetry=None,                   # spherical, axisymm, or triax
-                 kinematic_data=[],             # a list of Kinematic objects
-                 population_data=[],            # a list of Population objects
-                 parameters=[]):                # a list of Parameter objects
+                 symmetry=None,                   # OPTIONAL, spherical, axisymm, or triax
+                 kinematic_data=[],               # a list of Kinematic objects
+                 population_data=[],              # a list of Population objects
+                 parameters=[]):                  # a list of Parameter objects
         if name == None:
             self.name = self.__class__.__name__
         else:
             self.name = name
-        self.symmetries = ['spherical', 'axisymm', 'triax']
+#        self.symmetries = ['spherical', 'axisymm', 'triax']
         self.visible = visible
         self.contributes_to_potential = contributes_to_potential
         self.symmetry = symmetry
         self.kinematic_data = kinematic_data
         self.population_data = population_data
         self.parameters = parameters
-        self.validate()
+        # self.validate()
 
-    def validate(self):
-        if self.symmetry not in self.symmetries:
-            raise ValueError('Illegal symmetry ' + str(self.symmetry) + '. Allowed: ' + str(self.symmetries))
+    def validate(self, par=None):
+        # if self.symmetry not in self.symmetries:
+        #     raise ValueError('Illegal symmetry ' + str(self.symmetry) + '. Allowed: ' + str(self.symmetries))
+        errstr = f'Component {self.__class__.__name__} needs attribute '
+        if self.visible is None:
+            raise ValueError(errstr + 'visible')
+        if self.contributes_to_potential is None:
+            raise ValueError(errstr + 'contributes_to_potential')
+        if not self.parameters:
+            raise ValueError(errstr + 'parameters')
+
+        # if len(self.parameters) != len(par):
+        #     raise ValueError(f'{self.__class__.__name__} needs exactly {len(par)} paramater(s), not {len(self.parameters)}')
+        if set([p.name for p in self.parameters]) != set(par):
+            raise ValueError(f'{self.__class__.__name__} needs parameters {par}, not {[p.name for p in self.parameters]}')
+
 
     def __repr__(self):
         return (f'\n{self.__class__.__name__}({self.__dict__}\n)')
@@ -76,15 +103,36 @@ class Component(object):
 class VisibleComponent(Component):
 
     def __init__(self,
-                 mge_data=None,
+                 mge=None,
                  **kwds):
-         # visible components are MGE surface density
-        self.mge_data = mge_data
-        super(VisibleComponent, self).__init__(visible=True, symmetry='triax',
-                                               **kwds)
-    # def validate(self):
-    #     super(VisibleComponent, self).validate()
-    #     check for valid MGE data
+         # visible components have MGE surface density
+        self.mge = mge
+        super().__init__(visible=True, **kwds)
+
+    def validate(self, **kwds):
+        super().validate(**kwds)
+        if not isinstance(self.mge, mge.MGE):
+            raise ValueError(f'{self.__class__.__name__}.mge must be mges.MGE object')
+
+
+class AxisymmetricVisibleComponent(VisibleComponent):
+
+    def __init__(self, **kwds):
+        super().__init__(symmetry='axisymm', **kwds)
+
+    def validate(self):
+        par = ['par1', 'par2']
+        super().validate(par=par)
+
+
+class TriaxialVisibleComponent(VisibleComponent):
+
+    def __init__(self, **kwds):
+        super().__init__(symmetry='triax', **kwds)
+
+    def validate(self):
+        par = ['q', 'p', 'u']
+        super().validate(par=par)
 
 
 class DarkComponent(Component):
@@ -95,12 +143,11 @@ class DarkComponent(Component):
         # these have no observed properties (MGE/kinematics/populations)
         # instead they are initialised with an input density function
         self.density = density
-        self.mge = 'self.fit_mge()'
-        super(DarkComponent, self).__init__(visible=False,
-#                                            contributes_to_potential=True,
-                                            kinematic_data=[],
-                                            population_data=[],
-                                            **kwds)
+        # self.mge = 'self.fit_mge()'
+        super().__init__(visible=False,
+                         kinematic_data=[],
+                         population_data=[],
+                         **kwds)
 
     def fit_mge(self,
                 density,
@@ -109,19 +156,13 @@ class DarkComponent(Component):
         # fit an MGE for a given set of parameters
         # will be used in potential calculation
         rho = self.density.evaluate(xyz_grid, parameters)
-#        self.mge = MGES.intrinsic_MGE_from_xyz_grid(xyz_grid, rho)
+        # self.mge = MGES.intrinsic_MGE_from_xyz_grid(xyz_grid, rho)
 
 
 class Plummer(DarkComponent):
 
-    def __init__(self,
-                 parameter_M=None,
-                 parameter_a=None,
-                 **kwds):
-        super(Plummer, self).__init__(symmetry='spherical',
-                                      parameters=[parameter_M,
-                                                  parameter_a],
-                                      **kwds)
+    def __init__(self, **kwds):
+        super().__init__(symmetry='spherical', **kwds)
 
     def density(x, y, z, pars):
         M, a = pars
@@ -129,22 +170,66 @@ class Plummer(DarkComponent):
         rho = 3*M/4/np.pi/a**3 * (1. + (r/a)**2)**-2.5
         return rho
 
+    def validate(self):
+        par = ['mass', 'a']
+        super().validate(par=par)
+        # if len(self.parameters) != 2:
+        #     raise ValueError(f'{self.__class__.__name__} needs exactly 2 paramaters, not {len(self.parameters)}')
+
 
 class NFW(DarkComponent):
 
-    def __init__(self,
-                 parameter_M=None,
-                 parameter_c=None,
-                 **kwds):
-        super(NFW, self).__init__(symmetry='spherical',
-                                  parameters=[parameter_M,
-                                              parameter_c],
-                                  **kwds)
+    def __init__(self, **kwds):
+        self.legacy_code = 1
+        super().__init__(symmetry='spherical', **kwds)
 
-    def density(x, y, z, pars):
-        M, c = pars
-        # rho = ...
-        # return rho
+    def validate(self):
+        par = ['dc', 'f']
+        super().validate(par=par)
+        # if len(self.parameters) != 2:
+        #     raise ValueError(f'{self.__class__.__name__} needs exactly 2 paramaters, not {len(self.parameters)}')
+
+
+class Hernquist(DarkComponent):
+
+    def __init__(self, **kwds):
+        self.legacy_dm_code = 2
+        super().__init__(symmetry='spherical', **kwds)
+
+    def validate(self):
+        par = ['rhoc', 'rc']
+        super().validate(par=par)
+        # if len(self.parameters) != 2:
+        #     raise ValueError(f'{self.__class__.__name__} needs exactly 2 paramaters, not {len(self.parameters)}')
+
+
+class TriaxialCoredLogPotential(DarkComponent):
+
+    def __init__(self, **kwds):
+        self.legacy_dm_code = 3
+        super().__init__(symmetry='triaxial', **kwds)
+
+    def validate(self):
+        par = ['Vc', 'rho', 'p', 'q']
+        super().validate(par=par)
+        # if len(self.parameters) != 4:
+        #     raise ValueError(f'{self.__class__.__name__} needs exactly 4 paramaters, not {len(self.parameters)}')
+
+
+class GeneralisedNFW(DarkComponent):
+
+    def __init__(self, **kwds):
+        self.legacy_dm_code = 5
+        super().__init__(symmetry='triaxial', **kwds)
+
+    def validate(self):
+        par = ['concentration', 'Mvir', 'inner_log_slope']
+        super().validate(par=par)
+        # if len(self.parameters) != 3:
+        #     raise ValueError(f'{self.__class__.__name__} needs exactly 3 paramaters, not {len(self.parameters)}')
+
+
+
 
 
 # end

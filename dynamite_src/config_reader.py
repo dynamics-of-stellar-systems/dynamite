@@ -12,7 +12,8 @@ import os.path
 import sys
 
 this_dir = os.path.dirname(__file__)
-sys.path.append(this_dir)
+if not this_dir in sys.path:
+    sys.path.append(this_dir)
 
 # import required modules/packages
 
@@ -24,9 +25,9 @@ import kinematics as kinem
 import populations as popul
 import mges as mge
 
-class Configuration(object):
+class Settings(object):
     """
-    Class that collect misc configuration settings
+    Class that collects misc configuration settings
     """
     def __init__(self):
         self.orblib_settings = {}
@@ -37,12 +38,23 @@ class Configuration(object):
             self.orblib_settings = values
         elif kind == 'parameter_space_settings':
             self.parameter_space_settings = values
+        elif kind == 'output_settings':
+            self.output_settings = values
+        elif kind == 'weight_solver_settings':
+            self.weight_solver_settings = values
         else:
-            raise ValueError('Config only takes orblib_settings and parameter_space_settings')
+            raise ValueError("""Config only takes orblib_settings
+                             and parameter_space_settings
+                             and output_settings
+                             and weight_solver_settings""")
 
     def validate(self):
-        if not(self.orblib_settings and self.parameter_space_settings):
-            raise ValueError('Config needs orblib_settings and parameter_space_settings')
+        if not(self.orblib_settings and self.parameter_space_settings and
+               self.output_settings and self.weight_solver_settings):
+            raise ValueError("""Config needs orblib_settings
+                             and parameter_space_settings
+                             and output_settings
+                             and weight_solver_settings""")
 
     def __repr__(self):
         return (f'{self.__class__.__name__}({self.__dict__})')
@@ -81,14 +93,14 @@ class ConfigurationReaderYaml(object):
             raise FileNotFoundError('Please specify filename')
 
         self.system = physys.System() # instantiate System object
-        self.config = Configuration() # instantiate Configuration object
+        self.settings = Settings() # instantiate Configuration object
 #        self.__dict__ = par
 
         for key, value in self.params.items(): # walk through the file contents...
 
             # add components to system
 
-            if key == 'model_components':
+            if key == 'system_components':
                 if not silent:
                     print('model_components:')
                 for comp, data_comp in value.items():
@@ -128,8 +140,7 @@ class ConfigurationReaderYaml(object):
                             print(f" Has kinematics {tuple(data_comp['kinematics'].keys())}")
                         for kin, data_kin in data_comp['kinematics'].items():
                             # kinematics_set = kinem.Kinematics(name=kin, **data_kin)
-                            # TODO: use 'type' here instead of 'parameterization' to refer to the required object class? More consistent with above!
-                            kinematics_set = getattr(kinem,data_kin['parametrization'])(name = kin, **data_kin)
+                            kinematics_set = getattr(kinem,data_kin['type'])(name = kin, **data_kin)
                             kin_list.append(kinematics_set)
                         c.kinematic_data = kin_list
 
@@ -144,23 +155,35 @@ class ConfigurationReaderYaml(object):
                         c.population_data = pop_list
 
                     if 'mge_file' in data_comp:
-                        c.mge_data = mge.MGE(filename=data_comp['mge_file'])
+                        c.mge = mge.MGE(datafile=data_comp['mge_file'])
 
                     # add component to system
                     c.validate()
                     self.system.add_component(c)
 
-            # add other parameters to system
+            # add system parameters
 
-            elif key == 'other_parameters':
+            elif key == 'system_parameters':
                 if not silent:
-                    print('other_parameters...')
+                    print('system_parameters...')
+                    print(f' {tuple(value.keys())}')
+                par_list = []
+                for other, data in value.items():
+                    par_list.append(parspace.Parameter(name=other, **data))
+                setattr(self.system, 'parameters', par_list)
+                    # if other == 'ml':
+                    #     self.system.ml = parspace.Parameter(name=other, **data)
+                    # else:
+                    #     setattr(self.system, other, data)
+
+            # add system attributes
+
+            elif key == 'system_attributes':
+                if not silent:
+                    print('system_attributes...')
                     print(f' {tuple(value.keys())}')
                 for other, data in value.items():
-                    if other == 'ml':
-                        self.system.ml = parspace.Parameter(name=other, **data)
-                    else:
-                        setattr(self.system, other, data)
+                    setattr(self.system, other, data)
 
             # add orbit library settings to config object
 
@@ -168,7 +191,7 @@ class ConfigurationReaderYaml(object):
                 if not silent:
                     print('orblib_settings...')
                     print(f' {tuple(value.keys())}')
-                self.config.add('orblib_settings', value)
+                self.settings.add('orblib_settings', value)
 
             # add parameter space settings to config object
 
@@ -176,7 +199,23 @@ class ConfigurationReaderYaml(object):
                 if not silent:
                     print('parameter_space_settings...')
                     print(f' {tuple(value.keys())}')
-                self.config.add('parameter_space_settings', value)
+                self.settings.add('parameter_space_settings', value)
+
+            # add output settings to config object
+
+            elif key == 'output_settings':
+                if not silent:
+                    print('output_settings...')
+                    print(f' {tuple(value.keys())}')
+                self.settings.add('output_settings', value)
+
+            # add weight_solver_settings to config object
+
+            elif key == 'weight_solver_settings':
+                if not silent:
+                    print('weight_solver_settings...')
+                    print(f' {tuple(value.keys())}')
+                self.settings.add('weight_solver_settings', value)
 
             else:
                 raise ValueError(f'Unknown configuration key: {key}')
@@ -186,42 +225,54 @@ class ConfigurationReaderYaml(object):
 
         if not silent:
             print(f'**** System assembled:\n{self.system}')
-            print(f'**** Configuration data:\n{self.config}')
+            print(f'**** Settings:\n{self.settings}')
 
         self.validate()
         if not silent:
             print('**** Configuration validated')
 
+        self.parspace = parspace.ParameterSpace(self.system)
+        if not silent:
+            print(f'**** Instantiated parameter space')
+            print(f'**** Parameter space:\n{self.parspace}')
 
     def validate(self):
         """
-        Validates the system and configuration. This method is still VERY
+        Validates the system and settings. This method is still VERY
         rudimentary and will be adjusted as we add new functionality to dynamite
+        Currently, this method is geared towards legacy mode
 
         Returns
         -------
         None.
 
         """
-        if len([1 for i in self.system.cmp_list if isinstance(i, physys.Plummer)]) != 1:
+        if sum(1 for i in self.system.cmp_list if isinstance(i, physys.Plummer)) != 1:
             raise ValueError('System needs to have exactly one Plummer object')
-        if len([1 for i in self.system.cmp_list if isinstance(i, physys.NFW)]) != 1:
-            raise ValueError('System needs to have exactly one NFW object')
-        if len([1 for i in self.system.cmp_list if isinstance(i, physys.VisibleComponent)]) != 1:
+        if sum(1 for i in self.system.cmp_list if isinstance(i, physys.VisibleComponent)) != 1:
             raise ValueError('System needs to have exactly one VisibleComponent object')
-        if len(self.system.cmp_list) != 3:
-            raise ValueError('System needs to comprise exactly one Plummer, one VisibleComponent, and one NFW object')
-        else:
-            for c in self.system.cmp_list:
-                if isinstance(c, physys.VisibleComponent):
-                    if c.symmetry != 'triax':
-                        raise ValueError('VisibleComponent symmetry must be triax')
-                    try:
-                        for kin_data in c.kinematic_data:
-                            if kin_data.parametrization != 'GaussHermite':
-                                raise ValueError('VisibleComponent kinematics need GaussHermite parametrization')
-                    except:
-                        raise ValueError('VisibleComponent must have kinematics with parametrization GaussHermite')
+        if sum(1 for i in self.system.cmp_list if issubclass(type(i), physys.DarkComponent) and not isinstance(i, physys.Plummer)) > 1:
+            raise ValueError('System needs to have zero or one DM Halo object')
+        if not ( 1 < len(self.system.cmp_list) < 4):
+            raise ValueError('System needs to comprise exactly one Plummer, one VisibleComponent, and zero or one DM Halo object')
+
+        for c in self.system.cmp_list:
+            if issubclass(type(c), physys.VisibleComponent): # Check visible component
+                if c.kinematic_data:
+                    for kin_data in c.kinematic_data:
+                        if kin_data.type != 'GaussHermite':
+                            raise ValueError('VisibleComponent kinematics need GaussHermite type')
+                else:
+                    raise ValueError('VisibleComponent must have kinematics with type GaussHermite')
+                if c.symmetry != 'triax':
+                    raise ValueError('Legacy mode: VisibleComponent must be triaxial')
+                continue
+            if issubclass(type(c), physys.DarkComponent) and not isinstance(c, physys.Plummer): # Check allowed dm halos in legacy mode
+                if type(c) not in [physys.NFW, physys.Hernquist, physys.TriaxialCoredLogPotential, physys.GeneralisedNFW]:
+                    raise ValueError(f'DM Halo needs to be of type NFW, Hernquist, TriaxialCoredLogPotential, or GeneralisedNFW, not {type(c)}')
+
+        if self.settings.parameter_space_settings["generator_type"] != 'GridSearch':
+            raise ValueError('Legacy mode: parameter space generator_type must be GridSearch')
 
 
     # def read_parameters(self, par=None, items=None):
