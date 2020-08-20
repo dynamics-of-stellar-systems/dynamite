@@ -173,6 +173,13 @@ class SchwarzschildModel(object):
         # remove all whitespace
         out_dir = out_dir.replace(" ", "")
         return out_dir
+    
+    
+    def create_model_directory(self,path):
+        if not os.path.exists(path):
+            os.makedirs(path)
+            
+        
 
 
 class LegacySchwarzschildModel(SchwarzschildModel):
@@ -188,6 +195,9 @@ class LegacySchwarzschildModel(SchwarzschildModel):
         self.parset = parset
         self.parspace = parspace
 
+        #we might add this to config_legacy_settings
+        self.legacy_directory = '/Users/sabine/Triaxschwarzschild/triaxschwarzschild'
+
         # In general, arguments for:
         #    - OrbitLibrary = system, config.orblib_settings
         #    - WeightSolver = orb_lib, system, config.weight_solver_settings
@@ -195,26 +205,99 @@ class LegacySchwarzschildModel(SchwarzschildModel):
         # are saved in mod_dir, so we can just pass the directory name instead
 
         self.directory = self.get_model_directory()
+        
+        #might be removed later, use string.split()
+        self.directory_noml=self.directory[:-7]
 
-        # TODO:
-        # here we can make self.directory if it doesn't exist, and fill it with
-        # all the necessary schwpy/fortran input files
+        # create self.directory if it doesn't exist
+        self.create_model_directory(self.directory)
+        
+        #and also the model directories
+        self.create_model_directory(self.directory_noml+'infil/')
+        self.create_model_directory(self.directory_noml+'datfil/')        
+        
+        #and fill it with all the necessary schwpy/fortran input files, possibly as template files
+        self.create_fortran_input(self.directory_noml+'infil/')
 
-        orb_lib = dyn.LegacyOrbitLibrary(
-            mod_dir=self.directory,
-            settings=config.orblib_settings)
+        ##orb_lib = dyn.LegacyOrbitLibrary(
+        ##    mod_dir=self.directory,
+        ##    settings=config.orblib_settings)
 
-        weight_solver = ws.LegacyWeightSolver(
-            mod_dir=self.directory,
-            settings=config.weight_solver_settings)
+        ##weight_solver = ws.LegacyWeightSolver(
+        ##    mod_dir=self.directory,
+        ##    settings=config.weight_solver_settings)
 
-        chi2, kinchi2 = weight_solver.solve()
+        ##chi2, kinchi2 = weight_solver.solve()
         # TODO: extract other outputs e.g. orbital weights
 
         # store result
-        self.chi2 = chi2
-        self.kinchi2 = kinchi2
+        ##self.chi2 = chi2
+        ##self.kinchi2 = kinchi2
 
+
+    def create_fortran_input(self,path):
+        
+        #-------------------        
+        #write parameters.in
+        #-------------------
+        
+        #txt_file=np.open(path+'parameters.in',"w")
+        #txt_file.write(self.system.cmp_list[2].mge.data[0])
+        #txt_file.close()
+        stars=self.system.cmp_list[2]
+        
+        #better parspace here?
+        q=stars.parameters[0].value
+        p=stars.parameters[1].value
+        u=stars.parameters[2].value
+        
+        #TODO: get qobs from mge c.system.cmp_list[2].mge.data.names['q']
+        qobs=0.55097
+        
+        #TODO: add softening lenght somewhere
+        r_BH='1d-03'
+        
+        #TODO: which dark matter profile
+        dm_specs='1 2'
+        
+        #TODO:
+        #Dm is probably calculated similar to schadjustinput
+        
+        theta,psi,phi=self.system.cmp_list[2].triax_pqu2tpp(p,q,qobs,u)
+        
+        #header
+        len_mge=len(stars.mge.data)   
+        #footer (#double check the order of theta, phi, psi)
+        text=str(self.system.distMPc)+'\n'+ \
+             '{:06.9f}'.format(theta)+' '+ '{:06.9f}'.format(phi)+' '+ '{:06.9f}'.format(psi) + '\n' + \
+             str(self.parspace[6].value)+'\n' + \
+             str(10**self.parspace[0].value)+'\n' + \
+             r_BH                           +'\n' + \
+             str(self.config.orblib_settings['nE']) +' ' +str(self.config.orblib_settings['logrmin']) +' ' +str(self.config.orblib_settings['logrmax'])+ '\n' + \
+             str(self.config.orblib_settings['nI2']) +'\n' + \
+             str(self.config.orblib_settings['nI3']) +'\n' + \
+             str(self.config.orblib_settings['dithering']) +'\n' + \
+             dm_specs +'\n' + \
+             str(self.parspace[1].value) +' ' + str(self.parspace[2].value) +'\n' 
+         
+        np.savetxt(path+'parameters.in',stars.mge.data,header=str(len_mge),footer=text,comments='',fmt=['%10.2f','%10.5f','%10.5f','%10.2f'])
+
+        np.savetxt(path+'paramsb.in',stars.mge.data,header=str(len_mge),footer=text,comments='',fmt=['%10.2f','%10.5f','%10.5f','%10.2f'])
+
+
+        #-------------------        
+        #write orbstart.in
+        #-------------------
+
+        text='infil/parameters.in' +'\n' + \
+        'datfil/orbstart.dat' +'\n' + \
+        'datfil/begin.dat' +'\n' + \
+        'datfil/beginbox.dat'
+
+
+        txt_file= open(path+'orbstart.in',"w")
+        txt_file.write(text)
+        txt_file.close()
 
 class SchwarzschildModelLoop(object):
 
