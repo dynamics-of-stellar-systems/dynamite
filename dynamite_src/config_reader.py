@@ -247,25 +247,30 @@ class ConfigurationReaderYaml(object):
         None.
 
         """
-        if len([1 for i in self.system.cmp_list if isinstance(i, physys.Plummer)]) != 1:
+        if sum(1 for i in self.system.cmp_list if isinstance(i, physys.Plummer)) != 1:
             raise ValueError('System needs to have exactly one Plummer object')
-        if len([1 for i in self.system.cmp_list if isinstance(i, physys.NFW)]) != 1:
-            raise ValueError('System needs to have exactly one NFW object')
-        if len([1 for i in self.system.cmp_list if isinstance(i, physys.VisibleComponent)]) != 1:
+        if sum(1 for i in self.system.cmp_list if isinstance(i, physys.VisibleComponent)) != 1:
             raise ValueError('System needs to have exactly one VisibleComponent object')
-        if len(self.system.cmp_list) != 3:
-            raise ValueError('System needs to comprise exactly one Plummer, one VisibleComponent, and one NFW object')
-        else:
-            for c in self.system.cmp_list:
-                if issubclass(type(c), physys.VisibleComponent):
-                    if c.kinematic_data:
-                        for kin_data in c.kinematic_data:
-                            if kin_data.type != 'GaussHermite':
-                                raise ValueError('VisibleComponent kinematics need GaussHermite type')
-                    else:
-                        raise ValueError('VisibleComponent must have kinematics with type GaussHermite')
-                    if c.symmetry != 'triax':
-                        raise ValueError('Legacy mode: VisibleComponent must be triaxial')
+        if sum(1 for i in self.system.cmp_list if issubclass(type(i), physys.DarkComponent) and not isinstance(i, physys.Plummer)) > 1:
+            raise ValueError('System needs to have zero or one DM Halo object')
+        if not ( 1 < len(self.system.cmp_list) < 4):
+            raise ValueError('System needs to comprise exactly one Plummer, one VisibleComponent, and zero or one DM Halo object')
+
+        for c in self.system.cmp_list:
+            if issubclass(type(c), physys.VisibleComponent): # Check visible component
+                if c.kinematic_data:
+                    for kin_data in c.kinematic_data:
+                        if kin_data.type != 'GaussHermite':
+                            raise ValueError('VisibleComponent kinematics need GaussHermite type')
+                else:
+                    raise ValueError('VisibleComponent must have kinematics with type GaussHermite')
+                if c.symmetry != 'triax':
+                    raise ValueError('Legacy mode: VisibleComponent must be triaxial')
+                continue
+            if issubclass(type(c), physys.DarkComponent) and not isinstance(c, physys.Plummer): # Check allowed dm halos in legacy mode
+                if type(c) not in [physys.NFW, physys.Hernquist, physys.TriaxialCoredLogPotential, physys.GeneralisedNFW]:
+                    raise ValueError(f'DM Halo needs to be of type NFW, Hernquist, TriaxialCoredLogPotential, or GeneralisedNFW, not {type(c)}')
+
         if self.settings.parameter_space_settings["generator_type"] != 'GridSearch':
             raise ValueError('Legacy mode: parameter space generator_type must be GridSearch')
 

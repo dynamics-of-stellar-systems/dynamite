@@ -11,7 +11,7 @@ system_components:
 
     black_hole:
         parameters:
-            bh:
+            mass:
                 desc: "log(BHmass)"
                 grid_parspace_settings:
                     lo: 5.0
@@ -22,6 +22,12 @@ system_components:
                 value: 6.0
                 LaTeX: "$M_{BH}$"
                 sformat: "6.2f"
+            a:
+                desc: "scale length"
+                fixed: True
+                value: 1.e-3  # the dot is required, renders as string '1e-3' otherwise
+                LaTeX: "$a_{BH}$"
+                sformat: "7.2f"
         type: "Plummer" # class name, can be: Plummer, needs to correspond to th class name -> instantiated automatically
         include: True
         contributes_to_potential: True
@@ -138,7 +144,7 @@ parameter_space_settings: # don't put in physical system -> settings object
 #    generator_type: "gaussian_process_emulator"
     generator_type: "GridSearch"
     generator_settings:
-
+        specificsetting: 25
     stopping_criteria:
         min_delta_chi2 : 0.5
         n_max_mods : 1000

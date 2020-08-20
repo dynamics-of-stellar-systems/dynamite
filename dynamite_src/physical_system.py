@@ -90,8 +90,8 @@ class Component(object):
         if not self.parameters:
             raise ValueError(errstr + 'parameters')
 
-        if len(self.parameters) != len(par):
-            raise ValueError(f'{self.__class__.__name__} needs exactly {len(par)} paramater(s), not {len(self.parameters)}')
+        # if len(self.parameters) != len(par):
+        #     raise ValueError(f'{self.__class__.__name__} needs exactly {len(par)} paramater(s), not {len(self.parameters)}')
         if set([p.name for p in self.parameters]) != set(par):
             raise ValueError(f'{self.__class__.__name__} needs parameters {par}, not {[p.name for p in self.parameters]}')
 
@@ -171,24 +171,7 @@ class Plummer(DarkComponent):
         return rho
 
     def validate(self):
-        par = ['bh']
-        super().validate(par=par)
-        # if len(self.parameters) != 2:
-        #     raise ValueError(f'{self.__class__.__name__} needs exactly 2 paramaters, not {len(self.parameters)}')
-
-
-class NFW(DarkComponent):
-
-    def __init__(self, **kwds):
-        super().__init__(symmetry='spherical', **kwds)
-
-    def density(x, y, z, pars):
-        M, c = pars
-        # rho = ...
-        # return rho
-
-    def validate(self):
-        par = ['dc', 'f']
+        par = ['mass', 'a']
         super().validate(par=par)
         # if len(self.parameters) != 2:
         #     raise ValueError(f'{self.__class__.__name__} needs exactly 2 paramaters, not {len(self.parameters)}')
