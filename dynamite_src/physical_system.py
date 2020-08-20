@@ -107,6 +107,46 @@ class TriaxialVisibleComponent(VisibleComponent):
     # def validate(self):
     #     super(VisibleComponent, self).validate()
     #     check for valid MGE data
+    
+    def triax_pqu2tpp(self,p,q,qobs,u):
+        """
+        transfer (p, q, u) to the three viewing angles (theta, psi, phi)
+        with known flatting qobs.
+        Taken from schw_basics
+        We should possibly revisit the expressions later
+        
+        """
+        
+        p2 = np.double(p) ** 2
+        q2 = np.double(q) ** 2
+        u2 = np.double(u) ** 2
+        o2 = np.double(qobs) ** 2
+        
+        w1 = (u2 - q2) * (o2 * u2 - q2) / ((1.0 - q2) * (p2 - q2))
+        w2 = (u2 - p2) * (p2 - o2 * u2) * (1.0 - q2) / ((1.0 - u2) * (1.0 - o2 * u2) * (p2 - q2))
+        w3 = (1.0 - o2 * u2) * (p2 - o2 * u2) * (u2 - q2) / ((1.0 - u2) * (u2 - p2) * (o2 * u2 - q2))
+        
+        if w1 >=0.0 :
+            theta = np.arccos(np.sqrt(w1)) * 180 /np.pi
+        else:
+            theta=np.nan
+                
+        if w2 >=0.0 :
+            phi = np.arctan(np.sqrt(w2)) * 180 /np.pi
+        else:
+            phi=np.nan
+
+        if w3 >=0.0 :
+            psi = 180 - np.arctan(np.sqrt(w3)) * 180 /np.pi
+        else:
+            psi=np.nan
+
+        # print("******************************")
+        # print('theta, phi, psi')
+        # print(theta, phi, psi)
+        # print("******************************")
+
+        return theta,psi,phi
 
 
 class DarkComponent(Component):
