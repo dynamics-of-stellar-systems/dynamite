@@ -89,7 +89,7 @@ class Component(object):
             raise ValueError(errstr + 'contributes_to_potential')
         if not self.parameters:
             raise ValueError(errstr + 'parameters')
-            
+
         if len(self.parameters) != len(par):
             raise ValueError(f'{self.__class__.__name__} needs exactly {len(par)} paramater(s), not {len(self.parameters)}')
         if set([p.name for p in self.parameters]) != set(par):
@@ -192,6 +192,61 @@ class NFW(DarkComponent):
         super().validate(par=par)
         # if len(self.parameters) != 2:
         #     raise ValueError(f'{self.__class__.__name__} needs exactly 2 paramaters, not {len(self.parameters)}')
+
+
+class NFW(DarkComponent):
+
+    def __init__(self, **kwds):
+        self.legacy_code = 1
+        super().__init__(symmetry='spherical', **kwds)
+
+    def validate(self):
+        par = ['dc', 'f']
+        super().validate(par=par)
+        # if len(self.parameters) != 2:
+        #     raise ValueError(f'{self.__class__.__name__} needs exactly 2 paramaters, not {len(self.parameters)}')
+
+
+class Hernquist(DarkComponent):
+
+    def __init__(self, **kwds):
+        self.legacy_dm_code = 2
+        super().__init__(symmetry='spherical', **kwds)
+
+    def validate(self):
+        par = ['rhoc', 'rc']
+        super().validate(par=par)
+        # if len(self.parameters) != 2:
+        #     raise ValueError(f'{self.__class__.__name__} needs exactly 2 paramaters, not {len(self.parameters)}')
+
+
+class TriaxialCoredLogPotential(DarkComponent):
+
+    def __init__(self, **kwds):
+        self.legacy_dm_code = 3
+        super().__init__(symmetry='triaxial', **kwds)
+
+    def validate(self):
+        par = ['Vc', 'rho', 'p', 'q']
+        super().validate(par=par)
+        # if len(self.parameters) != 4:
+        #     raise ValueError(f'{self.__class__.__name__} needs exactly 4 paramaters, not {len(self.parameters)}')
+
+
+class GeneralisedNFW(DarkComponent):
+
+    def __init__(self, **kwds):
+        self.legacy_dm_code = 5
+        super().__init__(symmetry='triaxial', **kwds)
+
+    def validate(self):
+        par = ['concentration', 'Mvir', 'inner_log_slope']
+        super().validate(par=par)
+        # if len(self.parameters) != 3:
+        #     raise ValueError(f'{self.__class__.__name__} needs exactly 3 paramaters, not {len(self.parameters)}')
+
+
+
 
 
 # end
