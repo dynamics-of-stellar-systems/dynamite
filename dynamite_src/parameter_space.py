@@ -1,3 +1,6 @@
+import numpy as np
+import copy
+
 class Parameter(object):
 
     attributes = []
@@ -182,10 +185,29 @@ class ParameterGenerator(object):
         # iii) ...
         return stop
 
+    def model_compare(self, model1=None, model2=None, eps=1e-10):
+        """
+        Compares the parameter sets of two models
+
+        Parameters
+        ----------
+        model1, model2 : Model objects
+        eps : accuracy for numerical comparison (default: 1e-10)
+
+        Returns
+        -------
+        True if parameter sets have the same .value attributes and are in the
+        same order, False otherwise
+        """
+        for paridx in range(len(model1.parset)):
+            if abs(model1.parset[paridx].value-model2.parset[paridx].value) > eps:
+                return False
+        return True
+
 
 class GridSearch(ParameterGenerator):
 
-    def generate(self, current_models=None, n_new=0):
+    def generate(self, center=None, current_models=None, n_new=0):
         # actual code to do grid search
         # return new_parameter_list of length n_new
         # if iter == 0 ... or... if there are no models yet:
@@ -195,7 +217,98 @@ class GridSearch(ParameterGenerator):
         # ...
         #  if min step size has been reached, then fix that param ...
         #
-        return []
+        self.current_models = current_models
+        self.model_list = []
+        self.grid_walk(center=center)
+        # print(f'\n{self.model_list}\n{len(self.model_list)}\n')
+        for m in self.model_list:
+            print(f'{[(p.name, p.value) for p in m]}')
+        print(f'{len(self.model_list)}')
+
+    def grid_walk(self, center=None, par=None, eps=None):
+        """
+        Walks the grid defined by self.par_space.grid_parspace_settings attributes.
+
+        Parameters
+        ----------
+        center : List of center coordinates. Must be in the same sequence as the parameters
+                 in self.par_space. Mandatory argument.
+        par : Internal use only. Gives the parameter to start with. Set automatically in the
+              recursive process. The default is None.
+        eps : Used for numerical comparison, default is numpy.finfo(float).eps
+
+        Raises
+        ------
+        ValueError if center is not specified or fixed parameter differs from center.
+
+        Returns
+        -------
+        None. Sets self.model_list to the resulting models.
+
+        """
+        if center == None:
+            raise ValueError('Need center')
+        if not par:
+            par = self.par_space[0]
+        if eps == None:
+            eps = np.finfo(float).eps
+        paridx = self.par_space.index(par)
+        # print(f'Call with paridx={paridx}, n_par={self.par_space.n_par}')
+
+        if par.fixed:
+            par_values = [par.value]
+            if abs(center[paridx] - par.value) > eps:
+                raise ValueError('Something is wrong: fixed parameter value not in center')
+        else:
+            lo = par.grid_parspace_settings['lo']
+            hi = par.grid_parspace_settings['hi']
+            par_values = [self.clip(center[paridx] - par.grid_parspace_settings['step'], lo, hi),
+                          self.clip((center[paridx], lo, hi),
+                          self.clip((center[paridx] + par.grid_parspace_settings['step'], lo, hi)]
+
+        for value in par_values:
+            par.value = value
+            if not self.model_list: # add first entry if model_list is empty
+                self.model_list.append([copy.deepcopy(par)])
+                # print(f'new model list, starting with parameter {par.name}')
+            elif par.name in [p.name for p in self.model_list[0]]: # in this case, create new (partial) model by copying last models and setting the new parameter value
+                for m in models_prev:
+                    new_model = m + [copy.deepcopy(par)]
+                    self.model_list.append(new_model)
+                # print(f'{par.name} is in {[p.name for p in self.model_list[0]]}, added {par.name}={par.value}')
+            else: # new parameter - simply append the parameter to existing (partial) models
+                models_prev = copy.deepcopy(self.model_list)
+                for m in self.model_list:
+                    m.append(copy.deepcopy(par))
+                # print(f'new parameter {par.name}={par.value}')
+
+        if paridx < self.par_space.n_par - 1: # call recursively until all paramaters are done...
+            self.grid_walk(center=center, par=self.par_space[paridx+1])
+
+    def clip(self, value, mini, maxi):
+        """
+        Clips value to the interval [mini, maxi]. Similar to the numpy.clip() method.
+        If mini==maxi, that value is returned.
+
+        Parameters
+        ----------
+        value : numeric value
+        mini : numeric value
+        maxi : numeric value
+
+        Raises
+        ------
+        ValueError if mini > maxi
+
+        Returns
+        -------
+        min(max(mini, value), maxi)
+
+        """
+        if mini <= maxi:
+            return min(max(mini, value), maxi)
+        else:
+            raise ValueError('Clip error: minimum must be less than or equal to maximum')
 
     def check_specific_stopping_critera(self, current_models):
         stop = True # or false
