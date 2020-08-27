@@ -93,10 +93,9 @@ system_components:
                 weight: 1.0                       # weight of kinematics data specified by name
                 type: GaussHermite                # specifies which object class to create
                 datafile: "datafiles/gauss_hermite_kins.ecvs"  # for both discrete and integrated types (actual example file)
-                aperturefile: aperture.dat      # integrated only (actual example file)
+                aperturefile: "infil/aperture.dat"      # integrated only (actual example file)
                 binfile: bins.dat               # integrated only (actual example file)
                 maskfile: maskfile.dat          # made-up filename
-                PSF: kinpsffile.dat             # may be there, too (PSFs apply to any Data class object)
 
 system_parameters: # these go into the physical system as a standalone atribute (i.e., not one of the components)
     ml:
@@ -123,6 +122,15 @@ orblib_settings: # don't put in physical system -> config object
     nI2: 4
     nI3: 3
     dithering: 1
+    #the following values should usually not be changed
+    orbital_periods: 200 
+    sampling: 50000
+    starting_orbit: 1
+    number_orbits: -1 #-1 --> all orbits
+    accuracy: '1.0d-5'
+    hist_vel: '2719.8215332031'
+    hist_sigma: '0.0000'  #check what this is
+    hist_bins: '203'
 
 parameter_space_settings: # don't put in physical system -> config object
 #    generator_type: "gaussian_process_emulator"
@@ -143,7 +151,14 @@ weight_solver_settings:
     type: "LegacyWeightSolver"
     setting1: True
     setting2: False
-
+    regularization: 0
+    number_GH: 4
+    GH_sys_err: '0.0 0.0 0.0 0.0 0.3 0.3 0.6 0.6'
+    lum_intr_rel_err: 0.01
+    sb_proj_rel_err: 0.02
+    ml_scale_factor: 1.0
+    nnls_solver: 1
+    
 #ask thomas
 #legacy_settings:
     
