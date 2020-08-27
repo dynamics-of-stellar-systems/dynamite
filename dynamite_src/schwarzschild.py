@@ -1,4 +1,5 @@
 import os
+import glob
 import numpy as np
 from astropy import table
 from astropy.io import ascii
@@ -206,7 +207,7 @@ class LegacySchwarzschildModel(SchwarzschildModel):
 
         self.directory = self.get_model_directory()
         
-        #might be removed later, use string.split()
+        #might be removed later, use string.split() or /../
         self.directory_noml=self.directory[:-7]
 
         # create self.directory if it doesn't exist
@@ -237,51 +238,51 @@ class LegacySchwarzschildModel(SchwarzschildModel):
 
     def create_fortran_input(self,path):
         
+        
         #-------------------        
         #write parameters.in
         #-------------------
         
-        #txt_file=np.open(path+'parameters.in',"w")
-        #txt_file.write(self.system.cmp_list[2].mge.data[0])
-        #txt_file.close()
         stars=self.system.cmp_list[2]
         
-        #better parspace here?
-        q=stars.parameters[0].value
-        p=stars.parameters[1].value
-        u=stars.parameters[2].value
+        #used to derive the viewing angles
+        q=self.parset['q']
+        p=self.parset['p']
+        u=self.parset['u']
         
-        #TODO: get qobs from mge c.system.cmp_list[2].mge.data.names['q']
-        qobs=0.55097
+        #the minimal flattening from stellar mge
+        qobs=np.amin(stars.mge.data['q'])
         
-        #TODO: add softening lenght somewhere
+        #TODO: add softening length somewhere
         r_BH='1d-03'
         
         #TODO: which dark matter profile
         dm_specs='1 2'
         
         #TODO:
-        #Dm is probably calculated similar to schadjustinput
+        #Dm might be calculated similar to schadjustinput
         
         theta,psi,phi=self.system.cmp_list[2].triax_pqu2tpp(p,q,qobs,u)
         
         #header
         len_mge=len(stars.mge.data)   
-        #footer (#double check the order of theta, phi, psi)
+        #footer (#double check the order of theta, phi, psi) and dm properties
         text=str(self.system.distMPc)+'\n'+ \
              '{:06.9f}'.format(theta)+' '+ '{:06.9f}'.format(phi)+' '+ '{:06.9f}'.format(psi) + '\n' + \
-             str(self.parspace[6].value)+'\n' + \
-             str(10**self.parspace[0].value)+'\n' + \
+             str(self.parset['ml'])+'\n' + \
+             str(10**self.parset['bh'])+'\n' + \
              r_BH                           +'\n' + \
              str(self.config.orblib_settings['nE']) +' ' +str(self.config.orblib_settings['logrmin']) +' ' +str(self.config.orblib_settings['logrmax'])+ '\n' + \
              str(self.config.orblib_settings['nI2']) +'\n' + \
              str(self.config.orblib_settings['nI3']) +'\n' + \
              str(self.config.orblib_settings['dithering']) +'\n' + \
              dm_specs +'\n' + \
-             str(self.parspace[1].value) +' ' + str(self.parspace[2].value) +'\n' 
-         
+             str(self.parset['dc']) +' ' + str(self.parset['f']) +'\n' 
+        
+        #parameters.in
         np.savetxt(path+'parameters.in',stars.mge.data,header=str(len_mge),footer=text,comments='',fmt=['%10.2f','%10.5f','%10.5f','%10.2f'])
 
+        #parmsb.in (assumed to be the same as paramters.in)
         np.savetxt(path+'paramsb.in',stars.mge.data,header=str(len_mge),footer=text,comments='',fmt=['%10.2f','%10.5f','%10.5f','%10.2f'])
 
 
@@ -295,9 +296,141 @@ class LegacySchwarzschildModel(SchwarzschildModel):
         'datfil/beginbox.dat'
 
 
-        txt_file= open(path+'orbstart.in',"w")
-        txt_file.write(text)
-        txt_file.close()
+        orbstart_file= open(path+'orbstart.in',"w")
+        orbstart_file.write(text)
+        orbstart_file.close()
+        
+        
+        #-------------------        
+        #write orblib.in
+        #-------------------
+        
+        #TODO?read kinematic psf from kinematics file
+        n_psf,psf_weight,psf_sigma=np.loadtxt('datafiles/kinpsffile.dat',skiprows=2)
+        
+        #TODO the psfs need to be defined in an array before
+        
+        #DODO:needs to be slightly changed for more psfs
+        #TODO aperture and bins.dat need to be clearly defined, 
+        text1='#counterrotation_setupfile_version_1' +'\n' + \
+            'infil/parameters.in' +'\n' + \
+            'datfil/begin.dat' +'\n' + \
+            str(self.config.orblib_settings['orbital_periods']) + '                            [orbital periods to intergrate orbits]' +'\n' + \
+            str(self.config.orblib_settings['sampling']) + '                          [points to sample for each orbit in the merid. plane]' +'\n' + \
+            str(self.config.orblib_settings['starting_orbit']) + '                              [starting orbit]' +'\n' + \
+            str(self.config.orblib_settings['number_orbits']) + '                             [orbits  to intergrate; -1 --> all orbits]' +'\n' + \
+            str(self.config.orblib_settings['accuracy']) + '                         [accuracy]' +'\n' + \
+            str(int(np.max(n_psf))) + '                              [number of psfs of the kinemtic cubes]' +'\n' 
+
+        
+        psf= str(len(n_psf[n_psf==1])) + '                              [gaussians components]'  +'\n' + \
+             str(psf_weight) + '   ' + str(psf_sigma) + '                    [weight sigma]' +  '\n' 
+             
+             
+        text2=str(int(np.max(n_psf))) + '                              [apertures]' +'\n'  + \
+              '"infil/aperture.dat"' +'\n'  + \
+              '1                              [use psf 1] ' +'\n'  + \
+              self.config.orblib_settings['hist_vel'] + '  ' + self.config.orblib_settings['hist_sigma'] + '  ' + self.config.orblib_settings['hist_bins'] +'   [histogram]' +'\n'  + \
+              '1                              [use binning for aperture 1] ' +'\n'  + \
+              '"infil/bins.dat"  ' +'\n'  + \
+              'datfil/orblib.dat ' 
+              
+              
+              
+        orblib_file= open(path+'orblib.in',"w")
+        orblib_file.write(text1)
+        orblib_file.write(psf)
+        orblib_file.write(text2)
+        orblib_file.close()
+        
+        
+        #-------------------        
+        #write orblibbox.in
+        #-------------------
+
+        #TODO:why not paramsb.in?
+        text1='#counterrotation_setupfile_version_1' +'\n' + \
+            'infil/parameters.in' +'\n' + \
+            'datfil/beginbox.dat' +'\n' + \
+            str(self.config.orblib_settings['orbital_periods']) + '                            [orbital periods to intergrate orbits]' +'\n' + \
+            str(self.config.orblib_settings['sampling']) + '                          [points to sample for each orbit in the merid. plane]' +'\n' + \
+            str(self.config.orblib_settings['starting_orbit']) + '                              [starting orbit]' +'\n' + \
+            str(self.config.orblib_settings['number_orbits']) + '                             [orbits  to intergrate; -1 --> all orbits]' +'\n' + \
+            str(self.config.orblib_settings['accuracy']) + '                         [accuracy]' +'\n' + \
+            str(int(np.max(n_psf))) + '                              [number of psfs of the kinemtic cubes]' +'\n' 
+
+             
+             
+        text2=str(int(np.max(n_psf))) + '                              [apertures]' +'\n'  + \
+              '"infil/aperture.dat"' +'\n'  + \
+              '1                              [use psf 1] ' +'\n'  + \
+              self.config.orblib_settings['hist_vel'] + '  ' + self.config.orblib_settings['hist_sigma'] + '  ' + self.config.orblib_settings['hist_bins'] +'   [histogram]' +'\n'  + \
+              '1                              [use binning for aperture 1] ' +'\n'  + \
+              '"infil/bins.dat"  ' +'\n'  + \
+              'datfil/orblibbox.dat ' 
+              
+              
+              
+        orblibbox_file= open(path+'orblibbox.in',"w")
+        orblibbox_file.write(text1)
+        orblibbox_file.write(psf) #this is the same as for orblib.in
+        orblibbox_file.write(text2)
+        orblibbox_file.close()
+
+        #-------------------        
+        #write triaxmass.in
+        #-------------------
+        
+        text='infil/paramsb.in' +'\n' + \
+        'datfil/orblib.dat' +'\n' + \
+        'datfil/mass_radmass.dat' +'\n' + \
+        'datfil/mass_qgrid.dat'
+
+
+        triaxmass_file= open(path+'triaxmass.in',"w")
+        triaxmass_file.write(text)
+        triaxmass_file.close()
+        
+        #-------------------        
+        #write triaxmassbin.in
+        #-------------------
+        
+        text='infil/paramsb.in' +'\n' + \
+              str(int(np.max(n_psf))) + '                              [# of apertures]'  +'\n'  + \
+              '"infil/aperture.dat"' +  '\n'  + \
+              str(len(n_psf[n_psf==1])) + '                              [# of gaussians components]'  +'\n' + \
+              str(psf_weight) + '   ' + str(psf_sigma) + '                     [weight sigma]' +  '\n'  + \
+              '"infil/bins.dat"  ' +'\n'  + \
+              '"datfil/mass_aper.dat"' 
+        
+        triaxmassbin_file= open(path+'triaxmassbin.in',"w")
+        triaxmassbin_file.write(text)
+        triaxmassbin_file.close()
+        
+        #-------------------        
+        #write nn.in
+        #-------------------
+        
+        text='infil/parameters.in' +'\n' + \
+        str(self.config.weight_solver_settings['regularization'])   + '                                  [ regularization strength, 0 = no regularization ]' +'\n'  + \
+        'ml'+ str(self.parset['ml']) + '/nn' +'\n' + \
+        'datfil/mass_qgrid.dat' +'\n' + \
+        'datfil/mass_aper.dat' +'\n' + \
+        str(self.config.weight_solver_settings['number_GH']) + '	                           [ # of GH moments to constrain the model]' +'\n' + \
+        'infil/kin_data.dat' +'\n' + \
+        str(self.config.weight_solver_settings['GH_sys_err']) + '    [ systemic error of v, sigma, h3, h4... ]' + '\n' + \
+        str(self.config.weight_solver_settings['lum_intr_rel_err']) + '                               [ relative error for intrinsic luminosity ]' +'\n' + \
+        str(self.config.weight_solver_settings['sb_proj_rel_err']) + '                               [ relative error for projected SB ]' + '\n' + \
+        str(self.config.weight_solver_settings['ml_scale_factor']) + '                                [ scale factor related to M/L, sqrt( (M/L)_k / (M/L)_ref ) ]' + '\n' + \
+        'datfil/orblib.dat' +'\n' + \
+        'datfil/orblibbox.dat' +'\n' + \
+        str(self.config.weight_solver_settings['nnls_solver']) + '                                  [ nnls solver ]'
+        
+        nn_file= open(path+'nn.in',"w")
+        nn_file.write(text)
+        nn_file.close()
+
+        
 
 class SchwarzschildModelLoop(object):
 
