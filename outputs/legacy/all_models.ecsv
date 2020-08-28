@@ -1,34 +1,20 @@
 # %ECSV 0.9
 # ---
 # datatype:
-# - name: bh
-#   datatype: float64
-# - name: dc
-#   datatype: float64
-# - name: f
-#   datatype: float64
-# - name: q
-#   datatype: float64
-# - name: p
-#   datatype: float64
-# - name: u
-#   datatype: float64
-# - name: ml
-#   datatype: float64
-# - name: chi2
-#   datatype: float64
-# - name: kinchi2
-#   datatype: float64
-# - name: time_modified
-#   datatype: float64
-# - name: directory
-#   datatype: string
-# - name: ics_done
-#   datatype: bool
-# - name: orblib_done
-#   datatype: bool
-# - name: weights_done
-#   datatype: bool
+# - {name: bh, datatype: float64}
+# - {name: dc, datatype: float64}
+# - {name: f, datatype: float64}
+# - {name: q, datatype: float64}
+# - {name: p, datatype: float64}
+# - {name: u, datatype: float64}
+# - {name: ml, datatype: float64}
+# - {name: chi2, datatype: float64}
+# - {name: kinchi2, datatype: float64}
+# - {name: time_modified, datatype: float64}
+# - {name: directory, datatype: string}
+# - {name: ics_done, datatype: bool}
+# - {name: orblib_done, datatype: bool}
+# - {name: weights_done, datatype: bool}
 # schema: astropy-2.0
 bh dc f q p u ml chi2 kinchi2 time_modified directory ics_done orblib_done weights_done
 6.0 1.0 2.0 0.54 0.97 0.9999 4.3 6639.90507 10962.65837 1587465593.0 /bh6.00dc1.00f2.00q0.54p0.970u0.9999/ml4.30/ True True True
