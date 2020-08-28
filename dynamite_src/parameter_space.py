@@ -199,6 +199,9 @@ class GridSearch(ParameterGenerator):
     def grid_walk(self, center=None, par=None, eps=1e-6):
         """
         Walks the grid defined by self.par_space.grid_parspace_settings attributes.
+        Clips parameter values to lo/hi attributes. If clipping violates the minstep attribute,
+        the resulting model(s) will not be created. If the minstep attribute is missing, the step
+        attribute will be used instead. Use minstep=0 to eliminate minstep.
 
         Parameters
         ----------
