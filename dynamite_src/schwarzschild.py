@@ -16,6 +16,7 @@ class AllModels(object):
                  parspace=None,
                  *args,
                  **kwargs):
+        self.settings = settings
         outdir = settings.output_settings['directory']
         filename = f'{outdir}{filename}'
         self.filename = filename

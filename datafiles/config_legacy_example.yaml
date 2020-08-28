@@ -18,7 +18,7 @@ system_components:
                     hi: 9.0
                     step: 0.5
                     minstep: 0.2
-                fixed: False
+                fixed: True
                 value: 6.0
                 LaTeX: "$M_{BH}$"
                 sformat: "6.2f"

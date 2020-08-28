@@ -51,7 +51,7 @@ all_models = dyn.schwarzschild.AllModels(settings=c.settings)
 print(all_models.table)
 
 # generate model list based on current models: grid walk "iteration n"
-# NOTE: the read-in data only has 7 parameters and does not fit the parspace
+# NOTE: the read-in data only has 7 parameters and does not match the parspace
 #       read from the config file...
 g.generate(current_models = all_models)
 print(all_models.table)

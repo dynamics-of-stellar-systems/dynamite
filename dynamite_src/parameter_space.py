@@ -97,20 +97,22 @@ class ParameterGenerator(object):
         return []
 
     def check_stopping_critera(self, current_models):
-        stop_generic = self.check_generic_stopping_critera()
-        stop_specific = self.check_specific_stopping_critera()
+        stop_generic = self.check_generic_stopping_critera(current_models)
+        stop_specific = self.check_specific_stopping_critera(current_models)
         stop = stop_generic or stop_specific
         return stop
 
     def check_generic_stopping_critera(self, current_models):
-        stop = True # or false
+        stop = False
+        if len(current_models.table) >= current_models.settings.parameter_space_settings['stopping_criteria']['n_max_mods']:
+            stop = True
         # e.g. stop if:
-        # i) number of models which have been run > max_n_mods
-        # ii) number of iterations > max_n_iter
+        # i) number of models which have been run > max_n_mods => done
+        # ii) number of iterations > max_n_iter => need iter_count in astropy table
         # iii) ...
         return stop
 
-    def model_compare(self, model1=None, model2=None, eps=1e-10):
+    def model_compare(self, model1=None, model2=None, eps=1e-10): # might not need this method...
         """
         Compares the parameter sets of two models
 
@@ -133,15 +135,31 @@ class ParameterGenerator(object):
 class GridSearch(ParameterGenerator):
 
     def generate(self, current_models=None, n_new=0):
+        """
+        Adds new models to current_models.table. The center is determined as the parameter set with
+        the least chi2+kinchi2 value.
+
+        Parameters
+        ----------
+        current_models : a schwarzschild.AllModels instance. Mandatory argument.
+        n_new : not used. The default is 0.
+
+        Raises
+        ------
+        ValueError if current_models is not provided
+
+        Returns
+        -------
+        integer, the number of models added
+        """
         # actual code to do grid search
         # return new_parameter_list of length n_new
         # if iter == 0 ... or... if there are no models yet:
         #   make a basic grid
 
+        if self.check_stopping_critera(current_models):
+            return 0
 
-        # ...
-        #  if min step size has been reached, then fix that param ...
-        #
         if current_models is None:
             raise ValueError('current_models needs to be a valid schwarzschild.AllModels instance')
         else:
@@ -167,16 +185,16 @@ class GridSearch(ParameterGenerator):
             print(f'{len(self.model_list)} models')
 
             # Add new models to current_models.table
-            newmodels = 0
+            self.newmodels = 0
             for m in self.model_list:
                 if self._is_newmodel(m, eps=1e-10):
                     row = [p.value for p in m]
                     for i in range(self.par_space.n_par, len(self.current_models.table.colnames)):
                         row.append([np.dtype(self.current_models.table.columns[i].dtype).type(0)])
                     self.current_models.table.add_row(row)
-                    newmodels += 1
+                    self.newmodels += 1
 
-            return newmodels
+            return self.newmodels
 
     def grid_walk(self, center=None, par=None, eps=1e-6):
         """
@@ -192,7 +210,7 @@ class GridSearch(ParameterGenerator):
 
         Raises
         ------
-        ValueError if center is not specified or fixed parameter differs from center.
+        ValueError if center is not specified or fixed parameters differ from center.
 
         Returns
         -------
@@ -213,18 +231,31 @@ class GridSearch(ParameterGenerator):
         else:
             lo = par.grid_parspace_settings['lo']
             hi = par.grid_parspace_settings['hi']
-            # par_values will take up to 3 *distinct* clipped lo, mid. hi values
-            par_values = [self.clip(center[paridx] - par.grid_parspace_settings['step'], lo, hi)]
-            tol = abs(self.clip(center[paridx], lo, hi) - par_values[0]) # check for values differing by more than eps...
-            if abs(par_values[0]) > eps:
-                tol /= abs(par_values[0])
-            if tol > eps:
+            # par_values will take up to 3 *distinct* clipped lo, mid, hi values
+            par_values = []
+            # use 'minstep' value if present, otherwise use 'step'
+            minstep = par.grid_parspace_settings['minstep'] if 'minstep' in par.grid_parspace_settings else par.grid_parspace_settings['step']
+            # start with lo...
+            delta = center[paridx] - self.clip(center[paridx] - par.grid_parspace_settings['step'], lo, hi)
+            if abs(delta) >= minstep:
+                par_values.append(self.clip(center[paridx] - par.grid_parspace_settings['step'], lo, hi))
+            # now mid... tol(erance) is necessary for the case minstep==0
+            if len(par_values) > 0:
+                tol = abs(self.clip(center[paridx], lo, hi) - par_values[0]) # check for values differing by more than eps...
+                if abs(par_values[0]) > eps:
+                    tol /= abs(par_values[0])
+                if tol > eps:
+                    par_values.append(self.clip(center[paridx], lo, hi))
+            else:
                 par_values.append(self.clip(center[paridx], lo, hi))
-            tol = abs(self.clip(center[paridx] + par.grid_parspace_settings['step'], lo, hi) - par_values[-1])
-            if abs(par_values[-1]) > eps:
-                tol /= abs(par_values[-1])
-            if tol > eps:
-                par_values.append(self.clip(center[paridx] + par.grid_parspace_settings['step'], lo, hi))
+            # and now hi...
+            delta = self.clip(center[paridx] + par.grid_parspace_settings['step'], lo, hi) - center[paridx]
+            if abs(delta) >= minstep:
+                tol = abs(self.clip(center[paridx] + par.grid_parspace_settings['step'], lo, hi) - par_values[-1])
+                if abs(par_values[-1]) > eps:
+                    tol /= abs(par_values[-1])
+                if tol > eps:
+                    par_values.append(self.clip(center[paridx] + par.grid_parspace_settings['step'], lo, hi))
 
         for par.value in par_values:
             # par.value = value
@@ -298,11 +329,11 @@ class GridSearch(ParameterGenerator):
         return isnew
 
     def check_specific_stopping_critera(self, current_models):
-        stop = True # or false
+        stop = False
         # stop if...
         # (i) if iter>1, last iteration did not improve chi2 by min_delta_chi2
-        # where we'll set min_delta_chi2 in config file
-        # (ii) if step_size < min_step_size for all params
+        # where we'll set min_delta_chi2 in config file => need iter_count in astropy table
+        # (ii) if step_size < min_step_size for all params => dealt with by grid_walk (doesn't create such models)
         return stop
 
 
