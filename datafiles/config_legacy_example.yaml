@@ -94,7 +94,7 @@ system_components:
                 type: GaussHermite                # specifies which object class to create
                 datafile: "datafiles/gauss_hermite_kins.ecvs"  # for both discrete and integrated types (actual example file)
                 aperturefile: "infil/aperture.dat"      # integrated only (actual example file)
-                binfile: bins.dat               # integrated only (actual example file)
+                binfile: "infil/bins.dat"               # integrated only (actual example file)
                 maskfile: maskfile.dat          # made-up filename
 
 system_parameters: # these go into the physical system as a standalone atribute (i.e., not one of the components)
@@ -142,8 +142,13 @@ parameter_space_settings: # don't put in physical system -> config object
         n_max_mods : 1000
         n_max_iter : 10
 
+legacy_settings:
+    directory: "/Users/sabine/Triaxschwarzschild/triaxschwarzschild"
+    setting1: True
+    setting2: False
+
 output_settings:
-    directory: "outputs/legacy/"
+    directory: "model_example/" #"outputs/legacy/"
     setting1: True
     setting2: False
 
@@ -151,7 +156,7 @@ weight_solver_settings:
     type: "LegacyWeightSolver"
     setting1: True
     setting2: False
-    regularization: 0
+    regularisation: 0
     number_GH: 4
     GH_sys_err: '0.0 0.0 0.0 0.0 0.3 0.3 0.6 0.6'
     lum_intr_rel_err: 0.01
@@ -159,8 +164,8 @@ weight_solver_settings:
     ml_scale_factor: 1.0
     nnls_solver: 1
     
-#ask thomas
-#legacy_settings:
+
+
     
 
 # end
