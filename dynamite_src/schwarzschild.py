@@ -1,5 +1,6 @@
 import os
 import glob
+import shutil #used to easily copy files
 import numpy as np
 from astropy import table
 from astropy.io import ascii
@@ -154,7 +155,7 @@ class SchwarzschildModel(object):
     def get_model_directory(self):
         out_dir = self.config.output_settings['directory']
         out_dir += self.system.name
-        out_dir += '/'
+        out_dir += '/models/'
         # add all parameters to directory name except ml
         for par0, pval0 in zip(self.parspace, self.parset):
             pname0 = par0.name
@@ -196,8 +197,8 @@ class LegacySchwarzschildModel(SchwarzschildModel):
         self.parset = parset
         self.parspace = parspace
 
-        #we might add this to config_legacy_settings
-        self.legacy_directory = '/Users/sabine/Triaxschwarzschild/triaxschwarzschild'
+        #TODO:we might add this to config_legacy_settings
+        self.legacy_directory = self.config.legacy_settings['directory']
 
         # In general, arguments for:
         #    - OrbitLibrary = system, config.orblib_settings
@@ -217,26 +218,49 @@ class LegacySchwarzschildModel(SchwarzschildModel):
         self.create_model_directory(self.directory_noml+'infil/')
         self.create_model_directory(self.directory_noml+'datfil/')        
         
-        #and fill it with all the necessary schwpy/fortran input files, possibly as template files
-        self.create_fortran_input(self.directory_noml+'infil/')
 
-        ##orb_lib = dyn.LegacyOrbitLibrary(
-        ##    mod_dir=self.directory,
-        ##    settings=config.orblib_settings)
+        #check if orbit library was calculated already
+        if not os.path.isfile(self.directory_noml+'datfil/orblib.dat.bz2') or not os.path.isfile(self.directory_noml+'datfil/orblibbox.dat.bz2') :
 
-        ##weight_solver = ws.LegacyWeightSolver(
-        ##    mod_dir=self.directory,
-        ##    settings=config.weight_solver_settings)
+            #prepare the fortran input files for orblib, possibly as template files
+            self.create_fortran_input_orblib(self.directory_noml+'infil/')
 
-        ##chi2, kinchi2 = weight_solver.solve()
+            #FOR NOW: copy the *.dat-files from datafiles, TODO: will be created via prepare_data
+            shutil.copyfile('/Users/sabine/Work/Dynamics/DYNAMITE/Version1/Fortran/datafiles/kin_data.dat', self.directory_noml+'infil/kin_data.dat')
+            shutil.copyfile('/Users/sabine/Work/Dynamics/DYNAMITE/Version1/Fortran/datafiles/aperture.dat', self.directory_noml+'infil/aperture.dat')   
+            shutil.copyfile('/Users/sabine/Work/Dynamics/DYNAMITE/Version1/Fortran/datafiles/bins.dat', self.directory_noml+'infil/bins.dat')
+
+            
+            
+            #calculate orbit libary
+            orb_lib = dyn.LegacyOrbitLibrary(
+                    system=self.system,
+                    mod_dir=self.directory_noml,
+                    settings=self.config.orblib_settings,
+                    legacy_directory=self.legacy_directory)
+
+    
+        #prepare fortran input file for nnls
+        self.create_fortran_input_nnls(self.directory)
+        
+        #apply the nnls
+        weight_solver = ws.LegacyWeightSolver(
+                system=self.system,
+                mod_dir=self.directory_noml,
+                settings=config.weight_solver_settings,
+                legacy_directory=self.legacy_directory,
+                ml=self.parset['ml'])
+        
+        chi2, kinchi2 = weight_solver.solve()
+        
         # TODO: extract other outputs e.g. orbital weights
 
         # store result
-        ##self.chi2 = chi2
-        ##self.kinchi2 = kinchi2
+        self.chi2 = chi2
+        self.kinchi2 = kinchi2
 
 
-    def create_fortran_input(self,path):
+    def create_fortran_input_orblib(self,path):
         
         
         #-------------------        
@@ -259,8 +283,6 @@ class LegacySchwarzschildModel(SchwarzschildModel):
         #TODO: which dark matter profile
         dm_specs='1 2'
         
-        #TODO:
-        #Dm might be calculated similar to schadjustinput
         
         theta,psi,phi=self.system.cmp_list[2].triax_pqu2tpp(p,q,qobs,u)
         
@@ -300,7 +322,7 @@ class LegacySchwarzschildModel(SchwarzschildModel):
         orbstart_file.write(text)
         orbstart_file.close()
         
-        
+
         #-------------------        
         #write orblib.in
         #-------------------
@@ -310,8 +332,8 @@ class LegacySchwarzschildModel(SchwarzschildModel):
         
         #TODO the psfs need to be defined in an array before
         
-        #DODO:needs to be slightly changed for more psfs
-        #TODO aperture and bins.dat need to be clearly defined, 
+        #TODO:needs to be slightly changed for more psfs, loop
+ 
         text1='#counterrotation_setupfile_version_1' +'\n' + \
             'infil/parameters.in' +'\n' + \
             'datfil/begin.dat' +'\n' + \
@@ -328,11 +350,11 @@ class LegacySchwarzschildModel(SchwarzschildModel):
              
              
         text2=str(int(np.max(n_psf))) + '                              [apertures]' +'\n'  + \
-              '"infil/aperture.dat"' +'\n'  + \
+              '"' + stars.kinematic_data[0].aperturefile +'"' +'\n'  + \
               '1                              [use psf 1] ' +'\n'  + \
               self.config.orblib_settings['hist_vel'] + '  ' + self.config.orblib_settings['hist_sigma'] + '  ' + self.config.orblib_settings['hist_bins'] +'   [histogram]' +'\n'  + \
               '1                              [use binning for aperture 1] ' +'\n'  + \
-              '"infil/bins.dat"  ' +'\n'  + \
+              '"' + stars.kinematic_data[0].binfile +'"' +'\n'  + \
               'datfil/orblib.dat ' 
               
               
@@ -362,11 +384,11 @@ class LegacySchwarzschildModel(SchwarzschildModel):
              
              
         text2=str(int(np.max(n_psf))) + '                              [apertures]' +'\n'  + \
-              '"infil/aperture.dat"' +'\n'  + \
+              '"' + stars.kinematic_data[0].aperturefile +'"' +'\n'  + \
               '1                              [use psf 1] ' +'\n'  + \
               self.config.orblib_settings['hist_vel'] + '  ' + self.config.orblib_settings['hist_sigma'] + '  ' + self.config.orblib_settings['hist_bins'] +'   [histogram]' +'\n'  + \
               '1                              [use binning for aperture 1] ' +'\n'  + \
-              '"infil/bins.dat"  ' +'\n'  + \
+              '"' + stars.kinematic_data[0].binfile +'"' +'\n'  + \
               'datfil/orblibbox.dat ' 
               
               
@@ -397,23 +419,26 @@ class LegacySchwarzschildModel(SchwarzschildModel):
         
         text='infil/paramsb.in' +'\n' + \
               str(int(np.max(n_psf))) + '                              [# of apertures]'  +'\n'  + \
-              '"infil/aperture.dat"' +  '\n'  + \
+              '"' + stars.kinematic_data[0].aperturefile +'"' +  '\n'  + \
               str(len(n_psf[n_psf==1])) + '                              [# of gaussians components]'  +'\n' + \
               str(psf_weight) + '   ' + str(psf_sigma) + '                     [weight sigma]' +  '\n'  + \
-              '"infil/bins.dat"  ' +'\n'  + \
+              '"' + stars.kinematic_data[0].binfile +'"' +'\n'  + \
               '"datfil/mass_aper.dat"' 
         
         triaxmassbin_file= open(path+'triaxmassbin.in',"w")
         triaxmassbin_file.write(text)
         triaxmassbin_file.close()
         
+        
+    def create_fortran_input_nnls(self,path):
+        
         #-------------------        
         #write nn.in
         #-------------------
         
         text='infil/parameters.in' +'\n' + \
-        str(self.config.weight_solver_settings['regularization'])   + '                                  [ regularization strength, 0 = no regularization ]' +'\n'  + \
-        'ml'+ str(self.parset['ml']) + '/nn' +'\n' + \
+        str(self.config.weight_solver_settings['regularisation'])   + '                                  [ regularization strength, 0 = no regularization ]' +'\n'  + \
+        'ml'+ '{:01.2f}'.format(self.parset['ml']) + '/nn' +'\n' + \
         'datfil/mass_qgrid.dat' +'\n' + \
         'datfil/mass_aper.dat' +'\n' + \
         str(self.config.weight_solver_settings['number_GH']) + '	                           [ # of GH moments to constrain the model]' +'\n' + \

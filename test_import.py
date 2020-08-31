@@ -1,8 +1,9 @@
-%load_ext autoreload
-%autoreload 2
+#%load_ext autoreload
+#%autoreload 2
 
 import numpy as np
 import dynamite_src as dyn
+#from astropy.table import vstack
 
 # fname = './datafiles/config_example.yaml'
 fname = './datafiles/config_legacy_example.yaml'
@@ -42,6 +43,19 @@ parspace.par_names
 
 parset0 = parset0[parspace.par_names]
 parset0
+
+c.system.cmp_list[0].parameters
+
+
+#run a first dynamite model
+print('-----------------------------')
+print('Run a dynamical model')
+print('-----------------------------')
+
+
+#directory of the models, need to double check where this is done
+#c.config.output_settings['directory']='model_example/'
+
 # create a model object
 mod = dyn.schwarzschild.LegacySchwarzschildModel(
     system=c.system,
@@ -49,15 +63,37 @@ mod = dyn.schwarzschild.LegacySchwarzschildModel(
     parspace=parspace,
     parset=parset0)
 
-c.system.cmp_list[0].parameters
 
-mod.chi2
-mod.kinchi2
+#print(mod.directory)
+#print(mod.directory[:-7])
+##mod.chi2
+##mod.kinchi2
+
+print('-----------------------------')
+print('-----------------------------')
+print(c.system.cmp_list[2].mge.data)
+#print(c.system.cmp_list[2].mge.data[0][2])
+print(c.system.distMPc)
+print(parspace.par_names)
+print(parspace[6].value)
+print(c.config.orblib_settings['nE'])
+print(c.system.cmp_list[2].kinematic_data[0].PSF['weight'])
+
+#.__dict__
+#.--dict--.keys()
 
 
+#os.chdir("/Users/sabine/Work/Dynamics/DYNAMITE/Version1/Fortran/model_example/NGC6278/bh6.00dc1.00f2.00q0.54p0.970u0.9999/infil")
+#dir="/Users/sabine/Work/Dynamics/DYNAMITE/Version1/Fortran/model_example/NGC6278/bh6.00dc1.00f2.00q0.54p0.970u0.9999/infil/"
+#for file in glob.glob(dir+"*.dat"):
+#    print(file)
 
 
+#psf=np.loadtxt(path+'datafiles/kinpsffile.dat',skiprows=2)
 
+#path='/Users/sabine/Work/Dynamics/DYNAMITE/Version1/Fortran/model_example/NGC6278/bh6.00dc1.00f2.00q0.54p0.970u0.9999/infil/'
+#len_mge=len(c.system.cmp_list[2].mge.data)
+#np.savetxt(path+'parameters.in',c.system.cmp_list[2].mge.data,header=str(len_mge),comments='')
 
 
 # end
