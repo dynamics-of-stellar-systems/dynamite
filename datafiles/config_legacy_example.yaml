@@ -14,12 +14,12 @@ system_components:
             mass:
                 desc: "log(BHmass)"
                 grid_parspace_settings:
-                    lo: 5.0
-                    hi: 9.0
+                    lo: 1.0
+                    hi: 10.0
                     step: 0.5
                     minstep: 0.2
-                fixed: True
-                value: 6.0
+                fixed: False
+                value: 5.0
                 LaTeX: "$M_{BH}$"
                 sformat: "6.2f"
             a:
@@ -41,7 +41,7 @@ system_components:
                     hi: 2.0
                     step: 0.3
                     minstep: 0.1
-                fixed: False
+                fixed: True
                 value: 1.0
                 LaTeX: "$log(C)$"
                 sformat: "6.2f"
@@ -69,7 +69,7 @@ system_components:
                     hi: 0.99
                     step: 0.04
                     minstep: 0.02
-                fixed: False
+                fixed: True
                 value: 0.99
                 LaTeX: "$q_{min}$"
                 sformat: "6.2f"
@@ -82,7 +82,7 @@ system_components:
                     hi: 0.999
                     step: 0.02
                     minstep: 0.01
-                fixed: False
+                fixed: True
                 value: 0.99
                 LaTeX: "$p_{min}$"
                 sformat: "6.3f"
@@ -93,7 +93,7 @@ system_components:
                     hi: 1.0
                     step: 0.01
                     minstep: 0.01
-                fixed: False
+                fixed: True
                 value: 0.9999
                 LaTeX: "$u_{min}$"
                 sformat: "7.4f"
@@ -114,12 +114,12 @@ system_parameters: # these go into the physical system as a standalone parameter
     ml:
         desc: "M/L"
         grid_parspace_settings:
-            lo: 0.8
-            hi: 7.5
+            lo: 1.
+            hi: 10.
             step: 1.0
             minstep: 0.5
         fixed: False
-        value: 3.0
+        value: 5.
         LaTeX: "$Y_{r}$"
         sformat: "6.2f"
 
