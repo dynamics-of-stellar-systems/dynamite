@@ -35,13 +35,22 @@ print('parameter_space start...')
 g = dyn.parameter_space.GridSearch(parspace)
 
 # generate first model list: grid walk "iteration 0"
+print('grid walk "iteration 0"')
 g.generate(current_models = all_models)
 print(all_models.table)
+print(g.status)
 
 # generate second model list: grid walk "iteration 1"
+print('grid walk "iteration 1"')
 g.generate(current_models=all_models)
 print(all_models.table)
+print(g.status)
 
+# generate second model list: grid walk "iteration 2"
+print('grid walk "iteration 2"')
+g.generate(current_models=all_models)
+print(all_models.table)
+print(g.status)
 
 all_models.convert_legacy_chi2_file(
     legacy_filename='outputs/legacy/NGC6278/griddata/_chi2.cat',
