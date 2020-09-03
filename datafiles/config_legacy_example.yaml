@@ -18,7 +18,7 @@ system_components:
                     hi: 10.0
                     step: 0.5
                     minstep: 0.2
-                fixed: False
+                fixed: True
                 value: 5.0
                 LaTeX: "$M_{BH}$"
                 sformat: "6.2f"
@@ -69,7 +69,7 @@ system_components:
                     hi: 0.99
                     step: 0.04
                     minstep: 0.02
-                fixed: False
+                fixed: True
                 value: 0.54
                 LaTeX: "$q_{min}$"
                 sformat: "6.2f"
@@ -129,7 +129,7 @@ system_attributes:
     position_angle: 97.69
 
 orblib_settings: # don't put in physical system -> config object
-    nE: 5
+    nE: 3
     logrmin: -0.101275
     logrmax: 1.99123
     nI2: 4
@@ -156,14 +156,11 @@ parameter_space_settings: # don't put in physical system -> settings object
         n_max_iter : 10
 
 legacy_settings:
+    use_legacy_mode: True
     directory: "/Users/pjethwa/Astro/Science/dynamite/triaxschwarz/triaxschwarzschild/"
-    setting1: True
-    setting2: False
 
 output_settings:
     directory: "model_example/" #"outputs/legacy/"
-    setting1: True
-    setting2: False
 
 weight_solver_settings:
     type: "LegacyWeightSolver"
