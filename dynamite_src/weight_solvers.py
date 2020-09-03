@@ -67,6 +67,9 @@ class LegacyWeightSolver(WeightSolver):
         cur_dir=os.getcwd()
         os.chdir(self.mod_dir)
         
+        
+        print("Fit the orbit library to the kinematic data.")
+        
         cmdstr=self.write_executable()
         self.execute(cmdstr)
         
@@ -74,6 +77,9 @@ class LegacyWeightSolver(WeightSolver):
         os.chdir(cur_dir)
         
         chi2, kinchi2 = self.read_output()
+
+
+        print("NNLS is finished.")
         
         return chi2, kinchi2
 
@@ -81,9 +87,7 @@ class LegacyWeightSolver(WeightSolver):
         
         '{:06.2f}'.format(self.ml)
         nn='ml'+'{:01.2f}'.format(self.ml)+'/nn'
-        
-        print(nn)
-
+    
         
         cmdstr = 'cmdd' + str(self.system.name) + '_' + str(int(np.random.uniform(0, 1) * 100000.0))
 
@@ -93,7 +97,7 @@ class LegacyWeightSolver(WeightSolver):
         txt_file.write('test -e ../datfil/orblib.dat || bunzip2 -k  datfil/orblib.dat.bz2 ' + '\n')
         txt_file.write('test -e ../datfil/orblibbox.dat || bunzip2 -k  datfil/orblibbox.dat.bz2' + '\n')
         txt_file.write('test -e ' + str(nn) + '_kinem.out || ' +
-                           self.legacy_directory +'/triaxnnls_CRcut < ' + str(nn) + '.in >>' +str(nn) + 'ls.log' + '\n')
+                           self.legacy_directory +'/triaxnnls_CRcut < ' + str(nn) + '.in >>' +str(nn) + 'ls.log' + '\n') #TODO: specify which nnls to use
         txt_file.write('rm datfil/orblib.dat' + '\n') 
         txt_file.write('rm datfil/orblibbox.dat' + '\n') 
         txt_file.close()
