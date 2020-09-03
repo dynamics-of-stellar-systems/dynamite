@@ -2,6 +2,7 @@ import schwarzschild
 import parameter_space
 import numpy as np
 
+
 class SchwarzschildModelIterator(object):
 
     def __init__(self,
@@ -10,11 +11,18 @@ class SchwarzschildModelIterator(object):
                  settings=None):
         stopping_crit = settings.parameter_space_settings['stopping_criteria']
         n_max_iter = stopping_crit['n_max_iter']
+        # get specified parameter generator
+        parspace = parameter_space.ParameterSpace(system)
+        par_generator_type = settings.parameter_space_settings['generator_type']
+        par_generator_type = par_generator_type
+        par_generator = getattr(parameter_space, par_generator_type)(parspace)
         model_inner_iterator = SchwarzschildModelInnerIterator(
             system=system,
             all_models=all_models,
-            settings=settings)
+            settings=settings,
+            par_generator=par_generator)
         for iter in range(n_max_iter):
+            print(f'{par_generator_type}: "iteration {iter}"')
             status = model_inner_iterator.run_iteration(iter)
             if status['stop'] is True:
                 print(f'Stopping after iteration {iter}')
@@ -28,36 +36,32 @@ class SchwarzschildModelInnerIterator(object):
                  iter=0,
                  system=None,
                  all_models=None,
-                 settings=None):
+                 settings=None,
+                 par_generator=None):
         self.system = system
         self.all_models = all_models
         self.settings = settings
         self.parspace = parameter_space.ParameterSpace(system)
-        # get specified parameter generator object
-        par_generator_type = settings.parameter_space_settings['generator_type']
-        self.par_generator_type = par_generator_type
-        self.par_generator = getattr(parameter_space,
-                                     par_generator_type)(self.parspace)
+        self.par_generator = par_generator
 
     def run_iteration(self, iter):
-        # generate parameter sets for this iteration
-        print(f'{self.par_generator_type}: "iteration {iter}"')
         self.par_generator.generate(current_models=self.all_models)
         # generate parameter sets for this iteration
         if self.par_generator.status['stop'] is False:
-            print('... running here!')
             # find models not yet done
-            idx_todo = np.where(self.all_models.table['all_done'] == False)
-            idx_todo = idx_todo[0]
-            for idx in idx_todo:
+            rows_to_do = np.where(self.all_models.table['all_done'] == False)
+            rows_to_do = rows_to_do[0]
+            n_to_do = len(rows_to_do)
+            for i, row in enumerate(rows_to_do):
+                print(f'... running model {i} out of {n_to_do}')
                 # extract the parameter values
-                parset0 = self.all_models.table[idx]
+                parset0 = self.all_models.table[row]
                 parset0 = parset0[self.parspace.par_names]
                 # create and run the model
                 mod0 = self.create_model(parset0)
-                self.all_models.table['chi2'][idx] = mod0.chi2
-                self.all_models.table['kinchi2'][idx] = mod0.kinchi2
-                self.all_models.table['which_iter'][idx] = iter
+                self.all_models.table['chi2'][row] = mod0.chi2
+                self.all_models.table['kinchi2'][row] = mod0.kinchi2
+                self.all_models.table['which_iter'][row] = iter
         return self.par_generator.status
 
     def create_model(self, parset):
