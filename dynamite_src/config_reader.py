@@ -39,21 +39,21 @@ class Configuration(object):
             self.parameter_space_settings = values
         elif kind == 'legacy_settings':
             self.legacy_settings = values
-        elif kind == 'output_settings':
-            self.output_settings = values
+        elif kind == 'io_settings':
+            self.io_settings = values
         elif kind == 'weight_solver_settings':
             self.weight_solver_settings = values
         else:
             raise ValueError("""Config only takes orblib_settings
                              and parameter_space_settings
-                             and output_settings
+                             and io_settings
                              and weight_solver_settings""")
 
     def validate(self):
         if not(self.orblib_settings and self.parameter_space_settings):
             raise ValueError("""Config needs orblib_settings
                              and parameter_space_settings
-                             and output_settings
+                             and io_settings
                              and weight_solver_settings""")
 
     def __repr__(self):
@@ -211,11 +211,12 @@ class ConfigurationReaderYaml(object):
 
             # add output settings to config object
 
-            elif key == 'output_settings':
+            elif key == 'io_settings':
+                print('hello')
                 if not silent:
-                    print('output_settings...')
+                    print('io_settings...')
                     print(f' {tuple(value.keys())}')
-                self.config.add('output_settings', value)
+                self.config.add('io_settings', value)
 
             # add weight_solver_settings to config object
 

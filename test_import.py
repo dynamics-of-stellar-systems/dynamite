@@ -6,7 +6,8 @@ import dynamite_src as dyn
 #from astropy.table import vstack
 
 # fname = './datafiles/config_example.yaml'
-fname = './datafiles/config_legacy_example.yaml'
+
+fname = './model_example/NGC6278/input_data/config_legacy_example.yaml'
 c = dyn.config_reader.ConfigurationReaderYaml(fname)
 
 # extract parameter space
@@ -69,15 +70,16 @@ mod = dyn.schwarzschild.LegacySchwarzschildModel(
 ##mod.chi2
 ##mod.kinchi2
 
-print('-----------------------------')
-print('-----------------------------')
-print(c.system.cmp_list[2].mge.data)
+#for sabines tests
+#print('-----------------------------')
+#print('-----------------------------')
+#print(c.system.cmp_list[2].mge.data)
 #print(c.system.cmp_list[2].mge.data[0][2])
-print(c.system.distMPc)
-print(parspace.par_names)
-print(parspace[6].value)
-print(c.config.orblib_settings['nE'])
-print(c.system.cmp_list[2].kinematic_data[0].PSF['weight'])
+#print(c.system.distMPc)
+#print(parspace.par_names)
+#print(parspace[6].value)
+#print(c.config.orblib_settings['nE'])
+#print(c.system.cmp_list[2].kinematic_data[0].PSF['weight'])
 
 #.__dict__
 #.--dict--.keys()

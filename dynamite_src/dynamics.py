@@ -38,12 +38,17 @@ class LegacyOrbitLibrary(OrbitLibrary):
         cur_dir=os.getcwd()
         os.chdir(self.mod_dir)
 
+
+        print("Calculating the orbit library for the proposed potential.")
+
         #generate the initial conditions for the orbit library 
         self.generate_ics()
         self.integrate_orbits()
 
         #set the current directory to the dynamite directory
         os.chdir(cur_dir)
+
+        print("Orbit integration is finished.")
 
 
     def generate_ics(self):
@@ -54,7 +59,6 @@ class LegacyOrbitLibrary(OrbitLibrary):
     def write_executable_for_ics(self):
         
         cmdstr = 'cmda' + str(self.system.name) + '_' + str(int(np.random.uniform(0, 1) * 100000.0))
-        print(cmdstr)
         
         #create the fortran executable
         txt_file = open(cmdstr, "w")
@@ -94,7 +98,7 @@ class LegacyOrbitLibrary(OrbitLibrary):
         txt_file.write('#!/bin/bash' + '\n')
         txt_file.write('grep Writing datfil/orblib.dat.tmp && rm -f datfil/orblib.dat.tmp datfil/orblib.dat' + '\n')
         txt_file.write( self.legacy_directory +'/orblib < infil/orblib.in >> datfil/orblib.log' + '\n')
-        txt_file.write('rm datfil/mass_qgrid.dat datfil/mass_radmass.dat datfil/mass_aper.dat infil/mass_aper.dat' + '\n')
+        txt_file.write('rm datfil/mass_qgrid.dat datfil/mass_radmass.dat datfil/mass_aper.dat' + '\n')
         txt_file.write( self.legacy_directory + '/triaxmass       < infil/triaxmass.in ' + '\n')
         txt_file.write( self.legacy_directory + '/triaxmassbin    < infil/triaxmassbin.in ' + '\n')
         txt_file.write('# if the gzipped orbit library does not exist zip it' + '\n')
