@@ -5,7 +5,24 @@ import numpy as np
 import dynamite_src as dyn
 import matplotlib.pyplot as plt
 
-fname = './datafiles/config_legacy_example.yaml'
+'''
+model_example/NGC6278/
+    config_example.yaml
+    dynamite_script.py
+    input_data/
+
+pwd
+>model_example/NGC6278/
+python dynamite_script.py
+
+model_example/NGC6278/
+    config_example.yaml
+    dynamite_script.py
+    input_data/
+    output_data/
+'''
+
+fname = 'model_example/config_legacy_example.yaml'
 c = dyn.config_reader.ConfigurationReaderYaml(fname, silent=True)
 parspace = dyn.parameter_space.ParameterSpace(c.system)
 all_models = dyn.schwarzschild.AllModels(from_file=False,
