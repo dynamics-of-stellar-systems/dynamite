@@ -1,7 +1,7 @@
 import os
 import numpy as np
 import subprocess
-from . import dynamics
+import dynamics
 
 class WeightSolver(object):
 
@@ -62,29 +62,29 @@ class LegacyWeightSolver(WeightSolver):
 
 
     def solve(self):
-        
+
         #set the current directory to the directory in which the models are computed
         cur_dir=os.getcwd()
         os.chdir(self.mod_dir)
-        
+
         cmdstr=self.write_executable()
         self.execute(cmdstr)
-        
+
         #set the current directory to the dynamite directory
         os.chdir(cur_dir)
-        
+
         chi2, kinchi2 = self.read_output()
-        
+
         return chi2, kinchi2
 
     def write_executable(self):
-        
+
         '{:06.2f}'.format(self.ml)
         nn='ml'+'{:01.2f}'.format(self.ml)+'/nn'
-        
+
         print(nn)
 
-        
+
         cmdstr = 'cmdd' + str(self.system.name) + '_' + str(int(np.random.uniform(0, 1) * 100000.0))
 
         txt_file = open(cmdstr, "w")
@@ -94,15 +94,15 @@ class LegacyWeightSolver(WeightSolver):
         txt_file.write('test -e ../datfil/orblibbox.dat || bunzip2 -k  datfil/orblibbox.dat.bz2' + '\n')
         txt_file.write('test -e ' + str(nn) + '_kinem.out || ' +
                            self.legacy_directory +'/triaxnnls_CRcut < ' + str(nn) + '.in >>' +str(nn) + 'ls.log' + '\n')
-        txt_file.write('rm datfil/orblib.dat' + '\n') 
-        txt_file.write('rm datfil/orblibbox.dat' + '\n') 
+        txt_file.write('rm datfil/orblib.dat' + '\n')
+        txt_file.write('rm datfil/orblibbox.dat' + '\n')
         txt_file.close()
-        
+
         return cmdstr
 
 
     def execute(self,cmdstr):
-        
+
           p4 = subprocess.call('bash ' + cmdstr, shell=True)
 
     def read_output(self):

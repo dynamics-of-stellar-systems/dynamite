@@ -5,9 +5,8 @@ import numpy as np
 from astropy import table
 from astropy.io import ascii
 
-from . import weight_solvers as ws
-from . import dynamics as dyn
-
+import weight_solvers as ws
+import dynamics as dyn
 
 class AllModels(object):
 
@@ -37,8 +36,11 @@ class AllModels(object):
         names += ['chi2', 'kinchi2', 'time_modified', 'directory']
         dtype += [np.float64, np.float64, np.float64, '<U100']
         # add extra columns
-        names += ['ics_done', 'orblib_done', 'weights_done']
-        dtype += [bool, bool, bool]
+        names += ['ics_done', 'orblib_done', 'weights_done', 'all_done']
+        dtype += [bool, bool, bool, bool]
+        # which_iter will record which iteration of parameters a model came from
+        names += ['which_iter']
+        dtype += [int]
         ncols = len(names)
         data = np.zeros((0, ncols))
         self.table = table.Table(data,
@@ -114,6 +116,9 @@ class AllModels(object):
         mods['ics_done'] = True
         mods['orblib_done'] = True
         mods['weights_done'] = True
+        mods['all_done'] = True
+        # which_iter will record which iteration of parameters a model came from
+        mods['which_iter'] = 0  # was not recorded for schwpy so set to 0
         mods.write(self.filename, format='ascii.ecsv')
         return
 
@@ -199,7 +204,7 @@ class LegacySchwarzschildModel(SchwarzschildModel):
         self.parspace = parspace
 
         #TODO:we might add this to config_legacy_settings
-        self.legacy_directory = self.config.legacy_settings['directory']
+        self.legacy_directory = self.settings.legacy_settings['directory']
 
         # In general, arguments for:
         #    - OrbitLibrary = system, settings.orblib_settings
@@ -227,17 +232,19 @@ class LegacySchwarzschildModel(SchwarzschildModel):
             self.create_fortran_input_orblib(self.directory_noml+'infil/')
 
             #FOR NOW: copy the *.dat-files from datafiles, TODO: will be created via prepare_data
-            shutil.copyfile('/Users/sabine/Work/Dynamics/DYNAMITE/Version1/Fortran/datafiles/kin_data.dat', self.directory_noml+'infil/kin_data.dat')
-            shutil.copyfile('/Users/sabine/Work/Dynamics/DYNAMITE/Version1/Fortran/datafiles/aperture.dat', self.directory_noml+'infil/aperture.dat')
-            shutil.copyfile('/Users/sabine/Work/Dynamics/DYNAMITE/Version1/Fortran/datafiles/bins.dat', self.directory_noml+'infil/bins.dat')
-
-
+            direc = "/Users/pjethwa/Astro/Science/dynamite/dynamite_repo/datafiles/"
+            shutil.copyfile(f'{direc}kin_data.dat',
+                            self.directory_noml+'infil/kin_data.dat')
+            shutil.copyfile(f'{direc}aperture.dat',
+                            self.directory_noml+'infil/aperture.dat')
+            shutil.copyfile(f'{direc}bins.dat',
+                            self.directory_noml+'infil/bins.dat')
 
             #calculate orbit libary
             orb_lib = dyn.LegacyOrbitLibrary(
                     system=self.system,
                     mod_dir=self.directory_noml,
-                    settings=self.config.orblib_settings,
+                    settings=self.settings.orblib_settings,
                     legacy_directory=self.legacy_directory)
 
 
@@ -248,7 +255,7 @@ class LegacySchwarzschildModel(SchwarzschildModel):
         weight_solver = ws.LegacyWeightSolver(
                 system=self.system,
                 mod_dir=self.directory_noml,
-                settings=config.weight_solver_settings,
+                settings=self.settings.weight_solver_settings,
                 legacy_directory=self.legacy_directory,
                 ml=self.parset['ml'])
 
@@ -279,11 +286,11 @@ class LegacySchwarzschildModel(SchwarzschildModel):
         qobs=np.amin(stars.mge.data['q'])
 
         #TODO: add softening length somewhere
-        r_BH='1d-03'
+        # r_BH='1d-03'
+        # Done! This is now paramater "a" of the Plummer
 
         #TODO: which dark matter profile
         dm_specs='1 2'
-
 
         theta,psi,phi=self.system.cmp_list[2].triax_pqu2tpp(p,q,qobs,u)
 
@@ -293,12 +300,12 @@ class LegacySchwarzschildModel(SchwarzschildModel):
         text=str(self.system.distMPc)+'\n'+ \
              '{:06.9f}'.format(theta)+' '+ '{:06.9f}'.format(phi)+' '+ '{:06.9f}'.format(psi) + '\n' + \
              str(self.parset['ml'])+'\n' + \
-             str(10**self.parset['bh'])+'\n' + \
-             r_BH                           +'\n' + \
-             str(self.config.orblib_settings['nE']) +' ' +str(self.config.orblib_settings['logrmin']) +' ' +str(self.config.orblib_settings['logrmax'])+ '\n' + \
-             str(self.config.orblib_settings['nI2']) +'\n' + \
-             str(self.config.orblib_settings['nI3']) +'\n' + \
-             str(self.config.orblib_settings['dithering']) +'\n' + \
+             str(10**self.parset['mass'])+'\n' + \
+             str(self.parset['a'])+'\n' + \
+             str(self.settings.orblib_settings['nE']) +' ' +str(self.settings.orblib_settings['logrmin']) +' ' +str(self.settings.orblib_settings['logrmax'])+ '\n' + \
+             str(self.settings.orblib_settings['nI2']) +'\n' + \
+             str(self.settings.orblib_settings['nI3']) +'\n' + \
+             str(self.settings.orblib_settings['dithering']) +'\n' + \
              dm_specs +'\n' + \
              str(self.parset['dc']) +' ' + str(self.parset['f']) +'\n'
 
@@ -338,11 +345,11 @@ class LegacySchwarzschildModel(SchwarzschildModel):
         text1='#counterrotation_setupfile_version_1' +'\n' + \
             'infil/parameters.in' +'\n' + \
             'datfil/begin.dat' +'\n' + \
-            str(self.config.orblib_settings['orbital_periods']) + '                            [orbital periods to intergrate orbits]' +'\n' + \
-            str(self.config.orblib_settings['sampling']) + '                          [points to sample for each orbit in the merid. plane]' +'\n' + \
-            str(self.config.orblib_settings['starting_orbit']) + '                              [starting orbit]' +'\n' + \
-            str(self.config.orblib_settings['number_orbits']) + '                             [orbits  to intergrate; -1 --> all orbits]' +'\n' + \
-            str(self.config.orblib_settings['accuracy']) + '                         [accuracy]' +'\n' + \
+            str(self.settings.orblib_settings['orbital_periods']) + '                            [orbital periods to intergrate orbits]' +'\n' + \
+            str(self.settings.orblib_settings['sampling']) + '                          [points to sample for each orbit in the merid. plane]' +'\n' + \
+            str(self.settings.orblib_settings['starting_orbit']) + '                              [starting orbit]' +'\n' + \
+            str(self.settings.orblib_settings['number_orbits']) + '                             [orbits  to intergrate; -1 --> all orbits]' +'\n' + \
+            str(self.settings.orblib_settings['accuracy']) + '                         [accuracy]' +'\n' + \
             str(int(np.max(n_psf))) + '                              [number of psfs of the kinemtic cubes]' +'\n'
 
 
@@ -353,7 +360,7 @@ class LegacySchwarzschildModel(SchwarzschildModel):
         text2=str(int(np.max(n_psf))) + '                              [apertures]' +'\n'  + \
               '"' + stars.kinematic_data[0].aperturefile +'"' +'\n'  + \
               '1                              [use psf 1] ' +'\n'  + \
-              self.config.orblib_settings['hist_vel'] + '  ' + self.config.orblib_settings['hist_sigma'] + '  ' + self.config.orblib_settings['hist_bins'] +'   [histogram]' +'\n'  + \
+              self.settings.orblib_settings['hist_vel'] + '  ' + self.settings.orblib_settings['hist_sigma'] + '  ' + self.settings.orblib_settings['hist_bins'] +'   [histogram]' +'\n'  + \
               '1                              [use binning for aperture 1] ' +'\n'  + \
               '"' + stars.kinematic_data[0].binfile +'"' +'\n'  + \
               'datfil/orblib.dat '
@@ -375,11 +382,11 @@ class LegacySchwarzschildModel(SchwarzschildModel):
         text1='#counterrotation_setupfile_version_1' +'\n' + \
             'infil/parameters.in' +'\n' + \
             'datfil/beginbox.dat' +'\n' + \
-            str(self.config.orblib_settings['orbital_periods']) + '                            [orbital periods to intergrate orbits]' +'\n' + \
-            str(self.config.orblib_settings['sampling']) + '                          [points to sample for each orbit in the merid. plane]' +'\n' + \
-            str(self.config.orblib_settings['starting_orbit']) + '                              [starting orbit]' +'\n' + \
-            str(self.config.orblib_settings['number_orbits']) + '                             [orbits  to intergrate; -1 --> all orbits]' +'\n' + \
-            str(self.config.orblib_settings['accuracy']) + '                         [accuracy]' +'\n' + \
+            str(self.settings.orblib_settings['orbital_periods']) + '                            [orbital periods to intergrate orbits]' +'\n' + \
+            str(self.settings.orblib_settings['sampling']) + '                          [points to sample for each orbit in the merid. plane]' +'\n' + \
+            str(self.settings.orblib_settings['starting_orbit']) + '                              [starting orbit]' +'\n' + \
+            str(self.settings.orblib_settings['number_orbits']) + '                             [orbits  to intergrate; -1 --> all orbits]' +'\n' + \
+            str(self.settings.orblib_settings['accuracy']) + '                         [accuracy]' +'\n' + \
             str(int(np.max(n_psf))) + '                              [number of psfs of the kinemtic cubes]' +'\n'
 
 
@@ -387,7 +394,7 @@ class LegacySchwarzschildModel(SchwarzschildModel):
         text2=str(int(np.max(n_psf))) + '                              [apertures]' +'\n'  + \
               '"' + stars.kinematic_data[0].aperturefile +'"' +'\n'  + \
               '1                              [use psf 1] ' +'\n'  + \
-              self.config.orblib_settings['hist_vel'] + '  ' + self.config.orblib_settings['hist_sigma'] + '  ' + self.config.orblib_settings['hist_bins'] +'   [histogram]' +'\n'  + \
+              self.settings.orblib_settings['hist_vel'] + '  ' + self.settings.orblib_settings['hist_sigma'] + '  ' + self.settings.orblib_settings['hist_bins'] +'   [histogram]' +'\n'  + \
               '1                              [use binning for aperture 1] ' +'\n'  + \
               '"' + stars.kinematic_data[0].binfile +'"' +'\n'  + \
               'datfil/orblibbox.dat '
@@ -438,19 +445,19 @@ class LegacySchwarzschildModel(SchwarzschildModel):
         #-------------------
 
         text='infil/parameters.in' +'\n' + \
-        str(self.config.weight_solver_settings['regularisation'])   + '                                  [ regularization strength, 0 = no regularization ]' +'\n'  + \
+        str(self.settings.weight_solver_settings['regularisation'])   + '                                  [ regularization strength, 0 = no regularization ]' +'\n'  + \
         'ml'+ '{:01.2f}'.format(self.parset['ml']) + '/nn' +'\n' + \
         'datfil/mass_qgrid.dat' +'\n' + \
         'datfil/mass_aper.dat' +'\n' + \
-        str(self.config.weight_solver_settings['number_GH']) + '	                           [ # of GH moments to constrain the model]' +'\n' + \
+        str(self.settings.weight_solver_settings['number_GH']) + '	                           [ # of GH moments to constrain the model]' +'\n' + \
         'infil/kin_data.dat' +'\n' + \
-        str(self.config.weight_solver_settings['GH_sys_err']) + '    [ systemic error of v, sigma, h3, h4... ]' + '\n' + \
-        str(self.config.weight_solver_settings['lum_intr_rel_err']) + '                               [ relative error for intrinsic luminosity ]' +'\n' + \
-        str(self.config.weight_solver_settings['sb_proj_rel_err']) + '                               [ relative error for projected SB ]' + '\n' + \
-        str(self.config.weight_solver_settings['ml_scale_factor']) + '                                [ scale factor related to M/L, sqrt( (M/L)_k / (M/L)_ref ) ]' + '\n' + \
+        str(self.settings.weight_solver_settings['GH_sys_err']) + '    [ systemic error of v, sigma, h3, h4... ]' + '\n' + \
+        str(self.settings.weight_solver_settings['lum_intr_rel_err']) + '                               [ relative error for intrinsic luminosity ]' +'\n' + \
+        str(self.settings.weight_solver_settings['sb_proj_rel_err']) + '                               [ relative error for projected SB ]' + '\n' + \
+        str(self.settings.weight_solver_settings['ml_scale_factor']) + '                                [ scale factor related to M/L, sqrt( (M/L)_k / (M/L)_ref ) ]' + '\n' + \
         'datfil/orblib.dat' +'\n' + \
         'datfil/orblibbox.dat' +'\n' + \
-        str(self.config.weight_solver_settings['nnls_solver']) + '                                  [ nnls solver ]'
+        str(self.settings.weight_solver_settings['nnls_solver']) + '                                  [ nnls solver ]'
 
         nn_file= open(path+'nn.in',"w")
         nn_file.write(text)

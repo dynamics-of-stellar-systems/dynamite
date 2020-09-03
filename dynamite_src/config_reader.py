@@ -209,7 +209,7 @@ class ConfigurationReaderYaml(object):
                 if not silent:
                     print('legacy_settings...')
                     print(f' {tuple(value.keys())}')
-                self.config.add('legacy_settings', value)
+                self.settings.add('legacy_settings', value)
 
             # add output settings to config object
 
