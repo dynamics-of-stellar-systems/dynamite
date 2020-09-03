@@ -17,8 +17,7 @@ class AllModels(object):
                  parspace=None,
                  *args,
                  **kwargs):
-        self.settings = settings
-        outdir = settings.output_settings['directory']
+        outdir = settings.io_settings['output_directory']
         filename = f'{outdir}{filename}'
         self.filename = filename
         print(filename)
@@ -159,8 +158,8 @@ class SchwarzschildModel(object):
         # self.orb_labels = orb_labels
 
     def get_model_directory(self):
-        out_dir = self.settings.output_settings['directory']
-        out_dir += self.system.name
+        out_dir = self.settings.io_settings['output_directory']
+        #out_dir += self.system.name
         out_dir += '/models/'
         # add all parameters to directory name except ml
         for par0, pval0 in zip(self.parspace, self.parset):
@@ -203,8 +202,11 @@ class LegacySchwarzschildModel(SchwarzschildModel):
         self.parset = parset
         self.parspace = parspace
 
-        #TODO:we might add this to config_legacy_settings
+        #directory of the Schwarzschild fortran files
         self.legacy_directory = self.settings.legacy_settings['directory']
+
+        #directory of the input kinematics
+        self.in_dir = self.settings.io_settings['input_directory']
 
         # In general, arguments for:
         #    - OrbitLibrary = system, settings.orblib_settings
@@ -225,20 +227,19 @@ class LegacySchwarzschildModel(SchwarzschildModel):
         self.create_model_directory(self.directory_noml+'datfil/')
 
 
+        #add communication to the user
         #check if orbit library was calculated already
         if not os.path.isfile(self.directory_noml+'datfil/orblib.dat.bz2') or not os.path.isfile(self.directory_noml+'datfil/orblibbox.dat.bz2') :
 
             #prepare the fortran input files for orblib, possibly as template files
             self.create_fortran_input_orblib(self.directory_noml+'infil/')
 
-            #FOR NOW: copy the *.dat-files from datafiles, TODO: will be created via prepare_data
-            direc = "/Users/pjethwa/Astro/Science/dynamite/dynamite_repo/datafiles/"
-            shutil.copyfile(f'{direc}kin_data.dat',
-                            self.directory_noml+'infil/kin_data.dat')
-            shutil.copyfile(f'{direc}aperture.dat',
-                            self.directory_noml+'infil/aperture.dat')
-            shutil.copyfile(f'{direc}bins.dat',
-                            self.directory_noml+'infil/bins.dat')
+            #FOR NOW: copy the *.dat-files from datafiles, TODO: will be created via prepare_data, links hardcoded not so good
+            shutil.copyfile(self.in_dir+'kin_data.dat', self.directory_noml+'infil/kin_data.dat')
+            shutil.copyfile(self.in_dir+'aperture.dat', self.directory_noml+'infil/aperture.dat')
+            shutil.copyfile(self.in_dir+'bins.dat', self.directory_noml+'infil/bins.dat')
+
+
 
             #calculate orbit libary
             orb_lib = dyn.LegacyOrbitLibrary(
@@ -335,10 +336,12 @@ class LegacySchwarzschildModel(SchwarzschildModel):
         #write orblib.in
         #-------------------
 
-        #TODO?read kinematic psf from kinematics file
-        n_psf,psf_weight,psf_sigma=np.loadtxt('datafiles/kinpsffile.dat',skiprows=2)
 
-        #TODO the psfs need to be defined in an array before
+        i=0
+        psf_weight=(stars.kinematic_data[0].PSF['weight'])[i]
+        psf_sigma=(stars.kinematic_data[0].PSF['sigma'])[i]
+        n_psf=[[1]]   #len(stars.kinematic_data) #needs to be revised
+
 
         #TODO:needs to be slightly changed for more psfs, loop
 
@@ -350,14 +353,14 @@ class LegacySchwarzschildModel(SchwarzschildModel):
             str(self.settings.orblib_settings['starting_orbit']) + '                              [starting orbit]' +'\n' + \
             str(self.settings.orblib_settings['number_orbits']) + '                             [orbits  to intergrate; -1 --> all orbits]' +'\n' + \
             str(self.settings.orblib_settings['accuracy']) + '                         [accuracy]' +'\n' + \
-            str(int(np.max(n_psf))) + '                              [number of psfs of the kinemtic cubes]' +'\n'
+            str(len(stars.kinematic_data)) + '                              [number of psfs of the kinematic cubes]' +'\n'
 
 
-        psf= str(len(n_psf[n_psf==1])) + '                              [gaussians components]'  +'\n' + \
-             str(psf_weight) + '   ' + str(psf_sigma) + '                    [weight sigma]' +  '\n'
+        psf= str(len(stars.kinematic_data[0].PSF['sigma'])) + '                              [# of gaussians components]'  +'\n' + \
+             str(psf_weight) + '   ' + str(psf_sigma) + '                    [weight, sigma]' +  '\n'
 
 
-        text2=str(int(np.max(n_psf))) + '                              [apertures]' +'\n'  + \
+        text2=str(len(stars.kinematic_data)) + '                              [apertures]' +'\n'  + \
               '"' + stars.kinematic_data[0].aperturefile +'"' +'\n'  + \
               '1                              [use psf 1] ' +'\n'  + \
               self.settings.orblib_settings['hist_vel'] + '  ' + self.settings.orblib_settings['hist_sigma'] + '  ' + self.settings.orblib_settings['hist_bins'] +'   [histogram]' +'\n'  + \
@@ -387,11 +390,11 @@ class LegacySchwarzschildModel(SchwarzschildModel):
             str(self.settings.orblib_settings['starting_orbit']) + '                              [starting orbit]' +'\n' + \
             str(self.settings.orblib_settings['number_orbits']) + '                             [orbits  to intergrate; -1 --> all orbits]' +'\n' + \
             str(self.settings.orblib_settings['accuracy']) + '                         [accuracy]' +'\n' + \
-            str(int(np.max(n_psf))) + '                              [number of psfs of the kinemtic cubes]' +'\n'
+            str(len(stars.kinematic_data)) + '                              [number of psfs of the kinematic cubes]' +'\n'
 
 
 
-        text2=str(int(np.max(n_psf))) + '                              [apertures]' +'\n'  + \
+        text2=str(len(stars.kinematic_data)) + '                              [apertures]' +'\n'  + \
               '"' + stars.kinematic_data[0].aperturefile +'"' +'\n'  + \
               '1                              [use psf 1] ' +'\n'  + \
               self.settings.orblib_settings['hist_vel'] + '  ' + self.settings.orblib_settings['hist_sigma'] + '  ' + self.settings.orblib_settings['hist_bins'] +'   [histogram]' +'\n'  + \
@@ -428,7 +431,7 @@ class LegacySchwarzschildModel(SchwarzschildModel):
         text='infil/paramsb.in' +'\n' + \
               str(int(np.max(n_psf))) + '                              [# of apertures]'  +'\n'  + \
               '"' + stars.kinematic_data[0].aperturefile +'"' +  '\n'  + \
-              str(len(n_psf[n_psf==1])) + '                              [# of gaussians components]'  +'\n' + \
+              str(len(stars.kinematic_data[0].PSF['sigma'])) + '                              [# of gaussians components]'  +'\n' + \
               str(psf_weight) + '   ' + str(psf_sigma) + '                     [weight sigma]' +  '\n'  + \
               '"' + stars.kinematic_data[0].binfile +'"' +'\n'  + \
               '"datfil/mass_aper.dat"'
