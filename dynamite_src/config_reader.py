@@ -38,6 +38,8 @@ class Settings(object):
             self.orblib_settings = values
         elif kind == 'parameter_space_settings':
             self.parameter_space_settings = values
+        elif kind == 'legacy_settings':
+            self.legacy_settings = values
         elif kind == 'output_settings':
             self.output_settings = values
         elif kind == 'weight_solver_settings':
@@ -200,6 +202,14 @@ class ConfigurationReaderYaml(object):
                     print('parameter_space_settings...')
                     print(f' {tuple(value.keys())}')
                 self.settings.add('parameter_space_settings', value)
+
+            # add legacy settings to config object
+
+            elif key == 'legacy_settings':
+                if not silent:
+                    print('legacy_settings...')
+                    print(f' {tuple(value.keys())}')
+                self.config.add('legacy_settings', value)
 
             # add output settings to config object
 

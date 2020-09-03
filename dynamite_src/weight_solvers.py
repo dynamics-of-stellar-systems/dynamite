@@ -1,4 +1,6 @@
+import os
 import numpy as np
+import subprocess
 from . import dynamics
 
 class WeightSolver(object):
@@ -44,31 +46,71 @@ class NNLS(WeightSolver):
 class LegacyWeightSolver(WeightSolver):
 
     def __init__(self,
+                 system=None,
                  mod_dir=None,
-                 settings=None):
+                 settings=None,
+                 legacy_directory=None,
+                 ml=None):
+        self.system = system
         self.mod_dir = mod_dir
         self.settings = settings
+        self.legacy_directory = legacy_directory
+        self.ml=ml
+
+
+
+
 
     def solve(self):
-        # self.write_executable()
-        # self.execute()
+        
+        #set the current directory to the directory in which the models are computed
+        cur_dir=os.getcwd()
+        os.chdir(self.mod_dir)
+        
+        cmdstr=self.write_executable()
+        self.execute(cmdstr)
+        
+        #set the current directory to the dynamite directory
+        os.chdir(cur_dir)
+        
         chi2, kinchi2 = self.read_output()
+        
         return chi2, kinchi2
 
     def write_executable(self):
-        # code to write the fortran executable here
-        pass
+        
+        '{:06.2f}'.format(self.ml)
+        nn='ml'+'{:01.2f}'.format(self.ml)+'/nn'
+        
+        print(nn)
 
-    def execute(self):
-        # code to run the executable here
-        pass
+        
+        cmdstr = 'cmdd' + str(self.system.name) + '_' + str(int(np.random.uniform(0, 1) * 100000.0))
+
+        txt_file = open(cmdstr, "w")
+        txt_file.write('#!/bin/bash' + '\n')
+        txt_file.write('# if the gzipped orbit library exist unzip it' + '\n')
+        txt_file.write('test -e ../datfil/orblib.dat || bunzip2 -k  datfil/orblib.dat.bz2 ' + '\n')
+        txt_file.write('test -e ../datfil/orblibbox.dat || bunzip2 -k  datfil/orblibbox.dat.bz2' + '\n')
+        txt_file.write('test -e ' + str(nn) + '_kinem.out || ' +
+                           self.legacy_directory +'/triaxnnls_CRcut < ' + str(nn) + '.in >>' +str(nn) + 'ls.log' + '\n')
+        txt_file.write('rm datfil/orblib.dat' + '\n') 
+        txt_file.write('rm datfil/orblibbox.dat' + '\n') 
+        txt_file.close()
+        
+        return cmdstr
+
+
+    def execute(self,cmdstr):
+        
+          p4 = subprocess.call('bash ' + cmdstr, shell=True)
 
     def read_output(self):
         ''' taken useful parts from triax_extract_chi2_iter in schw_domoditer,
         in particular lines 181-212
         '''
         # read amount of observables and kinematic moments
-        fname = self.mod_dir + 'nn_kinem.out'
+        fname = self.mod_dir + 'ml'+'{:01.2f}'.format(self.ml)+'/nn_kinem.out'
         a = self.__read_file_element(fname, [1, 1], [1, 2])
         ngh = np.int64(a[1])  # number of 'observables'
         nobs = np.int64(a[1])
@@ -76,11 +118,11 @@ class LegacyWeightSolver(WeightSolver):
         ncon = np.int64(a[0])
         rows = 3 + np.arange(nobs)  # rows 1- 9
         cols = 3 + np.zeros(nobs, dtype=int)  # skip over text
-        fname = self.mod_dir + 'nn_nnls.out'
+        fname = self.mod_dir + 'ml'+'{:01.2f}'.format(self.ml)+ '/nn_nnls.out'
         chi2vec = self.__read_file_element(fname, rows, cols)
         chi2vec = np.double(chi2vec)
         chi2 = sum(chi2vec)
-        fname = self.mod_dir + 'nn_kinem.out'
+        fname = self.mod_dir + 'ml'+'{:01.2f}'.format(self.ml)+'/nn_kinem.out'  #why is that in here twice?
         ka = np.genfromtxt(fname, skip_header=1)
         k = np.arange(ngh) * 3 + 3
         kinchi2 = sum(sum(pow(((ka[:, k] - ka[:, k + 1]) / ka[:, k + 2]), 2.0)))

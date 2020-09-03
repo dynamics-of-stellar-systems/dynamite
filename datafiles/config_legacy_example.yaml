@@ -69,8 +69,8 @@ system_components:
                     hi: 0.99
                     step: 0.04
                     minstep: 0.02
-                fixed: True
-                value: 0.99
+                fixed: False
+                value: 0.54
                 LaTeX: "$q_{min}$"
                 sformat: "6.2f"
             p:
@@ -106,8 +106,8 @@ system_components:
                 weight: 1.0                       # weight of kinematics data specified by name
                 type: GaussHermite                # specifies which object class to create
                 datafile: "datafiles/gauss_hermite_kins.ecvs"  # for both discrete and integrated types (actual example file)
-                aperturefile: aperture.dat      # integrated only (actual example file)
-                binfile: bins.dat               # integrated only (actual example file)
+                aperturefile: "infil/aperture.dat"      # integrated only (actual example file)
+                binfile: "infil/bins.dat"               # integrated only (actual example file)
                 maskfile: maskfile.dat          # made-up filename
 
 system_parameters: # these go into the physical system as a standalone parameter (i.e., not one of the components)
@@ -124,20 +124,26 @@ system_parameters: # these go into the physical system as a standalone parameter
         sformat: "6.2f"
 
 system_attributes:
-    distMPc: 38.82
+    distMPc: 39.96
     name: "NGC6278"
     position_angle: 97.69
 
-# SECTION 2
-# Data defining DYNAMITE SETTINGS
-
-orblib_settings: # don't put in physical system -> settings object
-    nE: 21
-    logrmin: -0.307153
-    logrmax: 1.89192
-    nI2: 10
-    nI3: 7
-    dithering: 3
+orblib_settings: # don't put in physical system -> config object
+    nE: 5
+    logrmin: -0.101275
+    logrmax: 1.99123
+    nI2: 4
+    nI3: 3
+    dithering: 1
+    #the following values should usually not be changed
+    orbital_periods: 200
+    sampling: 50000
+    starting_orbit: 1
+    number_orbits: -1 #-1 --> all orbits
+    accuracy: '1.0d-5'
+    hist_vel: '2719.8215332031'
+    hist_sigma: '0.0000'  #check what this is
+    hist_bins: '203'
 
 parameter_space_settings: # don't put in physical system -> settings object
 #    generator_type: "gaussian_process_emulator"
@@ -149,8 +155,13 @@ parameter_space_settings: # don't put in physical system -> settings object
         n_max_mods : 1000
         n_max_iter : 10
 
+legacy_settings:
+    directory: "/Users/pjethwa/Astro/Science/dynamite/triaxschwarz/triaxschwarzschild/"
+    setting1: True
+    setting2: False
+
 output_settings:
-    directory: "outputs/legacy/"
+    directory: "model_example/" #"outputs/legacy/"
     setting1: True
     setting2: False
 
@@ -158,6 +169,16 @@ weight_solver_settings:
     type: "LegacyWeightSolver"
     setting1: True
     setting2: False
+    regularisation: 0
+    number_GH: 4
+    GH_sys_err: '0.0 0.0 0.0 0.0 0.3 0.3 0.6 0.6'
+    lum_intr_rel_err: 0.01
+    sb_proj_rel_err: 0.02
+    ml_scale_factor: 1.0
+    nnls_solver: 1
+
+
+
 
 
 # end
