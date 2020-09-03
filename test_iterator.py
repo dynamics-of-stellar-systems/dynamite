@@ -41,21 +41,31 @@ chi2 = all_models.table['chi2']+all_models.table['kinchi2']
 min_chi2 = np.min(chi2)
 del_chi2 = chi2 - min_chi2
 
+
+np.where(np.array(parspace.par_names)=='f')
+
+parspace.par_names[2]
+parspace.par_names[7]
+
+all_models.table['dc']
+all_models.table['ml']
+
+
 # plot
 kwscat = dict(cmap=plt.cm.viridis_r,
               s=100)
-plt.scatter(all_models.table['mass'],
+plt.scatter(all_models.table['dc'],
             all_models.table['ml'],
             c=del_chi2,
             **kwscat)
 kwline = dict(color='k', lw=0.5)
-plt.axhline(parspace[0].grid_parspace_settings['lo'],
+plt.axvline(parspace[2].grid_parspace_settings['lo'],
             **kwline)
-plt.axhline(parspace[0].grid_parspace_settings['hi'],
+plt.axvline(parspace[2].grid_parspace_settings['hi'],
             **kwline)
-plt.axvline(parspace[7].grid_parspace_settings['lo'],
+plt.axhline(parspace[7].grid_parspace_settings['lo'],
             **kwline)
-plt.axvline(parspace[7].grid_parspace_settings['hi'],
+plt.axhline(parspace[7].grid_parspace_settings['hi'],
             **kwline)
 plt.colorbar()
 plt.show()

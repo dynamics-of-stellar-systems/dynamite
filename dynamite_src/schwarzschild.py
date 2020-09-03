@@ -161,7 +161,7 @@ class SchwarzschildModel(object):
     def get_model_directory(self):
         out_dir = self.settings.io_settings['output_directory']
         #out_dir += self.system.name
-        out_dir += '/models/'
+        out_dir += 'models/'
         # add all parameters to directory name except ml
         for par0, pval0 in zip(self.parspace, self.parset):
             pname0 = par0.name
