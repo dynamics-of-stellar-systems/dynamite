@@ -14,7 +14,6 @@ class SchwarzschildModelIterator(object):
         # get specified parameter generator
         parspace = parameter_space.ParameterSpace(system)
         par_generator_type = settings.parameter_space_settings['generator_type']
-        par_generator_type = par_generator_type
         par_generator = getattr(parameter_space, par_generator_type)(parspace)
         model_inner_iterator = SchwarzschildModelInnerIterator(
             system=system,
