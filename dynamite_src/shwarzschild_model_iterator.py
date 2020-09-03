@@ -53,7 +53,7 @@ class SchwarzschildModelInnerIterator(object):
             rows_to_do = rows_to_do[0]
             n_to_do = len(rows_to_do)
             for i, row in enumerate(rows_to_do):
-                print(f'... running model {i} out of {n_to_do}')
+                print(f'... running model {i+1} out of {n_to_do}')
                 # extract the parameter values
                 parset0 = self.all_models.table[row]
                 parset0 = parset0[self.parspace.par_names]

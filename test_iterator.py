@@ -21,10 +21,10 @@ all_models.table['chi2']
 
 chi2 = all_models.table['chi2']+all_models.table['kinchi2']
 min_chi2 = np.min(chi2)
-del_chi2 = chi2 -
+del_chi2 = chi2 - min_chi2
 plt.scatter(all_models.table['mass'],
             all_models.table['ml'],
-            c=)
+            c=del_chi2)
 kwline = dict(color='k', lw=0.5)
 plt.axhline(parspace[0].grid_parspace_settings['lo'], **kwline)
 plt.axhline(parspace[0].grid_parspace_settings['hi'], **kwline)
