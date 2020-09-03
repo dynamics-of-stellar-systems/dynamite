@@ -7,7 +7,6 @@ from astropy.io import ascii
 class MGE(data.Data):
 
     def __init__(self, **kwargs):
-        print('HAI')
         super().__init__(**kwargs)
 
     def read_file_old_format(self, filename):
