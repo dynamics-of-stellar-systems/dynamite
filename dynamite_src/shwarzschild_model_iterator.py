@@ -61,6 +61,7 @@ class SchwarzschildModelInnerIterator(object):
                 self.all_models.table['chi2'][row] = mod0.chi2
                 self.all_models.table['kinchi2'][row] = mod0.kinchi2
                 self.all_models.table['which_iter'][row] = iter
+                self.all_models.table['all_done'][row] = True
         return self.par_generator.status
 
     def create_model(self, parset):

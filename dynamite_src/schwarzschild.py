@@ -14,9 +14,7 @@ class AllModels(object):
                  from_file=True,
                  filename='all_models.ecsv',
                  settings=None,
-                 parspace=None,
-                 *args,
-                 **kwargs):
+                 parspace=None):
         self.settings = settings
         outdir = settings.io_settings['output_directory']
         filename = f'{outdir}{filename}'
@@ -25,12 +23,12 @@ class AllModels(object):
         self.parspace = parspace
         if from_file and os.path.isfile(filename):
             print(f'reading {filename} into table attribute')
-            self.read_completed_model_file(*args, **kwargs)
+            self.read_completed_model_file()
         else:
             print(f'making empty table attribute')
-            self.make_empty_table(self.parspace, *args, **kwargs)
+            self.make_empty_table()
 
-    def make_empty_table(self, *args, **kwargs):
+    def make_empty_table(self):
         names = self.parspace.par_names.copy()
         dtype = [np.float64 for n in names]
         # add the columns from legacy version
@@ -46,11 +44,10 @@ class AllModels(object):
         data = np.zeros((0, ncols))
         self.table = table.Table(data,
                                  names=names,
-                                 dtype=dtype,
-                                 *args, **kwargs)
+                                 dtype=dtype)
         return
 
-    def read_completed_model_file(self, *args, **kwargs):
+    def read_completed_model_file(self):
         self.table = ascii.read(self.filename)
         return
 

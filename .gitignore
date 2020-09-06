@@ -8,5 +8,5 @@ notebooks/.ipynb_checkpoints/*
 *.orig
 __pycache__
 *.gitignore
-model_example/*
+model_example/NGC6278/models/*
 pj_model/*
