@@ -9,4 +9,5 @@ notebooks/.ipynb_checkpoints/*
 __pycache__
 *.gitignore
 model_example/NGC6278/models/*
+model_example/NGC6278/all_models.ecsv
 pj_model/*
