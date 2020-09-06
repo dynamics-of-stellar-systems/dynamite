@@ -82,34 +82,50 @@ class ParameterSpace(list):
 class ParameterGenerator(object):
 
     def __init__(self,
-                 par_space=[]):
+                 par_space=[],
+                 name=None):
         self.par_space = par_space
+        self.name = name
         self.status = {}
 
-    def generate(self, current_models, n_new):
-        # placeholder function to generate a list of "n_new" parameters
-        # return new_parameter_list
-        # current_models will be an AllModels object
-        # ... i.e. all_mod = AllModels(...)
-        #          all_mod.tables is the table with params and chi2
-        stop = self.check_stopping_critera()
-        if stop:
-            return []
-        # else ...
-        return []
+    def generate(self,
+                 current_models=None,
+                 kw_specific_generate_method={}):
+        if current_models is None:
+            raise ValueError('current_models needs to be a valid schwarzschild.AllModels instance')
+        else:
+            self.current_models = current_models
+        self.check_stopping_critera()
+        if not self.status['stop']: # check whether we need to do anything in the first place...
+            self.specific_generate_method(**kw_specific_generate_method)
+            newmodels = 0
+            # Add new models to current_models.table
+            for m in self.model_list:
+                if self._is_newmodel(m, eps=1e-10):
+                    row = [p.value for p in m]
+                    for i in range(self.par_space.n_par, len(self.current_models.table.colnames)):
+                        row.append([np.dtype(self.current_models.table.columns[i].dtype).type(0)])
+                    self.current_models.table.add_row(row)
+                    newmodels += 1
+        print(f'{self.name} added {newmodels} new models')
+        self.status['n_new_models'] = newmodels
+        self.status['last_iter_added_no_new_models'] = True if newmodels == 0 else False
+        if newmodels == 0:
+            self.status['stop'] = True
+        return self.status
 
-    def check_stopping_critera(self, current_models):
+    def check_stopping_critera(self):
         self.status['stop'] = False
-        self.check_generic_stopping_critera(current_models)
-        self.check_specific_stopping_critera(current_models)
+        self.check_generic_stopping_critera()
+        self.check_specific_stopping_critera()
         for key in [reasons for reasons in self.status if isinstance(reasons, bool) and reasons != 'stop']:
             if self.status[key]:
                 self.status['stop'] = True
                 break
 
-    def check_generic_stopping_critera(self, current_models):
+    def check_generic_stopping_critera(self):
         self.status['n_max_mods_reached'] = \
-            True if len(current_models.table) >= current_models.settings.parameter_space_settings['stopping_criteria']['n_max_mods'] \
+            True if len(self.current_models.table) >= self.current_models.settings.parameter_space_settings['stopping_criteria']['n_max_mods'] \
                  else False
         # e.g. stop if:
         # i) number of models which have been run > max_n_mods => done
@@ -167,7 +183,12 @@ class ParameterGenerator(object):
 
 class GridSearch(ParameterGenerator):
 
-    def generate(self, current_models=None, n_new=0):
+    def __init__(self,
+                 par_space=[]):
+        super().__init__(par_space=par_space,
+                         name='GridWalk')
+
+    def specific_generate_method(self, **kwargs):
         """
         Adds new models to current_models.table. The center is determined as the parameter set with
         the least chi2+kinchi2 value.
@@ -185,57 +206,20 @@ class GridSearch(ParameterGenerator):
         -------
         dict, self.status, self.status['stop'] == True if stopping criteria is met
         """
-        # actual code to do grid search
-        # return new_parameter_list of length n_new
-        # if iter == 0 ... or... if there are no models yet:
-        #   make a basic grid
-
-        # if self.check_stopping_critera(current_models):
-        #     return 0
-        self.check_stopping_critera(current_models)
-        newmodels = 0
-        if not self.status['stop']: # check whether we need to do anything in the first place...
-
-            if current_models is None:
-                raise ValueError('current_models needs to be a valid schwarzschild.AllModels instance')
-            else:
-                self.current_models = current_models
-    
-            if len(self.current_models.table) == 0: # The 'zeroth iteration' results in only one model (all parameters at their .value level)
-                row = [p.value for p in self.par_space]
-                for i in range(self.par_space.n_par, len(self.current_models.table.colnames)):
-                    row.append([np.dtype(self.current_models.table.columns[i].dtype).type(0)])
-                self.current_models.table.add_row(row)
-                newmodels = 1
-            else: # Subsequent iterations...
-                # Center criterion: min(chi2+kinchi2)
-                chi2_all = [m['chi2']+m['kinchi2'] for m in self.current_models.table]
-                center_idx = np.argmin(chi2_all)
-                center = list(self.current_models.table[center_idx])[:self.par_space.n_par]
-                # print(f'center: {center}')
-    
-                # Build model_list by walking the grid
-                self.model_list = []
-                self.grid_walk(center=center)
-                # for m in self.model_list:
-                #     print(f'{[(p.name, p.value) for p in m]}')
-                print(f'GridWalk found {len(self.model_list)} models')
-    
-                # Add new models to current_models.table
-                for m in self.model_list:
-                    if self._is_newmodel(m, eps=1e-10):
-                        row = [p.value for p in m]
-                        for i in range(self.par_space.n_par, len(self.current_models.table.colnames)):
-                            row.append([np.dtype(self.current_models.table.columns[i].dtype).type(0)])
-                        self.current_models.table.add_row(row)
-                        newmodels += 1
-
-        print(f'GridWalk added {newmodels} new models')
-        self.status['n_new_models'] = newmodels
-        self.status['last_iter_added_no_new_models'] = True if newmodels == 0 else False
-        if newmodels == 0:
-            self.status['stop'] = True
-        return self.status
+        if len(self.current_models.table) == 0: # The 'zeroth iteration' results in only one model (all parameters at their .value level)
+            self.model_list = [[p for p in self.par_space]]
+        else: # Subsequent iterations...
+            # Center criterion: min(chi2+kinchi2)
+            chi2_all = [m['chi2']+m['kinchi2'] for m in self.current_models.table]
+            center_idx = np.argmin(chi2_all)
+            center = list(self.current_models.table[center_idx])[:self.par_space.n_par]
+            # print(f'center: {center}')
+            # Build model_list by walking the grid
+            self.model_list = []
+            self.grid_walk(center=center)
+            # for m in self.model_list:
+            #     print(f'{[(p.name, p.value) for p in m]}')
+        return
 
     def grid_walk(self, center=None, par=None, eps=1e-6):
         """
@@ -346,7 +330,7 @@ class GridSearch(ParameterGenerator):
         else:
             raise ValueError('Clip error: minimum must be less than or equal to maximum')
 
-    def check_specific_stopping_critera(self, current_models):
+    def check_specific_stopping_critera(self):
         stop = False
         # stop if...
         # (i) if iter>1, last iteration did not improve chi2 by min_delta_chi2
