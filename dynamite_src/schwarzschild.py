@@ -256,7 +256,7 @@ class LegacySchwarzschildModel(SchwarzschildModel):
 
 
             #prepare fortran input file for nnls
-            self.create_fortran_input_nnls(self.directory)
+            self.create_fortran_input_nnls(self.directory_noml)
 
             #apply the nnls
             weight_solver = ws.LegacyWeightSolver(
@@ -314,7 +314,7 @@ class LegacySchwarzschildModel(SchwarzschildModel):
              str(self.settings.orblib_settings['nI3']) +'\n' + \
              str(self.settings.orblib_settings['dithering']) +'\n' + \
              dm_specs +'\n' + \
-             str(self.parset['dc']) +' ' + str(self.parset['f']) +'\n'
+             str(self.parset['dc']) +' ' + str(self.parset['f'])
 
         #parameters.in
         np.savetxt(path+'parameters.in',stars.mge.data,header=str(len_mge),footer=text,comments='',fmt=['%10.2f','%10.5f','%10.5f','%10.2f'])
@@ -449,6 +449,13 @@ class LegacySchwarzschildModel(SchwarzschildModel):
 
     def create_fortran_input_nnls(self,path):
 
+        
+        #for the ml the model is only scaled. We therefore need to know what is the ml that was used for the orbit library
+        infile=path+'infil/parameters.in'
+        lines = [line.rstrip('\n').split() for line in open(infile)]
+        ml_orblib=float((lines[-9])[0])
+        
+        
         #-------------------
         #write nn.in
         #-------------------
@@ -463,12 +470,12 @@ class LegacySchwarzschildModel(SchwarzschildModel):
         str(self.settings.weight_solver_settings['GH_sys_err']) + '    [ systemic error of v, sigma, h3, h4... ]' + '\n' + \
         str(self.settings.weight_solver_settings['lum_intr_rel_err']) + '                               [ relative error for intrinsic luminosity ]' +'\n' + \
         str(self.settings.weight_solver_settings['sb_proj_rel_err']) + '                               [ relative error for projected SB ]' + '\n' + \
-        str(self.settings.weight_solver_settings['ml_scale_factor']) + '                                [ scale factor related to M/L, sqrt( (M/L)_k / (M/L)_ref ) ]' + '\n' + \
+        str(np.sqrt(self.parset['ml']/ml_orblib))  + '                                [ scale factor related to M/L, sqrt( (M/L)_k / (M/L)_ref ) ]' + '\n' + \
         'datfil/orblib.dat' +'\n' + \
         'datfil/orblibbox.dat' +'\n' + \
         str(self.settings.weight_solver_settings['nnls_solver']) + '                                  [ nnls solver ]'
 
-        nn_file= open(path+'nn.in',"w")
+        nn_file= open(path+'ml'+'{:01.2f}'.format(self.parset['ml'])+'/nn.in',"w")
         nn_file.write(text)
         nn_file.close()
 
