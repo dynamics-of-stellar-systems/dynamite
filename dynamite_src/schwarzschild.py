@@ -22,15 +22,16 @@ class AllModels(object):
         filename = f'{outdir}{filename}'
         self.filename = filename
         print(filename)
+        self.parspace = parspace
         if from_file and os.path.isfile(filename):
             print(f'reading {filename} into table attribute')
             self.read_completed_model_file(*args, **kwargs)
         else:
             print(f'making empty table attribute')
-            self.make_empty_table(parspace, *args, **kwargs)
+            self.make_empty_table(self.parspace, *args, **kwargs)
 
-    def make_empty_table(self, parspace, *args, **kwargs):
-        names = parspace.par_names.copy()
+    def make_empty_table(self, *args, **kwargs):
+        names = self.parspace.par_names.copy()
         dtype = [np.float64 for n in names]
         # add the columns from legacy version
         names += ['chi2', 'kinchi2', 'time_modified', 'directory']
@@ -122,6 +123,10 @@ class AllModels(object):
         mods.write(self.filename, format='ascii.ecsv')
         return
 
+    def get_parset_from_row(self, row_id):
+        parset = self.table[row_id][self.parspace.par_names]
+        return parset
+
 
 class SchwarzschildModel(object):
 
@@ -196,7 +201,8 @@ class LegacySchwarzschildModel(SchwarzschildModel):
                  system=None,
                  settings=None,
                  parset=None,
-                 parspace=None):
+                 parspace=None,
+                 execute_run=True):
 
         self.system = system
         self.settings = settings
@@ -220,54 +226,56 @@ class LegacySchwarzschildModel(SchwarzschildModel):
         #might be removed later, use string.split() or /../
         self.directory_noml=self.directory[:-7]
 
-        # create self.directory if it doesn't exist
-        self.create_model_directory(self.directory)
+        if execute_run:
 
-        #and also the model directories
-        self.create_model_directory(self.directory_noml+'infil/')
-        self.create_model_directory(self.directory_noml+'datfil/')
+            # create self.directory if it doesn't exist
+            self.create_model_directory(self.directory)
 
-
-        #add communication to the user
-        #check if orbit library was calculated already
-        if not os.path.isfile(self.directory_noml+'datfil/orblib.dat.bz2') or not os.path.isfile(self.directory_noml+'datfil/orblibbox.dat.bz2') :
-
-            #prepare the fortran input files for orblib, possibly as template files
-            self.create_fortran_input_orblib(self.directory_noml+'infil/')
-
-            #FOR NOW: copy the *.dat-files from datafiles, TODO: will be created via prepare_data, links hardcoded not so good
-            shutil.copyfile(self.in_dir+'kin_data.dat', self.directory_noml+'infil/kin_data.dat')
-            shutil.copyfile(self.in_dir+'aperture.dat', self.directory_noml+'infil/aperture.dat')
-            shutil.copyfile(self.in_dir+'bins.dat', self.directory_noml+'infil/bins.dat')
+            #and also the model directories
+            self.create_model_directory(self.directory_noml+'infil/')
+            self.create_model_directory(self.directory_noml+'datfil/')
 
 
+            #add communication to the user
+            #check if orbit library was calculated already
+            if not os.path.isfile(self.directory_noml+'datfil/orblib.dat.bz2') or not os.path.isfile(self.directory_noml+'datfil/orblibbox.dat.bz2') :
 
-            #calculate orbit libary
-            orb_lib = dyn.LegacyOrbitLibrary(
+                #prepare the fortran input files for orblib, possibly as template files
+                self.create_fortran_input_orblib(self.directory_noml+'infil/')
+
+                #FOR NOW: copy the *.dat-files from datafiles, TODO: will be created via prepare_data, links hardcoded not so good
+                shutil.copyfile(self.in_dir+'kin_data.dat', self.directory_noml+'infil/kin_data.dat')
+                shutil.copyfile(self.in_dir+'aperture.dat', self.directory_noml+'infil/aperture.dat')
+                shutil.copyfile(self.in_dir+'bins.dat', self.directory_noml+'infil/bins.dat')
+
+
+
+                #calculate orbit libary
+                orb_lib = dyn.LegacyOrbitLibrary(
+                        system=self.system,
+                        mod_dir=self.directory_noml,
+                        settings=self.settings.orblib_settings,
+                        legacy_directory=self.legacy_directory)
+
+
+            #prepare fortran input file for nnls
+            self.create_fortran_input_nnls(self.directory)
+
+            #apply the nnls
+            weight_solver = ws.LegacyWeightSolver(
                     system=self.system,
                     mod_dir=self.directory_noml,
-                    settings=self.settings.orblib_settings,
-                    legacy_directory=self.legacy_directory)
+                    settings=self.settings.weight_solver_settings,
+                    legacy_directory=self.legacy_directory,
+                    ml=self.parset['ml'])
 
+            chi2, kinchi2 = weight_solver.solve()
 
-        #prepare fortran input file for nnls
-        self.create_fortran_input_nnls(self.directory)
+            # TODO: extract other outputs e.g. orbital weights
 
-        #apply the nnls
-        weight_solver = ws.LegacyWeightSolver(
-                system=self.system,
-                mod_dir=self.directory_noml,
-                settings=self.settings.weight_solver_settings,
-                legacy_directory=self.legacy_directory,
-                ml=self.parset['ml'])
-
-        chi2, kinchi2 = weight_solver.solve()
-
-        # TODO: extract other outputs e.g. orbital weights
-
-        # store result
-        self.chi2 = chi2
-        self.kinchi2 = kinchi2
+            # store result
+            self.chi2 = chi2
+            self.kinchi2 = kinchi2
 
 
     def create_fortran_input_orblib(self,path):
