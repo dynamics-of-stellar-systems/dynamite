@@ -307,7 +307,7 @@ class LegacySchwarzschildModel(SchwarzschildModel):
         text=str(self.system.distMPc)+'\n'+ \
              '{:06.9f}'.format(theta)+' '+ '{:06.9f}'.format(phi)+' '+ '{:06.9f}'.format(psi) + '\n' + \
              str(self.parset['ml'])+'\n' + \
-             str(10**self.parset['mass'])+'\n' + \
+             str(self.parset['mass'])+'\n' + \
              str(self.parset['a'])+'\n' + \
              str(self.settings.orblib_settings['nE']) +' ' +str(self.settings.orblib_settings['logrmin']) +' ' +str(self.settings.orblib_settings['logrmax'])+ '\n' + \
              str(self.settings.orblib_settings['nI2']) +'\n' + \
