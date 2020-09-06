@@ -24,7 +24,8 @@ class Parameter(object):
                  sformat="%g",
                  value=None,
                  grid_parspace_settings=None,
-                 gpe_parspace_settings=None
+                 gpe_parspace_settings=None,
+                 logarithmic=False,
                  # lo=None,
                  # hi=None,
                  # step=None,
@@ -38,6 +39,7 @@ class Parameter(object):
         self.value = value
         self.grid_parspace_settings = grid_parspace_settings
         self.gpe_parspace_settings = gpe_parspace_settings
+        self.logarithmic = logarithmic
         # self.lo = lo
         # self.hi = hi
         # self.step = step
@@ -102,7 +104,9 @@ class ParameterGenerator(object):
             # Add new models to current_models.table
             for m in self.model_list:
                 if self._is_newmodel(m, eps=1e-10):
-                    row = [p.value for p in m]
+                    row = [p.value if p.logarithmic is False
+                           else 10.**p.value
+                           for p in m]
                     for i in range(self.par_space.n_par, len(self.current_models.table.colnames)):
                         row.append([np.dtype(self.current_models.table.columns[i].dtype).type(0)])
                     self.current_models.table.add_row(row)
@@ -150,7 +154,9 @@ class ParameterGenerator(object):
         """
         if any(map(lambda t: not isinstance(t, parspace.Parameter), model)):
             raise ValueError('Model argument must be a list of Parameter objects')
-        model_values = [p.value for p in model]
+        model_values = [p.value if p.logarithmic is False
+                        else 10.**p.value
+                        for p in model]
         if len(self.current_models.table) > 0:
             isnew = True
             for curmod in self.current_models.table[self.par_space.par_names]:
@@ -160,25 +166,6 @@ class ParameterGenerator(object):
         else:
             isnew = True
         return isnew
-
-    def model_compare(self, model1=None, model2=None, eps=1e-10): # might not need this method...
-        """
-        Compares the parameter sets of two models
-
-        Parameters
-        ----------
-        model1, model2 : Model objects
-        eps : accuracy for numerical comparison (default: 1e-10)
-
-        Returns
-        -------
-        True if parameter sets have the same .value attributes and are in the
-        same order, False otherwise
-        """
-        for paridx in range(len(model1.parset)):
-            if abs(model1.parset[paridx].value-model2.parset[paridx].value) > eps:
-                return False
-        return True
 
 
 class GridSearch(ParameterGenerator):
@@ -213,7 +200,12 @@ class GridSearch(ParameterGenerator):
             chi2_all = [m['chi2']+m['kinchi2'] for m in self.current_models.table]
             center_idx = np.argmin(chi2_all)
             center = list(self.current_models.table[center_idx])[:self.par_space.n_par]
-            # print(f'center: {center}')
+
+            center = [c0 if p.logarithmic is False
+                      else np.log10(c0)
+                      for (c0,p) in zip(center, self.par_space)]
+
+            print(f'center: {center}')
             # Build model_list by walking the grid
             self.model_list = []
             self.grid_walk(center=center)
