@@ -59,6 +59,20 @@ class Parameter(object):
     def __repr__(self):
         return (f'{self.__class__.__name__}({self.__dict__})')
 
+    def get_par_value_from_raw_value(self, raw_value):
+        if self.logarithmic is True:
+            par_value = 10.**raw_value
+        else:
+            par_value = raw_value
+        return par_value
+
+    def get_raw_value_from_par_value(self, par_value):
+        if self.logarithmic is True:
+            raw_value = np.log10(par_value)
+        else:
+            raw_value = par_value
+        return raw_value
+
 
 class ParameterSpace(list):
 
@@ -79,6 +93,16 @@ class ParameterSpace(list):
 
     def __repr__(self):
         return (f'{self.__class__.__name__}({[p for p in self]}, {self.__dict__})')
+
+    def get_param_value_from_raw_value(self, raw_value):
+        par_val = [p.get_par_value_from_raw_value(rv0)
+                   for (rv0, p) in zip(raw_value, self)]
+        return par_val
+
+    def get_raw_value_from_param_value(self, par_val):
+        raw_value = [p.get_raw_value_from_par_value(pv0)
+                     for (pv0, p) in zip(par_val, self)]
+        return raw_value
 
 
 class ParameterGenerator(object):
@@ -104,9 +128,8 @@ class ParameterGenerator(object):
             # Add new models to current_models.table
             for m in self.model_list:
                 if self._is_newmodel(m, eps=1e-10):
-                    row = [p.value if p.logarithmic is False
-                           else 10.**p.value
-                           for p in m]
+                    raw_row = [p.value for p in m]
+                    row = self.par_space.get_param_value_from_raw_value(raw_row)
                     for i in range(self.par_space.n_par, len(self.current_models.table.colnames)):
                         row.append([np.dtype(self.current_models.table.columns[i].dtype).type(0)])
                     self.current_models.table.add_row(row)
@@ -154,9 +177,8 @@ class ParameterGenerator(object):
         """
         if any(map(lambda t: not isinstance(t, parspace.Parameter), model)):
             raise ValueError('Model argument must be a list of Parameter objects')
-        model_values = [p.value if p.logarithmic is False
-                        else 10.**p.value
-                        for p in model]
+        raw_model_values = [p.value for p in model]
+        model_values = self.par_space.get_param_value_from_raw_value(raw_model_values)
         if len(self.current_models.table) > 0:
             isnew = True
             for curmod in self.current_models.table[self.par_space.par_names]:
@@ -166,6 +188,7 @@ class ParameterGenerator(object):
         else:
             isnew = True
         return isnew
+
 
 
 class GridSearch(ParameterGenerator):
@@ -200,15 +223,11 @@ class GridSearch(ParameterGenerator):
             chi2_all = [m['chi2']+m['kinchi2'] for m in self.current_models.table]
             center_idx = np.argmin(chi2_all)
             center = list(self.current_models.table[center_idx])[:self.par_space.n_par]
-
-            center = [c0 if p.logarithmic is False
-                      else np.log10(c0)
-                      for (c0,p) in zip(center, self.par_space)]
-
-            print(f'center: {center}')
+            raw_center = self.par_space.get_raw_value_from_param_value(center)
+            # print(f'center: {center}')
             # Build model_list by walking the grid
             self.model_list = []
-            self.grid_walk(center=center)
+            self.grid_walk(center=raw_center)
             # for m in self.model_list:
             #     print(f'{[(p.name, p.value) for p in m]}')
         return
