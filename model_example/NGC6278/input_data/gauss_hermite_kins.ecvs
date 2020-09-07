@@ -22,11 +22,9 @@
 # meta: !!omap
 # - PSF:
 #     sigma:
-#     - 4
-#     - 6
+#     - 1.06
 #     weight:
-#     - 0.4
-#     - 0.6
+#     - 1.0
 # schema: astropy-2.0
 vbin_id v dv sigma dsigma h3 dh3 h4 dh4
 1 -55.1457 2.0968 193.5 2.0798 0.077 0.3 0.0 0.3

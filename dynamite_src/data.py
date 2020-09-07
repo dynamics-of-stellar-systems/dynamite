@@ -26,14 +26,13 @@ class Integrated(Data):
                  aperturefile=None,
                  binfile=None,
                  maskfile=None,
-                 PSF=None,
                  **kwargs
                  ):
         self.aperturefile = aperturefile
         self.binfile = binfile
         self.maskfile = maskfile
-        self.PSF = PSF
         super().__init__(**kwargs)
+        self.PSF = self.data.meta['PSF']
         pass
 
 
