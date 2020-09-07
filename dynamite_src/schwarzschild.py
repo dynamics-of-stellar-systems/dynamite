@@ -199,7 +199,9 @@ class LegacySchwarzschildModel(SchwarzschildModel):
                  settings=None,
                  parset=None,
                  parspace=None,
-                 execute_run=True):
+                 execute_run=True,
+                 use_fake_chi2=False,
+                 fake_chi2_function=None):
 
         self.system = system
         self.settings = settings
@@ -222,6 +224,10 @@ class LegacySchwarzschildModel(SchwarzschildModel):
 
         #might be removed later, use string.split() or /../
         self.directory_noml=self.directory[:-7]
+
+        if use_fake_chi2:
+            self.chi2 = fake_chi2_function(parset)
+            self.kinchi2 = 0.
 
         if execute_run:
 

@@ -8,7 +8,8 @@ class SchwarzschildModelIterator(object):
     def __init__(self,
                  system=None,
                  all_models=None,
-                 settings=None):
+                 settings=None,
+                 model_kwargs={}):
         stopping_crit = settings.parameter_space_settings['stopping_criteria']
         n_max_iter = stopping_crit['n_max_iter']
         # get specified parameter generator
@@ -19,7 +20,8 @@ class SchwarzschildModelIterator(object):
             system=system,
             all_models=all_models,
             settings=settings,
-            par_generator=par_generator)
+            par_generator=par_generator,
+            model_kwargs=model_kwargs)
         for iter in range(n_max_iter):
             print(f'{par_generator_type}: "iteration {iter}"')
             status = model_inner_iterator.run_iteration(iter)
@@ -36,12 +38,14 @@ class SchwarzschildModelInnerIterator(object):
                  system=None,
                  all_models=None,
                  settings=None,
-                 par_generator=None):
+                 par_generator=None,
+                 model_kwargs={}):
         self.system = system
         self.all_models = all_models
         self.settings = settings
         self.parspace = parameter_space.ParameterSpace(system)
         self.par_generator = par_generator
+        self.model_kwargs = model_kwargs
 
     def run_iteration(self, iter):
         self.par_generator.generate(current_models=self.all_models)
@@ -57,27 +61,31 @@ class SchwarzschildModelInnerIterator(object):
                 parset0 = self.all_models.table[row]
                 parset0 = parset0[self.parspace.par_names]
                 # create and run the model
-                mod0 = self.create_model(parset0)
+                mod0 = self.create_model(parset0,
+                                         model_kwargs=self.model_kwargs)
                 self.all_models.table['chi2'][row] = mod0.chi2
                 self.all_models.table['kinchi2'][row] = mod0.kinchi2
                 self.all_models.table['which_iter'][row] = iter
                 self.all_models.table['all_done'][row] = True
         return self.par_generator.status
 
-    def create_model(self, parset):
-        kwargs = {'system':self.system,
-                  'settings':self.settings,
-                  'parspace':self.parspace,
-                  'parset':parset}
+    def create_model(self,
+                     parset,
+                     model_kwargs={}):
+        model_kwargs0 = {'system':self.system,
+                         'settings':self.settings,
+                         'parspace':self.parspace,
+                         'parset':parset}
+        model_kwargs0.update(model_kwargs)
         # create a model object based on choices in settings
         if self.settings.legacy_settings['use_legacy_mode']:
-            mod = getattr(schwarzschild, 'LegacySchwarzschildModel')(**kwargs)
+            mod = getattr(schwarzschild, 'LegacySchwarzschildModel')(**model_kwargs0)
         else:
             # TODO: create other model classes based on a choice of:
             # (i) orbit library generator
             # (i) weight solver
             # (iii) colour solver
-            # mod = getattr(schwarzschild, '...')(**kwargs)
+            # mod = getattr(schwarzschild, '...')(**model_kwargs0)
             raise ValueError("""
                              Only Legacy Mode currently implemented. Set
                                  legacy_settings:
