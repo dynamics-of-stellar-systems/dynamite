@@ -17,9 +17,10 @@ system_components:
                     lo: 1.0
                     hi: 10.0
                     step: 1.
-                    minstep: 0.2
-                fixed: True
+                    minstep: 0.
+                fixed: False
                 value: 5.0
+                logarithmic: True
                 LaTeX: "$M_{BH}$"
                 sformat: "6.2f"
             a:
@@ -48,12 +49,13 @@ system_components:
             f:
                 desc: "NFW Darkmatter fraction (in log)"
                 grid_parspace_settings:
-                    lo: 2.0
-                    hi: 4.0
-                    step: 0.4
-                    minstep: 0.2
+                    lo: -1.0
+                    hi: 2.0
+                    step: 0.5
+                    minstep: 0.
+                logarithmic: True
                 fixed: False
-                value: 3.0
+                value: 1.0
                 LaTeX: "$log(M_{200}/M_{star})$"
                 sformat: "6.2f"
         type: NFW
