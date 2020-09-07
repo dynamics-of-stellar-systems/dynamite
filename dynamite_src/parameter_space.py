@@ -117,6 +117,37 @@ class ParameterGenerator(object):
     def generate(self,
                  current_models=None,
                  kw_specific_generate_method={}):
+        """Generate new parameter sets. This is a wrapper method around the
+        specific_generate_method of child generator classes. This wrapper does
+        the following:
+        (i) evaluates stopping criteria, and stop if necessary
+        (ii) runs the specific_generate_method of the child class, which updates
+        self.model_list with a list of propsal models
+        (iii) removes previously run models from self.model_list
+        (iv) converts parameters from raw_values to par_values
+        (v) adds new models to current_models.table
+        (vi) update and return the status dictinary
+
+        Parameters
+        ----------
+        current_models : schwarzschild.AllModels
+        kw_specific_generate_method : dict
+            keyword arguments passed to the specific_generate_method of the
+            child class
+
+        Returns
+        -------
+        dict
+            a dictionary status, with entries
+            - stop: bool, whether or not any stopping criteria are met
+            - n_new_models: int
+            and additional boolean entries for the indivdidual stopping criteria
+            - last_iter_added_no_new_models
+            - n_max_mods_reached
+            - n_max_iter_reached
+            - plus any criteria specific to the child class
+
+        """
         if current_models is None:
             raise ValueError('current_models needs to be a valid schwarzschild.AllModels instance')
         else:
