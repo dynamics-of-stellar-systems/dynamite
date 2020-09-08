@@ -35,7 +35,8 @@ print(all_models.table)
 print('parameter_space start...')
 
 # Instantiate GridSearch object
-g = dyn.parameter_space.GridSearch(parspace)
+parspace_settings = c.settings.parameter_space_settings
+g = dyn.parameter_space.GridSearch(parspace, parspace_settings=parspace_settings)
 
 # generate first model list: grid walk "iteration 0"
 print('grid walk "iteration 0"')

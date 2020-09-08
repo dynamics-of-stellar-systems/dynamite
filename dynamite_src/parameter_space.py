@@ -1,11 +1,11 @@
 # # some tricks to add the current path to sys.path (so the imports below work)
 
-# import os.path
-# import sys
+import os.path
+import sys
 
-# this_dir = os.path.dirname(__file__)
-# if not this_dir in sys.path:
-#     sys.path.append(this_dir)
+this_dir = os.path.dirname(__file__)
+if not this_dir in sys.path:
+    sys.path.append(this_dir)
 
 import numpy as np
 import copy
@@ -82,8 +82,12 @@ class ParameterSpace(list):
 class ParameterGenerator(object):
 
     def __init__(self,
-                 par_space=[]):
+                 par_space=[],
+                 parspace_settings=None):
         self.par_space = par_space
+        if not parspace_settings:
+            raise ValueError('ParameterGenerator needs parspace_settings')
+        self.parspace_settings = parspace_settings
         self.status = {}
 
     def generate(self, current_models, n_new):
@@ -109,7 +113,7 @@ class ParameterGenerator(object):
 
     def check_generic_stopping_critera(self, current_models):
         self.status['n_max_mods_reached'] = \
-            True if len(current_models.table) >= current_models.settings.parameter_space_settings['stopping_criteria']['n_max_mods'] \
+            True if len(current_models.table) >= self.parspace_settings['stopping_criteria']['n_max_mods'] \
                  else False
         # e.g. stop if:
         # i) number of models which have been run > max_n_mods => done
@@ -185,13 +189,9 @@ class GridSearch(ParameterGenerator):
         -------
         dict, self.status, self.status['stop'] == True if stopping criteria is met
         """
-        # actual code to do grid search
-        # return new_parameter_list of length n_new
-        # if iter == 0 ... or... if there are no models yet:
-        #   make a basic grid
 
-        # if self.check_stopping_critera(current_models):
-        #     return 0
+        if self.parspace_settings['generator_type'] != 'GridSearch':
+            raise ValueError(f"generator_type must be GridSearch, not {self.parspace_settings['generator_type']}")
         self.check_stopping_critera(current_models)
         newmodels = 0
         if not self.status['stop']: # check whether we need to do anything in the first place...

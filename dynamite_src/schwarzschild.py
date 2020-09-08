@@ -15,7 +15,7 @@ class AllModels(object):
                  filename='all_models.ecsv',
                  settings=None,
                  parspace=None):
-        self.settings = settings
+        # self.settings = settings
         outdir = settings.io_settings['output_directory']
         filename = f'{outdir}{filename}'
         self.filename = filename
