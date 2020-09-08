@@ -301,22 +301,23 @@ class GridSearch(ParameterGenerator):
                 if tol > eps:
                     par_values.append(self.clip(center[paridx] + par.grid_parspace_settings['step'], lo, hi))
 
-        for par.value in par_values:
-            # par.value = value
+        for value in par_values:
+            parcpy = copy.deepcopy(par)
+            parcpy.value = value
             if not self.model_list: # add first entry if model_list is empty
-                self.model_list = [[copy.deepcopy(par)]]
+                self.model_list = [[parcpy]]
                 models_prev = [[]]
-                # print(f'new model list, starting with parameter {par.name}')
-            elif par.name in [p.name for p in self.model_list[0]]: # in this case, create new (partial) model by copying last models and setting the new parameter value
+                # print(f'new model list, starting with parameter {parcpy.name}')
+            elif parcpy.name in [p.name for p in self.model_list[0]]: # in this case, create new (partial) model by copying last models and setting the new parameter value
                 for m in models_prev:
-                    new_model = m + [copy.deepcopy(par)]
+                    new_model = m + [parcpy]
                     self.model_list.append(new_model)
-                # print(f'{par.name} is in {[p.name for p in self.model_list[0]]}, added {par.name}={par.value}')
+                # print(f'{parcpy.name} is in {[p.name for p in self.model_list[0]]}, added {parcpy.name}={parcpy.value}')
             else: # new parameter - simply append the parameter to existing (partial) models
                 models_prev = copy.deepcopy(self.model_list)
                 for m in self.model_list:
-                    m.append(copy.deepcopy(par))
-                # print(f'new parameter {par.name}={par.value}')
+                    m.append(parcpy)
+                # print(f'new parameter {parcpy.name}={parcpy.value}')
 
         if paridx < self.par_space.n_par - 1: # call recursively until all paramaters are done...
             self.grid_walk(center=center, par=self.par_space[paridx+1])

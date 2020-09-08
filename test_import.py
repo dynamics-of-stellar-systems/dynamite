@@ -8,7 +8,7 @@ import dynamite_src as dyn
 # fname = './datafiles/config_example.yaml'
 
 fname = './model_example/NGC6278/input_data/config_legacy_example.yaml'
-fname = './datafiles/config_legacy_example.yaml'
+fname = './model_example/NGC6278/config_legacy_example.yaml'
 c = dyn.config_reader.ConfigurationReaderYaml(fname)
 
 # extract parameter space
