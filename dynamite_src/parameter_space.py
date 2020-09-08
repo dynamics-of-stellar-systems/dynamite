@@ -142,21 +142,19 @@ class ParameterGenerator(object):
 
     def check_stopping_critera(self, current_models):
         self.status['stop'] = False
-        self.check_generic_stopping_critera(current_models)
-        self.check_specific_stopping_critera(current_models)
-        for key in [reasons for reasons in self.status if isinstance(reasons, bool) and reasons != 'stop']:
-            if self.status[key]:
-                self.status['stop'] = True
-                break
+        if len(current_models.table) > 0: # never stop when current_models is empty
+            self.check_generic_stopping_critera(current_models)
+            self.check_specific_stopping_critera(current_models)
+            for key in [reasons for reasons in self.status if isinstance(reasons, bool) and reasons != 'stop']:
+                if self.status[key]:
+                    self.status['stop'] = True
+                    break
 
     def check_generic_stopping_critera(self, current_models):
         self.status['n_max_mods_reached'] = \
-            True if len(current_models.table) >= self.parspace_settings['stopping_criteria']['n_max_mods'] \
-                 else False
-        # e.g. stop if:
-        # i) number of models which have been run > max_n_mods => done
-        # ii) number of iterations > max_n_iter => CODE ME: need iter_count in astropy table
-        self.status['n_max_iter_reached'] = False
+            len(current_models.table) >= self.parspace_settings['stopping_criteria']['n_max_mods']
+        self.status['n_max_iter_reached'] = \
+            np.max(current_models.table['which_iter']) >= self.parspace_settings['stopping_criteria']['n_max_iter']
         # iii) ...
 
     def _is_newmodel(self, model, eps=1e-6):
@@ -383,13 +381,17 @@ class GridSearch(ParameterGenerator):
             raise ValueError('Clip error: minimum must be less than or equal to maximum')
 
     def check_specific_stopping_critera(self, current_models):
-        stop = False
         # stop if...
         # (i) if iter>1, last iteration did not improve chi2 by min_delta_chi2
         # where we'll set min_delta_chi2 in config file => CODE ME: need iter_count in astropy table
         self.status['min_delta_chi2_reached'] = False
+        last_iter = np.max(self.current_models.table['which_iter'])
+        if last_iter > 0:
+            chi2_0 = np.min([m['chi2']+m['kinchi2'] for m in current_models.table if m['which_iter']==last_iter])
+            chi2_1 = np.min([m['chi2']+m['kinchi2'] for m in current_models.table if m['which_iter']==last_iter-1])
+            if chi2_1-chi2_0 < self.parspace_settings['stopping_criteria']['min_delta_chi2']:
+                self.status['min_delta_chi2_reached'] = True
         # (ii) if step_size < min_step_size for all params => dealt with by grid_walk (doesn't create such models)
-        return stop
 
 
 class GaussianProcessEmulator(ParameterGenerator):
