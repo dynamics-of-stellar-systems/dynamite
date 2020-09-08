@@ -33,18 +33,20 @@ class AllModels(object):
         dtype = [np.float64 for n in names]
         # add the columns from legacy version
         names += ['chi2', 'kinchi2', 'time_modified', 'directory']
-        dtype += [np.float64, np.float64, np.float64, '<U100']
+        dtype += [np.float64, np.float64, '<M8[ms]', '<U100']
         # add extra columns
         names += ['ics_done', 'orblib_done', 'weights_done', 'all_done']
         dtype += [bool, bool, bool, bool]
         # which_iter will record which iteration of parameters a model came from
         names += ['which_iter']
         dtype += [int]
-        ncols = len(names)
-        data = np.zeros((0, ncols))
-        self.table = table.Table(data,
-                                 names=names,
-                                 dtype=dtype)
+        # ncols = len(names)
+        # data = np.zeros((0, ncols))
+        # self.table = table.Table(data,
+        #                          names=names,
+        #                          dtype=dtype)
+        # print(names, dtype)
+        self.table = table.Table(names=names, dtype=dtype)
         return
 
     def read_completed_model_file(self):

@@ -56,6 +56,8 @@ g.generate(current_models=all_models)
 print(all_models.table)
 print(g.status)
 
+print(all_models.table['time_modified'])
+
 all_models.convert_legacy_chi2_file(
     legacy_filename='outputs/legacy/NGC6278/griddata/_chi2.cat',
 )

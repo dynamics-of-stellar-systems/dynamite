@@ -204,7 +204,13 @@ class GridSearch(ParameterGenerator):
             if len(self.current_models.table) == 0: # The 'zeroth iteration' results in only one model (all parameters at their .value level)
                 row = [p.value for p in self.par_space]
                 for i in range(self.par_space.n_par, len(self.current_models.table.colnames)):
-                    row.append([np.dtype(self.current_models.table.columns[i].dtype).type(0)])
+                    if self.current_models.table.columns[i].dtype == '<M8[ms]':
+                        val = np.datetime64('now', 'ms')
+                    else:
+                        val = np.dtype(self.current_models.table.columns[i].dtype).type(0)
+                    # row.append(np.dtype(self.current_models.table.columns[i].dtype).type(val))
+                    row.append(val)
+                # print(row)
                 self.current_models.table.add_row(row)
                 newmodels = 1
             else: # Subsequent iterations...
@@ -226,7 +232,13 @@ class GridSearch(ParameterGenerator):
                     if self._is_newmodel(m, eps=1e-10):
                         row = [p.value for p in m]
                         for i in range(self.par_space.n_par, len(self.current_models.table.colnames)):
-                            row.append([np.dtype(self.current_models.table.columns[i].dtype).type(0)])
+                            if self.current_models.table.columns[i].dtype == '<M8[ms]':
+                                val = np.datetime64('now', 'ms')
+                            else:
+                                val = np.dtype(self.current_models.table.columns[i].dtype).type(0)
+                            # row.append([np.dtype(self.current_models.table.columns[i].dtype).type(0)])
+                            row.append(val)
+                        # print(row)
                         self.current_models.table.add_row(row)
                         newmodels += 1
 
