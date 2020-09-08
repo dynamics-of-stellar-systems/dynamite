@@ -102,6 +102,44 @@ class ParameterGenerator(object):
         # else ...
         return []
 
+    def add_model(self, model=None, n_iter=0):
+        """
+        Adds the model passed as an argument to self.current_models.
+        The datetime64 column is populated with the current timestamp
+        numpy.datetime64('now', 'ms').
+        The 'which_iter' column is populated with the argument value n_iter.
+
+        Parameters
+        ----------
+        model : List of Parameter objects
+        n_iter : integer
+            value to write in 'which_iter' column, optional. The default is 0.
+
+        Raises
+        ------
+        ValueError
+            If no or empty model is given.
+
+        Returns
+        -------
+        None.
+
+        """
+        if not model:
+            raise ValueError('No or empty model')
+        row = [p.value for p in model]
+        for i in range(self.par_space.n_par, len(self.current_models.table.colnames)):
+            if self.current_models.table.columns[i].dtype == '<M8[ms]':
+                val = np.datetime64('now', 'ms')
+            elif self.current_models.table.columns[i].name == 'which_iter':
+                val = n_iter
+            else:
+                val = np.dtype(self.current_models.table.columns[i].dtype).type(0)
+            # row.append(np.dtype(self.current_models.table.columns[i].dtype).type(val))
+            row.append(val)
+        # print(row)
+        self.current_models.table.add_row(row)
+
     def check_stopping_critera(self, current_models):
         self.status['stop'] = False
         self.check_generic_stopping_critera(current_models)
@@ -193,7 +231,7 @@ class GridSearch(ParameterGenerator):
         if self.parspace_settings['generator_type'] != 'GridSearch':
             raise ValueError(f"generator_type must be GridSearch, not {self.parspace_settings['generator_type']}")
         self.check_stopping_critera(current_models)
-        newmodels = 0
+        new_models = 0
         if not self.status['stop']: # check whether we need to do anything in the first place...
 
             if current_models is None:
@@ -202,24 +240,18 @@ class GridSearch(ParameterGenerator):
                 self.current_models = current_models
     
             if len(self.current_models.table) == 0: # The 'zeroth iteration' results in only one model (all parameters at their .value level)
-                row = [p.value for p in self.par_space]
-                for i in range(self.par_space.n_par, len(self.current_models.table.colnames)):
-                    if self.current_models.table.columns[i].dtype == '<M8[ms]':
-                        val = np.datetime64('now', 'ms')
-                    else:
-                        val = np.dtype(self.current_models.table.columns[i].dtype).type(0)
-                    # row.append(np.dtype(self.current_models.table.columns[i].dtype).type(val))
-                    row.append(val)
-                # print(row)
-                self.current_models.table.add_row(row)
-                newmodels = 1
+                self.add_model(self.par_space, n_iter=0)
+                new_models = 1
             else: # Subsequent iterations...
                 # Center criterion: min(chi2+kinchi2)
                 chi2_all = [m['chi2']+m['kinchi2'] for m in self.current_models.table]
                 center_idx = np.argmin(chi2_all)
                 center = list(self.current_models.table[center_idx])[:self.par_space.n_par]
                 # print(f'center: {center}')
-    
+
+                # set n_iter counter
+                n_iter = np.max(self.current_models.table['which_iter']) + 1
+
                 # Build model_list by walking the grid
                 self.model_list = []
                 self.grid_walk(center=center)
@@ -230,22 +262,13 @@ class GridSearch(ParameterGenerator):
                 # Add new models to current_models.table
                 for m in self.model_list:
                     if self._is_newmodel(m, eps=1e-10):
-                        row = [p.value for p in m]
-                        for i in range(self.par_space.n_par, len(self.current_models.table.colnames)):
-                            if self.current_models.table.columns[i].dtype == '<M8[ms]':
-                                val = np.datetime64('now', 'ms')
-                            else:
-                                val = np.dtype(self.current_models.table.columns[i].dtype).type(0)
-                            # row.append([np.dtype(self.current_models.table.columns[i].dtype).type(0)])
-                            row.append(val)
-                        # print(row)
-                        self.current_models.table.add_row(row)
-                        newmodels += 1
+                        self.add_model(m, n_iter)
+                        new_models += 1
 
-        print(f'GridWalk added {newmodels} new models')
-        self.status['n_new_models'] = newmodels
-        self.status['last_iter_added_no_new_models'] = True if newmodels == 0 else False
-        if newmodels == 0:
+        print(f'GridWalk added {new_models} new models')
+        self.status['n_new_models'] = new_models
+        self.status['last_iter_added_no_new_models'] = True if new_models == 0 else False
+        if new_models == 0:
             self.status['stop'] = True
         return self.status
 
