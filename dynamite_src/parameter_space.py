@@ -1,11 +1,11 @@
 # # some tricks to add the current path to sys.path (so the imports below work)
 
-# import os.path
-# import sys
+import os.path
+import sys
 
-# this_dir = os.path.dirname(__file__)
-# if not this_dir in sys.path:
-#     sys.path.append(this_dir)
+this_dir = os.path.dirname(__file__)
+if not this_dir in sys.path:
+    sys.path.append(this_dir)
 
 import numpy as np
 import copy
@@ -109,10 +109,14 @@ class ParameterGenerator(object):
 
     def __init__(self,
                  par_space=[],
+                 parspace_settings=None,
                  name=None):
         self.par_space = par_space
-        self.name = name
+        if not parspace_settings:
+            raise ValueError('ParameterGenerator needs parspace_settings')
+        self.parspace_settings = parspace_settings
         self.status = {}
+        self.name = name
 
     def generate(self,
                  current_models=None,
@@ -149,46 +153,92 @@ class ParameterGenerator(object):
 
         """
         if current_models is None:
-            raise ValueError('current_models needs to be a valid schwarzschild.AllModels instance')
+            errormsg = """current_models needs to be a valid
+                        schwarzschild.AllModels instance"""
+            raise ValueError(errormsg)
         else:
             self.current_models = current_models
         self.check_stopping_critera()
-        if not self.status['stop']: # check whether we need to do anything in the first place...
+        if len(self.current_models.table)==0:
+            this_iter = 0
+        else:
+            this_iter = np.max(self.current_models.table['which_iter']) + 1
+        # check whether we need to do anything in the first place...
+        if not self.status['stop']:
             self.specific_generate_method(**kw_specific_generate_method)
             newmodels = 0
             # Add new models to current_models.table
             for m in self.model_list:
                 if self._is_newmodel(m, eps=1e-10):
-                    raw_row = [p.value for p in m]
-                    row = self.par_space.get_param_value_from_raw_value(raw_row)
-                    for i in range(self.par_space.n_par, len(self.current_models.table.colnames)):
-                        row.append([np.dtype(self.current_models.table.columns[i].dtype).type(0)])
-                    self.current_models.table.add_row(row)
+                    self.add_model(m, n_iter=this_iter)
                     newmodels += 1
         print(f'{self.name} added {newmodels} new models')
         self.status['n_new_models'] = newmodels
-        self.status['last_iter_added_no_new_models'] = True if newmodels == 0 else False
+        last_iter_check = True if newmodels == 0 else False
+        self.status['last_iter_added_no_new_models'] = last_iter_check
         if newmodels == 0:
             self.status['stop'] = True
         return self.status
 
+    def add_model(self, model=None, n_iter=0):
+        """
+        Adds the model passed as an argument to self.current_models.
+        The datetime64 column is populated with the current timestamp
+        numpy.datetime64('now', 'ms').
+        The 'which_iter' column is populated with the argument value n_iter.
+
+        Parameters
+        ----------
+        model : List of Parameter objects
+        n_iter : integer
+            value to write in 'which_iter' column, optional. The default is 0.
+
+        Raises
+        ------
+        ValueError
+            If no or empty model is given.
+
+        Returns
+        -------
+        None.
+
+        """
+        if not model:
+            raise ValueError('No or empty model')
+        raw_row = [p.value for p in model]
+        row = self.par_space.get_param_value_from_raw_value(raw_row)
+        # for all columns after parameters, add a entry to this row
+        idx_start = self.par_space.n_par
+        idx_end = len(self.current_models.table.colnames)
+        for i in range(idx_start, idx_end):
+            if self.current_models.table.columns[i].dtype == '<M8[ms]':
+                # current time
+                val = np.datetime64('now', 'ms')
+            elif self.current_models.table.columns[i].name == 'which_iter':
+                # iteration
+                val = n_iter
+            else:
+                # empty entry for all other columns
+                dtype = self.current_models.table.columns[i].dtype
+                val = np.dtype(dtype).type(0)
+            row.append(val)
+        self.current_models.table.add_row(row)
+
     def check_stopping_critera(self):
         self.status['stop'] = False
-        self.check_generic_stopping_critera()
-        self.check_specific_stopping_critera()
-        for key in [reasons for reasons in self.status if isinstance(reasons, bool) and reasons != 'stop']:
-            if self.status[key]:
-                self.status['stop'] = True
-                break
+        if len(self.current_models.table) > 0: # never stop when current_models is empty
+            self.check_generic_stopping_critera()
+            self.check_specific_stopping_critera()
+            for key in [reasons for reasons in self.status if isinstance(reasons, bool) and reasons != 'stop']:
+                if self.status[key]:
+                    self.status['stop'] = True
+                    break
 
     def check_generic_stopping_critera(self):
         self.status['n_max_mods_reached'] = \
-            True if len(self.current_models.table) >= self.current_models.settings.parameter_space_settings['stopping_criteria']['n_max_mods'] \
-                 else False
-        # e.g. stop if:
-        # i) number of models which have been run > max_n_mods => done
-        # ii) number of iterations > max_n_iter => CODE ME: need iter_count in astropy table
-        self.status['n_max_iter_reached'] = False
+            len(self.current_models.table) >= self.parspace_settings['stopping_criteria']['n_max_mods']
+        self.status['n_max_iter_reached'] = \
+            np.max(self.current_models.table['which_iter']) >= self.parspace_settings['stopping_criteria']['n_max_iter']
         # iii) ...
 
     def _is_newmodel(self, model, eps=1e-6):
@@ -225,8 +275,10 @@ class ParameterGenerator(object):
 class GridSearch(ParameterGenerator):
 
     def __init__(self,
-                 par_space=[]):
+                 par_space=[],
+                 parspace_settings=None):
         super().__init__(par_space=par_space,
+                         parspace_settings=parspace_settings,
                          name='GridWalk')
 
     def specific_generate_method(self, **kwargs):
@@ -327,22 +379,23 @@ class GridSearch(ParameterGenerator):
                 if tol > eps:
                     par_values.append(self.clip(center[paridx] + par.grid_parspace_settings['step'], lo, hi))
 
-        for par.value in par_values:
-            # par.value = value
+        for value in par_values:
+            parcpy = copy.deepcopy(par)
+            parcpy.value = value
             if not self.model_list: # add first entry if model_list is empty
-                self.model_list = [[copy.deepcopy(par)]]
+                self.model_list = [[parcpy]]
                 models_prev = [[]]
-                # print(f'new model list, starting with parameter {par.name}')
-            elif par.name in [p.name for p in self.model_list[0]]: # in this case, create new (partial) model by copying last models and setting the new parameter value
+                # print(f'new model list, starting with parameter {parcpy.name}')
+            elif parcpy.name in [p.name for p in self.model_list[0]]: # in this case, create new (partial) model by copying last models and setting the new parameter value
                 for m in models_prev:
-                    new_model = m + [copy.deepcopy(par)]
+                    new_model = m + [parcpy]
                     self.model_list.append(new_model)
-                # print(f'{par.name} is in {[p.name for p in self.model_list[0]]}, added {par.name}={par.value}')
+                # print(f'{parcpy.name} is in {[p.name for p in self.model_list[0]]}, added {parcpy.name}={parcpy.value}')
             else: # new parameter - simply append the parameter to existing (partial) models
                 models_prev = copy.deepcopy(self.model_list)
                 for m in self.model_list:
-                    m.append(copy.deepcopy(par))
-                # print(f'new parameter {par.name}={par.value}')
+                    m.append(parcpy)
+                # print(f'new parameter {parcpy.name}={parcpy.value}')
 
         if paridx < self.par_space.n_par - 1: # call recursively until all paramaters are done...
             self.grid_walk(center=center, par=self.par_space[paridx+1])
@@ -373,13 +426,17 @@ class GridSearch(ParameterGenerator):
             raise ValueError('Clip error: minimum must be less than or equal to maximum')
 
     def check_specific_stopping_critera(self):
-        stop = False
         # stop if...
         # (i) if iter>1, last iteration did not improve chi2 by min_delta_chi2
         # where we'll set min_delta_chi2 in config file => CODE ME: need iter_count in astropy table
         self.status['min_delta_chi2_reached'] = False
+        last_iter = np.max(self.current_models.table['which_iter'])
+        if last_iter > 0:
+            chi2_0 = np.min([m['chi2']+m['kinchi2'] for m in self.current_models.table if m['which_iter']==last_iter])
+            chi2_1 = np.min([m['chi2']+m['kinchi2'] for m in self.current_models.table if m['which_iter']==last_iter-1])
+            if chi2_1-chi2_0 < self.parspace_settings['stopping_criteria']['min_delta_chi2']:
+                self.status['min_delta_chi2_reached'] = True
         # (ii) if step_size < min_step_size for all params => dealt with by grid_walk (doesn't create such models)
-        return stop
 
 
 class GaussianProcessEmulator(ParameterGenerator):

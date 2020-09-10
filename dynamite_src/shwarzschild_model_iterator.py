@@ -15,7 +15,9 @@ class SchwarzschildModelIterator(object):
         # get specified parameter generator
         parspace = parameter_space.ParameterSpace(system)
         par_generator_type = settings.parameter_space_settings['generator_type']
-        par_generator = getattr(parameter_space, par_generator_type)(parspace)
+        kwargs = {'parspace_settings':settings.parameter_space_settings}
+        par_generator = getattr(parameter_space, par_generator_type)(parspace,
+                                                                     **kwargs)
         model_inner_iterator = SchwarzschildModelInnerIterator(
             system=system,
             all_models=all_models,
@@ -65,8 +67,10 @@ class SchwarzschildModelInnerIterator(object):
                                          model_kwargs=self.model_kwargs)
                 self.all_models.table['chi2'][row] = mod0.chi2
                 self.all_models.table['kinchi2'][row] = mod0.kinchi2
-                self.all_models.table['which_iter'][row] = iter
+                # self.all_models.table['which_iter'][row] = iter
                 self.all_models.table['all_done'][row] = True
+                time_now = np.datetime64('now', 'ms')
+                self.all_models.table['time_modified'][row] = time_now
         return self.par_generator.status
 
     def create_model(self,

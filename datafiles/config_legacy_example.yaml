@@ -159,7 +159,7 @@ legacy_settings:
     use_legacy_mode: True
     directory: "/Users/pjethwa/Astro/Science/dynamite/triaxschwarz/triaxschwarzschild/"
 
-output_settings:
+io_settings:
     directory: "model_example/" #"outputs/legacy/"
 
 weight_solver_settings:

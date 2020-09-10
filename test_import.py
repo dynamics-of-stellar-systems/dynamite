@@ -8,6 +8,7 @@ import dynamite_src as dyn
 # fname = './datafiles/config_example.yaml'
 
 fname = './model_example/NGC6278/input_data/config_legacy_example.yaml'
+fname = './model_example/NGC6278/config_legacy_example.yaml'
 c = dyn.config_reader.ConfigurationReaderYaml(fname)
 
 # extract parameter space
@@ -34,7 +35,8 @@ print(all_models.table)
 print('parameter_space start...')
 
 # Instantiate GridSearch object
-g = dyn.parameter_space.GridSearch(parspace)
+parspace_settings = c.settings.parameter_space_settings
+g = dyn.parameter_space.GridSearch(parspace, parspace_settings=parspace_settings)
 
 # generate first model list: grid walk "iteration 0"
 print('grid walk "iteration 0"')
@@ -53,6 +55,8 @@ print('grid walk "iteration 2"')
 g.generate(current_models=all_models)
 print(all_models.table)
 print(g.status)
+
+print(all_models.table['chi2', 'kinchi2', 'time_modified', 'which_iter'])
 
 all_models.convert_legacy_chi2_file(
     legacy_filename='outputs/legacy/NGC6278/griddata/_chi2.cat',

@@ -44,6 +44,7 @@ else:
                                              parspace=parspace,
                                              settings=c.settings)
 
+
 # for speed of testing, I'll set the following kw arguments in order to:
 # (i) not exectute the models
 # (ii) use a fake chi2, as defined by this fake_chi2_function:
@@ -60,6 +61,8 @@ smi = dyn.shwarzschild_model_iterator.SchwarzschildModelIterator(
     all_models=all_models,
     settings=c.settings,
     model_kwargs=model_kwargs)
+
+c.settings.parameter_space_settings
 
 # plot the models: mass vs ml at each iteration:
 for iter in np.unique(all_models.table['which_iter']):
@@ -95,7 +98,6 @@ for iter in np.unique(all_models.table['which_iter']):
     plt.gca().set_yscale('log')
     plt.show()
 
-
 # plot the models: mass vs f at altogether:
 plt.scatter(all_models.table['mass'],
             all_models.table['f'],
@@ -103,7 +105,6 @@ plt.scatter(all_models.table['mass'],
 plt.gca().set_xscale('log')
 plt.gca().set_yscale('log')
 plt.show()
-
 
 # save the all_models table
 fname = c.settings.io_settings['output_directory']+'all_models.ecsv'
