@@ -27,6 +27,10 @@ your local triaxialschwarzschild directory:
 fname = 'model_example/NGC6278/config_legacy_example.yaml'
 c = dyn.config_reader.ConfigurationReaderYaml(fname, silent=True)
 parspace = dyn.parameter_space.ParameterSpace(c.system)
+print('Free parameters are:')
+for p in parspace:
+    if p.fixed is False:
+        print(f'... {p.name}')
 
 # read all existing models, or make empty all_models object if none
 fname = c.settings.io_settings['output_directory']+'all_models.ecsv'
@@ -40,19 +44,73 @@ else:
                                              parspace=parspace,
                                              settings=c.settings)
 
-# run models
+
+# for speed of testing, I'll set the following kw arguments in order to:
+# (i) not exectute the models
+# (ii) use a fake chi2, as defined by this fake_chi2_function:
+def fake_chi2_function(parset):
+    fake_chi2 = np.log10(parset['mass']) + parset['ml'] + np.log10(parset['f'])
+    return fake_chi2
+model_kwargs = {'execute_run':False,
+                'use_fake_chi2':True,
+                'fake_chi2_function':fake_chi2_function}
+
+# "run" the models
 smi = dyn.shwarzschild_model_iterator.SchwarzschildModelIterator(
     system=c.system,
     all_models=all_models,
-    settings=c.settings)
+    settings=c.settings,
+    model_kwargs=model_kwargs)
 
-plt.scatter(all_models.table['f'],
+c.settings.parameter_space_settings
+
+# plot the models: mass vs ml at each iteration:
+for iter in np.unique(all_models.table['which_iter']):
+    table = all_models.table
+    table = table[table['which_iter']==iter]
+    plt.scatter(table['mass'],
+                table['ml'],
+                c=table['chi2']+table['kinchi2'])
+    # plt.colorbar()
+    plt.gca().set_xlim(9, 2e6)
+    plt.gca().set_ylim(0, 7)
+    plt.gca().set_xscale('log')
+    plt.show()
+
+# plot the models: mass vs ml altogether
+plt.scatter(all_models.table['mass'],
             all_models.table['ml'],
-            c=all_models.table['chi2'])
+            c=all_models.table['chi2']+all_models.table['kinchi2'])
+plt.gca().set_xscale('log')
+plt.show()
+
+# plot the models: mass vs f at each iteration:
+for iter in np.unique(all_models.table['which_iter']):
+    table = all_models.table
+    table = table[table['which_iter']==iter]
+    plt.scatter(table['mass'],
+                table['f'],
+                c=table['chi2']+table['kinchi2'])
+    # plt.colorbar()
+    plt.gca().set_xlim(9, 2e6)
+    plt.gca().set_ylim(1e-2, 1e3)
+    plt.gca().set_xscale('log')
+    plt.gca().set_yscale('log')
+    plt.show()
+
+# plot the models: mass vs f at altogether:
+plt.scatter(all_models.table['mass'],
+            all_models.table['f'],
+            c=all_models.table['chi2']+all_models.table['kinchi2'])
+plt.gca().set_xscale('log')
+plt.gca().set_yscale('log')
+plt.show()
 
 # save the all_models table
 fname = c.settings.io_settings['output_directory']+'all_models.ecsv'
 all_models.table.write(fname, format='ascii.ecsv')
+
+
 
 
 

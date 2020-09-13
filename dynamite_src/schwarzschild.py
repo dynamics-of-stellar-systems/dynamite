@@ -15,7 +15,7 @@ class AllModels(object):
                  filename='all_models.ecsv',
                  settings=None,
                  parspace=None):
-        self.settings = settings
+        # self.settings = settings
         outdir = settings.io_settings['output_directory']
         filename = f'{outdir}{filename}'
         self.filename = filename
@@ -33,18 +33,20 @@ class AllModels(object):
         dtype = [np.float64 for n in names]
         # add the columns from legacy version
         names += ['chi2', 'kinchi2', 'time_modified', 'directory']
-        dtype += [np.float64, np.float64, np.float64, '<U100']
+        dtype += [np.float64, np.float64, '<M8[ms]', '<U100']
         # add extra columns
         names += ['ics_done', 'orblib_done', 'weights_done', 'all_done']
         dtype += [bool, bool, bool, bool]
         # which_iter will record which iteration of parameters a model came from
         names += ['which_iter']
         dtype += [int]
-        ncols = len(names)
-        data = np.zeros((0, ncols))
-        self.table = table.Table(data,
-                                 names=names,
-                                 dtype=dtype)
+        # ncols = len(names)
+        # data = np.zeros((0, ncols))
+        # self.table = table.Table(data,
+        #                          names=names,
+        #                          dtype=dtype)
+        # print(names, dtype)
+        self.table = table.Table(names=names, dtype=dtype)
         return
 
     def read_completed_model_file(self):
@@ -199,7 +201,9 @@ class LegacySchwarzschildModel(SchwarzschildModel):
                  settings=None,
                  parset=None,
                  parspace=None,
-                 execute_run=True):
+                 execute_run=True,
+                 use_fake_chi2=False,
+                 fake_chi2_function=None):
 
         self.system = system
         self.settings = settings
@@ -222,6 +226,10 @@ class LegacySchwarzschildModel(SchwarzschildModel):
 
         #might be removed later, use string.split() or /../
         self.directory_noml=self.directory[:-7]
+
+        if use_fake_chi2:
+            self.chi2 = fake_chi2_function(parset)
+            self.kinchi2 = 0.
 
         if execute_run:
 
@@ -307,7 +315,7 @@ class LegacySchwarzschildModel(SchwarzschildModel):
         text=str(self.system.distMPc)+'\n'+ \
              '{:06.9f}'.format(theta)+' '+ '{:06.9f}'.format(phi)+' '+ '{:06.9f}'.format(psi) + '\n' + \
              str(self.parset['ml'])+'\n' + \
-             str(10**self.parset['mass'])+'\n' + \
+             str(self.parset['mass'])+'\n' + \
              str(self.parset['a'])+'\n' + \
              str(self.settings.orblib_settings['nE']) +' ' +str(self.settings.orblib_settings['logrmin']) +' ' +str(self.settings.orblib_settings['logrmax'])+ '\n' + \
              str(self.settings.orblib_settings['nI2']) +'\n' + \

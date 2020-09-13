@@ -67,10 +67,10 @@ class ConfigurationReaderYaml(object):
     Reads the configuration file and instantiates the objects
     self.system, ...
     """
-    def __init__(self, filename=None, silent=False): # instantiate the objects here. instead of the dict, self.system will be a System object, etc.
+    def __init__(self, filename=None, silent=False):
         """
-        Reads onfiguration file and instantiates objects. Does some rudimentary
-        checks for consistency.
+        Reads configuration file and instantiates objects.
+        Does some rudimentary checks for consistency.
 
         Parameters
         ----------
@@ -116,9 +116,12 @@ class ConfigurationReaderYaml(object):
                     if not silent:
                         print(f" {comp}... instantiating {data_comp['type']} object")
                     if 'contributes_to_potential' not in data_comp:
-                        raise ValueError(f'Component {comp} needs contributes_to_potential attribute')
-#                    c = globals()[data_comp['type']](contributes_to_potential = data_comp['contributes_to_potential'])
-                    c = getattr(physys,data_comp['type'])(name = comp, contributes_to_potential = data_comp['contributes_to_potential'])
+                        raise ValueError(f'Component {comp} needs '
+                                         'contributes_to_potential attribute')
+#                    c = globals()[data_comp['type']](contributes_to_potential 
+#                                                       = data_comp['contributes_to_potential'])
+                    c = getattr(physys,data_comp['type'])(name = comp,
+                            contributes_to_potential = data_comp['contributes_to_potential'])
 
                     # initialize the componnt's paramaters, kinematics, and populations
 
@@ -137,18 +140,20 @@ class ConfigurationReaderYaml(object):
 
                     # read kinematics
 
-                    if 'kinematics' in data_comp:   # shall we include a check here (e.g., only VisibleComponent can have kinematics?)
+                    if 'kinematics' in data_comp:
+                    # shall we include a check here (e.g., only VisibleComponent has kinematics?)
                         if not silent:
                             print(f" Has kinematics {tuple(data_comp['kinematics'].keys())}")
                         for kin, data_kin in data_comp['kinematics'].items():
                             # kinematics_set = kinem.Kinematics(name=kin, **data_kin)
-                            kinematics_set = getattr(kinem,data_kin['type'])(name = kin, **data_kin)
+                            kinematics_set = getattr(kinem,data_kin['type'])(name=kin, **data_kin)
                             kin_list.append(kinematics_set)
                         c.kinematic_data = kin_list
 
                     # read populations
 
-                    if 'populations' in data_comp:   # shall we include a check here (e.g., only VisibleComponent can have populations?)
+                    if 'populations' in data_comp:
+                    # shall we include a check here (e.g., only VisibleComponent has populations?)
                         if not silent:
                             print(f" Has populations {tuple(data_comp['populations'].keys())}")
                         for pop, data_pop in data_comp['populations'].items():
@@ -214,7 +219,6 @@ class ConfigurationReaderYaml(object):
             # add output settings to config object
 
             elif key == 'io_settings':
-                print('hello')
                 if not silent:
                     print('io_settings...')
                     print(f' {tuple(value.keys())}')
@@ -250,8 +254,8 @@ class ConfigurationReaderYaml(object):
     def validate(self):
         """
         Validates the system and settings. This method is still VERY
-        rudimentary and will be adjusted as we add new functionality to dynamite
-        Currently, this method is geared towards legacy mode
+        rudimentary and will be adjusted as we add new functionality
+        to dynamite. Currently, this method is geared towards legacy mode.
 
         Returns
         -------
@@ -262,10 +266,12 @@ class ConfigurationReaderYaml(object):
             raise ValueError('System needs to have exactly one Plummer object')
         if sum(1 for i in self.system.cmp_list if isinstance(i, physys.VisibleComponent)) != 1:
             raise ValueError('System needs to have exactly one VisibleComponent object')
-        if sum(1 for i in self.system.cmp_list if issubclass(type(i), physys.DarkComponent) and not isinstance(i, physys.Plummer)) > 1:
+        if sum(1 for i in self.system.cmp_list if issubclass(type(i), physys.DarkComponent)
+               and not isinstance(i, physys.Plummer)) > 1:
             raise ValueError('System needs to have zero or one DM Halo object')
         if not ( 1 < len(self.system.cmp_list) < 4):
-            raise ValueError('System needs to comprise exactly one Plummer, one VisibleComponent, and zero or one DM Halo object')
+            raise ValueError('System needs to comprise exactly one Plummer, '
+                             'one VisibleComponent, and zero or one DM Halo object(s)')
 
         for c in self.system.cmp_list:
             if issubclass(type(c), physys.VisibleComponent): # Check visible component
@@ -274,13 +280,16 @@ class ConfigurationReaderYaml(object):
                         if kin_data.type != 'GaussHermite':
                             raise ValueError('VisibleComponent kinematics need GaussHermite type')
                 else:
-                    raise ValueError('VisibleComponent must have kinematics with type GaussHermite')
+                    raise ValueError('VisibleComponent must have kinematics of type GaussHermite')
                 if c.symmetry != 'triax':
                     raise ValueError('Legacy mode: VisibleComponent must be triaxial')
                 continue
-            if issubclass(type(c), physys.DarkComponent) and not isinstance(c, physys.Plummer): # Check allowed dm halos in legacy mode
-                if type(c) not in [physys.NFW, physys.Hernquist, physys.TriaxialCoredLogPotential, physys.GeneralisedNFW]:
-                    raise ValueError(f'DM Halo needs to be of type NFW, Hernquist, TriaxialCoredLogPotential, or GeneralisedNFW, not {type(c)}')
+            if issubclass(type(c), physys.DarkComponent) and not isinstance(c, physys.Plummer):
+            # Check allowed dm halos in legacy mode
+                if type(c) not in [physys.NFW, physys.Hernquist, physys.TriaxialCoredLogPotential,
+                                   physys.GeneralisedNFW]:
+                    raise ValueError(f'DM Halo needs to be of type NFW, Hernquist, '
+                                     'TriaxialCoredLogPotential or GeneralisedNFW, not {type(c)}')
 
         if self.settings.parameter_space_settings["generator_type"] != 'GridSearch':
             raise ValueError('Legacy mode: parameter space generator_type must be GridSearch')
