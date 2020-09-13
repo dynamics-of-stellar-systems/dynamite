@@ -24,7 +24,8 @@ class Parameter(object):
                  sformat="%g",
                  value=None,
                  grid_parspace_settings=None,
-                 gpe_parspace_settings=None
+                 gpe_parspace_settings=None,
+                 logarithmic=False,
                  # lo=None,
                  # hi=None,
                  # step=None,
@@ -38,6 +39,7 @@ class Parameter(object):
         self.value = value
         self.grid_parspace_settings = grid_parspace_settings
         self.gpe_parspace_settings = gpe_parspace_settings
+        self.logarithmic = logarithmic
         # self.lo = lo
         # self.hi = hi
         # self.step = step
@@ -56,6 +58,20 @@ class Parameter(object):
 
     def __repr__(self):
         return (f'{self.__class__.__name__}({self.__dict__})')
+
+    def get_par_value_from_raw_value(self, raw_value):
+        if self.logarithmic is True:
+            par_value = 10.**raw_value
+        else:
+            par_value = raw_value
+        return par_value
+
+    def get_raw_value_from_par_value(self, par_value):
+        if self.logarithmic is True:
+            raw_value = np.log10(par_value)
+        else:
+            raw_value = par_value
+        return raw_value
 
 
 class ParameterSpace(list):
@@ -78,29 +94,92 @@ class ParameterSpace(list):
     def __repr__(self):
         return (f'{self.__class__.__name__}({[p for p in self]}, {self.__dict__})')
 
+    def get_param_value_from_raw_value(self, raw_value):
+        par_val = [p.get_par_value_from_raw_value(rv0)
+                   for (rv0, p) in zip(raw_value, self)]
+        return par_val
+
+    def get_raw_value_from_param_value(self, par_val):
+        raw_value = [p.get_raw_value_from_par_value(pv0)
+                     for (pv0, p) in zip(par_val, self)]
+        return raw_value
+
 
 class ParameterGenerator(object):
 
     def __init__(self,
                  par_space=[],
-                 parspace_settings=None):
+                 parspace_settings=None,
+                 name=None):
         self.par_space = par_space
         if not parspace_settings:
             raise ValueError('ParameterGenerator needs parspace_settings')
         self.parspace_settings = parspace_settings
         self.status = {}
+        self.name = name
 
-    def generate(self, current_models, n_new):
-        # placeholder function to generate a list of "n_new" parameters
-        # return new_parameter_list
-        # current_models will be an AllModels object
-        # ... i.e. all_mod = AllModels(...)
-        #          all_mod.tables is the table with params and chi2
-        stop = self.check_stopping_critera()
-        if stop:
-            return []
-        # else ...
-        return []
+    def generate(self,
+                 current_models=None,
+                 kw_specific_generate_method={}):
+        """Generate new parameter sets. This is a wrapper method around the
+        specific_generate_method of child generator classes. This wrapper does
+        the following:
+        (i) evaluates stopping criteria, and stop if necessary
+        (ii) runs the specific_generate_method of the child class, which updates
+        self.model_list with a list of propsal models
+        (iii) removes previously run models from self.model_list
+        (iv) converts parameters from raw_values to par_values
+        (v) adds new models to current_models.table
+        (vi) update and return the status dictionary
+
+        Parameters
+        ----------
+        current_models : schwarzschild.AllModels
+        kw_specific_generate_method : dict
+            keyword arguments passed to the specific_generate_method of the
+            child class
+
+        Returns
+        -------
+        dict
+            a dictionary status, with entries
+            - stop: bool, whether or not any stopping criteria are met
+            - n_new_models: int
+            and additional boolean entries for the indivdidual stopping criteria
+            - last_iter_added_no_new_models
+            - n_max_mods_reached
+            - n_max_iter_reached
+            - plus any criteria specific to the child class
+
+        """
+        if current_models is None:
+            errormsg = "current_models needs to be a valid " \
+                       "schwarzschild.AllModels instance"
+            raise ValueError(errormsg)
+        else:
+            self.current_models = current_models
+        self.check_stopping_critera()
+        if len(self.current_models.table)==0:
+            this_iter = 0
+        else:
+            this_iter = np.max(self.current_models.table['which_iter']) + 1
+        # check whether we need to do anything in the first place...
+        if not self.status['stop']:
+            self.specific_generate_method(**kw_specific_generate_method)
+            newmodels = 0
+            # Add new models to current_models.table
+            for m in self.model_list:
+                if self._is_newmodel(m, eps=1e-10):
+                    self.add_model(m, n_iter=this_iter)
+                    newmodels += 1
+        print(f'{self.name} added {newmodels} new model(s) out of '
+              f'{len(self.model_list)}')
+        self.status['n_new_models'] = newmodels
+        last_iter_check = True if newmodels == 0 else False
+        self.status['last_iter_added_no_new_models'] = last_iter_check
+        if newmodels == 0:
+            self.status['stop'] = True
+        return self.status
 
     def add_model(self, model=None, n_iter=0):
         """
@@ -127,45 +206,57 @@ class ParameterGenerator(object):
         """
         if not model:
             raise ValueError('No or empty model')
-        row = [p.value for p in model]
-        for i in range(self.par_space.n_par, len(self.current_models.table.colnames)):
+        raw_row = [p.value for p in model]
+        row = self.par_space.get_param_value_from_raw_value(raw_row)
+        # for all columns after parameters, add a entry to this row
+        idx_start = self.par_space.n_par
+        idx_end = len(self.current_models.table.colnames)
+        for i in range(idx_start, idx_end):
             if self.current_models.table.columns[i].dtype == '<M8[ms]':
+                # current time
                 val = np.datetime64('now', 'ms')
             elif self.current_models.table.columns[i].name == 'which_iter':
+                # iteration
                 val = n_iter
             else:
-                val = np.dtype(self.current_models.table.columns[i].dtype).type(0)
-            # row.append(np.dtype(self.current_models.table.columns[i].dtype).type(val))
+                # empty entry for all other columns
+                dtype = self.current_models.table.columns[i].dtype
+                val = np.dtype(dtype).type(0)
             row.append(val)
-        # print(row)
         self.current_models.table.add_row(row)
 
-    def check_stopping_critera(self, current_models):
+    def check_stopping_critera(self):
         self.status['stop'] = False
-        if len(current_models.table) > 0: # never stop when current_models is empty
-            self.check_generic_stopping_critera(current_models)
-            self.check_specific_stopping_critera(current_models)
-            for key in [reasons for reasons in self.status if isinstance(reasons, bool) and reasons != 'stop']:
+        if len(self.current_models.table) > 0:
+        # never stop when current_models is empty
+            self.check_generic_stopping_critera()
+            self.check_specific_stopping_critera()
+            for key in [reasons for reasons in self.status \
+                        if isinstance(reasons, bool) and reasons != 'stop']:
                 if self.status[key]:
                     self.status['stop'] = True
                     break
 
-    def check_generic_stopping_critera(self, current_models):
+    def check_generic_stopping_critera(self):
         self.status['n_max_mods_reached'] = \
-            len(current_models.table) >= self.parspace_settings['stopping_criteria']['n_max_mods']
+            len(self.current_models.table) \
+                >= self.parspace_settings['stopping_criteria']['n_max_mods']
         self.status['n_max_iter_reached'] = \
-            np.max(current_models.table['which_iter']) >= self.parspace_settings['stopping_criteria']['n_max_iter']
+            np.max(self.current_models.table['which_iter']) \
+                >= self.parspace_settings['stopping_criteria']['n_max_iter']
         # iii) ...
 
     def _is_newmodel(self, model, eps=1e-6):
         """
-        Checks if model is a new model (i.e., its parameter set does not exist in
-        self.current_models).
+        Checks if model is a new model (i.e., its parameter set does not exist
+        in self.current_models).
 
         Parameters
         ----------
-        model : A self.model_list element (list of Parameter objects), must be given
-        eps : Used for numerical comparison (relative difference w.r.t. model values), default is 1e-6
+        model : A self.model_list element (list of Parameter objects),
+                mandatory
+        eps : Used for numerical comparison (relative difference w.r.t.
+              model values), default is 1e-6
 
         Returns
         -------
@@ -173,8 +264,9 @@ class ParameterGenerator(object):
 
         """
         if any(map(lambda t: not isinstance(t, parspace.Parameter), model)):
-            raise ValueError('Model argument must be a list of Parameter objects')
-        model_values = [p.value for p in model]
+            raise ValueError('Model arg. must be list of Parameter objects')
+        raw_model_values = [p.value for p in model]
+        model_values = self.par_space.get_param_value_from_raw_value(raw_model_values)
         if len(self.current_models.table) > 0:
             isnew = True
             for curmod in self.current_models.table[self.par_space.par_names]:
@@ -185,109 +277,75 @@ class ParameterGenerator(object):
             isnew = True
         return isnew
 
-    def model_compare(self, model1=None, model2=None, eps=1e-10): # might not need this method...
-        """
-        Compares the parameter sets of two models
-
-        Parameters
-        ----------
-        model1, model2 : Model objects
-        eps : accuracy for numerical comparison (default: 1e-10)
-
-        Returns
-        -------
-        True if parameter sets have the same .value attributes and are in the
-        same order, False otherwise
-        """
-        for paridx in range(len(model1.parset)):
-            if abs(model1.parset[paridx].value-model2.parset[paridx].value) > eps:
-                return False
-        return True
 
 
 class GridSearch(ParameterGenerator):
 
-    def generate(self, current_models=None, n_new=0):
+    def __init__(self,
+                 par_space=[],
+                 parspace_settings=None):
+        super().__init__(par_space=par_space,
+                         parspace_settings=parspace_settings,
+                         name='GridWalk')
+
+    def specific_generate_method(self, **kwargs):
         """
-        Adds new models to current_models.table. The center is determined as the parameter set with
-        the least chi2+kinchi2 value.
+        Generates list of new models self.model_list. Each element of
+        self.model_list is a list of Parameter objects. The center of the
+        grid search is the parameter set with the smallest chi2+kinchi2 value.
 
         Parameters
         ----------
-        current_models : a schwarzschild.AllModels instance. Mandatory argument.
-        n_new : not used. The default is 0.
+        None.
 
         Raises
         ------
-        ValueError if current_models is not provided
+        None.
 
         Returns
         -------
-        dict, self.status, self.status['stop'] == True if stopping criteria is met
+        None. self.model_list is the list of new models.
         """
-
-        if self.parspace_settings['generator_type'] != 'GridSearch':
-            raise ValueError(f"generator_type must be GridSearch, not {self.parspace_settings['generator_type']}")
-        self.check_stopping_critera(current_models)
-        new_models = 0
-        if not self.status['stop']: # check whether we need to do anything in the first place...
-
-            if current_models is None:
-                raise ValueError('current_models needs to be a valid schwarzschild.AllModels instance')
-            else:
-                self.current_models = current_models
-    
-            if len(self.current_models.table) == 0: # The 'zeroth iteration' results in only one model (all parameters at their .value level)
-                self.add_model(self.par_space, n_iter=0)
-                new_models = 1
-            else: # Subsequent iterations...
-                # Center criterion: min(chi2+kinchi2)
-                chi2_all = [m['chi2']+m['kinchi2'] for m in self.current_models.table]
-                center_idx = np.argmin(chi2_all)
-                center = list(self.current_models.table[center_idx])[:self.par_space.n_par]
-                # print(f'center: {center}')
-
-                # set n_iter counter
-                n_iter = np.max(self.current_models.table['which_iter']) + 1
-
-                # Build model_list by walking the grid
-                self.model_list = []
-                self.grid_walk(center=center)
-                # for m in self.model_list:
-                #     print(f'{[(p.name, p.value) for p in m]}')
-                print(f'GridWalk found {len(self.model_list)} models')
-    
-                # Add new models to current_models.table
-                for m in self.model_list:
-                    if self._is_newmodel(m, eps=1e-10):
-                        self.add_model(m, n_iter)
-                        new_models += 1
-
-        print(f'GridWalk added {new_models} new models')
-        self.status['n_new_models'] = new_models
-        self.status['last_iter_added_no_new_models'] = True if new_models == 0 else False
-        if new_models == 0:
-            self.status['stop'] = True
-        return self.status
+        if len(self.current_models.table) == 0:
+            # The 'zeroth iteration' results in only one model
+            # (all parameters at their .value level)
+            self.model_list = [[p for p in self.par_space]]
+        else: # Subsequent iterations...
+            # Center criterion: min(chi2+kinchi2)
+            chi2_all = [m['chi2']+m['kinchi2'] \
+                        for m in self.current_models.table]
+            center_idx = np.argmin(chi2_all)
+            n_par = self.par_space.n_par
+            center = list(self.current_models.table[center_idx])[:n_par]
+            raw_center = self.par_space.get_raw_value_from_param_value(center)
+            # print(f'center: {center}')
+            # Build model_list by walking the grid
+            self.model_list = []
+            self.grid_walk(center=raw_center)
+            # for m in self.model_list:
+            #     print(f'{[(p.name, p.value) for p in m]}')
+        return
 
     def grid_walk(self, center=None, par=None, eps=1e-6):
         """
-        Walks the grid defined by self.par_space.grid_parspace_settings attributes.
-        Clips parameter values to lo/hi attributes. If clipping violates the minstep attribute,
-        the resulting model(s) will not be created. If the minstep attribute is missing, the step
-        attribute will be used instead. Use minstep=0 to eliminate minstep.
+        Walks the grid defined by self.par_space.grid_parspace_settings
+        attributes.
+        Clips parameter values to lo/hi attributes. If clipping violates the
+        minstep attribute, the resulting model(s) will not be created. If the
+        minstep attribute is missing, the step attribute will be used instead.
+        Use minstep=0 to eliminate minstep.
 
         Parameters
         ----------
-        center : List of center coordinates. Must be in the same sequence as the parameters
-                 in self.par_space. Mandatory argument.
-        par : Internal use only. Gives the parameter to start with. Set automatically in the
-              recursive process. The default is None.
-        eps : Used for numerical comparison (relative tolerance), default is 1e-6
+        center : List of center coordinates. Must be in the same sequence as
+                 the parameters in self.par_space. Mandatory argument.
+        par : Internal use only. Gives the parameter to start with. Set
+              automatically in the recursive process. The default is None.
+        eps : Used for numerical comparison (relative tolerance), default 1e-6
 
         Raises
         ------
-        ValueError if center is not specified or fixed parameters differ from center.
+        ValueError if center is not specified or fixed parameters != center.
 
         Returns
         -------
@@ -304,35 +362,39 @@ class GridSearch(ParameterGenerator):
         if par.fixed:
             par_values = [par.value]
             if abs(center[paridx] - par.value) > eps:
-                raise ValueError('Something is wrong: fixed parameter value not in center')
+                raise ValueError('Something is wrong: fixed parameter value '
+                                 'not in center')
         else:
             lo = par.grid_parspace_settings['lo']
             hi = par.grid_parspace_settings['hi']
-            # par_values will take up to 3 *distinct* clipped lo, mid, hi values
+            step = par.grid_parspace_settings['step']
+            # up to 3 *distinct* par_values (clipped lo, mid, hi values)
             par_values = []
             # use 'minstep' value if present, otherwise use 'step'
-            minstep = par.grid_parspace_settings['minstep'] if 'minstep' in par.grid_parspace_settings else par.grid_parspace_settings['step']
+            minstep = par.grid_parspace_settings['minstep'] \
+                if 'minstep' in par.grid_parspace_settings else step
             # start with lo...
-            delta = center[paridx] - self.clip(center[paridx] - par.grid_parspace_settings['step'], lo, hi)
+            delta = center[paridx] - self.clip(center[paridx] - step, lo, hi)
             if abs(delta) >= minstep:
-                par_values.append(self.clip(center[paridx] - par.grid_parspace_settings['step'], lo, hi))
+                par_values.append(self.clip(center[paridx] - step, lo, hi))
             # now mid... tol(erance) is necessary in case minstep < eps
             if len(par_values) > 0:
-                tol = abs(self.clip(center[paridx], lo, hi) - par_values[0]) # check for values differing by more than eps...
-                if abs(par_values[0]) > eps: # use relative tolerance if possible
+                # check for values differing by more than eps...
+                tol = abs(self.clip(center[paridx], lo, hi) - par_values[0])
+                if abs(par_values[0]) > eps: # relative tolerance usable=?
                     tol /= abs(par_values[0])
                 if tol > eps:
                     par_values.append(self.clip(center[paridx], lo, hi))
             else:
                 par_values.append(self.clip(center[paridx], lo, hi))
             # and now hi...
-            delta = self.clip(center[paridx] + par.grid_parspace_settings['step'], lo, hi) - center[paridx]
+            delta = self.clip(center[paridx] + step, lo, hi) - center[paridx]
             if abs(delta) >= minstep:
-                tol = abs(self.clip(center[paridx] + par.grid_parspace_settings['step'], lo, hi) - par_values[-1])
+                tol = abs(self.clip(center[paridx]+step,lo,hi)-par_values[-1])
                 if abs(par_values[-1]) > eps:
                     tol /= abs(par_values[-1])
                 if tol > eps:
-                    par_values.append(self.clip(center[paridx] + par.grid_parspace_settings['step'], lo, hi))
+                    par_values.append(self.clip(center[paridx]+step, lo, hi))
 
         for value in par_values:
             parcpy = copy.deepcopy(par)
@@ -340,25 +402,30 @@ class GridSearch(ParameterGenerator):
             if not self.model_list: # add first entry if model_list is empty
                 self.model_list = [[parcpy]]
                 models_prev = [[]]
-                # print(f'new model list, starting with parameter {parcpy.name}')
-            elif parcpy.name in [p.name for p in self.model_list[0]]: # in this case, create new (partial) model by copying last models and setting the new parameter value
+                # print(f'new model list, starting w/parameter {parcpy.name}')
+            elif parcpy.name in [p.name for p in self.model_list[0]]:
+                # in this case, create new (partial) model by copying last
+                # models and setting the new parameter value
                 for m in models_prev:
                     new_model = m + [parcpy]
                     self.model_list.append(new_model)
-                # print(f'{parcpy.name} is in {[p.name for p in self.model_list[0]]}, added {parcpy.name}={parcpy.value}')
-            else: # new parameter - simply append the parameter to existing (partial) models
+                # print(f'{parcpy.name} is in '
+                #       f'{[p.name for p in self.model_list[0]]}, '
+                #       f'added {parcpy.name}={parcpy.value}')
+            else: # new parameter: append it to existing (partial) models
                 models_prev = copy.deepcopy(self.model_list)
                 for m in self.model_list:
                     m.append(parcpy)
                 # print(f'new parameter {parcpy.name}={parcpy.value}')
 
-        if paridx < self.par_space.n_par - 1: # call recursively until all paramaters are done...
+        # call recursively until all paramaters are done:
+        if paridx < self.par_space.n_par - 1:
             self.grid_walk(center=center, par=self.par_space[paridx+1])
 
     def clip(self, value, mini, maxi):
         """
-        Clips value to the interval [mini, maxi]. Similar to the numpy.clip() method.
-        If mini==maxi, that value is returned.
+        Clips value to the interval [mini, maxi]. Similar to the numpy.clip()
+        method. If mini==maxi, that value is returned.
 
         Parameters
         ----------
@@ -380,15 +447,15 @@ class GridSearch(ParameterGenerator):
         else:
             raise ValueError('Clip error: minimum must be less than or equal to maximum')
 
-    def check_specific_stopping_critera(self, current_models):
+    def check_specific_stopping_critera(self):
         # stop if...
         # (i) if iter>1, last iteration did not improve chi2 by min_delta_chi2
         # where we'll set min_delta_chi2 in config file => CODE ME: need iter_count in astropy table
         self.status['min_delta_chi2_reached'] = False
         last_iter = np.max(self.current_models.table['which_iter'])
         if last_iter > 0:
-            chi2_0 = np.min([m['chi2']+m['kinchi2'] for m in current_models.table if m['which_iter']==last_iter])
-            chi2_1 = np.min([m['chi2']+m['kinchi2'] for m in current_models.table if m['which_iter']==last_iter-1])
+            chi2_0 = np.min([m['chi2']+m['kinchi2'] for m in self.current_models.table if m['which_iter']==last_iter])
+            chi2_1 = np.min([m['chi2']+m['kinchi2'] for m in self.current_models.table if m['which_iter']==last_iter-1])
             if chi2_1-chi2_0 < self.parspace_settings['stopping_criteria']['min_delta_chi2']:
                 self.status['min_delta_chi2_reached'] = True
         # (ii) if step_size < min_step_size for all params => dealt with by grid_walk (doesn't create such models)

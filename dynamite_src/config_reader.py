@@ -219,7 +219,6 @@ class ConfigurationReaderYaml(object):
             # add output settings to config object
 
             elif key == 'io_settings':
-                print('hello')
                 if not silent:
                     print('io_settings...')
                     print(f' {tuple(value.keys())}')

@@ -201,7 +201,9 @@ class LegacySchwarzschildModel(SchwarzschildModel):
                  settings=None,
                  parset=None,
                  parspace=None,
-                 execute_run=True):
+                 execute_run=True,
+                 use_fake_chi2=False,
+                 fake_chi2_function=None):
 
         self.system = system
         self.settings = settings
@@ -224,6 +226,10 @@ class LegacySchwarzschildModel(SchwarzschildModel):
 
         #might be removed later, use string.split() or /../
         self.directory_noml=self.directory[:-7]
+
+        if use_fake_chi2:
+            self.chi2 = fake_chi2_function(parset)
+            self.kinchi2 = 0.
 
         if execute_run:
 
@@ -309,7 +315,7 @@ class LegacySchwarzschildModel(SchwarzschildModel):
         text=str(self.system.distMPc)+'\n'+ \
              '{:06.9f}'.format(theta)+' '+ '{:06.9f}'.format(phi)+' '+ '{:06.9f}'.format(psi) + '\n' + \
              str(self.parset['ml'])+'\n' + \
-             str(10**self.parset['mass'])+'\n' + \
+             str(self.parset['mass'])+'\n' + \
              str(self.parset['a'])+'\n' + \
              str(self.settings.orblib_settings['nE']) +' ' +str(self.settings.orblib_settings['logrmin']) +' ' +str(self.settings.orblib_settings['logrmax'])+ '\n' + \
              str(self.settings.orblib_settings['nI2']) +'\n' + \
