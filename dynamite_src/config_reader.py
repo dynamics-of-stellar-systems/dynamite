@@ -289,10 +289,13 @@ class ConfigurationReaderYaml(object):
                 if type(c) not in [physys.NFW, physys.Hernquist, physys.TriaxialCoredLogPotential,
                                    physys.GeneralisedNFW]:
                     raise ValueError(f'DM Halo needs to be of type NFW, Hernquist, '
-                                     'TriaxialCoredLogPotential or GeneralisedNFW, not {type(c)}')
+                                     f'TriaxialCoredLogPotential or GeneralisedNFW, not {type(c)}')
 
         if self.settings.parameter_space_settings["generator_type"] != 'GridSearch':
             raise ValueError('Legacy mode: parameter space generator_type must be GridSearch')
+        if self.settings.parameter_space_settings["which_chi2"] not in \
+            ["chi2", "kinchi2"]:
+            raise ValueError('Unknown which_chi2 setting, must be chi2 or kinchi2')
 
 
     # def read_parameters(self, par=None, items=None):

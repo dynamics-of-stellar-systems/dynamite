@@ -10,7 +10,7 @@ if not this_dir in sys.path:
 import numpy as np
 import copy
 # import schwarzschild
-from astropy import table
+#from astropy import table
 import parameter_space as parspace
 
 class Parameter(object):
@@ -49,12 +49,15 @@ class Parameter(object):
     def update(self, **kwargs):
         for k, v in kwargs.items():
             if k not in self.__class__.attributes:
-                raise ValueError(f'Invalid parameter key {k}. Allowed keys: {str(tuple(self.__class__.attributes))}')
+                raise ValueError(f'Invalid parameter key {k}. Allowed keys: '
+                                 f'{str(tuple(self.__class__.attributes))}')
             setattr(self, k, v)
 
     def validate(self):
         if sorted(self.__class__.attributes) != sorted(self.__dict__.keys()):
-            raise ValueError(f'Parameter attributes can only be {str(tuple(self.__class__.attributes))} , not {str(tuple(self.__dict__.keys()))}')
+            raise ValueError(f'Parameter attributes can only be '
+                             f'{str(tuple(self.__class__.attributes))}, '
+                             f'not {str(tuple(self.__dict__.keys()))}')
 
     def __repr__(self):
         return (f'{self.__class__.__name__}({self.__dict__})')
@@ -92,7 +95,8 @@ class ParameterSpace(list):
         self.n_par_free = self.n_par - self.n_par_fixed
 
     def __repr__(self):
-        return (f'{self.__class__.__name__}({[p for p in self]}, {self.__dict__})')
+        return (f'{self.__class__.__name__}({[p for p in self]}, '
+                f'{self.__dict__})')
 
     def get_param_value_from_raw_value(self, raw_value):
         par_val = [p.get_par_value_from_raw_value(rv0)
@@ -125,8 +129,8 @@ class ParameterGenerator(object):
         specific_generate_method of child generator classes. This wrapper does
         the following:
         (i) evaluates stopping criteria, and stop if necessary
-        (ii) runs the specific_generate_method of the child class, which updates
-        self.model_list with a list of propsal models
+        (ii) runs the specific_generate_method of the child class, which
+        updates self.model_list with a list of propsal models
         (iii) removes previously run models from self.model_list
         (iv) converts parameters from raw_values to par_values
         (v) adds new models to current_models.table
@@ -145,7 +149,7 @@ class ParameterGenerator(object):
             a dictionary status, with entries
             - stop: bool, whether or not any stopping criteria are met
             - n_new_models: int
-            and additional boolean entries for the indivdidual stopping criteria
+            and additional bool entries for the indivdidual stopping criteria
             - last_iter_added_no_new_models
             - n_max_mods_reached
             - n_max_iter_reached
@@ -266,7 +270,8 @@ class ParameterGenerator(object):
         if any(map(lambda t: not isinstance(t, parspace.Parameter), model)):
             raise ValueError('Model arg. must be list of Parameter objects')
         raw_model_values = [p.value for p in model]
-        model_values = self.par_space.get_param_value_from_raw_value(raw_model_values)
+        model_values = \
+            self.par_space.get_param_value_from_raw_value(raw_model_values)
         if len(self.current_models.table) > 0:
             isnew = True
             for curmod in self.current_models.table[self.par_space.par_names]:
@@ -311,10 +316,10 @@ class GridSearch(ParameterGenerator):
             # (all parameters at their .value level)
             self.model_list = [[p for p in self.par_space]]
         else: # Subsequent iterations...
-            # Center criterion: min(chi2+kinchi2)
-            chi2_all = [m['chi2']+m['kinchi2'] \
-                        for m in self.current_models.table]
-            center_idx = np.argmin(chi2_all)
+            # center criterion: min(chi2) or min(kinchi2)
+            chi2 = 'chi2' if self.parspace_settings['which_chi2'] == 'chi2' \
+                else 'kinchi2'
+            center_idx = np.argmin(self.current_models.table[chi2])
             n_par = self.par_space.n_par
             center = list(self.current_models.table[center_idx])[:n_par]
             raw_center = self.par_space.get_raw_value_from_param_value(center)
@@ -445,20 +450,28 @@ class GridSearch(ParameterGenerator):
         if mini <= maxi:
             return min(max(mini, value), maxi)
         else:
-            raise ValueError('Clip error: minimum must be less than or equal to maximum')
+            raise ValueError('Clip error: minimum must be less than '
+                             'or equal to maximum')
 
     def check_specific_stopping_critera(self):
         # stop if...
         # (i) if iter>1, last iteration did not improve chi2 by min_delta_chi2
-        # where we'll set min_delta_chi2 in config file => CODE ME: need iter_count in astropy table
         self.status['min_delta_chi2_reached'] = False
         last_iter = np.max(self.current_models.table['which_iter'])
         if last_iter > 0:
-            chi2_0 = np.min([m['chi2']+m['kinchi2'] for m in self.current_models.table if m['which_iter']==last_iter])
-            chi2_1 = np.min([m['chi2']+m['kinchi2'] for m in self.current_models.table if m['which_iter']==last_iter-1])
-            if chi2_1-chi2_0 < self.parspace_settings['stopping_criteria']['min_delta_chi2']:
+            mask = self.current_models.table['which_iter'] == last_iter
+            models0 = self.current_models.table[mask]
+            mask = self.current_models.table['which_iter'] == last_iter-1
+            models1 = self.current_models.table[mask]
+            chi2 = 'chi2' if self.parspace_settings['which_chi2'] == 'chi2' \
+                else 'kinchi2'
+            # Don't use abs() so we catch increasing chi2 values, too:
+            delta_chi2 = np.min(models1[chi2]) - np.min(models0[chi2])
+            if delta_chi2 <= \
+                self.parspace_settings['stopping_criteria']['min_delta_chi2']:
                 self.status['min_delta_chi2_reached'] = True
-        # (ii) if step_size < min_step_size for all params => dealt with by grid_walk (doesn't create such models)
+        # (ii) if step_size < min_step_size for all params
+        #       => dealt with by grid_walk (doesn't create such models)
 
 
 class GaussianProcessEmulator(ParameterGenerator):
