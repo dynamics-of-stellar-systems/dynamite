@@ -3,13 +3,18 @@ import subprocess
 
 class Executor(object):
 
-    def __init__(self):
+    def __init__(self,
+                 system=None,
+                 legacy_directory=None,
+                 executor_settings=None):
         """Class to handle different modes of executions: e.g. Local, Slurm, etc
         Any method which varies for different execution mode should go here:
         This is a dummy class - specific implementations are given by child
         classes below.
         """
-        pass
+        self.system = system
+        self.legacy_directory = legacy_directory
+        self.executor_settings = executor_settings
 
     def write_executable_for_ics(self):
         """called by OrbitLibrary.generate_ics()
@@ -67,10 +72,8 @@ class Executor(object):
 class Local(Executor):
 
     def __init__(self,
-                 system=None,
-                 legacy_directory=None):
-        self.system = system
-        self.legacy_directory = legacy_directory
+                 **kwargs):
+        super().__init__(**kwargs)
 
     def write_executable_for_ics(self):
         cmdstr = 'cmda' + str(self.system.name) + '_' + str(int(np.random.uniform(0, 1) * 100000.0))
@@ -144,11 +147,22 @@ class Local(Executor):
         return
 
 
-class Slurm(Executor):
+class Slurm(Local):
+    # !!!!! NOTE !!!!!
+    # for the time being I have made Slurm a child of Local
+    # so that it inherits all of the methods from Local
+    # Sabine - when you implement this, change the above line to:
+    #     class Slurm(Executor):
+    # !!!!! end note !!!!!
 
-    def __init__(self):
-        # etc...
-        pass
+    def __init__(self,
+                 **kwargs):
+        super().__init__(**kwargs)
+        # example of how to access the executor settings:
+        print(self.executor_settings['example_slurm_setting_1'])
+        print(self.executor_settings['example_slurm_setting_2'])
+
+
 
 
 # end

@@ -212,11 +212,6 @@ class LegacySchwarzschildModel(SchwarzschildModel):
 
     def __init__(self,
                  **kwargs):
-        # self.system = system
-        # self.settings = settings
-        # self.parset = parset
-        # self.parspace = parspace
-        # self.executor = executor
         super().__init__(**kwargs)
         # directory of the Schwarzschild fortran files
         self.legacy_directory = self.settings.legacy_settings['directory']

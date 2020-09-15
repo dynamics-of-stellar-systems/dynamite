@@ -179,7 +179,9 @@ weight_solver_settings:
     nnls_solver: 1
 
 executable_settings:
-    type: "Local"     # or Slurm, etc etc
+    type: "Slurm"     # or Slurm, etc etc
+    example_slurm_setting_1: 'I love Slurm!'
+    example_slurm_setting_2: 'I love Slurm even more!!'
 
 
 
