@@ -81,7 +81,9 @@ for iter in np.unique(all_models.table['which_iter']):
     table = table[table['which_iter']==iter]
     plt.scatter(table['f'],
                 table['ml'],
-                c=table['chi2']+table['kinchi2'])
+                c=table['chi2'],
+                cmap=plt.cm.viridis_r,
+                s=200)
     # plt.colorbar()
     plt.gca().set_xlim(1e-2, 1e3)
     plt.gca().set_ylim(0, 7)
@@ -91,7 +93,9 @@ for iter in np.unique(all_models.table['which_iter']):
 # plot the models: f vs ml altogether
 plt.scatter(all_models.table['f'],
             all_models.table['ml'],
-            c=all_models.table['chi2']+all_models.table['kinchi2'])
+            c=all_models.table['chi2']
+            cmap=plt.cm.viridis_r,
+            s=200)
 plt.gca().set_xscale('log')
 plt.show()
 
