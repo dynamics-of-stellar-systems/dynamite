@@ -355,11 +355,11 @@ class LegacySchwarzschildModel(SchwarzschildModel):
 
 
         text2=str(len(stars.kinematic_data)) + '                              [apertures]' +'\n'  + \
-              '"' + stars.kinematic_data[0].aperturefile +'"' +'\n'  + \
+              '"infil/' + stars.kinematic_data[0].aperturefile +'"' +'\n'  + \
               '1                              [use psf 1] ' +'\n'  + \
               self.settings.orblib_settings['hist_vel'] + '  ' + self.settings.orblib_settings['hist_sigma'] + '  ' + self.settings.orblib_settings['hist_bins'] +'   [histogram]' +'\n'  + \
               '1                              [use binning for aperture 1] ' +'\n'  + \
-              '"' + stars.kinematic_data[0].binfile +'"' +'\n'  + \
+              '"infil/' + stars.kinematic_data[0].binfile +'"' +'\n'  + \
               'datfil/orblib.dat '
 
         orblib_file= open(path+'orblib.in',"w")
@@ -384,11 +384,11 @@ class LegacySchwarzschildModel(SchwarzschildModel):
             str(len(stars.kinematic_data)) + '                              [number of psfs of the kinematic cubes]' +'\n'
 
         text2=str(len(stars.kinematic_data)) + '                              [apertures]' +'\n'  + \
-              '"' + stars.kinematic_data[0].aperturefile +'"' +'\n'  + \
+              '"infil/' + stars.kinematic_data[0].aperturefile +'"' +'\n'  + \
               '1                              [use psf 1] ' +'\n'  + \
               self.settings.orblib_settings['hist_vel'] + '  ' + self.settings.orblib_settings['hist_sigma'] + '  ' + self.settings.orblib_settings['hist_bins'] +'   [histogram]' +'\n'  + \
               '1                              [use binning for aperture 1] ' +'\n'  + \
-              '"' + stars.kinematic_data[0].binfile +'"' +'\n'  + \
+              '"infil/' + stars.kinematic_data[0].binfile +'"' +'\n'  + \
               'datfil/orblibbox.dat '
 
         orblibbox_file= open(path+'orblibbox.in',"w")
@@ -416,10 +416,10 @@ class LegacySchwarzschildModel(SchwarzschildModel):
 
         text='infil/paramsb.in' +'\n' + \
               str(int(np.max(n_psf))) + '                              [# of apertures]'  +'\n'  + \
-              '"' + stars.kinematic_data[0].aperturefile +'"' +  '\n'  + \
+              '"infil/' + stars.kinematic_data[0].aperturefile +'"' + '\n' + \
               str(len(stars.kinematic_data[0].PSF['sigma'])) + '                              [# of gaussians components]'  +'\n' + \
               str(psf_weight) + '   ' + str(psf_sigma) + '                     [weight sigma]' +  '\n'  + \
-              '"' + stars.kinematic_data[0].binfile +'"' +'\n'  + \
+              '"infil/' + stars.kinematic_data[0].binfile +'"' +'\n'  + \
               '"datfil/mass_aper.dat"'
 
         triaxmassbin_file= open(path+'triaxmassbin.in',"w")
