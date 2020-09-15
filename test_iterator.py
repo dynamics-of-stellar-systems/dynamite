@@ -47,21 +47,22 @@ else:
 
 # for speed of testing, I'll set the following kw arguments in order to:
 # (i) not exectute the models
-# (ii) use a fake chi2, as defined by this fake_chi2_function:
+# (ii) use a dummy chi2, as defined by this dummy_chi2_function:
 # def dummy_chi2_function(parset):
-#     fake_chi2 = parset['ml'] + np.log10(parset['f'])
-#     return fake_chi2
+#     chi2 = parset['ml'] + np.log10(parset['f'])
+#     return chi2
 # model_kwargs = {'dummy_run':True,
 #                 'dummy_chi2_function':dummy_chi2_function}
-# ... or not:
+# Or, to actually run models, do not pass the above keywords:
 model_kwargs = {}
 
 print('Instantiate executor object')
-print('    executor type: ', c.settings.executable_settings['type'])
+print('    executor type: ', c.settings.executor_settings['type'])
 kw_executor = {'system':c.system,
-               'legacy_directory':c.settings.legacy_settings['directory']}
-executor = getattr(dyn.executor,
-                   c.settings.executable_settings['type'])(**kw_executor)
+               'legacy_directory':c.settings.legacy_settings['directory'],
+               'executor_settings':c.settings.executor_settings}
+executor_type = c.settings.executor_settings['type']
+executor = getattr(dyn.executor, executor_type)(**kw_executor)
 
 # "run" the models
 smi = dyn.shwarzschild_model_iterator.SchwarzschildModelIterator(
@@ -70,8 +71,6 @@ smi = dyn.shwarzschild_model_iterator.SchwarzschildModelIterator(
     settings=c.settings,
     executor=executor,
     model_kwargs=model_kwargs)
-
-all_models.table['which_iter']
 
 # plot the models: f vs ml at each iteration:
 for iter in np.unique(all_models.table['which_iter']):
@@ -83,6 +82,7 @@ for iter in np.unique(all_models.table['which_iter']):
                 cmap=plt.cm.viridis_r,
                 s=200)
     # plt.colorbar()
+    plt.gca().set_title(f'iteration {iter}')
     plt.gca().set_xlim(1e-2, 1e3)
     plt.gca().set_ylim(0, 7)
     plt.gca().set_xscale('log')
@@ -94,6 +94,7 @@ plt.scatter(all_models.table['f'],
             c=all_models.table['chi2'],
             cmap=plt.cm.viridis_r,
             s=200)
+plt.gca().set_title(f'all iterations')
 plt.gca().set_xscale('log')
 plt.show()
 

@@ -44,24 +44,24 @@ class Settings(object):
             self.io_settings = values
         elif kind == 'weight_solver_settings':
             self.weight_solver_settings = values
-        elif kind == 'executable_settings':
-            self.executable_settings = values
+        elif kind == 'executor_settings':
+            self.executor_settings = values
         else:
             raise ValueError("""Config only takes orblib_settings
                              and parameter_space_settings
                              and io_settings
                              and weight_solver_settings
-                             and executable_settings""")
+                             and executor_settings""")
 
     def validate(self):
         if not(self.orblib_settings and self.parameter_space_settings and
                self.output_settings and self.weight_solver_settings
-               and self.executable_settings):
+               and self.executor_settings):
             raise ValueError("""Config needs orblib_settings
                              and parameter_space_settings
                              and io_settings
                              and weight_solver_settings
-                             and executable_settings""")
+                             and executor_settings""")
 
     def __repr__(self):
         return (f'{self.__class__.__name__}({self.__dict__})')
@@ -237,13 +237,13 @@ class ConfigurationReaderYaml(object):
                     print(f' {tuple(value.keys())}')
                 self.settings.add('weight_solver_settings', value)
 
-            # add executable_settings to config object
+            # add executor_settings to config object
 
-            elif key == 'executable_settings':
+            elif key == 'executor_settings':
                 if not silent:
-                    print('executable_settings...')
+                    print('executor_settings...')
                     print(f' {tuple(value.keys())}')
-                self.settings.add('executable_settings', value)
+                self.settings.add('executor_settings', value)
 
             else:
                 raise ValueError(f'Unknown configuration key: {key}')

@@ -178,8 +178,8 @@ weight_solver_settings:
     ml_scale_factor: 1.0
     nnls_solver: 1
 
-executable_settings:
-    type: "Slurm"     # or Slurm, etc etc
+executor_settings:
+    type: "Slurm"     # e.g. Local, Slurm, etc etc
     example_slurm_setting_1: 'I love Slurm!'
     example_slurm_setting_2: 'I love Slurm even more!!'
 
