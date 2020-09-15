@@ -48,15 +48,13 @@ else:
 # for speed of testing, I'll set the following kw arguments in order to:
 # (i) not exectute the models
 # (ii) use a fake chi2, as defined by this fake_chi2_function:
-def fake_chi2_function(parset):
-    fake_chi2 = np.log10(parset['mass']) + parset['ml'] + np.log10(parset['f'])
-    return fake_chi2
-model_kwargs = {'execute_run':False,
-                'use_fake_chi2':True,
-                'fake_chi2_function':fake_chi2_function}
-
-model_kwargs = {'execute_run':True,
-                'use_fake_chi2':False}
+# def dummy_chi2_function(parset):
+#     fake_chi2 = parset['ml'] + np.log10(parset['f'])
+#     return fake_chi2
+# model_kwargs = {'dummy_run':True,
+#                 'dummy_chi2_function':dummy_chi2_function}
+# ... or not:
+model_kwargs = {}
 
 print('Instantiate executor object')
 print('    executor type: ', c.settings.executable_settings['type'])
@@ -70,8 +68,8 @@ smi = dyn.shwarzschild_model_iterator.SchwarzschildModelIterator(
     system=c.system,
     all_models=all_models,
     settings=c.settings,
-    model_kwargs=model_kwargs,
-    executor=executor)
+    executor=executor,
+    model_kwargs=model_kwargs)
 
 all_models.table['which_iter']
 

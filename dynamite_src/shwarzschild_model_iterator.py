@@ -68,6 +68,7 @@ class SchwarzschildModelInnerIterator(object):
                 mod0 = self.create_model(parset0,
                                          model_kwargs=self.model_kwargs,
                                          executor=executor)
+                mod0.run()
                 self.all_models.table['chi2'][row] = mod0.chi2
                 self.all_models.table['kinchi2'][row] = mod0.kinchi2
                 # self.all_models.table['which_iter'][row] = iter
