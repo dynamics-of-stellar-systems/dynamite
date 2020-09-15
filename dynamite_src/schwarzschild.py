@@ -201,6 +201,7 @@ class LegacySchwarzschildModel(SchwarzschildModel):
                  settings=None,
                  parset=None,
                  parspace=None,
+                 executor=None,
                  execute_run=True,
                  use_fake_chi2=False,
                  fake_chi2_function=None):
@@ -209,6 +210,7 @@ class LegacySchwarzschildModel(SchwarzschildModel):
         self.settings = settings
         self.parset = parset
         self.parspace = parspace
+        self.executor = executor
 
         #directory of the Schwarzschild fortran files
         self.legacy_directory = self.settings.legacy_settings['directory']
@@ -240,7 +242,6 @@ class LegacySchwarzschildModel(SchwarzschildModel):
             self.create_model_directory(self.directory_noml+'infil/')
             self.create_model_directory(self.directory_noml+'datfil/')
 
-
             #add communication to the user
             #check if orbit library was calculated already
             if not os.path.isfile(self.directory_noml+'datfil/orblib.dat.bz2') or not os.path.isfile(self.directory_noml+'datfil/orblibbox.dat.bz2') :
@@ -253,15 +254,13 @@ class LegacySchwarzschildModel(SchwarzschildModel):
                 shutil.copyfile(self.in_dir+'aperture.dat', self.directory_noml+'infil/aperture.dat')
                 shutil.copyfile(self.in_dir+'bins.dat', self.directory_noml+'infil/bins.dat')
 
-
-
                 #calculate orbit libary
                 orb_lib = dyn.LegacyOrbitLibrary(
                         system=self.system,
                         mod_dir=self.directory_noml,
                         settings=self.settings.orblib_settings,
-                        legacy_directory=self.legacy_directory)
-
+                        legacy_directory=self.legacy_directory,
+                        executor=self.executor)
 
             #prepare fortran input file for nnls
             self.create_fortran_input_nnls(self.directory_noml)
@@ -272,7 +271,8 @@ class LegacySchwarzschildModel(SchwarzschildModel):
                     mod_dir=self.directory_noml,
                     settings=self.settings.weight_solver_settings,
                     legacy_directory=self.legacy_directory,
-                    ml=self.parset['ml'])
+                    ml=self.parset['ml'],
+                    executor=self.executor)
 
             chi2, kinchi2 = weight_solver.solve()
 
@@ -282,9 +282,7 @@ class LegacySchwarzschildModel(SchwarzschildModel):
             self.chi2 = chi2
             self.kinchi2 = kinchi2
 
-
     def create_fortran_input_orblib(self,path):
-
 
         #-------------------
         #write parameters.in
@@ -330,7 +328,6 @@ class LegacySchwarzschildModel(SchwarzschildModel):
         #parmsb.in (assumed to be the same as paramters.in)
         np.savetxt(path+'paramsb.in',stars.mge.data,header=str(len_mge),footer=text,comments='',fmt=['%10.2f','%10.5f','%10.5f','%10.2f'])
 
-
         #-------------------
         #write orbstart.in
         #-------------------
@@ -340,22 +337,18 @@ class LegacySchwarzschildModel(SchwarzschildModel):
         'datfil/begin.dat' +'\n' + \
         'datfil/beginbox.dat'
 
-
         orbstart_file= open(path+'orbstart.in',"w")
         orbstart_file.write(text)
         orbstart_file.close()
-
 
         #-------------------
         #write orblib.in
         #-------------------
 
-
         i=0
         psf_weight=(stars.kinematic_data[0].PSF['weight'])[i]
         psf_sigma=(stars.kinematic_data[0].PSF['sigma'])[i]
         n_psf=[[1]]   #len(stars.kinematic_data) #needs to be revised
-
 
         #TODO:needs to be slightly changed for more psfs, loop
 
@@ -369,7 +362,6 @@ class LegacySchwarzschildModel(SchwarzschildModel):
             str(self.settings.orblib_settings['accuracy']) + '                         [accuracy]' +'\n' + \
             str(len(stars.kinematic_data)) + '                              [number of psfs of the kinematic cubes]' +'\n'
 
-
         psf= str(len(stars.kinematic_data[0].PSF['sigma'])) + '                              [# of gaussians components]'  +'\n' + \
              str(psf_weight) + '   ' + str(psf_sigma) + '                    [weight, sigma]' +  '\n'
 
@@ -382,14 +374,11 @@ class LegacySchwarzschildModel(SchwarzschildModel):
               '"' + stars.kinematic_data[0].binfile +'"' +'\n'  + \
               'datfil/orblib.dat '
 
-
-
         orblib_file= open(path+'orblib.in',"w")
         orblib_file.write(text1)
         orblib_file.write(psf)
         orblib_file.write(text2)
         orblib_file.close()
-
 
         #-------------------
         #write orblibbox.in
@@ -406,8 +395,6 @@ class LegacySchwarzschildModel(SchwarzschildModel):
             str(self.settings.orblib_settings['accuracy']) + '                         [accuracy]' +'\n' + \
             str(len(stars.kinematic_data)) + '                              [number of psfs of the kinematic cubes]' +'\n'
 
-
-
         text2=str(len(stars.kinematic_data)) + '                              [apertures]' +'\n'  + \
               '"' + stars.kinematic_data[0].aperturefile +'"' +'\n'  + \
               '1                              [use psf 1] ' +'\n'  + \
@@ -415,8 +402,6 @@ class LegacySchwarzschildModel(SchwarzschildModel):
               '1                              [use binning for aperture 1] ' +'\n'  + \
               '"' + stars.kinematic_data[0].binfile +'"' +'\n'  + \
               'datfil/orblibbox.dat '
-
-
 
         orblibbox_file= open(path+'orblibbox.in',"w")
         orblibbox_file.write(text1)
@@ -432,7 +417,6 @@ class LegacySchwarzschildModel(SchwarzschildModel):
         'datfil/orblib.dat' +'\n' + \
         'datfil/mass_radmass.dat' +'\n' + \
         'datfil/mass_qgrid.dat'
-
 
         triaxmass_file= open(path+'triaxmass.in',"w")
         triaxmass_file.write(text)
@@ -454,16 +438,13 @@ class LegacySchwarzschildModel(SchwarzschildModel):
         triaxmassbin_file.write(text)
         triaxmassbin_file.close()
 
-
     def create_fortran_input_nnls(self,path):
 
-        
         #for the ml the model is only scaled. We therefore need to know what is the ml that was used for the orbit library
         infile=path+'infil/parameters.in'
         lines = [line.rstrip('\n').split() for line in open(infile)]
         ml_orblib=float((lines[-9])[0])
-        
-        
+
         #-------------------
         #write nn.in
         #-------------------
@@ -489,30 +470,13 @@ class LegacySchwarzschildModel(SchwarzschildModel):
 
 
 
-class SchwarzschildModelLoop(object):
 
-    def __init__(self,
-                 system=None,
-                 parset_list=None,
-                 weight_solver=None,
-                 settings=None
-                 ):
-        pass
-        self.models = []
-        # for parset0 in parset_list:
-        #     if settings.legacy_mode:
-        #         mod0 = LegacySchwarzschildModel(
-        #             system=system,
-        #             settings=settings
-        #             parset=parset0,
-        #             parspace=parspace)
-        #     else:
-        #         mod0 = SchwarzschildModel(
-        #             system=system,
-        #             settings=settings,
-        #             parset=parset0,
-        #             parspace=parspace)
-        #     self.models += [mod0]
+
+
+
+
+
+
 
 
 

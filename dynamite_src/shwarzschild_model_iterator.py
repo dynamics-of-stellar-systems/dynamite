@@ -9,7 +9,8 @@ class SchwarzschildModelIterator(object):
                  system=None,
                  all_models=None,
                  settings=None,
-                 model_kwargs={}):
+                 model_kwargs={},
+                 executor=None):
         stopping_crit = settings.parameter_space_settings['stopping_criteria']
         n_max_iter = stopping_crit['n_max_iter']
         # get specified parameter generator
@@ -26,7 +27,8 @@ class SchwarzschildModelIterator(object):
             model_kwargs=model_kwargs)
         for iter in range(n_max_iter):
             print(f'{par_generator_type}: "iteration {iter}"')
-            status = model_inner_iterator.run_iteration(iter)
+            status = model_inner_iterator.run_iteration(iter,
+                                                        executor=executor)
             if status['stop'] is True:
                 print(f'Stopping after iteration {iter}')
                 print(status)
@@ -49,7 +51,7 @@ class SchwarzschildModelInnerIterator(object):
         self.par_generator = par_generator
         self.model_kwargs = model_kwargs
 
-    def run_iteration(self, iter):
+    def run_iteration(self, iter, executor=None):
         self.par_generator.generate(current_models=self.all_models)
         # generate parameter sets for this iteration
         if self.par_generator.status['stop'] is False:
@@ -64,7 +66,8 @@ class SchwarzschildModelInnerIterator(object):
                 parset0 = parset0[self.parspace.par_names]
                 # create and run the model
                 mod0 = self.create_model(parset0,
-                                         model_kwargs=self.model_kwargs)
+                                         model_kwargs=self.model_kwargs,
+                                         executor=executor)
                 self.all_models.table['chi2'][row] = mod0.chi2
                 self.all_models.table['kinchi2'][row] = mod0.kinchi2
                 # self.all_models.table['which_iter'][row] = iter
@@ -75,11 +78,13 @@ class SchwarzschildModelInnerIterator(object):
 
     def create_model(self,
                      parset,
-                     model_kwargs={}):
+                     model_kwargs={},
+                     executor=None):
         model_kwargs0 = {'system':self.system,
                          'settings':self.settings,
                          'parspace':self.parspace,
-                         'parset':parset}
+                         'parset':parset,
+                         'executor':executor}
         model_kwargs0.update(model_kwargs)
         # create a model object based on choices in settings
         if self.settings.legacy_settings['use_legacy_mode']:

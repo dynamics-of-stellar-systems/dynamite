@@ -50,64 +50,27 @@ class LegacyWeightSolver(WeightSolver):
                  mod_dir=None,
                  settings=None,
                  legacy_directory=None,
-                 ml=None):
+                 ml=None,
+                 executor=None):
         self.system = system
         self.mod_dir = mod_dir
         self.settings = settings
         self.legacy_directory = legacy_directory
         self.ml=ml
-
-
-
-
+        self.executor = executor
 
     def solve(self):
-
         #set the current directory to the directory in which the models are computed
         cur_dir=os.getcwd()
         os.chdir(self.mod_dir)
-
-
         print("Fit the orbit library to the kinematic data.")
-
-        cmdstr=self.write_executable()
-        self.execute(cmdstr)
-
+        cmdstr = self.executor.write_executable_for_weight_solver(self.ml)
+        self.executor.execute(cmdstr)
         #set the current directory to the dynamite directory
         os.chdir(cur_dir)
-
         chi2, kinchi2 = self.read_output()
-
-
         print("NNLS is finished.")
-
         return chi2, kinchi2
-
-    def write_executable(self):
-
-        '{:06.2f}'.format(self.ml)
-        nn='ml'+'{:01.2f}'.format(self.ml)+'/nn'
-
-
-        cmdstr = 'cmdd' + str(self.system.name) + '_' + str(int(np.random.uniform(0, 1) * 100000.0))
-
-        txt_file = open(cmdstr, "w")
-        txt_file.write('#!/bin/bash' + '\n')
-        txt_file.write('# if the gzipped orbit library exist unzip it' + '\n')
-        txt_file.write('test -e ../datfil/orblib.dat || bunzip2 -k  datfil/orblib.dat.bz2 ' + '\n')
-        txt_file.write('test -e ../datfil/orblibbox.dat || bunzip2 -k  datfil/orblibbox.dat.bz2' + '\n')
-        txt_file.write('test -e ' + str(nn) + '_kinem.out || ' +
-                           self.legacy_directory +'/triaxnnls_CRcut < ' + str(nn) + '.in >>' +str(nn) + 'ls.log' + '\n') #TODO: specify which nnls to use
-        txt_file.write('rm datfil/orblib.dat' + '\n')
-        txt_file.write('rm datfil/orblibbox.dat' + '\n')
-        txt_file.close()
-
-        return cmdstr
-
-
-    def execute(self,cmdstr):
-
-          p4 = subprocess.call('bash ' + cmdstr, shell=True)
 
     def read_output(self):
         ''' taken useful parts from triax_extract_chi2_iter in schw_domoditer,

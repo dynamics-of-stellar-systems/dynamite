@@ -26,6 +26,7 @@ your local triaxialschwarzschild directory:
 # read configuration
 fname = 'model_example/NGC6278/config_legacy_example.yaml'
 c = dyn.config_reader.ConfigurationReaderYaml(fname, silent=True)
+
 parspace = dyn.parameter_space.ParameterSpace(c.system)
 print('Free parameters are:')
 for p in parspace:
@@ -44,7 +45,6 @@ else:
                                              parspace=parspace,
                                              settings=c.settings)
 
-
 # for speed of testing, I'll set the following kw arguments in order to:
 # (i) not exectute the models
 # (ii) use a fake chi2, as defined by this fake_chi2_function:
@@ -55,55 +55,44 @@ model_kwargs = {'execute_run':False,
                 'use_fake_chi2':True,
                 'fake_chi2_function':fake_chi2_function}
 
+model_kwargs = {'execute_run':True,
+                'use_fake_chi2':False}
+
+print('Instantiate executor object')
+print('    executor type: ', c.settings.executable_settings['type'])
+kw_executor = {'system':c.system,
+               'legacy_directory':c.settings.legacy_settings['directory']}
+executor = getattr(dyn.executor,
+                   c.settings.executable_settings['type'])(**kw_executor)
+
 # "run" the models
 smi = dyn.shwarzschild_model_iterator.SchwarzschildModelIterator(
     system=c.system,
     all_models=all_models,
     settings=c.settings,
-    model_kwargs=model_kwargs)
+    model_kwargs=model_kwargs,
+    executor=executor)
 
-c.settings.parameter_space_settings
+all_models.table['which_iter']
 
-# plot the models: mass vs ml at each iteration:
+# plot the models: f vs ml at each iteration:
 for iter in np.unique(all_models.table['which_iter']):
     table = all_models.table
     table = table[table['which_iter']==iter]
-    plt.scatter(table['mass'],
+    plt.scatter(table['f'],
                 table['ml'],
                 c=table['chi2']+table['kinchi2'])
     # plt.colorbar()
-    plt.gca().set_xlim(9, 2e6)
+    plt.gca().set_xlim(1e-2, 1e3)
     plt.gca().set_ylim(0, 7)
     plt.gca().set_xscale('log')
     plt.show()
 
-# plot the models: mass vs ml altogether
-plt.scatter(all_models.table['mass'],
+# plot the models: f vs ml altogether
+plt.scatter(all_models.table['f'],
             all_models.table['ml'],
             c=all_models.table['chi2']+all_models.table['kinchi2'])
 plt.gca().set_xscale('log')
-plt.show()
-
-# plot the models: mass vs f at each iteration:
-for iter in np.unique(all_models.table['which_iter']):
-    table = all_models.table
-    table = table[table['which_iter']==iter]
-    plt.scatter(table['mass'],
-                table['f'],
-                c=table['chi2']+table['kinchi2'])
-    # plt.colorbar()
-    plt.gca().set_xlim(9, 2e6)
-    plt.gca().set_ylim(1e-2, 1e3)
-    plt.gca().set_xscale('log')
-    plt.gca().set_yscale('log')
-    plt.show()
-
-# plot the models: mass vs f at altogether:
-plt.scatter(all_models.table['mass'],
-            all_models.table['f'],
-            c=all_models.table['chi2']+all_models.table['kinchi2'])
-plt.gca().set_xscale('log')
-plt.gca().set_yscale('log')
 plt.show()
 
 # save the all_models table
