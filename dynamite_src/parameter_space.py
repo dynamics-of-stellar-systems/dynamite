@@ -283,6 +283,47 @@ class ParameterGenerator(object):
         return isnew
 
 
+class LegacyGridSearch(ParameterGenerator):
+
+    def __init__(self, par_space=[], parspace_settings=None):
+        super().__init__(par_space=par_space,
+                         parspace_settings=parspace_settings,
+                         name='LegacyGridSearch')
+
+    def specific_generate_method(self, **kwargs):
+        if len(self.current_models.table) == 0:
+            # The 'zeroth iteration' results in only one model
+            # (all parameters at their .value level)
+            self.model_list = [[p for p in self.par_space]]
+            return ###########################################################
+
+        thresh = \
+            self.parspace_settings['generator_settings']['threshold_del_chi2']
+        chi2 = 'chi2' if self.parspace_settings['which_chi2'] == 'chi2' \
+            else 'kinchi2'
+        min_chi2 = np.min(self.current_models.table[chi2])
+        prop_mask = abs(self.current_models.table[chi2] - min_chi2) <= thresh
+        prop_list = self.current_models.table[prop_mask]
+        self.model_list = []
+        for m in prop_list:
+            for paridx in range(len(self.par_space)):
+                if self.par_space[paridx].fixed: # parameter fixed->do nothing
+                    continue
+                new_parset = [copy.deepcopy(p) for p in self.par_space]
+                lo = self.par_space[paridx].grid_parspace_settings['lo']
+                hi = self.par_space[paridx].grid_parspace_settings['hi']
+                step = self.par_space[paridx].grid_parspace_settings['step']
+                minstep = \
+                    self.par_space[paridx].grid_parspace_settings['minstep'] \
+                    if 'minstep' in \
+                    self.par_space[paridx].grid_parspace_settings else step
+                for s in [-1, 1]:
+                    value = np.clip(m[paridx].columns[paridx]+s*step, lo, hi)
+                    if abs(value-m[paridx].columns[paridx]) >= minstep:
+                        new_parset[paridx].value = value
+                        self.model_list.append(new_parset)
+                    
+
 
 class GridSearch(ParameterGenerator):
 
