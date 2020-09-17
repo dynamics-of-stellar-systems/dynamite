@@ -26,6 +26,9 @@ class MGE(data.Data):
         data = table.Table(data)
         data.write(filename_new_format, format='ascii.ecsv')
 
+    def __repr__(self):
+        return f'{self.__class__.__name__}({self.__dict__})'
+
 
 # TODO:
 # class MGE_from_image(MGE):

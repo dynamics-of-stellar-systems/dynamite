@@ -100,16 +100,16 @@ system_components:
                 LaTeX: "$u_{min}$"
                 sformat: "7.4f"
         type: "TriaxialVisibleComponent" # class name
-        mge_file: "model_example/NGC6278/input_data/mge.ecvs"
+        mge_file: "mge.ecvs"
         include: True
         contributes_to_potential: True
         kinematics: # optional, only specified for components that have kinematics
             set1:
                 weight: 1.0                       # weight of kinematics data specified by name
                 type: GaussHermite                # specifies which object class to create
-                datafile: "model_example/NGC6278/input_data/gauss_hermite_kins.ecvs"  # for both discrete and integrated types (actual example file)
-                aperturefile: "infil/aperture.dat"      # integrated only (actual example file)
-                binfile: "infil/bins.dat"               # integrated only (actual example file)
+                datafile: "gauss_hermite_kins.ecvs"  # for both discrete and integrated types (actual example file)
+                aperturefile: "aperture.dat"      # integrated only (actual example file)
+                binfile: "bins.dat"               # integrated only (actual example file)
                 maskfile: maskfile.dat          # made-up filename
 
 system_parameters: # these go into the physical system as a standalone parameter (i.e., not one of the components)
@@ -162,8 +162,8 @@ legacy_settings:
     use_legacy_mode: True
     directory: "/Users/pjethwa/Astro/Science/dynamite/triaxschwarz/triaxschwarzschild/"
 
-io_settings:
-    input_directory: "model_example/NGC6278/input_data/"
+io_settings: # paths can be given with or without trailing slash
+    input_directory: "model_example/NGC6278/input_data"
     output_directory: "model_example/NGC6278/"
 
 weight_solver_settings:

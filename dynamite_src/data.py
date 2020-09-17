@@ -4,12 +4,15 @@ class Data(object):
 
     def __init__(self,
                  name=None,
-                 datafile=None
+                 datafile=None,
+                 input_directory=None
                  ):
         self.name = name
-        self.datafile = datafile
-        if datafile is not None:
-            self.data = ascii.read(self.datafile)
+        if not hasattr(self, input_directory):
+            self.datafile = datafile
+            self.input_directory = input_directory if input_directory else ''
+            if datafile is not None:
+                self.data = ascii.read(self.input_directory+self.datafile)
 
 
 class Discrete(Data):

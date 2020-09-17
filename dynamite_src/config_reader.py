@@ -49,6 +49,7 @@ class Settings(object):
         else:
             raise ValueError("""Config only takes orblib_settings
                              and parameter_space_settings
+                             and legacy settings
                              and io_settings
                              and weight_solver_settings
                              and executor_settings""")
@@ -101,7 +102,22 @@ class ConfigurationReaderYaml(object):
 
         self.system = physys.System() # instantiate System object
         self.settings = Settings() # instantiate Configuration object
-#        self.__dict__ = par
+
+        if not silent: # get paths first
+            print('io_settings...')
+            print(f' {tuple(self.params["io_settings"].keys())}')
+        self.settings.add('io_settings', self.params['io_settings'])
+        try:
+            for io in ['input', 'output']:
+                d = self.settings.io_settings[io+'_directory']
+                if len(d) > 0 and d[-1] != '/': # len(d)=0: allow no path, too
+                    self.settings.io_settings[io+'_directory'] += '/'
+        except:
+            raise ValueError('io_settings: check input_directory '
+                             'and output_directory')
+        # print(self.settings.io_settings)
+        # print(self.params['io_settings']['input_directory'])
+        # print(self.params['io_settings']['output_directory'])
 
         for key, value in self.params.items(): # walk through the file contents...
 
@@ -146,28 +162,38 @@ class ConfigurationReaderYaml(object):
                     # read kinematics
 
                     if 'kinematics' in data_comp:
-                    # shall we include a check here (e.g., only VisibleComponent has kinematics?)
+                    # shall we include a check here (e.g., only
+                    # VisibleComponent has kinematics?)
                         if not silent:
-                            print(f" Has kinematics {tuple(data_comp['kinematics'].keys())}")
+                            print(f" Has kinematics "
+                                  f"{tuple(data_comp['kinematics'].keys())}")
                         for kin, data_kin in data_comp['kinematics'].items():
-                            # kinematics_set = kinem.Kinematics(name=kin, **data_kin)
-                            kinematics_set = getattr(kinem,data_kin['type'])(name=kin, **data_kin)
+                            path=self.settings.io_settings['input_directory']
+                            kinematics_set = getattr(kinem,data_kin['type'])\
+                                                (name=kin,
+                                                 input_directory=path,
+                                                 **data_kin)
                             kin_list.append(kinematics_set)
                         c.kinematic_data = kin_list
 
                     # read populations
 
                     if 'populations' in data_comp:
-                    # shall we include a check here (e.g., only VisibleComponent has populations?)
+                    # shall we include a check here (e.g., only
+                    # VisibleComponent has populations?)
                         if not silent:
-                            print(f" Has populations {tuple(data_comp['populations'].keys())}")
+                            print(f" Has populations "
+                                  f"{tuple(data_comp['populations'].keys())}")
                         for pop, data_pop in data_comp['populations'].items():
-                            populations_set = popul.Populations(name=pop, **data_pop)
+                            populations_set = popul.Populations(name=pop,
+                                                                **data_pop)
                             pop_list.append(populations_set)
                         c.population_data = pop_list
 
                     if 'mge_file' in data_comp:
-                        c.mge = mge.MGE(datafile=data_comp['mge_file'])
+                        path = self.settings.io_settings['input_directory']
+                        c.mge = mge.MGE(input_directory=path,
+                                        datafile=data_comp['mge_file'])
 
                     # add component to system
                     c.validate()
@@ -224,10 +250,11 @@ class ConfigurationReaderYaml(object):
             # add output settings to config object
 
             elif key == 'io_settings':
-                if not silent:
-                    print('io_settings...')
-                    print(f' {tuple(value.keys())}')
-                self.settings.add('io_settings', value)
+                pass # io_settings (paths) have been assigned already...
+                # if not silent:
+                #     print('io_settings...')
+                #     print(f' {tuple(value.keys())}')
+                # self.settings.add('io_settings', value)
 
             # add weight_solver_settings to config object
 
