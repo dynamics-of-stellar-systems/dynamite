@@ -100,7 +100,7 @@ plt.show()
 
 # save the all_models table
 fname = c.settings.io_settings['output_directory']+'all_models.ecsv'
-all_models.table.write(fname, format='ascii.ecsv')
+all_models.table.write(fname, format='ascii.ecsv', overwrite=True)
 print(all_models.table['chi2', 'kinchi2'])
 
 

@@ -304,8 +304,10 @@ class ConfigurationReaderYaml(object):
                     raise ValueError(f'DM Halo needs to be of type NFW, Hernquist, '
                                      f'TriaxialCoredLogPotential or GeneralisedNFW, not {type(c)}')
 
-        if self.settings.parameter_space_settings["generator_type"] != 'GridSearch':
-            raise ValueError('Legacy mode: parameter space generator_type must be GridSearch')
+        gen_type = self.settings.parameter_space_settings["generator_type"]
+        if gen_type != 'GridSearch' and gen_type != 'LegacyGridSearch':
+            raise ValueError('Legacy mode: parameter space generator_type '
+                             'must be GridSearch or LegacyGridSearch')
         if self.settings.parameter_space_settings["which_chi2"] not in \
             ["chi2", "kinchi2"]:
             raise ValueError('Unknown which_chi2 setting, must be chi2 or kinchi2')
