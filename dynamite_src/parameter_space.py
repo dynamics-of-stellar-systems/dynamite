@@ -1,4 +1,4 @@
-# # some tricks to add the current path to sys.path (so the imports below work)
+# some tricks to add the current path to sys.path (so the imports below work)
 
 import os.path
 import sys
@@ -18,7 +18,6 @@ class Parameter(object):
     attributes = []
     def __init__(self,
                  name=None,
-                 desc=None,
                  fixed=False,
                  LaTeX=None,
                  sformat="%g",
@@ -26,13 +25,8 @@ class Parameter(object):
                  par_generator_settings=None,
                  gpe_parspace_settings=None,
                  logarithmic=False,
-                 # lo=None,
-                 # hi=None,
-                 # step=None,
-                 # minstep=None,
                  ):
         self.name = name
-        self.desc = desc
         self.fixed = fixed
         self.LaTeX = LaTeX
         self.sformat = sformat
@@ -40,10 +34,6 @@ class Parameter(object):
         self.par_generator_settings = par_generator_settings
         self.gpe_parspace_settings = gpe_parspace_settings
         self.logarithmic = logarithmic
-        # self.lo = lo
-        # self.hi = hi
-        # self.step = step
-        # self.minstep = minstep
         self.__class__.attributes = list(self.__dict__.keys())
 
     def update(self, **kwargs):

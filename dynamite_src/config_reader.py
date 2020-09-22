@@ -119,7 +119,7 @@ class ConfigurationReaderYaml(object):
         # print(self.params['io_settings']['input_directory'])
         # print(self.params['io_settings']['output_directory'])
 
-        for key, value in self.params.items(): # walk through the file contents...
+        for key, value in self.params.items(): # walk through file contents...
 
             # add components to system
 
@@ -135,27 +135,32 @@ class ConfigurationReaderYaml(object):
                     # instantiate the component
 
                     if not silent:
-                        print(f" {comp}... instantiating {data_comp['type']} object")
+                        print(f" {comp}... instantiating {data_comp['type']} "
+                              "object")
                     if 'contributes_to_potential' not in data_comp:
                         raise ValueError(f'Component {comp} needs '
                                          'contributes_to_potential attribute')
 #                    c = globals()[data_comp['type']](contributes_to_potential
-#                                                       = data_comp['contributes_to_potential'])
+#                        = data_comp['contributes_to_potential'])
                     c = getattr(physys,data_comp['type'])(name = comp,
-                            contributes_to_potential = data_comp['contributes_to_potential'])
+                            contributes_to_potential \
+                            = data_comp['contributes_to_potential'])
 
-                    # initialize the componnt's paramaters, kinematics, and populations
+                    # initialize the component's paramaters, kinematics,
+                    # and populations
 
                     par_list, kin_list, pop_list = [], [], []
 
                     # read parameters
 
                     if 'parameters' not in data_comp:
-                        raise ValueError('Component ' + comp + ' needs parameters')
+                        raise ValueError('Component ' + comp + \
+                                         ' needs parameters')
                     if not silent:
-                        print(f" Has parameters {tuple(data_comp['parameters'].keys())}")
+                        print(f" Has parameters "
+                              f"{tuple(data_comp['parameters'].keys())}")
                     for par, data_par in data_comp['parameters'].items():
-                        the_parameter = parspace.Parameter(name=par, **data_par)
+                        the_parameter = parspace.Parameter(name=par,**data_par)
                         par_list.append(the_parameter)
                     c.parameters = par_list
 
@@ -196,7 +201,7 @@ class ConfigurationReaderYaml(object):
                                         datafile=data_comp['mge_file'])
 
                     # add component to system
-                    c.validate()
+                    c.validate() # now also adds the right parameter sformat
                     self.system.add_component(c)
 
             # add system parameters
@@ -210,7 +215,7 @@ class ConfigurationReaderYaml(object):
                     par_list.append(parspace.Parameter(name=other, **data))
                 setattr(self.system, 'parameters', par_list)
                     # if other == 'ml':
-                    #     self.system.ml = parspace.Parameter(name=other, **data)
+                    #     self.system.ml=parspace.Parameter(name=other,**data)
                     # else:
                     #     setattr(self.system, other, data)
 
@@ -275,7 +280,7 @@ class ConfigurationReaderYaml(object):
             else:
                 raise ValueError(f'Unknown configuration key: {key}')
 
-        #self.system.validate()
+        self.system.validate() # now also adds the right parameter sformat
         #self.config.validate()
 
         if not silent:
@@ -302,34 +307,45 @@ class ConfigurationReaderYaml(object):
         None.
 
         """
-        if sum(1 for i in self.system.cmp_list if isinstance(i, physys.Plummer)) != 1:
+        if sum(1 for i in self.system.cmp_list \
+               if isinstance(i, physys.Plummer)) != 1:
             raise ValueError('System needs to have exactly one Plummer object')
-        if sum(1 for i in self.system.cmp_list if isinstance(i, physys.VisibleComponent)) != 1:
-            raise ValueError('System needs to have exactly one VisibleComponent object')
-        if sum(1 for i in self.system.cmp_list if issubclass(type(i), physys.DarkComponent)
+        if sum(1 for i in self.system.cmp_list \
+               if isinstance(i, physys.VisibleComponent)) != 1:
+            raise ValueError('System needs to have exactly one '
+                             'VisibleComponent object')
+        if sum(1 for i in self.system.cmp_list \
+               if issubclass(type(i), physys.DarkComponent)
                and not isinstance(i, physys.Plummer)) > 1:
             raise ValueError('System needs to have zero or one DM Halo object')
         if not ( 1 < len(self.system.cmp_list) < 4):
             raise ValueError('System needs to comprise exactly one Plummer, '
-                             'one VisibleComponent, and zero or one DM Halo object(s)')
+                             'one VisibleComponent, and zero or one DM Halo '
+                             'object(s)')
 
         for c in self.system.cmp_list:
-            if issubclass(type(c), physys.VisibleComponent): # Check visible component
+            if issubclass(type(c), physys.VisibleComponent): # Check vis. comp.
                 if c.kinematic_data:
                     for kin_data in c.kinematic_data:
                         if kin_data.type != 'GaussHermite':
-                            raise ValueError('VisibleComponent kinematics need GaussHermite type')
+                            raise ValueError('VisibleComponent kinematics '
+                                             'need GaussHermite type')
                 else:
-                    raise ValueError('VisibleComponent must have kinematics of type GaussHermite')
+                    raise ValueError('VisibleComponent must have kinematics '
+                                     'of type GaussHermite')
                 if c.symmetry != 'triax':
-                    raise ValueError('Legacy mode: VisibleComponent must be triaxial')
+                    raise ValueError('Legacy mode: VisibleComponent must be '
+                                     'triaxial')
                 continue
-            if issubclass(type(c), physys.DarkComponent) and not isinstance(c, physys.Plummer):
+            if issubclass(type(c), physys.DarkComponent) \
+                and not isinstance(c, physys.Plummer):
             # Check allowed dm halos in legacy mode
-                if type(c) not in [physys.NFW, physys.Hernquist, physys.TriaxialCoredLogPotential,
+                if type(c) not in [physys.NFW, physys.Hernquist, 
+                                   physys.TriaxialCoredLogPotential,
                                    physys.GeneralisedNFW]:
-                    raise ValueError(f'DM Halo needs to be of type NFW, Hernquist, '
-                                     f'TriaxialCoredLogPotential or GeneralisedNFW, not {type(c)}')
+                    raise ValueError(f'DM Halo needs to be of type NFW, '
+                                     f'Hernquist, TriaxialCoredLogPotential, '
+                                     f'or GeneralisedNFW, not {type(c)}')
 
         gen_type = self.settings.parameter_space_settings["generator_type"]
         if gen_type != 'GridSearch' and gen_type != 'LegacyGridSearch':
@@ -337,7 +353,7 @@ class ConfigurationReaderYaml(object):
                              'must be GridSearch or LegacyGridSearch')
         if self.settings.parameter_space_settings["which_chi2"] not in \
             ["chi2", "kinchi2"]:
-            raise ValueError('Unknown which_chi2 setting, must be chi2 or kinchi2')
+            raise ValueError('Unknown which_chi2 setting, use chi2 or kinchi2')
 
 
     # def read_parameters(self, par=None, items=None):
