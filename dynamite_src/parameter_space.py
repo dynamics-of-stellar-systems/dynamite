@@ -332,20 +332,21 @@ class LegacyGridSearch(ParameterGenerator):
         while step_ok and len(self.model_list) == 0:
             for paridx in range(len(self.new_parset)):
                 par = self.new_parset[paridx]
-                if par.fixed: # parameter fixed->do nothing
+                if par.fixed: # parameter fixed -> do nothing
                     continue
                 lo = par.grid_parspace_settings['lo']
                 hi = par.grid_parspace_settings['hi']
                 step = par.grid_parspace_settings['step']
-                # minstep: use step if minstep does not exist (explicitely
-                # set minstep=0 to allow arbitrarily small steps)
+                # minstep: use step if minstep does not exist (explicitly set
+                # minstep=0 to allow arbitrarily small steps, not recommended)
                 minstep = par.grid_parspace_settings['minstep'] \
                     if 'minstep' in par.grid_parspace_settings else step
-                for m in prop_list:
+                for m in prop_list: # for all models within threshold_del_chi2
                     for p in self.new_parset:
                         p.value = p.get_raw_value_from_par_value(m[p.name])
+                    center_value = self.new_parset[paridx].value
                     for s in [-1, 1]:
-                        new_value = np.clip(par.value + s*step, lo, hi)
+                        new_value = np.clip(center_value + s*step, lo, hi)
                         if abs(new_value-par.value) >= minstep:
                             self.new_parset[paridx].value = new_value
                             if self._is_newmodel(self.new_parset, eps=1e-10):

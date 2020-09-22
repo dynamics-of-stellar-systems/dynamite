@@ -81,10 +81,10 @@ for iter in np.unique(all_models.table['which_iter']):
                 c=table['chi2'],
                 cmap=plt.cm.viridis_r,
                 s=200)
-    # plt.colorbar()
+    plt.colorbar()
     plt.gca().set_title(f'iteration {iter}')
-    plt.gca().set_xlim(1e-2, 1e3)
-    plt.gca().set_ylim(0, 7)
+    plt.gca().set_xlim(1e0, 1e2)
+    plt.gca().set_ylim(3, 7)
     plt.gca().set_xscale('log')
     plt.show()
 
@@ -94,7 +94,10 @@ plt.scatter(all_models.table['f'],
             c=all_models.table['chi2'],
             cmap=plt.cm.viridis_r,
             s=200)
+plt.colorbar()
 plt.gca().set_title(f'all iterations')
+plt.gca().set_xlim(1e0, 1e2)
+plt.gca().set_ylim(3, 7)
 plt.gca().set_xscale('log')
 plt.show()
 
