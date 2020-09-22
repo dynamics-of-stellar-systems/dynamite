@@ -23,7 +23,7 @@ class Parameter(object):
                  LaTeX=None,
                  sformat="%g",
                  value=None,
-                 grid_parspace_settings=None,
+                 par_generator_settings=None,
                  gpe_parspace_settings=None,
                  logarithmic=False,
                  # lo=None,
@@ -37,7 +37,7 @@ class Parameter(object):
         self.LaTeX = LaTeX
         self.sformat = sformat
         self.value = value
-        self.grid_parspace_settings = grid_parspace_settings
+        self.par_generator_settings = par_generator_settings
         self.gpe_parspace_settings = gpe_parspace_settings
         self.logarithmic = logarithmic
         # self.lo = lo
@@ -334,13 +334,13 @@ class LegacyGridSearch(ParameterGenerator):
                 par = self.new_parset[paridx]
                 if par.fixed: # parameter fixed -> do nothing
                     continue
-                lo = par.grid_parspace_settings['lo']
-                hi = par.grid_parspace_settings['hi']
-                step = par.grid_parspace_settings['step']
+                lo = par.par_generator_settings['lo']
+                hi = par.par_generator_settings['hi']
+                step = par.par_generator_settings['step']
                 # minstep: use step if minstep does not exist (explicitly set
                 # minstep=0 to allow arbitrarily small steps, not recommended)
-                minstep = par.grid_parspace_settings['minstep'] \
-                    if 'minstep' in par.grid_parspace_settings else step
+                minstep = par.par_generator_settings['minstep'] \
+                    if 'minstep' in par.par_generator_settings else step
                 for m in prop_list: # for all models within threshold_del_chi2
                     for p in self.new_parset:
                         p.value = p.get_raw_value_from_par_value(m[p.name])
@@ -357,11 +357,11 @@ class LegacyGridSearch(ParameterGenerator):
             if len(self.model_list) == 0:
                 step_ok = False
                 for par in [p for p in self.new_parset if not p.fixed]:
-                    if 'minstep' not in par.grid_parspace_settings:
+                    if 'minstep' not in par.par_generator_settings:
                         continue # missing minstep => assume minstep=step
-                    minstep = par.grid_parspace_settings['minstep']
-                    if par.grid_parspace_settings['step']/2 >= minstep:
-                        par.grid_parspace_settings['step'] /= 2
+                    minstep = par.par_generator_settings['minstep']
+                    if par.par_generator_settings['step']/2 >= minstep:
+                        par.par_generator_settings['step'] /= 2
                         step_ok = True
         return
 
@@ -437,7 +437,7 @@ class GridSearch(ParameterGenerator):
 
     def grid_walk(self, center=None, par=None, eps=1e-6):
         """
-        Walks the grid defined by self.par_space.grid_parspace_settings
+        Walks the grid defined by self.par_space.par_generator_settings
         attributes.
         Clips parameter values to lo/hi attributes. If clipping violates the
         minstep attribute, the resulting model(s) will not be created. If the
@@ -475,14 +475,14 @@ class GridSearch(ParameterGenerator):
                 raise ValueError('Something is wrong: fixed parameter value '
                                  'not in center')
         else:
-            lo = par.grid_parspace_settings['lo']
-            hi = par.grid_parspace_settings['hi']
-            step = par.grid_parspace_settings['step']
+            lo = par.par_generator_settings['lo']
+            hi = par.par_generator_settings['hi']
+            step = par.par_generator_settings['step']
             # up to 3 *distinct* par_values (clipped lo, mid, hi values)
             par_values = []
             # use 'minstep' value if present, otherwise use 'step'
-            minstep = par.grid_parspace_settings['minstep'] \
-                if 'minstep' in par.grid_parspace_settings else step
+            minstep = par.par_generator_settings['minstep'] \
+                if 'minstep' in par.par_generator_settings else step
             # start with lo...
             delta = center[paridx] - self.clip(center[paridx] - step, lo, hi)
             if abs(delta) >= minstep:
