@@ -6,7 +6,7 @@ from astropy import table
 from astropy.io import ascii
 
 import weight_solvers as ws
-import dynamics as dyn
+import orblib
 
 class AllModels(object):
 
@@ -186,7 +186,7 @@ class SchwarzschildModel(object):
         self.kinchi2 = 0.
 
     def do_real_run(self):
-        # orb_lib = dyn.OrbitLibrary(
+        # orb_lib = orblib.OrbitLibrary(
         #     system=system,
         #     settings=settings.orblib_settings)
         # weight_solver = ... instantiate the selected solver
@@ -243,7 +243,7 @@ class LegacySchwarzschildModel(SchwarzschildModel):
             shutil.copyfile(self.in_dir+'bins.dat', self.directory_noml+'infil/bins.dat')
 
             #calculate orbit libary
-            orb_lib = dyn.LegacyOrbitLibrary(
+            orb_lib = orblib.LegacyOrbitLibrary(
                     system=self.system,
                     mod_dir=self.directory_noml,
                     settings=self.settings.orblib_settings,

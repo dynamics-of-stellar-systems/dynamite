@@ -100,7 +100,7 @@ par_space.n_par_free
 
 # 4) generate parameters
 
-pargen0 = dyn.parameter_space.GridSearch(par_space)
+pargen0 = dyn.parameter_space.GridWalk(par_space)
 parset_list0 = pargen0.generate(current_models=None)
 
 # 5) set weight_solver... but now use posterior solver
@@ -117,7 +117,7 @@ weight_solver.set_kinematics(system)
 
 # 5) run models
 
-schw_models = dyn.schwarzschild.SchwarzschildModelLoop(
+schw_models = dyn.model.SchwarzschildModelLoop(
     system=system,
     parset_list=parset_list0,
     weight_solver=weight_solver
@@ -132,7 +132,7 @@ parset_list1 = pargen1.generate(current_models=schw_models)
 
 # 5) run more models
 
-schw_models1 = dyn.schwarzschild.SchwarzschildModelLoop(
+schw_models1 = dyn.model.SchwarzschildModelLoop(
     system=system,
     parset_list=parset_list1,
     weight_solver=weight_solver

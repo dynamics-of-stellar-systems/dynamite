@@ -77,7 +77,7 @@ par_space.n_par_free
 
 # 4) generate parameters
 
-pargen0 = dyn.parameter_space.GridSearch(par_space)
+pargen0 = dyn.parameter_space.GridWalk(par_space)
 parset_list0 = pargen0.generate(current_models=None)
 
 # 5) set weight_solver

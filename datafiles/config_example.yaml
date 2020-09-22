@@ -179,7 +179,7 @@ orblib_settings: # don't put in physical system -> settings object
 
 parameter_space_settings: # don't put in physical system -> settings object
 #    generator_type: "gaussian_process_emulator"
-    generator_type: "GridSearch"
+    generator_type: "GridWalk"
     stopping_criteria: TBD
 
 io_settings:

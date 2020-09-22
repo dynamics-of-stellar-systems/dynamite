@@ -36,14 +36,14 @@ for p in parspace:
 # read all existing models, or make empty all_models object if none
 fname = c.settings.io_settings['output_directory']+'all_models.ecsv'
 if os.path.isfile(fname):
-    all_models = dyn.schwarzschild.AllModels(from_file=True,
-                                             filename=fname,
-                                             parspace=parspace,
-                                             settings=c.settings)
+    all_models = dyn.model.AllModels(from_file=True,
+                                     filename=fname,
+                                     parspace=parspace,
+                                     settings=c.settings)
 else:
-    all_models = dyn.schwarzschild.AllModels(from_file=False,
-                                             parspace=parspace,
-                                             settings=c.settings)
+    all_models = dyn.model.AllModels(from_file=False,
+                                     parspace=parspace,
+                                     settings=c.settings)
 
 # for speed of testing, I'll set the following kw arguments in order to:
 # (i) not exectute the models
@@ -65,7 +65,7 @@ executor_type = c.settings.executor_settings['type']
 executor = getattr(dyn.executor, executor_type)(**kw_executor)
 
 # "run" the models
-smi = dyn.shwarzschild_model_iterator.SchwarzschildModelIterator(
+smi = dyn.model_iterator.ModelIterator(
     system=c.system,
     all_models=all_models,
     settings=c.settings,

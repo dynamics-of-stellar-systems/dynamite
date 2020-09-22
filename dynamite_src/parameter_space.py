@@ -386,7 +386,7 @@ class LegacyGridSearch(ParameterGenerator):
         #       => dealt with by grid_walk (doesn't create such models)
 
 
-class GridSearch(ParameterGenerator):
+class GridWalk(ParameterGenerator):
 
     def __init__(self,
                  par_space=[],

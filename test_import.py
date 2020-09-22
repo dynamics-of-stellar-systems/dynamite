@@ -26,17 +26,17 @@ c.settings.orblib_settings
 
 
 # extract parameter space
-all_models = dyn.schwarzschild.AllModels(from_file=False,
-                                         parspace=parspace,
-                                         settings=c.settings)
+all_models = dyn.model.AllModels(from_file=False,
+                                 parspace=parspace,
+                                 settings=c.settings)
 
 print(all_models.table)
 
 print('parameter_space start...')
 
-# Instantiate GridSearch object
+# Instantiate GridWalk object
 parspace_settings = c.settings.parameter_space_settings
-#g = dyn.parameter_space.GridSearch(parspace, parspace_settings=parspace_settings)
+#g = dyn.parameter_space.GridWalk(parspace, parspace_settings=parspace_settings)
 g = dyn.parameter_space.LegacyGridSearch(parspace, parspace_settings=parspace_settings)
 
 # generate first model list: "iteration 0"
@@ -62,7 +62,7 @@ print(all_models.table['f', 'ml', 'chi2', 'kinchi2', 'time_modified', 'which_ite
 all_models.convert_legacy_chi2_file(
     legacy_filename='outputs/legacy/NGC6278/griddata/_chi2.cat',
 )
-all_models = dyn.schwarzschild.AllModels(settings=c.settings)
+all_models = dyn.model.AllModels(settings=c.settings)
 
 print(all_models.table)
 
@@ -97,7 +97,7 @@ print('-----------------------------')
 #c.config.output_settings['directory']='model_example/'
 
 # create a model object
-mod = dyn.schwarzschild.LegacySchwarzschildModel(
+mod = dyn.model.LegacySchwarzschildModel(
     system=c.system,
     settings=c.settings,
     parspace=parspace,

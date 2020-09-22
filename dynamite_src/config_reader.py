@@ -332,9 +332,9 @@ class ConfigurationReaderYaml(object):
                                      f'TriaxialCoredLogPotential or GeneralisedNFW, not {type(c)}')
 
         gen_type = self.settings.parameter_space_settings["generator_type"]
-        if gen_type != 'GridSearch' and gen_type != 'LegacyGridSearch':
+        if gen_type != 'GridWalk' and gen_type != 'LegacyGridSearch':
             raise ValueError('Legacy mode: parameter space generator_type '
-                             'must be GridSearch or LegacyGridSearch')
+                             'must be GridWalk or LegacyGridSearch')
         if self.settings.parameter_space_settings["which_chi2"] not in \
             ["chi2", "kinchi2"]:
             raise ValueError('Unknown which_chi2 setting, must be chi2 or kinchi2')
