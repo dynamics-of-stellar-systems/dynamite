@@ -36,27 +36,28 @@ print('parameter_space start...')
 
 # Instantiate GridSearch object
 parspace_settings = c.settings.parameter_space_settings
-g = dyn.parameter_space.GridSearch(parspace, parspace_settings=parspace_settings)
+#g = dyn.parameter_space.GridSearch(parspace, parspace_settings=parspace_settings)
+g = dyn.parameter_space.LegacyGridSearch(parspace, parspace_settings=parspace_settings)
 
-# generate first model list: grid walk "iteration 0"
-print('grid walk "iteration 0"')
+# generate first model list: "iteration 0"
+print('grid search / grid walk "iteration 0"')
 g.generate(current_models = all_models)
 print(all_models.table)
 print(g.status)
 
-# generate second model list: grid walk "iteration 1"
-print('grid walk "iteration 1"')
+# generate second model list: "iteration 1"
+print('grid search / grid walk "iteration 1"')
 g.generate(current_models=all_models)
 print(all_models.table)
 print(g.status)
 
-# generate second model list: grid walk "iteration 2"
-print('grid walk "iteration 2"')
+# generate second model list: "iteration 2"
+print('grid search / grid walk "iteration 2"')
 g.generate(current_models=all_models)
 print(all_models.table)
 print(g.status)
 
-print(all_models.table['chi2', 'kinchi2', 'time_modified', 'which_iter'])
+print(all_models.table['f', 'ml', 'chi2', 'kinchi2', 'time_modified', 'which_iter'])
 
 all_models.convert_legacy_chi2_file(
     legacy_filename='outputs/legacy/NGC6278/griddata/_chi2.cat',

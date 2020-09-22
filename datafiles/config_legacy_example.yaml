@@ -13,7 +13,7 @@ system_components:
         parameters:
             mass:
                 desc: "log(BHmass)"
-                grid_parspace_settings:
+                par_generator_settings:
                     lo: 1.0
                     hi: 10.0
                     step: 1.
@@ -36,7 +36,7 @@ system_components:
         parameters:
             dc:
                 desc: "NFW Darkmatter concentrion (in log)"
-                grid_parspace_settings:
+                par_generator_settings:
                     lo: 0.0
                     hi: 2.0
                     step: 0.3
@@ -47,7 +47,7 @@ system_components:
                 sformat: "6.2f"
             f:
                 desc: "NFW Darkmatter fraction (in log)"
-                grid_parspace_settings:
+                par_generator_settings:
                     lo: 1.5
                     hi: 3.0
                     step: 0.4
@@ -64,7 +64,7 @@ system_components:
         parameters:
             q:
                 desc: "intrinsic flattening (C/A)"
-                grid_parspace_settings:
+                par_generator_settings:
                     lo: 0.05
                     hi: 0.99
                     step: 0.04
@@ -77,7 +77,7 @@ system_components:
                 desc: "intrinsic B/A"
                 gpe_parspace_settings:
                     kernel: "to be defined"
-                grid_parspace_settings:
+                par_generator_settings:
                     lo: 0.99
                     hi: 0.999
                     step: 0.02
@@ -88,7 +88,7 @@ system_components:
                 sformat: "6.3f"
             u:
                 desc: "sigma_obs / sigma_intrinsic"
-                grid_parspace_settings:
+                par_generator_settings:
                     lo: 0.95
                     hi: 1.0
                     step: 0.01
@@ -113,7 +113,7 @@ system_components:
 system_parameters: # these go into the physical system as a standalone parameter (i.e., not one of the components)
     ml:
         desc: "M/L"
-        grid_parspace_settings:
+        par_generator_settings:
             lo: 1.
             hi: 10.
             step: 1.0

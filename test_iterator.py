@@ -1,5 +1,5 @@
-%load_ext autoreload
-%autoreload 2
+# %load_ext autoreload
+# %autoreload 2
 
 import numpy as np
 import dynamite_src as dyn
@@ -48,13 +48,13 @@ else:
 # for speed of testing, I'll set the following kw arguments in order to:
 # (i) not exectute the models
 # (ii) use a dummy chi2, as defined by this dummy_chi2_function:
-# def dummy_chi2_function(parset):
-#     chi2 = parset['ml'] + np.log10(parset['f'])
-#     return chi2
-# model_kwargs = {'dummy_run':True,
-#                 'dummy_chi2_function':dummy_chi2_function}
+def dummy_chi2_function(parset):
+    chi2 = parset['ml'] + np.log10(parset['f'])
+    return chi2
+model_kwargs = {'dummy_run':True,
+                'dummy_chi2_function':dummy_chi2_function}
 # Or, to actually run models, do not pass the above keywords:
-model_kwargs = {}
+#model_kwargs = {}
 
 print('Instantiate executor object')
 print('    executor type: ', c.settings.executor_settings['type'])
@@ -81,10 +81,10 @@ for iter in np.unique(all_models.table['which_iter']):
                 c=table['chi2'],
                 cmap=plt.cm.viridis_r,
                 s=200)
-    # plt.colorbar()
+    plt.colorbar()
     plt.gca().set_title(f'iteration {iter}')
-    plt.gca().set_xlim(1e-2, 1e3)
-    plt.gca().set_ylim(0, 7)
+    plt.gca().set_xlim(1e0, 1e2)
+    plt.gca().set_ylim(3, 7)
     plt.gca().set_xscale('log')
     plt.show()
 
@@ -94,14 +94,17 @@ plt.scatter(all_models.table['f'],
             c=all_models.table['chi2'],
             cmap=plt.cm.viridis_r,
             s=200)
+plt.colorbar()
 plt.gca().set_title(f'all iterations')
+plt.gca().set_xlim(1e0, 1e2)
+plt.gca().set_ylim(3, 7)
 plt.gca().set_xscale('log')
 plt.show()
 
 # save the all_models table
 fname = c.settings.io_settings['output_directory']+'all_models.ecsv'
-all_models.table.write(fname, format='ascii.ecsv')
-
+all_models.table.write(fname, format='ascii.ecsv', overwrite=True)
+print(all_models.table['chi2', 'kinchi2'])
 
 
 
