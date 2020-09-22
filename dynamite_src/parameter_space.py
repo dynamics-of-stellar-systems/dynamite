@@ -23,7 +23,7 @@ class Parameter(object):
                  LaTeX=None,
                  sformat="%g",
                  value=None,
-                 grid_parspace_settings=None,
+                 par_generator_settings=None,
                  gpe_parspace_settings=None,
                  logarithmic=False,
                  # lo=None,
@@ -37,7 +37,7 @@ class Parameter(object):
         self.LaTeX = LaTeX
         self.sformat = sformat
         self.value = value
-        self.grid_parspace_settings = grid_parspace_settings
+        self.par_generator_settings = par_generator_settings
         self.gpe_parspace_settings = gpe_parspace_settings
         self.logarithmic = logarithmic
         # self.lo = lo
@@ -283,6 +283,108 @@ class ParameterGenerator(object):
         return isnew
 
 
+class LegacyGridSearch(ParameterGenerator):
+
+    def __init__(self, par_space=[], parspace_settings=None):
+        super().__init__(par_space=par_space,
+                         parspace_settings=parspace_settings,
+                         name='LegacyGridSearch')
+        # We need a local parameter copy because we don't want to change the
+        # minstep in the original par_space:
+        self.new_parset = [copy.deepcopy(p) for p in self.par_space]
+
+    def specific_generate_method(self, **kwargs):
+        """
+        Generates list of new models self.model_list. Each element of
+        self.model_list is a list of Parameter objects. The grid search is the
+        driven by the parameter set with the smallest chi2 value min_chi2.
+        Note that the parameter space setting 'which_chi2' determines whether
+        chi2 or kinchi2 is used. All models with abs(chi2-min_chi2)<=
+        threshold_del_chi2 (given in the config file) are subject to the
+        search. New models are generated based on varying one non-fixed
+        parameter at a time. Parameter lo and hi attributes as well as
+        minstep are considered when creating new models. If no new models can
+        be found, the stepsize of all parameters is halved (up to minstepsize).
+
+        Parameters
+        ----------
+        None.
+
+        Returns
+        -------
+        None. self.model_list is the list of new models.
+
+        """
+        if len(self.current_models.table) == 0:
+            # The 'zeroth iteration' results in only one model
+            # (all parameters at their .value level)
+            self.model_list = [[p for p in self.par_space]]
+            return ###########################################################
+        thresh = \
+            self.parspace_settings['generator_settings']['threshold_del_chi2']
+        chi2 = 'chi2' if self.parspace_settings['which_chi2'] == 'chi2' \
+            else 'kinchi2'
+        min_chi2 = np.min(self.current_models.table[chi2])
+        prop_mask = abs(self.current_models.table[chi2] - min_chi2) <= thresh
+        prop_list = self.current_models.table[prop_mask]
+        self.model_list = []
+        step_ok = True
+        while step_ok and len(self.model_list) == 0:
+            for paridx in range(len(self.new_parset)):
+                par = self.new_parset[paridx]
+                if par.fixed: # parameter fixed -> do nothing
+                    continue
+                lo = par.par_generator_settings['lo']
+                hi = par.par_generator_settings['hi']
+                step = par.par_generator_settings['step']
+                # minstep: use step if minstep does not exist (explicitly set
+                # minstep=0 to allow arbitrarily small steps, not recommended)
+                minstep = par.par_generator_settings['minstep'] \
+                    if 'minstep' in par.par_generator_settings else step
+                for m in prop_list: # for all models within threshold_del_chi2
+                    for p in self.new_parset:
+                        p.value = p.get_raw_value_from_par_value(m[p.name])
+                    center_value = self.new_parset[paridx].value
+                    for s in [-1, 1]:
+                        new_value = np.clip(center_value + s*step, lo, hi)
+                        if abs(new_value-par.value) >= minstep:
+                            self.new_parset[paridx].value = new_value
+                            if self._is_newmodel(self.new_parset, eps=1e-10):
+                                self.model_list.append\
+                                  ([copy.deepcopy(p) for p in self.new_parset])
+#                                    (copy.deepcopy(self.new_parset))
+            # If no new models: cut stepsize in half & try again
+            if len(self.model_list) == 0:
+                step_ok = False
+                for par in [p for p in self.new_parset if not p.fixed]:
+                    if 'minstep' not in par.par_generator_settings:
+                        continue # missing minstep => assume minstep=step
+                    minstep = par.par_generator_settings['minstep']
+                    if par.par_generator_settings['step']/2 >= minstep:
+                        par.par_generator_settings['step'] /= 2
+                        step_ok = True
+        return
+
+    def check_specific_stopping_critera(self):
+        # stop if...
+        # (i) if iter>1, last iteration did not improve chi2 by min_delta_chi2
+        self.status['min_delta_chi2_reached'] = False
+        last_iter = np.max(self.current_models.table['which_iter'])
+        if last_iter > 0:
+            mask = self.current_models.table['which_iter'] == last_iter
+            models0 = self.current_models.table[mask]
+            mask = self.current_models.table['which_iter'] == last_iter-1
+            models1 = self.current_models.table[mask]
+            chi2 = 'chi2' if self.parspace_settings['which_chi2'] == 'chi2' \
+                else 'kinchi2'
+            # Don't use abs() so we catch increasing chi2 values, too:
+            delta_chi2 = np.min(models1[chi2]) - np.min(models0[chi2])
+            if delta_chi2 <= \
+                self.parspace_settings['stopping_criteria']['min_delta_chi2']:
+                self.status['min_delta_chi2_reached'] = True
+        # (ii) if step_size < min_step_size for all params
+        #       => dealt with by grid_walk (doesn't create such models)
+
 
 class GridSearch(ParameterGenerator):
 
@@ -297,7 +399,9 @@ class GridSearch(ParameterGenerator):
         """
         Generates list of new models self.model_list. Each element of
         self.model_list is a list of Parameter objects. The center of the
-        grid search is the parameter set with the smallest chi2+kinchi2 value.
+        grid walk is the parameter set with the smallest chi2 value. Note
+        that the parameter space setting 'which_chi2' determines whether chi2
+        or kinchi2 is used.
 
         Parameters
         ----------
@@ -333,12 +437,13 @@ class GridSearch(ParameterGenerator):
 
     def grid_walk(self, center=None, par=None, eps=1e-6):
         """
-        Walks the grid defined by self.par_space.grid_parspace_settings
+        Walks the grid defined by self.par_space.par_generator_settings
         attributes.
         Clips parameter values to lo/hi attributes. If clipping violates the
         minstep attribute, the resulting model(s) will not be created. If the
         minstep attribute is missing, the step attribute will be used instead.
-        Use minstep=0 to eliminate minstep.
+        Explicitly set minstep=0 to allow arbitrarily small steps (not
+        recommended).
 
         Parameters
         ----------
@@ -370,14 +475,14 @@ class GridSearch(ParameterGenerator):
                 raise ValueError('Something is wrong: fixed parameter value '
                                  'not in center')
         else:
-            lo = par.grid_parspace_settings['lo']
-            hi = par.grid_parspace_settings['hi']
-            step = par.grid_parspace_settings['step']
+            lo = par.par_generator_settings['lo']
+            hi = par.par_generator_settings['hi']
+            step = par.par_generator_settings['step']
             # up to 3 *distinct* par_values (clipped lo, mid, hi values)
             par_values = []
             # use 'minstep' value if present, otherwise use 'step'
-            minstep = par.grid_parspace_settings['minstep'] \
-                if 'minstep' in par.grid_parspace_settings else step
+            minstep = par.par_generator_settings['minstep'] \
+                if 'minstep' in par.par_generator_settings else step
             # start with lo...
             delta = center[paridx] - self.clip(center[paridx] - step, lo, hi)
             if abs(delta) >= minstep:
