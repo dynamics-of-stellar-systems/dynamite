@@ -36,7 +36,7 @@ print('parameter_space start...')
 
 # Instantiate GridSearch object
 parspace_settings = c.settings.parameter_space_settings
-#g = dyn.parameter_space.GridSearch(parspace, parspace_settings=parspace_settings)
+#g = dyn.parameter_space.GridWalk(parspace, parspace_settings=parspace_settings)
 g = dyn.parameter_space.LegacyGridSearch(parspace, parspace_settings=parspace_settings)
 
 # generate first model list: "iteration 0"
