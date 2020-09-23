@@ -1,9 +1,9 @@
-import schwarzschild
+import model
 import parameter_space
 import numpy as np
 
 
-class SchwarzschildModelIterator(object):
+class ModelIterator(object):
 
     def __init__(self,
                  system=None,
@@ -19,7 +19,7 @@ class SchwarzschildModelIterator(object):
         kwargs = {'parspace_settings':settings.parameter_space_settings}
         par_generator = getattr(parameter_space, par_generator_type)(parspace,
                                                                      **kwargs)
-        model_inner_iterator = SchwarzschildModelInnerIterator(
+        model_inner_iterator = ModelInnerIterator(
             system=system,
             all_models=all_models,
             settings=settings,
@@ -35,7 +35,7 @@ class SchwarzschildModelIterator(object):
                 break
 
 
-class SchwarzschildModelInnerIterator(object):
+class ModelInnerIterator(object):
 
     def __init__(self,
                  iter=0,
@@ -89,13 +89,13 @@ class SchwarzschildModelInnerIterator(object):
         model_kwargs0.update(model_kwargs)
         # create a model object based on choices in settings
         if self.settings.legacy_settings['use_legacy_mode']:
-            mod = getattr(schwarzschild, 'LegacySchwarzschildModel')(**model_kwargs0)
+            mod = getattr(model, 'LegacySchwarzschildModel')(**model_kwargs0)
         else:
             # TODO: create other model classes based on a choice of:
             # (i) orbit library generator
             # (i) weight solver
             # (iii) colour solver
-            # mod = getattr(schwarzschild, '...')(**model_kwargs0)
+            # mod = getattr(model, '...')(**model_kwargs0)
             raise ValueError("""
                              Only Legacy Mode currently implemented. Set
                                  legacy_settings:

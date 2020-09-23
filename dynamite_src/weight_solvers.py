@@ -1,7 +1,7 @@
 import os
 import numpy as np
 import subprocess
-import dynamics
+import orblib
 
 class WeightSolver(object):
 

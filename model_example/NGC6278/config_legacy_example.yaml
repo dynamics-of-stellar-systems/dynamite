@@ -150,7 +150,7 @@ orblib_settings: # don't put in physical system -> config object
 parameter_space_settings: # don't put in physical system -> settings object
 #    generator_type: "gaussian_process_emulator"
     generator_type: "LegacyGridSearch"
-#    generator_type: "GridSearch"
+#    generator_type: "GridWalk"
     which_chi2: "chi2"
     generator_settings:
         specificsetting: 25
