@@ -34,10 +34,12 @@ for p in parspace:
         print(f'... {p.name}')
 
 # read all existing models, or make empty all_models object if none
-fname = c.settings.io_settings['output_directory']+'all_models.ecsv'
+direc = c.settings.io_settings['output_directory']
+all_models_fname = c.settings.io_settings['all_models_file']
+all_models_fname = f'{direc}all_models_fname'
 if os.path.isfile(fname):
     all_models = dyn.model.AllModels(from_file=True,
-                                     filename=fname,
+                                     filename=all_models_fname,
                                      parspace=parspace,
                                      settings=c.settings)
 else:
@@ -102,7 +104,7 @@ plt.gca().set_xscale('log')
 plt.show()
 
 # save the all_models table
-fname = c.settings.io_settings['output_directory']+'all_models.ecsv'
+fname = c.settings.io_settings['output_directory']+'all_models_fname.ecsv'
 all_models.table.write(fname, format='ascii.ecsv', overwrite=True)
 print(all_models.table['chi2', 'kinchi2'])
 

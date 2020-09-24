@@ -151,6 +151,7 @@ legacy_settings:
 io_settings: # paths can be given with or without trailing slash
     input_directory: "model_example/NGC6278/input_data"
     output_directory: "model_example/NGC6278/"
+    all_models_file: "all_models.ecsv"
 
 weight_solver_settings:
     type: "LegacyWeightSolver"
