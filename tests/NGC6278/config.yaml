@@ -122,11 +122,11 @@ system_parameters: # physical system standalone parameters
 ###############################################################################
 
 orblib_settings: # don't put in physical system -> config object
-    nE: 4
+    nE: 2
     logrmin: -0.101275
     logrmax: 1.99123
-    nI2: 4
-    nI3: 4
+    nI2: 4        # must be >= 4
+    nI3: 2
     dithering: 1
     #the following values should usually not be changed
     orbital_periods: 200
@@ -158,7 +158,7 @@ parameter_space_settings: # don't put in physical system -> settings object
         threshold_del_chi2: 0.5  # LegacyGridSearch setting
     stopping_criteria:
         min_delta_chi2 : 0.5
-        n_max_mods : 15
+        n_max_mods : 3
         n_max_iter : 10
 
 legacy_settings:
