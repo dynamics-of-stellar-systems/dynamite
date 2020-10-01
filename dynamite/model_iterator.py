@@ -38,7 +38,6 @@ class ModelIterator(object):
         status['stop'] = False
         for iter in range(n_max_iter):
             total_iter_count = previous_iter + iter
-            print(f'{par_generator_type}: "iteration {total_iter_count}"')
             n_models_done = np.sum(self.all_models.table['all_done'])
             if n_models_done>=self.n_max_mods:
                 status['n_max_mods_reached'] = True
@@ -47,6 +46,7 @@ class ModelIterator(object):
                 print(f'Stopping after iteration {total_iter_count}')
                 print(status)
                 break
+            print(f'{par_generator_type}: "iteration {total_iter_count}"')
             status = model_inner_iterator.run_iteration(iter, executor=executor)
 
 
