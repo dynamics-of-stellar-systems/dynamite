@@ -1,0 +1,119 @@
+K 25
+svn:wc:ra_dav:version-url
+V 42
+/SVN/cuter/!svn/ver/47/sifdec/trunk/config
+END
+cray.cf
+K 25
+svn:wc:ra_dav:version-url
+V 50
+/SVN/cuter/!svn/ver/47/sifdec/trunk/config/cray.cf
+END
+svr4.cf
+K 25
+svn:wc:ra_dav:version-url
+V 50
+/SVN/cuter/!svn/ver/47/sifdec/trunk/config/svr4.cf
+END
+linux.cf
+K 25
+svn:wc:ra_dav:version-url
+V 51
+/SVN/cuter/!svn/ver/47/sifdec/trunk/config/linux.cf
+END
+mac.cf
+K 25
+svn:wc:ra_dav:version-url
+V 49
+/SVN/cuter/!svn/ver/47/sifdec/trunk/config/mac.cf
+END
+Umake.rules.save
+K 25
+svn:wc:ra_dav:version-url
+V 59
+/SVN/cuter/!svn/ver/47/sifdec/trunk/config/Umake.rules.save
+END
+Umake.cf
+K 25
+svn:wc:ra_dav:version-url
+V 51
+/SVN/cuter/!svn/ver/47/sifdec/trunk/config/Umake.cf
+END
+Umake.rules
+K 25
+svn:wc:ra_dav:version-url
+V 54
+/SVN/cuter/!svn/ver/47/sifdec/trunk/config/Umake.rules
+END
+sun.cf
+K 25
+svn:wc:ra_dav:version-url
+V 49
+/SVN/cuter/!svn/ver/47/sifdec/trunk/config/sun.cf
+END
+ibm.cf
+K 25
+svn:wc:ra_dav:version-url
+V 49
+/SVN/cuter/!svn/ver/47/sifdec/trunk/config/ibm.cf
+END
+hp.cf
+K 25
+svn:wc:ra_dav:version-url
+V 48
+/SVN/cuter/!svn/ver/47/sifdec/trunk/config/hp.cf
+END
+DGUX.cf
+K 25
+svn:wc:ra_dav:version-url
+V 50
+/SVN/cuter/!svn/ver/47/sifdec/trunk/config/DGUX.cf
+END
+osf1.cf
+K 25
+svn:wc:ra_dav:version-url
+V 50
+/SVN/cuter/!svn/ver/47/sifdec/trunk/config/osf1.cf
+END
+all.cf
+K 25
+svn:wc:ra_dav:version-url
+V 49
+/SVN/cuter/!svn/ver/47/sifdec/trunk/config/all.cf
+END
+site.def
+K 25
+svn:wc:ra_dav:version-url
+V 51
+/SVN/cuter/!svn/ver/47/sifdec/trunk/config/site.def
+END
+generic.cf
+K 25
+svn:wc:ra_dav:version-url
+V 53
+/SVN/cuter/!svn/ver/47/sifdec/trunk/config/generic.cf
+END
+noop.rules
+K 25
+svn:wc:ra_dav:version-url
+V 53
+/SVN/cuter/!svn/ver/47/sifdec/trunk/config/noop.rules
+END
+concat.def
+K 25
+svn:wc:ra_dav:version-url
+V 53
+/SVN/cuter/!svn/ver/47/sifdec/trunk/config/concat.def
+END
+sgi.cf
+K 25
+svn:wc:ra_dav:version-url
+V 49
+/SVN/cuter/!svn/ver/47/sifdec/trunk/config/sgi.cf
+END
+Umake.tmpl
+K 25
+svn:wc:ra_dav:version-url
+V 53
+/SVN/cuter/!svn/ver/47/sifdec/trunk/config/Umake.tmpl
+END

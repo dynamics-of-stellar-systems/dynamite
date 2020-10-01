@@ -1,0 +1,91 @@
+
+*****************************************************************
+
+           COPYRIGHT NOTIFICATION
+
+This program discloses material protectable under copyright laws of
+the United States. Permission to copy and modify this software and its
+documentation for internal research use is hereby granted, provided
+that this notice is retained thereon and on all copies or modifications. 
+The University of Chicago makes no representations as to the suitability 
+and operability of this software for any purpose. 
+It is provided "as is" without express or implied warranty.
+
+Use of this software for commercial purposes is expressly prohibited
+without contacting 
+
+   Jorge J. More'
+   Mathematics and Computer Science Division
+   Argonne National Laboratory
+   9700 S. Cass Ave.
+   Argonne, Illinois 60439-4844
+   e-mail: more@mcs.anl.gov
+
+Argonne National Laboratory with facilities in the states of
+Illinois and Idaho, is owned by The United States Government, and
+operated by the University of Chicago under provision of a contract
+with the Department of Energy.
+
+*****************************************************************
+
+           INSTRUCTIONS
+          
+The compressed tar file icf.tar.gz contains the MINPACK-2 
+incomplete Cholesky factorization and a test program.
+
+1. Create the icf directory structure with
+
+       gzip -d icf.tar.gz
+       tar -xvf icf.tar
+
+   This produces the directory icf and several subdirectories.
+
+2. Change directories to icf and install icf with
+ 
+       make libs
+
+   This creates libraries in each of the subdirectories
+
+3. Create the executable icf with
+ 
+       make icfx
+ 
+   and run the sample problems by executing icf.
+   The timer in file dtimer.f assumes that elapsed time is 
+   given by etime; you may need to modify this file.
+
+4. Compare the output in icf.out with the output in icf.sun4
+
+*****************************************************************
+
+      INSTRUCTIONS for MATLAB interface
+ 
+1. Change directory to the matlab subdirectory
+
+2. If you have not installed the icf library
+ 
+       make libs
+
+3. Create the mex files with
+ 
+       make matlab
+ 
+   and run the test program cgtest.m from MATLAB
+
+*****************************************************************
+
+           ADDITIONAL INFORMATION
+
+Chih-Jen Lin and Jorge J. More',
+Incomplete Cholesky factorizations with limited memory,
+Argonne National Laboratory,
+Mathematics and Computer Science Division,
+Preprint ANL/MCS-P682-0897, 
+August 1997 (Revised March 1998).
+
+http://www.mcs.anl.gov/~more/papers/icf.ps.gz
+To appear in the SIAM Journal on Scientific Computing.
+
+*****************************************************************
+
+Last modification: February 10, 1999

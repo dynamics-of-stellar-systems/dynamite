@@ -1,0 +1,105 @@
+
+/* =====================================
+ * This Imakefile builds the SIF decoder
+ *
+ * D. Orban for CUTEr & Co, 2001.
+ */
+
+.SUFFIXES: .pro .f .o .f90
+
+/* =====================================
+ * Hold the conventional rules back.
+ * We want to use special rules instead.
+ */
+
+.f.o:
+	true
+
+.f90.o:
+	true
+
+/* -- */
+
+DEPLIBS =
+LDPOSTLIB =
+
+DESTDIR =	/* nothing -- override default */
+SIFDECSRCDIR  = $(SIFDEC)/common/src/sifdec
+SIFDECDESTDIR = $(MYSIFDEC)/$(PRECISION)/bin
+INTCONFIG     = $(MYSIFDEC)/$(PRECISION)/config
+
+all::
+
+baseconfig:
+	cd $(MYSIFDEC)/$(PRECISION)/config; \
+	$(MAKE) $(MFLAGS) all;
+
+AllTarget(baseconfig)
+
+
+SIFDECOBJ     = sifdec.o
+
+
+/* ===================================
+ * I need the following lists here
+ * to make sure we don't have problems
+ * with a make which doesn't support
+ * the $$@ construct.
+ */
+
+
+SD_OTHER_OBJS = decode.o \
+	        gps.o    \
+		inlanc.o \
+		makefn.o \
+		mafnad.o \
+		makegr.o \
+		magrad.o \
+		printp.o \
+		rest.o   \
+		trans.o  \
+		utils.o
+
+SD_OTHER_SRCS = $(SIFDECSRCDIR)/decode.f \
+	        $(SIFDECSRCDIR)/gps.f    \
+		$(SIFDECSRCDIR)/inlanc.f \
+		$(SIFDECSRCDIR)/makefn.f \
+		$(SIFDECSRCDIR)/mafnad.f \
+		$(SIFDECSRCDIR)/makegr.f \
+		$(SIFDECSRCDIR)/magrad.f \
+		$(SIFDECSRCDIR)/printp.f \
+		$(SIFDECSRCDIR)/rest.f   \
+		$(SIFDECSRCDIR)/trans.f  \
+		$(SIFDECSRCDIR)/utils.f
+
+
+/* =============================
+ * sifdec.f needs to be cast
+ * and the others do not
+ * which is why they are treated
+ * separately.
+ */
+
+SifdecCompile($(SIFDECOBJ),$(SIFDECSRCDIR),sifdec.f,NullParameter)
+CleanStuff(${SIFDECOBJ:.o=.f})
+
+NormalCompileTarget(${SD_OTHER_OBJS},$(SIFDECSRCDIR),$(SD_OTHER_SRCS),NullParameter)
+
+PurgeTarget($(SIFDECOBJ) $(SD_OTHER_OBJS))
+
+
+/* =====================
+ * Build the SIF decoder
+ */
+
+
+LOCAL_OBJ = local.o
+
+OBJECTS = $(SIFDECOBJ) $(SD_OTHER_OBJS) $(INTCONFIG)/$(LOCAL_OBJ)
+
+NormalFortranProgramTarget(sifdec,$(OBJECTS),NullParameter,NullParameter,NullParameter)
+
+/* InstallSimple(sifdec,$(SIFDECDESTDIR)) */
+
+DependTarget()
+

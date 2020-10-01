@@ -1,0 +1,54 @@
+CUTEr fixed bugs log
+====================
+
+[April 9, 2002]. Fixed snpma.f  which caused SNOPT to unduly report an
+infeasible problem and abort in some cases.
+
+[May  14, 2002].   Fixed  imakefile.mycuterpreclib  which  caused  the
+library libcuter.a not to be rebuilt when tools.siz was altered. 
+
+[June 6, 2002]. Fixed csetup.f which did not initialize the statistics
+counters   in  some   cases,  causing   erroneous  statistics   to  be
+reported.  Fixed ccfg.f  which checked  for appropriate  dimensions of
+array CJAC even when using a dummy array and setting grad=.FALSE.
+
+[May 28, 2003]. Fixed ipoptma.f and la04ma.f  to comply to the Fortran
+standard.  Fixed the prototype of  UDIMEN() in cuter.h,  thanks to Liz
+Dolan.
+
+[October 15, 2003]. Fixed a memory allocation bug in the interface to
+LOQO.
+
+[May 29, 2004]. Fixed a F77 compatibility issue in nitsma.f.
+
+[March 24, 2005]. Fixed an intrinsic function issue in cgpma.f.
+                  Fixed a problem with 'CS' comments in ipoptma.f
+
+======================================================================
+
+CUTEr bug report instruction				      May 2001
+
+
+Please report bugs and problems to any or all of the authors:
+
+Nick I.M. Gould,				     n.gould@rl.ac.uk,
+Dominique Orban,				     orban@cerfacs.fr,
+Philippe L. Toint.			    philippe.toint@fundp.ac.be
+
+Please try to  provide as much information as possible  on the bug you
+have found. In particular, please let us know
+
+ * information on your system (computer type, OS, etc.),
+ * the conditions under which the bug arose,
+ * have you been able to reproduce this bug?
+ * the size and precision of CUTEr you were using when the bug arose.
+
+
+A  "fixed bugs"  report  will be  posted  as well  as an "unresolved"
+report,  containing both bugs we have  not been able to  reproduce or
+bugs that  could not be fixed.  Please consult  the CUTEr website  at
+http://cuter.rl.ac.uk/cuter-www regularly for these reports.
+
+Thank you for your help and contribution.
+
+Nick, Dominique and Philippe

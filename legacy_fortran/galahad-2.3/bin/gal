@@ -1,0 +1,27 @@
+#!/bin/sh
+
+# gal: generic script to run GALAHAD package on architecture 
+#      on a previously decoded SIF file
+#        
+
+# Use: gal architecture package [-e] [-h] [-r] [-s] [-k] [-p] [-o i] [-l secs]
+
+# where: options -e : use the load module architecture.package if it exists
+#                     (Default: create a new load module)
+#                -h : print this help and stop execution
+#                -r : do not recompile the problem functions
+#                -s : run the single precision version
+#                     (Default: run the double precision version)
+#                -k : keep the load module after use
+#                     (Default: delete the load module)
+#                -p : profile the code (when possible)
+#                -o : 0 for silent mode, 1 for brief description of
+#                     the stages executed
+#                     (Default: -o 0)
+#                -l : limit the cputime used to secs seconds
+#                     (Default: -l 99999999)
+
+# N. Gould, D. Orban & Ph. Toint
+# ( Last modified on 26 July 2005 at 19:30:00 GMT )
+
+gal.sh $*

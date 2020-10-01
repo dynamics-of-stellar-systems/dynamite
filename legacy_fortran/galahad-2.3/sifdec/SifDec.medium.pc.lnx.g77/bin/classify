@@ -1,0 +1,89 @@
+#!/bin/csh
+#  ( Last modified on 23 Dec 2000 at 17:29:56 )
+#
+#{version}
+#version for Intel-like-PC under Linux with g77 (Tue Dec 8 14:37:39 CST 2015)
+#
+#  add to the CLASSF.DB file the classification of the problem whose name is
+#  given as an argument
+#  If two arguments are given the first indicates the name of the directory
+#  where this problem resides, otherwise the default is that pointed to by
+#  the shell variable $MASTSIF.
+
+#  A.R. Conn and Ph.L. Toint, October 1992, for CGT Productions.
+#  modified by I. Bongartz, July 1994.
+#
+
+#{cmds}
+#
+#  System specifications
+#
+
+set SYSTEM  =  "Linux"
+set KEYSYS  =  "CUNIX"
+
+#
+#  Directory for temporary files
+#
+
+set TMP     =   "/tmp"
+
+
+#
+#  basic system commands
+#
+
+set MKDIR   =   "/bin/mkdir"
+set CP      =   "/bin/cp"
+set RM      =   "/bin/rm -f"
+set MV      =   "/bin/mv"
+set CAT     =   "/bin/cat"
+set CHMOD   =   "/bin/chmod"
+set SED     =   "/bin/sed"
+set LN      =   "/bin/ln"
+set LS      =   "/bin/ls"
+set AR      =   "/usr/bin/ar"
+set RMDIR   =   "/bin/rmdir"
+set GREP    =   "/bin/grep"
+set AWK     =   "/usr/bin/gawk"
+set HEAD    =   "/usr/bin/head"
+set TAIL    =   "/usr/bin/tail"
+set WC      =   "/usr/bin/wc"
+set MAKE    =   "/usr/bin/make"
+
+#
+#  Fortran compilation and loading
+#
+
+set COMPILE     = "g77 -c"
+set LOAD        = "g77"
+set ISF9095     = "no"
+set COMPILE9095 = ""
+set LOAD9095    = ""
+set FFLAGS      = "-O -fno-second-underscore"
+
+if ( $#argv == 1 ) then
+  cd $MASTSIF
+  echo "n"  > CLSF.DAT
+  echo "$1">> CLSF.DAT
+  echo ' '
+  echo '   Your current classification file is : CLASSF.DB '
+  echo ' '
+  $MYSIFDEC/bin/clsf
+  if ( -e CLASSF.UDB ) $MV CLASSF.UDB CLASSF.DB
+else if ( $#argv == 2 ) then
+  cd $1
+  echo "n"   > CLSF.DAT
+  echo "$2" >> CLSF.DAT
+  echo ' '
+  echo '   Your current classification file is : CLASSF.DB '
+  echo ' '
+  $MYSIFDEC/bin/clsf
+  if ( -e CLASSF.UDB ) $MV CLASSF.UDB CLASSF.DB
+else
+  echo ' Usage "classify name" or "classify directory name"'
+  echo ''
+  echo ' where name is the problem name without the .SIF appended,'
+  echo '       directory is the name of the directory containing this problem'
+endif
+$RM CLSF.DAT

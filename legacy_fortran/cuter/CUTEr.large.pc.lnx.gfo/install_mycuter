@@ -1,0 +1,219 @@
+#!/bin/csh -f
+
+#
+#  System specifications
+#
+
+set SYSTEM       =  "Linux"
+set KEYSYS       =  "CUNIX"
+
+#
+#  Directory for temporary files
+#
+
+set TMP          =   "/tmp"
+
+#
+#  basic system commands
+#
+
+set MKDIR        =   "/bin/mkdir"
+set CP           =   "/bin/cp"
+set RM           =   "/bin/rm -f"
+set MV           =   "/bin/mv"
+set CAT          =   "/bin/cat"
+set CHMOD        =   "/bin/chmod"
+set SED          =   "/bin/sed"
+set LN           =   "/bin/ln"
+set LS           =   "/bin/ls"
+set AR           =   "/usr/bin/ar"
+set RMDIR        =   "/bin/rmdir"
+set GREP         =   "/bin/grep"
+set AWK          =   "/usr/bin/gawk"
+set HEAD         =   "/usr/bin/head"
+set TAIL         =   "/usr/bin/tail"
+set WC           =   "/usr/bin/wc"
+set MAKE         =   "/usr/bin/make"
+
+#
+#  Fortran compilation and loading
+#
+
+set COMPILE      = "gfortran -c -ffixed-form -fno-second-underscore"
+set LOAD         = "gfortran -ffixed-form -fno-second-underscore"
+set ISF9095      = "yes"
+set COMPILE9095  = "gfortran -c -fno-second-underscore"
+set LOAD9095     = "gfortran -fno-second-underscore"
+set FFLAGS       = "-O"
+set SPECIALFLAGS = ""
+
+#
+#  C compilation and loading
+#
+
+set CCOMPILE     = ""
+set CLOAD        = "CLoadCmd"
+set CFLAGS       = "CFlags"
+set SPECIALLIBS  = ""
+
+##
+## Note: Recent versions of Matlab use a single script, mex,
+##       to compile both C and Fortran code. This makes the
+##       commands cmex and fmex obsolete. Change the
+##       following lines according to your system specifications.
+##
+ 
+set MEXFORTRAN   = "/usr/bin/mex"
+set MEXFFLAGS    = "-fortran"
+
+
+# Environment check
+
+if( ! $?CUTER ) then
+    echo ' CUTER is not set.'
+    echo ' Set it to the appropriate value and re-run.'
+    echo ' Aborting.'
+    exit 1
+endif
+
+@ mycuterIsCWD = 0
+
+if( -e ./install_mycuter ) then
+    setenv MYCUTER `dirs -l`
+    setenv MYCUTER `echo $MYCUTER | $SED 's"/tmp_mnt""'`
+else
+    echo ' Launch install_mycuter from its home directory.'
+    echo ' Aborting.'
+    exit 2
+endif
+
+# End of environment check
+
+# Calling sequence for install_mycuter
+
+set print_instructions = "false"
+
+@ args_required = 0
+
+if( -d $MYCUTER/single & -d $MYCUTER/double ) @ args_required = 1
+
+if( $#argv != $args_required ) then
+    set print_instructions = "true"
+else if( $args_required == 1 ) then
+    if( "$1" != "-DSinglePrecision" & "$1" != "-DDoublePrecision" ) then
+      set print_instructions = "true"
+    endif
+endif
+
+if( $print_instructions == "true" ) then
+  if ( $args_required == 1 ) then
+    echo "Use: install_mycuter arg"
+    echo "where arg is either"
+    echo "   -DSinglePrecision  to install the single precision tools"
+    echo "   -DDoublePrecision  to install the double precision tools"
+    exit 0
+  else if ( $args_required == 0 ) then
+    echo " Your install_mycuter expects no argument"
+    exit 0
+  endif
+endif
+
+# End of arg check
+set UMAKE_COMMAND = "/home/lzhu/triaxschwarzschild/galahad-2.3/cuter/build/scripts/umake -I. -Iconfig"
+set UMAKE_XTRA = ""
+set UMAKE_OPTIONS = " -Dlinux -DIsgfo -DNoCcomp -DLargeSize -DDoublePrecision "
+set UMAKE_CPP_OPTIONS = "-Ptraditional -Pw"
+if( $?LOQODIR ) then
+  if( -f $LOQODIR/loqo.h && -f $LOQODIR/myalloc.h && -f $LOQODIR/libloqo.a ) then
+    set UMAKE_OPTIONS = "${UMAKE_OPTIONS} -Dhasloqo"
+  else
+    echo 
+    echo "At least one of the files loqo.h, myalloc.h or libloqo.a"
+    echo "seems to be missing in $LOQODIR... Please re-run install_mycuter"
+    echo "when the problem is fixed."
+    echo 
+  endif
+else
+  echo "You do not seem to have LOQO installed"
+endif
+if( $?KNITRODIR ) then
+  if( -f $KNITRODIR/include/knitro.h && -f $KNITRODIR/lib/libknitro.a ) then
+    set UMAKE_OPTIONS = "${UMAKE_OPTIONS} -Dhasknitro"
+  else
+    echo 
+    echo "At least one of the files knitro.h or libknitro.a"
+    echo "seems to be missing in $KNITRODIR... Please re-run install_mycuter"
+    echo "when the problem is fixed."
+    echo 
+  endif
+else
+  echo "You do not seem to have KNITRO installed"
+endif
+if( $?TAO_DIR ) then
+  set UMAKE_OPTIONS = "${UMAKE_OPTIONS} -Dhastao"
+endif
+set UMAKE_SEQUENCE = "${UMAKE_COMMAND} ${UMAKE_OPTIONS} ${UMAKE_CPP_OPTIONS}"
+echo $UMAKE_SEQUENCE
+$UMAKE_SEQUENCE
+$MAKE Makefile
+$MAKE Makefiles
+
+set InstallationComplete = "False"
+
+echo ''
+echo "install_mycuter : Do you want to 'make all' in"
+echo "$MYCUTER now (Y/n)?"
+set YESNO = ""
+while ( $YESNO != 'Y' && $YESNO != 'N' )
+    set YESNO = $<
+    if ( $YESNO == "" ) set YESNO = "Y"
+    set YESNO = `echo $YESNO | tr a-z A-Z`
+end
+
+switch ( $YESNO )
+    case Y: 
+	 $MAKE -s clean
+	 $MAKE -s all
+	 $MAKE -s clean
+	 set InstallationComplete = "True"
+	 breaksw
+    case N: 
+	echo ' To complete the installation, type'
+	echo '  make -s all'
+	echo ' in the directory $MYCUTER'
+	echo ''
+	echo '  [Installation NOT complete]'
+	 exit 0
+	 breaksw
+endsw
+
+# Final environment check
+
+if( $mycuterIsCWD == 1 ) then
+    echo "install_mycuter : Warning : The environment variable MYCUTER is not set"
+    echo ' MYCUTER should point to your working CUTEr instance,'
+endif
+
+if( ! $?MASTSIF ) then
+    echo "install_mycuter : Warning : The environment variable MASTSIF is not set"
+    echo ' MASTSIF should point to your main SIF files repository.'
+endif
+
+if( "$InstallationComplete" == "True" ) then
+
+    echo ''
+    echo ' If all your environment variables are properly set,'
+    echo ' you can test your installation using the command:'
+    echo '   sdgen ROSENBR'
+    echo ''
+    echo ' (Note that once your PATH has been updated you need'
+    echo ' to use the  rehash  command to make it active.)'
+    echo ''
+    echo '   [Installation complete]'
+    echo ''
+    echo ' -------------------------------------------------------'
+    echo ' '
+
+endif
+
+# End

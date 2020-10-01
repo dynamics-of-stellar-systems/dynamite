@@ -1,0 +1,196 @@
+ 1138bus.mtx            
+ Order of the matrix                              1138
+ Memory parameter p                                  0
+ Number of nonzeroes in A                         1458
+ Number of nonzeroes in L                         1458
+ Memory usage in L nnz(L)/nnz(A)                  1.00
+ Wasted memory in L                               0.00
+ Number of conjugate gradient iterations            85
+ Final shift                                 0.000D+00
+ Info value for pcg                                  1
+ Relative error in the residual              0.678D-06
+ Function value                        -0.73002013D+03
+ Time for icf and pcg                        0.934D-01
+
+ 1138bus.mtx            
+ Order of the matrix                              1138
+ Memory parameter p                                  5
+ Number of nonzeroes in A                         1458
+ Number of nonzeroes in L                         4548
+ Memory usage in L nnz(L)/nnz(A)                  2.19
+ Wasted memory in L                               0.36
+ Number of conjugate gradient iterations            20
+ Final shift                                 0.000D+00
+ Info value for pcg                                  1
+ Relative error in the residual              0.958D-06
+ Function value                        -0.73002013D+03
+ Time for icf and pcg                        0.348D-01
+
+ bcsstk08.mtx           
+ Order of the matrix                              1074
+ Memory parameter p                                  0
+ Number of nonzeroes in A                         5943
+ Number of nonzeroes in L                         5943
+ Memory usage in L nnz(L)/nnz(A)                  1.00
+ Wasted memory in L                               0.00
+ Number of conjugate gradient iterations            16
+ Final shift                                 0.500D-03
+ Info value for pcg                                  1
+ Relative error in the residual              0.832D-06
+ Function value                        -0.12340967D+12
+ Time for icf and pcg                        0.368D+00
+
+ bcsstk08.mtx           
+ Order of the matrix                              1074
+ Memory parameter p                                  5
+ Number of nonzeroes in A                         5943
+ Number of nonzeroes in L                        11099
+ Memory usage in L nnz(L)/nnz(A)                  1.73
+ Wasted memory in L                               0.02
+ Number of conjugate gradient iterations             9
+ Final shift                                 0.000D+00
+ Info value for pcg                                  1
+ Relative error in the residual              0.811D-06
+ Function value                        -0.12340967D+12
+ Time for icf and pcg                        0.703D-01
+
+ bcsstk09.mtx           
+ Order of the matrix                              1083
+ Memory parameter p                                  0
+ Number of nonzeroes in A                         8677
+ Number of nonzeroes in L                         8677
+ Memory usage in L nnz(L)/nnz(A)                  1.00
+ Wasted memory in L                               0.00
+ Number of conjugate gradient iterations            32
+ Final shift                                 0.000D+00
+ Info value for pcg                                  1
+ Relative error in the residual              0.881D-06
+ Function value                        -0.43436651D+10
+ Time for icf and pcg                        0.856D-01
+
+ bcsstk09.mtx           
+ Order of the matrix                              1083
+ Memory parameter p                                  5
+ Number of nonzeroes in A                         8677
+ Number of nonzeroes in L                        14047
+ Memory usage in L nnz(L)/nnz(A)                  1.55
+ Wasted memory in L                               0.00
+ Number of conjugate gradient iterations            21
+ Final shift                                 0.000D+00
+ Info value for pcg                                  1
+ Relative error in the residual              0.750D-06
+ Function value                        -0.43436651D+10
+ Time for icf and pcg                        0.824D-01
+
+ bcsstk10.mtx           
+ Order of the matrix                              1086
+ Memory parameter p                                  0
+ Number of nonzeroes in A                        10492
+ Number of nonzeroes in L                        10492
+ Memory usage in L nnz(L)/nnz(A)                  1.00
+ Wasted memory in L                               0.00
+ Number of conjugate gradient iterations            29
+ Final shift                                 0.800D-02
+ Info value for pcg                                  1
+ Relative error in the residual              0.765D-06
+ Function value                        -0.34365241D+09
+ Time for icf and pcg                        0.991D-01
+
+ bcsstk10.mtx           
+ Order of the matrix                              1086
+ Memory parameter p                                  5
+ Number of nonzeroes in A                        10492
+ Number of nonzeroes in L                        15828
+ Memory usage in L nnz(L)/nnz(A)                  1.46
+ Wasted memory in L                               0.01
+ Number of conjugate gradient iterations            12
+ Final shift                                 0.000D+00
+ Info value for pcg                                  1
+ Relative error in the residual              0.671D-06
+ Function value                        -0.34365241D+09
+ Time for icf and pcg                        0.612D-01
+
+ bcsstk11.mtx           
+ Order of the matrix                              1473
+ Memory parameter p                                  0
+ Number of nonzeroes in A                        16384
+ Number of nonzeroes in L                        16384
+ Memory usage in L nnz(L)/nnz(A)                  1.00
+ Wasted memory in L                               0.00
+ Number of conjugate gradient iterations           106
+ Final shift                                 0.320D-01
+ Info value for pcg                                  1
+ Relative error in the residual              0.893D-06
+ Function value                        -0.27241276D+11
+ Time for icf and pcg                        0.483D+00
+
+ bcsstk11.mtx           
+ Order of the matrix                              1473
+ Memory parameter p                                  5
+ Number of nonzeroes in A                        16384
+ Number of nonzeroes in L                        23352
+ Memory usage in L nnz(L)/nnz(A)                  1.39
+ Wasted memory in L                               0.02
+ Number of conjugate gradient iterations           127
+ Final shift                                 0.160D-01
+ Info value for pcg                                  1
+ Relative error in the residual              0.967D-06
+ Function value                        -0.27241276D+11
+ Time for icf and pcg                        0.682D+00
+
+ bcsstk18.mtx           
+ Order of the matrix                             11948
+ Memory parameter p                                  0
+ Number of nonzeroes in A                        68571
+ Number of nonzeroes in L                        68571
+ Memory usage in L nnz(L)/nnz(A)                  1.00
+ Wasted memory in L                               0.00
+ Number of conjugate gradient iterations           131
+ Final shift                                 0.128D+00
+ Info value for pcg                                  1
+ Relative error in the residual              0.976D-06
+ Function value                        -0.42222640D+13
+ Time for icf and pcg                        0.404D+01
+
+ bcsstk18.mtx           
+ Order of the matrix                             11948
+ Memory parameter p                                  5
+ Number of nonzeroes in A                        68571
+ Number of nonzeroes in L                       114062
+ Memory usage in L nnz(L)/nnz(A)                  1.56
+ Wasted memory in L                               0.11
+ Number of conjugate gradient iterations            44
+ Final shift                                 0.800D-02
+ Info value for pcg                                  1
+ Relative error in the residual              0.881D-06
+ Function value                        -0.42222640D+13
+ Time for icf and pcg                        0.208D+01
+
+ bcsstk19.mtx           
+ Order of the matrix                               817
+ Memory parameter p                                  0
+ Number of nonzeroes in A                         3018
+ Number of nonzeroes in L                         3018
+ Memory usage in L nnz(L)/nnz(A)                  1.00
+ Wasted memory in L                               0.00
+ Number of conjugate gradient iterations            45
+ Final shift                                 0.500D-03
+ Info value for pcg                                  1
+ Relative error in the residual              0.735D-06
+ Function value                        -0.71385825D+16
+ Time for icf and pcg                        0.887D-01
+
+ bcsstk19.mtx           
+ Order of the matrix                               817
+ Memory parameter p                                  5
+ Number of nonzeroes in A                         3018
+ Number of nonzeroes in L                         6926
+ Memory usage in L nnz(L)/nnz(A)                  2.02
+ Wasted memory in L                               0.02
+ Number of conjugate gradient iterations            11
+ Final shift                                 0.000D+00
+ Info value for pcg                                  1
+ Relative error in the residual              0.885D-06
+ Function value                        -0.71385826D+16
+ Time for icf and pcg                        0.260D-01
+

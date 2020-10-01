@@ -1,0 +1,65 @@
+#
+#  System specifications
+#
+
+set SYSTEM       =  "Linux"
+set KEYSYS       =  "CUNIX"
+
+#
+#  Directory for temporary files
+#
+
+set TMP          =   "/tmp"
+
+#
+#  basic system commands
+#
+
+set MKDIR        =   "/bin/mkdir"
+set CP           =   "/bin/cp"
+set RM           =   "/bin/rm -f"
+set MV           =   "/bin/mv"
+set CAT          =   "/bin/cat"
+set CHMOD        =   "/bin/chmod"
+set SED          =   "/bin/sed"
+set LN           =   "/bin/ln"
+set LS           =   "/bin/ls"
+set AR           =   "/usr/bin/ar"
+set RMDIR        =   "/bin/rmdir"
+set GREP         =   "/bin/grep"
+set AWK          =   "/usr/bin/gawk"
+set HEAD         =   "/usr/bin/head"
+set TAIL         =   "/usr/bin/tail"
+set WC           =   "/usr/bin/wc"
+set MAKE         =   "/usr/bin/make"
+
+#
+#  Fortran compilation and loading
+#
+
+set COMPILE      = "gfortran -c -ffixed-form -fno-second-underscore"
+set LOAD         = "gfortran -ffixed-form -fno-second-underscore"
+set ISF9095      = "yes"
+set COMPILE9095  = "gfortran -c -fno-second-underscore"
+set LOAD9095     = "gfortran -fno-second-underscore"
+set FFLAGS       = "-O"
+set SPECIALFLAGS = ""
+
+#
+#  C compilation and loading
+#
+
+set CCOMPILE     = ""
+set CLOAD        = "CLoadCmd"
+set CFLAGS       = "CFlags"
+set SPECIALLIBS  = "SpecialLibs"
+
+##
+## Note: Recent versions of Matlab use a single script, mex,
+##       to compile both C and Fortran code. This makes the
+##       commands cmex and fmex obsolete. Change the
+##       following lines according to your system specifications.
+##
+ 
+set MEXFORTRAN   = "/usr/bin/mex"
+set MEXFFLAGS    = "-fortran"

@@ -1,0 +1,123 @@
+.\" @(#)cprod v2.1 6/2003;
+.TH cprod 3M "6 Jun 2003"
+.SH NAME
+CJPROD \- CUTEr tool to form the matrix-vector product of a vector with
+the Jacobian of the constraints, or its transpose.
+\fP
+.SH SYNOPSIS
+CALL CJPROD( N, M, GOTJ, JTRANS, X, V, LV, R, LR )
+.SH DESCRIPTION
+The CJPROD subroutine forms the product of a vector with the Jacobian
+matrix, or with its transpose,  of the constraint functions
+of the problem decoded from a SIF file by the script \fIsifdecode\fP
+at the point X.
+
+The problem under consideration
+consists in minimizing (or maximizing) an objective function
+.EQ
+f(x)
+.EN
+over all
+.EQ
+x
+.EN
+\(mo
+.EQ
+R sup n
+.EN
+subject to
+
+general equations
+.EQ
+c sub i (x) ~=~ 0,
+.EN
+.EQ
+~(i
+.EN
+\(mo
+.EQ
+left { 1 ,..., m sub E right } ),
+.EN
+
+general inequalities
+.EQ
+c sub i sup l (x) ~<=~ c sub i (x) ~<=~ c sub i sup u (x),
+.EN
+.EQ
+~(i
+.EN
+\(mo
+.EQ
+left { m sub E + 1 ,..., m right }),
+.EN
+
+and simple bounds
+.EQ
+b sup l ~<=~ x ~<=~ b sup u.
+.EN
+
+The objective function is group-partially separable and all constraint functions are partially separable.
+
+.LP 
+.SH ARGUMENTS
+The arguments of CPROD are as follows
+.TP 5
+.B N \fP[in] - integer
+the number of variables for the problem,
+.TP
+.B M \fP[in] - integer
+the total number of general constraints,
+.TP
+.B GOTJ \fP[in] - logical
+a logical variable which specifies whether the first derivatives of
+the groups and elements have already been set (GOTJ = .TRUE.) or if
+they should be computed (GOTJ = .FALSE.),
+.TP
+.B JTRANS \fP[in] - logical
+a logical variable which specifies whether the product should
+involve the Jacobian (JTRANS = .FALSE.) or its transpose
+(JTRANS = .TRUE.),
+.TP
+.B X \fP[in] - real/double precision
+when GOTJ = .FALSE., the derivatives will be evaluated at X. Otherwise
+X is not used,
+.TP
+.B V \fP[in] - real/double precision
+the vector for which the product is required,
+.TP
+.B LV \fP[in] - integer
+the actual declared dimension of V,
+.TP
+.B R \fP[out] - real/double precision
+the result of the matrix-vector product,
+.TP
+.B LR \fP[in] - integer
+the actual declared dimension of R.
+.TP
+.LP
+.SH NOTE
+GOTJ should be set to .TRUE. whenever
+.TP 3
+.B (1)\fP
+a call has been made to CGR, CSGR, CGRDH, CSGEH or CSGRSH at the current
+point, or
+.TP
+.B (2)\fP
+a previous call to CJPROD, with GOTJ = .FALSE., at the current 
+point has been made.
+.TP
+.B \fPOtherwise, it should be set .FALSE.
+.LP
+.SH AUTHORS
+I. Bongartz, A.R. Conn, N.I.M. Gould, D. Orban and Ph.L. Toint
+.SH "SEE ALSO"
+\fICUTEr (and SifDec): A Constrained and Unconstrained Testing
+Environment, revisited\fP,
+   N.I.M. Gould, D. Orban and Ph.L. Toint,
+   ACM TOMS, \fB29\fP:4, pp.373-394, 2003.
+
+\fICUTE: Constrained and Unconstrained Testing Environment\fP,
+I. Bongartz, A.R. Conn, N.I.M. Gould and Ph.L. Toint, 
+TOMS, \fB21\fP:1, pp.123-160, 1995.
+
+sifdecode(1).

@@ -1,0 +1,141 @@
+# THIS VERSION: GALAHAD 2.2 - 27/05/2008 AT 15:00 GMT.
+
+# Updates 12/Nov/2004 to allow for MA57, version 2
+#         29/Mar/2005 to allow for MA57, version 3
+#         11/Apr/2006 to provide MA48 or alternatively MA33
+#         22/Mar/2007 to allow for MA57, version 4, and MA48, version 3; 
+#                     versions 1-3 of MA57 and 1-2 of MA48 which use pointers
+#                     are no longer supported on efficiency grounds - use 
+#                     GALAHAD 2.0 instead if you have these versions
+
+# Set directories for optional packages
+# Change these to override provided defaults containing dummy routines
+
+# The variable LINEARSOLVER should be set to "ma57v4" if the user has access to
+# the HSL solver HSL_MA57 (version 4, post 3/2007), and "sils" if the default 
+# solver MA27 from the HSL Archive is to be used instead - HSL_MA57 now 
+# appears in four guises, the older versions 1 (pre 9/2004), 2 (post 8/2004) 
+# and 3 (post 3/2005) are only supported by GALAHAD v2.0. 
+
+# MA27 may be used without charge for non-commercial purposes, while 
+# HSL_MA57 is only available as a commercial product 
+# (unless you are a registered academic, in which case all packages are 
+# available without charge for non-commercial purposes). 
+# See http://www.cse.clrc.ac.uk/Activity/HSL for further details
+
+# NB (i) :- 
+#  if you wish to use any of the LP/QP packages (qpa, qpb, lsqp) you *MUST*
+#  have at least the proper rather than dummy HSL code MA27. If you have 
+#  HSL_MA57, all the better! LANCELOT B will work without HSL codes.
+
+# NB (ii) :-
+#  if you plan to use HSL_MA57, you may improve its performance if you use the 
+#  external package Metis 
+#   http://www-users.cs.umn.edu/~karypis/metis/
+#  If Metis is unavailable, a dummy version will be substituted, but some 
+#  options of HSL_MA57 will not possible.
+
+#LINEARSOLVER = sils
+LINEARSOLVER = ma57v4
+
+#  MA27 is the actual source directory for the HSL package MA27
+#  This directory must contain files with the following names
+#     ma27 (single precision): ./ma27s.f
+#     ma27 (double precision): ./ma27d.f
+
+#MA27 = $(GALAHAD)/src/dum
+MA27 = $(GALAHAD)/../hsl/ma27
+
+#  MA57 is the actual source directory for the HSL_MA57 package (version 4 only)
+#  For version 4, this directory must contain files with the following names
+#     hsl_ma57 (single precision): ./hsl_ma57s.f90
+#     hsl_ma57 (double precision): ./hsl_ma57d.f90
+#     auxiliary routines (single precision):   ./fd15s.f $(MA27)/ma27s.f 
+#       ./ma57s.f ./mc21s.f ./mc34s.f ./mc47s.f ./mc59s.f ./mc64s.f 
+#       ./mc71s.f ./hsl_zd11s.f90 and optionally ./metis.f
+#     auxiliary routines (double precision):   ./fd15d.f $(MA27)/ma27d.f 
+#      ./ma57d.f ./mc21d.f ./mc34d.f ./mc47d.f ./mc59d.f ./mc64d.f 
+#      ./mc71d.f ./hsl_zd11d.f90 and optionally ./metis.f
+
+# NB :- 
+#  In addition, all versions require access to the HSL package MA27 (see above)
+
+#MA57 = $(GALAHAD)/src/dum
+MA57 = $(GALAHAD)/../hsl/ma57v4
+
+# The variable ULINEARSOLVER should be set to "ma48v3" if the user has access 
+# to the HSL solver HSL_MA48 (version 3, only: for versions 1 and 2, please
+# use GALAHAD 2.0 instead), and "uls" if the default solver MA33
+# from the HSL Archive is to be used instead.
+
+# MA33 may be used without charge for non-commercial purposes, while
+# HSL_MA48 is only available as a commercial product 
+# (unless you are a registered academic, in which case all packages are 
+# available without charge for non-commercial purposes). 
+# See http://www.cse.clrc.ac.uk/Activity/HSL for further details
+
+# NB :- 
+#  if you wish to use the SBLS packages and any of its dependencies (eqp, fastr) 
+#  you *MUST*  have at least the proper rather than dummy HSL code MA33. If you 
+#  have  HSL_MA48, all the better! LANCELOT B will work without HSL codes.
+
+#ULINEARSOLVER = uls
+ULINEARSOLVER = ma48v3
+
+#  MA33 is the actual source directory for the HSL package MA33
+#  This directory must contain files with the following names
+#     ma33 (single precision): ./ma33s.f
+#     ma33 (double precision): ./ma33d.f
+#     auxiliary routines (single precision): ./mc13s.f ./mc20s.f ./mc21s.f
+#     auxiliary routines (double precision): ./mc13d.f ./mc20d.f ./mc21d.f
+
+#MA33 = $(GALAHAD)/src/dum
+MA33 = $(GALAHAD)/../hsl/ma33
+
+#  MA48 is the actual source directory for the HSL_MA48 package (version 3 only)
+#  This directory must contain files with the following names
+#     hsl_ma48 (single precision): ./hsl_ma48s.f90
+#     hsl_ma48 (double precision): ./hsl_ma48d.f90
+#     auxiliary routines (single precision): ./fd15s.f ./mc71s.f
+#       ./mc13s.f ./mc21s.f ./ma50s.f ./ma48s.f ./ma51s.f ./hsl_zd11s.f90
+#     auxiliary routines (double precision): ./fd15d.f ./mc71d.f
+#       ./mc13d.f ./mc21d.f ./ma50d.f ./ma48d.f ./ma51d.f ./hsl_zd11d.f90
+
+#MA48 = $(GALAHAD)/src/dum
+MA48 = $(GALAHAD)/../hsl/ma48v3
+
+#  MA61 is the actual source directory for the HSL package MA61
+#  This directory must contain files with the following names
+#     ma61 (single precision): ./ma61s.f
+#     ma61 (double precision): ./ma61d.f
+
+#MA61 = $(GALAHAD)/src/dum
+MA61 = $(GALAHAD)/../hsl/ma61
+
+#  AD01 is the actual source directory for the HSL_AD01 package
+#  This directory must contain files with the following names
+#     hsl_ad01 package (single precision): ./hsl_ad01s.f90
+#     hsl_ad01 package (double precision): ./hsl_ad01d.f90
+#     auxiliary routine: ./kb07i.f
+
+AD01 = $(GALAHAD)/src/dum
+#AD01 = $(GALAHAD)/../hsl/ad01
+
+#  AD02 is the actual source directory for the HSL_AD02 package
+#  This directory must contain files with the following names
+#     hsl_ad02 package (single precision): ./hsl_ad02s.f90
+#     hsl_ad02 package (double precision): ./hsl_ad02d.f90
+#     auxiliary routine: ./kb07i.f
+
+#AD02 = $(GALAHAD)/src/dum
+AD02 = $(GALAHAD)/../HSL/ad02
+
+#  ICFS is the actual source directory for the icf package from MINPACK2
+#  (contact Jorge More' - more@mcs.anl.gov - for more details). 
+#  This directory must contain the file 
+#    ./icfs.f
+#  which must be formed by concatenating the icf subroutines 
+#     dicfs dstrsol dicf insort ihsort dsel2
+ 
+#ICFS = $(GALAHAD)/src/dum
+ICFS = $(GALAHAD)/../hsl/icfs

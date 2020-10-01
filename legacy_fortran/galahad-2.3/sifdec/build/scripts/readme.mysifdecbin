@@ -1,0 +1,43 @@
+
+SifDec README file.				        November 2001.
+
+======================================================================
+
+  Please read this file prior to any modification in this directory.
+
+======================================================================
+
+This  directory contains  the interface  sifdecode, which  accepts the
+parameters  -show and -param  <parameter_specifications>. See  the man
+page of sifdecode(1) for more details.
+
+This directory  also contains the  awk scripts show.awk  and param.awk
+used  by  sifdecode  to  process  the -show  and  -param  command-line
+options.
+
+Finally, it contains the SifDec select and classify tools.
+
+The targets accepted by the Makefile in this directory are
+
+
+show.awk:    installs show.awk in this directory,
+
+param.awk:   installs param.awk in this directory,
+
+slct:	     compiles and links the select program,
+
+clsf:	     compiles and links the classify program,
+
+all:         all of the above.
+
+======================================================================
+
+			      Good luck!
+
+Nick I.M. Gould,				     n.gould@rl.ac.uk,
+Dominique Orban,				     orban@cerfacs.fr,
+Philippe L. Toint.			    philippe.toint@fundp.ac.be
+
+======================================================================
+
+SifDec README file.				        November 2001.

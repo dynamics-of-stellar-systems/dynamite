@@ -1,0 +1,154 @@
+#!/bin/csh -f
+# sdunc: script to decode a sif file and then run UNCMIN on the output
+#  ( Last modified on 23 Dec 2000 at 17:29:56 )
+#
+#{version}
+#version for Intel-like-PC under Linux with gfo (Tue Dec 8 14:35:10 CST 2015)
+#
+
+#{args}
+# Command-line options:
+#
+# [-decode] [-n] [-h] [-s] [-k] [-r] [-o i] [-l secs] [-show]
+#  [-param name=value[,name=value...]] [-debug] probname[.SIF]
+#
+# where:
+#                -decode: decode problem before calling package
+#                -n     : use the load module f if it exists
+#                         (Default: create a new load module)
+#                -h     : print this help and stop execution
+#                -s     : run the single precision version
+#                         (Default: run the double precision version)
+#                -k     : keep the load module after use
+#                         (Default: delete the load module)
+#                -r     : discourage recompilation of the test problem
+#                         (Default: recompile the objects)
+#                -o     : 0 for silent mode, 1 for brief description of
+#                         the stages executed
+#                         (Default: -o 0)
+#                -l     : limit the cputime used to secs seconds
+#                         (Default: -l 99999999)
+#                -show  : displays possible parameter settings for
+#                         probname[.SIF]. Other options are ignored
+#                -param : cast probname[.SIF] against explicit parameter
+#                         settings. Several parameter settings may be
+#                         given as a comma-separated list following
+#                         -param or using several -param flags.
+#                         Use -show to view possible settings
+#                -debug : links all the libraries, creates the executable
+#                         and stop to allow debugging. This option
+#                         automatically disables -n and enables -k.
+#
+#              probname : probname.SIF is the name of the file containing
+#                         the SIF file for the problem of interest.
+#
+
+#
+#  N. Gould, D. Orban & Ph. Toint, November 7th, 2000
+#
+
+#{cmds}
+#
+#  System specifications
+#
+
+set SYSTEM       =  "Linux"
+set KEYSYS       =  "CUNIX"
+
+#
+#  Directory for temporary files
+#
+
+set TMP          =   "/tmp"
+
+#
+#  basic system commands
+#
+
+set MKDIR        =   "/bin/mkdir"
+set CP           =   "/bin/cp"
+set RM           =   "/bin/rm -f"
+set MV           =   "/bin/mv"
+set CAT          =   "/bin/cat"
+set CHMOD        =   "/bin/chmod"
+set SED          =   "/bin/sed"
+set LN           =   "/bin/ln"
+set LS           =   "/bin/ls"
+set AR           =   "/usr/bin/ar"
+set RMDIR        =   "/bin/rmdir"
+set GREP         =   "/bin/grep"
+set AWK          =   "/usr/bin/gawk"
+set HEAD         =   "/usr/bin/head"
+set TAIL         =   "/usr/bin/tail"
+set WC           =   "/usr/bin/wc"
+set MAKE         =   "/usr/bin/make"
+
+#
+#  Fortran compilation and loading
+#
+
+set COMPILE      = "gfortran -c -ffixed-form -fno-second-underscore"
+set LOAD         = "gfortran -ffixed-form -fno-second-underscore"
+set ISF9095      = "yes"
+set COMPILE9095  = "gfortran -c -fno-second-underscore"
+set LOAD9095     = "gfortran -fno-second-underscore"
+set FFLAGS       = "-O"
+set SPECIALFLAGS = ""
+
+#
+#  C compilation and loading
+#
+
+set CCOMPILE     = "gcc -c"
+set CLOAD        = "gcc"
+set CFLAGS       = "-O"
+set SPECIALLIBS  = ""
+
+##
+## Note: Recent versions of Matlab use a single script, mex,
+##       to compile both C and Fortran code. This makes the
+##       commands cmex and fmex obsolete. Change the
+##       following lines according to your system specifications.
+##
+ 
+set MEXFORTRAN   = "/usr/bin/mex"
+set MEXFFLAGS    = "-fortran"
+
+#
+#  define a short acronym for the package to which you wish to make an interface
+#
+
+setenv caller sdunc
+setenv PAC unc
+
+#
+#  Check the arguments
+#
+
+set PRECISION = "double"
+@ decode_problem = 0
+@ last=$#argv
+@ i=1
+
+while ($i <= $last)
+  set opt=$argv[$i]
+  if("$opt" == '-s')then
+    set PRECISION = "single"
+  else if("$opt" == '-decode' ) then
+    @ decode_problem = 1
+  else if("$opt" == '-h' || "$opt" == '--help' )then
+    $MYCUTER/bin/helpmsg
+    exit 0
+  endif
+  @ i++
+end
+
+if( $decode_problem == 0 ) then
+  set arguments = ('-decode' "$argv[1-$last]")
+else
+  set arguments = ("$argv[1-$last]")
+endif
+
+# call main script
+
+${PAC} ${arguments}

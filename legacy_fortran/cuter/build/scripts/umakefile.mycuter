@@ -1,0 +1,57 @@
+
+/* ===============================
+ * Root Umakefile
+ *
+ * This Umakefile recursively
+ * sneaks into subdirectories and
+ * builds the local CUTEr.
+ *
+ * D. Orban for CUTEr, 2001.
+ */
+
+.SUFFIXES: .pro .f .f90
+
+/* =====================================
+ * Hold the conventional rule back.
+ * We want to use special rules instead.
+ */
+
+.f.o:
+	true
+
+.f90.o:
+	true
+
+/* -- */
+
+#define IHaveSubdirs
+
+INTERFACESSRC = $(CUTER)/build/prototypes
+INTCONFIG     = $(MYCUTER)/$(PRECISION)/config
+
+all::
+
+baseconfig:
+	cd $(MYCUTER)/$(PRECISION)/config; \
+	$(MAKE) $(MFLAGS) all;
+
+AllTarget(baseconfig)
+DependTarget()
+CleanTarget()
+
+/* ============================
+ * Information for the sneaking
+ */
+
+#ifdef SinglePrecision
+SUBDIRS = bin single
+#endif
+#ifdef DoublePrecision
+SUBDIRS = bin double
+#endif
+
+MakeSubdirs($(SUBDIRS))
+DependSubdirs($(SUBDIRS))
+
+PurgeTarget($(INTCONFIG)/cmds)
+PurgeTarget($(INTCONFIG)/local.f)

@@ -1,0 +1,41 @@
+.\" @(#)classall v1.0 03/2000;
+.TH classall 1 "02 Mar 2000"
+.SH NAME
+classall \- general classification program
+.SH SYNOPSIS
+\fBclassall\fP \fI[dirname]\fP
+.SH DESCRIPTION
+\fIclassall\fP classifies all SIF files in MASTSIF or in the directory
+\fIdirname\fP given as an argument. The result of the classification
+is stored in the database file CLASSF.DB.
+.LP 
+.SH classall Options
+You can start classall with the following options:
+.TP
+.B dirname
+classifies all SIF files in \fIdirname\fP. If \fIdirname\fP is not
+specified, MASTSIF is searched.
+.LP
+.SH ENVIRONMENT 
+.TP
+.SB SIFDEC
+Parent directory for SifDec.
+.TP
+.SB MYSIFDEC
+Home directory of the installed SifDec distribution.
+.TP
+.SB MASTSIF
+A pointer to the directory containing the CUTEr/SifDec problems
+collection.
+.SH AUTHORS
+A.R. Conn, N.I.M. Gould, D. Orban and Ph.L. Toint
+.SH "SEE ALSO"
+\fICUTEr (and SifDec): A Constrained and Unconstrained Testing
+Environment, revisited\fP,
+   N.I.M. Gould, D. Orban and Ph.L. Toint, 2002.
+
+\fICUTE: Constrained and Unconstrained Testing Environment\fP,
+   I. Bongartz, A.R. Conn, N.I.M. Gould and Ph.L. Toint, 
+   TOMS, \fB21\fP:1, pp.123-160, 1995.
+
+classify(1), select(1).

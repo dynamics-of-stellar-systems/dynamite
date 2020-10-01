@@ -1,0 +1,36 @@
+
+SifDec news                                               August 2005.
+
+======================================================================
+
+[October, 2003]. Fixed a bug with cpp on Sun machines running Solaris. 
+
+[December, 2003]. Added support for version 8.0 of Intel Fortran 90/95
+                  and C/C++ compilers.
+
+[August, 2004]. Added support for the free g95 Fortran 90/95 compiler.
+                This involved some streamlining of gps.f.
+
+[March, 2005]. Added support for MAC/OSX platform with GNU or NAG f95
+               compiler. Thanks to Mike Friedlander!
+
+[July, 2005]. Added support for the free GNU gfortran Fortran 90/95
+              compiler. This compiler is now part of GCC 4.x and is
+              not to be confused with g95.
+
+[August, 2005]. Added support for the Windows 2000/XP platforms by
+                means of the MinGW environment. Platforms which do not
+                have the C-shell can now use Bourne Again Shell
+                maintenance scripts.
+
+[July, 2007]. Added support for g95 and the Portland Group compilers
+              pgf77 and pgf90/95 on the OSX platform.
+
+======================================================================
+
+SifDec news                                               August 2005.
+
+Thank you for your help and contribution.
+
+Nick, Dominique and Philippe
+

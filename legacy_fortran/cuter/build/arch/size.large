@@ -1,0 +1,21 @@
+C
+C  Integer workspace
+C
+      PARAMETER       ( LIWK   =  40000000 )
+C
+C  Real/double precision workspace
+C
+      PARAMETER       ( LWK    =  45000000  )
+C
+C  Logical workspace
+C
+      PARAMETER       ( LLOGIC =  3000000  )
+C
+C  Character workspace
+C
+      PARAMETER       ( LCHARA =  2500000  )
+C
+C  Workspace to store the problem's function and derivatives values
+C
+      PARAMETER       ( LFUVAL =  9000000  )
+C

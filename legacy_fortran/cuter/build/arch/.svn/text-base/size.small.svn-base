@@ -1,0 +1,27 @@
+#  ( Last modified on 23 Dec 2000 at 17:30:26 )
+#
+#  Sizes for the CUTEr tools
+#
+$CAT << {end-size-tools} > $MYCUTERPREC/config/tools.siz
+C
+C  Integer workspace
+C
+      PARAMETER       ( LIWK   =  10000   )
+C
+C  Real/double precision workspace
+C
+      PARAMETER       ( LWK    =  10000   )
+C
+C  Logical workspace
+C
+      PARAMETER       ( LLOGIC =  1500    )
+C
+C  Character workspace
+C
+      PARAMETER       ( LCHARA =  3000    )
+C
+C  Workspace to store the problem's function and derivatives values
+C
+      PARAMETER       ( LFUVAL =  5000    )
+C
+{end-size-tools}

@@ -1,0 +1,155 @@
+PROBLEM-DATA-FILE INPUT FOR LINEAR AND QUADRATIC PROGRAMMING
+------------------------------------------------------------
+
+A new feature for problems that may be described entirely in terns
+of matrix, vector and scalar data (primarily quadratic and linear
+programs) is the ability to input this data directly, and not via
+the more general SIF format.
+
+USING A PROBLEM-DATA FILE
+-------------------------
+
+The user will need to prepare a properly-formatted problem-data file
+and then to call the appropriate GALAHAD solver via the dgal command. 
+Options may be passed to the solver using the normal GALAHAD specfile
+mechanism. For example, to use the GALAHAD package QPB, compiled under
+Linux using the NAG f95 compiler, to solve a problem specified in the 
+file example.data, the user should issue the command
+
+  dgal pc.lnx.n95 qpb example.data
+
+from the directory containing the problem-data file. For details on the
+dgal command, see the its man page.
+
+PROBLEM-DATA FILE SYNTAX
+------------------------
+
+Suppose the user wishes to solve the quadratic program
+
+     minimize     1/2 x(T) H x + g(T) x + f
+
+     subject to     c_l <= A x <= c_u
+                    x_l <=  x <= x_u
+
+The data for the above problem should be specified in a named text file,
+for example, problem.data. The data is input in free format (blanks
+separate values), and must occur in the order given below.
+Blank lines and lines commencing with the "comment" characters
+'!', '%', '#', '|' will be ignored. Each term in "quotes" denotes a 
+required value. Any strings beyond those required on a given lines 
+will be regarded as comments and ignored.
+
+ "problem name"
+ "number variables"
+ "number general linear constraints"
+ "number of nonzeros in lower traingle of H"
+ "row" "column" "value" for each entry of H (if any), one triple on each line
+ "default value for entries in g"
+ "number of non-default entries in g"
+ "index" "value" for each non-default term in g (if any), one pair per line
+ "value of f"
+ "number of nonzeros in A"
+ "row" "column" "value" for each entry of A (if any), one triple on each line
+ "default value for entries in c_l"
+ "number of non-default entries in c_l"
+ "index" "value" for each non-default term in c_l (if any), one pair per line
+ "default value for entries in c_u"
+ "number of non-default entries in c_u"
+ "index" "value" for each non-default term in c_u (if any), one pair per line
+ "default value for entries in x_l"
+ "number of non-default entries in x_l"
+ "index" "value" for each non-default term in x_l (if any), one pair per line
+ "default value for entries in x_u"
+ "number of non-default entries in x_u"
+ "index" "value" for each non-default term in x_u (if any), one pair per line
+ "default value for starting value for variables x"
+ "number of non-default starting entries in x"
+ "index" "value" for each non-default term in x (if any), one pair per line
+ "default value for starting value for Lagrange multipliers y for constraints"
+ "number of non-default starting entries in y"
+ "index" "value" for each non-default term in y (if any), one pair per line
+ "default value for starting value for dual varibales z for simple bounds"
+ "number of non-default starting entries in z"
+ "index" "value" for each non-default term in z (if any), one pair per line
+
+EXAMPLE
+-------
+
+Suppose the use wishes to solve the banded quadratic program corresponding to
+
+   H = (  2  -1              ), g = ( - 1/5 ), f = 0, x_l = ( 0 ), x_u = ( 2 )
+       ( -1   2  -1          )      ( - 2/5 )               ( 0 )        ( 2 )
+       (     -1   2  -1      )      ( - 3/5 )               ( 0 )        ( 2 )
+       (         -1   2  -1  )      ( - 4/5 )               ( 0 )        ( 2 )
+       (             -1   2  )      ( - 1   )               ( 0 )        ( 2 )
+ 
+   A = (  1       1          ),  c_l = ( 1 ) and c_u = ( infinity ),
+       (      1       1      )         ( 1 )           ( infinity )
+
+starting from zero initial estimates for the variables x, the Lagrange 
+multipliers y for the linear constraints, and the dual variables z for 
+the simple-bound constraints - here a space in the data matrices A and 
+H denotes a zero. Then the following problem-data file is appropriate -
+note that we have represented infinity as 1.0E+20.
+
+------------------- contents of problem-data file QPBAND.data ----------------
+! ---------------
+! example problem
+! ---------------
+
+QPBAND    problem name (example from QPBAND.SIF with n = 5)
+5         # variables
+2         # general linear constraints
+
+9         # nonzeros in lower trangle H
+1 1 2.0   9 lines of row & column index & value of nonzeros in lower triangle H
+2 1 -1.0  |
+2 2 2.0   |
+3 2 -1.0  |
+3 3 2.0   |
+4 3 -1.0  |
+4 4 2.0   |
+5 4 -1.0  |
+5 5 2.0   |
+
+-0.2       default value for entries in g
+4         # non default entries in g
+2 -0.4    4 lines of index & value of non-default values in g
+3 -0.6    |
+4 -0.8    |
+5 -1.0    |
+
+0.0       value of f
+
+4         # nonzeros in A
+1 1 1.0   4 lines of row & column index & value of nonzeros in A
+1 3 1.0   |
+2 2 1.0   |
+2 4 1.0   |
+
+1.0       default value for entries in c_l
+0         # non default entries in c_l
+
+1.0E+20   default value for entries in c_u
+0         # non default entries in c_u
+
+0.0       default value for entries in x_l
+0         # non default entries in x_l
+
+2.0       default value for entries in x_u
+0         # non default entries in x_u
+
+0.0       default value for initial values for x
+0         # non default entries in x
+
+0.0       default value for initial values for y
+0         # non default entries in y
+
+0.0       default value for initial values for z
+0         # non default entries in z
+
+--------------- end of contents of problem-data file QPBAND.data ------------
+
+  
+
+

@@ -1,0 +1,117 @@
+
+                      *****************************
+		      *                           *
+                      *   USING VE12 WITH CUTEr   *
+		      *                           *
+                      *****************************
+
+               ( Last modified on 15 Sep 1996 at 16:51:55 )
+
+WHAT IS  VE12?
+--------------
+
+VE12 is a subroutine for the solution of the general, large, quadratic
+programming problem within a feasible region defined by simple bound and
+linear equlaity constraints. It uses an active set approach in which the
+variables are partitioned into free and fixed variables, the latter being
+fixed at one of their bounds. The status of each variable is revised after
+every iteration.
+
+VE12 is part of the HSL (formerly the HARWELL SUBROUTINE LIBRARY),
+and was written by Nick Gould. It is available from the United Kingdom
+Atomic Energy Authority, Harwell, subject to certain license agreements.
+It is copyrighted jointly by the UKAEA and SERC (Science and Engineering
+Research Council).
+
+
+CREATING THE OBJECT MODULE FOR VE12
+-----------------------------------
+
+For building the double precision version, the VE12 double precision
+subroutine should be compiled (but not linked).
+
+Next, concatenate all the f77 dependencies together in a file called, say,
+depf.f and all the f90 dependencies together in depf90.f90, but
+omitting the blas subroutines dcopy and idamax -- these are already
+found in either the BLAS or LINPAC.
+Remember to concatenate the f90 dependencies in the right order---so that
+modules appear before that are actually used. Compile depf.f and depf90.f90
+being aware that you may need to use different compiler flags and create a
+static library called libve12.a from ve12d.o, depf.o and depf90.o
+using the command
+
+	ar r libve12.a ve12d.o depf.o depf90.o
+
+Move libve12.a to $MYCUTER/[single|double]/lib or create a symbolic link
+pointing to it.
+
+Finally, move any module information (usually stored in .mod files) to
+$MYCUTER/[single|double]/bin or create corresponding symbolic links.
+
+The procedure is identical for the single precision, except that the names
+ve12d.f and ve12d.o are replaced by ve12s.f and ve12s.o, respectively.
+
+USING THE VE12 INTERFACE TOOL
+-----------------------------
+
+Suppose you wish to solve the problem written in SIF format contained
+in the file probname.SIF.
+
+The VE12 interface tools require two input files:
+
+   probname.SIF   specifies the problem in SIF format
+   VE12.SPC       sets values for VE12 run-time parameters
+
+If no VE12.SPC file is present in the current directory, the default
+version is copied from the $CUTER/common/src/pkg/ve12 directory.
+This default file is as follows:
+
+-1.000D+00    biginf      = Size of infinite bounds
+ 1.000D-04    stop_p      = Required size of norm of primal infeasibility
+ 1.000D-04    stop_d      = Required size of norm of dual infeasibility
+ 1.000D-04    stop_c      = Required size of norm of complementarity
+-1.000D+00    prfeas      = Minimum primal starting distance from bounds
+-1.000D+00    dufeas      = Minimum dual starting distance from bounds
+-1.000D+00    muzero      = Initial value of the barrier parameter
+ 1.000E-10    inner_stop_absolute = absolute CG stopping tolerence
+ 1.000E-02    inner_stop_relative = relative CG stopping tolerence
+ 1.000E-01    inner_fraction_opt = fraction of optimal model decreas required
+ 1.000E-10    pivot_tol   = pivot tolerence
+-1.000E-10    pivot_tol_for_dependencies = pivot tolerence for dependencies
+-1.000E+06    initial_radius = initial trust-region radius
+-9.999E-01    reduce_infeas = factor by which infeasibility must be reduced
+     10000    maxit       = Maximum number of iterations
+         1    print_level = Output level
+         6    ioutp       = Output message unit number
+         6    ioutd       = Error message unit number
+         1    itrmax      = Max number of iterative refinement steps
+      1000    cg_maxit    = Maximun number of CG iterations
+         0    factors     = 0=automatic,1=Schur complement,2=augemnted sys
+        35    max_col     = maximum length of column in A for SC factorization
+         0    precon      = 0=auto,1=Id,2=ful,3=ban,4=bar,5=dia,6=5+con,7=band
+         0    nsemib      = semi-bandwidth for options 5+6 above
+     10000    liwmin      = Initial integer workspace allocation for MA27
+     10000    lwmin       = Initial real workspace allocation for MA27
+       100    infeas_max  = max number its without significant improvement
+         F    feasol      = Ensure the final point is feasible?
+         F    print_sol   = Print the full solution
+         F    primal      = primal Hessian rather than primal-dual Hessian
+         T    center      = center in phase-1?
+
+The commands to use this package are the two scripts
+sdve12 and ve12.
+
+The reader is referred to the paper quoted below, the documentation of the
+routine in the Harwell Subrooutine Library or the code itself if he or 
+she wishes to modify these parameters.
+
+
+REFERENCES
+----------
+
+N.I.M. Gould,
+CSS Report 204, Harwell Laboratory, A.E.R.E., Harwell, 1986.
+
+A.R. Conn, N.I.M. Gould, D. Orban and Ph.L. Toint
+A Primal-Dual Trust-Region Algorithm for Non-convex Nonlinear Programming,
+Mathematical Programming B 87(2), pp 215--249, 2000.

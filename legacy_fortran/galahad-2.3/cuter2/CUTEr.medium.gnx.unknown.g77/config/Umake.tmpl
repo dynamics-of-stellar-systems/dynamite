@@ -1,0 +1,318 @@
+
+#define	YES	1
+#define NO	0
+
+#include <Umake.cf>
+
+/*
+ * Include settings corresponding to host architecture
+ */
+
+#include MacroIncludeFile
+
+/*
+ * Include settings common to all architectures
+ */
+
+#include <all.cf>
+
+/* Define variables accordingly */
+
+CPPCMD		    = CppCmd
+CPPINCLUDEDIR	    = CppIncludeDir
+CPPOTHERFLAGS	    = CppOtherFlags
+CPP		    = $(CPPCMD) -I$(CPPINCLUDEDIR) $(CPPOTHERFLAGS)
+
+UMAKE		    = UmakeCmd
+
+CMP		        = CompilerTagId	    /* e.g. GNU g77      */
+MACHINE		    = MachineName	    /* e.g. IBM RS-6000  */
+MCH		        = MachineTag	    /* e.g. rs6          */
+COMPILE		    = CompileCmd	    /* e.g. g77 -c       */
+LOAD		    = LoadCmd		    /* e.g. g77          */
+ISF9095		    = CompilerIsF9095	/* yes or no         */
+COMPILE9095	    = Compile9095Cmd	/* e.g. f90 -c       */
+LOAD9095	    = Load9095Cmd	    /* e.g. f90          */
+FFLAGS		    = FortranFlags	    /* e.g. -O           */
+SPECIALFLAGS	= SpecialFlags	    /* e.g. -nofor_main  */
+FDEBUGFLAGS	    = FDebugFlags	    /* e.g. -g           */
+FPROFILEFLAGS	= FProfileFlags	    /* e.g. -pg          */
+NBYTES		    = NumberOfBytes	    /* e.g. 8            */
+CCOMPILE	    = CCompileCmd
+CLOAD		    = CLoadCmd
+CFLAGS		    = CFlags
+CXXFLAGS        = CFlags
+SPECIALLIBS     = SpecialLibs
+R1		    = R1Value
+R2		    = R2Value
+R3		    = R3Value
+R4		    = R4Value
+R5		    = R5Value
+D1		    = D1Value
+D2		    = D2Value
+D3		    = D3Value
+D4		    = D4Value
+D5		    = D5Value
+
+/* Definition of CUTEr variables */
+
+#ifdef SinglePrecision
+#define umakePrecisionFlag   -DSinglePrecision
+PRECISION = single
+PRC = CS
+PRC90 = \!S
+#endif
+#ifdef DoublePrecision
+#define umakePrecisionFlag   -DDoublePrecision
+PRECISION = double
+PRC = CD
+PRC90 = \!D
+#endif
+
+#ifdef CustomSize
+#define umakeSizeFlag   -DCustomSize
+SIZE  = custom
+SIZ   = CCUS
+SIZ90 = \!CUS
+#endif
+#ifdef LargeSize
+#define umakeSizeFlag   -DLargeSize
+SIZE  = large
+SIZ   = CBIG
+SIZ90 = \!BIG
+#endif
+#ifdef MediumSize
+#define umakeSizeFlag   -DMediumSize
+SIZE  = medium
+SIZ   = CMED
+SIZ90 = \!MED
+#endif
+#ifdef SmallSize
+#define umakeSizeFlag   -DSmallSize
+SIZE  = small
+SIZ   = CTOY
+SIZ90 = \!TOY
+#endif
+
+#ifndef PathSeparator
+#define PathSeparator	/
+#endif
+
+#ifndef BourneShell
+#define BourneShell	/bin/sh
+#endif
+
+#ifndef PassCDebugFlags
+#define PassCDebugFlags
+#endif
+
+#ifndef umakeSystemFlag
+#define umakeSystemFlag
+#endif
+
+#ifndef umakeOsFlag
+#define umakeOsFlag
+#endif
+
+#ifndef umakeCompilerFlag
+#define umakeCompilerFlag
+#endif
+
+#ifndef umakeCompiler90Flag
+#define umakeCompiler90Flag
+#endif
+
+#ifndef umakeSizeFlag
+#define umakeSizeFlag
+#endif
+
+#ifndef umakePrecisionFlag
+#define umakePrecisionFlag
+#endif
+
+#ifdef  hasloqo
+#define umakeLoqoFlag -Dhasloqo
+#else
+#define umakeLoqoFlag
+#endif
+
+#ifdef  hasknitro
+#define umakeKnitroFlag -Dhasknitro
+#else
+#define umakeKnitroFlag
+#endif
+
+#ifdef  hastao
+#define umakeTaoFlag -Dhastao
+#else
+#define umakeTaoFlag
+#endif
+
+#ifdef  NoCcomp
+#define umakeCFlag   -DNoCcomp
+#define CUTErCCOMPILE
+#define CUTErCLOAD
+#define CUTErCFLAGS
+#else
+#define umakeCFlag   -UNoCcomp
+#endif
+
+#ifndef umakeCCompilerFlag
+#define umakeCCompilerFlag
+#endif
+
+/*
+ * Keep track of all -D command-line options
+ * for make Makefile and make Makefiles.
+ */
+
+#define umakeflags umakeSystemFlag umakeOsFlag umakeCompilerFlag umakeSizeFlag umakePrecisionFlag umakeCompiler90Flag umakeCCompilerFlag umakeLoqoFlag umakeKnitroFlag umakeTaoFlag umakeCFlag UmakeCppFlags
+
+#ifndef FilesToClean
+#define FilesToClean *.CKP *.ln *.BAK *.bak core errs ,* *~ tags TAGS make.log MakeOut
+#endif
+#ifndef ExtraFilesToClean
+#define ExtraFilesToClean	/* as nothing */
+#endif
+
+/*
+ * Include macro commands to generate Makefiles
+ */
+
+#include <Umake.rules.tabsafe>
+
+#ifndef PathSeparator
+#define PathSeparator /
+#endif
+
+#ifndef TOPDIR
+#define TOPDIR .
+#endif
+
+#ifndef CURDIR
+#define CURDIR .
+#endif
+
+PATHSEP = PathSeparator
+SHELL   = BourneShell
+
+TOP = TOPDIR
+CURRENT_DIR = CURDIR
+
+#ifdef ProjectRoot
+PROJECTROOT = ProjectRoot
+#endif
+
+/* Umake command-line options */
+
+UMAKE_DEFINES = /* leave blank, for command line use only */
+UMAKE_CONFIGS = -C$(MYCUTER)/config  /* Location of Umake.tmpl for local instance */
+
+UMAKE_CPP_FLAGS = UmakeCppFlags
+
+#ifdef UseInstalled
+IRULESRC = $(MYCUTER)/config	/* used in rules file */
+UMAKE_CMD = $(UMAKE) -DUseInstalled -I. -I$(IRULESRC) $(UMAKE_DEFINES) $(UMAKE_CONFIGS) $(UMAKE_CPP_FLAGS)
+#else
+IRULESRC = $(MYCUTER)/config	/* /cf */
+UMAKE_CMD = $(UMAKE) -I. -I$(IRULESRC) $(UMAKE_DEFINES) $(UMAKE_CONFIGS) $(UMAKE_CPP_FLAGS)
+#endif
+
+/* Some more CUTEr commands */
+
+TMP    = TempDirectory
+
+SYSTEM = SystemTag
+KEYSYS = KeySys
+
+MKDIR  = MkdirCmd
+CP     = CpCmd
+RM     = RmCmd
+MV     = MvCmd
+CAT    = CatCmd
+CHMOD  = ChmodCmd
+SED    = SedCmd
+LN     = LnCmd
+LS     = LsCmd
+AR     = ArCmd
+ARFLAGS= ArFlags
+RMDIR  = RmdirCmd
+GREP   = GrepCmd
+AWK    = AwkCmd
+HEAD   = HeadCmd
+TAIL   = TailCmd
+WC     = WcCmd
+MAKE   = MakeCmd
+LD     = LdCmd
+
+MEXFORTRAN = MexFortranCmd
+MEXFFLAGS  = MexFFlags
+
+/* End of the CUTEr commands */
+
+#ifndef InstallCmd
+#define InstallCmd	install
+#endif
+
+INSTALL = InstallCmd
+
+#define CmdLst1 CMP MACHINE MCH COMPILE LOAD COMPILE9095 LOAD9095 FFLAGS FDEBUGFLAGS FPROFILEFLAGS NBYTES CCOMPILE CLOAD CFLAGS SPECIALLIBS R1 R2 R3 R4 R5 D1 D2 D3 D4 D5 PRECISION PRC PRC90 SIZE SIZ SIZ90
+
+#define CmdLst2 SYSTEM KEYSYS MKDIR CP RM MV CAT CHMOD SED LN LS AR ARFLAGS RMDIR GREP AWK HEAD TAIL WC MAKE LD MEXFORTRAN MEXFFLAGS
+
+#define CommandList CmdLst1 CmdLst2
+
+COMMANDLIST = CommandList
+
+#ifndef LocalRulesFile
+/* need this to make ANSI-style preprocessors happy */
+#define LocalRulesFile <noop.rules>
+#endif
+#include LocalRulesFile
+
+/* -----------------------------------------------------------------------
+ * start of Umakefile
+ */
+#include INCLUDE_UMAKEFILE
+
+/* -----------------------------------------------------------------------
+ * Common rules for all Makefiles - do not edit
+ */
+
+MFLAGS =
+
+/*
+ * These need to be here so that rules in Umakefile occur first;  the blank
+ * emptyrule is to make sure that an empty Umakefile does not default to make
+ * clean.
+ */
+emptyrule::
+
+CleanTarget()
+
+#ifndef IHaveSpecialMakefileTarget
+MakefileTarget()
+#endif
+
+#ifdef IHaveSubdirs
+/* ----------------------------------------------------------------------
+ * Rules for building in SUBDIRS - do not edit
+ */
+
+CleanSubdirs($(SUBDIRS))
+PurgeSubdirs($(SUBDIRS))
+MakefileSubdirs($(SUBDIRS))
+IncludesSubdirs($(SUBDIRS))
+
+#endif
+
+#ifndef IHaveSubdirs
+/* ----------------------------------------------------------------------
+ * Empty rules for directories that do not have SUBDIRS - do not edit
+ */
+
+Makefiles::
+
+includes::
+
+#endif /* if subdirectory rules are needed */

@@ -1,0 +1,32 @@
+#!/bin/sh
+
+# sdgal: generic script to decode an SIF file and then run GALAHAD package
+#        on architecture on the output
+
+# Use: sdgal architecture package [-s] [-h] [-k] [-f] [-b] [-a j]
+#                            [-p] [-o j] [-l secs] probname[.SIF]
+#
+# where: options -s : run the single precision version
+#                     (Default: run the double precision version)
+#                -h : print this help and stop execution
+#                -k : keep the load module after use
+#                     (Default: delete the load module)
+#                -f : use automatic differentiation in forward mode
+#                -b : use automatic differentiation in backward mode
+#                -a : 1 use the older HSL automatic differentiation package AD01
+#                     2 use the newer HSL automatic differentiation package AD02
+#                     (Default: -a 2)
+#                -p : profile the code (when possible)
+#                -o : 0 for silent mode, 1 for brief description of
+#                     the stages executed.
+#                     (Default: -o 0)
+#                -l : limit the cputime used to secs seconds
+#                     (Default: 99999999 seconds)
+#
+#       probname      probname[.SIF] is the name of the file containing
+#                     the SIF file for the problem of interest.
+
+# N. Gould, D. Orban & Ph. Toint
+# ( Last modified on 26 July 2005 at 19:30:00 GMT )
+
+sdgal.sh $*

@@ -1,0 +1,23 @@
+K 25
+svn:wc:ra_dav:version-url
+V 50
+/SVN/cuter/!svn/ver/117/cuter/branches/cuter64/bin
+END
+install_cuter.sh
+K 25
+svn:wc:ra_dav:version-url
+V 67
+/SVN/cuter/!svn/ver/117/cuter/branches/cuter64/bin/install_cuter.sh
+END
+uninstall_cuter.sh
+K 25
+svn:wc:ra_dav:version-url
+V 69
+/SVN/cuter/!svn/ver/117/cuter/branches/cuter64/bin/uninstall_cuter.sh
+END
+umake.sh
+K 25
+svn:wc:ra_dav:version-url
+V 59
+/SVN/cuter/!svn/ver/117/cuter/branches/cuter64/bin/umake.sh
+END

@@ -1,0 +1,38 @@
+
+/* ==============================
+ * This Imakefile installs the
+ * appropriate specification file
+ * for Minos.
+ */
+
+/* ===========
+ * Minos sizes
+ */
+
+
+MINOSSRCDIR = $(CUTER)/common/src/pkg/minos
+MINOSDEST = $(MYCUTER)/$(PRECISION)/cuter-specs/MINOS.SPC
+
+#ifdef SmallSize
+SUF = sml
+#endif
+#ifdef MediumSize
+SUF = med
+#endif
+#ifdef LargeSize
+SUF = lrg
+#endif
+#ifdef CustomSize
+SUF = cus
+#endif
+
+all::
+
+${MINOSDEST}: $(MINOSSRCDIR)/MINOS.$(SUF)
+	      $(CP) $(MINOSSRCDIR)/MINOS.$(SUF) $(MINOSDEST)
+
+AllTarget($(MINOSDEST))
+
+DependTarget()
+
+PurgeTarget($(MINOSDEST))

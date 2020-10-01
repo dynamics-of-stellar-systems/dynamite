@@ -1,0 +1,152 @@
+.\" @(#)csetup v1.0 11/2000;
+.TH csetup 3M "17 Nov 2000"
+.SH NAME
+CSETUP \- CUTEr tool to set up the data structures for constrained
+minimization.
+.SH SYNOPSIS
+CALL CSETUP( INPUT, IOUT, N, M, X, BL, BU, NMAX, EQUATN, LINEAR, V,
+CL, CU, MMAX, EFIRST, LFIRST, NVFRST )
+.SH DESCRIPTION
+The CSETUP subroutine sets up the correct data structures for
+subsequent computations on the problem decoded from a SIF file by
+the script \fIsifdecode\fP. The problem under consideration
+consists in minimizing (or maximizing) an objective function
+.EQ
+f(x)
+.EN
+over all
+.EQ
+x
+.EN
+\(mo
+.EQ
+R sup n
+.EN
+subject to
+
+general equations
+.EQ
+c sub i (x) ~=~ 0,
+.EN
+.EQ
+~(i
+.EN
+\(mo
+.EQ
+left { 1 ,..., m sub E right } ),
+.EN
+
+general inequalities
+.EQ
+c sub i sup l (x) ~<=~ c sub i (x) ~<=~ c sub i sup u (x),
+.EN
+.EQ
+~(i
+.EN
+\(mo
+.EQ
+left { m sub E + 1 ,..., m right }),
+.EN
+
+and simple bounds
+.EQ
+b sup l ~<=~ x ~<=~ b sup u.
+.EN
+
+The objective function is group-partially separable and all constraint functions are partially separable.
+
+.LP 
+.SH ARGUMENTS
+The arguments of CSETUP are as follows
+.TP 5
+.B INPUT \fP[in] - integer
+the unit number for the decoded data; the unit from which OUTSDIF.d is
+read,
+.TP
+.B IOUT \fP[in] - integer
+the unit number for any error messages,
+.TP
+.B N \fP[out] - integer
+the number of variables for the problem,
+.TP
+.B M \fP[out] - integer
+the total number of general constraints,
+.TP
+.B X \fP[out] - real/double precision
+an array which gives the initial estimate of the solution of the
+problem,
+.TP
+.B BL \fP[out] - real/double precision
+an array which gives lower bounds on the variables,
+.TP
+.B  BU \fP[out] - real/double precision
+an array which gives upper bounds on the variables,
+.TP
+.B NMAX \fP[in] - integer
+the actual declared dimension of X, BL and BU,
+.TP
+.B EQUATN \fP[out] - logical
+a logical array whose i-th component is .TRUE. if the i-th constraint
+is an equation (i in E) and .FALSE. if the constraint is an inequality
+(i in I),
+.TP
+.B LINEAR \fP[out] - logical
+a logical array whose i-th component is .TRUE. if the i-th constraint
+is linear or affine and .FALSE. otherwise,
+.TP
+.B V \fP[out] - real/double precision
+an array which gives the initial estimate of the Lagrange multipliers
+at the solution of the problem. By convention, the signs of the
+Lagrange multipliers V are set so the Lagrangian function can be
+written as
+\fI
+L(X, V) = f(X) + < c(X), V >,
+\fP
+.TP
+.B CL \fP[out] - real/double precision
+an array which gives lower bounds on the inequality constraints,
+.TP
+.B CU \fP[out] - real/double precision
+an array which gives upper bounds on the inequality constraints,
+.TP
+.B MMAX \fP[in] - integer
+the actual declared dimension of EQUATN, LINEAR, CL and CU,
+.TP
+.B EFIRST \fP[in] - logical
+ logical variable which should be set .TRUE. if the user wishes the
+general equations to occur before the general inequalities in the list
+of constraints. If the order is unimportant, EFIRST should be set to .FALSE.,
+.TP
+.B LFIRST \fP[in] - logical
+a logical variable which should be set .TRUE. if the user wishes the
+general linear (or affine) constraints to occur before the general
+nonlinear ones in the list of constraints. If the order is
+unimportant, LFIRST should be set .FALSE. If both EFIRST and LFIRST
+are set .TRUE., the linear constraints will occur before the nonlinear
+ones. The linear  constraints will be ordered so that the linear
+equations occur before the linear inequalities. Likewise, the
+nonlinear equations will appear before the nonlinear inequalities in
+the list of nonlinear constraints,
+.TP
+.B NVFRST \fP[in] - logical
+a logical variable which should be set .TRUE. if the user wishes that
+the nonlinear variables come first. Within the nonlinear variables the
+smaller set of either the nonlinear objective or nonlinear Jacobian
+variables appears first.
+.LP
+.SH APPLICATION USAGE
+A call to CSETUP must precede calls to other evaluation tools for
+generally-constrained problems.
+.SH AUTHORS
+I. Bongartz, A.R. Conn, N.I.M. Gould, D. Orban and Ph.L. Toint
+.SH "SEE ALSO"
+\fICUTEr (and SifDec): A Constrained and Unconstrained Testing
+Environment, revisited\fP,
+   N.I.M. Gould, D. Orban and Ph.L. Toint,
+   ACM TOMS, \fB29\fP:4, pp.373-394, 2003.
+
+\fICUTE: Constrained and Unconstrained Testing Environment\fP,
+I. Bongartz, A.R. Conn, N.I.M. Gould and Ph.L. Toint, 
+TOMS, \fB21\fP:1, pp.123-160, 1995.
+
+usetup(3M), sifdecode(1).

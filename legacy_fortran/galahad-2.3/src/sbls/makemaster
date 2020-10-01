@@ -1,0 +1,573 @@
+#  Main body of the installation makefile for the GALAHAD EQP package
+
+#  N. Gould, D. Orban and Ph. L. Toint.
+#  This version: 19 X 2005
+
+SHELL = /bin/$(BINSHELL)
+
+#  compiler flags
+
+FFLAGS    = $(BASIC) $(OPTIMIZATION) $(DEBUG) $(MODULES) $(F90) $(USUAL)
+FFLAGSS   = $(BASIC) $(OPTIMIZATION) $(DEBUG) $(MODULES) $(F90) $(SPECIAL)
+FFLAGSN   = $(BASIC) $(NOOPTIMIZATION) $(DEBUG) $(MODULES) $(F90)
+FFLAGS77  = $(BASIC) $(OPTIMIZATION) $(DEBUG) $(MODULES) $(F77) $(USUAL)
+FFLAGS77S = $(BASIC) $(OPTIMIZATION) $(DEBUG) $(MODULES) $(F77) $(SPECIAL)
+RUNFFLAGS =          $(OPTIMIZATION) $(DEBUG) $(MODULES)
+
+#  names of random libraries
+
+LG  = $(OBJ)/libgalahad.a
+LGS = $(OBJS)/libgalahad.a
+LGD = $(OBJD)/libgalahad.a
+
+BLG  = $(OBJ)/libgalahad_blas.a
+BLGS = $(OBJS)/libgalahad_blas.a
+BLGD = $(OBJD)/libgalahad_blas.a
+
+LLG  = $(OBJ)/libgalahad_lapack.a
+LLGS = $(OBJS)/libgalahad_lapack.a
+LLGD = $(OBJD)/libgalahad_lapack.a
+
+HLG  = $(OBJ)/libgalahad_hsl.a
+HLGS = $(OBJS)/libgalahad_hsl.a
+HLGD = $(OBJD)/libgalahad_hsl.a
+
+MLG  = $(OBJ)/libgalahad_metis.a
+MLGS = $(OBJS)/libgalahad_metis.a
+MLGD = $(OBJD)/libgalahad_metis.a
+
+#  Libraries used
+
+LIBS = -lgalahad -lgalahad_hsl -lgalahad_metis -lgalahad_lapack -lgalahad_blas
+
+#  Archive manipulation strings
+
+ARR = $(AR) -rc $(LG)
+RMARFILE = $(GALAHAD)/bin/rmarfile.$(BINSHELL) $(AR) $(GREP) $(LG)
+RMOBFILE = $(GALAHAD)/bin/rmobfile.$(BINSHELL) $(RM) $(OBJ)
+
+BARR = $(AR) -rc $(BLG)
+BRMARFILE = $(GALAHAD)/bin/rmarfile.$(BINSHELL) $(AR) $(GREP) $(BLG)
+
+LARR = $(AR) -rc $(LLG)
+LRMARFILE = $(GALAHAD)/bin/rmarfile.$(BINSHELL) $(AR) $(GREP) $(LLG)
+
+HARR = $(AR) -rc $(HLG)
+HRMARFILE = $(GALAHAD)/bin/rmarfile.$(BINSHELL) $(AR) $(GREP) $(HLG)
+
+MARR = $(AR) -rc $(MLG)
+MRMARFILE = $(GALAHAD)/bin/rmarfile.$(BINSHELL) $(AR) $(GREP) $MHLG)
+
+#  sed scripts
+
+LSEDS = $(GALAHAD)/seds/$(LINEARSOLVER).sed
+LPSEDS = $(GALAHAD)/seds/$(LINEARSOLVER)_precon.sed
+LUSEDS = $(GALAHAD)/seds/$(ULINEARSOLVER)_precon.sed
+CSEDS = $(GALAHAD)/seds/cutersize.sed
+
+#  compilation agenda
+
+SSBLS =   basics linearsolver ulinearsolver gltr $(LGS)(sbls.o)
+DSBLS =   basics linearsolver ulinearsolver gltr $(LGD)(sbls.o)
+SEQP =   $(SSBLS) $(LGS)(eqp.o) 
+DEQP =   $(DSBLS) $(LGD)(eqp.o) 
+SLLS =   $(SSBLS) $(LGS)(lls.o) 
+DLLS =   $(DSBLS) $(LGD)(lls.o) 
+
+SRUNSBLS = copyright$(LGS)(usesbls.o) $(OBJS)/runsbls_sif.o
+DRUNSBLS = copyright $(LGD)(usesbls.o) $(OBJD)/runsbls_sif.o
+SRUNEQP = copyright $(LGS)(useeqp.o) $(OBJS)/runeqp_sif.o
+DRUNEQP = copyright $(LGD)(useeqp.o) $(OBJD)/runeqp_sif.o
+SRUNLLS = copyright $(LGS)(usells.o) $(OBJS)/runlls_sif.o
+DRUNLLS = copyright $(LGD)(usells.o) $(OBJD)/runlls_sif.o
+
+SBLSOBJECTSS_CUTER = $(SSBLS) $(SRUNSBLS)
+SBLSOBJECTSD_CUTER = $(DSBLS) $(DRUNSBLS)
+EQPOBJECTSS_CUTER = $(SEQP) $(SRUNEQP)
+EQPOBJECTSD_CUTER = $(DEQP) $(DRUNEQP)
+LLSOBJECTSS_CUTER = $(SLLS) $(SRUNLLS)
+LLSOBJECTSD_CUTER = $(DLLS) $(DRUNLLS)
+
+OBJECTSS_CUTER = $(EQPOBJECTSS_CUTER) $(LLSOBJECTSS_CUTER)
+OBJECTSD_CUTER = $(EQPOBJECTSD_CUTER) $(LLSOBJECTSD_CUTER)
+QPAD = $(DOBJECTSA) $(DRUNQPA)
+
+SBLSDS = $(DSBLS) $(OBJD)/sblss.o
+SBLSDT = $(DSBLS) $(OBJD)/sblst.o
+SBLSSS = $(SSBLS) $(OBJS)/sblss.o
+SBLSST = $(SSBLS) $(OBJS)/sblst.o
+
+EQPDS = $(DEQP) $(OBJD)/eqps.o
+EQPDT = $(DEQP) $(OBJD)/eqpt.o
+EQPSS = $(SEQP) $(OBJS)/eqps.o
+EQPST = $(SEQP) $(OBJS)/eqpt.o
+
+LLSDS = $(DLLS) $(OBJD)/llss.o
+LLSDT = $(DLLS) $(OBJD)/llst.o
+LLSSS = $(SLLS) $(OBJS)/llss.o
+LLSST = $(SLLS) $(OBJS)/llst.o
+
+RSBLSDS = $(OBJD)/sblss.o -L$(OBJD) $(LIBS)
+RSBLSDT = $(OBJD)/sblst.o -L$(OBJD) $(LIBS)
+RSBLSSS = $(OBJS)/sblss.o -L$(OBJS) $(LIBS)
+RSBLSST = $(OBJS)/sblst.o -L$(OBJS) $(LIBS)
+
+REQPDS = $(OBJD)/eqps.o -L$(OBJD) $(LIBS)
+REQPDT = $(OBJD)/eqpt.o -L$(OBJD) $(LIBS)
+REQPSS = $(OBJS)/eqps.o -L$(OBJS) $(LIBS)
+REQPST = $(OBJS)/eqpt.o -L$(OBJS) $(LIBS)
+
+RLLSDS = $(OBJD)/llss.o -L$(OBJD) $(LIBS)
+RLLSDT = $(OBJD)/llst.o -L$(OBJD) $(LIBS)
+RLLSSS = $(OBJS)/llss.o -L$(OBJS) $(LIBS)
+RLLSST = $(OBJS)/llst.o -L$(OBJS) $(LIBS)
+
+SUCC = precision version) compiled successfully
+SUCC_CUTER = precision version) for CUTEr compiled successfully
+
+#  main compilations and runs
+
+all: eqp_cuter lls_cuter
+test: test_eqp test_lls
+test_nocuter: test_eqp_nocuter test_lls_nocuter
+test_spec: test_spec_eqp test_spec_lls
+
+# eqp
+
+eqp_cuter: eqp_cuter_$(PRECIS)
+	@printf ' %-21s\n' "GALAHAD: EQP ($(PRECIS) $(SUCC_CUTER)" 
+eqp_cuter_single: $(EQPOBJECTSS_CUTER)
+	$(RANLIB) $(LGS)
+eqp_cuter_double: $(EQPOBJECTSD_CUTER)
+	$(RANLIB) $(LGD)
+
+eqp_silent: eqp_$(PRECIS)
+eqp: eqp_$(PRECIS)
+	@printf ' %-21s\n' "GALAHAD: EQP ($(PRECIS) $(SUCC)" 
+eqp_single: $(SEQP)
+	$(RANLIB) $(LGS)
+eqp_double: $(DEQP)
+	$(RANLIB) $(LGD)
+
+eqpsrunall: eqpss eqpst
+eqpdrunall: eqpds eqpdt
+eqprunall: eqpdrunall eqpsrunall
+
+test_eqp: test_eqp_$(PRECIS)
+
+test_eqp_single: eqpst $(SRUNEQP)
+	echo ""
+	echo " Testing CUTEr interface to eqp"
+	cd $(GALAHAD)/examples ; sdgal $(VERSION) eqp -s QPBAND
+	echo ""
+	echo " Tests for eqp complete"
+
+test_eqp_double: eqpdt $(DRUNEQP)
+	echo ""
+	echo " Testing CUTEr interface to eqp"
+	cd $(GALAHAD)/examples ; sdgal $(VERSION) eqp QPBAND
+	echo ""
+	echo " Tests for eqp complete"
+
+test_eqp_nocuter: test_eqp_nocuter_$(PRECIS)
+
+test_eqp_nocuter_single: eqpst
+	echo ""
+	echo " Tests for eqp complete"
+
+test_eqp_nocuter_double: eqpdt
+	echo ""
+	echo " Tests for eqp complete"
+
+test_spec_eqp: test_spec_eqp_$(PRECIS)
+
+test_spec_eqp_single: eqpss
+	echo ""
+	echo " Tests for eqp complete"
+
+test_spec_eqp_double: eqpds
+	echo ""
+	echo " Tests for eqp complete"
+
+# lls
+
+lls_cuter: lls_cuter_$(PRECIS)
+	@printf ' %-21s\n' "GALAHAD: LLS ($(PRECIS) $(SUCC_CUTER)" 
+lls_cuter_single: $(LLSOBJECTSS_CUTER)
+	$(RANLIB) $(LGS)
+lls_cuter_double: $(LLSOBJECTSD_CUTER)
+	$(RANLIB) $(LGD)
+
+lls_silent: lls_$(PRECIS)
+lls: lls_$(PRECIS)
+	@printf ' %-21s\n' "GALAHAD: LLS ($(PRECIS) $(SUCC)" 
+lls_single: $(SLLS)
+	$(RANLIB) $(LGS)
+lls_double: $(DLLS)
+	$(RANLIB) $(LGD)
+
+llssrunall: llsss llsst
+llsdrunall: llsds llsdt
+llsrunall: llsdrunall llssrunall
+
+test_lls: test_lls_$(PRECIS)
+
+test_lls_single: llsst $(SRUNLLS)
+	echo ""
+	echo " Testing CUTEr interface to lls"
+	cd $(GALAHAD)/examples ; sdgal $(VERSION) lls -s QPBAND
+	echo ""
+	echo " Tests for lls complete"
+
+test_lls_double: llsdt $(DRUNLLS)
+	echo ""
+	echo " Testing CUTEr interface to lls"
+	cd $(GALAHAD)/examples ; sdgal $(VERSION) lls QPBAND
+	echo ""
+	echo " Tests for lls complete"
+
+test_lls_nocuter: test_lls_nocuter_$(PRECIS)
+
+test_lls_nocuter_single: llsst
+	echo ""
+	echo " Tests for lls complete"
+
+test_lls_nocuter_double: llsdt
+	echo ""
+	echo " Tests for lls complete"
+
+test_spec_lls: test_spec_lls_$(PRECIS)
+
+test_spec_lls_single: llsss
+	echo ""
+	echo " Tests for lls complete"
+
+test_spec_lls_double: llsds
+	echo ""
+	echo " Tests for lls complete"
+
+# sbls
+
+sblssrunall: sblsss sblsst
+sblsdrunall: sblsds sblsdt
+sblsrunall: sblsdrunall sblssrunall
+
+#  basic packages
+
+basics: 
+	( cd ../general ; $(MAKE) -f $(GALAHAD)/makefiles/$(VERSION) \
+            cputim.o blas.o metis.o lapack_gltr.o cuterinter.o symbols.o \
+            specfile.o rand.o scale.o sort.o tools.o space.o string.o smt.o \
+            PRECIS=$(PRECIS) PWD=$(PWD)/../general )
+	( cd ../qp ; $(MAKE) -f $(GALAHAD)/makefiles/$(VERSION) \
+            qpt.o PRECIS=$(PRECIS) PWD=$(PWD)/../qp )
+linearsolver: 
+	( cd ../general ; $(MAKE) -f $(GALAHAD)/makefiles/$(VERSION) \
+            linearsolver_silent PRECIS=$(PRECIS) PWD=$(PWD)/../general )
+ulinearsolver: 
+	( cd ../general ; $(MAKE) -f $(GALAHAD)/makefiles/$(VERSION) \
+            ulinearsolver_silent PRECIS=$(PRECIS) PWD=$(PWD)/../general )
+gltr:
+	( cd ../qp ; $(MAKE) -f $(GALAHAD)/makefiles/$(VERSION) \
+            roots.o gltr.o PRECIS=$(PRECIS) PWD=$(PWD)/../qp )
+qpd:
+	( cd ../qp ; $(MAKE) -f $(GALAHAD)/makefiles/$(VERSION) \
+            qpt.o qpp.o roots.o qpd.o PRECIS=$(PRECIS) PWD=$(PWD)/../qp )
+copyright:
+	( cd ../general ; $(MAKE) -f $(GALAHAD)/makefiles/$(VERSION) \
+            copyright.o PRECIS=$(PRECIS) PWD=$(PWD)/../general )
+nlpt:
+	( cd ../filtrane ; $(MAKE) -f $(GALAHAD)/makefiles/$(VERSION) \
+            nlpt.o PRECIS=$(PRECIS) PWD=$(PWD)/../filtrane )
+
+# run spec-sheet example tests
+
+sblsds: $(SBLSDS)
+	$(FORTRAN) $(RUNFFLAGS) $(SPECIAL) -o run_sbls $(RSBLSDS)
+	- ./run_sbls >& sblsds.output
+	cat sblsds.output
+	rm ./run_sbls
+
+sblsdt: $(SBLSDT)
+	echo " Exhaustive test of subroutine interface to sbls"
+	$(FORTRAN) $(RUNFFLAGS) $(SPECIAL) -o run_sbls $(RSBLSDT)
+	- ./run_sbls >& sblsdt.output
+	cat sblsdt.output
+	rm ./run_sbls
+
+sblsss: $(SBLSSS)
+	$(FORTRAN) $(RUNFFLAGS) $(SPECIAL) -o run_sbls $(RSBLSSS)
+	- ./run_sbls >& sblss.output
+	cat sblss.output
+	rm ./run_sbls
+
+sblsst: $(SBLSST)
+	echo " Exhaustive test of subroutine interface to sbls"
+	$(FORTRAN) $(RUNFFLAGS) $(SPECIAL) -o run_sbls $(RSBLSST)
+	- ./run_sbls >& sblst.output
+	cat sblst.output
+	rm ./run_sbls
+
+eqpds: $(EQPDS)
+	$(FORTRAN) $(RUNFFLAGS) $(SPECIAL) -o run_eqp $(REQPDS)
+	- ./run_eqp >& eqpds.output
+	cat eqpds.output
+	rm ./run_eqp
+
+eqpdt: $(EQPDT)
+	echo " Exhaustive test of subroutine interface to eqp"
+	$(FORTRAN) $(RUNFFLAGS) $(SPECIAL) -o run_eqp $(REQPDT)
+	- ./run_eqp >& eqpdt.output
+	cat eqpdt.output
+	rm ./run_eqp
+
+eqpss: $(EQPSS)
+	$(FORTRAN) $(RUNFFLAGS) $(SPECIAL) -o run_eqp $(REQPSS)
+	- ./run_eqp >& eqps.output
+	cat eqps.output
+	rm ./run_eqp
+
+eqpst: $(EQPST)
+	echo " Exhaustive test of subroutine interface to eqp"
+	$(FORTRAN) $(RUNFFLAGS) $(SPECIAL) -o run_eqp $(REQPST)
+	- ./run_eqp >& eqpt.output
+	cat eqpt.output
+	rm ./run_eqp
+
+llsds: $(LLSDS)
+	$(FORTRAN) $(RUNFFLAGS) $(SPECIAL) -o run_lls $(RLLSDS)
+	- ./run_lls >& llsds.output
+	cat llsds.output
+	rm ./run_lls
+
+llsdt: $(LLSDT)
+	echo " Exhaustive test of subroutine interface to lls"
+	$(FORTRAN) $(RUNFFLAGS) $(SPECIAL) -o run_lls $(RLLSDT)
+	- ./run_lls >& llsdt.output
+	cat llsdt.output
+	rm ./run_lls
+
+llsss: $(LLSSS)
+	$(FORTRAN) $(RUNFFLAGS) $(SPECIAL) -o run_lls $(RLLSSS)
+	- ./run_lls >& llss.output
+	cat llss.output
+	rm ./run_lls
+
+llsst: $(LLSST)
+	echo " Exhaustive test of subroutine interface to lls"
+	$(FORTRAN) $(RUNFFLAGS) $(SPECIAL) -o run_lls $(RLLSST)
+	- ./run_lls >& llst.output
+	cat llst.output
+	rm ./run_lls
+
+#  Substantial GALAHAD packages
+
+sbls.o: $(LG)(sbls.o)
+
+$(LG)(sbls.o): ../sbls/sbls.f90
+	@printf ' %-9s %-15s\t\t' "Compiling" "sbls  " 
+	$(SED) -f $(SEDS) ../sbls/sbls.f90 > $(OBJ)/sbls1.f90
+	$(SED) -f $(LPSEDS) $(OBJ)/sbls1.f90 > $(OBJ)/sbls2.f90
+	$(SED) -f $(LUSEDS) $(OBJ)/sbls2.f90 > $(OBJ)/sbls3.f90
+	$(SED) "s/^.$(NOT95)/     /" $(OBJ)/sbls3.f90 > $(OBJ)/sbls.f90
+	cd $(OBJ); $(FORTRAN) -o sbls.o $(FFLAGSS) sbls.f90 \
+                || ( printf ' %-26s' "=> Disabling optimization " ; \
+                   $(FORTRAN) -o sbls.o $(FFLAGSN) sbls.f90 )
+	cd $(OBJ); $(ARR) sbls.o ; $(RM) sbls.o sbls1.f90 \
+                                         sbls2.f90 sbls3.f90 sbls.o
+	$(RMARFILE) lls.o
+	$(RMARFILE) eqp.o
+	$(RMARFILE) aco.o
+	$(RMOBFILE) sblss.o
+	$(RMOBFILE) sblst.o
+	$(RMOBFILE) usesqp.o
+	$(MVMODS)
+	@printf '[ OK ]\n'
+
+eqp.o: $(LG)(eqp.o)
+
+$(LG)(eqp.o): ../eqp/eqp.f90
+	@printf ' %-9s %-15s\t\t' "Compiling" "eqp   " 
+	$(SED) -f $(SEDS) ../eqp/eqp.f90 > $(OBJ)/eqp1.f90
+	$(SED) -f $(LSEDS) $(OBJ)/eqp1.f90 > $(OBJ)/eqp2.f90
+	$(SED) "s/^.$(NOT95)/     /" $(OBJ)/eqp2.f90 > $(OBJ)/eqp.f90
+	cd $(OBJ); $(FORTRAN) -o eqp.o $(FFLAGSS) eqp.f90 \
+                || ( printf ' %-26s' "=> Disabling optimization " ; \
+                   $(FORTRAN) -o eqp.o $(FFLAGSN) eqp.f90 )
+	cd $(OBJ); $(ARR) eqp.o ; $(RM) eqp.f90 eqp1.f90 eqp2.f90 eqp.o
+	$(RMARFILE) funnel.o
+	$(RMARFILE) fastr.o
+	$(RMARFILE) useeqp.o
+	$(RMOBFILE) eqps.o
+	$(RMOBFILE) eqpt.o
+	$(MVMODS)
+	@printf '[ OK ]\n'
+
+lls.o: $(LG)(lls.o)
+
+$(LG)(lls.o): ../lls/lls.f90
+	@printf ' %-9s %-15s\t\t' "Compiling" "lls   " 
+	$(SED) -f $(SEDS) ../lls/lls.f90 > $(OBJ)/lls1.f90
+	$(SED) -f $(LSEDS) $(OBJ)/lls1.f90 > $(OBJ)/lls2.f90
+	$(SED) "s/^.$(NOT95)/     /" $(OBJ)/lls2.f90 > $(OBJ)/lls.f90
+	cd $(OBJ); $(FORTRAN) -o lls.o $(FFLAGSS) lls.f90 \
+                || ( printf ' %-26s' "=> Disabling optimization " ; \
+                   $(FORTRAN) -o lls.o $(FFLAGSN) lls.f90 )
+	cd $(OBJ); $(ARR) lls.o ; $(RM) lls.f90 lls1.f90 lls2.f90 lls.o
+	$(RMARFILE) funnel.o
+	$(RMARFILE) usells.o
+	$(RMOBFILE) llss.o
+	$(RMOBFILE) llst.o
+	$(MVMODS)
+	@printf '[ OK ]\n'
+
+# CUTEr/AMPL interfaces
+
+useeqp.o: $(LG)(useeqp.o)
+
+$(LG)(useeqp.o): ../eqp/useeqp.f90
+	@printf ' %-9s %-15s\t\t' "Compiling" "useeqp   " 
+	$(SED) -f $(SEDS) ../eqp/useeqp.f90 > $(OBJ)/useeqp1.f90
+	$(SED) -f $(LSEDS) $(OBJ)/useeqp1.f90 > $(OBJ)/useeqp2.f90
+	$(SED) "s/^.$(NOT95)/     /" $(OBJ)/useeqp2.f90 > $(OBJ)/useeqp.f90
+	cd $(OBJ); $(FORTRAN) -o useeqp.o $(FFLAGSS) useeqp.f90 \
+                || ( printf ' %-26s' "=> Disabling optimization " ; \
+                   $(FORTRAN) -o useeqp.o $(FFLAGSN) useeqp.f90 )
+	cd $(OBJ); $(ARR) useeqp.o ; $(RM) useeqp.f90 useeqp1.f90 \
+                                           useeqp2.f90 useeqp.o
+	$(RMOBFILE) runeqp_sif.o
+	$(MVMODS)
+	@printf '[ OK ]\n'
+
+usells.o: $(LG)(usells.o)
+
+$(LG)(usells.o): ../lls/usells.f90
+	@printf ' %-9s %-15s\t\t' "Compiling" "usells   " 
+	$(SED) -f $(SEDS) ../lls/usells.f90 > $(OBJ)/usells1.f90
+	$(SED) -f $(LSEDS) $(OBJ)/usells1.f90 > $(OBJ)/usells2.f90
+	$(SED) "s/^.$(NOT95)/     /" $(OBJ)/usells2.f90 > $(OBJ)/usells.f90
+	cd $(OBJ); $(FORTRAN) -o usells.o $(FFLAGSS) usells.f90 \
+                || ( printf ' %-26s' "=> Disabling optimization " ; \
+                   $(FORTRAN) -o usells.o $(FFLAGSN) usells.f90 )
+	cd $(OBJ); $(ARR) usells.o ; $(RM) usells.f90 usells1.f90 \
+                                           usells2.f90 usells.o
+	$(RMOBFILE) runlls_sif.o
+	$(MVMODS)
+	@printf '[ OK ]\n'
+
+#  main programs
+
+runeqp_sif.o: $(OBJ)/runeqp_sif.o
+
+$(OBJ)/runeqp_sif.o: ../eqp/runeqp_sif.f90
+	@printf ' %-9s %-15s\t\t' "Compiling" "runeqp_sif" 
+	$(SED) -f $(SEDS) ../eqp/runeqp_sif.f90 > $(OBJ)/runeqp_sif.f90
+	cd $(OBJ); $(FORTRAN) -o runeqp_sif.o $(FFLAGSS) runeqp_sif.f90
+	rm $(OBJ)/runeqp_sif.f90
+	@printf '[ OK ]\n'
+
+runlls_sif.o: $(OBJ)/runlls_sif.o
+
+$(OBJ)/runlls_sif.o: ../lls/runlls_sif.f90
+	@printf ' %-9s %-15s\t\t' "Compiling" "runlls_sif" 
+	$(SED) -f $(SEDS) ../lls/runlls_sif.f90 > $(OBJ)/runlls_sif.f90
+	cd $(OBJ); $(FORTRAN) -o runlls_sif.o $(FFLAGSS) runlls_sif.f90
+	rm $(OBJ)/runlls_sif.f90
+	@printf '[ OK ]\n'
+
+#  test decks
+
+sblss.o: $(OBJ)/sblss.o
+
+$(OBJ)/sblss.o: ../sbls/sblss.f90
+	@printf ' %-9s %-15s\t\t' "Compiling" "sblss  " 
+	$(SED) -f $(SEDS) ../sbls/sblss.f90 > $(OBJ)/sblss1.f90
+	$(SED) -f $(LSEDS) $(OBJ)/sblss1.f90 > $(OBJ)/sblss.f90
+	cd $(OBJ) ; $(FORTRAN) -o sblss.o $(FFLAGS) sblss.f90
+	rm $(OBJ)/*.f90
+	@printf '[ OK ]\n'
+
+sblst.o: $(OBJ)/sblst.o
+
+$(OBJ)/sblst.o: ../sbls/sblst.f90
+	@printf ' %-9s %-15s\t\t' "Compiling" "sblst  " 
+	$(SED) -f $(SEDS) ../sbls/sblst.f90 > $(OBJ)/sblst1.f90
+	$(SED) -f $(LSEDS) $(OBJ)/sblst1.f90 > $(OBJ)/sblst.f90
+	cd $(OBJ) ; $(FORTRAN) -o sblst.o $(FFLAGSS) sblst.f90
+	rm $(OBJ)/*.f90
+	@printf '[ OK ]\n'
+
+eqps.o: $(OBJ)/eqps.o
+
+$(OBJ)/eqps.o: ../eqp/eqps.f90
+	@printf ' %-9s %-15s\t\t' "Compiling" "eqps  " 
+	$(SED) -f $(SEDS) ../eqp/eqps.f90 > $(OBJ)/eqps1.f90
+	$(SED) -f $(LSEDS) $(OBJ)/eqps1.f90 > $(OBJ)/eqps.f90
+	cd $(OBJ) ; $(FORTRAN) -o eqps.o $(FFLAGS) eqps.f90
+	rm $(OBJ)/*.f90
+	@printf '[ OK ]\n'
+
+eqpt.o: $(OBJ)/eqpt.o
+
+$(OBJ)/eqpt.o: ../eqp/eqpt.f90
+	@printf ' %-9s %-15s\t\t' "Compiling" "eqpt  " 
+	$(SED) -f $(SEDS) ../eqp/eqpt.f90 > $(OBJ)/eqpt1.f90
+	$(SED) -f $(LSEDS) $(OBJ)/eqpt1.f90 > $(OBJ)/eqpt.f90
+	cd $(OBJ) ; $(FORTRAN) -o eqpt.o $(FFLAGSS) eqpt.f90
+	rm $(OBJ)/*.f90
+	@printf '[ OK ]\n'
+
+llss.o: $(OBJ)/llss.o
+
+$(OBJ)/llss.o: ../lls/llss.f90
+	@printf ' %-9s %-15s\t\t' "Compiling" "llss  " 
+	$(SED) -f $(SEDS) ../lls/llss.f90 > $(OBJ)/llss1.f90
+	$(SED) -f $(LSEDS) $(OBJ)/llss1.f90 > $(OBJ)/llss.f90
+	cd $(OBJ) ; $(FORTRAN) -o llss.o $(FFLAGS) llss.f90
+	rm $(OBJ)/*.f90
+	@printf '[ OK ]\n'
+
+llst.o: $(OBJ)/llst.o
+
+$(OBJ)/llst.o: ../lls/llst.f90
+	@printf ' %-9s %-15s\t\t' "Compiling" "llst  " 
+	$(SED) -f $(SEDS) ../lls/llst.f90 > $(OBJ)/llst1.f90
+	$(SED) -f $(LSEDS) $(OBJ)/llst1.f90 > $(OBJ)/llst.f90
+	cd $(OBJ) ; $(FORTRAN) -o llst.o $(FFLAGSS) llst.f90
+	rm $(OBJ)/*.f90
+	@printf '[ OK ]\n'
+
+#  generate HSL codes from GALAHAD ones
+
+hslgen: 
+	$(SED) -f ../hsl/gal2hsl ../lls/lls.f90 > ../hsl/hsl_ve20/ve20d.f90
+	$(SED) -f ../hsl/gal2hsl ../eqp/eqp.f90 > ../hsl/hsl_ve18/ve18d.f90
+	$(SED) -f ../hsl/gal2hsl ../sbls/sbls.f90 > ../hsl/hsl_mi14/mi14d.f90
+
+#  book keeping
+
+clean: 
+	@printf ' %-9s\t\t' "Cleaning" 
+	$(RM) $(LGS) $(LGD) $(QPBDS) $(OBJ)/qpbdt.o $(QPBSS) $(OBJ)/qpbst.o
+	@printf '[ OK ]\n'
+
+cleanall: 
+	@printf ' %-14s\t\t' "Removing all $(PRECIS) precision object and module files" 
+	$(RM) $(OBJ)/* $(MOD)/*
+	@printf '[ OK ]\n'
+
+rmsbls: 
+	@printf ' %-9s %-15s\t\t' "Removing" "sbls from archive " 
+	$(RMARFILE) sbls.o
+	@printf '[ OK ]\n'
+
+rmeqp: 
+	@printf ' %-9s %-15s\t\t' "Removing" "eqp from archive " 
+	$(RMARFILE) eqp.o
+	@printf '[ OK ]\n'
+
+rmlls: 
+	@printf ' %-9s %-15s\t\t' "Removing" "lls from archive " 
+	$(RMARFILE) lls.o
+	@printf '[ OK ]\n'
+

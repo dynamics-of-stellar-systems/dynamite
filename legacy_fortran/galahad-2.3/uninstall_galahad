@@ -1,0 +1,11 @@
+#!/bin/sh
+
+# Remove script for GALAHAD 
+
+# syntax: install_galahad
+
+# N. Gould, D. Orban & Ph. Toint
+# ( Last modified on 28 July 2005 at 07:30:00 GMT )
+
+cur=$PWD
+$cur/bin/uninstall_galahad.sh

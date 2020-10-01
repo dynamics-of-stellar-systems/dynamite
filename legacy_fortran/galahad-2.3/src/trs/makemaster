@@ -1,0 +1,287 @@
+#  Main body of the installation makefile for the GALAHAD TRS package
+
+#  N. Gould, D. Orban and Ph. L. Toint.
+#  This version: 19 X 2005
+
+SHELL = /bin/$(BINSHELL)
+
+#  compiler flags
+
+FFLAGS    = $(BASIC) $(OPTIMIZATION) $(DEBUG) $(MODULES) $(F90) $(USUAL)
+FFLAGSS   = $(BASIC) $(OPTIMIZATION) $(DEBUG) $(MODULES) $(F90) $(SPECIAL)
+FFLAGSN   = $(BASIC) $(NOOPTIMIZATION) $(DEBUG) $(MODULES) $(F90)
+FFLAGS77  = $(BASIC) $(OPTIMIZATION) $(DEBUG) $(MODULES) $(F77) $(USUAL)
+FFLAGS77S = $(BASIC) $(OPTIMIZATION) $(DEBUG) $(MODULES) $(F77) $(SPECIAL)
+RUNFFLAGS =          $(OPTIMIZATION) $(DEBUG) $(MODULES)
+
+#  names of random libraries
+
+LG  = $(OBJ)/libgalahad.a
+LGS = $(OBJS)/libgalahad.a
+LGD = $(OBJD)/libgalahad.a
+
+BLG  = $(OBJ)/libgalahad_blas.a
+BLGS = $(OBJS)/libgalahad_blas.a
+BLGD = $(OBJD)/libgalahad_blas.a
+
+LLG  = $(OBJ)/libgalahad_lapack.a
+LLGS = $(OBJS)/libgalahad_lapack.a
+LLGD = $(OBJD)/libgalahad_lapack.a
+
+HLG  = $(OBJ)/libgalahad_hsl.a
+HLGS = $(OBJS)/libgalahad_hsl.a
+HLGD = $(OBJD)/libgalahad_hsl.a
+
+MLG  = $(OBJ)/libgalahad_metis.a
+MLGS = $(OBJS)/libgalahad_metis.a
+MLGD = $(OBJD)/libgalahad_metis.a
+
+#  Libraries used
+
+LIBS = -lgalahad -lgalahad_hsl -lgalahad_metis -lgalahad_lapack -lgalahad_blas
+
+#  Archive manipulation strings
+
+ARR = $(AR) -rc $(LG)
+RMARFILE = $(GALAHAD)/bin/rmarfile.$(BINSHELL) $(AR) $(GREP) $(LG)
+RMOBFILE = $(GALAHAD)/bin/rmobfile.$(BINSHELL) $(RM) $(OBJ)
+
+BARR = $(AR) -rc $(BLG)
+BRMARFILE = $(GALAHAD)/bin/rmarfile.$(BINSHELL) $(AR) $(GREP) $(BLG)
+
+LARR = $(AR) -rc $(LLG)
+LRMARFILE = $(GALAHAD)/bin/rmarfile.$(BINSHELL) $(AR) $(GREP) $(LLG)
+
+HARR = $(AR) -rc $(HLG)
+HRMARFILE = $(GALAHAD)/bin/rmarfile.$(BINSHELL) $(AR) $(GREP) $(HLG)
+
+MARR = $(AR) -rc $(MLG)
+MRMARFILE = $(GALAHAD)/bin/rmarfile.$(BINSHELL) $(AR) $(GREP) $MHLG)
+
+#  sed scripts
+
+LSEDS = $(GALAHAD)/seds/$(LINEARSOLVER).sed
+LPSEDS = $(GALAHAD)/seds/$(LINEARSOLVER)_precon.sed
+CSEDS = $(GALAHAD)/seds/cutersize.sed
+
+#  compilation agenda
+
+STRS = basics linearsolver $(LGS)(trs.o)
+DTRS = basics linearsolver $(LGD)(trs.o)
+
+SRUNTRS = copyright $(LGS)(usetrs.o) $(OBJS)/runtrs_sif.o
+DRUNTRS = copyright $(LGD)(usetrs.o) $(OBJD)/runtrs_sif.o
+
+TRSOBJECTSS = $(STRS)
+TRSOBJECTSD = $(DTRS)
+
+TRSOBJECTSS_CUTER = $(STRS) $(SRUNTRS)
+TRSOBJECTSD_CUTER = $(DTRS) $(DRUNTRS)
+
+OBJECTSS_CUTER = $(TRSOBJECTSS_CUTER)
+OBJECTSD_CUTER = $(TRSOBJECTSD_CUTER)
+
+TRSDS = $(DTRS) $(OBJD)/trss.o
+TRSDT = $(DTRS) $(OBJD)/trst.o
+TRSSS = $(STRS) $(OBJS)/trss.o
+TRSST = $(STRS) $(OBJS)/trst.o
+
+RTRSDS = $(OBJD)/trss.o -L$(OBJD) $(LIBS)
+RTRSDT = $(OBJD)/trst.o -L$(OBJD) $(LIBS)
+RTRSSS = $(OBJS)/trss.o -L$(OBJS) $(LIBS)
+RTRSST = $(OBJS)/trst.o -L$(OBJS) $(LIBS)
+
+SUCC = precision version) compiled successfully
+SUCC_CUTER = precision version) for CUTEr compiled successfully
+
+#  main compilations and runs
+
+all: trs
+all_trs: trs
+test: test_trs
+test_nocuter: test_trs_nocuter
+
+# trs
+
+trs_cuter: trs_cuter_$(PRECIS)
+	@printf ' %-21s\n' "GALAHAD: TRS ($(PRECIS) $(SUCC_CUTER)" 
+trs_cuter_single: $(TRSOBJECTSS_CUTER)
+	$(RANLIB) $(LGS)
+trs_cuter_double: $(TRSOBJECTSD_CUTER)
+	$(RANLIB) $(LGD)
+
+trs_silent: trs_$(PRECIS)
+trs: trs_$(PRECIS)
+	@printf ' %-21s\n' "GALAHAD: TRS ($(PRECIS) $(SUCC)" 
+trs_single: $(TRSOBJECTSS)
+	$(RANLIB) $(LGS)
+trs_double: $(TRSOBJECTSD)
+	$(RANLIB) $(LGD)
+
+trssrunall: trsss trsst
+trsdrunall: trsds trsdt
+trsrunall: trsdrunall trssrunall
+
+test_trs: test_trs_$(PRECIS)
+
+test_trs_single: trsst $(SRUNTRS)
+	echo ""
+	echo " Testing CUTEr interface to trs"
+	cd $(GALAHAD)/examples ; sdgal $(VERSION) trs -s QPBAND
+	echo ""
+	echo " Tests for trs complete"
+
+test_trs_double: trsdt $(DRUNTRS)
+	echo ""
+	echo " Testing CUTEr interface to trs"
+	cd $(GALAHAD)/examples ; sdgal $(VERSION) trs QPBAND
+	echo ""
+	echo " Tests for trs complete"
+
+test_trs_nocuter: test_trs_nocuter_$(PRECIS)
+
+test_trs_nocuter_single: trsst
+	echo ""
+	echo " Tests for trs complete"
+
+test_trs_nocuter_double: trsdt
+	echo ""
+	echo " Tests for trs complete"
+
+#  basic packages
+
+basics: 
+	( cd ../general ; $(MAKE) -f $(GALAHAD)/makefiles/$(VERSION) \
+            cputim.o blas.o metis.o lapack_gltr.o norms.o cuterinter.o \
+            symbols.o specfile.o rand.o scale.o sort.o tools.o space.o \
+            string.o trans.o qtrans.o smt.o PRECIS=$(PRECIS) \
+            PWD=$(PWD)/../general )
+linearsolver: 
+	( cd ../general ; $(MAKE) -f $(GALAHAD)/makefiles/$(VERSION) \
+            linearsolver_silent PRECIS=$(PRECIS) PWD=$(PWD)/../general )
+copyright:
+	( cd ../general ; $(MAKE) -f $(GALAHAD)/makefiles/$(VERSION) \
+            copyright.o PRECIS=$(PRECIS) PWD=$(PWD)/../general )
+
+# run spec-sheet example tests
+
+trsss: $(TRSSS)
+	$(FORTRAN) $(RUNFFLAGS) $(SPECIAL) -o run_trs $(RTRSSS)
+	- ./run_trs >& trss.output
+	cat trss.output
+	rm ./run_trs
+
+trsst: $(TRSST)
+	echo " Exhaustive test of subroutine interface to trs"
+	$(FORTRAN) $(RUNFFLAGS) $(SPECIAL) -o run_trs $(RTRSST)
+	- ./run_trs >& trst.output
+	cat trst.output
+	rm ./run_trs
+
+trsds: $(TRSDS)
+	$(FORTRAN) $(RUNFFLAGS) $(SPECIAL) -o run_trs $(RTRSDS)
+	- ./run_trs >& trsds.output
+	cat trsds.output
+	rm ./run_trs
+
+trsdt: $(TRSDT)
+	echo " Exhaustive test of subroutine interface to trs"
+	$(FORTRAN) $(RUNFFLAGS) $(SPECIAL) -o run_trs $(RTRSDT)
+	- ./run_trs >& trsdt.output
+	cat trsdt.output
+	rm ./run_trs
+
+#  Substantial GALAHAD packages
+
+trs.o: $(LG)(trs.o)
+
+$(LG)(trs.o): ../trs/trs.f90
+	@printf ' %-9s %-15s\t\t' "Compiling" "trs   " 
+	$(SED) -f $(CSEDS) $(CUTERUSED)/$(PRECIS)/config/tools.siz \
+          > $(OBJ)/cutersize.f90
+	$(SED) -f $(SEDS) ../trs/trs.f90 > $(OBJ)/trs1.f90
+	$(SED) -f $(LSEDS) $(OBJ)/trs1.f90 > $(OBJ)/trs2.f90
+	$(SED) -f $(LPSEDS) $(OBJ)/trs2.f90 > $(OBJ)/trs3.f90
+	$(SED) "s/^.$(NOT95)/     /" $(OBJ)/trs3.f90 > $(OBJ)/trs.f90
+	cd $(OBJ); $(FORTRAN) -o trs.o $(FFLAGSS) trs.f90 \
+                || ( printf ' %-26s' "=> Disabling optimization " ; \
+                   $(FORTRAN) -o trs.o $(FFLAGSN) trs.f90 )
+	cd $(OBJ); $(ARR) trs.o ; $(RM) trs.f90 trs1.f90 trs2.f90 \
+                                          trs3.f90 trs.o cutersize.f90
+	$(RMARFILE) usetrs.o
+	$(RMOBFILE) trss.o
+	$(RMOBFILE) trst.o
+	$(MVMODS)
+	@printf '[ OK ]\n'
+
+
+# CUTEr/AMPL interfaces
+
+usetrs.o: $(LG)(usetrs.o)
+
+$(LG)(usetrs.o): ../trs/usetrs.f90
+	@printf ' %-9s %-15s\t\t' "Compiling" "usetrs   " 
+	$(SED) -f $(CSEDS) $(CUTERUSED)/$(PRECIS)/config/tools.siz \
+          > $(OBJ)/cutersize.f90
+	$(SED) -f $(SEDS) ../trs/usetrs.f90 > $(OBJ)/usetrs1.f90
+	$(SED) -f $(LSEDS) $(OBJ)/usetrs1.f90 > $(OBJ)/usetrs2.f90
+	$(SED) "s/^.$(NOT95)/     /" $(OBJ)/usetrs2.f90 > $(OBJ)/usetrs.f90
+	cd $(OBJ); $(FORTRAN) -o usetrs.o $(FFLAGSS) usetrs.f90 \
+                || ( printf ' %-26s' "=> Disabling optimization " ; \
+                   $(FORTRAN) -o usetrs.o $(FFLAGSN) usetrs.f90 )
+	cd $(OBJ); $(ARR) usetrs.o ; $(RM) usetrs.f90 usetrs1.f90 \
+                                       usetrs2.f90 usetrs.o  cutersize.f90
+	$(RMOBFILE) runtrs_sif.o
+	$(MVMODS)
+	@printf '[ OK ]\n'
+
+#  main programs
+
+runtrs_sif.o: $(OBJ)/runtrs_sif.o
+
+$(OBJ)/runtrs_sif.o: ../trs/runtrs_sif.f90
+	@printf ' %-9s %-15s\t\t' "Compiling" "runtrs_sif" 
+	$(SED) -f $(SEDS) ../trs/runtrs_sif.f90 > $(OBJ)/runtrs_sif.f90
+	cd $(OBJ); $(FORTRAN) -o runtrs_sif.o $(FFLAGSS) runtrs_sif.f90
+	rm $(OBJ)/runtrs_sif.f90
+	@printf '[ OK ]\n'
+
+#  test decks
+
+trss.o: $(OBJ)/trss.o
+
+$(OBJ)/trss.o: ../trs/trss.f90
+	@printf ' %-9s %-15s\t\t' "Compiling" "trss  " 
+	$(SED) -f $(SEDS) ../trs/trss.f90 > $(OBJ)/trss1.f90
+	$(SED) -f $(LSEDS) $(OBJ)/trss1.f90 > $(OBJ)/trss.f90
+	cd $(OBJ) ; $(FORTRAN) -o trss.o $(FFLAGS) trss.f90
+	rm $(OBJ)/*.f90
+	@printf '[ OK ]\n'
+
+trst.o: $(OBJ)/trst.o
+
+$(OBJ)/trst.o: ../trs/trst.f90
+	@printf ' %-9s %-15s\t\t' "Compiling" "trst  " 
+	$(SED) -f $(SEDS) ../trs/trst.f90 > $(OBJ)/trst1.f90
+	$(SED) -f $(LSEDS) $(OBJ)/trst1.f90 > $(OBJ)/trst.f90
+	cd $(OBJ) ; $(FORTRAN) -o trst.o $(FFLAGSS) trst.f90
+	rm $(OBJ)/*.f90
+	@printf '[ OK ]\n'
+
+#  book keeping
+
+clean: 
+	@printf ' %-9s\t\t' "Cleaning" 
+	$(RM) $(LG) $(OBJ)/trst.o
+	@printf '[ OK ]\n'
+
+cleanall: 
+	@printf ' %-14s\t\t' "Removing all $(PRECIS) precision object and module files" 
+	$(RM) $(OBJ)/* $(MOD)/*
+	@printf '[ OK ]\n'
+
+rmtrs: 
+	@printf ' %-9s %-15s\t\t' "Removing" "trs from archive " 
+	$(RMARFILE) trs.o
+	@printf '[ OK ]\n'
+

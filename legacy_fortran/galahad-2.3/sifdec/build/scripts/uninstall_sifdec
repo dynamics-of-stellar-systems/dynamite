@@ -1,0 +1,386 @@
+#!/bin/csh -f
+
+# Uninstall script for SifDec
+# N.Gould, D.Orban & Ph.Toint
+# ( Last modified on 8 Feb 2001 at 20:11:40 )
+#
+
+# arg 1 should be the directory containing the SifDec
+# distribution to remove
+
+# Check args first
+
+set name = $0
+set name = $name:t
+
+if ( $#argv == 1 && ( $1 == '-h' || $1 == '--help' ) ) then
+    echo "Usage: $name [directory]"
+    echo "       If present, directory contains the distribution to remove."
+    echo "       It should contain the *whole* path, e.g.:"
+    echo "       /home/jack/SifDec/SifDec.large.alp.t64.f77"
+    echo "       free of any tmp_mnt-like leading directory."
+    echo ''
+    echo "       Called with no argument, $name prompts you"
+    echo "       with a choice."
+    exit 1
+endif
+
+set precIsDtm = "false"
+set typeIsDtm = "false"
+set lineIsDtm = "false"
+
+if( $#argv == 0 ) then
+
+    unalias source
+    if( -f ${MYSIFDEC}/double/config/cmds ) then
+	source ${MYSIFDEC}/double/config/cmds
+    else if( -f ${MYSIFDEC}/single/config/cmds ) then
+	source ${MYSIFDEC}/single/config/cmds
+    else
+
+	@ foundSystem = 1
+	if( `uname` == "SunOS") then
+	    set UMAKE_OPTIONS = -Dsun
+	else if( `uname` == "IRIX64" ) then
+	    set UMAKE_OPTIONS = -Dsgi
+	else if( `uname` == "Linux" || `uname` == "linux" ) then
+	    set UMAKE_OPTIONS = -Dlinux
+	else if( `uname` == "OSF1") then             # For both Compaq and Digital
+	    set UMAKE_OPTIONS = -D__osf__
+	else if( `uname` == "AIX" ) then
+	    set UMAKE_OPTIONS = -Dibm
+	else if( `uname` == "HP" ) then
+	    set UMAKE_OPTIONS = -Dhpux
+	else if( `uname` == "CRAY" ) then
+ 	    set UMAKE_OPTIONS = -D_CRAY
+	else
+	    @ foundSystem = 0
+	    source ${SIFDEC}/build/arch/system.all   # Cross fingers
+	endif
+
+	if( $foundSystem == 1 ) then
+	    set CPP = 'cpp -P'
+	    sed -f ${SIFDEC}/build/scripts/protect.sed ${SIFDEC}/build/scripts/makefile.cmds | ${CPP} -I${SIFDEC}/config -I. -DFromInstallSifDec ${UMAKE_OPTIONS} | sed -f ${SIFDEC}/build/scripts/gettabs.sed > /tmp/Makefile.cmds.$$
+	    cd /tmp
+	    if( -f "cmds" ) rm -f cmds
+	    make -f Makefile.cmds.$$ cmds >& /dev/null
+	    unalias source
+	    source /tmp/cmds
+	    cd ${SIFDEC}
+	endif
+    endif
+
+    @ nbselections = 0
+    if( ! -f ${SIFDEC}/log/install.log ) then
+        @ nblines = 0
+    else
+        @ nblines = `$WC -l ${SIFDEC}/log/install.log | $AWK '{print $1}'`
+    endif
+
+    # Lists initialisation
+    @ i = 1
+    set dummyList = ""
+    while( $i <= $nblines )
+	set dummyList = "$dummyList a"
+	@ i ++
+    end
+    set dummyList = ( $dummyList )
+    set type = ( $dummyList )
+    set loc  = ( $dummyList )
+    set line = ( $dummyList )
+
+    @ k = 1
+    @ curline = 1
+
+    # Collect all possibilities
+    # Pay attention to possible blank lines in install.log
+
+    while( $curline <= $nblines )
+        if( ! -f ${SIFDEC}/log/install.log ) then
+            set contents = ''
+        else
+	    set contents = `$HEAD -$curline ${SIFDEC}/log/install.log | $TAIL -1`
+        endif
+	if( "$contents" != "" ) then
+
+	    set PREC = `echo "$contents" | "$AWK" -F\! '{print $2}' | $AWK '{print $1}'`
+	    set SIZE = `echo "$contents" | "$AWK" -F\! '{print $2}' | $AWK '{print $2}'`
+	    set MCH  = `echo "$contents" | "$AWK" -F\! '{print $2}' | $AWK '{print $3}'`
+	    set OS   = `echo "$contents" | "$AWK" -F\! '{print $2}' | $AWK '{print $4}'`
+	    set CMP  = `echo "$contents" | "$AWK" -F\! '{print $2}' | $AWK '{print $5}'`
+
+	    set type[$k] = "$PREC $SIZE $MCH $OS $CMP"
+	    set loc[$k]  = `echo "$contents" | "$AWK" -F\! '{print $3}'`
+	    set line[$k] = $curline
+	    @ k ++
+	endif
+	@ curline ++
+    end
+
+    @ nbselections = $k - 1
+    set correct_choice = "false"
+
+    if( $nbselections > 0 ) then
+	while( $correct_choice == "false" )
+	    @ k = 1
+	    printf ' [ 0  ] : Abort\n'
+
+	    # Display possibilities
+
+	    while( $k <= $nbselections )
+		printf ' [ %-2d ] : %s,\n%s\n' $k "$type[$k]" "          $loc[$k]"
+		@ k ++
+	    end
+
+	    # Get user's choice
+
+	    set choice = $<
+	    @ i = 0
+	    while( $i < $nbselections && $correct_choice == "false" )
+		@ i ++
+		if( $choice == $i || $choice == "0" ) then
+		    set correct_choice = "true"
+		endif
+	    end
+	
+	    if( $correct_choice == "true" ) then
+		if( $choice != "0" ) then
+		    set dir_to_erase = $loc[$choice]
+		    set lines = $line[$choice]
+		    set distrType = "$type[$choice]"
+
+		    set PREC = `echo "$type[$choice]" | $AWK '{print $1}'`
+    		    set SIZE = `echo "$type[$choice]" | $AWK '{print $2}'`
+		    set MCH  = `echo "$type[$choice]" | $AWK '{print $3}'`
+		    set OS   = `echo "$type[$choice]" | $AWK '{print $4}'`
+		    set CMP  = `echo "$type[$choice]" | $AWK '{print $5}'`
+
+		    set removeDir = ${dir_to_erase}/$PREC
+		    @ isSingle = 0
+		    @ isDouble = 0
+		    if( $PREC == "single" ) then
+			@ isSingle = 1
+			if( -d ${dir_to_erase}/double ) @ isDouble = 1
+			set newArg = "-DDoublePrecision"
+		    else
+			@ isDouble = 1
+			if( -d ${dir_to_erase}/single ) @ isSingle = 1
+			set newArg = "-DSinglePrecision"
+		    endif
+		    set precIsDtm = "true"
+		    set typeIsDtm = "true"
+		    set lineIsDtm = "true"
+		else
+		    echo " Nothing was erased."
+		    exit 2
+		endif
+	    else
+		echo " Please give an integer between 0 and $nbselections"
+	    endif
+	end
+    else
+	echo " Could not find any instance installed."
+	echo " Aborting."
+	exit 0
+    endif
+
+else     # This is a call with at least one argument
+
+    set dir_to_erase = $1   # Ignore all other arguments
+
+endif
+
+# Check if the specified directory exists
+
+if ( ! -d $dir_to_erase ) then
+    echo "   $dir_to_erase "
+    echo " does not seem to be a valid directory name."
+    echo " Try re-running without argument."
+    echo " Aborting."
+    exit 1
+endif
+
+# Get rid of a possible trailing slash in the directory name
+
+if ( `echo $dir_to_erase:t` == "" ) then
+    set workOnDir = `echo $dir_to_erase:h`
+else
+    set workOnDir = $dir_to_erase
+endif
+
+# Ask for which precision to remove
+
+if( $precIsDtm == "false" ) then
+
+    @ isDouble = 0
+    @ isSingle = 0
+    if ( -d "${workOnDir}/double" ) @ isDouble = 1
+    if ( -d "${workOnDir}/single" ) @ isSingle = 1
+
+    if ( $isDouble && $isSingle ) then
+	echo " remove the single (s) or the double (d) distribution ?"
+	set CHOICE = $<
+	set CHOICE = `echo $CHOICE | tr a-z A-Z`
+	while ( $CHOICE != 'S' && $CHOICE != 'D' )
+	    echo 'I am expecting s or d'
+	    set CHOICE = $<
+	    set CHOICE = `echo $CHOICE | tr a-z A-Z`
+	end
+
+    # $MYSIFDEC/install_mysifdec contains a '$1' argument to imake.
+    # This needs to be updated according to the above choice.
+    # -DSingleAndDouble will be replaced by $newArg
+
+	if ( $CHOICE == 'S' ) then
+	    set PREC = "single"
+	    set newArg = "-DDoublePrecision"
+	else
+	    set PREC = "double"
+	    set newArg = "-DSinglePrecision"
+	endif
+    else
+	if ( $isSingle ) then
+	    set PREC = "single"
+	else if ( $isDouble ) then
+	    set PREC = "double"
+	else
+	    echo "  Directory ${workOnDir} does not seem to contain a SifDec distribution"
+	    exit 1
+	endif
+    endif
+
+    set removeDir = ${workOnDir}/$PREC
+
+endif
+
+# Get the UNIX commands right.
+# If SifDec was installed correctly, we shouldn't be in
+# the 'else' case. But if we are, something went wrong
+# and we don't know which system we're acting upon.
+
+unalias source
+
+if ( -e ${removeDir}/config/cmds ) then
+    source ${removeDir}/config/cmds
+else
+    source ${SIFDEC}/build/arch/system.all    # cross fingers
+endif
+
+if( $typeIsDtm == "false" ) then
+
+# retrieve the size, machine, os and compiler name.
+# For instance, MCH=Compaq-Alpha , OS=t64 and CMP=f77
+
+    set SIZE = `$GREP ${workOnDir} $SIFDEC/log/install.log | $GREP ${PREC} | "$AWK" -F! '{print $2}' | "$AWK" '{print $2}'`
+    set MCH = `$GREP ${workOnDir} $SIFDEC/log/install.log | $GREP ${PREC} | "$AWK" -F! '{print $2}' | "$AWK" '{print $3}'`
+    set OS = `$GREP ${workOnDir} $SIFDEC/log/install.log | $GREP ${PREC} | "$AWK" -F! '{print $2}' | "$AWK" '{print $4}'`
+    set CMP = `$GREP ${workOnDir} $SIFDEC/log/install.log | $GREP ${PREC} | "$AWK" -F! '{print $2}' | "$AWK" '{print $5}'`
+
+    set SIFDECVERSION=\""${PREC} ${SIZE} ${MCH} ${OS} ${CMP}"\"
+
+# If everything looks consistent, ask for confirmation
+# and proceed
+
+    set distrType = `$GREP ${workOnDir} $SIFDEC/log/install.log | $GREP ${PREC} | awk -F! '{print $2}'`
+
+endif
+
+if ( "${distrType}" == "" ) then
+    echo 'There seems to be a conflict with your SifDec environment variables'
+    echo " SIFDEC = $SIFDEC"
+    echo " MYSIFDEC  = $MYSIFDEC"
+    exit 4
+endif
+
+echo " The $distrType SifDec distribution stored in "
+echo "  $removeDir "
+echo " will be destroyed and lost."
+echo " Do you wish to proceed (y/n)?"
+
+set CHOICE = $<
+set CHOICE = `echo $CHOICE | tr a-z A-Z`
+while ( $CHOICE != 'Y' && $CHOICE != 'N' )
+      echo 'I am expecting y or n'
+      set CHOICE = $<
+      set CHOICE = `echo $CHOICE | tr a-z A-Z`
+end
+
+if ( $CHOICE == 'N' ) then
+ echo 'Nothing was erased'
+ exit 0
+endif
+
+# Summon Mr. Clean
+
+# We simply rm -r the specified directory
+# and delete the corresponding entries in
+# $SIFDEC/log/install.log
+
+if ( ! -d ${workOnDir}/bin ) then
+    echo " Directory ${workOnDir} does not seem to contain"
+    echo ' a valid/complete SifDec instance...'
+    echo ' Do you wish to remove this directory anyways?'
+    set CHOICE = $<
+    set CHOICE = `echo $CHOICE | tr a-z A-Z`
+    while ( $CHOICE != 'Y' && $CHOICE != 'N' )
+      echo 'I am expecting y or n'
+      set CHOICE = $<
+      set CHOICE = `echo $CHOICE | tr a-z A-Z`
+    end
+    if ( $CHOICE == 'N' ) then
+	echo ' Aborting. Nothing was erased.'
+	exit 1
+    endif
+endif
+
+@ cleanUp = 1       # variable for debugging purposes
+
+if ( $cleanUp ) then
+    $RM -r $removeDir
+
+# Unless single AND double precision were installed, we may
+# also remove the bin/ and ${workOnDir} directories,
+# otherwise, leave as is.
+
+    if ( ! $isSingle || ! $isDouble ) then
+	$RM -r ${workOnDir}
+    else
+	# Update $MYSIFDEC/install_mysifdec if using the imake SifDec
+
+	if( -e ${workOnDir}/install_mysifdec ) then
+	    echo ' ...updating install_mysifdec'
+	    set script = "s/"'$1'"/${newArg}/"
+	    $SED -e ${script} ${workOnDir}/install_mysifdec > ${workOnDir}/install_mysifdec.tmp
+	    $MV ${workOnDir}/install_mysifdec.tmp ${workOnDir}/install_mysifdec
+
+	    # Remove the 'important' message
+
+	    $RM ${workOnDir}/IMPORTANT
+	endif
+    endif
+endif
+
+if( $lineIsDtm == "false" ) then
+
+# Now clean the logfile, deleting lines according to their line number
+
+    set lines = `$GREP -n ${PREC} ${SIFDEC}/log/install.log | $GREP $SIZE | $GREP $MCH | $GREP $OS | $GREP $CMP | "$GREP" $workOnDir | $AWK -F: '{print $1}'`
+    set lines = `echo $lines | tr ' ' ','`
+
+endif
+
+if ( $lines == "" ) then
+    echo "Panic"
+    exit 5
+endif
+
+$SED "$lines"d ${SIFDEC}/log/install.log > ${SIFDEC}/log/install.new.log
+
+# If we are happy, summon Mr. Clean again
+
+if ( $cleanUp ) then
+ $MV $SIFDEC/log/install.new.log $SIFDEC/log/install.log
+endif
+
+# End
+exit 0

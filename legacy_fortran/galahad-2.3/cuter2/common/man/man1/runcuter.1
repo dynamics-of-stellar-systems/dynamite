@@ -1,0 +1,89 @@
+.\" @(#)runcuter v1.0 09/2006;
+.TH runcuter 1 "21 Sept 2006"
+.SH NAME
+runcuter \- new-style CUTEr interface to solvers.
+.SH SYNOPSIS
+\fBruncuter\fP --package \fIpackage\fP [\-\-single] [\-\-help] [\-\-keep] [\-\-rebuild] [\-\-output \fI0|1\fP] [\-\-limit \fIsecs\fP] [\-\-cfortran] [\-\-debug] [\-\-uncons] [\-L\fIpath/to/lib\fP] [\-\-blas \fIkeyword\fP] [\-\-lapack \fIkeyword\fP] [\-\-decode \fIproblem[.SIF]\fP]
+.SH DESCRIPTION
+\fBruncuter\fP is the new-style CUTEr interface to solvers. It is meant to replace the combination of \fBrunpackage\fP, \fIpkg\fP and \fBsd\fP\fIpkg\fP. It accepts options in short or long form. Any option that is not directly recognized is passed unchanged to the SIF decoder.
+
+There still exists a \fIpkg\fP script for each solver but it is now reduced to a minimum, setting a few environment variables.
+
+\fBruncuter\fP reads these environment variables and then compiles and links all the relevant source files and libraries to form an executable of the package \fIpackage\fP running on problem \fIproblem\fP.
+
+The user has the opportunity to run commands before and after the run if need be. \fBruncuter\fP executes the script \fIpackage\fP_pre, if it exists, before the run. Similarly, it executes the script \fIpackage\fP_post, if it exists, after completion of the run.
+.LP 
+.SH runcuter Options
+You can start runcuter with the following options. An option can be used either in short or long form.
+.TP 5
+.B \-p, \-\-package
+Specifies the package, or solver, to use. This is the only mandatory option.
+.TP
+.B \-s, \-\-single
+Run \fIpackage\fP in single-precision mode if available. Double precision is the default.
+.TP
+.B \-h, \-\-help
+Print a short help message with the available command-line options.
+.TP
+.B \-k, \-\-keep
+Keep the generated executable after use. May be useful when solving a particular problem with the same solver with different parameters. Deleting the executable after use is the default.
+.TP
+.B \-r, \-\-rebuild
+Force recompilation of the test problem. Default is to reuse object files.
+.TP
+.B \-o, \-\-output \fI0|1\fP
+Regulates the output level. Verbose mode is \fB-o\fP 1, silent mode is \fB-o\fP 0. Silent mode is the default.
+.TP
+.B \-l, \-\-limit \fIsecs\fP
+Sets a limit of \fIsecs\fP second on the \fIpackage\fP runtime. Unlimited cputime is the default.
+.TP
+.B \-c, \-\-cfortran
+Causes specialized compiler options to be used to specify that the main subroutine of \fIpackage\fP is written in C. This is necessary with some compilers, such as the Intel Fortran Compiler.
+.TP
+.B \-L\fIpath/to/lib\fP
+This option is passed directly to the linker and causes the path \fIpath/to/lib\fP to be searched for libraries. Useful to specify custom BLAS and LAPACK libraries.
+.TP
+.B \-b, \-\-blas \fIkeyword\fP
+Overrides usage of the default \fIlinpack\fP library packaged with CUTEr. Instead, use the BLAS library specified by \fIkeyword\fP. The keyword \fIkeyword\fP has one of two forms. The first, \fI-lmyblas\fP causes the linker to search for BLAS subprograms in the libmyblas.a library. The second, \fInone\fP, causes the linker to skip inclusion of any external BLAS. Use the first option if an optimized BLAS library is available on the host system, e.g., the ATLAS BLAS. The second option is useful for packages which already include the necessary BLAS subprograms. Use of \fInone\fP may be useful if \fIpackage\fP already includes the BLAS subroutines on which it relies.
+.TP
+.B \-K, \-\-lapack \fIkeyword\fP
+Overrides usage of the default \fIlinpack\fP library packaged with CUTEr. Instead, use the LAPACK library specified by \fIkeyword\fP. The keyword \fIkeyword\fP has one of two forms. The first, \fI-lmylapack\fP causes the linker to search for LAPACK subroutines in the libmylapack.a library. The second, \fInone\fP, causes the linker to skip inclusion of any external LAPACK. Use the first option if an optimized LAPACK library is available on the host system. The second option is useful for packages which already include the necessary LAPACK subprograms. Use of \fInone\fP may be useful if \fIpackage\fP already includes the LAPACK subroutines on which it relies.
+.TP
+.B \-D, \-\-decode \fIproblem[.SIF]\fP
+Applies the SIF decoder to the problem \fIproblem.SIF\fP to produce the OUTSDIF.d file and the problem-dependant Fortan subroutines. If this flag is not specified, \fBruncuter\fP assumes that the problem has been decoded prior to the call.
+.TP
+.B \-u, \-\-uncons
+When \fIpackage\fP is \fBmx\fP, the Matlab interface, this option specifies that the problem is unconstrained. This causes the appropriate MEX interface to be compiled and linked. The default is to link with the constrained tools.
+.TP
+.B "additional command-line options"
+Any command-line option not documented in this manual page and/or in the help message of \fBruncuter\fP is passed unchanged to the SIF decoder. See the \fBsifdecode\fP manual page for more information.
+.SH ENVIRONMENT 
+.TP
+.SB CUTER
+Home directory for CUTEr
+.TP
+.SB MYCUTER
+Home directory of the working CUTEr instance.
+.TP
+.SB MYSIFDEC
+Home directory of the working SifDec instance.
+.TP
+.SB MASTSIF
+A pointer to the directory containing the CUTEr problems
+collection. If this variable is not set, the current directory is
+searched for \fIproblem.SIF\fP. If it is set, the current directory is
+searched first, and if \fIproblem.SIF\fP is not found there, $MASTSIF
+is searched.
+.SH AUTHORS
+A.R. Conn, N.I.M. Gould, D. Orban and Ph.L. Toint
+.SH "SEE ALSO"
+\fICUTEr (and SifDec): A Constrained and Unconstrained Testing
+Environment, revisited\fP,
+   N.I.M. Gould, D. Orban and Ph.L. Toint,
+   ACM TOMS, \fB29\fP:4, pp.373-394, 2003.
+
+\fICUTE: Constrained and Unconstrained Testing Environment\fP,
+   I. Bongartz, A.R. Conn, N.I.M. Gould and Ph.L. Toint, 
+   TOMS, \fB21\fP:1, pp.123-160, 1995.
+
+sifdecode(1), gen(1).

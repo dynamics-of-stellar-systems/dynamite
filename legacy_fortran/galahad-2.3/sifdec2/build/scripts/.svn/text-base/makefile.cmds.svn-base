@@ -1,0 +1,163 @@
+EXT=
+
+#ifdef FromInstallSifDec
+
+#ifdef sun
+#include <sun.cf>
+#endif
+
+#ifdef hp
+#include <hp.cf>
+#endif
+
+#ifdef _CRAY
+#include <cray.cf>
+#endif
+
+#ifdef sgi
+#include <sgi.cf>
+#endif
+
+#if defined(ibm) || defined(_IBMR2) || defined(ibm032) || defined(aix)
+#include <ibm.cf>
+#endif
+
+#ifdef DGUX
+#include <DGUX.cf>
+#endif
+
+#ifdef __osf__
+#include <osf1.cf>
+#endif
+
+#ifdef WIN32
+#include <Win32.cf>
+#endif
+
+#ifdef linux 
+#include <linux.cf>
+#endif
+
+#ifdef mac
+#include <mac.cf>
+#endif
+
+#include <all.cf>
+
+/* Put this in a separate file and include it from here and Umake.tmpl ! */
+
+CPP          = CppCmd
+COMPILE      = CompileCmd
+LOAD         = LoadCmd
+ISF9095      = CompilerIsF9095
+COMPILE9095  = Compile9095Cmd
+LOAD9095     = Load9095Cmd
+FFLAGS       = FortranFlags
+FDEBUGFLAGS  = FDebugFlags
+FPROFILEFLAGS= FProfileFlags
+SPECIALFLAGS = SpecialFlags
+CCOMPILE     = CCompileCmd
+CLOAD        = CLoadCmd
+CFLAGS       = CFlags
+CDEBUGFLAGS  = CDebugFlags
+CPROFILEFLAGS= CProfileFlags
+TMP          = TempDirectory
+SYSTEM       = SystemTag
+KEYSYS       = KeySys
+MKDIR        = MkdirCmd
+CP           = CpCmd
+RM           = RmCmd
+MV           = MvCmd
+CAT          = CatCmd
+CHMOD        = ChmodCmd
+SED          = SedCmd
+LN           = LnCmd
+LS           = LsCmd
+AR           = ArCmd
+ARFLAGS      = ArFlags
+RMDIR        = RmdirCmd
+GREP         = GrepCmd
+AWK          = AwkCmd
+HEAD         = HeadCmd
+TAIL         = TailCmd
+WC           = WcCmd
+MAKE         = MakeCmd
+MEXFORTRAN   = MexFortranCmd 
+MEXFFLAGS    = MexFFlags
+
+#endif
+
+INTERFACESSRC = $(SIFDEC)/build/prototypes
+#ifdef cshell
+CMDSDOTPRO = $(INTERFACESSRC)/cmds.csh.pro
+#else
+CMDSDOTPRO = $(INTERFACESSRC)/cmds.sh.pro
+#endif
+
+CMDS = cmds$(EXT)
+CS = castscript$(EXT).sed
+
+all::
+
+/* ========================
+ * Create the commands file
+ */
+
+/*
+ * slash$(EXT).sed:
+ *	$(LN) -s $(SIFDEC)/build/scripts/slash.sed ./$@
+*/
+
+/* ${CMDS} : $(CMDSDOTPRO) slash$(EXT).sed */
+
+${CMDS} : $(CMDSDOTPRO)
+	#$(RM) cmds
+	#@printf '\n %-27s\t\t' "Getting UNIX commands right"
+	echo 's/\$${SYSTEM}/'`echo $(SYSTEM) | $(SED) -f $(SIFDEC)/build/scripts/slash.sed`'/g'   >  $(CS)
+	echo 's/\$${KEYSYS}/'`echo $(KEYSYS) | $(SED) -f $(SIFDEC)/build/scripts/slash.sed`'/g'   >> $(CS)
+	echo 's/\$${TMP}/'`echo $(TMP) | $(SED) -f $(SIFDEC)/build/scripts/slash.sed`'/g'         >> $(CS)
+	echo 's/\$${MKDIR}/'`echo $(MKDIR) | $(SED) -f $(SIFDEC)/build/scripts/slash.sed`'/g'     >> $(CS)
+	echo 's/\$${CP}/'`echo $(CP) | $(SED) -f $(SIFDEC)/build/scripts/slash.sed`'/g'           >> $(CS)
+	echo 's/\$${RM}/'`echo $(RM) | $(SED) -f $(SIFDEC)/build/scripts/slash.sed`'/g'           >> $(CS)
+	echo 's/\$${MV}/'`echo $(MV) | $(SED) -f $(SIFDEC)/build/scripts/slash.sed`'/g'           >> $(CS)
+	echo 's/\$${CAT}/'`echo $(CAT) | $(SED) -f $(SIFDEC)/build/scripts/slash.sed`'/g'         >> $(CS)
+	echo 's/\$${CHMOD}/'`echo $(CHMOD) | $(SED) -f $(SIFDEC)/build/scripts/slash.sed`'/g'     >> $(CS)
+	echo 's/\$${SED}/'`echo $(SED) | $(SED) -f $(SIFDEC)/build/scripts/slash.sed`'/g'         >> $(CS)
+	echo 's/\$${LN}/'`echo $(LN) | $(SED) -f $(SIFDEC)/build/scripts/slash.sed`'/g'           >> $(CS)
+	echo 's/\$${LS}/'`echo $(LS) | $(SED) -f $(SIFDEC)/build/scripts/slash.sed`'/g'           >> $(CS)
+	echo 's/\$${AR}/'`echo $(AR) | $(SED) -f $(SIFDEC)/build/scripts/slash.sed`'/g'           >> $(CS)
+	echo 's/\$${RMDIR}/'`echo $(RMDIR) | $(SED) -f $(SIFDEC)/build/scripts/slash.sed`'/g'     >> $(CS)
+	echo 's/\$${GREP}/'`echo $(GREP) | $(SED) -f $(SIFDEC)/build/scripts/slash.sed`'/g'       >> $(CS)
+	echo 's/\$${AWK}/'`echo $(AWK) | $(SED) -f $(SIFDEC)/build/scripts/slash.sed`'/g'         >> $(CS)
+	echo 's/\$${HEAD}/'`echo $(HEAD) | $(SED) -f $(SIFDEC)/build/scripts/slash.sed`'/g'       >> $(CS)
+	echo 's/\$${TAIL}/'`echo $(TAIL) | $(SED) -f $(SIFDEC)/build/scripts/slash.sed`'/g'       >> $(CS)
+	echo 's/\$${WC}/'`echo $(WC) | $(SED) -f $(SIFDEC)/build/scripts/slash.sed`'/g'           >> $(CS)
+	echo 's/\$${MAKE}/'`echo $(MAKE) | $(SED) -f $(SIFDEC)/build/scripts/slash.sed`'/g'       >> $(CS)
+	echo 's/\$${COMPILE}/'`echo $(COMPILE) | $(SED) -f $(SIFDEC)/build/scripts/slash.sed`'/g' >> $(CS)
+	echo 's/\$${LOAD}/'`echo $(LOAD) | $(SED) -f $(SIFDEC)/build/scripts/slash.sed`'/g'       >> $(CS)
+	echo 's/\$${ISF9095}/'`echo $(ISF9095) | $(SED) -f $(SIFDEC)/build/scripts/slash.sed`'/g' >> $(CS)
+	echo 's/\$${COMPILE9095}/'`echo $(COMPILE9095) | $(SED) -f $(SIFDEC)/build/scripts/slash.sed`'/g' >> $(CS)
+	echo 's/\$${LOAD9095}/'`echo $(LOAD9095) | $(SED) -f $(SIFDEC)/build/scripts/slash.sed`'/g' >> $(CS)
+	echo 's/\$${FFLAGS}/'`echo $(FFLAGS) | $(SED) -f $(SIFDEC)/build/scripts/slash.sed`'/g'    >> $(CS)
+	echo 's/\$${FDEBUGFLAGS}/'`echo $(FDEBUGFLAGS) | $(SED) -f $(SIFDEC)/build/scripts/slash.sed`'/g'    >> $(CS)
+	echo 's/\$${FPROFILEFLAGS}/'`echo $(FPROFILEFLAGS) | $(SED) -f $(SIFDEC)/build/scripts/slash.sed`'/g'    >> $(CS)
+	echo 's/\$${SPECIALFLAGS}/'`echo $(SPECIALFLAGS) | $(SED) -f $(SIFDEC)/build/scripts/slash.sed`'/g'    >> $(CS)
+	echo 's/\$${CPP}/'`echo $(CPP) | $(SED) -f $(SIFDEC)/build/scripts/slash.sed`'/g' >> $(CS)
+	echo 's/\$${CCOMPILE}/'`echo $(CCOMPILE) | $(SED) -f $(SIFDEC)/build/scripts/slash.sed`'/g' >> $(CS)
+	echo 's/\$${CLOAD}/'`echo $(CLOAD) | $(SED) -f $(SIFDEC)/build/scripts/slash.sed`'/g'      >> $(CS)
+	echo 's/\$${CFLAGS}/'`echo $(CFLAGS) | $(SED) -f $(SIFDEC)/build/scripts/slash.sed`'/g'    >> $(CS)
+	echo 's/\$${CDEBUGFLAGS}/'`echo $(CDEBUGFLAGS) | $(SED) -f $(SIFDEC)/build/scripts/slash.sed`'/g'    >> $(CS)
+	echo 's/\$${CPROFILEFLAGS}/'`echo $(CPROFILEFLAGS) | $(SED) -f $(SIFDEC)/build/scripts/slash.sed`'/g'    >> $(CS)
+	echo 's/\$${MEXFORTRAN}/'`echo $(MEXFORTRAN) | $(SED) -f $(SIFDEC)/build/scripts/slash.sed`'/g' >> $(CS)
+	echo 's/\$${MEXFFLAGS}/'`echo $(MEXFFLAGS) | $(SED) -f $(SIFDEC)/build/scripts/slash.sed`'/g' >> $(CS)
+	$(SED) -f $(CS) $(CMDSDOTPRO) > $@
+	$(RM) $(CS)
+	#@printf '[Ok]\n'
+
+/* all:: slash$(EXT).sed */
+all:: ${CMDS}
+
+/* clean:: $(SIFDEC)/build/scripts/slash.sed */
+clean::
+
+purge:: ${CMDS}

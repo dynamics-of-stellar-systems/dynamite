@@ -1,0 +1,113 @@
+K 25
+svn:wc:ra_dav:version-url
+V 40
+/SVN/cuter/!svn/ver/2/cuter/trunk/config
+END
+cray.cf
+K 25
+svn:wc:ra_dav:version-url
+V 48
+/SVN/cuter/!svn/ver/2/cuter/trunk/config/cray.cf
+END
+svr4.cf
+K 25
+svn:wc:ra_dav:version-url
+V 48
+/SVN/cuter/!svn/ver/2/cuter/trunk/config/svr4.cf
+END
+linux.cf
+K 25
+svn:wc:ra_dav:version-url
+V 49
+/SVN/cuter/!svn/ver/2/cuter/trunk/config/linux.cf
+END
+mac.cf
+K 25
+svn:wc:ra_dav:version-url
+V 47
+/SVN/cuter/!svn/ver/2/cuter/trunk/config/mac.cf
+END
+Umake.rules.save
+K 25
+svn:wc:ra_dav:version-url
+V 57
+/SVN/cuter/!svn/ver/2/cuter/trunk/config/Umake.rules.save
+END
+Umake.cf
+K 25
+svn:wc:ra_dav:version-url
+V 49
+/SVN/cuter/!svn/ver/2/cuter/trunk/config/Umake.cf
+END
+Umake.rules
+K 25
+svn:wc:ra_dav:version-url
+V 52
+/SVN/cuter/!svn/ver/2/cuter/trunk/config/Umake.rules
+END
+sun.cf
+K 25
+svn:wc:ra_dav:version-url
+V 47
+/SVN/cuter/!svn/ver/2/cuter/trunk/config/sun.cf
+END
+ibm.cf
+K 25
+svn:wc:ra_dav:version-url
+V 47
+/SVN/cuter/!svn/ver/2/cuter/trunk/config/ibm.cf
+END
+hp.cf
+K 25
+svn:wc:ra_dav:version-url
+V 46
+/SVN/cuter/!svn/ver/2/cuter/trunk/config/hp.cf
+END
+DGUX.cf
+K 25
+svn:wc:ra_dav:version-url
+V 48
+/SVN/cuter/!svn/ver/2/cuter/trunk/config/DGUX.cf
+END
+osf1.cf
+K 25
+svn:wc:ra_dav:version-url
+V 48
+/SVN/cuter/!svn/ver/2/cuter/trunk/config/osf1.cf
+END
+all.cf
+K 25
+svn:wc:ra_dav:version-url
+V 47
+/SVN/cuter/!svn/ver/2/cuter/trunk/config/all.cf
+END
+generic.cf
+K 25
+svn:wc:ra_dav:version-url
+V 51
+/SVN/cuter/!svn/ver/2/cuter/trunk/config/generic.cf
+END
+noop.rules
+K 25
+svn:wc:ra_dav:version-url
+V 51
+/SVN/cuter/!svn/ver/2/cuter/trunk/config/noop.rules
+END
+concat.def
+K 25
+svn:wc:ra_dav:version-url
+V 51
+/SVN/cuter/!svn/ver/2/cuter/trunk/config/concat.def
+END
+sgi.cf
+K 25
+svn:wc:ra_dav:version-url
+V 47
+/SVN/cuter/!svn/ver/2/cuter/trunk/config/sgi.cf
+END
+Umake.tmpl
+K 25
+svn:wc:ra_dav:version-url
+V 51
+/SVN/cuter/!svn/ver/2/cuter/trunk/config/Umake.tmpl
+END

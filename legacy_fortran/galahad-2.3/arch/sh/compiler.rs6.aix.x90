@@ -1,0 +1,30 @@
+# IBM xlf90 under AIX
+
+#
+#  Fortran compilation and loading
+#
+
+FORTRAN='xlf90'
+BASIC='-c -qhalt=s -qmaxmem=-1 -qspillsize=20000'
+LIBCMD=''
+MODCMD='-qmoddir=$MOD -I $MOD'
+MVMODS=':'
+OPTIMIZATION='-O5'
+NOOPTIMIZATION=''
+DEBUG=
+F77='-F:f90 -qfixed -qlanglvl=90std'
+F90='-F:f90 -qlanglvl=90pure'
+F95='-F:f95 -qlanglvl=90pure'
+NOFMAIN=''
+CCONDEF=
+USUAL=
+SPECIAL=
+F77SUFFIX=f90
+F95SUFFIX=f95
+TIMER=RS6
+BLAS=
+LAPACK=
+HSL=
+METIS=
+NOT95=NOT95
+BINSHELL=sh

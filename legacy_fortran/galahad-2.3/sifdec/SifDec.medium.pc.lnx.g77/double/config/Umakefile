@@ -1,0 +1,91 @@
+
+/* =========================================
+ * Include Makefile creating commands script
+ */
+
+INTCONFIG     = $(MYSIFDEC)/$(PRECISION)/config
+
+#include <makefile.cmds>
+
+/* ====================================
+ * Simple casting script to create
+ * the interfaces.
+ */
+
+script.sed: $(INTERFACESSRC)/script.sed.pro
+	    echo 's/\$${PRECISION}/'`echo $(PRECISION) | $(SED) -f slash.sed`'/g' >  castscript.sed
+	    echo 's/\$${MYSIFDEC}/'`echo $(MYSIFDEC) | $(SED) -f slash.sed`'/g'     >> castscript.sed
+	    $(SED) -f castscript.sed $? > $@
+	    $(RM) castscript.sed
+
+
+/* =======================================
+ * first create two simple casting scripts
+ */
+
+cast.sed: $(INTERFACESSRC)/cast.sed.pro
+	    echo 's/\$${SIZ}/'`echo $(SIZ) | $(SED) -f slash.sed`'/g' > castscript.sed
+	    echo 's/\$${KEYSYS}/'`echo $(KEYSYS) | $(SED) -f slash.sed`'/g' >> castscript.sed
+	    echo 's/\$${PRC}/'`echo $(PRC) | $(SED) -f slash.sed`'/g' >> castscript.sed
+	    $(SED) -f castscript.sed $? > $@
+	    $(RM) castscript.sed
+
+#ifdef Isa90Compiler
+cast90.sed: $(INTERFACESSRC)/cast90.sed.pro
+	    echo 's/\$${SIZ90}/'`echo $(SIZ90) | $(SED) -f slash.sed`'/g' > castscript.sed
+	    echo 's/\$${PRC90}/'`echo $(PRC90) | $(SED) -f slash.sed`'/g' >> castscript.sed
+	    $(SED) -f castscript.sed $? > $@
+	    $(RM) castscript.sed
+
+#endif
+
+/* ==============
+ * Create local.o
+ */
+
+LOCAL = $(SIFDEC)/common/src/sifdec/local.f
+
+LOCAL_OBJ = local.o
+
+${LOCAL_OBJ}: $(LOCAL) $(INTCONFIG)/cast.sed
+	      $(RM) $@
+	      $(RM) local.ff
+	      @printf ' %-12s %-15s\t\t' "Casting" local.f
+	      echo 's/\$${NBYTES}/'`echo $(NBYTES) | $(SED) -f slash.sed`'/g' > castscript.sed
+	      echo 's/\$${R1}/'`echo $(R1) | $(SED) -f slash.sed`'/g' >> castscript.sed
+	      echo 's/\$${R2}/'`echo $(R2) | $(SED) -f slash.sed`'/g' >> castscript.sed
+	      echo 's/\$${R3}/'`echo $(R3) | $(SED) -f slash.sed`'/g' >> castscript.sed
+	      echo 's/\$${R4}/'`echo $(R4) | $(SED) -f slash.sed`'/g' >> castscript.sed
+	      echo 's/\$${R5}/'`echo $(R5) | $(SED) -f slash.sed`'/g' >> castscript.sed
+	      echo 's/\$${D1}/'`echo $(D1) | $(SED) -f slash.sed`'/g' >> castscript.sed
+	      echo 's/\$${D2}/'`echo $(D2) | $(SED) -f slash.sed`'/g' >> castscript.sed
+	      echo 's/\$${D3}/'`echo $(D3) | $(SED) -f slash.sed`'/g' >> castscript.sed
+	      echo 's/\$${D4}/'`echo $(D4) | $(SED) -f slash.sed`'/g' >> castscript.sed
+	      echo 's/\$${D5}/'`echo $(D5) | $(SED) -f slash.sed`'/g' >> castscript.sed
+	      $(SED) -f castscript.sed $(LOCAL) > local.ff
+	      $(RM) castscript.sed
+	      $(CHMOD) 666 local.ff
+	      @printf '[Ok]\n'
+	      @printf ' %-12s %-15s\t\t' "Building" $@
+	      $(SED) -f $(INTCONFIG)/cast.sed $(INTCONFIG)/${@:.o=.ff} > ${@:.o=.f}
+	      $(COMPILE) $(FFLAGS) -o $@ ${@:.o=.f}
+	      @printf '[Ok]\n'
+
+/* ============
+ * Now we build
+ */
+
+AllTarget(script.sed)
+
+#ifdef Isa90Compiler
+AllTarget(cast.sed cast90.sed)
+#else
+AllTarget(cast.sed)
+#endif
+
+AllTarget($(LOCAL_OBJ))
+
+DependTarget()
+CleanTarget()
+PurgeTarget($(CMDS))
+PurgeTarget($(LOCAL_OBJ))

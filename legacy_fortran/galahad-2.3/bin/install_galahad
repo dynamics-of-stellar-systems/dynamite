@@ -1,0 +1,22 @@
+#!/bin/sh
+
+# Build script for GALAHAD 
+
+# syntax: install_galahad
+
+# N. Gould, D. Orban & Ph. Toint
+# ( Last modified on 8 June 2008 at 07:30:00 GMT )
+
+cur=$PWD
+
+if [ -f /bin/bash ]
+then
+  echo "Installing in the Bourne/bash shell"
+  $cur/bin/install_galahad.sh
+else
+  echo " You will need the bash shell (/bin/bash) to install and execute GALAHAD."
+  echo " Please install this shell and retry."
+  exit 1
+fi
+
+

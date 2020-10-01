@@ -1,0 +1,31 @@
+# Sun f95 under Solaris
+
+#
+#  Fortran compilation and loading
+#
+
+FORTRAN='f95'
+BASIC='-c'
+LIBCMD=''
+MODCMD='-M$MOD -I$MOD'
+MVMODS='$(MV) -f $(OBJ)/*.mod $(MOD)/'
+#OPTIMIZATION='-fast'
+OPTIMIZATION=''
+NOOPTIMIZATION=''
+DEBUG=
+F77='-fixed -w0'
+F90='-w0'
+F95='-w0'
+NOFMAIN=''
+CCONDEF=
+USUAL=
+SPECIAL=
+F77SUFFIX=f
+F95SUFFIX=f95
+TIMER=GEN
+BLAS=
+LAPACK=
+HSL=
+METIS=
+NOT95=IS95
+BINSHELL=sh

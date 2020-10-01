@@ -1,0 +1,121 @@
+.\" @(#)cprod v1.0 11/2000;
+.TH cprod1 3M "13 Jan 2012"
+.SH NAME
+CPROD1 \- CUTEr tool to form the matrix-vector product of a vector with
+the Hessian matrix of constraint part of the Lagrangian.
+.SH SYNOPSIS
+CALL CPROD1( N, M, GOTDER, X, LV, V, P, Q )
+.SH DESCRIPTION
+The CPROD1 subroutine forms the product of a vector with the Hessian
+matrix of the constraint part of the Lagrangian function of the problem decoded
+from a SIF file by the script \fIsifdecode\fP at the point X.
+
+The problem under consideration
+consists in minimizing (or maximizing) an objective function
+.EQ
+f(x)
+.EN
+over all
+.EQ
+x
+.EN
+\(mo
+.EQ
+R sup n
+.EN
+subject to
+
+general equations
+.EQ
+c sub i (x) ~=~ 0,
+.EN
+.EQ
+~(i
+.EN
+\(mo
+.EQ
+left { 1 ,..., m sub E right } ),
+.EN
+
+general inequalities
+.EQ
+c sub i sup l (x) ~<=~ c sub i (x) ~<=~ c sub i sup u (x),
+.EN
+.EQ
+~(i
+.EN
+\(mo
+.EQ
+left { m sub E + 1 ,..., m right }),
+.EN
+
+and simple bounds
+.EQ
+b sup l ~<=~ x ~<=~ b sup u.
+.EN
+
+The objective function is group-partially separable and all constraint functions are partially separable.
+
+By convention, given Lagrange multipliers V, the constraint part of the 
+Lagrangian function is written as
+.EQ
+L(X, V) = < c(X), V >.
+.EN
+.LP 
+.SH ARGUMENTS
+The arguments of CPROD1 are as follows
+.TP 5
+.B N \fP[in] - integer
+the number of variables for the problem,
+.TP
+.B M \fP[in] - integer
+the total number of general constraints,
+.TP
+.B GOTDER \fP[in] - logical
+a logical variable which specifies whether the first and second derivatives of
+the groups and elements have already been set (GOTDER = .TRUE.) or if
+they should be computed (GOTDER = .FALSE.),
+.TP
+.B X \fP[in] - real/double precision
+when GOTDER = .FALSE., the derivatives will be evaluated at X. Otherwise
+X is not used.
+.TP
+.B LV \fP[in] - integer
+the actual declared dimension of V,
+.TP
+.B V \fP[in] - real/double precision
+when GOTDER = .FALSE., the derivatives will be evaluated with Lagrange
+multipliers V. Otherwise V is not used,
+.TP
+.B P \fP[in] - real/double precision
+an array which gives the vector whose product with the Hessian is
+required,
+.TP
+.B Q \fP[out] - real/double precision
+an array which gives the result of multiplying the Hessian by P. 
+.LP
+.SH NOTE
+GOTDER should be set to .TRUE. whenever
+.TP 3
+.B (1)\fP
+a call has been made to CDH, CSH, CGRDH or CGRSH at the current
+point, or
+.TP
+.B (2)\fP
+a previous call to CPROD1, with GOTDER = .FALSE., at the current point has been made.
+.TP
+.B \fPOtherwise, it should be set .FALSE.
+.LP
+.SH AUTHORS
+I. Bongartz, A.R. Conn, N.I.M. Gould, D. Orban and Ph.L. Toint
+.SH "SEE ALSO"
+\fICUTEr (and SifDec): A Constrained and Unconstrained Testing
+Environment, revisited\fP,
+   N.I.M. Gould, D. Orban and Ph.L. Toint,
+   ACM TOMS, \fB29\fP:4, pp.373-394, 2003.
+
+\fICUTE: Constrained and Unconstrained Testing Environment\fP,
+I. Bongartz, A.R. Conn, N.I.M. Gould and Ph.L. Toint, 
+TOMS, \fB21\fP:1, pp.123-160, 1995.
+
+cprod(3M), uprod(3M), sifdecode(1).

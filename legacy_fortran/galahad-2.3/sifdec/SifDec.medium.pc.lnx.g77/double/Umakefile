@@ -1,0 +1,25 @@
+
+/* ===============================
+ * $MYSIFDEC/precision Imakefile
+ *
+ * This Imakefile recursively
+ * sneaks into subdirectories and
+ * builds the local SifDec.
+ *
+ * D. Orban for CUTEr & Co, 2001.
+ */
+
+#define IHaveSubdirs
+#define PassCDebugFlags
+
+SUBDIRS = bin config
+
+all::
+
+MakeSubdirs($(SUBDIRS))
+DependSubdirs($(SUBDIRS))
+
+AllTarget(NullParameter)
+DependTarget()
+CleanTarget()
+PurgeTarget(NullParameter)

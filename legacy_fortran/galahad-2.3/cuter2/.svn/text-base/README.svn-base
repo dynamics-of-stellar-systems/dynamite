@@ -1,0 +1,360 @@
+
+CUTEr README file.					   March 2003.
+
+
+======================================================================
+
+Before you start to using this software, please read the file LICENSE,
+	     located in the same directory as this file.
+
+======================================================================
+
+This README file should be located in the directory where you unpacked
+the CUTEr distribution.  Its purpose is to get  you started with CUTEr
+by
+
+ (a) guiding you through the directory structure,
+ (b) briefly describing how to install CUTEr,
+ (c) pointing to documentation, scattered over the subdirectories.
+
+It was our intention  to keep this README file short so  as to get you
+up   and  running   with   CUTEr   as  quickly   and   as  easily   as
+possible. Documentation on all aspects  of the package may be found in
+at least one form in the distribution. Different documentation formats
+are available on a website at http://cuter.rl.ac.uk/cuter-www/
+
+The information below is structured as follows
+
+
+ I......The CUTEr distribution and its directory structure.
+
+ II.....Installing a first version of CUTEr on your system.
+
+ III....Where to find additional documentation.
+
+
+======================================================================
+
+ [ I.	The CUTEr distribution and its directory structure ]
+
+  After  unpacking   the  compressed  tarfile   containing  the  CUTEr
+distribution, the following files should be present in your directory:
+
+ -rw-r--r--   BUGS
+ -rw-r--r--   LICENSE
+ -rw-r--r--   README
+ drwxr-xr-x   build/
+ drwxr-xr-x   common/
+ drwxr-xr-x   config/
+ lrwxrwxrwx   install_cuter -> ./build/scripts/install_cuter*
+ lrwxrwxrwx   uninstall_cuter -> ./build/scripts/uninstall_cuter*
+ lrwxrwxrwx   update_cuter -> ./build/scripts/update_cuter*
+ -rw-r--r--   version.date     
+
+We now briefly examine each of these files or directories in turn.
+
+  BUGS		file describing when and how to report CUTEr bugs
+
+  LICENSE	licensing information
+
+  README	this file
+
+  build/	directory containing some scripts, prototype files and
+		architecture-dependent  configuration files  needed by
+		the installation script.  The subdirectories of build/
+		should be arch/, prototypes/ and scripts/.
+
+  common/	directory  containing all the files that are common to
+		all  the  local  installations  of CUTEr.  These files
+		include source files,  documentation files, man pages,
+		SIF-encoded problems,  matlab interfaces  and so on...
+		The subdirectory structure under common/  should be as
+		follows (indentation indicates depth):
+
+		doc/			General documentation,
+		man/
+		  man1/			Section 1 manpages,
+		  man3/			Section 3 manpages,
+		sif/			SIF-encoded test problems,
+		src/
+		  matlab/		Matlab-CUTEr interfaces,
+		  pkg/                 _
+		    cobyla/		|
+		    filter/		|
+		    gen/		|
+		    hsl-ve12/		|
+		    ipopt/              |
+		    knitro/		|
+		    la04/               |
+		    lbfgsb/		|
+		    loqo/		|
+		    minos/		|
+		    nitsol/		|
+		    npsol/		|  Package-dependent
+		    osl/		|- specification files
+		    pds/		|  and documentation,
+		    praxis/		|
+		    snopt/		|
+		    stenmin/		|
+		    tao/                |
+		    tenmin/		|
+		    uncmin/		|
+		    va15/		|
+		    ve09/		|
+		    ve14/		|
+		    vf13/	       _|
+		  tools/		CUTEr Fortran tools.
+
+  config        directory  containing  all the information  pertaining
+                to Umakefiles.  It includes the rules used to generate
+                the Makefiles  and  the  data  files  related  to  the
+                various  supported architectures.
+
+  install_cuter	main installation script. This file is a symbolic link
+		to build/scripts/install_cuter.  Normally, this is the
+		first script that you will run in order to install the
+		version of CUTEr suited to your needs and your system.
+
+  uninstall_cuter
+		maintenance script used to remove an installed version
+		of CUTEr. Offers the possibility to remove  either the
+		single or double precision version only.  This file is
+		a symbolic link to build/scripts/uninstall_cuter.
+
+  update_cuter	used to incorporate changes, bug fixes,  new  versions
+		of a  small number of  source files,  this script is a
+		symbolic link to build/script/update_cuter.
+
+  version.date	contains the date and time of the last rebuild of this
+		CUTEr distribution (prior to your download).
+
+
+This brief overview of the  CUTEr directory structure should be enough
+for  you  to get  started  with CUTEr  and  start  coding, testing  or
+exploring. More information is to be found in documentation pointed to
+in section III below.
+
+
+  --- NOTE: ---
+
+After a first installation, a new directory called log/ will be
+added  to  the  above  list,  containing  a  file  named  install.log,
+summarizing  all the  current (installed)  versions of  CUTEr  on your
+system.  This file  persists even  if  you uninstall  all the  present
+versions and, in this case, is  empty. It is strongly advised *not* to
+delete or modify by hand this log file.
+
+======================================================================
+
+ [ II.	Installing a first version of CUTEr on your system ]
+
+ The first  step in installing  a version of  CUTEr on your  system is
+simply to launch the install_cuter script briefly described in section
+I  and  to  follow the  directions  that  appear  on the  screen.  The
+installation phase  does not require  answers to tricky  questions and
+should be  easy to go through.  Should you come  across any particular
+difficulty, we  suggest you  move on to  section III below  and follow
+links  to more  detailed documentation.  It  may also  be valuable  to
+examine   the   install_cuter   script   itself  as   it   should   be
+self-documented.  To start the  installation phase,  simply cd  to the
+directory where the CUTEr distribution was unpacked and type
+
+	prompt% ./install_cuter
+
+at the command prompt. You  will be asked simple questions, like which
+platform you wish to install CUTEr on, which compiler you wish to use,
+which precision version and size you wish to handle, and the directory
+you wish  to install to.  CUTEr  will then do the  rest, printing some
+information on the screen as it proceeds. For a first installation, we
+recommend  that you  agree with  the installation  script and  then go
+ahead   customizing  your   installation  as   you  progress   in  the
+documentation.  A   sample  installation  session   follows.  All  the
+prompting comes from the installation script and the answers '5', '7',
+'3', 'd', 'm' and 'y' are from the user:
+
+     Select platform
+	    (1) Compaq (DEC) alpha
+	    (2) Cray
+	    (3) HP workstation
+	    (4) IBM RS/6000
+	    (5) PC
+	    (6) SGI workstation
+	    (7) SUN workstation
+	    (0) Other (user-defined)
+    5
+     Select Fortran compiler
+            [1 ]  Fujitsu frt
+            [2 ]  Intel ifc
+            [3 ]  Layhey lf95
+            [4 ]  Portland Group pgf77
+            [5 ]  Portland Group pgf90
+            [6 ]  Linux f77-f2c
+            [7 ]  GNU g77
+            [8 ]  GNU g77 without etime
+            [9 ]  NAG f90
+            [10]  NAG f95
+    7
+     Select C compiler
+            [0 ]  No C extension to CUTEr
+            [1 ]  Intel icc
+            [2 ]  GNU gcc
+            [3 ]  GNU g++
+    3
+     Set install precision (D=double, s=single):
+    d
+     Set install size (L=large, m=medium, s=small, c=customized):
+    m
+     By default, CUTEr with your selections will be installed in
+      /home/me/Cuter/CUTEr.medium.pc.lnx.g77
+     Is this OK (Y/n)?
+    y
+
+The  installation  script  then   proceeds  casting  the  scripts  and
+compiling the  different tools, creating  your medium double-precision
+version of g77/g++-based CUTEr for a PC running Linux in the directory
+/home/me/Cuter/CUTEr.medium.pc.lnx.g77. Follow the final instructions,
+updating  your path,  MANPATH,  LIBPATH and  creating the  appropriate
+environment  variables. If  you  do not  understand those  directions,
+please  ask   your  local  system  administrator.    Changing  to  the
+newly-created directory, we find the following structure:
+
+    bin/		precision-independent scripts,
+    config/		umake configuration files,
+    double/
+      bin/		precision-dependent scripts and relocatables,
+      config/		system-dependent configuration files,
+      lib/		CUTEr library containing the CUTEr tools,
+      specs/		precision-dependent specification files.
+
+The   installation   script   actually  completes   the   installation
+automatically if you answer 'yes'  to the last few questions, which is
+what you  should do  in a first  installation. However,  the remaining
+operations could as well be performed by hand, as we now describe.
+
+Issuing
+
+	prompt% ./install_mycuter
+
+at the command  prompt will create the various  Makefiles necessary to
+compile  all the  CUTEr tools,  from the  Umakefiles. This  process is
+generally referred  to as 'bootstrapping'. Once the  above command has
+finished executing, simply issue the usual
+
+	prompt% make all
+
+to start  compiling everything. This process  should complete smoothly
+after  a short  while. Note  that,  as usual,  make outputs  a lot  of
+information on  the screen.  It may thus  be much more  informative in
+this case to issue
+
+	prompt% make -s all
+
+to  keep make  silent and  let  general information  only be  printed.
+Please  refer  to  the  README  file found  under  $MYCUTER  for  more
+information on this process.
+
+The directory  /home/me/Cuter/CUTEr.medium.pc.lnx.g77/bin contains the
+scripts that you will run in order to solve a particular problem using
+a particular package. For instance, you could issue the command
+
+	prompt% runcuter -p knit -D KISSING2
+
+and thereby solve the constrained problem KISSING2.SIF using the KNITRO
+package.
+
+IMPORTANT  NOTE: Optimization  and linear  algebra packages  are *not*
+provided in the CUTEr distribution.  You should contact the authors or
+people in charge in order to  get a copy. Documentation in section III
+explains how  to plug  an external  package into CUTEr  and use  it to
+solve problems.
+
+======================================================================
+
+ [ III.	Where to find additional documentation ]
+
+Although this  README file should be  enough to put you  on the tracks
+and start using CUTEr ---  especially if you are already familiar with
+any of  its predecessors ---  it clearly is insufficient  for advanced
+use  and customization.  As required  by the  CUTEr  main installation
+script,  you  should  have  defined  an  environment  variable  called
+CUTER and set it to the  directory where CUTEr was unpacked. We use
+this environment  variable to  locate files in  the remainder  of this
+document.
+
+The  general CUTEr documentation  may be  found, in  Portable Document
+Format (pdf)  in the file  $CUTER/common/doc/general.pdf. This file
+should contain most of the information you need to efficiently use and
+manage  CUTEr.  Even  though  all  the  scripts  are  intended  to  be
+self-explanatory and self-documented, we strongly advise that you read
+this file and/or backup your  data prior to any uncertain manipulation
+and/or modification.
+
+Documentation on individual packages  and how to have them collaborate
+with CUTEr  in the quest for  getting the most out  of your courageous
+computer, is provided in each package subdirectory under the form of a
+README  file. For  instance, information  on how  to plug  KNITRO into
+CUTEr is given in the file
+
+	$CUTER/common/src/pkg/knitro/README.knitro
+
+All the  CUTEr interfaces, ie  the scripts that  you may run to  run a
+particular package on an  individual problem, are documented under the
+form of  UNIX manual pages,  section 1.  All  the CUTEr tools,  ie the
+optimization subroutines that you may call from your Fortran programs,
+and all the CUTEr main programs,  ie the package drivers that are used
+to interface particular packages  with CUTEr, are documented under the
+form  of UNIX  manual  pages,  section 3.   These  manpages are  found
+respectively under
+
+	$CUTER/common/man/man1
+and
+	$CUTER/common/man/man3
+
+If your  MANPATH has been correctly  set to incorporate  the two above
+directories  at the end  of the  installation, you  should be  able to
+access the manpages using the usual command. For instance
+
+	prompt% man ufn
+
+should format the  manpage for the CUTEr tool  ufn (evaluate objective
+function value).
+
+Some of the CUTEr man pages contain equations and these may not render
+well on some terminals, depending on your local man settings. In order
+to improve display on the terminal, the source code of the manual page
+must first be preprocessed by the eqn(1) package.  This is done  using
+the simple command-line option -p:
+
+	prompt% man -p e ccfg
+
+see also the man manual page and the MANROFFSEQ environment variable.
+
+IMPORTANT:  The CUTEr  tool csh  (evaluate the  Hessian matrix  of the
+Lagrangian  and store it  in sparse  format) may  be confused  by your
+system with the standard UNIX C shell.  The manpage for the C shell is
+a section 1 manpage while the  manpage for the CUTEr tool is a section
+3 manpage. All ambiguity will thus be removed using the command
+
+	prompt% man 3 csh
+
+(unless another program called csh  is installed on your system and if
+its manpage is stored in section  3 of a directory that appears before
+$CUTER/common/man in your MANPATH.)
+
+Finally, as  already mentioned, documentation  may be found  by simply
+examining the source code. The CUTEr interfaces are mostly found under
+the form of  scripts, which may be easily  examined. These scripts are
+intended to be self-documented and  their purpose should be clear from
+the comments. You are encouraged to read source code.
+
+======================================================================
+
+			      Good luck!
+
+Nick I.M. Gould,				      n.gould@rl.ac.uk
+Dominique Orban,		 	    dominique.orban@polymtl.ca
+Philippe L. Toint.			    philippe.toint@fundp.ac.be
+
+======================================================================
+
+CUTEr README file.					    July 2005.

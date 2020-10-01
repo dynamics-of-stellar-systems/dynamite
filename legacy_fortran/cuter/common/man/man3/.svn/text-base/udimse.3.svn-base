@@ -1,0 +1,62 @@
+.\" @(#)udimse v1.0 11/2000;
+.TH udimse 3M "17 Nov 2000"
+.SH NAME
+UDIMSE \- CUTEr tool to determine the number of nonzeros required to
+store the sparse Hessian matrix in finite element format.
+.SH SYNOPSIS
+CALL UDIMSE( NE, NZH, NZIRNH )
+.SH DESCRIPTION
+The UDIMSE subroutine determine the number of nonzeros required to
+store the Hessian matrix of the objective function of the problem
+decoded from a SIF file by the script \fIsifdecode\fP at the point X.
+This Hessian matrix is stored as a sparse matrix in finite element format,
+using square symmetric elements.
+
+The problem under consideration
+consists in minimizing (or maximizing) an objective function
+.EQ
+f(x)
+.EN
+over all
+.EQ
+x
+.EN
+\(mo
+.EQ
+R sup n
+.EN
+subject to the simple bounds
+.EQ
+b sup l ~<=~ x ~<=~ b sup u.
+.EN
+The objective function is group-partially separable.
+
+.LP 
+.SH ARGUMENTS
+The arguments of UDIMSE are as follows
+.TP 5
+.B NE \fP[out] - integer
+the number of "finite-elements" used,
+.TP
+.B NZH \fP[out] - integer
+the dimension of the array needed to store the real values of the
+Hessian, taking all the elements into account (i.e. the dimension of
+the array HI).
+.TP
+.B NZIRNH \fP[out] - integer
+ the dimension of the array needed to store the integer values of the
+Hessian (i.e. the dimension of the array IRNHI).
+.LP
+.SH AUTHORS
+I. Bongartz, A.R. Conn, N.I.M. Gould, D. Orban and Ph.L. Toint
+.SH "SEE ALSO"
+\fICUTEr (and SifDec): A Constrained and Unconstrained Testing
+Environment, revisited\fP,
+   N.I.M. Gould, D. Orban and Ph.L. Toint,
+   ACM TOMS, \fB29\fP:4, pp.373-394, 2003.
+
+\fICUTE: Constrained and Unconstrained Testing Environment\fP,
+I. Bongartz, A.R. Conn, N.I.M. Gould and Ph.L. Toint, 
+TOMS, \fB21\fP:1, pp.123-160, 1995.
+
+cdimse(3M), sifdecode(1).

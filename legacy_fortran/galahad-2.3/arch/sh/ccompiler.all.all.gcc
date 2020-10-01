@@ -1,0 +1,9 @@
+# GCC
+
+#
+#  C compilation and loading
+#
+
+CC=gcc
+CCBASIC='-c -ansi -pedantic' # -pedantic-errors'
+CCDEBUG= #-g -DDEBUG_GALAHAD

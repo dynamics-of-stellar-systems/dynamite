@@ -1,0 +1,84 @@
+.\" @(#)ugrsh v1.0 11/2000;
+.TH ugrsh 3M "17 Nov 2000"
+.SH NAME
+UGRSH \- CUTEr tool to evaluate the gradient and sparse Hessian matrix
+in coordinate format.
+.SH SYNOPSIS
+CALL UGRSH( N, X, G, NNZH, LH, H, IRNH, ICNH  )
+.SH DESCRIPTION
+The UGRSH subroutine evaluates the gradient and Hessian matrix of
+the objective function of the problem decoded from a SIF file by the
+script \fIsifdecode\fP at the point X. This Hessian matrix is stored
+as a sparse matrix in coordinate format.
+
+The problem under consideration
+consists in minimizing (or maximizing) an objective function
+.EQ
+f(x)
+.EN
+over all
+.EQ
+x
+.EN
+\(mo
+.EQ
+R sup n
+.EN
+subject to the simple bounds
+.EQ
+b sup l ~<=~ x ~<=~ b sup u.
+.EN
+The objective function is group-partially separable.
+
+.LP 
+.SH ARGUMENTS
+The arguments of UGRSH are as follows
+.TP 5
+.B N \fP[in] - integer
+the number of variables for the problem,
+.TP
+.B X \fP[in] - real/double precision
+an array which gives the current estimate of the solution of the
+problem,
+.TP
+.B G \fP[out] - real/double precision
+an array which gives the value of the gradient of the objective
+function evaluated at X,
+.TP
+.B NNZH \fP[out] - integer
+the number of nonzeros in H,
+.TP
+.B LH \fP[in] - integer
+the actual declared dimensions of H, IRNH and ICNH,
+.TP
+.B H \fP[out] - real/double precision
+an array which gives the value of the Hessian matrix of the objective
+function evaluated at X. The i-th entry of H gives the value of the
+nonzero in row IRNH(i) and column ICNH(i). Only the upper triangular
+part of the Hessian is stored,
+.TP
+.B IRNH \fP[out] - integer
+an array which gives the row indices of the nonzeros of the Hessian
+matrix of the objective function evaluated at X,
+.TP
+.B ICNH \fP[out] - integer
+an array which gives the column indices of the nonzeros of the Hessian
+matrix of the objective function evaluated at X.
+.LP
+.SH NOTE
+Calling this routine is more efficient than separate calls to UGR
+and USH.
+.LP
+.SH AUTHORS
+I. Bongartz, A.R. Conn, N.I.M. Gould, D. Orban and Ph.L. Toint
+.SH "SEE ALSO"
+\fICUTEr (and SifDec): A Constrained and Unconstrained Testing
+Environment, revisited\fP,
+   N.I.M. Gould, D. Orban and Ph.L. Toint,
+   ACM TOMS, \fB29\fP:4, pp.373-394, 2003.
+
+\fICUTE: Constrained and Unconstrained Testing Environment\fP,
+I. Bongartz, A.R. Conn, N.I.M. Gould and Ph.L. Toint, 
+TOMS, \fB21\fP:1, pp.123-160, 1995.
+
+csgrsh(3M), sifdecode(1).

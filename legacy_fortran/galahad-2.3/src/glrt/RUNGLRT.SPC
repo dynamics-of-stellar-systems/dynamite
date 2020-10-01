@@ -1,0 +1,18 @@
+BEGIN GLRT SPECIFICATIONS (DEFAULT)
+! error-printout-device                           6
+! printout-device                                 6
+! print-level                                     0
+! maximum-number-of-iterations                    -1           
+! number-extra-n-vectors-used                     0
+! tri-diagonal-solve-frequency                    1
+! stopping-rule                                   1
+! relative-accuracy-required                      1.0E-8 
+! absolute-accuracy-required                      0.0
+! fraction-optimality-required                    1.0
+! zero-gradient-tolerance                         2.0E-15
+! constant-term-in-objective                      0.0
+! two-norm-regularisation                         T
+! impose-initial-descent                          F
+! space-critical                                  F
+! deallocate-error-fatal                          F
+END GLRT SPECIFICATIONS

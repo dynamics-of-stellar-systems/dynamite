@@ -1,0 +1,29 @@
+# Cray f90 under Unicos
+#
+#  Fortran compilation and loading
+#
+
+FORTRAN='f90'
+BASIC='-c -ep'
+LIBCMD=''
+MODCMD='-p $MOD -I $MOD'
+MVMODS=''
+OPTIMIZATION='-O'
+NOOPTIMIZATION=''
+DEBUG=
+F77='-fixed'
+F90=''
+F95=''
+NOFMAIN=''
+CCONDEF=
+USUAL=
+SPECIAL=
+F77SUFFIX=f
+F95SUFFIX=f95
+TIMER=GEN
+BLAS=
+LAPACK=
+HSL=
+METIS=
+NOT95=IS95
+BINSHELL=sh

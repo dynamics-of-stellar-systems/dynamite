@@ -1,0 +1,29 @@
+# Portland Group -- pgf90 under linux (Opteron version)
+#
+# Fortran compilation and loading
+#
+
+FORTRAN='pgf90'
+BASIC='-c'
+LIBCMD=''
+MODCMD='-module $MOD -I$MOD'
+MVMODS=':'
+OPTIMIZATION='-O'
+NOOPTIMIZATION='-O0'
+DEBUG=
+F77='-Mfixed -w'
+F90='-w'
+F95='-w'
+NOFMAIN=''
+CCONDEF=
+USUAL=
+SPECIAL=
+F77SUFFIX=f90
+F95SUFFIX=f90
+TIMER=GEN
+BLAS=
+LAPACK=
+HSL=
+METIS=
+NOT95=NOT95
+BINSHELL=sh

@@ -1,0 +1,83 @@
+K 25
+svn:wc:ra_dav:version-url
+V 52
+/SVN/cuter/!svn/ver/47/sifdec/trunk/build/prototypes
+END
+param.awk
+K 25
+svn:wc:ra_dav:version-url
+V 62
+/SVN/cuter/!svn/ver/47/sifdec/trunk/build/prototypes/param.awk
+END
+show.awk
+K 25
+svn:wc:ra_dav:version-url
+V 61
+/SVN/cuter/!svn/ver/47/sifdec/trunk/build/prototypes/show.awk
+END
+cast.sed.pro
+K 25
+svn:wc:ra_dav:version-url
+V 65
+/SVN/cuter/!svn/ver/47/sifdec/trunk/build/prototypes/cast.sed.pro
+END
+sifdecode.pro
+K 25
+svn:wc:ra_dav:version-url
+V 66
+/SVN/cuter/!svn/ver/47/sifdec/trunk/build/prototypes/sifdecode.pro
+END
+cmds.pro
+K 25
+svn:wc:ra_dav:version-url
+V 61
+/SVN/cuter/!svn/ver/47/sifdec/trunk/build/prototypes/cmds.pro
+END
+run_mysifdec.pro
+K 25
+svn:wc:ra_dav:version-url
+V 69
+/SVN/cuter/!svn/ver/47/sifdec/trunk/build/prototypes/run_mysifdec.pro
+END
+usage_mysifdec.pro
+K 25
+svn:wc:ra_dav:version-url
+V 71
+/SVN/cuter/!svn/ver/47/sifdec/trunk/build/prototypes/usage_mysifdec.pro
+END
+cast90.sed.pro
+K 25
+svn:wc:ra_dav:version-url
+V 67
+/SVN/cuter/!svn/ver/47/sifdec/trunk/build/prototypes/cast90.sed.pro
+END
+classify.pro
+K 25
+svn:wc:ra_dav:version-url
+V 65
+/SVN/cuter/!svn/ver/47/sifdec/trunk/build/prototypes/classify.pro
+END
+classall.pro
+K 25
+svn:wc:ra_dav:version-url
+V 65
+/SVN/cuter/!svn/ver/47/sifdec/trunk/build/prototypes/classall.pro
+END
+script.sed.pro
+K 25
+svn:wc:ra_dav:version-url
+V 67
+/SVN/cuter/!svn/ver/47/sifdec/trunk/build/prototypes/script.sed.pro
+END
+helpmsg.pro
+K 25
+svn:wc:ra_dav:version-url
+V 64
+/SVN/cuter/!svn/ver/47/sifdec/trunk/build/prototypes/helpmsg.pro
+END
+select.pro
+K 25
+svn:wc:ra_dav:version-url
+V 63
+/SVN/cuter/!svn/ver/47/sifdec/trunk/build/prototypes/select.pro
+END

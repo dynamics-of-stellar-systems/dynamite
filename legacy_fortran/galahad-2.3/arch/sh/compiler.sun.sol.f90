@@ -1,0 +1,31 @@
+# Sun f90 under Solaris
+
+#
+#  Fortran compilation and loading
+#
+
+FORTRAN='f90'
+BASIC='-c'
+LIBCMD=''
+MODCMD='-M$MOD -I$MOD'
+MVMODS='$(MV) -f $(OBJ)/*.mod $(MOD)/'
+#OPTIMIZATION='-fast'
+OPTIMIZATION=''
+NOOPTIMIZATION=''
+DEBUG=
+F77='-fixed'
+F90=''
+F95=''
+NOFMAIN=''
+CCONDEF=
+USUAL=
+SPECIAL=
+F77SUFFIX=f
+F95SUFFIX=f90
+TIMER=GEN
+BLAS=
+LAPACK=
+HSL=
+METIS=
+NOT95=NOT95
+BINSHELL=sh

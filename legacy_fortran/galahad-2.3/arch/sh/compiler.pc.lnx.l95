@@ -1,0 +1,29 @@
+# Lahey lf95 under linux (pc version)
+#
+#  Fortran compilation and loading
+#
+
+FORTRAN='lf95'
+BASIC='-c'
+LIBCMD=
+MODCMD='-M$MOD -I$MOD'
+MVMODS=':'
+OPTIMIZATION='-O'
+NOOPTIMIZATION='-O0'
+DEBUG=
+F77='--fix --quiet'
+F90='--quiet'
+F95='--quiet'
+NOFMAIN=''
+CCONDEF='-DLahey_lf95 -include ./asl.h'
+USUAL=
+SPECIAL=
+F77SUFFIX=f90
+F95SUFFIX=f95
+TIMER=GEN
+BLAS=
+LAPACK=
+HSL=
+METIS=
+NOT95=IS95
+BINSHELL=sh

@@ -1,0 +1,76 @@
+Package available from 
+
+    ftp://ephraim.wpi.edu/pub/nitsol/nitsol.tar.gz
+
+   ==============================
+   To make NITSOL work with CUTEr
+   ==============================
+
+1. Dowload and unpack nitsol into any suitable directory
+
+2. Build the appropriate NITSOL, LAPACK and BLAS libraries:
+
+   make nitsol_lib
+   make lapack_lib
+   make blas_lib
+
+   with appropriate fortran compiler and flags
+
+3. move the libraries
+
+   Nitsol/libnitsol.a
+
+   to your $MYCUTER/(precision)/lib directory. 
+
+4. If you DO NOT have machine-tuned blas &/or LAPACK
+   libraries on your LIBPATH, also move
+
+   Lapack/liblapack.a
+   Blas/libblas.a
+
+   to your $MYCUTER/(precision)/lib directory. 
+
+That's it!
+
+=========================================================================
+
+README in ftp://ephraim.wpi.edu/pub/nitsol is as follows:
+
+Thanks very much for your interest in NITSOL. 
+
+The code is currently in a "beta test" version, i.e., a version that is 
+essentially complete but may be subject to a little more polishing and 
+debugging. The current version is dated 4/28/03 and differs from the 
+previous version in that (1) an error affecting usage of constant 
+forcing terms has been corrected and (2) the comments describing usage 
+have been extensively updated and improved. 
+
+The tar file nitsol.tar in this directory (471K) unpacks into directories 
+containing the NITSOL codes, makefiles, and a number of test problems. 
+The file nitsol.tar.gz (95K) is a compressed version; to uncompress, use 
+gunzip. 
+
+If you are unable to unpack the tar file or the compressed tar file, 
+you can download all the files one-at-a-time from the directory 
+nitsol-distn and its subdirectories. 
+
+For more about NITSOL, please see the SISC paper describing the 
+algorithm, "NITSOL: a Newton iterative solver for nonlinear systems," 
+M. Pernice and H. F. Walker, Special Issue on Iterative Methods, 
+SIAM J. Sci. Comput., 19 (1998), 302--318. This can be found in 
+
+  ftp://ephraim.wpi.edu/pub/papers/nitsol.ps.gz
+
+I would very much appreciate being kept in touch with any results, 
+reprints, etc., that come out of any work you do with NITSOL. Thanks. 
+
+                                                -- Homer Walker, 4/28/03
+
+________________________________________________________________________
+
+Homer F. Walker, Professor                        E-mail  walker@wpi.edu
+Department of Mathematical Sciences               Telephone 508-831-6113
+Worcester Polytechnic Institute                   Fax       508-831-5824
+Worcester, MA 01609-2280, USA                     
+
+=========================================================================

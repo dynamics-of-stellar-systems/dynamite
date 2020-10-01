@@ -1,0 +1,23 @@
+# GNU g77 without etime (zero runtime is returned)
+#
+#  CPU timer and other local code
+#
+
+$CAT << {end-timer} > $MYCUTERPREC/config/timer
+C
+      REAL FUNCTION CPUTIM( DUM )
+C
+C  GIVES THE CPU TIME IN SECONDS.
+C
+C  THE REMAINING LINES SHOULD BE REPLACED BY A DEFINITION AND CALL
+C  TO THE SYSTEM DEPENDENT CPU TIMING ROUTINE.
+C
+C  RETURN CPU TIME AS ZERO
+C
+      CPUTIM = 0.0
+      RETURN
+C
+C  END OF CPUTIM.
+C
+      END
+{end-timer}

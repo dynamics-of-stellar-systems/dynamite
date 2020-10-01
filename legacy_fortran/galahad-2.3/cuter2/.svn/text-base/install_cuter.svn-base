@@ -1,0 +1,24 @@
+#!/bin/bash
+
+# Build script for CUTEr
+
+# syntax: install_cuter
+
+# N. Gould, D. Orban & Ph. Toint
+# ( Last modified on Wed Aug  3 12:05:39 EDT 2005 )
+
+cur=$PWD
+$cur/bin/install_cuter.sh
+
+#if [ -x /bin/bash ] 
+# then
+#  echo "Installing in the Bourne Again shell"
+#  $cur/bin/install_cuter.sh
+#elif [ -x /bin/csh || -x /bin/tcsh ]
+#then
+#  echo "Installing in the C shell"
+#  $cur/bin/install_cuter.csh
+#else
+#  echo "Could not find bash or (t)csh"
+#  exit 1
+#fi

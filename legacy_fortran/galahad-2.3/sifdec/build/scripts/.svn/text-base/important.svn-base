@@ -1,0 +1,66 @@
+
+SifDec README file.				        November 2001.
+
+======================================================================
+
+  Please read this file prior to any modification in this directory.
+
+======================================================================
+
+This directory now hosts both  the single AND double precision version
+of  the tools  for the  architecture  which you  selected. Please  pay
+attention to  one major  difference, due to  the cohabitation  of both
+precisions:
+
+The   script    ./install_mysifdec   now   REQUIRES   a   command-line
+argument.  Indeed,  it  needs  to  know whether  you  are  willing  to
+(re)build  the  single  or  double  precision  version  of  SifDec. To
+(re)build the single precision version, type
+
+    % ./install_mysifdec -DSinglePrecision
+
+To (re)build the double precision version, type
+
+    % ./install_mysifdec -DDoublePrecision
+
+This syntax is  intended to be both intuitive and  to follow the lines
+of common  Unix tools, such  as make, the  C compiler, and  every tool
+where preprocessor variables may be defined.
+
+Also, pay attention to the fact  that this argument is passed along to
+an  imake  command.  Therefore  if  you have  just  built  the  single
+precision version using the first  of the two above commands, and want
+to rebuild  the double precision version,  you will have  to issue the
+second of the two above commands, in order to properly re-generate the
+Makefiles.
+
+Similarly,  if the  Imakefiles  have just  been  bootstrapped for  the
+single precision version, the make command will only affect the single
+precision part of the directory tree found under $MYSIFDEC. Therefore,
+if  the user  wishes to  build  both precisions,  the correct  command
+sequence is as follows.
+
+    % ./install_mysifdec -DSinglePrecision
+    % make -s all	    (or answer 'Y' when prompted)
+    % ./install_mysifdec -DDoublePrecision
+    % make -s all	    (or answer 'Y' when prompted)
+
+and  any subsequent 'make'  command will  affect the  double precision
+version,  unless  the Imakefiles  are  bootstrapped  again, using  the
+install_mysifdec command.
+
+Should  you   un-install  any  of  the  two   precisions,  the  script
+install_mysifdec will  be automatically updated and will not require a
+command-line argument any longer.
+
+======================================================================
+
+			      Good luck!
+
+Nicholas I.M. Gould,				     n.gould@rl.ac.uk,
+Dominique Orban,				     orban@cerfacs.fr,
+Philippe L. Toint.			    philippe.toint@fundp.ac.be
+
+======================================================================
+
+SifDec README file.				        November 2001.

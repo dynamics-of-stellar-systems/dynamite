@@ -1,0 +1,724 @@
+C
+C MATLAB gateway routine to unconstrained CUTEr tools
+C
+      SUBROUTINE  MEXFUNCTION( NLHS, PLHS, NRHS, PRHS )
+      INTEGER*4   NLHS, NRHS
+      INTEGER*4   PLHS( * ), PRHS( * )
+C
+      INTEGER*4   MXCREATEFULL, MXGETPR
+      INTEGER*4   MXGETM, MXGETN
+      REAL*8      MXGETSCALAR
+C
+C  Parameters which may be changed by the user.
+C
+      INTEGER*4       NMAX
+CCUS  PARAMETER     ( NMAX = 500 )
+CBIG  PARAMETER     ( NMAX = 500 )
+CMED  PARAMETER     ( NMAX = 100 )
+CTOY  PARAMETER     ( NMAX =  10 )
+      INTEGER*4       NNZMAX
+      PARAMETER     ( NNZMAX = 10*NMAX )
+      INTEGER*4       LBANDH
+      PARAMETER     ( LBANDH = ( NMAX / 2 ) + 1 )
+      INTEGER*4       INPUT , IOUT
+      PARAMETER     ( INPUT = 55, IOUT = 6 )
+C
+C  End of Parameters which may be changed by the user.
+C
+      CHARACTER*64    PRBDAT
+      CHARACTER*10    PNAME
+      CHARACTER*10    XNAMES( NMAX )
+      INTEGER*4       NVAR, NNZSH, NSEMIB
+      INTEGER*4       JCOL( NMAX + 1 )
+      INTEGER*4       IRNSH( NNZMAX ), ICNSH( NNZMAX ), IROW( NNZMAX )
+      REAL*8          F
+      REAL*8          X( NMAX ), BL( NMAX ), BU( NMAX ), G( NMAX ),
+     *                P( NMAX ), Q( NMAX )
+      REAL*8          DH( NMAX*NMAX )
+      REAL*8          SH( NNZMAX ), A( NNZMAX )
+      REAL*8          BANDH( LBANDH*NMAX )
+      LOGICAL         GRAD, GOTH
+C
+C  Common block to store problem dimensions.
+C
+      COMMON / SIZE / NVAR
+C
+C  Local variables
+C
+      INTEGER*4       PR, PR2, IR, JC, IERR, IPTR, N, NN, NP1, NSEMP1,
+     *                I, J, K
+      INTEGER*4       IVARTY( NMAX )
+      REAL*8          IVARTY_real( NMAX )
+      REAL*8          WORKN( NMAX*10 ), N_real
+      CHARACTER*7     TOOL, TSETUP, TNAMES, TFN, TGR, TOFG, TDH,
+     *                TGRDH, TSH, TGRSH, TPROD, TBANDH, TDIMEN,
+     *                TDIMSH, TVARTY, TREPRT
+      CHARACTER*150   MSG
+      REAL*8          CALLS( 4 )
+      REAL*8          TIME( 2 )
+C
+C  External functions
+C
+      CHARACTER*100  NULLSTR, UPPER
+      LOGICAL        EQUAL
+C
+C  Check for at least one input argument, 
+C  which is the name of the tool to be called.
+C
+      IF ( NRHS .EQ. 0 ) THEN
+         MSG = 'UTOOLS REQUIRES AT LEAST ONE INPUT ARGUMENT.'
+         CALL MEXERRMSGTXT( MSG )
+      END IF
+C
+C  Get name of unconstrained tool being called.
+C  Null-terminate this name and convert it to upper case.
+C
+      IERR = MXGETSTRING( PRHS( 1 ), TOOL, 6 )
+      IF ( IERR .EQ. 0 ) THEN 
+         TOOL = NULLSTR( TOOL )
+         TOOL = UPPER  ( TOOL )
+      ELSE
+         MSG = 'ERROR COPYING TOOL NAME FROM FIRST INPUT ARGUMENT.'
+         CALL MEXERRMSGTXT( MSG )
+      END IF
+C
+C  Set up tool names.
+C
+      TSETUP = NULLSTR( 'USETUP' )
+      TNAMES = NULLSTR( 'UNAMES' )
+      TFN    = NULLSTR( 'UFN' )
+      TGR    = NULLSTR( 'UGR' )
+      TOFG   = NULLSTR( 'UOFG' )
+      TDH    = NULLSTR( 'UDH' )
+      TGRDH  = NULLSTR( 'UGRDH' )
+      TSH    = NULLSTR( 'USH' )
+      TGRSH  = NULLSTR( 'UGRSH' )
+      TPROD  = NULLSTR( 'UPROD' )
+      TBANDH = NULLSTR( 'UBANDH' )
+      TDIMEN = NULLSTR( 'UDIMEN' )
+      TDIMSH = NULLSTR( 'UDIMSH' )
+      TVARTY = NULLSTR( 'UVARTY' )
+      TREPRT = NULLSTR( 'UREPRT' )
+C
+C  Call the requested tool.
+C
+	 IF ( EQUAL( TOOL, TSETUP ) ) THEN
+C
+C  Check number of output arguments.
+C
+         IF ( NLHS .NE. 3 ) THEN
+            MSG = 'USETUP RETURNS THREE OUTPUT ARGUMENTS.'
+            CALL MEXERRMSGTXT( MSG )
+         END IF
+C
+C  Build data input file name.
+C
+         PRBDAT = 'OUTSDIF.d'
+
+C
+C  Open the relevant file.
+C
+         OPEN ( INPUT, FILE = PRBDAT, FORM = 'FORMATTED',
+     *          STATUS = 'OLD' )
+         REWIND INPUT
+
+C
+C  Set up the problem data structures.
+C
+         CALL USETUP( INPUT, IOUT, NVAR, X, BL, BU, NMAX )
+C
+C  Copy X.
+C
+         PLHS( 1 ) = MXCREATEFULL( NVAR, 1, 0 )
+         PR = MXGETPR( PLHS( 1 ) )
+         CALL MXCOPYREAL8TOPTR( X, PR, NVAR )
+C
+C  Copy BL.
+C
+         PLHS( 2 ) = MXCREATEFULL( NVAR, 1, 0 )
+         PR = MXGETPR( PLHS( 2 ) )
+         CALL MXCOPYREAL8TOPTR( BL, PR, NVAR )
+C
+C  Copy BU.
+C
+         PLHS( 3 ) = MXCREATEFULL( NVAR, 1, 0 )
+         PR = MXGETPR( PLHS( 3 ) )
+         CALL MXCOPYREAL8TOPTR( BU, PR, NVAR )
+
+	 CLOSE( INPUT )
+C
+      ELSE IF ( EQUAL( TOOL, TNAMES ) ) THEN
+C
+C  Check number of input and output arguments.
+C
+         IF ( NRHS .NE. 1 .AND. NRHS .NE. 2 ) THEN
+            MSG = 'UNAMES REQUIRES ZERO OR ONE INPUT ARGUMENTS.'
+            CALL MEXERRMSGTXT( MSG )
+         END IF
+         IF ( NLHS .NE. 2 ) THEN
+            MSG = 'UNAMES RETURNS TWO OUTPUT ARGUMENTS.'
+            CALL MEXERRMSGTXT( MSG )
+         END IF
+C
+C  Get number of variable names requested.
+C
+         N = NVAR
+         IF ( NRHS. EQ. 2 ) THEN
+            N = NINT( MXGETSCALAR( PRHS( 2 ) ) )
+            IF ( N .LT. 1 .OR. N .GT. NVAR ) THEN
+               MSG = 'INVALID NUMBER OF VARIABLE NAMES REQUESTED.'
+               CALL MEXERRMSGTXT( MSG )
+            END IF
+         END IF
+         CALL UNAMES( NVAR, PNAME, XNAMES )
+C
+C  Copy PNAME and XNAMES.  First convert XNAMES to a REAL*8 array.
+C
+         PLHS( 1 ) = MXCREATESTRING( PNAME )
+         CALL CNVCHR( XNAMES, N, 10, WORKN )
+         PLHS( 2 ) = MXCREATEFULL( N, 10, 0 )
+         NN = N*10
+         PR = MXGETPR( PLHS( 2 ) )
+         CALL MXCOPYREAL8TOPTR( WORKN, PR, NN )
+C
+      ELSE IF ( EQUAL( TOOL, TFN ) ) THEN
+C
+C  Check number of input and output arguments.
+C
+         IF ( NRHS .NE. 2 ) THEN
+            MSG = 'UFN REQUIRES CURRENT ITERATE AS INPUT.'
+            CALL MEXERRMSGTXT( MSG )
+         END IF
+         IF ( NLHS .NE. 1 ) THEN
+            MSG = 'UFN RETURNS ONE OUTPUT ARGUMENT.'
+            CALL MEXERRMSGTXT( MSG )
+         END IF
+C
+C  Copy second input argument into X.
+C 
+         IPTR = PRHS( 2 )
+         CALL GETVEC( IPTR, X, NVAR, N )
+C
+C  Get the objective function value.
+C
+         CALL UFN( N, X, F )
+C
+C  Copy F. 
+C
+         PLHS( 1 ) = MXCREATEFULL( 1, 1, 0 )
+         PR = MXGETPR( PLHS( 1 ) )
+         CALL MXCOPYREAL8TOPTR( F, PR, 1 )
+C
+      ELSE IF ( EQUAL( TOOL, TGR ) ) THEN
+C
+C  Check number of input and output arguments.
+C
+         IF ( NRHS .NE. 2 ) THEN
+            MSG = 'UGR REQUIRES CURRENT ITERATE AS INPUT.'
+            CALL MEXERRMSGTXT( MSG )
+         END IF
+         IF ( NLHS .NE. 1 ) THEN
+            MSG = 'UGR RETURNS ONE OUTPUT ARGUMENT.'
+            CALL MEXERRMSGTXT( MSG )
+         END IF
+C
+C  Copy second input argument into X.
+C
+         IPTR = PRHS( 2 )
+         CALL GETVEC( IPTR, X, NVAR, N )
+C
+C  Get the gradient of the objective function.
+C
+         CALL UGR( N, X, G )
+C
+C  Copy G.
+C
+         PLHS( 1 ) = MXCREATEFULL( N, 1, 0 )
+         PR = MXGETPR( PLHS( 1 ) )
+         CALL MXCOPYREAL8TOPTR( G, PR, N )
+C
+      ELSE IF ( EQUAL( TOOL, TOFG ) ) THEN
+C
+C  Check number of input and output arguments.
+C
+         IF ( NRHS .NE. 2 ) THEN
+            MSG = 'UOFG REQUIRES CURRENT ITERATE AS INPUT.'
+            CALL MEXERRMSGTXT( MSG )
+         END IF
+         IF ( NLHS .NE. 1 .AND. NLHS .NE. 2 ) THEN
+	    MSG = 'UOFG RETURNS ONE OR TWO OUTPUT ARGUMENTS.'
+            CALL MEXERRMSGTXT( MSG )
+         END IF
+C
+C  Copy second input argument into X.
+C
+         IPTR = PRHS( 2 )
+         CALL GETVEC( IPTR, X, NVAR, N )
+C
+C  Decide if the gradient is required.
+C
+         GRAD = .FALSE.
+         IF ( NLHS .EQ. 2 ) GRAD = .TRUE.
+C
+C  Get the value of the objective function, and possibly its gradient.
+C
+         CALL UOFG( N, X, F, G, GRAD )
+C
+C  Copy F.
+C
+         PLHS( 1 ) = MXCREATEFULL( 1, 1, 0 )
+         PR = MXGETPR( PLHS( 1 ) )
+         CALL MXCOPYREAL8TOPTR( F, PR, 1 )
+C
+C  Copy G, if it is required.
+C
+         IF ( GRAD ) THEN
+            PLHS( 2 ) = MXCREATEFULL( N, 1, 0 )
+            PR = MXGETPR( PLHS( 2 ) )
+            CALL MXCOPYREAL8TOPTR( G, PR, N )
+         END IF
+C
+      ELSE IF ( EQUAL( TOOL, TDH ) ) THEN
+C
+C  Check number of input and output arguments.
+C
+         IF ( NRHS .NE. 2 ) THEN
+            MSG = 'UDH REQUIRES CURRENT ITERATE AS INPUT.'
+            CALL MEXERRMSGTXT( MSG )
+         END IF
+         IF ( NLHS .NE. 1 ) THEN
+            MSG = 'UDH RETURNS ONE OUTPUT ARGUMENT.'
+            CALL MEXERRMSGTXT( MSG )
+         END IF
+C
+C  Copy second input argument into X.
+C
+         IPTR = PRHS( 2 )
+         CALL GETVEC( IPTR, X, NVAR, N )
+C
+C  Get the dense Hessian evaluated at X.
+C
+         CALL UDH( N, X, N, DH )
+C
+C  Copy H.
+C
+         PLHS( 1 ) = MXCREATEFULL( N, N, 0 )
+         NN = N*N
+         PR = MXGETPR( PLHS( 1 ) )
+         CALL MXCOPYREAL8TOPTR( DH, PR, NN )
+C
+      ELSE IF ( EQUAL( TOOL, TGRDH ) ) THEN
+C
+C  Check number of input and output arguments.
+C
+         IF ( NRHS .NE. 2 ) THEN
+            MSG = 'UGRDH REQUIRES CURRENT ITERATE AS INPUT.'
+            CALL MEXERRMSGTXT( MSG )
+         END IF
+         IF ( NLHS .NE. 2 ) THEN
+            MSG = 'UGRDH RETURNS TWO OUTPUT ARGUMENTS.'
+            CALL MEXERRMSGTXT( MSG )
+         END IF
+C
+C  Copy second input argument into X.
+C
+         IPTR = PRHS( 2 )
+         CALL GETVEC( IPTR, X, NVAR, N )
+C
+C  Get the gradient and dense Hessian evaluated at X.
+C
+         CALL UGRDH( N, X, G, N, DH )
+C
+C  Copy G.
+C
+         PLHS( 1 ) = MXCREATEFULL( N, 1, 0 )
+         PR = MXGETPR( PLHS( 1 ) )
+         CALL MXCOPYREAL8TOPTR( G, PR, N )
+C
+C  Copy H.
+C
+         PLHS( 2 ) = MXCREATEFULL( N, N, 0 )
+         NN = N*N
+         PR = MXGETPR( PLHS( 2 ) )
+         CALL MXCOPYREAL8TOPTR( DH, PR, NN )
+C
+      ELSE IF ( EQUAL( TOOL, TSH ) ) THEN
+C
+C  Check number of input and output arguments.
+C
+         IF ( NRHS .NE. 2 ) THEN
+            MSG = 'USH REQUIRES CURRENT ITERATE AS INPUT.'
+            CALL MEXERRMSGTXT( MSG )
+         END IF
+         IF ( NLHS .NE. 1 ) THEN
+            MSG = 'USH RETURNS ONE OUTPUT ARGUMENT.'
+            CALL MEXERRMSGTXT( MSG )
+         END IF
+C
+C  Copy second input argument into X.
+C
+         IPTR = PRHS( 2 )
+         CALL GETVEC( IPTR, X, NVAR, N )
+C
+C  Get the sparse Hessian evaluated at X.
+C
+         CALL USH( N, X, NNZSH, NNZMAX, SH, IRNSH, ICNSH )
+C
+C  Make sure NNZMAX is big enough.
+C
+         IF ( NNZSH .GT. NNZMAX ) THEN
+            MSG = 'NUMBER OF NONZEROS IN SPARSE HESSIAN EXCEEDS DECLARED
+     * SIZE OF SPARSE HESSIAN IN MEX-FILE.'
+            CALL MEXERRMSGTXT( MSG )
+         END IF
+C
+C  Remove any zeros and count how many nonzeros there are in the
+C  combined lower and upper triangular parts
+C
+         J = 0
+         NNZ = 0
+         DO 111 I = 1, NNZSH
+           IF ( SH( I ) .NE. 0.0D+0 ) THEN
+             J = J + 1
+             NNZ = NNZ + 1
+             IF ( IRNSH( I ) .NE. ICNSH( I ) ) NNZ = NNZ + 1
+             IRNSH( J ) = IRNSH( I )
+             ICNSH( J ) = ICNSH( I )
+             SH( J ) = SH( I )
+           END IF
+  111    CONTINUE
+         NNZSH = J
+         IF ( NNZ .GT. NNZMAX ) THEN
+            MSG = 'NUMBER OF NONZEROS IN SPARSE HESSIAN EXCEEDS DECLARED
+     * SIZE OF SPARSE HESSIAN IN MEX-FILE.'
+            CALL MEXERRMSGTXT( MSG )
+         END IF
+C
+C  Include both lower and upper triangular parts (for Matlab)
+C
+         J = NNZSH
+         DO 112 I = 1, NNZSH
+           IF ( IRNSH( I ) .NE. ICNSH( I ) ) THEN
+             J = J + 1
+             IRNSH( J ) = ICNSH( I )
+             ICNSH( J ) = IRNSH( I )
+             SH( J ) = SH( I )
+           END IF
+  112    CONTINUE
+         NNZSH = J
+C
+C  Convert from the CUTE sparse matrix to a MATLAB sparse matrix.
+C  Put the MATLAB sparse matrix in A, IROW, and JCOL.
+C
+         CALL CNVSPR( N, NNZSH, SH, IRNSH, ICNSH, A, IROW, JCOL )
+C
+C  Copy the sparse Hessian.
+C
+         PLHS( 1 ) = MXCREATESPARSE( N, N, NNZSH, 0 )
+         IPTR = PLHS( 1 )
+         PR = MXGETPR( IPTR )
+         CALL MXCOPYREAL8TOPTR( A, PR, NNZSH )
+         IR = MXGETIR( IPTR )
+         CALL MXCOPYINTEGER4TOPTR( IROW, IR, NNZSH )
+         NP1 = N + 1
+         JC = MXGETJC( IPTR )
+         CALL MXCOPYINTEGER4TOPTR( JCOL, JC, NP1 )
+C
+      ELSE IF ( EQUAL( TOOL, TGRSH ) ) THEN
+C
+C  Check number of input and output arguments.
+C
+         IF ( NRHS .NE. 2 ) THEN
+            MSG = 'UGRSH REQUIRES CURRENT ITERATE AS INPUT.'
+            CALL MEXERRMSGTXT( MSG )
+         END IF
+         IF ( NLHS .NE. 2 ) THEN
+            MSG = 'UGRSH RETURNS TWO OUTPUT ARGUMENTS.'
+            CALL MEXERRMSGTXT( MSG )
+         END IF
+C
+C  Copy second input argument into X.
+C
+         IPTR = PRHS( 2 )
+         CALL GETVEC( IPTR, X, NVAR, N )
+C
+C  Get the gradient and sparse Hessian evaluated at X.
+C
+         CALL UGRSH( N, X, G, NNZSH, NNZMAX, SH, IRNSH, ICNSH )
+C
+C  Make sure NNZMAX is big enough.
+C
+         IF ( NNZSH .GT. NNZMAX ) THEN
+            MSG = 'NUMBER OF NONZEROS IN SPARSE HESSIAN EXCEEDS DECLARED
+     * SIZE OF SPARSE HESSIAN IN MEX-FILE.'
+            CALL MEXERRMSGTXT( MSG )
+         END IF
+C
+C  Remove any zeros and count how many nonzeros there are in the
+C  combined lower and upper triangular parts
+C
+         J = 0
+         NNZ = 0
+         DO 113 I = 1, NNZSH
+           IF ( SH( I ) .NE. 0.0D+0 ) THEN
+             J = J + 1
+             NNZ = NNZ + 1
+             IF ( IRNSH( I ) .NE. ICNSH( I ) ) NNZ = NNZ + 1
+             IRNSH( J ) = IRNSH( I )
+             ICNSH( J ) = ICNSH( I )
+             SH( J ) = SH( I )
+           END IF
+  113    CONTINUE
+         NNZSH = J
+         IF ( NNZ .GT. NNZMAX ) THEN
+            MSG = 'NUMBER OF NONZEROS IN SPARSE HESSIAN EXCEEDS DECLARED
+     * SIZE OF SPARSE HESSIAN IN MEX-FILE.'
+            CALL MEXERRMSGTXT( MSG )
+         END IF
+C
+C  Include both lower and upper triangular parts (for Matlab)
+C
+         J = NNZSH
+         DO 114 I = 1, NNZSH
+           IF ( IRNSH( I ) .NE. ICNSH( I ) ) THEN
+             J = J + 1
+             IRNSH( J ) = ICNSH( I )
+             ICNSH( J ) = IRNSH( I )
+             SH( J ) = SH( I )
+           END IF
+  114    CONTINUE
+         NNZSH = J
+C
+C  Convert from the CUTE sparse matrix to a MATLAB sparse matrix.
+C  Put the MATLAB sparse matrix in A, IROW, and JCOL.
+C
+         CALL CNVSPR( N, NNZSH, SH, IRNSH, ICNSH, A, IROW, JCOL )
+C
+C  Copy G.
+C
+         PLHS( 1 ) = MXCREATEFULL( N, 1, 0 )
+         PR = MXGETPR( PLHS( 1 ) )
+         CALL MXCOPYREAL8TOPTR( G, PR, N )
+C
+C  Copy the sparse Hessian.
+C
+         PLHS( 2 ) = MXCREATESPARSE( N, N, NNZSH, 0 )
+         IPTR = PLHS( 2 )
+         PR = MXGETPR( IPTR )
+         CALL MXCOPYREAL8TOPTR( A, PR, NNZSH )
+         IR = MXGETIR( IPTR )
+         CALL MXCOPYINTEGER4TOPTR( IROW, IR, NNZSH )
+         NP1 = N + 1
+         JC = MXGETJC( IPTR )
+         CALL MXCOPYINTEGER4TOPTR( JCOL, JC, NP1 )
+C
+      ELSE IF ( EQUAL( TOOL, TPROD ) ) THEN
+C
+C  Check number of input and output arguments.
+C
+         IF ( NRHS .NE. 3 .AND. NRHS .NE. 4 ) THEN
+            MSG = 'UPROD REQUIRES CURRENT ITERATE AND ANOTHER VECTOR AS 
+     *INPUT.  THE GOTH FLAG IS OPTIONAL.'
+            CALL MEXERRMSGTXT( MSG )
+         END IF
+         IF ( NLHS .NE. 1 ) THEN
+            MSG = 'UPROD RETURNS ONE OUTPUT ARGUMENT.'
+            CALL MEXERRMSGTXT( MSG )
+         END IF
+C
+C  Copy second input argument into X and third input argument into P.
+C  Make sure X and P are the same length.
+C
+         IPTR = PRHS( 2 )
+         CALL GETVEC( IPTR, X, NVAR, N )
+         IPTR = PRHS( 3 )
+         CALL GETVEC( IPTR, P, NVAR, NN )
+         IF ( N .NE. NN ) THEN
+            MSG = 'CURRENT ITERATE AND VECTOR TO BE MULTIPLIED MUST HAVE
+     * SAME LENGTH.'
+            CALL MEXERRMSGTXT( MSG )
+         END IF
+C
+C  Check for setting of GOTH flag.
+C
+         GOTH = .FALSE.
+         IF ( NRHS .EQ. 4 ) THEN
+            I = NINT( MXGETSCALAR( PRHS( 4 ) ) )
+            IF ( I .NE. 0 ) GOTH = .TRUE.
+         END IF
+C
+C  Get the product of the Hessian with P.
+C
+         CALL UPROD( N, GOTH, X, P, Q )
+C
+C  Copy Q.
+C
+         PLHS( 1 ) = MXCREATEFULL( N, 1, 0 )
+         PR = MXGETPR( PLHS( 1 ) )
+         CALL MXCOPYREAL8TOPTR( Q, PR, N )
+C
+      ELSE IF ( EQUAL( TOOL, TBANDH ) ) THEN
+C
+C  Check number of input and output arguments.
+C
+         IF ( NRHS .NE. 3 .AND. NRHS .NE. 4 ) THEN
+            MSG = 'UBANDH REQUIRES CURRENT ITERATE AND REQUIRED SEMI-BAN
+     *DWIDTH AS INPUT.  THE GOTH FLAG IS OPTIONAL.'
+            CALL MEXERRMSGTXT( MSG )
+         END IF
+         IF ( NLHS .NE. 1 ) THEN
+            MSG = 'UBANDH RETURNS ONE OUTPUT ARGUMENT.'
+            CALL MEXERRMSGTXT( MSG )
+         END IF
+C
+C  Copy second input argument into X and third input argument into NSEMIB.
+C
+         IPTR = PRHS( 2 )
+         CALL GETVEC( IPTR, X, NVAR, N )
+         NSEMIB = NINT( MXGETSCALAR( PRHS( 3 ) ) )
+C
+C  Check for setting of GOTH flag.
+C
+         GOTH = .FALSE.
+         IF ( NRHS .EQ. 4 ) THEN
+            I = NINT( MXGETSCALAR( PRHS( 4 ) ) )
+            IF ( I .NE. 0 ) GOTH = .TRUE.
+         END IF
+C
+C  Get the elements of the Hessian that lie within a give semi-bandwidth
+C  of its diagonal.
+C
+         CALL UBANDH( N, GOTH, X, NSEMIB, BANDH, NSEMIB )
+C
+C  Copy BANDH.
+C
+         NSEMP1 = NSEMIB + 1
+         PLHS( 1 ) = MXCREATEFULL( NSEMP1, N, 0 )
+         PR = MXGETPR( PLHS( 1 ) )
+         NN = NSEMP1*N
+         CALL MXCOPYREAL8TOPTR( BANDH, PR, NN )
+
+      ELSE IF ( EQUAL( TOOL, TDIMEN ) ) THEN
+C
+C  Check number of input and output arguments.
+C
+         IF ( NRHS .NE. 1 ) THEN
+            MSG = 'UDIMEN DOES NOT REQUIRE AN INPUT ARGUMENT.'
+            CALL MEXERRMSGTXT( MSG )
+         END IF
+         IF ( NLHS .NE. 1 ) THEN
+            MSG = 'UDIMEN RETURNS ONE OUTPUT ARGUMENT.'
+            CALL MEXERRMSGTXT( MSG )
+         END IF
+C
+C  Build data input file name.
+C
+         PRBDAT = 'OUTSDIF.d'
+C
+C  Open the relevant file.
+C
+         OPEN ( INPUT, FILE = PRBDAT, FORM = 'FORMATTED',
+     *          STATUS = 'OLD' )
+	 REWIND INPUT
+C
+C  Call UDIMEN
+C
+	 CALL UDIMEN( INPUT, N )
+
+	 N_real = N
+
+	 PLHS( 1 ) = MXCREATEFULL( 1, 1, 0 )
+	 PR = MXGETPR( PLHS( 1 ) )
+	 CALL MXCOPYREAL8TOPTR( N_real, PR, 1 )
+
+	 CLOSE( INPUT )
+
+      ELSE IF ( EQUAL( TOOL, TDIMSH ) ) THEN
+C
+C  Check number of input and output arguments.
+C
+         IF ( NRHS .NE. 1 ) THEN
+            MSG = 'UDIMSH DOES NOT REQUIRE AN INPUT ARGUMENT.'
+            CALL MEXERRMSGTXT( MSG )
+         END IF
+         IF ( NLHS .NE. 1 ) THEN
+            MSG = 'UDIMSH RETURNS ONE OUTPUT ARGUMENT.'
+            CALL MEXERRMSGTXT( MSG )
+         END IF
+
+C
+C  Call UDIMSH
+C
+	 CALL UDIMSH( N )
+
+	 N_real = N
+
+	 PLHS( 1 ) = MXCREATEFULL( 1, 1, 0 )
+	 PR = MXGETPR( PLHS( 1 ) )
+	 CALL MXCOPYREAL8TOPTR( N_real, PR, 1 )
+
+      ELSE IF ( EQUAL( TOOL, TVARTY ) ) THEN
+C
+C  Check number of input and output arguments.
+C
+         IF ( NRHS .NE. 1 ) THEN
+            MSG = 'UVARTY DOES NOT REQUIRE AN INPUT ARGUMENT.'
+            CALL MEXERRMSGTXT( MSG )
+         END IF
+         IF ( NLHS .NE. 1 ) THEN
+            MSG = 'UVARTY RETURNS ONE OUTPUT ARGUMENT.'
+            CALL MEXERRMSGTXT( MSG )
+         END IF
+C
+C  Call UVARTY
+C
+	 CALL UVARTY( NVAR, IVARTY )
+C
+C  Convert to real
+C
+	 N_real = NVAR
+	 DO 121 i = 1, NVAR
+	   IVARTY_real( i ) = IVARTY( i )
+  121    CONTINUE	 
+C
+C  Make room for output
+C
+	 PLHS( 1 ) = MXCREATEFULL( NVAR, 1, 0 )
+	 PR  = MXGETPR( PLHS( 1 ) )
+C
+C  Copy IVARTY
+C
+	 CALL MXCOPYREAL8TOPTR( IVARTY_real, PR, NVAR )
+
+      ELSE IF ( EQUAL( TOOL, TREPRT ) ) THEN
+C
+C  Check number of input and output arguments.
+C
+         IF ( NRHS .NE. 1 ) THEN
+            MSG = 'UREPRT DOES NOT REQUIRE AN INPUT ARGUMENT.'
+            CALL MEXERRMSGTXT( MSG )
+         END IF
+         IF ( NLHS .NE. 1 ) THEN
+            MSG = 'UREPRT RETURNS ONE OUTPUT ARGUMENT.'
+            CALL MEXERRMSGTXT( MSG )
+         END IF
+C
+C  Call UREPRT
+C
+	 CALL UREPRT( TIME, CALLS )
+C
+C  Make room for output - only report CALLS
+C
+	 PLHS( 1 ) = MXCREATEFULL( 4, 1, 0 )
+	 PR  = MXGETPR( PLHS( 1 ) )
+C
+C  Copy CALLS
+C
+	 CALL MXCOPYREAL8TOPTR( CALLS, PR, 4 )
+
+      ELSE
+         MSG = 'REQUESTED UNCONSTRAINED TOOL DOES NOT EXIST:  '//TOOL
+         CALL MEXERRMSGTXT( MSG )
+      END IF
+      RETURN
+      END

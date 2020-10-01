@@ -1,0 +1,160 @@
+
+# KNITRO Options file
+# http://ziena.com/documentation.html
+
+# Which algorithm to use...
+#   auto   = 0
+#   direct = 1 = use Interior/Direct algorithm
+#   cg     = 2 = use Interior/CG algorithm
+#   active = 3 = use Active algorithm
+algorithm    auto
+
+# Which barrier parameter update strategy...
+#   auto     = 0
+#   monotone = 1
+#   adaptive = 2
+#   probing  = 3
+#   dampmpc  = 4
+#   fullmpc  = 5
+barrule      auto
+
+# Specifies the initial trust region radius scaling factor used to
+# determine the initial trust region size
+delta        1
+
+# Whether iterates (not final solution) can be infeasible...
+#   no     = 0 = Iterates may be infeasible
+#   yes    = 1 = Iterates must honor inequality (not equality) constraints
+#                (requires direct = never)
+feasible     no
+
+# Specifies the tolerance for entering feasible mode...
+# (only valid when feasible = always)
+feasmodetol      0.0001
+
+# Specifies the final relative stopping tolerance for the feasibility
+# error. Smaller values of feastol result in a higher degree of accuracy
+# in the solution with respect to feasibility...
+feastol      1e-06
+
+# Specifies the final absolute stopping tolerance for the feasibility error.
+# Smaller values of feastolabs result in a higher degree of accuracy in the
+# solution with respect to feasibility...
+feastolabs   0
+
+# How to compute the (approximate) gradient of the objective
+# and constraint functions...
+#   exact         = 1 = user supplies exact first derivatives
+#   forward       = 2 = gradients computed by forward finite-differences
+#   central       = 3 = gradients computed by central finite differences
+#   forward_check = 4 = gradient check performed with forward finite differences
+#   central_check = 5 = gradient check performed with central finite differences
+gradopt      exact
+
+# How to compute the (approximate) Hessian of the Lagrangian...
+#   exact        = 1 = user supplies exact second derivatives
+#   bfgs         = 2 = KNITRO will compute a (dense) quasi-Newton BFGS Hessian
+#   sr1          = 3 = KNITRO will compute a (dense) quasi-Newton SR1 Hessian
+#   finite_diff  = 4 = KNITRO will compute Hessian-vector products using finite-differences
+#   product      = 5 = user will provide a routine to compute the Hessian-vector products
+#   lbfgs        = 6 = KNITRO will compute a limited-memory quasi-Newton BFGS Hessian
+hessopt      exact
+
+# Whether to enforce satisafction of simple bounds at all iterations...
+#   no     = 0 = Allow iterations to violate the bounds.
+#   yes    = 1 = Enforce all iterates satisfy the bounds.
+honorbnds    no
+
+# Whether to use the initial point strategy...
+#   no     = 0 = Initial point supplied by user.
+#   yes    = 1 = KNITRO computes initial values.
+initpt       no
+
+# Whether to treat problem specially as a linear program (LP)...
+#   no     = 0 = Treat as a general nonlinear program (NLP).
+#   yes    = 1 = KNITRO will apply some LP specializations.
+islp         no
+
+# Whether to treat problem specially as a quadratic program (QP)...
+#   no     = 0 = Treat as a general nonlinear program (NLP).
+#   yes    = 1 = KNITRO will apply some QP specializations.
+isqp         no
+
+# Which LP solver to use in the Active algorithm...
+#   internal = 1 = use internal LP solver.
+#   cplex    = 2 = CPLEX (if user has a valid license).
+lpsolver     internal
+
+# Maximum allowable CG iterations per major iteration...
+# (If 0 this is determined automatically by KNITRO.)
+maxcgit      0
+
+# Maximum number of major iterations to allow...
+maxit        10000
+
+# Maximum allowable CPU time in seconds...
+maxtime      1e+08
+
+# Specifies the initial barrier parameter value...
+mu           0.1
+
+# Return to driver after every major iteration...
+newpoint     no
+
+# Valid range of obective values...
+objrange     1e+20
+
+# Specifies the final relative stopping tolerance for the KKT (optimality)
+# error. Smaller values of opttol result in a higher degree of accuracy in
+# the solution with respect to optimality...
+opttol       1e-06
+
+# Specifies the final absolute stopping tolerance for the KKT (optimality)
+# error. Smaller values of opttolabs result in a higher degree of accuracy
+# in the solution with respect to optimality...
+opttolabs    0
+
+# Printing output verbosity...
+#   none        = 0 = nothing
+#   summary     = 1 = only final summary information
+#   majorit10   = 2 = information every 10 major iterations is printed
+#   majorit     = 3 = information at each major iteration is printed
+#   allit       = 4 = information at each major and minor iteration is printed
+#   allit_x     = 5 = in addition, values of solution vector (x) are printed
+#   all         = 6 = in addition, constraints (c), and Lagrangian multipliers (lamda)
+outlev       majorit10
+
+# Where to direct the output...
+#   screen  = 0 = directed to stdout
+#   file    = 1 = directed to a file called knitro.out
+#   both    = 2 = both stdout and file called knitro.out
+outmode         screen
+
+# Specifies the initial pivot threshold used in the factorization routine.
+# The value must be in the range [0 0.5] with higher values resulting
+# in more pivoting (more stable factorization). Values less than 0 will
+# be set to 0 and values larger than 0.5 will be set to 0.5. If pivot
+# is non-positive initially no pivoting will be performed. Smaller values
+# may improve the speed of the code but higher values are recommended for
+# more stability
+pivot        1e-08
+
+# Whether to perform automatic scaling of the functions...
+#   no     = 0 = No scaling done.
+#   yes    = 1 = KNITRO performs automatic scaling.
+scale        yes
+
+# Whether to shift user-provided initial point...
+#   no    = 0 = Do not shift initial point supplied by user.
+#   yes   = 1 = Shift initial point to satisfy the bounds.
+shiftinit    yes
+
+# Whether to use the Second Order Correction option...
+#   no     = 0 = Never do Second Order Correction.
+#   maybe  = 1 = Second order correction steps may be attempted on some iterations
+#   yes    = 2 = Second order correction steps always attempted for nonlinear constraints
+soc          maybe
+
+# Step size tolerance used for terminating the optimization...
+xtol         1e-15
+

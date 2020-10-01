@@ -1,0 +1,147 @@
+
+/* ================================
+ * This Imakefile builds the CUTEr
+ * tools static library
+ * stored in $MYCUTER/precision/lib
+ *
+ * D. Orban for CUTEr, 2001.
+ */
+
+/* =====================================
+ * Hold the conventional rule back.
+ * We want to use special rules instead.
+ */
+
+.SUFFIXES: .f .c .a
+
+/* -- */
+
+DESTDIR =	/* nothing -- override default */
+
+INTERFACESSRC = $(CUTER)/build/prototypes
+INTCONFIG = $(MYCUTER)/$(PRECISION)/config
+TOOLSSRCDIR = $(CUTER)/common/src/tools
+TOOLSSRCDIRSLASH = $(CUTER)/common/src/tools/
+TOOLSLIBDIR = $(MYCUTER)/$(PRECISION)/lib
+
+VPATH = $(TOOLSSRCDIR)
+
+local.o:
+	cd $(MYCUTER)/$(PRECISION)/config; \
+	$(MAKE) $(MFLAGS) local.o;         \
+	cd $(MYCUTER)/$(PRECISION)/lib;
+
+.f.a:
+	@printf ' %-12s %-15s\t\t' "Building" $%
+	$(SED) "/#{sizing}/r $(INTCONFIG)/tools.siz" $(TOOLSSRCDIR)/${%:.o=.f} | $(SED) -f $(INTCONFIG)/cast.sed > $(TOOLSLIBDIR)/${%:.o=.f}
+	$(COMPILE) $(FFLAGS) -o $(TOOLSLIBDIR)/$% $(TOOLSLIBDIR)/${%:.o=.f}
+	$(AR) -crs $@ $(TOOLSLIBDIR)/$%
+	@printf '[Ok]\n'
+	$(RM) $(TOOLSLIBDIR)/$%
+
+
+.f.o:
+	@printf ' %-12s %-15s\t\t' "Building" ${@}
+	$(SED) "/#{sizing}/r $(INTCONFIG)/tools.siz" $(TOOLSSRCDIR)/${@:.o=.f} | $(SED) -f $(INTCONFIG)/cast.sed > $(TOOLSLIBDIR)/${@:.o=.f}
+	$(COMPILE) $(FFLAGS) -o ${@} ${@:.o=.f}
+	@printf '[Ok]\n'
+
+.c.a: $(CUTER)/common/include/cuter.h
+	@printf ' %-12s %-15s\t\t' "Building" $%
+	$(CCOMPILE) $(CFLAGS) -I$(CUTER)/common/include -o $(TOOLSLIBDIR)/$% $(TOOLSSRCDIR)/${%:.o=.c}
+	$(AR) -crs $@ $(TOOLSLIBDIR)/$%
+	@printf '[Ok]\n'
+
+.c.o:
+	@printf ' %-12s %-15s\t\t' "Building" ${@}
+	$(CCOMPILE) $(CFLAGS) -I$(CUTER)/common/include -o ${@} $(TOOLSSRCDIR)/${@:.o=.c}
+	@printf '[Ok]\n'
+
+all::
+
+baseconfig:
+	cd $(MYCUTER)/$(PRECISION)/config; \
+	$(MAKE) $(MFLAGS) all;
+
+AllTarget(baseconfig)
+
+.: $(INTCONFIG)/tools.siz $(INTCONFIG)/cast.sed
+	touch $(TOOLSSRCDIRSLASH)*.f
+
+AllTarget(.)
+
+/* ================================
+ * Build the library and remove all
+ *  cast sources and relocatables
+ *  using special rule for local.o
+ */
+
+#ifdef NoCcomp
+C_O_FILES =
+CLIBFILES =
+#else
+C_O_FILES = ccuter.o ffilesop.o
+CLIBFILES = libcuter.a(ccuter.o) libcuter.a(ffilesop.o)
+#endif
+
+DotOs =	asmbe.o    asmbl.o  ccfg.o   \
+	ccfsg.o    ccifg.o  ccifsg.o \
+	cdh.o      cdimen.o cdimse.o \
+	cdimsh.o   cdimsj.o ceh.o    \
+	cfn.o      cgr.o    cgrdh.o  \
+	cidh.o     cish.o   cjprod.o cnames.o \
+	cofg.o     cprod.o  cprod1.o creprt.o \
+	cscfg.o    cscifg.o csetup.o \
+	csgr.o     csgreh.o csgrsh.o \
+	csh.o      csh1.o   cvarty.o \
+        elgrd.o    connames.o hsprd.o  initw.o  \
+        others.o   pbname.o ubandh.o udh.o    \
+        udimen.o   udimse.o udimsh.o \
+        ueh.o      ufn.o    ugr.o    \
+        ugrdh.o    ugreh.o  ugrsh.o  \
+        unames.o   uofg.o   uprod.o  \
+        ureprt.o   usetup.o ush.o    \
+        uvarty.o   varnames.o ${C_O_FILES}
+
+libcuter.so: local.o $(DotOs)
+	     $(LD) -G $(DotOs) $(MYCUTER)/$(PRECISION)/config/local.o -o $@
+
+libcuter.a: \
+	libcuter.a(asmbe.o)    libcuter.a(asmbl.o)  libcuter.a(ccfg.o)   \
+	libcuter.a(ccfsg.o)    libcuter.a(ccifg.o)  libcuter.a(ccifsg.o) \
+	libcuter.a(cdh.o)      libcuter.a(cdimen.o) libcuter.a(cdimse.o) \
+	libcuter.a(cdimsh.o)   libcuter.a(cdimsj.o) libcuter.a(ceh.o)    \
+	libcuter.a(cfn.o)      libcuter.a(cgr.o)    libcuter.a(cgrdh.o)  \
+	libcuter.a(cidh.o)     libcuter.a(cish.o)   libcuter.a(cjprod.o) \
+	libcuter.a(cnames.o)   libcuter.a(cofg.o)   libcuter.a(cprod.o)  \
+	libcuter.a(cprod1.o)   libcuter.a(creprt.o) \
+	libcuter.a(cscfg.o)    libcuter.a(cscifg.o) libcuter.a(csetup.o) \
+	libcuter.a(csgr.o)     libcuter.a(csgreh.o) libcuter.a(csgrsh.o) \
+	libcuter.a(csh.o)      libcuter.a(csh1.o)   libcuter.a(cvarty.o) \
+        libcuter.a(elgrd.o)    libcuter.a(connames.o) \
+        libcuter.a(hsprd.o)    libcuter.a(initw.o)  \
+        libcuter.a(others.o)   libcuter.a(pbname.o)  \
+        libcuter.a(ubandh.o)   libcuter.a(udh.o)    \
+        libcuter.a(udimen.o)   libcuter.a(udimse.o) libcuter.a(udimsh.o) \
+        libcuter.a(ueh.o)      libcuter.a(ufn.o)    libcuter.a(ugr.o)    \
+        libcuter.a(ugrdh.o)    libcuter.a(ugreh.o)  libcuter.a(ugrsh.o)  \
+        libcuter.a(unames.o)   libcuter.a(uofg.o)   libcuter.a(uprod.o)  \
+        libcuter.a(ureprt.o)   libcuter.a(usetup.o) libcuter.a(ush.o)    \
+        libcuter.a(uvarty.o)   libcuter.a(varnames.o) \
+	${CLIBFILES}
+	$(AR) -crs libcuter.a $(MYCUTER)/$(PRECISION)/config/local.o
+	$(RM) *.f *.c
+
+cleanlib:
+	$(RM) $(DotOs) *.f *.c
+
+AllTarget(local.o)
+AllTarget(libcuter.a)
+/* AllTarget(libcuter.so) */
+AllTarget(cleanlib)
+
+CleanTarget()
+PurgeTarget(libcuter.a)
+PurgeTarget(libcuter.so)
+PurgeTarget(*.f *.o)
+DependTarget()

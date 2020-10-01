@@ -1,0 +1,29 @@
+# Portland Group pgf90 under linux (pc version)
+#
+#  Fortran compilation and loading
+#
+
+FORTRAN='pgf90'
+BASIC='-c'
+LIBCMD=''
+MODCMD='-module $MOD -I$MOD'
+MVMODS=':'
+OPTIMIZATION='-O'
+NOOPTIMIZATION='-O0'
+DEBUG=
+F77='-Mnofreeform'
+F90=''
+F95=''
+USUAL=
+SPECIAL=
+NOFMAIN='-Mnomain'
+CCONDEF=
+F77SUFFIX=f90
+F95SUFFIX=f90
+TIMER=GEN
+BLAS=
+LAPACK=
+HSL=
+METIS=
+NOT95=NOT95
+BINSHELL=sh

@@ -1,0 +1,64 @@
+                      *****************************
+                      *                           *
+                      *  USING L-BFGS WITH CUTEr  *
+                      *                           *
+                      *****************************
+
+               ( Last modified on 4 Sep 2004 at 08:30:35 )
+
+
+WHAT IS L-BFGS?
+---------------
+
+The L-BFGS package is a limited-memory algorithm designed for 
+unconstrained minimization by Jorge Nocedal (Northwestern U.). 
+
+HOW DO I GET L-BFGS?
+--------------------
+
+See
+
+  http://www.ece.northwestern.edu/~nocedal/lbfgs.html
+
+COMPILING THE OBJECT MODULE FOR L-BFGS
+--------------------------------------
+
+The L-BFGS file lbfgs.f should be edited to remove the
+subroutines DAXPY and DDOT. It should then be
+compiled, and the resulting file lbfgs.o placed in
+(or symbolically linked to) the directory $MYCUTER/double/bin.
+
+There is no single-precision version.
+
+USING THE L-BFGS INTERFACE TOOL
+-------------------------------
+
+Suppose you wish to solve the problem written in SIF format contained
+in the file probname.SIF.
+
+The L-BFGS interface tools require two input files:
+
+   probname.SIF   specifies the problem in SIF format
+   LBFGS.SPC      sets values for L-BFGS run-time parameters
+
+If no LBFGS.SPC file is present in the current directory, the default
+version is copied from the $CUTER/common/src/pkg/lbfgs directory. 
+This default file is as follows:
+
+         5    M         specifies the number of iterations in the memory
+        -1    IPRINT(1) specifies the frequency of output (<0: no output)
+         0    IPRINT(2) specifies content of output (0: minimal)
+     10000    MAXIT     specifies the maximum number of iterations
+   0.00001    EPS       specifies the required gradient accuracy
+
+The commands to use this package are the two scripts sdlbs and lbs.
+
+The reader is referred to the paper quoted below and the code itself if he or 
+she wishes to modify these parameters.
+
+REFERENCE
+---------
+
+J. Nocedal,
+ "Updating quasi-Newton matrices with limited storage",
+  Mathematics of Computation, Vol 35, (1980) 773--782.

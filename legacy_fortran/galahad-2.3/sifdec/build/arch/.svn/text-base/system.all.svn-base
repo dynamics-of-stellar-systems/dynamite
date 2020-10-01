@@ -1,0 +1,45 @@
+#  ( Last modified on 23 Dec 2000 at 17:30:08 )
+#
+#  System specifications (Generic) - Cross fingers
+#
+
+set SYSTEM  =  "Generic"
+set KEYSYS  =  "GENERIX"
+
+#
+#  Directory for temporary files
+#
+
+set TMP =  /tmp
+
+#
+#  basic system commands
+#
+
+set MKDIR   =  "mkdir"
+set CP      =  "cp"
+set RM      =  "rm -f"
+set MV      =  "mv"
+set CAT     =  "cat"
+set CHMOD   =  "chmod"
+set SED     =  "sed"
+set LN      =  "ln"
+set LS      =  "ls"
+set AR      =  "ar"
+set RMDIR   =  "rmdir"
+set GREP    =  "grep"
+set AWK     =  "awk"
+set HEAD    =  "head"
+set TAIL    =  "tail"
+set WC      =  "wc"
+set MAKE    =  "make"
+
+##
+## Note: Recent versions of Matlab use a single script, mex,
+##       to compile both C and Fortran code. This makes the
+##       commands cmex and fmex obsolete. Change the
+##       following lines according to your system's specifications.
+##
+
+set MEXFORTRAN = "/usr/bin/mex"
+set MEXFFLAGS  = "-fortran"

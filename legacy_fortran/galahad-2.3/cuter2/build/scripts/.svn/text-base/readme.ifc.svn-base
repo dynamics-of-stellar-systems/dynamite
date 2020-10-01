@@ -1,0 +1,18 @@
+========================================================
+Update on using the Intel Fortran Compiler ifc for Linux
+========================================================
+
+Please be aware that Intel has released version 7.0 of the ifc
+compiler and this version differs from previous versions in a number
+of respects, among which the following command-line option, which may
+affect your compilation and linking directives:
+
+All pre-v7.0 module inclusion flags of the form
+
+   -cl,$MOD/work.pcl
+
+should be replaced by their equivalent
+
+   -module $MOD -I$MOD
+
+

@@ -1,0 +1,315 @@
+/*  Definition of the temp dir where compilation 
+ *  and casting will be performed, if necessary.
+ */
+
+#ifndef TempDirectory
+#define TempDirectory  /tmp
+#endif
+
+/* Definition of a few default basic system commands */
+/* Some have been overridden in the MacroIncludeFile */
+
+#ifndef SystemTag
+#define SystemTag      Unsupported
+#endif
+#ifndef KeySys
+#define KeySys         Unknown
+#endif
+
+#ifndef CppCmd
+#define CppCmd         /usr/bin/cpp
+#endif
+#ifndef CppIncludeDir
+#define CppIncludeDir
+#endif
+#ifndef CppOtherFlags
+#define CppOtherFlags  -P -C -nostdinc -nostdinc++
+#endif
+
+#if (__STDC__ && !defined(UnixCpp)) || defined(AnsiCpp) || defined(sun)
+#define UmakeCppFlags
+#else
+#define UmakeCppFlags -Ptraditional -Pw   /* Precede each with 'P' */
+#endif
+
+#ifndef MkdirCmd
+#define MkdirCmd       /bin/mkdir
+#endif
+#ifndef CpCmd
+#define CpCmd          /bin/cp
+#endif
+#ifndef RmCmd
+#define RmCmd          /bin/rm -f
+#endif
+#ifndef MvCmd
+#define MvCmd          /bin/mv
+#endif
+#ifndef CatCmd
+#define CatCmd         /bin/cat
+#endif
+#ifndef ChmodCmd
+#define ChmodCmd       /bin/chmod
+#endif
+#ifndef SedCmd
+#define SedCmd         /usr/bin/sed
+#endif
+#ifndef LnCmd
+#define LnCmd          /bin/ln
+#endif
+#ifndef LsCmd
+#define LsCmd          /bin/ls
+#endif
+#ifndef ArCmd
+#define ArCmd          /usr/bin/ar
+#endif
+#ifndef ArFlags
+#define ArFlags        -cr
+#endif
+#ifndef RmdirCmd
+#define RmdirCmd       /bin/rmdir
+#endif
+#ifndef GrepCmd
+#define GrepCmd        /bin/grep
+#endif
+#ifndef AwkCmd
+#define AwkCmd         /bin/awk
+#endif
+#ifndef HeadCmd
+#define HeadCmd        /bin/head
+#endif
+#ifndef TailCmd
+#define TailCmd        /bin/tail
+#endif
+#ifndef WcCmd
+#define WcCmd          /bin/wc
+#endif 
+#ifndef MakeCmd
+#define MakeCmd        /bin/make
+#endif
+#ifndef MexFortranCmd
+#define MexFortranCmd  /usr/bin/mex
+#endif
+#ifndef MexFFlags
+#define MexFFlags      -fortran     
+#endif
+#ifndef UmakeCmd
+#ifdef  cshell
+#define UmakeCmd       ${SIFDEC}/bin/umake.csh -Dcshell
+#else
+#define UmakeCmd       ${SIFDEC}/bin/umake.sh
+#endif
+#endif
+#ifndef CCompileCmd
+#define CCompileCmd   /* as nothing, no C compiler was chosen */
+#endif
+
+/* --> the commands are assigned at the bottom of Umake.tmpl */
+
+/* End of the basic commands definition */
+
+/* Compiler stuff --- available on all platforms */
+
+#ifdef Isf2c
+#define umakeCompiler90Flag     
+#define CompilerTagId         f2c
+#define umakeCompilerFlag     -DIsf2c
+#define CompileCmd            f77-f2c -c
+#define LoadCmd               f77-f2c
+#define CompilerIsF9095       no
+#define Compile9095Cmd     
+#define Load9095Cmd     
+#define FortranFlags          -O
+#define NumberOfBytes         8
+#endif
+
+#ifdef Isg77
+#define umakeCompiler90Flag
+#define CompilerTagId         GNU g77
+#define umakeCompilerFlag     -DIsg77
+#define CompileCmd            g77 -c
+#define LoadCmd               g77
+#define CompilerIsF9095       no
+#define Compile9095Cmd     
+#define Load9095Cmd     
+#define FortranFlags          -O -fno-second-underscore
+#define FDebugFlags           -g
+#define FProfileFlags         -pg
+#define NumberOfBytes         8
+#endif
+
+#ifdef Isgne
+#define umakeCompiler90Flag
+#define CompilerTagId         GNU g77 without etime (zero cpu time will be returned)
+#define umakeCompilerFlag     -DIsgne
+#define CompileCmd            g77 -c
+#define LoadCmd               g77
+#define CompilerIsF9095       no
+#define Compile9095Cmd     
+#define Load9095Cmd     
+#define FortranFlags          -O
+#define FDebugFlags           -g
+#define FProfileFlags         -pg
+#define NumberOfBytes         8
+#endif
+
+#ifdef Isn90
+#define umakeCompiler90Flag   -DIsa90Compiler
+#define CompilerTagId         NAG f90
+#define umakeCompilerFlag     -DIsn90
+#define CompileCmd            f90 -c -fixed -w
+#define LoadCmd               f90
+#define CompilerIsF9095       yes
+#define Compile9095Cmd        f90 -c
+#define Load9095Cmd           f90
+#define FortranFlags          -O
+#define NumberOfBytes         8
+#endif
+
+#ifdef Isn95
+#ifndef n95Defined
+#define umakeCompiler90Flag   -DIsa90Compiler
+#define CompilerTagId         NAG f95
+#define umakeCompilerFlag     -DIsn95
+#define CompileCmd            f95 -c -fixed -w
+#define LoadCmd               f95
+#define CompilerIsF9095       yes
+#define Compile9095Cmd        f95 -c
+#define Load9095Cmd           f95
+#define FortranFlags          -O
+#define NumberOfBytes         8
+#endif
+#endif
+
+/*
+ *  Same procedure for C compilers
+ */
+
+#ifdef Isgcc
+#define umakeCCompilerExt
+#define CCompilerTagId        gcc
+#define umakeCCompilerFlag    -DIsgcc
+#define CCompileCmd           gcc -c
+#define CLoadCmd              gcc
+#define CFlags                -O
+#define CDebugFlags           -g
+#define CProgileFlags         -pg
+#endif
+
+#ifdef Isgpp
+#define umakeCCompilerExt
+#define CCompilerTagId        gpp
+#define umakeCCompilerFlag    -DIsgpp
+#define CCompileCmd           g++ -c
+#define CLoadCmd              g++
+#define CFlags                -O
+#define CDebugFlags           -g
+#define CProgileFlags         -pg
+#endif
+
+/*
+ *  Arithmetic constants (single precision) 
+ *
+ *   R1  the 'smallest' positive number: 1 + R1 > 1.
+ *   R2  the 'smallest' positive number: 1 - R2 < 1.
+ *   R3  the smallest nonzero +ve real number.
+ *   R4  the smallest full precision +ve real number.
+ *   R5  the largest finite +ve real number.
+ */
+
+#ifndef R1Value
+#define R1Value          1.1920930E-07
+#endif
+#ifndef R2Value
+#define R2Value          5.9604646E-08
+#endif
+#ifndef R3Value
+#define R3Value          1.1754945E-38
+#endif
+#ifndef R4Value
+#define R4Value          1.1754945E-38
+#endif
+#ifndef R5Value
+#define R5Value          3.4028234E+38
+#endif
+
+/*
+ *  Arithmetic constants (double precision) 
+ *
+ *   D1  the 'smallest' positive number: 1 + D1 > 1.
+ *   D2  the 'smallest' positive number: 1 - D2 < 1.
+ *   D3  the smallest nonzero +ve real number.
+ *   D4  the smallest full precision +ve real number.
+ *   D5  the largest finite +ve real number.
+ */
+
+#ifndef D1Value
+#define D1Value          2.2204460492503132D-16
+#endif
+#ifndef D2Value
+#define D2Value          1.1102230246251566D-16
+#endif
+#ifndef D3Value
+#define D3Value          2.225073858507202D-308
+#endif
+#ifndef D4Value
+#define D4Value          2.225073858507202D-308
+#endif
+#ifndef D5Value
+#define D5Value          1.797693134862314D+308
+#endif
+
+/* Trap symbols which were not defined */
+
+#ifndef SpecialFlags
+#define SpecialFlags     /* as nothing */
+#endif
+#ifndef FDebugFlags
+#define FDebugFlags      /* as nothing */
+#endif
+#ifndef FProfileFlags
+#define FprofileFlags    /* as nothing */
+#endif
+#ifndef CDebugFlags
+#define CDebugFlags      /* as nothing */
+#endif
+#ifndef CProfileFlags
+#define CprofileFlags    /* as nothing */
+#endif
+
+
+/* Template for a new compiler declaration
+ *
+ * #ifdef Is<compiler_name>
+ * #define CompilerTagId         <official_compiler_name>
+ * #define umakeCompilerFlag     -DIs<compiler_name>
+ * #define CompileCmd            <fixed format compile command>
+ * #define LoadCmd               <fixed format compiler and link command>
+ * #define CompilerIsF9095       <yes|no>
+ * #define Compile9095Cmd        <free format 90/95 compile command>
+ * #define Load9095Cmd           <free format 90/95 compile and link command>
+ * #define FortranFlags          <compile flags>
+ * #define FDebugFlags           <debug flags>
+ * #define FProfileFlags         <profile flags>
+ * #define NumberOfBytes         8
+ * #endif
+ *
+ *
+ * where
+ *
+ * <compiler_name> is a short identifier for this compiler; it should be unique,
+ *                 note that it must be the same on the first and third lines,
+ * <official_compiler_name> is the "official" name for this compiler,
+ * <fixed format compile command> is the command that should be used when
+ *                                compiling Fortran 77,
+ * <fixed format compiler and link command> same as above + link,
+ * <yes|no> is either yes or no,
+ * <free format 90/95 compile command> is the command that should be used when
+ *                                     compiling free format Fortran 90/95,
+ * <free format 90/95 compile and link command> same as above + link,
+ * <compile flags> are flags to be added to the command line, for instance -O,
+ * <debugs flags> are flags required to include debugging information,
+ * <profile flags> are flags required to include profiling information.
+ *
+ * NOTE: It is IMPORTANT that these lines occur in the order shown.
+ *
+ */

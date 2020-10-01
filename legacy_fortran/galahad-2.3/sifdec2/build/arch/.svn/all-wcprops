@@ -1,0 +1,41 @@
+K 25
+svn:wc:ra_dav:version-url
+V 58
+/SVN/cuter/!svn/ver/147/sifdec/branches/SifDec2/build/arch
+END
+f.arch
+K 25
+svn:wc:ra_dav:version-url
+V 64
+/SVN/cuter/!svn/ver/98/sifdec/branches/SifDec2/build/arch/f.arch
+END
+size.small
+K 25
+svn:wc:ra_dav:version-url
+V 68
+/SVN/cuter/!svn/ver/71/sifdec/branches/SifDec2/build/arch/size.small
+END
+size.custom
+K 25
+svn:wc:ra_dav:version-url
+V 69
+/SVN/cuter/!svn/ver/71/sifdec/branches/SifDec2/build/arch/size.custom
+END
+size.large
+K 25
+svn:wc:ra_dav:version-url
+V 69
+/SVN/cuter/!svn/ver/147/sifdec/branches/SifDec2/build/arch/size.large
+END
+system.sh.all
+K 25
+svn:wc:ra_dav:version-url
+V 71
+/SVN/cuter/!svn/ver/71/sifdec/branches/SifDec2/build/arch/system.sh.all
+END
+size.medium
+K 25
+svn:wc:ra_dav:version-url
+V 69
+/SVN/cuter/!svn/ver/71/sifdec/branches/SifDec2/build/arch/size.medium
+END

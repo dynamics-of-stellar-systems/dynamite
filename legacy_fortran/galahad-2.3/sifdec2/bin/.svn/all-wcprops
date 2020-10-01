@@ -1,0 +1,29 @@
+K 25
+svn:wc:ra_dav:version-url
+V 51
+/SVN/cuter/!svn/ver/111/sifdec/branches/SifDec2/bin
+END
+uninstall_sifdec.sh
+K 25
+svn:wc:ra_dav:version-url
+V 70
+/SVN/cuter/!svn/ver/71/sifdec/branches/SifDec2/bin/uninstall_sifdec.sh
+END
+umake.sh
+K 25
+svn:wc:ra_dav:version-url
+V 60
+/SVN/cuter/!svn/ver/111/sifdec/branches/SifDec2/bin/umake.sh
+END
+install_sifdec.sh
+K 25
+svn:wc:ra_dav:version-url
+V 68
+/SVN/cuter/!svn/ver/98/sifdec/branches/SifDec2/bin/install_sifdec.sh
+END
+install_sifdec2.sh
+K 25
+svn:wc:ra_dav:version-url
+V 69
+/SVN/cuter/!svn/ver/71/sifdec/branches/SifDec2/bin/install_sifdec2.sh
+END

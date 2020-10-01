@@ -1,0 +1,169 @@
+#!/bin/csh -f
+
+#
+#  System specifications
+#
+
+set SYSTEM  =  "Linux"
+set KEYSYS  =  "CUNIX"
+
+#
+#  Directory for temporary files
+#
+
+set TMP     =   "/tmp"
+
+
+#
+#  basic system commands
+#
+
+set MKDIR   =   "/bin/mkdir"
+set CP      =   "/bin/cp"
+set RM      =   "/bin/rm -f"
+set MV      =   "/bin/mv"
+set CAT     =   "/bin/cat"
+set CHMOD   =   "/bin/chmod"
+set SED     =   "/bin/sed"
+set LN      =   "/bin/ln"
+set LS      =   "/bin/ls"
+set AR      =   "/usr/bin/ar"
+set RMDIR   =   "/bin/rmdir"
+set GREP    =   "/bin/grep"
+set AWK     =   "/usr/bin/gawk"
+set HEAD    =   "/usr/bin/head"
+set TAIL    =   "/usr/bin/tail"
+set WC      =   "/usr/bin/wc"
+set MAKE    =   "/usr/bin/make"
+
+#
+#  Fortran compilation and loading
+#
+
+set COMPILE     = "g77 -c"
+set LOAD        = "g77"
+set ISF9095     = "no"
+set COMPILE9095 = ""
+set LOAD9095    = ""
+set FFLAGS      = "-O -fno-second-underscore"
+
+
+# Environment check
+
+if( ! $?SIFDEC ) then
+    echo ' SIFDEC is not set.'
+    echo ' Set it to the appropriate value and re-run.'
+    echo ' Aborting.'
+    exit 1
+endif
+
+@ mysifdecIsCWD = 0
+
+if( -e ./install_mysifdec ) then
+    if( ! $?MYSIFDEC ) then
+	@ mysifdecIsCWD = 1
+	setenv MYSIFDEC `dirs -l`
+	setenv MYSIFDEC `echo $MYSIFDEC | $SED 's"/tmp_mnt""'`
+    endif
+else
+    echo ' Launch install_mysifdec from its home directory.'
+    echo ' Aborting.'
+    exit 2
+endif
+
+# End of environment check
+
+# Calling-sequence for install_mysifdec
+
+set print_instructions = "false"
+
+@ args_required = 0
+
+if( -d $MYSIFDEC/single & -d $MYSIFDEC/double ) @ args_required = 1
+
+if( $#argv != $args_required ) then
+    set print_instructions = "true"
+else if( $args_required == 1 ) then
+    if( "$1" != "-DSinglePrecision" & "$1" != "-DDoublePrecision" ) then
+      set print_instructions = "true"
+    endif
+endif
+
+if( $print_instructions == "true" ) then
+  if ( $args_required == 1 ) then
+    echo "Use: install_mysifdec arg"
+    echo "where arg is either"
+    echo "   -DSinglePrecision  to install the single precision decoder"
+    echo "   -DDoublePrecision  to install the double precision decoder"
+    exit 0
+  else if ( $args_required == 0 ) then
+    echo " Your install_mysifdec expects no argument"
+    exit 0
+  endif
+endif
+
+# End of arg check
+
+/home/lzhu/triaxschwarzschild/galahad-2.3/sifdec/build/scripts/umake -I. -Iconfig  -Dlinux -DIsg77 -DMediumSize -DDoublePrecision -Ptraditional -Pw 
+make Makefile
+make Makefiles
+
+set InstallationComplete = "False"
+
+echo ''
+echo "install_mysifdec : Do you want to 'make all' in"
+echo " $MYSIFDEC now (Y/n)?"
+set YESNO = ""
+while ( $YESNO != 'Y' && $YESNO != 'N' )
+    set YESNO = $<
+    if ( $YESNO == "" ) set YESNO = "Y"
+    set YESNO = `echo $YESNO | tr a-z A-Z`
+end
+
+switch ( $YESNO )
+    case Y: 
+	$MAKE -s clean
+	$MAKE -s all
+	$MAKE -s clean
+	set InstallationComplete = "True"
+	breaksw
+    case N:
+	echo ' To complete the installation, type'
+	echo '  make -s all'
+	echo ' in the directory $MYSIFDEC'
+	echo ''
+	echo '  [Installation NOT complete]'
+	exit 0
+	breaksw
+endsw
+
+# Final environment check
+
+if( $mysifdecIsCWD == 1 ) then
+    echo "install_mysifdec : Warning : The environment variable MYSIFDEC is not set"
+    echo "  It should point to your working instance of SifDec."
+endif
+
+if( ! $?MASTSIF ) then
+    echo "install_mysifdec : Warning : The environment variable MASTSIF is not set"
+    echo "  It should point to your main SIF repository."
+endif
+
+if( "InstallationComplete" == "True" ) then
+
+    echo ''
+    echo ' If all your environment variables are properly set,'
+    echo ' you can test your installation using the command:'
+    echo '   sifdecode ROSENBR'
+    echo ''
+    echo ' (Note that once your PATH has been updated you need'
+    echo ' to use the  rehash  command to make it active.)'
+    echo ''
+    echo '   [Installation complete]'
+    echo ''
+    echo ' -------------------------------------------------------'
+    echo ' '
+
+endif
+
+# End

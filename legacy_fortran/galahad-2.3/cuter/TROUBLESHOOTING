@@ -1,0 +1,152 @@
+
+                       TROUBLESHOOTING
+
+In a perfect world, Unix would be Unix, and compilers
+(and our codes!) would not have bugs. However ....
+
+IF...
+
+1. ...THE INSTALLATION FAILS
+----------------------------
+
+The first stage of  the installation generates makefiles and execution
+scripts  appropriate for  the system  you have  described. All  of the
+systems supported  are described in files  in the $CUTER/config
+directory. Each file is named
+
+  platform.cf
+
+where platform is the machine you asked for. Examples include sun.cf,
+linux.cf and ibm.cf. The special file all.cf contains common settings
+which apply to all platforms.
+
+If  you have  problems,  you should  check  the contents  of the  file
+appropriate to  your system.  You  might try downgrading the  level of
+optimization if appropriate, uninstalling (using the uninstall script)
+and installing again.
+
+The syntax  used in these  files is regular  cpp syntax and  should be
+clear.
+
+
+2. ...THE COMPILATION FAILS
+---------------------------
+
+Check (and edit if necessary) the Makefiles found in the directories
+
+   $MYCUTER
+   $MYCUTER/bin
+   $MYCUTER/precision
+   $MYCUTER/precision/config
+   $MYCUTER/precision/bin
+   $MYCUTER/precision/lib
+
+For  changes  to  take  effect,  the  Umakefiles  should  be  modified
+correspondingly.   Also, remember  that if  your changes  should apply
+system-wide, the Umakefiles found in
+
+   $CUTER/build/scripts
+
+should be modified, along with the configuration files in
+
+   $CUTER/config
+
+if applicable.  If you can fix your problem this way, please send us
+a detailed report on the changes you made and we will be happy to
+incorporate them in next releases of CUTEr.
+
+
+3. ...THE RUN FAILS
+-------------------
+
+Check the README file associated to the package your are using in
+
+   $CUTER/common/src/pkg/<package_name>
+
+and make sure you followed the instructions there.
+
+SifDec  should   be  installed.   Check   your  environment  variables
+settings. CUTER  should point to the directory  where the distribution
+was unpacked  and MYCUTER should point  to the local  instance you are
+currently  using. In  addition, MASTSIF  should point  to  a directory
+containing the  SIF file(s) you are  trying to decode,  unless you are
+explicitly  specifying a  path on  the command  line. Also,  make sure
+$MYCUTER/bin appears in your PATH.
+
+You may make sure there was no problem during the compilation by
+changing to $MYCUTER and issuing
+
+   make -s purge
+   make all
+
+and paying attention to messages printed to the screen.
+
+Check the basic system commands file
+
+   $MYCUTER/<precision>/config/cmds
+
+and the configuration files
+
+   $MYCUTER/config/<platform>.cf, and
+   $MYCUTER/config/all.cf.
+
+If you need to make changes to the configuration files, you will need
+to re-issue the command
+
+   ./install_mycuter
+
+from the directory $MYCUTER to re-generate the Makefiles and rebuild.
+
+If you are trying to decode a problem in non-default dimensions, check
+the names of the parameters which can be changed for each problem. The
+command
+
+   sifdecode -show <problem.SIF>
+
+shows a list of possibilities, if any.
+
+If the problem persists, inspect the three scripts sdpak, pak and
+runpackage, found in
+
+   $MYCUTER/bin
+
+where 'pak' stands for the package name.
+
+
+4. KNOWN PROBLEMS WITH SPECIFIC SYSTEMS
+---------------------------------------
+
+4.1. f90/f95 under SOLARIS
+--------------------------
+
+Optimization has been disabled since any attempt at
+optimization here leads to internal compiler errors.
+Please grumble to Sun!
+
+4.2. Make under SOLARIS
+-----------------------
+
+Some versions of 'make' on Solaris can't handle the building of the
+library libcuter.a in $MYCUTER/precision/lib together with the
+multiple subdirectories. The building of the library would simply
+crash and make would report a message such as
+
+   don't know how to make libcuter.a(asmbe.o)
+
+A possible cure is to cd to $MYCUTER/precision/lib and make all
+there. Another is to get gmake.
+
+Please grumble some more to Sun!
+
+5. BUG REPORTS
+--------------
+
+Please consult the file
+
+   $CUTER/BUGS
+
+If you think you have found a bug (even better, if you have
+found and fixed one!), please let us know. We will make
+every effort to issue bug fixes (although this depends on our
+having time, so no guarantees).
+

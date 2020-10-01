@@ -1,0 +1,83 @@
+K 25
+svn:wc:ra_dav:version-url
+V 65
+/SVN/cuter/!svn/ver/152/sifdec/branches/SifDec2/common/src/sifdec
+END
+magrad.f
+K 25
+svn:wc:ra_dav:version-url
+V 73
+/SVN/cuter/!svn/ver/71/sifdec/branches/SifDec2/common/src/sifdec/magrad.f
+END
+printp.f
+K 25
+svn:wc:ra_dav:version-url
+V 73
+/SVN/cuter/!svn/ver/71/sifdec/branches/SifDec2/common/src/sifdec/printp.f
+END
+rest.f
+K 25
+svn:wc:ra_dav:version-url
+V 72
+/SVN/cuter/!svn/ver/144/sifdec/branches/SifDec2/common/src/sifdec/rest.f
+END
+sifdec.f
+K 25
+svn:wc:ra_dav:version-url
+V 74
+/SVN/cuter/!svn/ver/152/sifdec/branches/SifDec2/common/src/sifdec/sifdec.f
+END
+utils.f
+K 25
+svn:wc:ra_dav:version-url
+V 72
+/SVN/cuter/!svn/ver/71/sifdec/branches/SifDec2/common/src/sifdec/utils.f
+END
+makefn.f
+K 25
+svn:wc:ra_dav:version-url
+V 73
+/SVN/cuter/!svn/ver/71/sifdec/branches/SifDec2/common/src/sifdec/makefn.f
+END
+decode.f
+K 25
+svn:wc:ra_dav:version-url
+V 74
+/SVN/cuter/!svn/ver/151/sifdec/branches/SifDec2/common/src/sifdec/decode.f
+END
+inlanc.f
+K 25
+svn:wc:ra_dav:version-url
+V 73
+/SVN/cuter/!svn/ver/71/sifdec/branches/SifDec2/common/src/sifdec/inlanc.f
+END
+mafnad.f
+K 25
+svn:wc:ra_dav:version-url
+V 73
+/SVN/cuter/!svn/ver/71/sifdec/branches/SifDec2/common/src/sifdec/mafnad.f
+END
+makegr.f
+K 25
+svn:wc:ra_dav:version-url
+V 73
+/SVN/cuter/!svn/ver/71/sifdec/branches/SifDec2/common/src/sifdec/makegr.f
+END
+trans.f
+K 25
+svn:wc:ra_dav:version-url
+V 72
+/SVN/cuter/!svn/ver/71/sifdec/branches/SifDec2/common/src/sifdec/trans.f
+END
+gps.f
+K 25
+svn:wc:ra_dav:version-url
+V 71
+/SVN/cuter/!svn/ver/144/sifdec/branches/SifDec2/common/src/sifdec/gps.f
+END
+local.f
+K 25
+svn:wc:ra_dav:version-url
+V 72
+/SVN/cuter/!svn/ver/71/sifdec/branches/SifDec2/common/src/sifdec/local.f
+END

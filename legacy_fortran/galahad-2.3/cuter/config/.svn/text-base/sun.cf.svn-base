@@ -1,0 +1,152 @@
+
+#define umakeSystemFlag -Dsun
+
+#ifdef SunLinux
+#define umakeOsFlag     -DSunLinux
+#define SystemTag       Linux
+#define OperatingSystem lnx
+#endif
+#ifdef SunSolaris
+#define umakeOsFlag     -DSunSolaris
+#define SystemTag       Solaris
+#define OperatingSystem sol
+#endif
+#define KeySys	        CUNIX
+#define MachineTag      sun
+#define MachineName     Sun-workstation
+
+
+#ifndef ArCmd
+#define ArCmd		/usr/ccs/bin/ar
+#endif
+#ifndef AwkCmd
+#define AwkCmd		/usr/bin/nawk
+#endif
+
+#define InstallCmd	/usr/ucb/install
+#define MakeCmd		/usr/ccs/bin/make
+
+/* -- */
+
+
+#ifndef FortranLdOptions
+#define FortranLdOptions	/* as nothing yet */
+#endif
+
+#ifndef R1Value
+#define R1Value		1.1920930E-07
+#endif
+#ifndef R2Value
+#define R2Value		5.9604646E-08
+#endif
+#ifndef R3Value
+#define R3Value		1.1754945E-38
+#endif
+#ifndef R4Value
+#define R4Value		1.1754945E-38
+#endif
+#ifndef R5Value
+#define R5Value		3.4028234E+38
+#endif
+
+#ifndef D1Value
+#define D1Value		2.2204460492503132D-16
+#endif
+#ifndef D2Value
+#define D2Value		1.1102230246251566D-16
+#endif
+#ifndef D3Value
+#define D3Value		2.225073858507202D-308
+#endif
+#ifndef D4Value
+#define D4Value		2.225073858507202D-308
+#endif
+#ifndef D5Value
+#define D5Value		1.797693134862314D+308
+#endif
+
+/*
+ *  Compiler-related parameters, 
+ *  set by install_cuter at installation time
+ */
+
+#ifdef Ise77
+#define CompilerTagId		e77
+#define umakeCompilerFlag	-DIse77
+#define CompileCmd		epcf77 -c
+#define LoadCmd			epcf77
+#define CompilerIsF9095		no
+#define Compile9095Cmd	
+#define Load9095Cmd	
+#define FortranFlags		-O
+#define NumberOfBytes		8
+#endif
+#ifdef Ise90
+#define Isa90Compiler
+#define CompilerTagId		e90
+#define umakeCompilerFlag	-DIse90
+#define CompileCmd		epcf90 -c -FI -w
+#define LoadCmd			epcf90
+#define CompilerIsF9095		yes
+#define Compile9095Cmd		epcf90 -c
+#define Load9095Cmd		epcf90
+#define FortranFlags		-O
+#define NumberOfBytes		8
+#endif
+#ifdef Isf77
+#define CompilerTagId		f77
+#define umakeCompilerFlag	-DIsf77
+#define CompileCmd		f77 -c
+#define LoadCmd			f77
+#define CompilerIsF9095		no
+#define Compile9095Cmd	
+#define Load9095Cmd	
+#define FortranFlags		-O
+#define NumberOfBytes		8
+#endif
+#ifdef Isf90
+#define Isa90Compiler
+#define CompilerTagId		f90
+#define umakeCompilerFlag	-DIsf90
+#define CompileCmd		f90 -c
+#define LoadCmd			f90
+#define CompilerIsF9095		yes
+#define Compile9095Cmd		f90 -c
+#define Load9095Cmd		f90
+#define FortranFlags		-O
+#define NumberOfBytes		8
+#endif
+#ifdef Isfrt
+#define Isa90Compiler
+#define CompilerTagId		frt
+#define umakeCompilerFlag	-DIsfrt
+#define CompileCmd		frt -c -Fixed -w
+#define LoadCmd			frt
+#define CompilerIsF9095		yes
+#define Compile9095Cmd		frt -c
+#define Load9095Cmd		frt
+#define FortranFlags		-O
+#define NumberOfBytes		8
+#endif
+
+/* Sun-specific C compilers */
+
+#ifdef Iswsc
+#define umakeCCompilerExt
+#define CCompilerTagId           wsc
+#define umakeCCompilerFlag       -DIswsc
+#define CCompileCmd              cc -c
+#define CLoadCmd                 cc
+#define CFlags                   -O
+#define SpecialLibs              
+#endif
+
+#ifdef Iswsp
+#define umakeCCompilerExt
+#define CCompilerTagId           wsp
+#define umakeCCompilerFlag       -DIswsp
+#define CCompileCmd              CC -c -compat=4 -w
+#define CLoadCmd                 CC -compat=4 -w
+#define CFlags                   -O
+#define SpecialLibs              
+#endif

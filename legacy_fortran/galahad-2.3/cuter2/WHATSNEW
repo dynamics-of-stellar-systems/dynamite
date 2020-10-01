@@ -1,0 +1,101 @@
+
+CUTEr news                                                 January 2012.
+
+======================================================================
+
+[June 6,  2002]. Added an interface to  the primal-dual interior-point
+                 code  IPOPT,   authored  by  Andreas   Wachter.   The
+                 corresponding   script   follow   the  usual   naming
+                 convention, sdipopt and  ipopt. The main interface is
+                 ipoptma.f, found  in $CUTER/common/src/tools and some
+                 documentation may  be found in the man  pages as well
+                 as      in       the      README      file      under
+                 $CUTER/common/src/pkg/ipopt. For  more info on IPOPT,
+                 see
+                 www-124.ibm.com/developerworks/opensource/coin/Ipopt
+
+[Oct 5, 2002]. Added the C header file cuter.h aiding in the design of
+		 interfaces  between  the  CUTEr  tools  and  packages
+		 written   in   C.    Added   an  interface   to   the
+		 linesearch-based   primal-dual   interior-point  code
+		 LOQO,    authored    by    Robert   Vanderbei,    see
+		 http://www.princeton.edu/~rvdb  for more information.
+		 The corresponding scripts are  named lqo and sdlqo to
+		 avoid  confusion  with  the main  'loqo'  executable.
+		 This  interface demonstrates the  use of  cuter.h and
+		 was  originally written  by Andreas  Wachter.  Please
+		 note  that  interfacing Fortran  and  C  is not  only
+		 platform-dependent   but   also   compiler-dependent.
+		 Hence, not all possible combinations are supported at
+		 this time. All comments and information on particular
+		 compilers will be greatly appreciated. 
+
+[Oct 5, 2002]. Added  an interface to the object-oriented optimization
+                 toolkit TAO (Benson,  Curfman McInnes, More, Sarich).
+                 For more  information, see http://www.mcs.anl.gov/tao
+                 or contact benson@mcs.anl.gov or sarich@mcs.anl.gov.
+
+[Dec 7,  2002]. Improved interface  to package filterSQP,  by Fletcher
+                 and  Leyffer. For  more information,  see  the manual
+                 pages  for   sdfil  and  fil  and   the  readme  file
+                 $CUTER/common/src/pkg/filter/README.filter. 
+
+[March,  2003].  The installation  is  now  independent  of Imake  and
+                 msub.  Imakefiles  have been replaced  by Umakefiles,
+                 which  are also  meta-Makefiles, bootstrapped  by the
+                 umake scripts, supplied  with SifDec and CUTEr. Umake
+                 only relies on cpp which  may safely be assumed to be
+                 present on most systems. The C/C++ interface has been
+                 polished and a generic driver is given.
+
+[June,   2003].  Added an interface to NITSOL (Pernice and Walker).
+                 Added the flags -L, --blas and --lapack to the CUTEr
+                 scripts. See the man pages for details.
+
+[October, 2003]. Added a spec file for LOQO, thanks to Hande Benson.
+                 Fixed man pages for UPROD and CPROD. Fixed a bug
+                 with cpp on Sun machines running Solaris.
+
+[December, 2003]. Added support for version 8.0 of the Intel Fortran
+                  and C/C++ compilers.
+
+[May, 2004]. Added support for GNU g95 Fortran 90/95 compiler.
+
+[August, 2004]. Fixed compatibility issues between g95 and gcc.
+
+[September, 2004]. Added interfaces to the packages CG+, CG_DESCENT,
+                   TRON, LBFGS and L-BFGS-B. The interface to
+                   L-BFGS-B supersedes the older interface. The one
+                   to LBFGS supersedes the older interface to VA15.
+
+[March, 2005]. Added support for MAC/OSX platform with GNU or NAG f95
+               compiler. Thanks to Mike Friedlander! Fixed a problem
+               with intrinsic function ABS in CG+ interface. Fixed an
+               annoyance with comments starting with 'CS' in the IPOPT
+               interface (caused troubles in single precision). Thanks
+               to Ling-Yun Wu.
+
+[June, 2005]. Updated nearly all man pages. They now contain equations
+              which are best viewed using
+                    man -p e manpage
+              Check your local man settings.
+
+[July, 2005]. Added updated interface to KNITRO 4.0. Added support for
+              the GNU gfortran Fortran 90/95 compiler. This compiler
+              is now part of GCC 4.x and is not to be confused with
+              g95.
+
+[July, 2007]. Added support for g95 and the Portland Group compilers
+              pgf77 and pgf90/95 on the MAC/OSX platform.
+
+[January, 2012]. Added a tool CPROD1 that finds the product of the Hessian
+              of the constrained part of the Lagrangian with a vector.
+
+======================================================================
+
+CUTEr news                                                 January 2102.
+
+Thank you for your help and contribution.
+
+Nick, Dominique and Philippe
+
