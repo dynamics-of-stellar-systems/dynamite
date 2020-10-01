@@ -7,24 +7,6 @@
 import numpy as np
 import dynamite as dyn
 import matplotlib.pyplot as plt
-import os
-from astropy.io import ascii
-
-'''
-To run this example, the current directory should contain a directory
-model_example with the following contents:
-    model_example/NGC6278/
-                    config_legacy_example.yaml
-                    input_data/
-                        aperture.dat
-                        bins.dat
-                        gauss_hermite_kins.ecsv
-                        mge.ecsv
-The fowllowing entry in the config file should be changed to the location of
-your local triaxialschwarzschild directory:
-    legacy_settings:
-        directory: xxx
-'''
 
 # read configuration
 fname = 'tests/NGC6278/config.yaml'
@@ -32,17 +14,14 @@ c = dyn.config_reader.ConfigurationReaderYaml(fname, silent=True)
 parspace = dyn.parameter_space.ParameterSpace(c.system)
 all_models = dyn.model.AllModels(parspace=parspace, settings=c.settings)
 
-len(all_models.table)
-
-# for speed of testing, I'll set the following kw arguments in order to:
+# for speed of testing, we can set the following kw arguments in order to:
 # (i) not exectute the models
 # (ii) use a dummy chi2, as defined by this dummy_chi2_function:
-do_dummy_run = True
-def dummy_chi2_function(parset):
-    chi2 = parset['ml'] + np.log10(parset['f'])
-    return chi2
-
-# Or, to actually run models, do not pass the above keywords:
+# do_dummy_run = True
+# def dummy_chi2_function(parset):
+#     chi2 = parset['ml'] + np.log10(parset['f'])
+#     return chi2
+# ... or, to actually run models, use these values (which are the defaults)
 do_dummy_run = False
 dummy_chi2_function = None
 

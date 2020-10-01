@@ -126,7 +126,7 @@ orblib_settings: # don't put in physical system -> config object
     logrmin: -0.101275
     logrmax: 1.99123
     nI2: 4        # must be >= 4
-    nI3: 2
+    nI3: 3
     dithering: 1
     #the following values should usually not be changed
     orbital_periods: 200
