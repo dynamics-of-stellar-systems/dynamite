@@ -1,13 +1,12 @@
 # Compiled source #
 ###################
-dynamite_src/__pycache__
-sandbox/dynamite_src/__pycache__
-sandbox/.spyproject
+dynamite/__pycache__
+tests/__pycache__
+legacy_fortran/galahad-2.3/bin/sys/*
+legacy_fortran/galahad-2.3/makefiles/*
+legacy_fortran/galahad-2.3/modules/*
+legacy_fortran/galahad-2.3/objects/*
+legacy_fortran/galahad-2.3/versions/*
 .spyproject
-notebooks/.ipynb_checkpoints/*
-*.orig
-__pycache__
-*.gitignore
-model_example/NGC6278/models/*
-model_example/NGC6278/all_models.ecsv
-pj_model/*
+tests/NGC6278/models/*
+tests/NGC6278/all_models.ecsv
