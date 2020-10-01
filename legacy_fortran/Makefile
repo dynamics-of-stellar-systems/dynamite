@@ -14,13 +14,13 @@ compiler=gfortran
 
 #PROFILEDIR=~/profile/
 
-ifeq ($(compiler),ifort) 
+ifeq ($(compiler),ifort)
 ifdef FAST
-  #flags = -fast 
+  #flags = -fast
   flags += -O3 -IPO -xT -prefetch -pad
   flags += -fno-fnalias
 else
-  flags += -C -g -inline-debug-info		
+  flags += -C -g -inline-debug-info
 endif
 
 
@@ -32,7 +32,7 @@ flags  +=  -prof-gen
 else
   ifdef FAST
     flags  += -prof-dir $(PROFILEDIR)
-    flags  += -prof-use	
+    flags  += -prof-use
   endif
 endif
 endif
@@ -41,10 +41,10 @@ endif
 fortran90 = $(compiler) $(flags)     -c
 fortran77 = $(compiler) $(flags) -W0 -c
 link      = $(compiler) $(flags)     -o
-endif 
+endif
 
 ifeq ($(compiler),F)
-  fortran90 = F -ieee=stop -C -O4   -c 
+  fortran90 = F -ieee=stop -C -O4   -c
   fortran77 = g77.old -O2   -c
   link = F -ieee=stop -C -O4   -o
 endif
@@ -55,17 +55,17 @@ ifeq ($(compiler),g95)
   link = ~/local/bin/g95 -o -O3 -m64 -o
 endif
 
-ifeq ($(compiler),gfortran) 
+ifeq ($(compiler),gfortran)
   ifdef FAST
    flags =    -ffast-math -O3 -march=native -fomit-frame-pointer -m64
-   flags +=    -funroll-loops -ftree-loop-linear 
-#   flags += -fno-protect-parens 
-#   flags +=  -fwhole-file #-fwhole-program # -flto 
+   flags +=    -funroll-loops -ftree-loop-linear
+#   flags += -fno-protect-parens
+#   flags +=  -fwhole-file #-fwhole-program # -flto
   else
-   flags =  -m64 -g  -ggdb -fbounds-check -fcheck-array-temporaries   	
+   flags =  -m64 -g  -ggdb -fbounds-check -fcheck-array-temporaries
    #flags = -m64   -g -ffast-math -O3 -march=native -fomit-frame-pointer -m64
   endif
-  
+
   ifdef PROFILEDIR
   ifdef PROFILE
     flags  += -fprofile-generate=$(PROFILEDIR)
@@ -77,23 +77,23 @@ ifeq ($(compiler),gfortran)
   endif
 
    # on MAC OS X we can use the built-in BLAS/LAPACK
-  #flags += -fexternal-blas -framework Accelerate              
+  #flags += -fexternal-blas -framework Accelerate
   flags += -fexternal-blas
   # On MAC OS X te build static binaries
-  flags += -static-libgfortran -static-libgcc     
+  flags += -static-libgfortran -static-libgcc
 
   fortran90 = gfortran $(flags) -c
   fortran77 = gfortran $(flags) -c
   link = gfortran $(flags) -o
 endif
- 
+
 # define local Galahad directory --> need to be changed for your system
-GALAHADDIR = /Users/sabine/Triaxschwarzschild/triaxschwarzschild/galahad-2.3/
-        
+GALAHADDIR =/Users/pjethwa/Astro/Science/dynamite/dynamite_repo/legacy_fortran/galahad-2.3
+
 # Define galahad compiled libary choice (platform dependant)
 
 # MAC, gfortran
-GALAHADTYPE= mac.osx.gfo/double/  
+GALAHADTYPE= mac.osx.gfo/double/
 
 # linux, ifort
 # GALAHADTYPE= pc.lnx.ifc/double
@@ -108,16 +108,16 @@ all : orbitstart orblib triaxmass triaxmassbin triaxnnls_CRcut modelgen partgen
 #
 #########################################################
 
-RCS : Makefile run_model.sh iniparam_f.f90 orblib_f.f90 orblibwgas_f.f90 triaxpotent.f90 interpolpotent.f90 orblibprogram.f90    triaxmassbin.f90 modelgen.f90           triaxmass.f90 orbitstart.f90  triaxnnls_CRcut.f90   triaxnnls_scratch_nosave.f90 triaxgasnnls.f90 dmpotent.f90 partgen.f90  
+RCS : Makefile run_model.sh iniparam_f.f90 orblib_f.f90 orblibwgas_f.f90 triaxpotent.f90 interpolpotent.f90 orblibprogram.f90    triaxmassbin.f90 modelgen.f90           triaxmass.f90 orbitstart.f90  triaxnnls_CRcut.f90   triaxnnls_scratch_nosave.f90 triaxgasnnls.f90 dmpotent.f90 partgen.f90
 	ci -q -l -mcompile Makefile run_model.sh iniparam_f.f90 orblib_f.f90orblibwgas_f.f90 triaxpotent.f90 interpolpotent.f90  orblibprogram.f90  triaxmassbin.f90 modelgen.f90 triaxmass.f90 orbitstart.f90 triaxnnls_CRcut.f90  triaxnnls_scratch_nosave.f90 triaxgasnnls.f90 dmpotent.f90 partgen.f90
 
 ##########################################################
 #
 # Choice between two integrators
 #
-# DOP853 is the more accurate and is less prone to fail 
+# DOP853 is the more accurate and is less prone to fail
 # integrating the orbit trajectory, but it is slower too.
-# 
+#
 ##########################################################
 
 #DOPCDE = sub/dopri5.f
@@ -136,16 +136,16 @@ DOPOBJ = dop853.o
 MGECDE = sub/numeric_kinds_f.f90 sub/dqxgs.f sub/ellipint.f90 iniparam_f.f90 triaxpotent.f90 dmpotent.f90 interpolpotent.f90 sub/specfunc_beta.f90
 MGEOBJ = numeric_kinds_f.o dqxgs.o iniparam_f.o triaxpotent.o dmpotent.o interpolpotent.o ellipint.o specfunc_beta.o
 
-iniparam_f.o: iniparam_f.f90 numeric_kinds_f.o  
+iniparam_f.o: iniparam_f.f90 numeric_kinds_f.o
 	$(fortran90) iniparam_f.f90
 
-triaxpotent.o : triaxpotent.f90 ellipint.o numeric_kinds_f.o iniparam_f.o  
+triaxpotent.o : triaxpotent.f90 ellipint.o numeric_kinds_f.o iniparam_f.o
 	$(fortran90) triaxpotent.f90
 
-dmpotent.o : dmpotent.f90 triaxpotent.o numeric_kinds_f.o iniparam_f.o  
+dmpotent.o : dmpotent.f90 triaxpotent.o numeric_kinds_f.o iniparam_f.o
 	$(fortran90) dmpotent.f90
 
-interpolpotent.o : interpolpotent.f90 triaxpotent.o numeric_kinds_f.o iniparam_f.o  
+interpolpotent.o : interpolpotent.f90 triaxpotent.o numeric_kinds_f.o iniparam_f.o
 	$(fortran90) interpolpotent.f90
 
 #####################################################
@@ -154,13 +154,13 @@ interpolpotent.o : interpolpotent.f90 triaxpotent.o numeric_kinds_f.o iniparam_f
 #
 ###################################################
 
-numeric_kinds_f.o : ./sub/numeric_kinds_f.f90 
+numeric_kinds_f.o : ./sub/numeric_kinds_f.f90
 	$(fortran90) ./sub/numeric_kinds_f.f90
 
-ellipint.o : ./sub/ellipint.f90 
+ellipint.o : ./sub/ellipint.f90
 	$(fortran90) ./sub/ellipint.f90
 
-numrep.o: ./sub/numrep.f90 numeric_kinds_f.o 
+numrep.o: ./sub/numrep.f90 numeric_kinds_f.o
 	$(fortran77) ./sub/numrep.f90
 
 nag.o : sub/nag.f
@@ -193,7 +193,7 @@ specfunc_beta.o : ./sub/specfunc_beta.f90
 #
 ###################################################
 
-triaxmass: $(MGEOBJ) nag.o  triaxmass.f90 
+triaxmass: $(MGEOBJ) nag.o  triaxmass.f90
 	$(link) triaxmass $(MGEOBJ) nag.o triaxmass.f90
 
 ####################################################
@@ -202,7 +202,7 @@ triaxmass: $(MGEOBJ) nag.o  triaxmass.f90
 #
 ###################################################
 
-triaxmassbin: $(MGEOBJ) triaxmassbin.f90 
+triaxmassbin: $(MGEOBJ) triaxmassbin.f90
 	$(link) triaxmassbin $(MGEOBJ) triaxmassbin.f90
 
 
@@ -216,13 +216,13 @@ ORBLIBCDE= $(MGECDE) sub/numrec_arloc.f $(DOPCDE) orblib_f.f90
 ORBLIBOBJ= $(MGEOBJ) numrec_arloc.o $(DOPOBJ) orblib_f.o
 ORBLIBWGASCDE= $(MGECDE) sub/numrec_arloc.f $(DOPCDE) orblibwgas_f.f90
 ORBLIBWGASOBJ= $(MGEOBJ) numrec_arloc.o $(DOPOBJ) orblibwgas_f.o
-ORBLIBABELCDE= $(ABELCDE) sub/numrec_arloc.f $(DOPCDE) orblib_f.f90 
-ORBLIBABELOBJ= $(ABELOBJ) numrec_arloc.o $(DOPOBJ) orblib_f.o 
+ORBLIBABELCDE= $(ABELCDE) sub/numrec_arloc.f $(DOPCDE) orblib_f.f90
+ORBLIBABELOBJ= $(ABELOBJ) numrec_arloc.o $(DOPOBJ) orblib_f.o
 
 ifeq ($(FAST),TRUE)
   ORBLIBOBJ=$(ORBLIBCDE)
   ORBLIBWGASOBJ=$(ORBLIBWGASCDE)
-  ORBLIBABELOBJ=$(ORBLIBABELCDE)	
+  ORBLIBABELOBJ=$(ORBLIBABELCDE)
 endif
 
 orblib_f.o : orblib_f.f90 $(MGEOBJ) numrec_arloc.o $(DOPOBJ)
@@ -259,16 +259,16 @@ orbitstartabel : $(ORBLIBABELOBJ) orbitstart.f90
 ##############################################################
 #
 # triaxnnls_CRcut
-# triaxnnls_scratch_nosave   
+# triaxnnls_scratch_nosave
 ##############################################################
 
 OBJECTS5_out = nnls95.o iniparam_f.o numeric_kinds_f.o gausherm.o triaxnnls_CRcut.o
 
 
-triaxnnls_CRcut : $(OBJECTS5_out)  
+triaxnnls_CRcut : $(OBJECTS5_out)
 	$(link) triaxnnls_CRcut $(OBJECTS5_out)   -I$(GALAHADDIR)/modules/$(GALAHADTYPE)  -L$(GALAHADDIR)/objects/$(GALAHADTYPE)  -lgalahad  -lgalahad_hsl -lgalahad_metis -lgalahad_lapack -lgalahad_blas
 
-triaxnnls_CRcut.o : triaxnnls_CRcut.f90 numeric_kinds_f.o iniparam_f.o 
+triaxnnls_CRcut.o : triaxnnls_CRcut.f90 numeric_kinds_f.o iniparam_f.o
 	$(fortran90) triaxnnls_CRcut.f90  -I$(GALAHADDIR)/modules/$(GALAHADTYPE)  -L$(GALAHADDIR)/objects/$(GALAHADTYPE)
 
 ##############################################################
@@ -277,10 +277,10 @@ triaxnnls_CRcut.o : triaxnnls_CRcut.f90 numeric_kinds_f.o iniparam_f.o
 
 OBJECTS5 = nnls95.o iniparam_f.o numeric_kinds_f.o gausherm.o triaxnnls_scratch_nosave.o
 
-triaxnnls_scratch_nosave : $(OBJECTS5)  
-	$(link) triaxnnls_scratch_nosave $(OBJECTS5)   -I$(GALAHADDIR)/modules/$(GALAHADTYPE)  -L$(GALAHADDIR)/objects/$(GALAHADTYPE)  -lgalahad  -lgalahad_hsl -lgalahad_metis -lgalahad_lapack -lgalahad_blas 
+triaxnnls_scratch_nosave : $(OBJECTS5)
+	$(link) triaxnnls_scratch_nosave $(OBJECTS5)   -I$(GALAHADDIR)/modules/$(GALAHADTYPE)  -L$(GALAHADDIR)/objects/$(GALAHADTYPE)  -lgalahad  -lgalahad_hsl -lgalahad_metis -lgalahad_lapack -lgalahad_blas
 
-triaxnnls_scratch_nosave.o : triaxnnls_scratch_nosave.f90 numeric_kinds_f.o iniparam_f.o 
+triaxnnls_scratch_nosave.o : triaxnnls_scratch_nosave.f90 numeric_kinds_f.o iniparam_f.o
 	$(fortran90) triaxnnls_scratch_nosave.f90  -I$(GALAHADDIR)/modules/$(GALAHADTYPE)  -L$(GALAHADDIR)/objects/$(GALAHADTYPE)
 
 ##############################################################
@@ -294,10 +294,10 @@ triaxnnls_scratch_nosave.o : triaxnnls_scratch_nosave.f90 numeric_kinds_f.o inip
 OBJECTS6 = nnls95.o iniparam_f.o numeric_kinds_f.o gausherm.o triaxgasnnls.o
 
 
-triaxgasnnls : $(OBJECTS6)  
+triaxgasnnls : $(OBJECTS6)
 	$(link) triaxgasnnls $(OBJECTS6)   -I$(GALAHADDIR)/modules/$(GALAHADTYPE)  -L$(GALAHADDIR)/objects/$(GALAHADTYPE)  -lgalahad  -lgalahad_hsl -lgalahad_metis -lgalahad_lapack -lgalahad_blas
 
-triaxgasnnls.o : triaxgasnnls.f90 numeric_kinds_f.o iniparam_f.o 
+triaxgasnnls.o : triaxgasnnls.f90 numeric_kinds_f.o iniparam_f.o
 	$(fortran90) triaxgasnnls.f90  -I$(GALAHADDIR)/modules/$(GALAHADTYPE)  -L$(GALAHADDIR)/objects/$(GALAHADTYPE)
 
 ##########################################
@@ -314,4 +314,3 @@ clean:
 
 profclean:
 	rm -f *.o
-

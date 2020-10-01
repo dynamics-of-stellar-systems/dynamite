@@ -7,6 +7,15 @@ legacy_fortran/galahad-2.3/makefiles/*
 legacy_fortran/galahad-2.3/modules/*
 legacy_fortran/galahad-2.3/objects/*
 legacy_fortran/galahad-2.3/versions/*
+legacy_fortran/*.mod
+legacy_fortran/*.o
+legacy_fortran/modelgen
+legacy_fortran/orbitstart
+legacy_fortran/orblib
+legacy_fortran/partgen
+legacy_fortran/triaxmass
+legacy_fortran/triaxmassbin
+legacy_fortran/triaxnnls_CRcut
 .spyproject
 tests/NGC6278/models/*
 tests/NGC6278/all_models.ecsv
