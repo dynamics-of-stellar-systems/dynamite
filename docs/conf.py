@@ -18,11 +18,11 @@
 # -- Project information -----------------------------------------------------
 
 project = 'DYNAMITE'
-copyright = '2020, Vienna Stellar Dynamics Group'
-author = 'Vienna Stellar Dynamics Group'
+copyright = '2020, Stellar Dynamics Group in Vienna'
+author = 'Stellar Dynamics Group in Vienna'
 
 # The full version, including alpha/beta/rc tags
-release = '0.0.0'
+release = 'v0.0'
 
 
 # -- General configuration ---------------------------------------------------
@@ -30,11 +30,17 @@ release = '0.0.0'
 # Add any Sphinx extension module names here, as strings. They can be
 # extensions coming with Sphinx (named 'sphinx.ext.*') or your custom
 # ones.
-extensions = [
+extensions = ['sphinx.ext.mathjax',
+              'sphinx.ext.autodoc',
+              'sphinx.ext.doctest',
+              'sphinx.ext.inheritance_diagram'
 ]
 
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ['_templates']
+
+source_suffix = '.rst'
+
 
 # List of patterns, relative to source directory, that match files and
 # directories to ignore when looking for source files.
@@ -47,9 +53,57 @@ exclude_patterns = ['_build', 'Thumbs.db', '.DS_Store']
 # The theme to use for HTML and HTML Help pages.  See the documentation for
 # a list of builtin themes.
 #
+'''
+# Uncomment to use alabaster theme
+import alabaster
+html_theme_path = [alabaster.get_path()]
+extensions = ['alabaster']
 html_theme = 'alabaster'
+'''
+
+html_theme = 'classic'
 
 # Add any paths that contain custom static files (such as style sheets) here,
 # relative to this directory. They are copied after the builtin static files,
 # so a file named "default.css" will overwrite the builtin "default.css".
 html_static_path = ['_static']
+
+html_logo = 'logothicksmall.png'
+
+html_sidebars = { '**': ['globaltoc.html', 'relations.html', 'sourcelink.html', 'searchbox.html'] }
+
+
+
+# -- Options for LaTeX output --------------------------------------------------
+
+# The paper size ('letter' or 'a4').
+#latex_paper_size = 'letter'
+
+# The font size ('10pt', '11pt' or '12pt').
+#latex_font_size = '10pt'
+
+# Grouping the document tree into LaTeX files. List of tuples
+# (source start file, target name, title, author, documentclass [howto/manual]).
+##latex_documents = [
+##  ('index', 'sampledoc.tex', u'sampledoc Documentation',
+##   u'John Hunter, Fernando Perez, Michael Droettboom', 'manual'),
+##]
+
+latex_engine = 'pdflatex'
+
+# The name of an image file (relative to this directory) to place at the top of
+# the title page.
+#latex_logo = None
+
+# For "manual" documents, if this is true, then toplevel headings are parts,
+# not chapters.
+#latex_use_parts = False
+
+# Additional stuff for the LaTeX preamble.
+#latex_preamble = ''
+
+# Documents to append as an appendix to all manuals.
+#latex_appendices = []
+
+# If false, no module index is generated.
+#latex_use_modindex = True

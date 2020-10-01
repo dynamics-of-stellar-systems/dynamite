@@ -19,3 +19,4 @@ legacy_fortran/triaxnnls_CRcut
 .spyproject
 tests/NGC6278/models/*
 tests/NGC6278/all_models.ecsv
+docs/_build/
