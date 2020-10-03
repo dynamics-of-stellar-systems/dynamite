@@ -7,6 +7,11 @@ legacy_fortran/galahad-2.3/makefiles/*
 legacy_fortran/galahad-2.3/modules/*
 legacy_fortran/galahad-2.3/objects/*
 legacy_fortran/galahad-2.3/versions/*
+!legacy_fortran/galahad-2.3/bin/sys/.gitkeep
+!legacy_fortran/galahad-2.3/makefiles/.gitkeep
+!legacy_fortran/galahad-2.3/modules/.gitkeep
+!legacy_fortran/galahad-2.3/objects/.gitkeep
+!legacy_fortran/galahad-2.3/versions/.gitkeep
 legacy_fortran/*.mod
 legacy_fortran/*.o
 legacy_fortran/modelgen

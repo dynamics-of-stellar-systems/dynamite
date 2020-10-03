@@ -88,7 +88,8 @@ ifeq ($(compiler),gfortran)
 endif
 
 # define local Galahad directory --> need to be changed for your system
-GALAHADDIR =/Users/pjethwa/Astro/Science/dynamite/dynamite_repo/legacy_fortran/galahad-2.3
+#GALAHADDIR =/Users/pjethwa/Astro/Science/dynamite/dynamite_repo/legacy_fortran/galahad-2.3
+GALAHADDIR =/Users/maindl/Documents/DriveM/drtim/ClientsNonGAMS/DYNAMITE/dynamite/legacy_fortran/galahad-2.3
 
 # Define galahad compiled libary choice (platform dependant)
 
