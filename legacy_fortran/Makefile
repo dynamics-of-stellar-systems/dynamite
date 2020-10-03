@@ -61,6 +61,7 @@ ifeq ($(compiler),gfortran)
    flags +=    -funroll-loops -ftree-loop-linear
 #   flags += -fno-protect-parens
 #   flags +=  -fwhole-file #-fwhole-program # -flto
+   flags += -std=legacy
   else
    flags =  -m64 -g  -ggdb -fbounds-check -fcheck-array-temporaries
    #flags = -m64   -g -ffast-math -O3 -march=native -fomit-frame-pointer -m64
