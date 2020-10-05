@@ -8,6 +8,11 @@ Welcome to DYNAMITE's documentation!
 
 **DYNAMITE** (DYnamics, Age and Metallicity Indicators Tracing Evolution) is a tool for stellar population and dynamical modelling.
 
+How to cite
+================
+
+This is how to cite our code!
+
 Getting Started
 ================
 
@@ -70,6 +75,7 @@ More Information
    publications.rst
    team.rst
    getting_involved.rst
+   license.rst
 
 Indices and tables
 ==================
