@@ -6,26 +6,70 @@
 Welcome to DYNAMITE's documentation!
 ====================================
 
-The **DYNAMITE** (DYnamics, Age and Metallicity Indicators Tracing Evolution) code is a modelling tool for stellar population and dynamical modelling. It is based on an older code for Schwarzschild modelling in triaxial systems which is available `here <https://github.com/dynamics-of-stellar-systems/triaxschwarz>`_. DYNAMITE will extend this old code with a number of new features, including:
+**DYNAMITE** (DYnamics, Age and Metallicity Indicators Tracing Evolution) is a tool for stellar population and dynamical modelling.
 
-* discrete kinematics
-* more flexible descriptions of line-of-sight velocity distributions
-* population modelling
-* smarter steps through parameter space
-* GPU acceleration
-* more flexible potentials
+Getting Started
+================
 
 .. toctree::
    :maxdepth: 2
-   :caption: Contents:
+   :caption: Getting Started:
 
-   overview.rst
-   team.rst
-   gettingstarted.rst
-   codedescription.rst
-   glossary.rst
+   installation.rst
+   getting_help.rst
+
+Here are basic instructions:
+
+* Get the code from our `GitHub page <https://github.com/dynamics-of-stellar-systems/dynamite>`_
+* Describe basic installation steps here. More detailed information/troubleshooting can be found on the `installation <installation.rst>`_ page.
+* Show a short code snippet
+
+Tutorials
+=========
+
+The following tutorials give detailed walkthroughs for using DYNAMITE.
+Each page is an ipython notebook which you can either view in the browser, or download and interact with yourself.
+
+.. toctree::
+   :maxdepth: 1
+   :caption: Tutorials:
+
+   tutorial_notebooks/running_a_model.ipynb
+   tutorial_notebooks/running_a_grid_of_models.ipynb
+
+Documentation
+=============
+
+The following pages describe the classes used in DYNAMITE.
+Start with the `overview <classes/overview>`_ page for a description of all the
+classes and how they interact. The subsequent pages then discuss the individual
+classes in more detail.
+
+.. toctree::
+   :maxdepth: 3
+   :caption: Documentation:
+
+   classes/overview
+   classes/configuration
+   classes/physical_system
+   classes/data
+   classes/model
+   classes/model_iterator
+   classes/parameter_space
+   classes/executor
+   classes/plotting
+
+More Information
+================
+
+.. toctree::
+   :maxdepth: 2
+   :caption: More information:
+
+   about.rst
    publications.rst
-
+   team.rst
+   getting_involved.rst
 
 Indices and tables
 ==================
