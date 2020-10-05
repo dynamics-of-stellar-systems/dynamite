@@ -1,0 +1,15 @@
+BEGIN LSTR SPECIFICATIONS (DEFAULT)
+! error-printout-device                           6
+! printout-device                                 6
+! print-level                                     0
+! maximum-number-of-iterations                    -1           
+! maximum-number-of-boundary-iterations           -1
+! number-extra-n-vectors-used                     0
+! relative-accuracy-required                      1.0E-8 
+! absolute-accuracy-required                      0.0
+! fraction-optimality-required                    1.0
+! stop-as-soon-as-boundary-encountered            T
+! space-critical                                  F
+! deallocate-error-fatal                          F
+! output-line-prefix                              ""
+END LSTR SPECIFICATIONS

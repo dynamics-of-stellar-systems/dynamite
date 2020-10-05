@@ -1,0 +1,54 @@
+
+SifDec README file.				        November 2001.
+
+======================================================================
+
+  Please read this file prior to any modification in this directory.
+
+======================================================================
+
+This directory, among other files, should contain the following files:
+
+cast.sed	a casting script for f77 files
+cast90.sed	a casting script for f90 files
+cmds		local commands
+local.ff	partially cast f77 module
+local.f		local.ff + timer
+local.o		local.f compiled
+script.sed	a casting script for interfaces
+sifdec.siz	the SIF decoder sizings
+slash.sed       a casting script for the cmds file
+timer		a local timer in f77
+
+It  is NOT  recommended to  alter the  files cast.sed,  cast90.sed and
+script.sed.  They  are  given  read-only  attributes  at  installation
+time. It may happen, however, that the SIF decoder reports an error at
+decoding  stage,  advising you  to  adjust the  size  of  one or  more
+parameters  described  in  sifdec.siz  and tools.siz.   This  will  be
+necessary  to accomplish  your task.   However, in  any  case, proceed
+cautiously and at your own risk.
+
+The Makefile found in this directory recognizes the following targets:
+
+cast.sed
+cast90.sed
+script.sed
+slash.sed :  creates the script described above
+
+local.o:     casts and compile (but does not link)  the fortran module
+             local.f for later linking,
+
+cmds:        creates the file cmds containing appropriate commands for
+	     the local architecture.
+
+======================================================================
+
+			      Good luck!
+
+Nick I.M. Gould,				     n.gould@rl.ac.uk,
+Dominique Orban,				     orban@cerfacs.fr,
+Philippe L. Toint.			    philippe.toint@fundp.ac.be
+
+======================================================================
+
+SifDec README file.				        November 2001.

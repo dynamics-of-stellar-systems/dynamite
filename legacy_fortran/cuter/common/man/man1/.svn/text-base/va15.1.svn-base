@@ -1,0 +1,143 @@
+.\" @(#)va15/sdva15 v1.0 03/2000;
+.TH va15/sdva15 1 "02 Mar 2000"
+.SH NAME
+va15/sdva15 \- CUTEr interface with the VA15 solver.
+.SH SYNOPSIS
+\fBsd]va15\fP [\-decode] [\-s] [\-n] [\-h] [\-k] [\-r] [\-o \fI0|1\fP] [\-l \fIsecs\fP] [\-f] [\-b] [\-a \fI1|2\fP] [\-show] [[\-param \fIname=value\fP[\fI,name=value...\fP]] [\-force]] [\-debug] [\-L\fIpath/to/lib\fP] [\-\-blas \fIkeyword\fP] [\-\-lapack \fIkeyword\fP] [\fIproblem[.SIF]\fP]
+.SH DESCRIPTION
+\fIsdva15\fP interfaces the VA15 solver with the CUTEr tools and SIF-encoded
+problems. \fIsdva15\fP applies the SIF decoder to the problem \fIproblem.SIF\fP
+to produce the OUTSDIF.d file and the problem-dependant Fortan subroutines.
+If \fIproblem.SIF\fP has already been decoded, the script \fIva15\fP
+may be run by itself. VA15 solves unconstrained minimization problems
+using a limited-memory BFGS method.
+
+\fIsdva15\fP is only included for backward compatibility with earlier versions of CUTE, and simply calls \fIva15\fP with the \fI\-decode\fP flag.
+
+\fIva15\fP sets the environment and calls \fIrunpackage\fP to link all the needed libraries and modules for the VA15 solver to solve the problem decoded from the SIF file and generates the executable.
+.LP 
+.SH [sd]va15 Options
+You can start [sd]va15 with the following options:
+.TP 5
+.B \-decode
+Applies the SIF decoder to the problem \fIproblem.SIF\fP to produce the OUTSDIF.d file and the problem-dependant Fortan subroutines. It is redundant to call \fIsdva15\fP with the \-decode flag.
+.TP
+.B \-s
+Run [sd]va15 in single-precision mode, if available. 
+Double precision is the default.
+.TP
+.B \-n
+Use the load module if it already exists. Compiling a new load module
+is the default.
+.TP
+.B \-h
+Print a short help message.
+.TP
+.B \-k
+Keep the generated executable after use. May be useful when solving a
+particular problem with the same solver with different parameters.
+Deleting the executable after use is the default.
+.TP
+.B \-r
+Discourage recompilation of the test problem. Default is to recompile
+object files.
+.TP
+.BI \-o " 0|1"
+Regulates the output level of \fI[sd]va15\fP. Verbose mode is \fB-o\fP 1,
+silent mode is \fB-o\fP 0. Silent mode is the default.
+.TP
+.BI \-l " secs"
+sets a limit of \fIsecs\fP second on VA15 runtime.
+Unlimited cputime is the default.
+.TP
+.BI \-f
+Use automatic differentiation in Forward mode
+.TP
+.BI \-b
+Use automatic differentiation in Backward mode
+.TP
+.BI \-a " 1|2"
+\-a 1 uses the older HSL automatic differentiation package AD01
+and \-a 2 uses the newer HSL automatic differentiation package
+AD02. \-a 2 is the default.
+.TP
+.BI \-show
+displays possible parameter settings for problem[.SIF]. Other options
+are ignored.
+.TP
+.BI \-param
+cast problem[.SIF] against explicit parameter settings. Several
+parameter settings may be given as a comma-separated list following
+\-param or using several \-param flags. Use \fIsifdec -show problem\fP
+to view possible settings. If a setting is not allowed in the SIF
+file, no action is taken unless \fI \-force \fP is present.
+.TP
+.BI \-force
+Forces the setting of the parameters named using \fI \-param \fP to
+the given values, even if those values are not predefined in the SIF
+file.
+.TP
+.BI \-L\fIpath/to/lib\fP
+This option is passed directly to the linker and causes the path
+\fIpath/to/lib\fP to be searched for libraries.
+.TP
+.BI \-\-blas " \fIkeyword\fP"
+Overrides usage of the default \fIlinpack\fP library packaged with
+CUTEr. Instead, use the BLAS library specified by \fIkeyword\fP. The
+keyword \fIkeyword\fP has one of two forms. The first, \fI-lmyblas\fP
+causes the linker to search for BLAS subprograms in the libmyblas.a
+library. The second, \fInone\fP, causes the linker to skip inclusion
+of any external BLAS. Use the first option if an optimized BLAS
+library is available on the host system, e.g., the ATLAS BLAS. The
+second option is useful for packages which already include the
+necessary BLAS subprograms.
+.TP
+.BI \-\-lapack " \fIkeyword\fP"
+Overrides usage of the default \fIlinpack\fP library packaged with
+CUTEr. Instead, use the LAPACK library specified by \fIkeyword\fP. The
+keyword \fIkeyword\fP has one of two forms. The first, \fI-lmylapack\fP
+causes the linker to search for LAPACK subroutines in the libmylapack.a
+library. The second, \fInone\fP, causes the linker to skip inclusion
+of any external LAPACK. Use the first option if an optimized LAPACK
+library is available on the host system. The second option is useful
+for packages which already include the necessary LAPACK subprograms.
+.TP
+.I problem
+\fIproblem.SIF\fP is the name of the file containing the SIF
+information on the problem to be solved.
+.SH ENVIRONMENT 
+.TP
+.SB CUTER
+Home directory for CUTEr
+.TP
+.SB MYCUTER
+Home directory of the installed CUTEr distribution.
+.TP
+.SB MASTSIF
+A pointer to the directory containing the CUTEr problems
+collection. If this variable is not set, the current directory is
+searched for \fIproblem.SIF\fP. If it is set, the current directory is
+searched first, and if \fIproblem.SIF\fP is not found there, $MASTSIF
+is searched.
+.SH AUTHORS
+A.R. Conn, N.I.M. Gould, D. Orban and Ph.L. Toint
+.SH NOTES
+VA15 is part of the Harwell Subroutine Library. It is distributed by the United
+Kingdom Atomic Energy Authority, Harwell, subject to certain license
+agreements. It is copyrighted jointly by the UKAEA and the Science and
+Engineering Research Council. VA15 is authored by J. Nocedal.
+.SH "SEE ALSO"
+\fICUTEr (and SifDec): A Constrained and Unconstrained Testing
+Environment, revisited\fP,
+   N.I.M. Gould, D. Orban and Ph.L. Toint,
+   ACM TOMS, \fB29\fP:4, pp.373-394, 2003.
+
+\fICUTE: Constrained and Unconstrained Testing Environment\fP,
+   I. Bongartz, A.R. Conn, N.I.M. Gould and Ph.L. Toint, 
+   TOMS, \fB21\fP:1, pp.123-160, 1995.
+
+\fIOn the limited memory BFGS method for large-scale optimization\fP, 
+   Liu and Nocedal,
+   Mathematical Programming Series B, \fB45\fP, pp.503-528, 1989.
+
+sifdecode(1), gen(1).

@@ -1,0 +1,270 @@
+
+/* ====================================
+ * This Imakefile builds the SIF
+ * decoder and the CUTEr main programs,
+ * stored in $MYCUTER/precision/bin
+ *
+ * D. Orban for CUTEr, 2001.
+ */
+
+.SUFFIXES: .pro .f .o .f90
+
+/* =====================================
+ * Hold the conventional rules back.
+ * We want to use special rules instead.
+ */
+
+.f.o:
+	true
+
+.f90.o:
+	true
+
+/* -- */
+
+DEPLIBS =
+LDPOSTLIB =
+
+DESTDIR =	/* nothing -- override default */
+CUTERSRCDIR  = $(CUTER)/common/src/tools
+CUTERDESTDIR = $(MYCUTER)/$(PRECISION)/bin
+INTCONFIG     = $(MYCUTER)/$(PRECISION)/config
+INTERFACESSRC = $(CUTER)/build/prototypes
+TOOLSSRCDIR   = $(CUTER)/common/src/tools
+PKGSRCDIR     = $(CUTER)/common/src/pkg
+TOOLSBINDIR   = $(MYCUTER)/$(PRECISION)/bin
+
+all::
+
+baseconfig:
+	cd $(MYCUTER)/$(PRECISION)/config; \
+	$(MAKE) $(MFLAGS) all;
+
+AllTarget(baseconfig)
+
+
+/* ====================
+ * On with linpac first
+ */
+
+LOCAL_OBJ = local.o
+LINPACOBJ = linpac.o
+
+CastCompile(${LINPACOBJ},$(TOOLSSRCDIR),$(TOOLSSRCDIR)/linpac.f,NullParameter)
+CleanStuff(${LINPACOBJ:.o=.f})
+PurgeTarget($(LINPACOBJ))
+
+/* ================================
+ * Now the main programs themselves
+ */
+
+/* ===================================
+ * I need the following lists here
+ * to make sure we don't have problems
+ * with a make which doesn't support
+ * the $$@ construct.
+ */
+
+MAINPROGSOBJ = cobma.o \
+         dfoma.o    \
+	     filma.o	\
+	     genma.o	\
+         ipoptma.o  \
+	     hrbma.o	\
+         la04ma.o   \
+	     lmbma.o	\
+	     mnsma.o	\
+	     npsma.o	\
+	     oslma.o	\
+	     pdsma.o	\
+	     prxma.o	\
+	     snpma.o	\
+	     stnma.o	\
+	     tenma.o	\
+	     uncma.o	\
+	     cgpma.o	\
+	     cgdma.o	\
+	     lbsma.o	\
+	     lbbma.o	\
+	     trnma.o	\
+	     va15ma.o	\
+	     ve09ma.o	\
+	     ve14ma.o	\
+	     vf13ma.o   \
+	     nitsma.o
+
+#ifdef hasknitro
+/* MAINPROGSOBJ += knitma.o */
+#endif
+
+#ifndef NoCcomp
+
+#ifdef hasknitro
+C_KNITRO = knitma.o    /* knitro_f2c.o */
+#endif
+
+#ifdef hasloqo
+C_LOQO = loqoma.o
+#endif
+
+#else
+
+C_KNITRO =
+C_LOQO =
+
+#endif
+
+CMAINPROGSOBJ = $(C_KNITRO) $(C_LOQO)
+
+/* Building rules for Fortran 77 main drivers */
+
+ToolsCompile(cobma.o,$(TOOLSSRCDIR),cobma.f,NullParameter,NullParameter)
+ToolsCompile(filma.o,$(TOOLSSRCDIR),filma.f,NullParameter,NullParameter)
+ToolsCompile(genma.o,$(TOOLSSRCDIR),genma.f,NullParameter,NullParameter)
+ToolsCompile(hrbma.o,$(TOOLSSRCDIR),hrbma.f,NullParameter,NullParameter)
+ToolsCompile(ipoptma.o,$(TOOLSSRCDIR),ipoptma.f,$(INTCONFIG)/ipoptma.inc $(INTCONFIG)/ipoptma.wrk,NullParameter)
+
+#ifdef hasknitro
+/* ToolsCompile(knitma.o,$(TOOLSSRCDIR),knitma.f,NullParameter,NullParameter) */
+#endif
+
+ToolsCompile(la04ma.o,$(TOOLSSRCDIR),la04ma.f,NullParameter,NullParameter)
+ToolsCompile(lmbma.o,$(TOOLSSRCDIR),lmbma.f,NullParameter,NullParameter)
+ToolsCompile(mnsma.o,$(TOOLSSRCDIR),mnsma.f,NullParameter,NullParameter)
+ToolsCompile(npsma.o,$(TOOLSSRCDIR),npsma.f,NullParameter,NullParameter)
+ToolsCompile(oslma.o,$(TOOLSSRCDIR),oslma.f,NullParameter,NullParameter)
+ToolsCompile(pdsma.o,$(TOOLSSRCDIR),pdsma.f,NullParameter,NullParameter)
+ToolsCompile(prxma.o,$(TOOLSSRCDIR),prxma.f,NullParameter,NullParameter)
+ToolsCompile(snpma.o,$(TOOLSSRCDIR),snpma.f,NullParameter,NullParameter)
+ToolsCompile(stnma.o,$(TOOLSSRCDIR),stnma.f,NullParameter,NullParameter)
+ToolsCompile(tenma.o,$(TOOLSSRCDIR),tenma.f,NullParameter,NullParameter)
+ToolsCompile(cgpma.o,$(TOOLSSRCDIR),cgpma.f,NullParameter,NullParameter)
+ToolsCompile(cgdma.o,$(TOOLSSRCDIR),cgdma.f,NullParameter,NullParameter)
+ToolsCompile(lbsma.o,$(TOOLSSRCDIR),lbsma.f,NullParameter,NullParameter)
+ToolsCompile(lbbma.o,$(TOOLSSRCDIR),lbbma.f,NullParameter,NullParameter)
+ToolsCompile(trnma.o,$(TOOLSSRCDIR),trnma.f,NullParameter,NullParameter)
+ToolsCompile(uncma.o,$(TOOLSSRCDIR),uncma.f,NullParameter,NullParameter)
+ToolsCompile(va15ma.o,$(TOOLSSRCDIR),va15ma.f,NullParameter,NullParameter)
+ToolsCompile(ve09ma.o,$(TOOLSSRCDIR),ve09ma.f,NullParameter,NullParameter)
+ToolsCompile(ve14ma.o,$(TOOLSSRCDIR),ve14ma.f,NullParameter,NullParameter)
+ToolsCompile(vf13ma.o,$(TOOLSSRCDIR),vf13ma.f,NullParameter,NullParameter)
+ToolsCompile(nitsma.o,$(TOOLSSRCDIR),nitsma.f,NullParameter,NullParameter)
+
+#ifdef hastao
+include ${TAO_DIR}/bmake/tao_common
+ToolsCompile(taoma.o,$(TOOLSSRCDIR),taoma.F,NullParameter,NullParameter)
+#endif
+
+CleanStuff(${MAINPROGSOBJ:.o=.f})
+PurgeTarget($(MAINPROGSOBJ))
+
+/* Building rules for the C main drivers */
+
+#ifndef NoCcomp
+
+#ifdef hasknitro
+/* CToolsCompile(knitro_f2c.o,$(TOOLSSRCDIR),knitro_f2c.c,$(KNITRODIR)/include/knitro.h,-I$(KNITRODIR)/include) */
+CToolsCompile(knitma.o,$(TOOLSSRCDIR),knitma.c,$(KNITRODIR)/include/knitro.h,-I$(KNITRODIR)/include)
+#endif
+
+#ifdef hasloqo
+CToolsCompile(loqoma.o,$(TOOLSSRCDIR),loqoma.c,$(CUTER)/common/include/cuter.h $(LOQODIR)/loqo.h,-I$(LOQODIR))
+#endif
+
+CleanStuff(${CMAINPROGSOBJ:.o=.c})
+
+#endif /* NoCcomp */
+
+/* Building rules for Fortran 90/95 main drivers */
+
+#ifdef Isa90Compiler
+ F9095TOOLSSRC = $(TOOLSSRCDIR)/cuterinter.f90 \
+	      $(TOOLSSRCDIR)/readin.f90 \
+              $(TOOLSSRCDIR)/cuter_data.f90 \
+              $(TOOLSSRCDIR)/dfoma.f90
+
+ F9095TOOLSOBJ = cuterinter.o readin.o cuter_data.o dfoma.o
+
+Cast90Compile(${F9095TOOLSOBJ},$(TOOLSSRCDIR),$(F9095TOOLSSRC),NullParameter)
+CleanStuff(${F9095TOOLSOBJ:.o=.f90})
+PurgeTarget($(F9095TOOLSOBJ))
+#endif
+
+/* Compilation of F90 main programs is deferred */
+
+#ifdef Isa90Compiler
+AllTarget($(F9095TOOLSOBJ) $(LINPACOBJ) $(MAINPROGSOBJ) $(CMAINPROGSOBJ) $(CMAINHELPERS))
+#else
+AllTarget($(LINPACOBJ) $(MAINPROGSOBJ) $(CMAINPROGSOBJ) $(CMAINHELPERS))
+#endif
+
+/* =============================
+ * Compile the generic interface
+ */
+
+GENSRCDIR = $(CUTER)/common/src/pkg/gen
+GENSRC = $(GENSRCDIR)/gen.f
+GENOBJ = gen.o
+
+ToolsCompile($(GENOBJ),$(GENSRCDIR),gen.f,NullParameter,NullParameter)
+
+PurgeTarget($(GENOBJ))
+AllTarget($(GENOBJ))
+
+#ifdef Isa90Compiler
+GEN90SRC = $(GENSRCDIR)/gen90.f90
+GEN90OBJ = gen90.o
+Cast90Compile($(GEN90OBJ),$(GENSRCDIR),$(GEN90SRC),NullParameter)
+
+GEN90MA = $(TOOLSSRCDIR)/gen90ma.f90
+GEN90MO = gen90ma.o
+Cast90Compile($(GEN90MO),$(TOOLSSRCDIR),$(GEN90MA),NullParameter)
+
+STATSMA = $(TOOLSSRCDIR)/statsma.f90
+STATSMO = statsma.o
+Cast90Compile($(STATSMO),$(TOOLSSRCDIR),$(STATSMA),NullParameter)
+
+COBMA90 = $(TOOLSSRCDIR)/cob90ma.f90
+COBMO90 = cob90ma.o
+Cast90Compile($(COBMO90),$(TOOLSSRCDIR),$(COBMA90),NullParameter)
+
+AllTarget($(GEN90OBJ))
+AllTarget($(GEN90MO))
+AllTarget($(COBMO90))
+CleanStuff(${GEN90OBJ:.o=.f90})
+PurgeTarget(${GEN90OBJ})
+PurgeTarget(${GEN90MO})
+PurgeTarget($(COBMO90))
+
+AllTarget(${STATSMO})
+PurgeTarget(${STATSMO})
+#endif
+
+#ifndef NoCcomp
+GENCSRC = $(GENSRCDIR)/genc.c
+GENCOBJ = genc.o
+GENCMA  = $(TOOLSSRCDIR)/gencma.c
+GENCMO  = gencma.o
+CToolsCompile($(GENCOBJ),$(GENSRCDIR),genc.c,$(CUTER)/common/include/cuter.h,NullParameter)
+
+/* Pass umakeCompilerFlag to gencma.c to correctly name main function */
+
+CToolsCompile($(GENCMO),$(TOOLSSRCDIR),gencma.c,$(CUTER)/common/include/cuter.h,umakeCompilerFlag)
+AllTarget(${GENCOBJ})
+AllTarget(${GENCMO})
+PurgeTarget(${GENCOBJ})
+PurgeTarget(${GENCMO})
+
+DERCHKMA = $(TOOLSSRCDIR)/derchkma.c
+DERCHKMO = derchkma.o
+CToolsCompile($(DERCHKMO),$(TOOLSSRCDIR),derchkma.c,$(CUTER)/common/include/cuter.h,umakeCompilerFlag)
+AllTarget(${DERCHKMO})
+PurgeTarget(${DERCHKMO})
+#endif
+
+/* ============
+ * Matlab stuff: nothing to be done at this point
+ */
+
+DependTarget()
+

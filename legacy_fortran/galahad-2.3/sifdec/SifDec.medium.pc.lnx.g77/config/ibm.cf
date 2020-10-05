@@ -1,0 +1,119 @@
+
+/* Definition of a few local commands */
+
+#define umakeSystemFlag -Dibm
+
+#ifdef IbmLinux
+#define umakeOsFlag     -DIbmLinux
+#define SystemTag       Linux
+#define OperatingSystem lnx
+#endif
+#ifdef IbmAix
+#define umakeOsFlag     -DIbmAix
+#define SystemTag       AIX
+#define OperatingSystem aix
+#endif
+#define KeySys          CUNIX
+#define MachineTag      rs6
+#define MachineName     IBM-RS6000
+
+#ifndef R1Value
+#define R1Value         0.953674317E-06
+#endif
+#ifndef R2Value
+#define R2Value         5.9604646E-08
+#endif
+#ifndef R3Value
+#define R3Value         1.1754945E-38
+#endif
+#ifndef R4Value
+#define R4Value         1.1754945E-38
+#endif
+#ifndef R5Value
+#define R5Value         3.4028234E+38
+#endif
+
+#ifndef D1Value
+#define D1Value         2.2204460492503132D-16
+#endif
+#ifndef D2Value
+#define D2Value         1.1102230246251566D-16
+#endif
+#ifndef D3Value
+#define D3Value         2.225073858507202D-308
+#endif
+#ifndef D4Value
+#define D4Value         2.225073858507202D-308
+#endif
+#ifndef D5Value
+#define D5Value         1.797693134862314D+308
+#endif
+
+/*
+ *  Compiler-related parameters, 
+ *  set by install_cuter at installation time
+ */
+
+#ifdef Ise90
+#define umakeCompiler90Flag      -DIsa90Compiler
+#define CompilerTagId            e90
+#define umakeCompilerFlag        -DIse90
+#define CompileCmd               epcf90 -c -FI -w -us
+#define LoadCmd                  epcf90
+#define CompilerIsF9095          yes
+#define Compile9095Cmd           epcf90 -c
+#define Load9095Cmd              epcf90
+#define FortranFlags             -O
+#define NumberOfBytes            8
+#endif
+#ifdef Isx90
+#define umakeCompiler90Flag      -DIsa90Compiler
+#define CompilerTagId            x90
+#define umakeCompilerFlag        -DIsx90
+#define CompileCmd               xlf90 -c -qmaxmem=-1 -qfixed -qsuffix=f=f
+#define LoadCmd                  xlf90 -qmaxmem=-1 -qfixed -qsuffix=f=f
+#define CompilerIsF9095          yes
+#define Compile9095Cmd           xlf90 -c -qmaxmem=-1 -qsuffix=f=f90
+#define Load9095Cmd              xlf90 -qmaxmem=-1 -qsuffix=f=f90
+#define FortranFlags             -O5
+#define NumberOfBytes            8
+#endif
+#ifdef Isx95
+#define umakeCompiler90Flag      -DIsa90Compiler
+#define CompilerTagId            x95
+#define umakeCompilerFlag        -DIsx95
+#define CompileCmd               xlf95 -c -qmaxmem=-1 -qfixed -qsuffix=f=f
+#define LoadCmd                  xlf95 -qmaxmem=-1 -qfixed -qsuffix=f=f
+#define CompilerIsF9095          yes
+#define Compile9095Cmd           xlf95 -c -qmaxmem=-1 -qsuffix=f=f90 -F:f90
+#define Load9095Cmd              xlf95 -qmaxmem=-1 -qsuffix=f=f90 -F:f90
+#define FortranFlags             -O5
+#define NumberOfBytes            8
+#endif
+#ifdef Isxlf
+#define umakeCompiler90Flag        
+#define CompilerTagId            xlf
+#define umakeCompilerFlag        -DIsxlf
+#define CompileCmd               xlf -c -qmaxmem=-1
+#define LoadCmd                  xlf -qmaxmem=-1
+#define CompilerIsF9095          no
+#define Compile9095Cmd
+#define Load9095Cmd
+#define FortranFlags             -O5
+#define NumberOfBytes            8
+#endif
+
+/*
+ *  Same procedure for C compilers
+ */
+
+#ifdef Isxlc
+#define umakeCCompilerExt
+#define CCompilerTagId           xlc
+#define umakeCCompilerFlag       -DIsxlc
+#define CCompileCmd              xlc -c -qmaxmem=-1
+#define CLoadCmd                 xlc -qmaxmem=-1
+#define CFlags                   -O5
+#endif
+
+/* -- */

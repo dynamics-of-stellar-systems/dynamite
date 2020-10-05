@@ -1,0 +1,103 @@
+
+/* ================================
+ * Specialize the SifDec interfaces
+ *
+ * This Umakefile builds the
+ * interfaces, whose destination
+ * is $(MYSIFDEC)/bin
+ * also given by $(INTERFACESBIN)
+ * below.
+ *
+ * D. Orban for CUTEr & Co, 2001.
+ */
+
+.SUFFIXES: .pro
+
+INTERFACESSRC = $(SIFDEC)/build/prototypes
+INTERFACESBIN = $(MYSIFDEC)/bin
+INTCONFIG     = $(MYSIFDEC)/$(PRECISION)/config
+DESTDIR       =
+
+
+
+/* ===================================
+ * I need the two following lists here
+ * to make sure we don't have problems
+ * with a make which doesn't support
+ * the $$@ construct.
+ */
+
+SHELLEXT = sh
+
+CLASSALL_DOT_PRO = $(INTERFACESSRC)/classall.$(SHELLEXT).pro
+CLASSIFY_DOT_PRO = $(INTERFACESSRC)/classify.$(SHELLEXT).pro
+HELPMSG_DOT_PRO  = $(INTERFACESSRC)/helpmsg.$(SHELLEXT).pro
+SELECT_DOT_PRO   = $(INTERFACESSRC)/select.$(SHELLEXT).pro
+SIFDECODE_DOR_PRO= $(INTERFACESSRC)/sifdecode.$(SHELLEXT).pro
+
+INTERFACES_AT_LARGE_DOT_PRO =     \
+		      $(CLASSALL_DOT_PRO) \
+		      $(CLASSIFY_DOT_PRO) \
+		      $(HELPMSG_DOT_PRO)  \
+		      $(SELECT_DOT_PRO)   \
+		      $(SIFDECODE_DOT_PRO)
+
+INTERFACES_AT_LARGE = classall   \
+		      classify   \
+		      helpmsg    \
+		      select     \
+		      sifdecode
+
+all::
+
+/* =====================================
+ * Rules for casting the .pro interfaces
+ */
+
+INTERFACES_DEPS = $(INTCONFIG)/cmds $(INTCONFIG)/this_build $(INTCONFIG)/script.sed
+
+InterfaceTarget(classall,$(INTERFACESSRC),classall.$(SHELLEXT).pro,$(INTERFACES_DEPS))
+InterfaceTarget(classify,$(INTERFACESSRC),classify.$(SHELLEXT).pro,$(INTERFACES_DEPS))
+InterfaceTarget(helpmsg,$(INTERFACESSRC),helpmsg.$(SHELLEXT).pro,$(INTERFACES_DEPS))
+InterfaceTarget(select,$(INTERFACESSRC),select.$(SHELLEXT).pro,$(INTERFACES_DEPS))
+InterfaceTarget(sifdecode,$(INTERFACESSRC),sifdecode.$(SHELLEXT).pro,$(INTERFACES_DEPS))
+
+PurgeTarget($(INTERFACES_AT_LARGE))
+
+/* ============
+ * Now we build
+ */
+
+/* =======================
+ * Install the awk scripts
+ */
+
+InstallSimpleTarget(show.awk,$(INTERFACESSRC),show.awk,NullParameter,$(INTERFACESBIN),show.awk)
+PurgeTarget(show.awk)
+
+InstallSimpleTarget(param.awk,$(INTERFACESSRC),param.awk,NullParameter,$(INTERFACESBIN),param.awk)
+PurgeTarget(param.awk)
+
+
+/* ==================================================
+ * On with the SifDec select and classification tools
+ *
+ */
+
+SLCTSRCDIR = $(SIFDEC)/common/src/select
+SLCTSRCS = $(SLCTSRCDIR)/slct.f $(SLCTSRCDIR)/clsf.f
+
+SimpleFortranTarget(slct,$(SLCTSRCDIR),slct.f,NullParameter,$(LDLIBS),NullParameter)
+SimpleFortranTarget(clsf,$(SLCTSRCDIR),clsf.f,NullParameter,$(LDLIBS),NullParameter)
+
+CleanStuff(slct.o clsf.o)
+AllTarget(slct clsf)
+
+
+/* ==========
+ * Define all
+ */
+
+AllTarget($(INTERFACES_AT_LARGE) show.awk param.awk)
+
+DependTarget()

@@ -1,0 +1,77 @@
+.\" @(#)cscifg v1.0 11/2000;
+.TH cscifg 3M "17 Nov 2000"
+.SH NAME
+CSCIFG \- CUTEr tool to evaluate a single constraint function value and
+possibly gradient in sparse format.
+.SH SYNOPSIS
+CALL CSCIFG( N, ICON, X, CI, NNZSGC, LSGCI, SGCI, IVSGCI, GRAD )
+.SH DESCRIPTION
+The CSCIFG subroutine evaluates the value of a particular constraint
+function of the problem decoded from a SIF file by the script \fIsifdecode\fP
+at the point X, and possibly its gradient. The gradient is stored in sparse
+format.
+
+The problem under consideration
+consists in minimizing (or maximizing) an objective function
+.EQ
+f(x)
+.EN
+over all
+.EQ
+x
+.EN
+\(mo
+.EQ
+R sup n
+.EN
+subject to
+
+general equations
+.EQ
+c sub i (x) ~=~ 0,
+.EN
+.EQ
+~(i
+.EN
+\(mo
+.EQ
+left { 1 ,..., m sub E right } ),
+.EN
+
+general inequalities
+.EQ
+c sub i sup l (x) ~<=~ c sub i (x) ~<=~ c sub i sup u (x),
+.EN
+.EQ
+~(i
+.EN
+\(mo
+.EQ
+left { m sub E + 1 ,..., m right }),
+.EN
+
+and simple bounds
+.EQ
+b sup l ~<=~ x ~<=~ b sup u.
+.EN
+
+The objective function is group-partially separable and all constraint functions are partially separable.
+
+.LP
+.SH NOTE
+This function is obsolete and has been included for compatibility
+purposes only. Refer to ccifsg(3M).
+.LP
+.SH AUTHORS
+I. Bongartz, A.R. Conn, N.I.M. Gould, D. Orban and Ph.L. Toint
+.SH "SEE ALSO"
+\fICUTEr (and SifDec): A Constrained and Unconstrained Testing
+Environment, revisited\fP,
+   N.I.M. Gould, D. Orban and Ph.L. Toint,
+   ACM TOMS, \fB29\fP:4, pp.373-394, 2003.
+
+\fICUTE: Constrained and Unconstrained Testing Environment\fP,
+I. Bongartz, A.R. Conn, N.I.M. Gould and Ph.L. Toint, 
+TOMS, \fB21\fP:1, pp.123-160, 1995.
+
+sifdecode(1).

@@ -1,0 +1,93 @@
+.\" @(#)cdimse v1.0 11/2000;
+.TH cdimse 3M "17 Nov 2000"
+.SH NAME
+CDIMSE \- CUTEr tool to determine number of nonzeros to store the
+Hessian of the Lagrangian.
+.SH SYNOPSIS
+CALL CDIMSE( NE, NZH, NZIRNH )
+.SH DESCRIPTION
+The CDIMSE subroutine determines the number of nonzero elements
+required to store the Hessian matrix of the Lagrangian function for
+the problem decoded from a SIF file by the script \fIsifdecode\fP.
+The matrix is stored in sparse "finite element" format.
+
+The problem under consideration
+consists in minimizing (or maximizing) an objective function
+.EQ
+f(x)
+.EN
+over all
+.EQ
+x
+.EN
+\(mo
+.EQ
+R sup n
+.EN
+subject to
+
+general equations
+.EQ
+c sub i (x) ~=~ 0,
+.EN
+.EQ
+~(i
+.EN
+\(mo
+.EQ
+left { 1 ,..., m sub E right } ),
+.EN
+
+general inequalities
+.EQ
+c sub i sup l (x) ~<=~ c sub i (x) ~<=~ c sub i sup u (x),
+.EN
+.EQ
+~(i
+.EN
+\(mo
+.EQ
+left { m sub E + 1 ,..., m right }),
+.EN
+
+and simple bounds
+.EQ
+b sup l ~<=~ x ~<=~ b sup u.
+.EN
+
+The objective function is group-partially separable and all constraint functions are partially separable.
+
+By convention, the signs of the Lagrange multipliers V are set so the
+Lagrangian function can be written as
+.EQ
+L(X, V) = f(X) + < c(X), V >.
+.EN
+.LP 
+.SH ARGUMENTS
+The arguments of CDIMSE are as follows
+.TP 5
+.B NE \fP[out] - integer
+the number of "finite-elements" used,
+.TP
+.B NZH \fP[out] - integer
+the dimension of the array needed to store the real values of the
+Hessian, taking all the elements into account (i.e. the dimension of
+the array HI),
+.TP
+.B NZIRNH \fP[out] - integer
+the dimension of the array needed to store the integer values of the
+Hessian (i.e. the dimension of the array IRNHI).
+.LP
+.SH AUTHORS
+I. Bongartz, A.R. Conn, N.I.M. Gould, D. Orban and Ph.L. Toint
+.SH "SEE ALSO"
+\fICUTEr (and SifDec): A Constrained and Unconstrained Testing
+Environment, revisited\fP,
+   N.I.M. Gould, D. Orban and Ph.L. Toint,
+   ACM TOMS, \fB29\fP:4, pp.373-394, 2003.
+
+\fICUTE: Constrained and Unconstrained Testing Environment\fP,
+I. Bongartz, A.R. Conn, N.I.M. Gould and Ph.L. Toint, 
+TOMS, \fB21\fP:1, pp.123-160, 1995.
+
+sifdecode(1).

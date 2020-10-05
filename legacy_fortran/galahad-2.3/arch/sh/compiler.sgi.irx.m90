@@ -1,0 +1,29 @@
+# MIPSpro f90 under IRIX
+#
+#  Fortran compilation and loading
+#
+
+FORTRAN='f90'
+BASIC='-c'
+LIBCMD=''
+MODCMD='-I$MOD'
+MVMODS=''
+OPTIMIZATION='-OPT:Olimit=0'
+OPTIMIZATION=''
+DEBUG=
+F77='-fixedform'
+F90=''
+F95=''
+NOFMAIN=''
+CCONDEF=
+USUAL=
+SPECIAL=
+F77SUFFIX=f
+F95SUFFIX=f95
+TIMER=GEN
+BLAS=
+LAPACK=
+HSL=
+METIS=
+NOT95=NOT95
+BINSHELL=sh

@@ -1,0 +1,73 @@
+.\" @(#)usetup v1.0 11/2000;
+.TH usetup 3M "17 Nov 2000"
+.SH NAME
+USETUP \- CUTEr tool to set up the data structures for unconstrained or bound-constrained minimization.
+.SH SYNOPSIS
+CALL USETUP( INPUT, IOUT, N, X, BL, BU, NMAX )
+.SH DESCRIPTION
+The USETUP subroutine sets up the correct data structures for
+subsequent computations in the case where the only possible
+constraints are bound constraints.
+
+The problem under consideration
+consists in minimizing (or maximizing) an objective function
+.EQ
+f(x)
+.EN
+over all
+.EQ
+x
+.EN
+\(mo
+.EQ
+R sup n
+.EN
+subject to the simple bounds
+.EQ
+b sup l ~<=~ x ~<=~ b sup u.
+.EN
+The objective function is group-partially separable.
+
+.LP 
+.SH ARGUMENTS
+The arguments of USETUP are as follows
+.TP 5
+.B INPUT \fP[in] - integer
+the unit number for the decoded data; the unit from which OUTSDIF.d is
+read,
+.TP
+.B IOUT \fP[in] - integer
+the unit number for any error messages,
+.TP
+.B N \fP[out] - integer
+the number of variables for the problem,
+.TP
+.B X \fP[out] - real/double precision
+an array which gives the initial estimate of the solution of the
+problem,
+.TP
+.B BL \fP[out] - real/double precision
+an array which gives lower bounds on the variables,
+.TP
+.B  BU \fP[out] - real/double precision
+an array which gives upper bounds on the variables,
+.TP
+.B NMAX \fP[in] - integer
+the actual declared dimension of X, BL and BU.
+.LP
+.SH APPLICATION USAGE
+A call to USETUP must precede calls to other evaluation tools for
+unconstrained and bound constrained problems.
+.SH AUTHORS
+I. Bongartz, A.R. Conn, N.I.M. Gould, D. Orban and Ph.L. Toint
+.SH "SEE ALSO"
+\fICUTEr (and SifDec): A Constrained and Unconstrained Testing
+Environment, revisited\fP,
+   N.I.M. Gould, D. Orban and Ph.L. Toint,
+   ACM TOMS, \fB29\fP:4, pp.373-394, 2003.
+
+\fICUTE: Constrained and Unconstrained Testing Environment\fP,
+I. Bongartz, A.R. Conn, N.I.M. Gould and Ph.L. Toint, 
+TOMS, \fB21\fP:1, pp.123-160, 1995.
+
+csetup(3M).

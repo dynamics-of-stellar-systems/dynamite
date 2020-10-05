@@ -1,0 +1,813 @@
+#!/bin/csh -f
+#
+# Build script for CUTEr
+#
+# syntax: install_cuter 
+#
+# N.Gould, D. Orban & Ph. Toint
+# ( Last modified on 2 Jan 2003 at 11:04:00 )
+#
+
+#  check input arguments (if any)
+
+if ( $#argv != 0 ) then
+   echo "Use: install_cuter"
+   exit 1
+endif
+
+setenv CUTER $PWD
+set ARCH = $CUTER/build/arch
+
+#
+# Prelude to installation phase
+#
+
+set UMAKE_COMMAND = "${CUTER}/build/scripts/umake -I. -Iconfig"
+set UMAKE_OPTIONS = ""
+set UMAKE_CPP_OPTIONS = ""
+
+set CORRECT_PLATFORM = "false"
+while ( $CORRECT_PLATFORM == "false" ) 
+   echo ' Select platform'
+   echo
+   echo '	(1) Compaq (DEC) alpha'
+   echo '	(2) Cray'
+   echo '	(3) HP workstation'
+   echo '	(4) IBM RS/6000'
+   echo '	(5) PC'
+   echo '	(6) SGI workstation'
+   echo '	(7) SUN workstation'
+   echo '	(8) Mac OSX'
+   echo '	(0) Other (user-defined)'
+   
+   set CHOICE = $<
+   
+   switch ( $CHOICE )
+       case "1":
+            set CORRECT_PLATFORM = "true"
+            setenv MCH "alp"
+            setenv MACHINE "Compaq-Alpha"
+	    set UMAKE_OPTIONS = "${UMAKE_OPTIONS} -D__osf__"
+
+            set CORRECT_OS = "false"
+            while ( $CORRECT_OS == "false" ) 
+
+               echo ' Select operating system'
+               echo
+               echo '	(1) Digital Unix'
+               echo '	(2) Tru-64 Unix'
+               echo '	(3) Linux'
+               
+               set CHOICE = $<
+
+               switch ( $CHOICE )
+               case 1:
+                  set CORRECT_OS = "true"
+                  setenv OS "dux"
+                  breaksw
+               case 2:
+                  set CORRECT_OS = "true"
+                  setenv OS "t64"
+		  set UMAKE_OPTIONS = "${UMAKE_OPTIONS} -DTru64"
+                  breaksw
+               case 3:
+                  set CORRECT_OS = "true"
+                  setenv OS "lnx"
+		  set UMAKE_OPTIONS = "${UMAKE_OPTIONS} -DCompaqLinux"
+                  breaksw
+               default:
+                  echo ' Please give an integer between 1 and 3'
+               endsw
+            end
+            breaksw
+       case "2":
+            set CORRECT_PLATFORM = "true"
+            setenv MCH "cry"
+            setenv MACHINE "CRAY-T3E"
+	    set UMAKE_OPTIONS = "${UMAKE_OPTIONS} -D_CRAY"
+            setenv OS "unc"
+            breaksw
+       case "3":
+            set CORRECT_PLATFORM = "true"
+            setenv MCH "hp"
+            setenv MACHINE "HP-workstation"
+	    set UMAKE_OPTIONS = "${UMAKE_OPTIONS} -Dhpux"
+
+            set CORRECT_OS = "false"
+            while ( $CORRECT_OS == "false" ) 
+
+               echo ' Select operating system'
+               echo
+               echo '	(1) HP-UX'
+               echo '	(2) Linux'
+            
+               set CHOICE = $<
+
+               switch ( $CHOICE )
+               case 1:
+                  set CORRECT_OS = "true"
+                  setenv OS "hpu"
+		  set UMAKE_OPTIONS = "${UMAKE_OPTIONS} -DHpUx"
+                  breaksw
+               case 2:
+                  set CORRECT_OS = "true"
+                  setenv OS "lnx"
+		  set UMAKE_OPTIONS = "${UMAKE_OPTIONS} -DHpLinux"
+                  breaksw
+               default:
+                  echo ' Please give an integer between 1 and 2'
+               endsw
+            end
+            breaksw
+       case "4":
+            set CORRECT_PLATFORM = "true"
+            setenv MCH "rs6"
+            setenv MACHINE "IBM-RS6000"
+	    set UMAKE_OPTIONS = "${UMAKE_OPTIONS} -Dibm"
+
+            set CORRECT_OS = "false"
+            while ( $CORRECT_OS == "false" ) 
+
+               echo ' Select operating system'
+               echo
+               echo '	(1) AIX'
+               echo '	(2) Linux'
+           
+               set CHOICE = $<
+
+               switch ( $CHOICE )
+               case 1:
+                  set CORRECT_OS = "true"
+                  setenv OS "aix"
+		  set UMAKE_OPTIONS = "${UMAKE_OPTIONS} -DIbmAix"
+                  breaksw
+               case 2:
+                  set CORRECT_OS = "true"
+                  setenv OS "lnx"
+		  set UMAKE_OPTIONS = "${UMAKE_OPTIONS} -DIbmLinux"
+                  breaksw
+               default:
+                  echo ' Please give an integer between 1 and 2'
+               endsw
+            end
+            breaksw
+       case "5":
+            set CORRECT_PLATFORM = "true"
+            setenv MCH "pc"
+            setenv MACHINE "Intel-like-PC"
+	    set UMAKE_OPTIONS = "${UMAKE_OPTIONS} -Dlinux"
+	    # The following line is for Red Hat systems
+	    set UMAKE_CPP_OPTIONS = "-Ptraditional -Pw"
+            setenv OS "lnx"
+            breaksw
+       case "6":
+            set CORRECT_PLATFORM = "true"
+            setenv MCH "sgi"
+            setenv MACHINE "SGI-workstation"
+	    set UMAKE_OPTIONS = "${UMAKE_OPTIONS} -Dsgi"
+
+            set CORRECT_OS = "false"
+            while ( $CORRECT_OS == "false" ) 
+
+               echo ' Select operating system'
+               echo
+               echo '	(1) IRIX'
+               echo '	(2) Linux'
+            
+               set CHOICE = $<
+
+               switch ( $CHOICE )
+               case 1:
+                  set CORRECT_OS = "true"
+                  setenv OS "irx"
+		  set UMAKE_OPTIONS = "${UMAKE_OPTIONS} -DSgiIrix"
+                  breaksw
+               case 2:
+                  set CORRECT_OS = "true"
+                  setenv OS "lnx"
+		  set UMAKE_OPTIONS = "${UMAKE_OPTIONS} -DSgiLinux"
+                  breaksw
+               default:
+                  echo ' Please give an integer between 1 and 2'
+               endsw
+            end
+            breaksw
+       case "7":
+            set CORRECT_PLATFORM = "true"
+            setenv MCH "sun"
+            setenv MACHINE "Sun-workstation"
+	    set UMAKE_OPTIONS = "${UMAKE_OPTIONS} -Dsunq"
+
+            set CORRECT_OS = "false"
+            while ( $CORRECT_OS == "false" ) 
+
+               echo ' Select operating system'
+               echo
+               echo '	(1) Solaris'
+               echo '	(2) Linux'
+
+               set CHOICE = $<
+
+               switch ( $CHOICE )
+               case 1:
+                  set CORRECT_OS = "true"
+                  setenv OS "sol"
+		  set UMAKE_OPTIONS = "${UMAKE_OPTIONS} -DSunSolaris"
+                  breaksw
+               case 2:
+                  set CORRECT_OS = "true"
+                  setenv OS "lnx"
+		  set UMAKE_OPTIONS = "${UMAKE_OPTIONS} -DSunLinux"
+                  breaksw
+               default:
+                  echo ' Please give an integer between 1 and 2'
+               endsw
+            end
+            breaksw
+       case "8":
+            set CORRECT_PLATFORM = "true"
+            setenv MCH "mac"
+            setenv MACHINE "mac"
+            setenv OS "osx"
+	    set UMAKE_OPTIONS = "${UMAKE_OPTIONS} -Dmac"
+            breaksw
+       case "0":
+	    set CORRECT_PLATFORM = "true"
+	    setenv MCH "gnx"
+	    setenv MACHINE "Generic Unix"
+	    setenv OS "unknown"
+        breaksw
+       default:
+         echo ' Please give an integer between 0 and 8'
+   endsw
+end
+
+# Get only the necessary platform-dependent commands
+# to complete the installation. A more complete set
+# will be generated after the user has chosen the
+# compilers and precision they wish to use.
+
+set CPP = 'cpp -P'
+sed -f ${CUTER}/build/scripts/protect.sed ${CUTER}/build/scripts/makefile.cmds | ${CPP} -I${CUTER}/config -I. -DFromInstallCUTEr ${UMAKE_OPTIONS} | sed -f ${CUTER}/build/scripts/gettabs.sed > /tmp/Makefile.cmds.$$
+cd /tmp
+if( -f "cmds" ) rm -f cmds
+make -f Makefile.cmds.$$ cmds >& /dev/null
+unalias source
+source /tmp/cmds
+cd ${CUTER}
+
+echo ' Select Fortran compiler'
+
+set COMP = ( `$SED -e '/#.*$/d' ${ARCH}/f.arch | $SED -e '/^ *$/d' | $GREP ${MCH} | $GREP ${OS} | $AWK 'BEGIN{FS=";"}{print $5}'` )
+set SYMB = ( `$SED -e '/#.*$/d' ${ARCH}/f.arch | $SED -e '/^ *$/d' | $GREP ${MCH} | $GREP ${OS} | $AWK 'BEGIN{FS=";"}{print $4}'` )
+set CMPEXT = ( `$SED -e '/#.*$/d' ${ARCH}/f.arch | $SED -e '/^ *$/d' | $GREP ${MCH} | $GREP ${OS} | $AWK 'BEGIN{FS=";"}{print $3}'` )
+set OPSYS = ( `$SED -e '/#.*$/d' ${ARCH}/f.arch | $SED -e '/^ *$/d' | $GREP ${MCH} | $GREP ${OS} | $AWK 'BEGIN{FS=";"}{print $2}'` )
+set SYS = ( `$SED -e '/#.*$/d' ${ARCH}/f.arch | $SED -e '/^ *$/d' | $GREP ${MCH} | $GREP ${OS} | $AWK 'BEGIN{FS=";"}{print $1}'` )
+set ALLCOMP = ( `$SED -e '/#.*$/d' ${ARCH}/f.arch | $SED -e '/^ *$/d' | $GREP 'all' | $GREP 'all' | $AWK 'BEGIN{FS=";"}{print $5}'` )
+set ALLSYMB = ( `$SED -e '/#.*$/d' ${ARCH}/f.arch | $SED -e '/^ *$/d' | $GREP 'all' | $GREP 'all' | $AWK 'BEGIN{FS=";"}{print $4}'` )
+set ALLCMPEXT = ( `$SED -e '/#.*$/d' ${ARCH}/f.arch | $SED -e '/^ *$/d' | $GREP 'all' | $GREP 'all' | $AWK 'BEGIN{FS=";"}{print $3}'` )
+set ALLOPSYS = ( `$SED -e '/#.*$/d' ${ARCH}/f.arch | $SED -e '/^ *$/d' | $GREP 'all' | $GREP 'all' | $AWK 'BEGIN{FS=";"}{print $2}'` )
+set ALLSYS = ( `$SED -e '/#.*$/d' ${ARCH}/f.arch | $SED -e '/^ *$/d' | $GREP 'all' | $GREP 'all' | $AWK 'BEGIN{FS=";"}{print $1}'` )
+
+set COMP = ( ${COMP} ${ALLCOMP} )
+set SYMB = ( ${SYMB} ${ALLSYMB} )
+set CMPEXT  = ( ${CMPEXT}  ${ALLCMPEXT}  )
+set OPSYS = ( ${OPSYS} ${ALLOPSYS} )
+set SYS = ( ${SYS} ${ALLSYS} )
+
+set NUMBER = ${#COMP}
+
+set LIST = ( $COMP )
+set SYMBLIST = ( $SYMB )
+set CMPLIST = ( $CMPEXT )
+set OPSYSLIST = ( ${OPSYS} )
+set SYSLIST = ( ${SYS} )
+
+set CORRECT_COMPILER = "false"
+while ( $CORRECT_COMPILER == "false" ) 
+
+   @ count = 0
+   foreach i ( $LIST )
+     @ count ++
+     set cmpInfo = `echo $COMP[$count] | tr '_' ' '`
+     printf '\t[%-2d]  %s\n' $count "$cmpInfo"
+   end
+
+   set CHOICE = $<
+   
+   @ i = 0
+   while ( $i < $NUMBER &&  $CORRECT_COMPILER == "false" )
+      @ i ++
+      if ( $CHOICE == $i ) then
+        set CORRECT_COMPILER = "true"
+        set CHOICE = $i
+      endif
+   end
+   if ( $CORRECT_COMPILER == "true" ) then
+     set COMPILER = $LIST[$CHOICE]
+     set CMP = $CMPLIST[$CHOICE]
+     set OSTAG = $OPSYSLIST[$CHOICE]
+     set SYSTAG = $SYSLIST[$CHOICE]
+     set UMAKE_OPTIONS = "${UMAKE_OPTIONS} $SYMBLIST[$CHOICE]"
+   else
+     echo " Please give an integer between 1 and $NUMBER"
+   endif
+end
+
+echo ' Select C compiler'
+
+set C_COMP = ( `$SED -e '/#.*$/d' ${ARCH}/c.arch | $SED -e '/^ *$/d' | $GREP ${MCH} | $GREP ${OS} | $AWK 'BEGIN{FS=";"}{print $5}'` )
+set C_SYMB = ( `$SED -e '/#.*$/d' ${ARCH}/c.arch | $SED -e '/^ *$/d' | $GREP ${MCH} | $GREP ${OS} | $AWK 'BEGIN{FS=";"}{print $4}'` )
+set C_CMPEXT = ( `$SED -e '/#.*$/d' ${ARCH}/c.arch | $SED -e '/^ *$/d' | $GREP ${MCH} | $GREP ${OS} | $AWK 'BEGIN{FS=";"}{print $3}'` )
+set C_OPSYS = ( `$SED -e '/#.*$/d' ${ARCH}/c.arch | $SED -e '/^ *$/d' | $GREP ${MCH} | $GREP ${OS} | $AWK 'BEGIN{FS=";"}{print $2}'` )
+set C_SYS = ( `$SED -e '/#.*$/d' ${ARCH}/c.arch | $SED -e '/^ *$/d' | $GREP ${MCH} | $GREP ${OS} | $AWK 'BEGIN{FS=";"}{print $1}'` )
+set C_ALLCOMP = ( `$SED -e '/#.*$/d' ${ARCH}/c.arch | $SED -e '/^ *$/d' | $GREP 'all' | $GREP 'all' | $AWK 'BEGIN{FS=";"}{print $5}'` )
+set C_ALLSYMB = ( `$SED -e '/#.*$/d' ${ARCH}/c.arch | $SED -e '/^ *$/d' | $GREP 'all' | $GREP 'all' | $AWK 'BEGIN{FS=";"}{print $4}'` )
+set C_ALLCMPEXT = ( `$SED -e '/#.*$/d' ${ARCH}/c.arch | $SED -e '/^ *$/d' | $GREP 'all' | $GREP 'all' | $AWK 'BEGIN{FS=";"}{print $3}'` )
+set C_ALLOPSYS = ( `$SED -e '/#.*$/d' ${ARCH}/c.arch | $SED -e '/^ *$/d' | $GREP 'all' | $GREP 'all' | $AWK 'BEGIN{FS=";"}{print $2}'` )
+set C_ALLSYS = ( `$SED -e '/#.*$/d' ${ARCH}/c.arch | $SED -e '/^ *$/d' | $GREP 'all' | $GREP 'all' | $AWK 'BEGIN{FS=";"}{print $1}'` )
+
+set C_COMP = ( ${C_COMP} ${C_ALLCOMP} )
+set C_SYMB = ( ${C_SYMB} ${C_ALLSYMB} )
+set C_CMPEXT  = ( ${C_CMPEXT}  ${C_ALLCMPEXT}  )
+set C_OPSYS = ( ${C_OPSYS} ${C_ALLOPSYS} )
+set C_SYS = ( ${C_SYS} ${C_ALLSYS} )
+
+set NUMBER = ${#C_COMP}
+
+set C_LIST = ( $C_COMP )
+set C_SYMBLIST = ( $C_SYMB )
+set C_CMPLIST = ( $C_CMPEXT )
+set C_OPSYSLIST = ( ${C_OPSYS} )
+set C_SYSLIST = ( ${C_SYS} )
+
+set useCcomp = 'true'
+set CORRECT_COMPILER = "false"
+while ( $CORRECT_COMPILER == "false" ) 
+
+   @ count = 0
+   printf '\t[%-2d]  %s\n' $count "No C extension to CUTEr"
+   foreach i ( $C_LIST )
+     @ count ++
+     set cmpInfo = `echo $C_COMP[$count] | tr '_' ' '`
+     printf '\t[%-2d]  %s\n' $count "$cmpInfo"
+   end
+
+   set CHOICE = $<
+   
+   @ i = 0
+   while ( $i <= $NUMBER &&  $CORRECT_COMPILER == "false" )
+      if ( $CHOICE == $i ) then
+        set CORRECT_COMPILER = "true"
+        set CHOICE = $i
+      else
+        @ i ++
+      endif
+   end
+   if ( $CORRECT_COMPILER == "true" && $i != '0' ) then
+     set C_COMPILER = $C_LIST[$CHOICE]
+     set CCMP = $C_CMPLIST[$CHOICE]
+     set COSTAG = $C_OPSYSLIST[$CHOICE]
+     set CSYSTAG = $C_SYSLIST[$CHOICE]
+     set UMAKE_OPTIONS = "${UMAKE_OPTIONS} $C_SYMBLIST[$CHOICE]"
+   else if( $i == '0' ) then
+     set useCcomp = 'false'
+   else
+     echo " Please give an integer between 0 and $NUMBER"
+   endif
+end
+
+if( $useCcomp == 'false' ) then
+  set UMAKE_OPTIONS = "${UMAKE_OPTIONS} -DNoCcomp"
+else
+  set UMAKE_OPTIONS = "${UMAKE_OPTIONS} -UNoCcomp"
+endif
+
+setenv INSTALLPRECISION ""
+setenv INSTALLSIZE ""
+
+while ( $INSTALLPRECISION != "S" && $INSTALLPRECISION != "D" )
+    echo " Set install precision (D=double, s=single): "
+    setenv INSTALLPRECISION $<
+    if ( $INSTALLPRECISION == "" ) setenv INSTALLPRECISION "D"
+    setenv INSTALLPRECISION `echo $INSTALLPRECISION | tr '[a-z]' '[A-Z]'`
+end
+
+switch ($INSTALLPRECISION)
+    case S:
+	setenv PRECISION "single"
+        set PRC = "CS   "
+        set PRC90 = '\!S '
+	breaksw
+    case D:
+	setenv PRECISION "double"
+        set PRC = "CD   "
+        set PRC90 = '\!D '
+	breaksw
+    default:
+	echo "$0: error occured while setting precision. Aborting."
+	exit 1
+endsw
+
+while ( $INSTALLSIZE != "L" && $INSTALLSIZE != "M" && \
+        $INSTALLSIZE != "S" && $INSTALLSIZE != "C" )
+    echo " Set install size (L=large, m=medium, s=small, c=customized): "
+    setenv INSTALLSIZE $<
+    if ( $INSTALLSIZE == "" ) setenv INSTALLSIZE "L"
+    setenv INSTALLSIZE `echo $INSTALLSIZE | tr '[a-z]' '[A-Z]'`
+end
+
+switch ($INSTALLSIZE)
+    case C:
+	setenv SIZE "custom"
+        set SIZ  = "CCUS"
+        set SIZ90  = '\!CUS'
+	set UMAKE_OPTIONS = "${UMAKE_OPTIONS} -DCustomSize"
+	breaksw
+    case L:
+	setenv SIZE "large"
+        set SIZ  = "CBIG"
+        set SIZ90  = '\!BIG'
+	set UMAKE_OPTIONS = "${UMAKE_OPTIONS} -DLargeSize"
+	breaksw
+    case M:
+	setenv SIZE "medium"
+        set SIZ  = "CMED"
+        set SIZ90  = '\!MED'
+	set UMAKE_OPTIONS = "${UMAKE_OPTIONS} -DMediumSize"
+	breaksw
+    case S:
+	setenv SIZE "small"
+        set SIZ  = "CTOY"
+        set SIZ90  = '\!TOY'
+	set UMAKE_OPTIONS = "${UMAKE_OPTIONS} -DSmallSize"
+	breaksw
+    default:
+	echo "$0: error occured while setting size. Aborting."
+	exit 1
+endsw
+
+#
+# Now select the directory to install to
+#
+
+setenv MYCUTER $CUTER/CUTEr.${SIZE}.${MCH}.${OS}.${CMP}
+
+# so for instance, you would have an install directory called
+# CUTEr.large.sun.sol.f77 for large version on a
+# Sun machine running Solaris. This scheme provides the default.
+
+set YESNO = ""
+@ chosen = 0
+
+echo ' By default, CUTEr with your selections will be installed in'
+echo "  $MYCUTER"
+echo ' Is this OK (Y/n)?'
+while ( $YESNO != 'Y' && $YESNO != 'N' )
+    set YESNO = $<
+    if ( $YESNO == "" ) set YESNO = "Y"
+    set YESNO = `echo $YESNO | tr '[a-z]' '[A-Z]'`
+end
+
+switch ( $YESNO )
+    case N: 
+       while ( ! $chosen )
+	    echo " Enter alternative directory for the installation:"
+	    set altDir = "$<"
+	    setenv MYCUTER `echo ${altDir} | ${SED} -e 's/\/$//'`
+	    if ( `echo $MYCUTER:t` == "" ) setenv MYCUTER = `echo $MYCUTER:h`
+		if ( "$MYCUTER" == "$CUTER" ) then
+		echo '   This choice is conflictual'
+		@ chosen = 0
+	    else
+		setenv MYCUTER $MYCUTER
+		echo " Using directory $MYCUTER"
+		@ chosen = 1
+	    endif
+       end
+       breaksw
+    case Y: 
+       breaksw
+endsw
+
+set UMAKE_XTRA = ''
+if ( -d $MYCUTER/single && $PRECISION == 'double' || $PRECISION == 'single' &&  -d $MYCUTER/double ) then
+    set UMAKE_OPTIONS = "${UMAKE_OPTIONS} "
+    set UMAKE_XTRA = '$1'
+    $LN -s $CUTER/build/scripts/important $MYCUTER/IMPORTANT
+    set important=1
+else if ( "$PRECISION" == 'double' ) then
+    set UMAKE_OPTIONS = "${UMAKE_OPTIONS} -DDoublePrecision"
+else
+    set UMAKE_OPTIONS = "${UMAKE_OPTIONS} -DSinglePrecision"
+endif
+
+#
+# Create a "working" directory for the version being installed
+#
+
+if (! -e $MYCUTER ) $MKDIR $MYCUTER
+
+setenv MYCUTERPREC $MYCUTER/$PRECISION
+if ( -d $MYCUTERPREC ) then
+    echo " Directory"
+    echo "  $MYCUTERPREC"
+    echo " already exists. Proceeding will overwrite it." 
+    echo " Do you wish to continue (Y/n)?"
+    set YESNO = ""
+    while ( $YESNO != 'Y' && $YESNO != 'N' )
+	set YESNO = $<
+        if ( $YESNO == "" ) set YESNO = "Y"
+	set YESNO = `echo $YESNO | tr '[a-z]' '[A-Z]'`
+    end
+
+    switch ( $YESNO )
+	case Y: 
+		breaksw
+	case N: 
+		echo "$0 : Aborting."
+		exit 1
+    endsw
+else
+    $MKDIR $MYCUTERPREC
+endif
+
+#
+# Check for a similar distribution already installed
+#
+
+cd $CUTER
+set EXISTS = "0"
+set CUTERVERSION="$PRECISION $SIZE $MACHINE $OS $CMP"
+
+echo ''
+printf '     %-30s\t' "Logging operations"
+
+if ( -e log ) then
+   cd log
+   foreach i ( "*.log" )
+	   set EXISTS = `"$CAT" $i | "$GREP" -c "$CUTERVERSION"`
+   end
+   if ( $EXISTS != "0" ) then
+      set inDir = `"$GREP" "$CUTERVERSION" "$CUTER/log/install.log" | $AWK -F! '{print $3}'`
+      echo ''
+      echo ' Hmmm... there already seems to be such a version installed in'
+      echo "  $inDir"
+      echo ' Are you sure you wish to continue (Y/n)?'
+      set YESNO = ""
+      while ( $YESNO != "Y" && $YESNO != "N" )
+	    set YESNO = $<
+            if ( $YESNO == "" ) set YESNO = "Y"
+	    set YESNO = `echo $YESNO | tr '[a-z]' '[A-Z]'`
+      end
+
+      switch ( $YESNO )
+             case Y:
+                  breaksw
+	     case N:
+		  echo "$0 : aborting"
+		  exit 0
+	     default:
+		  breaksw
+      endsw
+   endif
+   cd ../
+else
+    $MKDIR log           # install log files
+endif
+
+printf '[Ok]\n'
+
+#  Add a new entry to the log file
+
+printf '     %-30s\t' "Creating directory structure"
+
+#if ( $EXISTS == "0" ) then
+    echo  "`date` ! $CUTERVERSION ! $MYCUTER" >> $CUTER/log/install.log
+#endif
+
+if (! -e $MYCUTER/bin )        $MKDIR $MYCUTER/bin
+if (! -e $MYCUTERPREC/config ) $MKDIR $MYCUTERPREC/config
+if (! -e $MYCUTERPREC/specs )  $MKDIR $MYCUTERPREC/specs
+if (! -e $MYCUTERPREC/lib )    $MKDIR $MYCUTERPREC/lib
+if (! -e $MYCUTERPREC/bin )    $MKDIR $MYCUTERPREC/bin
+if (! -e $MYCUTER/config )     $MKDIR $MYCUTER/config
+
+printf '[Ok]\n'
+
+# The following 'source' puts the timer routine in $CONFIG
+
+source $ARCH/compiler.${SYSTAG}.${OSTAG}.${CMP}
+source $ARCH/size.$SIZE
+
+#  Define some useful directories
+
+set CONFIG = $MYCUTERPREC/config
+set BIN    = $MYCUTERPREC/bin
+set SRC    = $CUTER/common/src
+
+#
+#  Further initializations
+#
+
+unset noclobber
+set DATE = `date`
+echo "#version for ${MACHINE} under ${SYSTEM} with ${CMP} ($DATE)" > $CONFIG/this_build
+
+printf '     %-30s\t' "Copying Umakefiles"
+
+# Put the Umake template and rules files in place
+$CP $CUTER/config/* $MYCUTER/config
+
+# Put the Umakefiles in place
+$CP $CUTER/build/scripts/umakefile.mycuterbin        $MYCUTER/bin/Umakefile
+$CP $CUTER/build/scripts/umakefile.mycuter           $MYCUTER/Umakefile
+$CP $CUTER/build/scripts/umakefile.mycuterprec       $MYCUTERPREC/Umakefile
+$CP $CUTER/build/scripts/umakefile.mycuterprecbin    $MYCUTERPREC/bin/Umakefile
+$CP $CUTER/build/scripts/umakefile.mycuterpreclib    $MYCUTERPREC/lib/Umakefile
+$CP $CUTER/build/scripts/umakefile.mycuterprecspecs  $MYCUTERPREC/specs/Umakefile
+$CP $CUTER/build/scripts/umakefile.mycuterprecconfig $MYCUTERPREC/config/Umakefile
+$CP $CUTER/build/scripts/makefile.cmds               $MYCUTERPREC/config/makefile.cmds
+
+printf '[Ok]\n'
+
+set UMAKE_SEQUENCE = "$UMAKE_COMMAND $UMAKE_OPTIONS $UMAKE_XTRA $UMAKE_CPP_OPTIONS"
+
+printf '     %-30s\t' "Creating installation shortcut"
+
+echo '#\!/bin/csh -f'                             >  $MYCUTER/install_mycuter
+echo ''                                           >> $MYCUTER/install_mycuter
+
+# Re-denerate the platform-specific commands if necessary
+
+sed -f ${CUTER}/build/scripts/protect.sed ${CUTER}/build/scripts/makefile.cmds | ${CPP} -I${CUTER}/config -I. -DFromInstallCUTEr ${UMAKE_OPTIONS} | sed -f ${CUTER}/build/scripts/gettabs.sed > /tmp/Makefile.cmds.$$
+cd /tmp
+if( -f cmds ) rm -f cmds
+make -f Makefile.cmds.$$ cmds >& /dev/null
+cd ${CUTER}
+
+# Flush these into install_mycuter
+
+$CAT /tmp/cmds                                    >> $MYCUTER/install_mycuter
+if( ! -f $MYCUTER/cmds.basic ) then
+    $CP /tmp/cmds $MYCUTER/cmds.basic
+    $CHMOD -w $MYCUTER/cmds.basic
+endif
+$RM /tmp/cmds
+
+echo ''                                           >> $MYCUTER/install_mycuter
+$CAT $CUTER/build/prototypes/usage_mycuter.pro    >> $MYCUTER/install_mycuter
+echo "set UMAKE_COMMAND = "\""${UMAKE_COMMAND}"\" >> $MYCUTER/install_mycuter
+echo "set UMAKE_XTRA = "\""${UMAKE_XTRA}"\" >> $MYCUTER/install_mycuter
+echo "set UMAKE_OPTIONS = "\""${UMAKE_OPTIONS} ${UMAKE_XTRA}"\" >> $MYCUTER/install_mycuter
+echo "set UMAKE_CPP_OPTIONS = "\""${UMAKE_CPP_OPTIONS}"\" >> $MYCUTER/install_mycuter
+
+# Make provision for LOQO
+echo 'if( $?LOQODIR ) then'                       >> $MYCUTER/install_mycuter
+echo '  if( -f $LOQODIR/loqo.h && -f $LOQODIR/myalloc.h && -f $LOQODIR/libloqo.a ) then' >> $MYCUTER/install_mycuter
+echo '    set UMAKE_OPTIONS = '\"'${UMAKE_OPTIONS} -Dhasloqo'\" \
+                                                  >> $MYCUTER/install_mycuter
+echo '  else'                                     >> $MYCUTER/install_mycuter
+echo '    echo '                                  >> $MYCUTER/install_mycuter
+echo '    echo '\"'At least one of the files loqo.h, myalloc.h or libloqo.a'\"\
+                                                  >> $MYCUTER/install_mycuter
+echo '    echo '\"'seems to be missing in $LOQODIR... Please re-run install_mycuter'\" >> $MYCUTER/install_mycuter
+echo '    echo '\"'when the problem is fixed.'\"  >> $MYCUTER/install_mycuter
+echo '    echo '                                  >> $MYCUTER/install_mycuter
+echo '  endif'                                    >> $MYCUTER/install_mycuter
+echo 'else'                                       >> $MYCUTER/install_mycuter
+echo '  echo '\"'You do not seem to have LOQO installed'\" >> $MYCUTER/install_mycuter
+echo 'endif'                                      >> $MYCUTER/install_mycuter
+
+# Make provision for KNITRO
+echo 'if( $?KNITRODIR ) then'                       >> $MYCUTER/install_mycuter
+echo '  if( -f $KNITRODIR/include/knitro.h && -f $KNITRODIR/lib/libknitro.a ) then' >> $MYCUTER/install_mycuter
+echo '    set UMAKE_OPTIONS = '\"'${UMAKE_OPTIONS} -Dhasknitro'\" \
+                                                  >> $MYCUTER/install_mycuter
+echo '  else'                                     >> $MYCUTER/install_mycuter
+echo '    echo '                                  >> $MYCUTER/install_mycuter
+echo '    echo '\"'At least one of the files knitro.h or libknitro.a'\"\
+                                                  >> $MYCUTER/install_mycuter
+echo '    echo '\"'seems to be missing in $KNITRODIR... Please re-run install_mycuter'\" >> $MYCUTER/install_mycuter
+echo '    echo '\"'when the problem is fixed.'\"  >> $MYCUTER/install_mycuter
+echo '    echo '                                  >> $MYCUTER/install_mycuter
+echo '  endif'                                    >> $MYCUTER/install_mycuter
+echo 'else'                                       >> $MYCUTER/install_mycuter
+echo '  echo '\"'You do not seem to have KNITRO installed'\" >> $MYCUTER/install_mycuter
+echo 'endif'                                      >> $MYCUTER/install_mycuter
+
+# Make provision for TAO
+echo 'if( $?TAO_DIR ) then'                       >> $MYCUTER/install_mycuter
+echo '  set UMAKE_OPTIONS = '\"'${UMAKE_OPTIONS} -Dhastao'\" \
+                                                  >> $MYCUTER/install_mycuter
+echo 'endif'                                      >> $MYCUTER/install_mycuter
+
+echo 'set UMAKE_SEQUENCE = '\"'${UMAKE_COMMAND} ${UMAKE_OPTIONS} ${UMAKE_CPP_OPTIONS}'\" \
+                                                  >> $MYCUTER/install_mycuter
+echo 'echo $UMAKE_SEQUENCE'                       >> $MYCUTER/install_mycuter
+echo '$UMAKE_SEQUENCE'                            >> $MYCUTER/install_mycuter
+echo '$MAKE Makefile'                             >> $MYCUTER/install_mycuter
+echo '$MAKE Makefiles'                            >> $MYCUTER/install_mycuter
+$CAT $CUTER/build/prototypes/run_mycuter.pro      >> $MYCUTER/install_mycuter
+$CHMOD +x $MYCUTER/install_mycuter
+
+printf '[Ok]\n'
+
+printf '     %-30s\t' "Installing README files"
+
+if ( ! (-d $MYCUTER/single && -d $MYCUTER/double) ) then
+    $LN -s $CUTER/build/scripts/readme.mycuterbin    $MYCUTER/bin/README
+    $LN -s $CUTER/build/scripts/readme.mycuter       $MYCUTER/README
+    $LN -s $CUTER/README                             $MYCUTER/README_FIRST
+endif
+$LN -s $CUTER/build/scripts/readme.mycuterprecconfig $MYCUTERPREC/config/README
+$LN -s $CUTER/build/scripts/readme.mycuterpreclib    $MYCUTERPREC/lib/README
+$LN -s $CUTER/build/scripts/readme.mycuterprecbin    $MYCUTERPREC/bin/README
+
+if( "${CMP}" == 'ifc' ) then
+    $LN -fs $CUTER/build/scripts/readme.ifc           $MYCUTER/README.ifc
+endif
+
+printf '[Ok]\n'
+
+echo ' -------------------------------------------------------'
+echo ' '
+echo " Please do not forget to define the environment variable"
+echo "    [1] CUTER to be"
+echo "          $CUTER"
+echo "    [2] MYCUTER to be"
+echo "          $MYCUTER"
+echo ''
+echo " as well as to set an appropriate value for MASTSIF,"
+echo ' which should point to your main SIF repository.'
+echo " "
+echo "      In addition, please update your MANPATH to include "
+echo "         $CUTER/common/man"
+echo "      your PATH to include"
+echo "         $MYCUTER/bin"
+echo "      your MATLABPATH to include"
+echo "         $MYCUTERPREC/bin"
+echo "       and"
+echo "         $CUTER/common/src/matlab"
+echo "      and your LIBPATH (or LD_LIBRARY_PATH) to include"
+echo "         $MYCUTERPREC/lib"
+echo ''
+echo " (see $CUTER/common/doc/readme.cshrc"
+echo "  and $CUTER/common/doc/readme.bashrc"
+echo "  for examples on how to do this)"
+echo ''
+echo " cd $MYCUTER,"
+echo " read the README_FIRST and README files"
+if ( "$?important" ) then
+    echo ''
+    echo '-----------------------------------'
+    echo " ---and read the file IMPORTANT---"
+    echo '-----------------------------------'
+    echo ''
+endif
+echo " then run install_mycuter."
+
+#
+# See if the user wants to continue
+#
+
+echo ''
+echo "install_cuter : Do you want install_mycuter to be run in"
+echo " $MYCUTER now (Y/n)?"
+set YESNO = ""
+while ( $YESNO != 'Y' && $YESNO != 'N' )
+    set YESNO = $<
+    if ( $YESNO == "" ) set YESNO = "Y"
+    set YESNO = `echo $YESNO | tr '[a-z]' '[A-Z]'`
+end
+
+switch ( $YESNO )
+    case Y: 
+	cd $MYCUTER
+	if ( "$?important" ) then
+	    if ( "$PRECISION" == 'double' ) then
+		./install_mycuter -DDoublePrecision
+	    else
+		./install_mycuter -DSinglePrecision
+	    endif
+	else
+	    ./install_mycuter
+	endif
+	breaksw
+    case N:
+	echo ''
+	echo ' To complete the installation, change directory to'
+	echo "    $MYCUTER"
+	echo ' and run install_mycuter there.'
+	echo ''
+	exit 0
+	breaksw
+endsw
+
+# This version serves as a template for the Umakefiles
+# We exit here. The rest will be done by umake.
+
+exit 0
+
+# N. Gould, D. Orban and Ph.L. Toint, Jan 2, 2002.
+

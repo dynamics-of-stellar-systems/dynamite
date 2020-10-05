@@ -1,0 +1,42 @@
+**************************************************
+**** TAO driver to run CUTEr test problems *******
+**************************************************
+
+Requirements: 
+Before you can run the 'sdtao' or 'tao' CUTEr scripts, you must have:
+
+1. TAO installed on your system (see http://www.mcs.anl.gov/tao), 
+	which also requires 
+
+2. PETSc (http://www.mcs.anl.gov/petsc)
+
+3. and an implementation of MPI (if you don't have any MPI installed, 
+	then MPICH is available at http://www.mcs.anl.gov/mpi/mpich).
+
+
+Installing for CUTEr:
+
+1. Install CUTEr, TAO, PETSc, and MPI according to package directions.
+
+2. Set environment variables TAO_DIR, PETSC_DIR, PETSC_ARCH, and BOPT (See 
+PETSc and TAO documentation for details)
+
+3. If using the script-based installation of CUTEr:
+
+   From $MYCUTER/common/src/pkg/tao:
+	make taoma.o
+
+4. If using an MPI implementation other than MPICH or if libmpich.a is not in
+/usr/local/lib, then you will need to specify your MPI implementation in the
+$MYCUTER/bin/sdtao and $MYCUTER/bin/tao scripts.
+
+For documentation on TAO, see the TAO website http://www.mcs.anl.gov/tao.
+
+If you still have questions, email us at tao-comments@mcs.anl.gov.
+
+
+
+
+
+
+	

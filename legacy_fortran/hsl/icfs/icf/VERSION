@@ -1,0 +1,16 @@
+
+
+           Versions
+          
+Version 1.0
+
+  Released May 1998.
+
+Version 1.1
+
+  Released October 1998.
+  Fixes a bug in dicfs.f brought to our attention by Michael Ulbrich.
+  The search for a suitable shift alpha ended prematurely for small n.
+  In the example, n = 3. The termination criteria for the shift is now
+  independent of n.
+

@@ -1,0 +1,153 @@
+
+CUTEr README file.				       September 2001.
+
+======================================================================
+
+  Please read this file prior to any modification in this directory.
+
+======================================================================
+
+This  directory is (one  of) your  $MYCUTER directory(ies).  The CUTEr
+installation  procedure   is  based   on  Umakefiles,  which   act  as
+meta-Makefiles.  A typical listing of this directory should looks like
+
+    -rw-r--r--    20222 Sep  7 12:04 Makefile
+    -rw-r--r--    20222 Sep  7 12:04 Makefile.bak
+    -rw-r--r--       55 Sep  7 12:04 README -> ...
+    -rw-r--r--       55 Sep  7 12:04 README_FIRST -> ...
+    -rw-r--r--     1563 Sep  7 12:04 Umakefile
+    drwxr-xr-x     4096 Sep  7 12:24 bin
+    drwxr-xr-x     4096 Sep  7 12:04 config
+    drwxr-xr-x       97 Sep  7 12:04 double
+    -rwxr-xr-x      112 Sep  7 12:04 install_mycuter
+
+At first, Makefile  and Makefile.bak should not be  present before you
+install your CUTEr  for the first time. This is  done using the script
+./install_mycuter .  The  installation script install_mycuter contains
+a few commands which turn the various Umakefiles scattered around your
+$MYCUTER directory structure into Makefiles.  This process is known as
+"bootstrapping" the Umakefiles. This README  file is intended to serve
+as  a quick reference for you to generate or re-generate your
+Makefiles.
+
+                                           ---------------------------
+                                           Note to Compaq Alpha users:
+                                           ---------------------------
+
+  It could be that the make command under Tru64 runs into trouble when
+ it must build the CUTEr library libcuter.a. By default, gmake will be
+       used on such machines. If this should be changed, please change
+ 						  accordingly the line
+
+                          #define MakeCmd         /usr/local/bin/gmake
+
+ in the file $MYCUTER/config/osf1.cf if this change should only affect
+ 		       your personal instance of CUTEr, or in the file
+ 		 $CUTER/config/osf1.cf if it should be system-wide.
+
+
+You may now issue the installation command
+
+    % ./install_mycuter
+
+Once   install_mycuter  has   finished  bootstrapping   the  Makefiles
+recursively through the subdirectories of $MYCUTER, just type
+
+    % make clean
+    % make all
+
+for a first installation. For a complete re-installation, type
+
+    % make clean
+    % make purge
+    % make all
+
+After 'make all', you may re-issue a 'make clean' to wind up temporary
+files which most  likely clutter up your directories  and are not used
+any longer, once CUTEr has been built.
+
+As always,  make outputs A LOT  of information --  it basically echoes
+every single  action it  performs. If  you do not  like this,  make -s
+makes make silent.
+
+Should  you   need  to   adjust  parameters  or   command  definitions
+appropriately  for your  local  system,  this should  be  done in  the
+Umakefile  or in  some of  its configuration  files and  *not*  in the
+Makefile.   Indeed, if  you later  re-generate your  Makefile(s), your
+modifications  will be  *lost*.   Please refer  to  the CUTEr  General
+Documentation  for more  information on  how  to do  this.  The  umake
+configuration files for CUTEr follow  a most usual pattern, and are in
+fact much simplified Imakefiles,  which were actually derived from the
+X11 configuration files.
+
+If  any  modification  is  brought  to  either  an  Umakefile  or  the
+configuration   files,  the   Umakefiles  need   to   be  bootstrapped
+again.  Otherwise, the  Makefiles  do not  reflect  your changes.  The
+original configuration files are found under $CUTER/config. When in
+doubt,  copy these  files to  $MYCUTER/config and  run install_mycuter
+again.
+
+The  rules  used in  all  the CUTEr  Umakefiles  are  declared in  the
+configuration file $MYCUTER/config/Umake.rules.
+
+Please browse through  the given documentation in case  of problem. Do
+not hesitate to contact one of the authors. E-mail addresses are given
+at the bottom of this file.
+
+The  config directory  contains the  umake configuration  files, where
+umake  is  going  to  (try  to)  pick  the  correct  values  for  your
+architecture and the  choices you have made during  the first stage of
+the  installation process.  The other  directories are  part  of CUTEr
+itself. The Umakefile present in each subdirectory will be responsible
+for   building    the   targets    which   should   dwell    in   that
+subdirectory. Therefore,  if all the Makefiles  have been bootstrapped
+correctly, and  if you want to  build a particular  target found, say,
+under $MYCUTER/bin,  you may  simply cd to  $MYCUTER/bin and  make the
+target there.  The usual dependency  rules apply, as  with handwritten
+Makefiles. It may happen that a target in a subdirectory requires that
+a file in another directory was built.
+
+umake uses  cpp, the C  preprocessor to bootstrap the  Umakefiles into
+the various Makefiles.  If cpp is not available or  does not work well
+with    umake   on    your   system,    other    implementations   are
+available.
+
+Users  should  always  refer  to   the  make  manual  page  and  local
+documentation. It may  happen (although every effort has  been made to
+avoid this) that  a construct used in the  Umakefiles is not supported
+by  your local  implementation  of make.  If  you cannot,  or are  not
+willing to, fix  this, it is recommended that you  install GNU make on
+your system.
+
+Each  README file  under  $MYCUTER attempts  to  briefly describe  the
+target  supported   by  the   Makefile  found  in   the  corresponding
+subdirectory. This may be a helpful quick reference.
+
+The Makefile found in this directory recognizes the following targets:
+
+baseconfig:  makes sure the basic casting scripts are ready to be used
+
+all:	     same as baseconfig
+
+All  the Makefiles found  under $MYCUTER  support the  'clean' target,
+which,  as is  usual, wipes  temporary or  unnecessary files  from the
+directory  structure.  Do not  forget  that  one  of the  most  useful
+command-line options of make is -n, which will result in make printing
+the actions  it *would* take, without actually  taking them. Therefore
+make -n clean displays all the files which would be erased.
+
+An additional target  found in some of the  Makefiles is 'purge'. This
+target is a  'very very clean' target and  will have make subsequently
+rebuild almost everything from scratch.
+
+======================================================================
+
+			      Good luck!
+
+Nick I.M. Gould,				     n.gould@rl.ac.uk,
+Dominique Orban,				     orban@cerfacs.fr,
+Philippe L. Toint.			    philippe.toint@fundp.ac.be
+
+======================================================================
+
+CUTEr README file.				       September 2001.

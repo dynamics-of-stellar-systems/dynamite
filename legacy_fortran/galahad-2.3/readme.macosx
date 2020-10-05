@@ -1,0 +1,34 @@
+As of November 2006, we are offering GALAHAD on the MAC OS/X platform.  
+The installation is entirely similar to  that on UNIX  platforms  and 
+should be as expected to users who are familiar with the command line.
+
+Before  running the  install_galahad script,  check the  value  of the
+environment variable MACOSX_DEPLOYMENT_TARGET. If this variable is set
+to 10.1 or lower, please reset it temporarily:
+
+% export MACOSX_DEPLOYMENT_TARGET=10.4
+
+So far, two  Fortran 90/95 compilers have been tested  on the MAC OS/X
+platform: the commercial  AbSoft f95 compiler and the  open source g95
+compiler (www.g95.org).
+
+The  ar   and  ranlib  utilities  slightly  differ   from  their  UNIX
+counterparts and during  the installation, you will notice  (a lot of)
+messages of the general form (reformatted for readability):
+
+ranlib: file:
+ /somedir/galahad/objects/mac.osx.g95/double/libgalahad.a(cuterinter.o)
+ has no symbols
+
+This message  appears to be due to  ar and ranlib being  phased out on
+this  platform and being  superceded by  libtool. The  warning message
+however, is inconsequential and can be safely ignored.
+
+Please send all comments/corrections to us. Good luck!
+
+Nick Gould          (n.gould@rl.ac.uk)
+Dominique Orban     (dominique.orban@polymtl.ca)
+Philippe Toint      (philippe.toint@fundp.ac.be)
+
+For GALAHAD productions
+This version: 11th November 2006

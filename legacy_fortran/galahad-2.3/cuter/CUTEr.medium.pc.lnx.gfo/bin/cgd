@@ -1,0 +1,238 @@
+#!/bin/csh -f
+#  ( Last modified on 4 Sep 2004 at 08:29:56 )
+#
+# cgd: apply CG_DESCENT to a problem and delete the executable after use.
+#
+#{version}
+#version for Intel-like-PC under Linux with gfo (Tue Dec 8 14:35:10 CST 2015)
+#
+
+#{args}
+# Command-line options:
+#
+# [-decode] [-n] [-h] [-s] [-k] [-r] [-o i] [-l secs] [-show]
+#  [-param name=value[,name=value...]] [-debug] probname[.SIF]
+#
+# where:
+#                -decode: decode problem before calling package
+#                -n     : use the load module f if it exists
+#                         (Default: create a new load module)
+#                -h     : print this help and stop execution
+#                -s     : run the single precision version
+#                         (Default: run the double precision version)
+#                -k     : keep the load module after use
+#                         (Default: delete the load module)
+#                -r     : discourage recompilation of the test problem
+#                         (Default: recompile the objects)
+#                -o     : 0 for silent mode, 1 for brief description of
+#                         the stages executed
+#                         (Default: -o 0)
+#                -l     : limit the cputime used to secs seconds
+#                         (Default: -l 99999999)
+#                -show  : displays possible parameter settings for
+#                         probname[.SIF]. Other options are ignored
+#                -param : cast probname[.SIF] against explicit parameter
+#                         settings. Several parameter settings may be
+#                         given as a comma-separated list following
+#                         -param or using several -param flags.
+#                         Use -show to view possible settings
+#                -debug : links all the libraries, creates the executable
+#                         and stop to allow debugging. This option
+#                         automatically disables -n and enables -k.
+#
+#              probname : probname.SIF is the name of the file containing
+#                         the SIF file for the problem of interest.
+#
+
+#
+#  N. Gould, D. Orban & Ph. Toint, September 4th, 2004
+#
+
+#{cmds}
+#
+#  System specifications
+#
+
+set SYSTEM       =  "Linux"
+set KEYSYS       =  "CUNIX"
+
+#
+#  Directory for temporary files
+#
+
+set TMP          =   "/tmp"
+
+#
+#  basic system commands
+#
+
+set MKDIR        =   "/bin/mkdir"
+set CP           =   "/bin/cp"
+set RM           =   "/bin/rm -f"
+set MV           =   "/bin/mv"
+set CAT          =   "/bin/cat"
+set CHMOD        =   "/bin/chmod"
+set SED          =   "/bin/sed"
+set LN           =   "/bin/ln"
+set LS           =   "/bin/ls"
+set AR           =   "/usr/bin/ar"
+set RMDIR        =   "/bin/rmdir"
+set GREP         =   "/bin/grep"
+set AWK          =   "/usr/bin/gawk"
+set HEAD         =   "/usr/bin/head"
+set TAIL         =   "/usr/bin/tail"
+set WC           =   "/usr/bin/wc"
+set MAKE         =   "/usr/bin/make"
+
+#
+#  Fortran compilation and loading
+#
+
+set COMPILE      = "gfortran -c -ffixed-form -fno-second-underscore"
+set LOAD         = "gfortran -ffixed-form -fno-second-underscore"
+set ISF9095      = "yes"
+set COMPILE9095  = "gfortran -c -fno-second-underscore"
+set LOAD9095     = "gfortran -fno-second-underscore"
+set FFLAGS       = "-O"
+set SPECIALFLAGS = ""
+
+#
+#  C compilation and loading
+#
+
+set CCOMPILE     = "gcc -c"
+set CLOAD        = "gcc"
+set CFLAGS       = "-O"
+set SPECIALLIBS  = ""
+
+##
+## Note: Recent versions of Matlab use a single script, mex,
+##       to compile both C and Fortran code. This makes the
+##       commands cmex and fmex obsolete. Change the
+##       following lines according to your system specifications.
+##
+ 
+set MEXFORTRAN   = "/usr/bin/mex"
+set MEXFFLAGS    = "-fortran"
+
+#
+# Environment check
+#
+
+envcheck
+if( $status != 0 ) exit $status
+
+#
+#  define a short acronym for the package to which you wish to make an interface
+#
+
+setenv caller cgd
+setenv PAC cgd
+
+#
+#  define the name of the subdirectory of $CUTER/common/src/pkg
+#  in which the package lies
+#
+
+setenv PACKAGE cg_descent
+
+#
+#  Check the arguments
+#
+
+set PRECISION = "double"
+@ decode_problem = 0
+@ last=$#argv
+@ i=1
+
+while ($i <= $last)
+  set opt=$argv[$i]
+  if("$opt" == '-s')then
+    set PRECISION = "single"
+  else if("$opt" == '-decode' ) then
+    @ decode_problem = 1
+  else if("$opt" == '-h' || "$opt" == '--help' )then
+    $MYCUTER/bin/helpmsg
+    exit 0
+  endif
+  @ i++
+end
+
+#
+#  define the system libraries needed by the package
+#  using the format -lrary to include library.a
+#
+
+setenv SYSLIBS ""
+
+#  define the name(s) of the object file(s) (files of the form *.o)
+#  and/or shared-object libraries (files of the form lib*.so)
+#  and/or libraries (files of the form lib*.a) for the CG_DESCENT package.
+#  Object files must lie in 
+#    $MYCUTER/(precision)/bin  
+#  while libraries and/or shared-object libraries must be in 
+#    $MYCUTER/(precision)/lib 
+#  where (precision) is either single (when the -s flag is present) or 
+#  double (when there is no -s flag)
+#
+
+setenv PACKOBJ "cg_descent.o"
+
+#
+#  define the name of the package specification file (if any)
+#  (this possibly precision-dependent file must either lie in
+#  the current directory or in $MYCUTER/common/src/pkg/$PACKAGE/ )
+#
+
+setenv SPECS "CG_DESCENT.SPC"
+
+#  this is where package-dependent commands (using the commands defined
+#  in the current system.(your system) file) may be inserted prior to 
+#  decoding the problem file
+
+
+#  decode the problem file
+
+#{sifdecode}
+if( $decode_problem == 1 ) then
+  if( $?MYSIFDEC ) then
+     $MYSIFDEC/bin/sifdecode $argv
+     if ( $status != 0 ) exit $status
+  else
+     echo " ${caller} : environment variable MYSIFDEC not set"
+     echo "      Either SifDec is not installed or you"
+     echo "      should properly set MYSIFDEC"
+     exit 7
+  endif
+endif
+
+#  this is where package-dependent commands (using the commands defined
+#  in the current system.(your system) file) may be inserted prior to 
+#  running the package
+
+
+#  run the package, removing -decode option if present
+
+if( $decode_problem == 1 ) then
+  @ n = ${#argv} - 1
+  @ i = 1
+  set arguments = ''
+  while( $i <= $n )
+    if( "$argv[$i]" != '-decode' ) then
+      set arguments = ( "$arguments" "$argv[$i]" )
+    endif
+    @ i++
+  end
+else
+  set arguments = "$argv"
+endif
+
+$MYCUTER/bin/runpackage $arguments -n
+
+if ( $status != 0 ) exit $status
+
+#  this is where package-dependent commands (using the commands defined
+#  in the current system.(your system) file) may be inserted to clean
+#  up after running the package
+
+

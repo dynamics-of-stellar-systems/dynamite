@@ -1,0 +1,675 @@
+#  Main body of the installation makefile for the GALAHAD library
+
+#  N. Gould, D. Orban and Ph. L. Toint.
+#  This version: 20 IX 2006
+
+SHELL = /bin/$(BINSHELL)
+
+#  main compilations and runs
+
+#  everything with CUTEr not AMPL
+
+all_cuter: all_cuter_$(PRECIS)
+
+all_cuter_single: 
+	( cd lanb ; $(MAKE) -f $(GALAHAD)/makefiles/$(VERSION) \
+                     lancelotb_sif PRECIS=single PWD=$(PWD)/lanb )
+	( cd qp   ; $(MAKE) -f $(GALAHAD)/makefiles/$(VERSION) \
+                     qp_cuter PRECIS=single PWD=$(PWD)/qp )
+	( cd eqp   ; $(MAKE) -f $(GALAHAD)/makefiles/$(VERSION) \
+                     eqp_cuter PRECIS=single PWD=$(PWD)/eqp )
+	( cd wcp   ; $(MAKE) -f $(GALAHAD)/makefiles/$(VERSION) \
+                     wcp_cuter PRECIS=single PWD=$(PWD)/wcp )
+	( cd filtrane  ; $(MAKE) -f $(GALAHAD)/makefiles/$(VERSION) \
+                     filtrane_cuter PRECIS=single PWD=$(PWD)/filtrane )
+
+all_cuter_double: 
+	( cd lanb ; $(MAKE) -f $(GALAHAD)/makefiles/$(VERSION) \
+                     lancelotb_sif PRECIS=double PWD=$(PWD)/lanb )
+	( cd qp   ; $(MAKE) -f $(GALAHAD)/makefiles/$(VERSION) \
+                     qp_cuter PRECIS=double PWD=$(PWD)/qp )
+	( cd eqp   ; $(MAKE) -f $(GALAHAD)/makefiles/$(VERSION) \
+                     eqp_cuter PRECIS=double PWD=$(PWD)/eqp )
+	( cd wcp   ; $(MAKE) -f $(GALAHAD)/makefiles/$(VERSION) \
+                     wcp_cuter PRECIS=double PWD=$(PWD)/wcp )
+	( cd filtrane   ; $(MAKE) -f $(GALAHAD)/makefiles/$(VERSION) \
+                     filtrane_cuter PRECIS=double PWD=$(PWD)/filtrane )
+
+#  everything with AMPL not CUTEr
+
+all_ampl: all_ampl_$(PRECIS)
+
+all_ampl_single: 
+	( cd ampl ; $(MAKE) -f $(GALAHAD)/makefiles/$(VERSION) \
+                    galahad_ampl_single PRECIS=single PWD=$(PWD)/ampl \
+            CUSTOM_AMPL_FLAGS="-DQPA -DQPB -DQPC -DPRE -DFILT -DLANB" )
+
+all_ampl_double: 
+	( cd ampl ; $(MAKE) -f $(GALAHAD)/makefiles/$(VERSION) \
+                    galahad_ampl_double PRECIS=double PWD=$(PWD)/ampl \
+            CUSTOM_AMPL_FLAGS="-DQPA -DQPB -DQPC -DPRE -DFILT -DLANB" )
+
+#  everything for distribution
+
+all: all_$(PRECIS)
+
+all_single: 
+	( cd lanb ; $(MAKE) -f $(GALAHAD)/makefiles/$(VERSION) \
+                     lancelotb_sif PRECIS=single PWD=$(PWD)/lanb )
+	( cd qp   ; $(MAKE) -f $(GALAHAD)/makefiles/$(VERSION) \
+                     qp_cuter PRECIS=single PWD=$(PWD)/qp )
+	( cd filtrane   ; $(MAKE) -f $(GALAHAD)/makefiles/$(VERSION) \
+                     filtrane_cuter PRECIS=single PWD=$(PWD)/filtrane )
+	( cd eqp   ; $(MAKE) -f $(GALAHAD)/makefiles/$(VERSION) \
+                     eqp_cuter PRECIS=single PWD=$(PWD)/eqp )
+	( cd wcp   ; $(MAKE) -f $(GALAHAD)/makefiles/$(VERSION) \
+                     wcp_cuter PRECIS=single PWD=$(PWD)/wcp )
+	( cd ampl ; $(MAKE) -f $(GALAHAD)/makefiles/$(VERSION) \
+                     ampl PRECIS=single PWD=$(PWD)/ampl \
+            CUSTOM_AMPL_FLAGS="-DQPA -DQPB -DQPC -DPRE -DFILT -DLANB" )
+
+all_double: 
+	( cd lanb ; $(MAKE) -f $(GALAHAD)/makefiles/$(VERSION) \
+                     lancelotb_sif PRECIS=double PWD=$(PWD)/lanb )
+	( cd qp   ; $(MAKE) -f $(GALAHAD)/makefiles/$(VERSION) \
+                     qp_cuter PRECIS=double PWD=$(PWD)/qp )
+	( cd filtrane   ; $(MAKE) -f $(GALAHAD)/makefiles/$(VERSION) \
+                     filtrane_cuter PRECIS=double PWD=$(PWD)/filtrane )
+	( cd eqp   ; $(MAKE) -f $(GALAHAD)/makefiles/$(VERSION) \
+                     eqp_cuter PRECIS=double PWD=$(PWD)/eqp )
+	( cd wcp   ; $(MAKE) -f $(GALAHAD)/makefiles/$(VERSION) \
+                     wcp_cuter PRECIS=double PWD=$(PWD)/wcp )
+	( cd ampl ; $(MAKE) -f $(GALAHAD)/makefiles/$(VERSION) \
+                     ampl PRECIS=double PWD=$(PWD)/ampl \
+            CUSTOM_AMPL_FLAGS="-DQPA -DQPB -DQPC -DPRE -DFILT -DLANB" )
+
+#  everything including current developments
+
+all_current: all_current_$(PRECIS)
+
+all_current_single: 
+	( cd lanb ; $(MAKE) -f $(GALAHAD)/makefiles/$(VERSION) \
+                     lancelotb_sif PRECIS=single PWD=$(PWD)/lanb )
+	( cd qp   ; $(MAKE) -f $(GALAHAD)/makefiles/$(VERSION) \
+                     qp_cuter PRECIS=single PWD=$(PWD)/qp )
+	( cd filtrane   ; $(MAKE) -f $(GALAHAD)/makefiles/$(VERSION) \
+                     filtrane_cuter PRECIS=single PWD=$(PWD)/filtrane )
+	( cd lpsqp   ; $(MAKE) -f $(GALAHAD)/makefiles/$(VERSION) \
+                     lpsqp_cuter PRECIS=single PWD=$(PWD)/lpsqp )
+	( cd superb   ; $(MAKE) -f $(GALAHAD)/makefiles/$(VERSION) \
+                     superb_cuter PRECIS=single PWD=$(PWD)/superb )
+	( cd eqp   ; $(MAKE) -f $(GALAHAD)/makefiles/$(VERSION) \
+                     eqp_cuter PRECIS=single PWD=$(PWD)/eqp )
+	( cd fastr   ; $(MAKE) -f $(GALAHAD)/makefiles/$(VERSION) \
+                     fastr_cuter PRECIS=single PWD=$(PWD)/fastr )
+	( cd sqp   ; $(MAKE) -f $(GALAHAD)/makefiles/$(VERSION) \
+                     sqp_cuter PRECIS=single PWD=$(PWD)/sqp )
+	( cd trimsqp ; $(MAKE) -f $(GALAHAD)/makefiles/$(VERSION) \
+                     trimsqp_cuter PRECIS=single PWD=$(PWD)/trimsqp )
+	( cd wcp   ; $(MAKE) -f $(GALAHAD)/makefiles/$(VERSION) \
+                     wcp_cuter PRECIS=single PWD=$(PWD)/wcp )
+	( cd lcf   ; $(MAKE) -f $(GALAHAD)/makefiles/$(VERSION) \
+                     lcf_cuter PRECIS=single PWD=$(PWD)/lcf )
+	( cd funnel ; $(MAKE) -f $(GALAHAD)/makefiles/$(VERSION) \
+                     funnel_cuter PRECIS=single PWD=$(PWD)/funnel )
+	( cd trs ; $(MAKE) -f $(GALAHAD)/makefiles/$(VERSION) \
+                     trs PRECIS=single PWD=$(PWD)/trs )
+	( cd tru ; $(MAKE) -f $(GALAHAD)/makefiles/$(VERSION) \
+                     tru_cuter PRECIS=single PWD=$(PWD)/tru )
+	( cd aco ; $(MAKE) -f $(GALAHAD)/makefiles/$(VERSION) \
+                     aco_cuter PRECIS=single PWD=$(PWD)/aco )
+	( cd acob ; $(MAKE) -f $(GALAHAD)/makefiles/$(VERSION) \
+                     acob_cuter PRECIS=single PWD=$(PWD)/acob )
+	( cd ampl ; $(MAKE) -f $(GALAHAD)/makefiles/$(VERSION) \
+                     ampl PRECIS=single PWD=$(PWD)/ampl \
+            CUSTOM_AMPL_FLAGS="-DQPA -DQPB -DQPC -DPRE -DFILT -DLANB" )
+
+all_current_double: 
+	( cd lanb ; $(MAKE) -f $(GALAHAD)/makefiles/$(VERSION) \
+                     lancelotb_sif PRECIS=double PWD=$(PWD)/lanb )
+	( cd qp   ; $(MAKE) -f $(GALAHAD)/makefiles/$(VERSION) \
+                     qp_cuter PRECIS=double PWD=$(PWD)/qp )
+	( cd filtrane   ; $(MAKE) -f $(GALAHAD)/makefiles/$(VERSION) \
+                     filtrane_cuter PRECIS=double PWD=$(PWD)/filtrane )
+	( cd lpsqp   ; $(MAKE) -f $(GALAHAD)/makefiles/$(VERSION) \
+                     lpsqp_cuter PRECIS=double PWD=$(PWD)/lpsqp )
+	( cd superb   ; $(MAKE) -f $(GALAHAD)/makefiles/$(VERSION) \
+                     superb_cuter PRECIS=double PWD=$(PWD)/superb )
+	( cd eqp   ; $(MAKE) -f $(GALAHAD)/makefiles/$(VERSION) \
+                     eqp_cuter PRECIS=double PWD=$(PWD)/eqp )
+	( cd fastr   ; $(MAKE) -f $(GALAHAD)/makefiles/$(VERSION) \
+                     fastr_cuter PRECIS=double PWD=$(PWD)/fastr )
+	( cd sqp   ; $(MAKE) -f $(GALAHAD)/makefiles/$(VERSION) \
+                     sqp_cuter PRECIS=double PWD=$(PWD)/sqp )
+	( cd trimsqp ; $(MAKE) -f $(GALAHAD)/makefiles/$(VERSION) \
+                     trimsqp_cuter PRECIS=double PWD=$(PWD)/trimsqp )
+	( cd wcp   ; $(MAKE) -f $(GALAHAD)/makefiles/$(VERSION) \
+                     wcp_cuter PRECIS=double PWD=$(PWD)/wcp )
+	( cd lcf   ; $(MAKE) -f $(GALAHAD)/makefiles/$(VERSION) \
+                     lcf_cuter PRECIS=double PWD=$(PWD)/lcf )
+	( cd funnel ; $(MAKE) -f $(GALAHAD)/makefiles/$(VERSION) \
+                     funnel_cuter PRECIS=double PWD=$(PWD)/funnel )
+	( cd trs ; $(MAKE) -f $(GALAHAD)/makefiles/$(VERSION) \
+                     trs PRECIS=double PWD=$(PWD)/trs )
+	( cd tru ; $(MAKE) -f $(GALAHAD)/makefiles/$(VERSION) \
+                     tru_cuter PRECIS=double PWD=$(PWD)/tru )
+	( cd aco ; $(MAKE) -f $(GALAHAD)/makefiles/$(VERSION) \
+                     aco_cuter PRECIS=double PWD=$(PWD)/aco )
+	( cd acob ; $(MAKE) -f $(GALAHAD)/makefiles/$(VERSION) \
+                     acob_cuter PRECIS=double PWD=$(PWD)/acob )
+	( cd ampl ; $(MAKE) -f $(GALAHAD)/makefiles/$(VERSION) \
+                     ampl PRECIS=double PWD=$(PWD)/ampl \
+            CUSTOM_AMPL_FLAGS="-DQPA -DQPB -DQPC -DPRE -DFILT -DLANB" )
+
+#  test everything
+
+test: test_$(PRECIS)
+
+test_single: 
+	( cd lanb ; $(MAKE) -f $(GALAHAD)/makefiles/$(VERSION) test \
+                      PRECIS=single PWD=$(PWD)/lanb )
+	( cd qp   ; $(MAKE) -f $(GALAHAD)/makefiles/$(VERSION) test \
+                      PRECIS=single PWD=$(PWD)/qp )
+	( cd eqp  ; $(MAKE) -f $(GALAHAD)/makefiles/$(VERSION) test \
+                      PRECIS=single PWD=$(PWD)/eqp )
+	( cd wcp  ; $(MAKE) -f $(GALAHAD)/makefiles/$(VERSION) test \
+                      PRECIS=single PWD=$(PWD)/wcp )
+	( cd filtrane   ; $(MAKE) -f $(GALAHAD)/makefiles/$(VERSION) test \
+                      PRECIS=single PWD=$(PWD)/filtrane )
+
+test_double: 
+	( cd lanb ; $(MAKE) -f $(GALAHAD)/makefiles/$(VERSION) test \
+                      PRECIS=double PWD=$(PWD)/lanb )
+	( cd qp   ; $(MAKE) -f $(GALAHAD)/makefiles/$(VERSION) test \
+                      PRECIS=double PWD=$(PWD)/qp )
+	( cd eqp  ; $(MAKE) -f $(GALAHAD)/makefiles/$(VERSION) test \
+                      PRECIS=double PWD=$(PWD)/eqp )
+	( cd wcp  ; $(MAKE) -f $(GALAHAD)/makefiles/$(VERSION) test \
+                      PRECIS=double PWD=$(PWD)/wcp )
+	( cd filtrane  ; $(MAKE) -f $(GALAHAD)/makefiles/$(VERSION) test \
+                      PRECIS=double PWD=$(PWD)/filtrane )
+
+#  test everything except SIF/CUTEr interfaces
+
+test_nosif: test_nosif_$(PRECIS)
+
+test_nosif_single: 
+	( cd lanb ; $(MAKE) -f $(GALAHAD)/makefiles/$(VERSION) test_nosif \
+                      PRECIS=single PWD=$(PWD)/lanb )
+	( cd qp   ; $(MAKE) -f $(GALAHAD)/makefiles/$(VERSION) test_nocuter \
+                      PRECIS=single PWD=$(PWD)/qp )
+	( cd eqp   ; $(MAKE) -f $(GALAHAD)/makefiles/$(VERSION) test_nocuter \
+                      PRECIS=single PWD=$(PWD)/eqp )
+	( cd wcp   ; $(MAKE) -f $(GALAHAD)/makefiles/$(VERSION) test_nocuter \
+                      PRECIS=single PWD=$(PWD)/wcp )
+	( cd filtrane ; $(MAKE) -f $(GALAHAD)/makefiles/$(VERSION) test_nocuter \
+                      PRECIS=single PWD=$(PWD)/filtrane )
+
+test_nosif_double: 
+	( cd lanb ; $(MAKE) -f $(GALAHAD)/makefiles/$(VERSION) test_nosif \
+                      PRECIS=double PWD=$(PWD)/lanb )
+	( cd qp   ; $(MAKE) -f $(GALAHAD)/makefiles/$(VERSION) test_nocuter \
+                      PRECIS=double PWD=$(PWD)/qp )
+	( cd eqp   ; $(MAKE) -f $(GALAHAD)/makefiles/$(VERSION) test_nocuter \
+                      PRECIS=double PWD=$(PWD)/eqp )
+	( cd wcp   ; $(MAKE) -f $(GALAHAD)/makefiles/$(VERSION) test_nocuter \
+                      PRECIS=double PWD=$(PWD)/wcp )
+	( cd filtrane ; $(MAKE) -f $(GALAHAD)/makefiles/$(VERSION) test_nocuter \
+                      PRECIS=double PWD=$(PWD)/filtrane )
+
+#  test everything
+
+test_spec: test_spec_$(PRECIS)
+
+test_spec_single: 
+	( cd lanb ; $(MAKE) -f $(GALAHAD)/makefiles/$(VERSION) test_spec \
+                      PRECIS=single PWD=$(PWD)/lanb )
+	( cd qp   ; $(MAKE) -f $(GALAHAD)/makefiles/$(VERSION) test_spec \
+                      PRECIS=single PWD=$(PWD)/qp )
+	( cd eqp  ; $(MAKE) -f $(GALAHAD)/makefiles/$(VERSION) test_spec \
+                      PRECIS=single PWD=$(PWD)/eqp )
+	( cd wcp  ; $(MAKE) -f $(GALAHAD)/makefiles/$(VERSION) test_spec \
+                      PRECIS=single PWD=$(PWD)/wcp )
+	( cd filtrane   ; $(MAKE) -f $(GALAHAD)/makefiles/$(VERSION) test_spec \
+                      PRECIS=single PWD=$(PWD)/filtrane )
+
+test_spec_double: 
+	( cd lanb ; $(MAKE) -f $(GALAHAD)/makefiles/$(VERSION) test_spec \
+                      PRECIS=double PWD=$(PWD)/lanb )
+	( cd qp   ; $(MAKE) -f $(GALAHAD)/makefiles/$(VERSION) test_spec \
+                      PRECIS=double PWD=$(PWD)/qp )
+	( cd eqp  ; $(MAKE) -f $(GALAHAD)/makefiles/$(VERSION) test_spec \
+                      PRECIS=double PWD=$(PWD)/eqp )
+	( cd wcp  ; $(MAKE) -f $(GALAHAD)/makefiles/$(VERSION) test_spec \
+                      PRECIS=double PWD=$(PWD)/wcp )
+	( cd filtrane  ; $(MAKE) -f $(GALAHAD)/makefiles/$(VERSION) test_spec \
+                      PRECIS=double PWD=$(PWD)/filtrane )
+
+#  LANCELOT B
+
+lancelotb: lancelotb_sif
+
+lancelotb_sif: lancelotb_sif_$(PRECIS)
+
+lancelotb_sif_single: 
+	( cd lanb ; $(MAKE) -f $(GALAHAD)/makefiles/$(VERSION) lancelotb_sif \
+                      PRECIS=single PWD=$(PWD)/lanb )
+
+lancelotb_sif_double: 
+	( cd lanb ; $(MAKE) -f $(GALAHAD)/makefiles/$(VERSION) lancelotb_sif \
+                      PRECIS=double PWD=$(PWD)/lanb )
+
+lancelotb_ampl: lancelotb_ampl_$(PRECIS)
+
+lancelotb_ampl_single: 
+	( cd ampl ; $(MAKE) -f $(GALAHAD)/makefiles/$(VERSION) lancelotb_ampl \
+                      PRECIS=single PWD=$(PWD)/ampl CUSTOM_AMPL_FLAGS="-DLANB" )
+
+lancelotb_ampl_double: 
+	( cd ampl ; $(MAKE) -f $(GALAHAD)/makefiles/$(VERSION) lancelotb_ampl \
+                      PRECIS=double PWD=$(PWD)/ampl CUSTOM_AMPL_FLAGS="-DLANB" )
+
+lancelotb: lancelotb_$(PRECIS)
+
+lancelotb_single: 
+	( cd lanb ; $(MAKE) -f $(GALAHAD)/makefiles/$(VERSION) lancelotb \
+                      PRECIS=single PWD=$(PWD)/lanb )
+
+lancelotb_double: 
+	( cd lanb ; $(MAKE) -f $(GALAHAD)/makefiles/$(VERSION) lancelotb \
+                      PRECIS=double PWD=$(PWD)/lanb )
+
+#  all the QP packages
+
+qp: qp_cuter
+
+qp_cuter: qp_cuter_$(PRECIS)
+
+qp_cuter_single: 
+	( cd qp ; $(MAKE) -f $(GALAHAD)/makefiles/$(VERSION) qp_cuter \
+                    PRECIS=single PWD=$(PWD)/qp )
+
+qp_cuter_double: 
+	( cd qp ; $(MAKE) -f $(GALAHAD)/makefiles/$(VERSION) qp_cuter \
+                    PRECIS=double PWD=$(PWD)/qp )
+
+qp_ampl: qp_ampl_$(PRECIS)
+
+qp_ampl_single: 
+	( cd ampl ; $(MAKE) -f $(GALAHAD)/makefiles/$(VERSION) qp_ampl \
+                    PRECIS=single PWD=$(PWD)/ampl \
+            CUSTOM_AMPL_FLAGS="-DQPA -DQPB -DQPC -DPRE" )
+
+qp_ampl_double: 
+	( cd ampl ; $(MAKE) -f $(GALAHAD)/makefiles/$(VERSION) qp_ampl \
+                    PRECIS=double PWD=$(PWD)/ampl \
+            CUSTOM_AMPL_FLAGS="-DQPA -DQPB -DQPC -DPRE" )
+
+qp: qp_$(PRECIS)
+
+qp_single: 
+	( cd qp ; $(MAKE) -f $(GALAHAD)/makefiles/$(VERSION) qp \
+                    PRECIS=single PWD=$(PWD)/qp )
+
+qp_double: 
+	( cd qp ; $(MAKE) -f $(GALAHAD)/makefiles/$(VERSION) qp \
+                    PRECIS=double PWD=$(PWD)/qp )
+
+#  qpa
+
+qpa: qpa_cuter
+
+qpa_cuter: qpa_cuter_$(PRECIS)
+
+qpa_cuter_single: 
+	( cd qp ; $(MAKE) -f $(GALAHAD)/makefiles/$(VERSION) qpa_cuter \
+                    PRECIS=single PWD=$(PWD)/qp )
+
+qpa_cuter_double: 
+	( cd qp ; $(MAKE) -f $(GALAHAD)/makefiles/$(VERSION) qpa_cuter \
+                    PRECIS=double PWD=$(PWD)/qp )
+
+qpa: qpa_$(PRECIS)
+
+qpa_single: 
+	( cd qp ; $(MAKE) -f $(GALAHAD)/makefiles/$(VERSION) qpa \
+                    PRECIS=single PWD=$(PWD)/qp )
+
+qpa_double: 
+	( cd qp ; $(MAKE) -f $(GALAHAD)/makefiles/$(VERSION) qpa \
+                    PRECIS=double PWD=$(PWD)/qp )
+
+#  qpb
+
+qpb: qpb_cuter
+
+qpb_cuter: qpb_cuter_$(PRECIS)
+
+qpb_cuter_single: 
+	( cd qp ; $(MAKE) -f $(GALAHAD)/makefiles/$(VERSION) qpb_cuter \
+                    PRECIS=single PWD=$(PWD)/qp )
+
+qpb_cuter_double: 
+	( cd qp ; $(MAKE) -f $(GALAHAD)/makefiles/$(VERSION) qpb_cuter \
+                    PRECIS=double PWD=$(PWD)/qp )
+
+qpb: qpb_$(PRECIS)
+
+qpb_single: 
+	( cd qp ; $(MAKE) -f $(GALAHAD)/makefiles/$(VERSION) qpb \
+                    PRECIS=single PWD=$(PWD)/qp )
+
+qpb_double: 
+	( cd qp ; $(MAKE) -f $(GALAHAD)/makefiles/$(VERSION) qpb \
+                    PRECIS=double PWD=$(PWD)/qp )
+
+#  qpc
+
+qpc: qpc_cuter
+
+qpc_cuter: qpc_cuter_$(PRECIS)
+
+qpc_cuter_single: 
+	( cd qp ; $(MAKE) -f $(GALAHAD)/makefiles/$(VERSION) qpc_cuter \
+                    PRECIS=single PWD=$(PWD)/qp )
+
+qpc_cuter_double: 
+	( cd qp ; $(MAKE) -f $(GALAHAD)/makefiles/$(VERSION) qpc_cuter \
+                    PRECIS=double PWD=$(PWD)/qp )
+
+qpc: qpc_$(PRECIS)
+
+qpc_single: 
+	( cd qp ; $(MAKE) -f $(GALAHAD)/makefiles/$(VERSION) qpc \
+                    PRECIS=single PWD=$(PWD)/qp )
+
+qpc_double: 
+	( cd qp ; $(MAKE) -f $(GALAHAD)/makefiles/$(VERSION) qpc \
+                    PRECIS=double PWD=$(PWD)/qp )
+
+#  presolve
+
+pre: pre_cuter
+
+pre_cuter: pre_cuter_$(PRECIS)
+
+pre_cuter_single: 
+	( cd qp ; $(MAKE) -f $(GALAHAD)/makefiles/$(VERSION) pre_cuter \
+                    PRECIS=single PWD=$(PWD)/qp )
+
+pre_cuter_double: 
+	( cd qp ; $(MAKE) -f $(GALAHAD)/makefiles/$(VERSION) pre_cuter \
+                    PRECIS=double PWD=$(PWD)/qp )
+
+pre: pre_$(PRECIS)
+
+pre_single: 
+	( cd qp ; $(MAKE) -f $(GALAHAD)/makefiles/$(VERSION) pre \
+                    PRECIS=single PWD=$(PWD)/qp )
+
+pre_double: 
+	( cd qp ; $(MAKE) -f $(GALAHAD)/makefiles/$(VERSION) pre \
+                    PRECIS=double PWD=$(PWD)/qp )
+
+#  FILTRANE
+
+filtrane: filtrane_cuter
+
+filtrane_cuter: filtrane_cuter_$(PRECIS)
+
+filtrane_cuter_single: 
+	( cd filtrane ; $(MAKE) -f $(GALAHAD)/makefiles/$(VERSION) \
+                        filtrane_cuter PRECIS=single PWD=$(PWD)/filtrane )
+
+filtrane_cuter_double: 
+	( cd filtrane ; $(MAKE) -f $(GALAHAD)/makefiles/$(VERSION) \
+                        filtrane_cuter PRECIS=double PWD=$(PWD)/filtrane )
+
+filtrane_ampl: filtrane_ampl_$(PRECIS)
+
+filtrane_ampl_single: 
+	( cd ampl ; $(MAKE) -f $(GALAHAD)/makefiles/$(VERSION) filtrane_ampl \
+                      PRECIS=single PWD=$(PWD)/ampl CUSTOM_AMPL_FLAGS="-DFILT")
+
+filtrane_ampl_double: 
+	( cd ampl ; $(MAKE) -f $(GALAHAD)/makefiles/$(VERSION) filtrane_ampl \
+                      PRECIS=double PWD=$(PWD)/ampl CUSTOM_AMPL_FLAGS="-DFILT")
+
+filtrane: filtrane_$(PRECIS)
+
+filtrane_single: 
+	( cd filtrane ; $(MAKE) -f $(GALAHAD)/makefiles/$(VERSION) filtrane \
+                      PRECIS=single PWD=$(PWD)/filtrane )
+
+filtrane_double: 
+	( cd filtrane ; $(MAKE) -f $(GALAHAD)/makefiles/$(VERSION) filtrane \
+                      PRECIS=double PWD=$(PWD)/filtrane )
+
+#  superb
+
+superb: superb_cuter
+
+superb_cuter: superb_cuter_$(PRECIS)
+
+superb_cuter_single: 
+	( cd superb ; $(MAKE) -f $(GALAHAD)/makefiles/$(VERSION) superb_cuter \
+                    PRECIS=single PWD=$(PWD)/superb )
+
+superb_cuter_double: 
+	( cd superb ; $(MAKE) -f $(GALAHAD)/makefiles/$(VERSION) superb_cuter \
+                    PRECIS=double PWD=$(PWD)/superb )
+
+superb: superb_$(PRECIS)
+
+superb_single: 
+	( cd superb ; $(MAKE) -f $(GALAHAD)/makefiles/$(VERSION) superb \
+                    PRECIS=single PWD=$(PWD)/superb )
+
+superb_double: 
+	( cd superb ; $(MAKE) -f $(GALAHAD)/makefiles/$(VERSION) superb \
+                    PRECIS=double PWD=$(PWD)/superb )
+
+#  eqp
+
+eqp: eqp_cuter
+
+eqp_cuter: eqp_cuter_$(PRECIS)
+
+eqp_cuter_single: 
+	( cd eqp ; $(MAKE) -f $(GALAHAD)/makefiles/$(VERSION) eqp_cuter \
+                    PRECIS=single PWD=$(PWD)/eqp )
+
+eqp_cuter_double: 
+	( cd eqp ; $(MAKE) -f $(GALAHAD)/makefiles/$(VERSION) eqp_cuter \
+                    PRECIS=double PWD=$(PWD)/eqp )
+
+eqp: eqp_$(PRECIS)
+
+eqp_single: 
+	( cd eqp ; $(MAKE) -f $(GALAHAD)/makefiles/$(VERSION) eqp \
+                    PRECIS=single PWD=$(PWD)/eqp )
+
+eqp_double: 
+	( cd eqp ; $(MAKE) -f $(GALAHAD)/makefiles/$(VERSION) eqp \
+                    PRECIS=double PWD=$(PWD)/eqp )
+
+#  fastr
+
+fastr: fastr_cuter
+
+fastr_cuter: fastr_cuter_$(PRECIS)
+
+fastr_cuter_single: 
+	( cd fastr ; $(MAKE) -f $(GALAHAD)/makefiles/$(VERSION) fastr_cuter \
+                    PRECIS=single PWD=$(PWD)/fastr )
+
+fastr_cuter_double: 
+	( cd fastr ; $(MAKE) -f $(GALAHAD)/makefiles/$(VERSION) fastr_cuter \
+                    PRECIS=double PWD=$(PWD)/fastr )
+
+fastr: fastr_$(PRECIS)
+
+fastr_single: 
+	( cd fastr ; $(MAKE) -f $(GALAHAD)/makefiles/$(VERSION) fastr \
+                    PRECIS=single PWD=$(PWD)/fastr )
+
+fastr_double: 
+	( cd fastr ; $(MAKE) -f $(GALAHAD)/makefiles/$(VERSION) fastr \
+                    PRECIS=double PWD=$(PWD)/fastr )
+
+#  sqp
+
+sqp: sqp_cuter
+
+sqp_cuter: sqp_cuter_$(PRECIS)
+
+sqp_cuter_single: 
+	( cd sqp ; $(MAKE) -f $(GALAHAD)/makefiles/$(VERSION) sqp_cuter \
+                    PRECIS=single PWD=$(PWD)/sqp )
+
+sqp_cuter_double: 
+	( cd sqp ; $(MAKE) -f $(GALAHAD)/makefiles/$(VERSION) sqp_cuter \
+                    PRECIS=double PWD=$(PWD)/sqp )
+
+sqp: sqp_$(PRECIS)
+
+sqp_single: 
+	( cd sqp ; $(MAKE) -f $(GALAHAD)/makefiles/$(VERSION) sqp \
+                    PRECIS=single PWD=$(PWD)/sqp )
+
+sqp_double: 
+	( cd sqp ; $(MAKE) -f $(GALAHAD)/makefiles/$(VERSION) sqp \
+                    PRECIS=double PWD=$(PWD)/sqp )
+
+#  aco
+
+aco: aco_cuter
+
+aco_cuter: aco_cuter_$(PRECIS)
+
+aco_cuter_single: 
+	( cd aco ; $(MAKE) -f $(GALAHAD)/makefiles/$(VERSION) aco_cuter \
+                    PRECIS=single PWD=$(PWD)/aco )
+
+aco_cuter_double: 
+	( cd aco ; $(MAKE) -f $(GALAHAD)/makefiles/$(VERSION) aco_cuter \
+                    PRECIS=double PWD=$(PWD)/aco )
+
+aco: aco_$(PRECIS)
+
+aco_single: 
+	( cd aco ; $(MAKE) -f $(GALAHAD)/makefiles/$(VERSION) aco \
+                    PRECIS=single PWD=$(PWD)/aco )
+
+aco_double: 
+	( cd aco ; $(MAKE) -f $(GALAHAD)/makefiles/$(VERSION) aco \
+                    PRECIS=double PWD=$(PWD)/aco )
+
+#  acob
+
+acob: acob_cuter
+
+acob_cuter: acob_cuter_$(PRECIS)
+
+acob_cuter_single: 
+	( cd acob ; $(MAKE) -f $(GALAHAD)/makefiles/$(VERSION) acob_cuter \
+                    PRECIS=single PWD=$(PWD)/acob )
+
+acob_cuter_double: 
+	( cd acob ; $(MAKE) -f $(GALAHAD)/makefiles/$(VERSION) acob_cuter \
+                    PRECIS=double PWD=$(PWD)/acob )
+
+acob: acob_$(PRECIS)
+
+acob_single: 
+	( cd acob ; $(MAKE) -f $(GALAHAD)/makefiles/$(VERSION) acob \
+                    PRECIS=single PWD=$(PWD)/acob )
+
+acob_double: 
+	( cd acob ; $(MAKE) -f $(GALAHAD)/makefiles/$(VERSION) acob \
+                    PRECIS=double PWD=$(PWD)/acob )
+
+#  funnel
+
+funnel: funnel_cuter
+
+funnel_cuter: funnel_cuter_$(PRECIS)
+
+funnel_cuter_single: 
+	( cd funnel ; $(MAKE) -f $(GALAHAD)/makefiles/$(VERSION) funnel_cuter \
+                    PRECIS=single PWD=$(PWD)/funnel )
+
+funnel_cuter_double: 
+	( cd funnel ; $(MAKE) -f $(GALAHAD)/makefiles/$(VERSION) funnel_cuter \
+                    PRECIS=double PWD=$(PWD)/funnel )
+
+funnel: funnel_$(PRECIS)
+
+funnel_single: 
+	( cd funnel ; $(MAKE) -f $(GALAHAD)/makefiles/$(VERSION) funnel \
+                    PRECIS=single PWD=$(PWD)/funnel )
+
+funnel_double: 
+	( cd funnel ; $(MAKE) -f $(GALAHAD)/makefiles/$(VERSION) funnel \
+                    PRECIS=double PWD=$(PWD)/funnel )
+
+#  wcp
+
+wcp: wcp_cuter
+
+wcp_cuter: wcp_cuter_$(PRECIS)
+
+wcp_cuter_single: 
+	( cd wcp ; $(MAKE) -f $(GALAHAD)/makefiles/$(VERSION) wcp_cuter \
+                    PRECIS=single PWD=$(PWD)/wcp )
+
+wcp_cuter_double: 
+	( cd wcp ; $(MAKE) -f $(GALAHAD)/makefiles/$(VERSION) wcp_cuter \
+                    PRECIS=double PWD=$(PWD)/wcp )
+
+wcp: wcp_$(PRECIS)
+
+wcp_single: 
+	( cd wcp ; $(MAKE) -f $(GALAHAD)/makefiles/$(VERSION) wcp \
+                    PRECIS=single PWD=$(PWD)/wcp )
+
+wcp_double: 
+	( cd wcp ; $(MAKE) -f $(GALAHAD)/makefiles/$(VERSION) wcp \
+                    PRECIS=double PWD=$(PWD)/wcp )
+
+#  lcf
+
+lcf: lcf_cuter
+
+lcf_cuter: lcf_cuter_$(PRECIS)
+
+lcf_cuter_single: 
+	( cd lcf ; $(MAKE) -f $(GALAHAD)/makefiles/$(VERSION) lcf_cuter \
+                    PRECIS=single PWD=$(PWD)/lcf )
+
+lcf_cuter_double: 
+	( cd lcf ; $(MAKE) -f $(GALAHAD)/makefiles/$(VERSION) lcf_cuter \
+                    PRECIS=double PWD=$(PWD)/lcf )
+
+lcf: lcf_$(PRECIS)
+
+lcf_single: 
+	( cd lcf ; $(MAKE) -f $(GALAHAD)/makefiles/$(VERSION) lcf \
+                    PRECIS=single PWD=$(PWD)/lcf )
+
+lcf_double: 
+	( cd lcf ; $(MAKE) -f $(GALAHAD)/makefiles/$(VERSION) lcf \
+                    PRECIS=double PWD=$(PWD)/lcf )
+
+#  book keeping
+
+clean: 
+	@printf ' %-9s\t\t' "Cleaning" 
+	$(RM) $(OBJ)/*
+	@printf '[ OK ]\n'
+
+cleanall: 
+	@printf ' %-14s\t\t' "Removing all $(PRECIS) precision object and module files" 
+	$(RM) $(OBJ)/* $(MOD)/*
+	@printf '[ OK ]\n'
+

@@ -1,0 +1,452 @@
+#!/bin/csh -f
+#
+# Update script - updates SifDec tools
+# using the SifDec directory structure
+#
+# N.Gould, D.Orban & Ph.Toint
+# ( Last modified on 8 Feb 2001 at 20:11:40 )
+#
+# This script is mainly intended to people who
+# do not have access to the patch program.
+# This is a very poor substitute.
+
+#
+# Synopsis:
+# update_sifdec [-h] [-m] [-a listFile | newFile]
+#
+# Options:
+#    -h           displays this help message
+#    -m           move files only; do not recompile
+#    -a listFile  updated files are listed in listFile
+#    newFile      specifies the (single) updated file
+#
+
+# - if -m is present, the updated files are simply moved to
+#   their proper location and compilation does not occur.
+#
+# - in the 'newFile' form, newFile is the name
+#   of a new (updated) file (possibly with a path)
+# 
+# - if -a is present, 'listFile' gives the name of a file 
+#   which is assumed to contain
+#   1. The path where the new files can be found
+#   2. A list of the updated files (possibly accompanied
+#      by a destination path, but it is not compulsory);
+#   the third argument is the precision of the version of
+#   of SifDec one wishes to update.
+#   Example input file:
+#     /home/isd/beer/             <- directory where files are found
+#     talisker.f                  <- first  file to update
+#     oban.pro                    <- second file to update
+#
+#   This means that:
+#
+#   the two files talisker.f and oban.pro should be found under
+#   /home/isd/beer. SifDec will seek them there, and then treat
+#   them appropriately.
+
+set caller = `echo $0 | awk -F/ '{print $NF}'`
+
+# Check the arguments
+
+@ structuredFile = 0
+@ filePosition = 0
+@ moveOnly = 0
+set PREC = ""
+@ narg = $#argv
+@ current = 1
+
+if ( ! $narg ) then
+    echo " ${caller} [-h] [-m] [-a listFile | newFile]"
+    echo '    -h           displays this help message'
+    echo '    -m           move files only; do not recompile'
+    echo '                 If you are using the makefiles, using -m'
+    echo '                 and re-making should be safer than'
+    echo '                 omitting -m'
+    echo '    -a listFile  updated files are listed in listFile'
+    echo '    newFile      specifies the (single) updated file'
+    exit 1
+endif
+
+while( $current <= $narg )
+    set opt=$argv[$current]
+
+#      Help message
+    if ( "$opt" == '-h' || "$opt" == '-help' || "$opt" == '--help' ) then
+	echo " ${caller} [-h] [-m] [-a listFile | newFile]"
+	echo '    -h           displays this help message'
+	echo '    -m           move files only; do not recompile'
+	echo '    -a listFile  updated files are listed in listFile'
+	echo '    newFile      specifies the (single) updated file'
+	exit 0
+
+#      "move only" flag
+    else if ( "$opt" == '-m' ) then
+	@ moveOnly = 1
+
+#      "structured file" flag
+    else if ( "$opt" == '-a' ) then
+
+	if ( $filePosition == 0 ) then
+	    @ structuredFile = 1
+	    @ filePosition   = `expr $current + 1`
+	    @ current++
+	else
+	    echo ' Too many file names specified. Aborting.'
+	    exit 1
+	endif
+
+#      the rest is considered as a file name
+    else if ( "$opt" != '' ) then
+	if ( $structuredFile || ($filePosition != 0) ) then
+	    echo ' Too many file names specified. Aborting.'
+	    echo " Try ${caller} --help"
+	    exit 1
+	else
+	    @ filePosition = $current
+	endif
+    endif
+    @ current++
+end
+
+# Issues:
+#    does the structured file exist?
+#    is its format correct? how do we know?
+#    do the files in the file list belong to SifDec?
+# Let's first assume the user did things correctly.
+# If something goes wrong, we'll try to skip the
+# entry that caused it and go on.
+
+# Check for installed versions
+# The variable SIFDEC should be set
+# in the user's environment if there is a SifDec
+
+# First check if a first installation was performed.
+# If so, move the files to their proper location and recompile them.
+# If not, simply move the files to their proper location.
+
+if ( $?SIFDEC ) then
+    @ recompile = $?MYSIFDEC
+else
+    echo " If you have SifDec installed, you forgot to"
+    echo " set the SIFDEC environment variable."
+    echo " Aborting."
+    exit 1
+endif
+
+if ( $moveOnly ) @ recompile = 0
+
+# If MYSIFDEC was set, we use the distribution it points to
+# by default. If that is not ok, ask the user to reset it
+
+unalias source
+
+# Ask for which precision to update
+
+if( $recompile ) then
+    @ isDouble = 0
+    @ isSingle = 0
+    if ( -d "${MYSIFDEC}/double" ) @ isDouble = 1
+    if ( -d "${MYSIFDEC}/single" ) @ isSingle = 1
+
+    if ( $isDouble && $isSingle ) then
+	echo " update the single (s) or the double (d) distribution ?"
+	set CHOICE = $<
+	set CHOICE = `echo $CHOICE | tr a-z A-Z`
+	while ( $CHOICE != 'S' && $CHOICE != 'D' )
+	    echo 'I am expecting s or d'
+	    set CHOICE = $<
+	    set CHOICE = `echo $CHOICE | tr a-z A-Z`
+	end
+
+	if ( $CHOICE == 'S' ) then
+	    set PREC = "single"
+	else
+	    set PREC = "double"
+	endif
+    else
+	if ( $isSingle ) then
+	    set PREC = "single"
+	else if ( $isDouble ) then
+	    set PREC = "double"
+	else
+	    echo "  Directory ${MYSIFDEC} does not seem to contain a SifDec distribution"
+	    exit 1
+	endif
+    endif
+
+    set MYSIFDECPREC = ${MYSIFDEC}/${PREC}
+
+# Get the UNIX commands and compilation commands right
+
+    if ( -e ${MYSIFDECPREC}/config/cmds ) then
+	source ${MYSIFDECPREC}/config/cmds
+    else
+	source ${SIFDEC}/build/arch/system.all # cross fingers
+    endif
+else
+    source ${SIFDEC}/build/arch/system.all     # cross fingers
+endif
+
+# If all seems ok, extract 
+#   homeDir    = the directory in which the new file(s) reside(s)
+#   updateList = the list of new files
+
+if ( $structuredFile ) then
+   set updateFile = $argv[$filePosition]
+   set homeDir    = `$HEAD -1 $updateFile`
+   if ( `echo ${homeDir}:t` == "" ) then
+      set homeDir = `echo $1:h`           # Get rid of trailing slash
+   endif
+   @ nbLines      = `$WC -l $updateFile | "$AWK" '{print $1}'`
+   @ nbFiles      = `expr $nbLines - 1`
+   set updateList = `$TAIL -$nbFiles $updateFile`
+else
+   set homeDir    = `echo $argv[$filePosition]:h`
+   set updateList = `echo $argv[$filePosition]:t`
+   if ( $homeDir == $updateList ) then
+      set homeDir = $SIFDEC
+   endif
+endif
+   
+if ( -d $homeDir ) then
+    echo ""
+    echo " I'll be looking for the new file(s) in $homeDir"
+    echo ""
+else
+    echo "   $homeDir"
+    echo " does not appear to be a valid directory name"
+    echo " check $updateFile"
+    echo " Aborting."
+    exit 1
+endif
+
+if ( $recompile ) then
+    cd $MYSIFDEC
+    set workingDistrDir = $MYSIFDEC
+
+# retrieve the size, machine, os and compiler name.
+
+    set SIZE = `$GREP $workingDistrDir $SIFDEC/log/install.log | $GREP $PREC | "$AWK" -F! '{print $2}' | "$AWK" '{print $2}'`
+    set MCH = `$GREP $workingDistrDir $SIFDEC/log/install.log | $GREP $PREC | "$AWK" -F! '{print $2}' | "$AWK" '{print $3}'`
+    set OS = `$GREP $workingDistrDir $SIFDEC/log/install.log | $GREP $PREC | "$AWK" -F! '{print $2}' | "$AWK" '{print $4}'`
+    set CMP = `$GREP $workingDistrDir $SIFDEC/log/install.log | $GREP $PREC | "$AWK" -F! '{print $2}' | "$AWK" '{print $5}'`
+
+#  ...perhaps we want to allow the user to set CMP themselves...
+
+    @ nbDistr   = `$WC -l $SIFDEC/log/install.log | "$AWK" '{print $1}'`
+
+    cd $SIFDEC
+    echo " Detected $nbDistr SifDec installation(s) on your system"
+    echo " Recompilation/recasting is needed and will affect"
+    echo "  $workingDistrDir"
+    echo " I presume you are now using a $MCH running $OS with $CMP compiler"
+    echo " Should we proceed (y/n)?"
+    set CHOICE = $<
+    set CHOICE = `echo $CHOICE | tr a-z A-Z`
+    while ( $CHOICE != 'Y' && $CHOICE != 'N' )
+	echo 'I am expecting y or n'
+	set CHOICE = $<
+	set CHOICE = `echo $CHOICE | tr a-z A-Z`
+    end
+
+    if ( $CHOICE == 'N' ) then
+	echo "  Below is a list of your installed SifDec distributions."
+	echo "  Set MYSIFDEC to point to whichever distribution"
+	echo "  you wish to update and launch $0 again."
+	echo ""
+# Summary of the installed distributions
+	cd ${SIFDEC}/log
+	echo ' -----------------------------'
+	cat install.log | "$AWK" -F! '{print $2" version installed in\n  "$3"\n   on "$1"\n"}'
+	echo ' -----------------------------'
+	exit 0
+    endif
+
+# At this point, we need to know whether either of the file needs
+# to be cast or compiled.
+
+    set scriptLoc = ${MYSIFDECPREC}/config
+
+endif
+
+#
+# We now examine the files we have been fed with
+#
+
+cd $SIFDEC
+
+# - Fortran sources that need sizing cast and/or compilation :
+set needSizing = 'decode.f gps.f inlanc.f local.f makefn.f makegr.f printp.f rest.f sifdec.f utils.f'
+
+# - maintenance file
+set maintenanceList = 'install_sifdec uninstall_sifdec'
+
+# - the SIF decoder files :
+set sifDecList  = 'decode.f gps.f inlanc.f local.f makefn.f makegr.f printp.f rest.f sifdec.f utils.f'
+
+set toCompile = ""     # list of fortran files that need compilation
+set toCast    = ""     # list of .pro files - these need casting
+set toMinos   = ""     # the Minos spec files
+
+# The files that need compilation will be stored in $TMP
+
+######
+# ...NOTE: we probably want to log updates in, e.g., log/updates.log
+######
+
+@ compileSifDecoder = 0
+@ nbFilesSeen       = 0
+@ nbFilesTreated    = 0
+@ nbFilesSkipped    = 0
+
+foreach newFile ( $updateList )
+
+    echo " treating $newFile"
+
+# try to guess whether newFile needs casting/compilation or not
+    set fileName  = `echo $newFile  | "$AWK" -F/ '{print $NF}'`
+    set extension = `echo $fileName | "$AWK" -F. '{print $NF}'`
+    set prefix    = `echo $fileName | "$AWK" -F. '{ORS="";for(i=1;i<=NF-2;i++) print $i".";print $(NF-1)}'`
+    set preprefix = `echo $prefix   | "$AWK" -F. '{print $1}'`
+
+    set fileLoc = ${homeDir}/$fileName
+
+    if ( ! -e $fileLoc ) then
+
+        echo " cannot find ${fileLoc} ...skipping"
+	@ nbFilesSkipped++
+
+    else
+
+        @ nbFilesSeen++
+	@ thisFileSifDec = 0
+
+#               the SIF decoder is a special case; we compile it later
+        foreach sdFile ( $sifDecList )
+
+#           if the file appears in the needSizing list, append and treat
+            if ( $sdFile == $fileName ) then
+
+                @ nbFilesTreated++
+                set toCompile = "${toCompile} $fileName"
+     		echo "   $fileName has to do with the SIF decoder"
+		@ thisFileSifDec = 1
+                if ( ! $compileSifDecoder ) @ compileSifDecoder = 1
+                $CP $fileLoc ${SIFDEC}/common/src/sifdec/$fileName
+            endif
+        end
+
+#               is it a select tool?
+	foreach csFile ( clsf.f slct.f )
+	    if ( $csFile == $fileName ) then
+		@ nbFilesTreated++
+		echo "   $fileName is a select/classify tool"
+                $CP $fileLoc ${SIFDEC}/common/src/select/$fileName
+		if ( $recompile ) then
+		    $SED -f ${scriptLoc}/cast.sed ${SIFDEC}/common/src/select/$fileName > ${TMP}/$fileName
+		    $LOAD $FFLAGS -o ${MYSIFDEC}/bin/$prefix ${TMP}/$fileName
+		    $RM ${TMP}/$fileName
+		endif
+            endif
+        end #foreach
+
+	if ( $extension == "pro" ) then
+
+# if it is not a Fortran file, it might need casting
+
+	    echo "   $fileName is a prototype"
+            @ nbFilesTreated++
+            set toCast = "${toCast} $fileName"
+            $CP $fileLoc ${SIFDEC}/build/prototypes/$fileName
+	    if ( $recompile ) then
+		echo " ...saving and casting $fileName"
+		$SED -f ${scriptLoc}/script.sed ${SIFDEC}/build/prototypes/$fileName > ${MYSIFDEC}/bin/$prefix
+		$CHMOD +x ${MYSIFDEC}/bin/$prefix
+	    endif
+	endif
+
+# or it is an architecture file (compiler.*, size.* or system.*)
+
+	if ( $preprefix == 'compiler' || $prefix == 'size' || $prefix == 'system' ) then
+	    echo "   $fileName looks like an architecture file"
+	    @ nbFilesTreated++
+	    $CP $fileLoc ${SIFDEC}/build/arch
+	endif
+
+# finally, it may be a maintenance file
+
+	foreach mfile ( $maintenanceList )
+
+	    if ( $mfile == $fileName ) then
+		echo "   $fileName is a maintenance tool"
+		@ nbFilesTreated++
+		$CP $fileLoc ${SIFDEC}/build/scripts
+	    endif
+
+	end
+
+	if ( $fileName == 'update_sifdec' ) then
+	    echo "***Please update $fileName manually. Skipping."
+	endif
+
+    endif
+
+end
+
+# Now, if applicable, we recompile the SIF decoder
+
+if ( $compileSifDecoder && $recompile ) then
+
+    cd ${SIFDEC}/common/src/sifdec
+    echo ' rebuilding the SIF decoder'
+
+    $SED "/#{sizing}/r ${MYSIFDECPREC}/config/sifdec.siz" sifdec.f > ${TMP}/sifdec.f
+    $MV sifdec.f sifdec.org
+    $MV ${TMP}/sifdec.f sifdec.f
+    $CP ${MYSIFDECPREC}/config/local.f .
+
+    foreach sdFile ( *.f )
+        echo "    " $sdFile
+        set FILE = `echo $sdFile | $SED 's/.f$//'`
+        $SED -f ${MYSIFDECPREC}/config/cast.sed $sdFile > ${TMP}/$sdFile
+        $COMPILE $FFLAGS -o ./$FILE.o $TMP/$sdFile
+        $RM $TMP/$sdFile
+    end
+
+    $MV sifdec.org sifdec.f
+
+    if ( $PREC == 'double') then
+        $LOAD $FFLAGS *.o -o sifdec_d
+        $MV sifdec_d ${MYSIFDECPREC}/bin/sifdec
+    else
+        $LOAD $FFLAGS *.o -o sifdec_s
+        $MV sifdec_s ${MYSIFDECPREC}/bin/sifdec
+    endif
+    $RM *.o
+
+    echo ' done'
+
+endif
+
+# Invoke Mr. Clean
+
+@ mrClean = 0
+
+if ( $mrClean ) then
+
+    echo "cleaning..."
+    foreach newFile ( $updateList )
+        $RM $fileLoc
+    end
+
+endif
+
+# Before we finish, the user needs to reset their MYSIFDEC
+# in case they changed it.
+
+echo " Update complete."
+echo " $nbFilesTreated out of $nbFilesSeen files found were succesfully treated."
+echo " Skipped ${nbFilesSkipped}."
+echo " Do not forget to restore your MYSIFDEC if you changed it."
+exit 0

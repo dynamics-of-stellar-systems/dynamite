@@ -1,0 +1,12 @@
+BEGIN TRS SPECIFICATIONS
+! error-printout-device                           6
+! printout-device                                 6
+! print-level                                     0
+! has-h-changed                                   2
+! intitial-multiplier                             0.0
+! solution-is-likely-on-boundary                  F
+! equality-problem                                F
+! space-critical                                  F
+! deallocate-error-fatal                          F
+! output-line-prefix                              ""
+END TRS SPECIFICATIONS

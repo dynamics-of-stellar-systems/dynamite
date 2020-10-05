@@ -1,0 +1,675 @@
+
+              **************************************************
+              *                                                *
+              *                   FILTRANE                     *
+              *                                                *
+              *     GALAHAD filter trust-region algorithm      *
+              *                                                *
+              *     for the nonlinear feasibility problem      *
+              *                                                *
+              **************************************************
+
+ 
+ Iter     f(x)      ||g(x)||     rho       ||s||      Delta   #CGits Type   F
+ 
+    0   5.465E+02  2.028E+03                        1.000E+00      0        0
+    1   3.792E+01  2.547E+02  9.323E-01  5.379E-01  1.000E+00      1 GUIF   0
+    2   3.615E+00  3.238E+01  9.183E-01  2.933E-01  1.076E+00      2 GUIF   0
+    3   4.030E+01  3.015E+02 -1.015E+01  1.499E+00  1.076E+00      4 GUEf   1
+    4   2.332E+00  3.746E+01  9.431E-01  2.671E-01  1.076E+00      5 GUIF   1
+    5   1.900E-01  4.295E+00  9.548E-01  1.198E-01  1.076E+00      6 GUIF   1
+    6   2.881E-09  7.247E-06  1.000E+00  6.278E-01  1.076E+00      8 GUIF   1
+    7   1.800E-10  9.058E-07  9.375E-01  1.144E-03  1.256E+00     10 GUIF   1
+
+ Problem successfully solved: objective function is stationary.
+
+              *********************** Bye **********************
+
+
+ FILTRANE workspace cleanup
+
+
+              *********************** Bye **********************
+
+
+ ========================================================================
+
+  1)     Impossible n
+
+ ========================================================================
+
+
+              **************************************************
+              *                                                *
+              *                   FILTRANE                     *
+              *                                                *
+              *     GALAHAD filter trust-region algorithm      *
+              *                                                *
+              *     for the nonlinear feasibility problem      *
+              *                                                *
+              **************************************************
+
+
+ FILTRANE ERROR: the problem has      0 variables!
+
+              *********************** Bye **********************
+
+
+ FILTRANE workspace cleanup
+
+
+ FILTRANE ERROR: the problem has      0 variables!
+
+              *********************** Bye **********************
+
+
+ ========================================================================
+
+  2)     Impossible m
+
+ ========================================================================
+
+
+              **************************************************
+              *                                                *
+              *                   FILTRANE                     *
+              *                                                *
+              *     GALAHAD filter trust-region algorithm      *
+              *                                                *
+              *     for the nonlinear feasibility problem      *
+              *                                                *
+              **************************************************
+
+
+ FILTRANE ERROR: the problem has     -1 constraints!
+
+              *********************** Bye **********************
+
+
+ FILTRANE workspace cleanup
+
+
+ FILTRANE ERROR: the problem has     -1 constraints!
+
+              *********************** Bye **********************
+
+
+ ========================================================================
+
+  3)     Impossible s%stage
+
+ ========================================================================
+
+
+              **************************************************
+              *                                                *
+              *                   FILTRANE                     *
+              *                                                *
+              *     GALAHAD filter trust-region algorithm      *
+              *                                                *
+              *     for the nonlinear feasibility problem      *
+              *                                                *
+              **************************************************
+
+
+ FILTRANE ERROR: attempt to SOLVE without a call to INITIALIZE
+
+              *********************** Bye **********************
+
+
+ FILTRANE workspace cleanup
+
+
+ FILTRANE ERROR: attempt to SOLVE without a call to INITIALIZE
+
+              *********************** Bye **********************
+
+
+ ========================================================================
+
+  4)     x unallocated
+
+ ========================================================================
+
+
+              **************************************************
+              *                                                *
+              *                   FILTRANE                     *
+              *                                                *
+              *     GALAHAD filter trust-region algorithm      *
+              *                                                *
+              *     for the nonlinear feasibility problem      *
+              *                                                *
+              **************************************************
+
+
+ FILTRANE ERROR: problem%x has not been allocated!
+
+              *********************** Bye **********************
+
+
+ FILTRANE workspace cleanup
+
+
+ FILTRANE ERROR: problem%x has not been allocated!
+
+              *********************** Bye **********************
+
+
+ ========================================================================
+
+  5)     x_l unallocated
+
+ ========================================================================
+
+
+              **************************************************
+              *                                                *
+              *                   FILTRANE                     *
+              *                                                *
+              *     GALAHAD filter trust-region algorithm      *
+              *                                                *
+              *     for the nonlinear feasibility problem      *
+              *                                                *
+              **************************************************
+
+
+ FILTRANE ERROR: problem%x_l has not been allocated!
+
+              *********************** Bye **********************
+
+
+ FILTRANE workspace cleanup
+
+
+ FILTRANE ERROR: problem%x_l has not been allocated!
+
+              *********************** Bye **********************
+
+
+ ========================================================================
+
+  6)     x_u unallocated
+
+ ========================================================================
+
+
+              **************************************************
+              *                                                *
+              *                   FILTRANE                     *
+              *                                                *
+              *     GALAHAD filter trust-region algorithm      *
+              *                                                *
+              *     for the nonlinear feasibility problem      *
+              *                                                *
+              **************************************************
+
+
+ FILTRANE ERROR: problem%x_u has not been allocated!
+
+              *********************** Bye **********************
+
+
+ FILTRANE workspace cleanup
+
+
+ FILTRANE ERROR: problem%x_u has not been allocated!
+
+              *********************** Bye **********************
+
+
+ ========================================================================
+
+  7)     x_status unallocated
+
+ ========================================================================
+
+
+              **************************************************
+              *                                                *
+              *                   FILTRANE                     *
+              *                                                *
+              *     GALAHAD filter trust-region algorithm      *
+              *                                                *
+              *     for the nonlinear feasibility problem      *
+              *                                                *
+              **************************************************
+
+
+ FILTRANE ERROR: problem%x_status has not been allocated!
+
+              *********************** Bye **********************
+
+
+ FILTRANE workspace cleanup
+
+
+ FILTRANE ERROR: problem%x_status has not been allocated!
+
+              *********************** Bye **********************
+
+
+ ========================================================================
+
+  8)     c unallocated
+
+ ========================================================================
+
+
+              **************************************************
+              *                                                *
+              *                   FILTRANE                     *
+              *                                                *
+              *     GALAHAD filter trust-region algorithm      *
+              *                                                *
+              *     for the nonlinear feasibility problem      *
+              *                                                *
+              **************************************************
+
+
+ FILTRANE ERROR: problem%c has not been allocated!
+
+              *********************** Bye **********************
+
+
+ FILTRANE workspace cleanup
+
+
+ FILTRANE ERROR: problem%c has not been allocated!
+
+              *********************** Bye **********************
+
+
+ ========================================================================
+
+  9)     c_l unallocated
+
+ ========================================================================
+
+
+              **************************************************
+              *                                                *
+              *                   FILTRANE                     *
+              *                                                *
+              *     GALAHAD filter trust-region algorithm      *
+              *                                                *
+              *     for the nonlinear feasibility problem      *
+              *                                                *
+              **************************************************
+
+
+ FILTRANE ERROR: problem%c_l has not been allocated!
+
+              *********************** Bye **********************
+
+
+ FILTRANE workspace cleanup
+
+
+ FILTRANE ERROR: problem%c_l has not been allocated!
+
+              *********************** Bye **********************
+
+
+ ========================================================================
+
+ 10)     c_u unallocated
+
+ ========================================================================
+
+
+              **************************************************
+              *                                                *
+              *                   FILTRANE                     *
+              *                                                *
+              *     GALAHAD filter trust-region algorithm      *
+              *                                                *
+              *     for the nonlinear feasibility problem      *
+              *                                                *
+              **************************************************
+
+
+ FILTRANE ERROR: problem%c_u has not been allocated!
+
+              *********************** Bye **********************
+
+
+ FILTRANE workspace cleanup
+
+
+ FILTRANE ERROR: problem%c_u has not been allocated!
+
+              *********************** Bye **********************
+
+
+ ========================================================================
+
+ 11)     equation unallocated
+
+ ========================================================================
+
+
+              **************************************************
+              *                                                *
+              *                   FILTRANE                     *
+              *                                                *
+              *     GALAHAD filter trust-region algorithm      *
+              *                                                *
+              *     for the nonlinear feasibility problem      *
+              *                                                *
+              **************************************************
+
+
+ FILTRANE ERROR: problem%equation has not been allocated!
+
+              *********************** Bye **********************
+
+
+ FILTRANE workspace cleanup
+
+
+ FILTRANE ERROR: problem%equation has not been allocated!
+
+              *********************** Bye **********************
+
+
+ ========================================================================
+
+ 12)     y unallocated
+
+ ========================================================================
+
+
+              **************************************************
+              *                                                *
+              *                   FILTRANE                     *
+              *                                                *
+              *     GALAHAD filter trust-region algorithm      *
+              *                                                *
+              *     for the nonlinear feasibility problem      *
+              *                                                *
+              **************************************************
+
+
+ FILTRANE ERROR: problem%y has not been allocated!
+
+              *********************** Bye **********************
+
+
+ FILTRANE workspace cleanup
+
+
+ FILTRANE ERROR: problem%y has not been allocated!
+
+              *********************** Bye **********************
+
+
+ ========================================================================
+
+ 13)     g unallocated
+
+ ========================================================================
+
+
+              **************************************************
+              *                                                *
+              *                   FILTRANE                     *
+              *                                                *
+              *     GALAHAD filter trust-region algorithm      *
+              *                                                *
+              *     for the nonlinear feasibility problem      *
+              *                                                *
+              **************************************************
+
+
+ FILTRANE ERROR: problem%g has not been allocated!
+
+              *********************** Bye **********************
+
+
+ FILTRANE workspace cleanup
+
+
+ FILTRANE ERROR: problem%g has not been allocated!
+
+              *********************** Bye **********************
+
+
+ ========================================================================
+
+ 14)     J_val unallocated
+
+ ========================================================================
+
+
+              **************************************************
+              *                                                *
+              *                   FILTRANE                     *
+              *                                                *
+              *     GALAHAD filter trust-region algorithm      *
+              *                                                *
+              *     for the nonlinear feasibility problem      *
+              *                                                *
+              **************************************************
+
+
+ FILTRANE ERROR: problem%J_val has not been allocated!
+
+              *********************** Bye **********************
+
+
+ FILTRANE workspace cleanup
+
+
+ FILTRANE ERROR: problem%J_val has not been allocated!
+
+              *********************** Bye **********************
+
+
+ ========================================================================
+
+ 15)     J_row unallocated
+
+ ========================================================================
+
+
+              **************************************************
+              *                                                *
+              *                   FILTRANE                     *
+              *                                                *
+              *     GALAHAD filter trust-region algorithm      *
+              *                                                *
+              *     for the nonlinear feasibility problem      *
+              *                                                *
+              **************************************************
+
+
+ FILTRANE ERROR: problem%J_row has not been allocated!
+
+              *********************** Bye **********************
+
+
+ FILTRANE workspace cleanup
+
+
+ FILTRANE ERROR: problem%J_row has not been allocated!
+
+              *********************** Bye **********************
+
+
+ ========================================================================
+
+ 16)     J_col unallocated
+
+ ========================================================================
+
+
+              **************************************************
+              *                                                *
+              *                   FILTRANE                     *
+              *                                                *
+              *     GALAHAD filter trust-region algorithm      *
+              *                                                *
+              *     for the nonlinear feasibility problem      *
+              *                                                *
+              **************************************************
+
+
+ FILTRANE ERROR: problem%J_col has not been allocated!
+
+              *********************** Bye **********************
+
+
+ FILTRANE workspace cleanup
+
+
+ FILTRANE ERROR: problem%J_col has not been allocated!
+
+              *********************** Bye **********************
+
+
+ ========================================================================
+
+ 17)     Impossible nbr_groups
+
+ ========================================================================
+
+
+              **************************************************
+              *                                                *
+              *                   FILTRANE                     *
+              *                                                *
+              *     GALAHAD filter trust-region algorithm      *
+              *                                                *
+              *     for the nonlinear feasibility problem      *
+              *                                                *
+              **************************************************
+
+
+ FILTRANE ERROR: the user-defined number of groups (    -1) is impossible.
+
+              *********************** Bye **********************
+
+
+ FILTRANE workspace cleanup
+
+
+ FILTRANE ERROR: the user-defined number of groups (    -1) is impossible.
+
+              *********************** Bye **********************
+
+
+ ========================================================================
+
+ 18)     control%group unallocated
+
+ ========================================================================
+
+
+              **************************************************
+              *                                                *
+              *                   FILTRANE                     *
+              *                                                *
+              *     GALAHAD filter trust-region algorithm      *
+              *                                                *
+              *     for the nonlinear feasibility problem      *
+              *                                                *
+              **************************************************
+
+
+ FILTRANE ERROR: the user-defined groups are incorrectly defined
+
+              *********************** Bye **********************
+
+
+ FILTRANE workspace cleanup
+
+
+ FILTRANE ERROR: the user-defined groups are incorrectly defined
+
+              *********************** Bye **********************
+
+
+ ========================================================================
+
+ 19)     Impossible control%group(1)
+
+ ========================================================================
+
+
+              **************************************************
+              *                                                *
+              *                   FILTRANE                     *
+              *                                                *
+              *     GALAHAD filter trust-region algorithm      *
+              *                                                *
+              *     for the nonlinear feasibility problem      *
+              *                                                *
+              **************************************************
+
+
+ FILTRANE ERROR: the group index of the      1-th constraint
+
+                 (value =   3026) is impossible.
+
+              *********************** Bye **********************
+
+
+ FILTRANE workspace cleanup
+
+
+ FILTRANE ERROR: the group index of the      1-th constraint
+
+                 (value =   3026) is impossible.
+
+              *********************** Bye **********************
+
+
+ ========================================================================
+
+ 20)     Correct USER_DEFINED groups
+
+ ========================================================================
+
+
+              **************************************************
+              *                                                *
+              *                   FILTRANE                     *
+              *                                                *
+              *     GALAHAD filter trust-region algorithm      *
+              *                                                *
+              *     for the nonlinear feasibility problem      *
+              *                                                *
+              **************************************************
+
+ 
+ Iter     f(x)      ||g(x)||     rho       ||s||      Delta   #CGits Type   F
+ 
+    0   5.465E+02  2.028E+03                        1.000E+00      0        0
+    1   3.792E+01  2.547E+02  9.323E-01  5.379E-01  1.000E+00      1 GUIF   0
+    2   3.615E+00  3.238E+01  9.183E-01  2.933E-01  1.076E+00      2 GUIF   0
+    3   4.030E+01  3.015E+02 -1.015E+01  1.499E+00  1.076E+00      4 GUEf   1
+    4   2.332E+00  3.746E+01  9.431E-01  2.671E-01  1.076E+00      5 GUIF   1
+    5   1.900E-01  4.295E+00  9.548E-01  1.198E-01  1.076E+00      6 GUIF   1
+    6   2.881E-09  7.247E-06  1.000E+00  6.278E-01  1.076E+00      8 GUIF   1
+    7   1.800E-10  9.058E-07  9.375E-01  1.144E-03  1.256E+00     10 GUIF   1
+
+ Problem successfully solved: objective function is stationary.
+
+              *********************** Bye **********************
+
+
+ FILTRANE workspace cleanup
+
+
+              *********************** Bye **********************
+
+
+ ========================================================================
+
+forrtl: error (76): IOT trap signal
+forrtl: error (69): process interrupted (SIGINT)
+forrtl: error (69): process interrupted (SIGINT)
+forrtl: error (69): process interrupted (SIGINT)
+forrtl: error (69): process interrupted (SIGINT)
+forrtl: error (69): process interrupted (SIGINT)

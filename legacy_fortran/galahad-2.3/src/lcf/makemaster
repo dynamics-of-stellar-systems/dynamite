@@ -1,0 +1,283 @@
+#  Main body of the installation makefile for the GALAHAD LCF package
+
+#  N. Gould, D. Orban and Ph. L. Toint.
+#  This version: 19 X 2005
+
+SHELL = /bin/$(BINSHELL)
+
+#  compiler flags
+
+FFLAGS    = $(BASIC) $(OPTIMIZATION) $(DEBUG) $(MODULES) $(F90) $(USUAL)
+FFLAGSS   = $(BASIC) $(OPTIMIZATION) $(DEBUG) $(MODULES) $(F90) $(SPECIAL)
+FFLAGSN   = $(BASIC) $(NOOPTIMIZATION) $(DEBUG) $(MODULES) $(F90)
+FFLAGS77  = $(BASIC) $(OPTIMIZATION) $(DEBUG) $(MODULES) $(F77) $(USUAL)
+FFLAGS77S = $(BASIC) $(OPTIMIZATION) $(DEBUG) $(MODULES) $(F77) $(SPECIAL)
+RUNFFLAGS =          $(OPTIMIZATION) $(DEBUG) $(MODULES)
+
+#  names of random libraries
+
+LG  = $(OBJ)/libgalahad.a
+LGS = $(OBJS)/libgalahad.a
+LGD = $(OBJD)/libgalahad.a
+
+BLG  = $(OBJ)/libgalahad_blas.a
+BLGS = $(OBJS)/libgalahad_blas.a
+BLGD = $(OBJD)/libgalahad_blas.a
+
+LLG  = $(OBJ)/libgalahad_lapack.a
+LLGS = $(OBJS)/libgalahad_lapack.a
+LLGD = $(OBJD)/libgalahad_lapack.a
+
+HLG  = $(OBJ)/libgalahad_hsl.a
+HLGS = $(OBJS)/libgalahad_hsl.a
+HLGD = $(OBJD)/libgalahad_hsl.a
+
+MLG  = $(OBJ)/libgalahad_metis.a
+MLGS = $(OBJS)/libgalahad_metis.a
+MLGD = $(OBJD)/libgalahad_metis.a
+
+#  Libraries used
+
+LIBS = -lgalahad -lgalahad_hsl -lgalahad_metis -lgalahad_lapack -lgalahad_blas
+
+#  Archive manipulation strings
+
+ARR = $(AR) -rc $(LG)
+RMARFILE = $(GALAHAD)/bin/rmarfile.$(BINSHELL) $(AR) $(GREP) $(LG)
+RMOBFILE = $(GALAHAD)/bin/rmobfile.$(BINSHELL) $(RM) $(OBJ)
+
+BARR = $(AR) -rc $(BLG)
+BRMARFILE = $(GALAHAD)/bin/rmarfile.$(BINSHELL) $(AR) $(GREP) $(BLG)
+
+LARR = $(AR) -rc $(LLG)
+LRMARFILE = $(GALAHAD)/bin/rmarfile.$(BINSHELL) $(AR) $(GREP) $(LLG)
+
+HARR = $(AR) -rc $(HLG)
+HRMARFILE = $(GALAHAD)/bin/rmarfile.$(BINSHELL) $(AR) $(GREP) $(HLG)
+
+MARR = $(AR) -rc $(MLG)
+MRMARFILE = $(GALAHAD)/bin/rmarfile.$(BINSHELL) $(AR) $(GREP) $MHLG)
+
+#  sed scripts
+
+LSEDS = $(GALAHAD)/seds/$(LINEARSOLVER).sed
+LPSEDS = $(GALAHAD)/seds/$(LINEARSOLVER)_precon.sed
+CSEDS = $(GALAHAD)/seds/cutersize.sed
+
+#  compilation agenda
+
+SLCF =  basics linearsolver ulinearsolver scu gltr sbls qpd fdc $(LGS)(lcf.o)
+DLCF =  basics linearsolver ulinearsolver scu gltr sbls qpd fdc $(LGD)(lcf.o)
+
+SRUNLCF = presolve copyright $(LGS)(uselcf.o) $(OBJS)/runlcf_sif.o
+DRUNLCF = presolve copyright $(LGD)(uselcf.o) $(OBJD)/runlcf_sif.o
+
+LCFOBJECTSS_CUTER = $(SLCF) $(SRUNLCF)
+LCFOBJECTSD_CUTER = $(DLCF) $(DRUNLCF)
+
+LCFDS = $(DLCF) $(OBJD)/lcfs.o
+LCFDT = $(DLCF) $(OBJD)/lcft.o
+LCFSS = $(SLCF) $(OBJS)/lcfs.o
+LCFST = $(SLCF) $(OBJS)/lcft.o
+
+RLCFDS = $(OBJD)/lcfs.o -L$(OBJD) $(LIBS)
+RLCFDT = $(OBJD)/lcft.o -L$(OBJD) $(LIBS)
+RLCFSS = $(OBJS)/lcfs.o -L$(OBJS) $(LIBS)
+RLCFST = $(OBJS)/lcft.o -L$(OBJS) $(LIBS)
+
+SUCC = precision version) compiled successfully
+SUCC_CUTER = precision version) for CUTEr compiled successfully
+
+#  main compilations and runs
+
+all: lcf_cuter
+test: test_lcf
+test_nocuter: test_lcf_nocuter
+
+# lcf
+
+lcf_cuter: lcf_cuter_$(PRECIS)
+	@printf ' %-21s\n' "GALAHAD: LCF ($(PRECIS) $(SUCC_CUTER)" 
+lcf_cuter_single: $(LCFOBJECTSS_CUTER)
+	$(RANLIB) $(LGS)
+lcf_cuter_double: $(LCFOBJECTSD_CUTER)
+	$(RANLIB) $(LGD)
+
+lcf_silent: lcf_$(PRECIS)
+lcf: lcf_$(PRECIS)
+	@printf ' %-21s\n' "GALAHAD: LCF ($(PRECIS) $(SUCC)" 
+lcf_single: $(SLCF)
+	$(RANLIB) $(LGS)
+lcf_double: $(DLCF)
+	$(RANLIB) $(LGD)
+
+lcfsrunall: lcfss lcfst
+lcfdrunall: lcfds lcfdt
+lcfrunall: lcfdrunall lcfsrunall
+
+#  basic packages
+
+basics: 
+	( cd ../general ; $(MAKE) -f $(GALAHAD)/makefiles/$(VERSION) \
+            cputim.o blas.o metis.o lapack_gltr.o cuterinter.o symbols.o \
+            specfile.o rand.o scale.o sort.o tools.o space.o string.o \
+            trans.o qtrans.o smt.o PRECIS=$(PRECIS) PWD=$(PWD)/../general )
+	( cd ../qp ; $(MAKE) -f $(GALAHAD)/makefiles/$(VERSION) \
+            qpt.o PRECIS=$(PRECIS) PWD=$(PWD)/../qp )
+ma48: 
+	( cd $(MA48); $(MAKE) -f $(GALAHAD)/makefiles/$(VERSION) \
+            ma48_silent PRECIS=$(PRECIS) PWD=$(MA48) )
+linearsolver: 
+	( cd ../general ; $(MAKE) -f $(GALAHAD)/makefiles/$(VERSION) \
+            linearsolver_silent PRECIS=$(PRECIS) PWD=$(PWD)/../general )
+ulinearsolver: 
+	( cd ../general ; $(MAKE) -f $(GALAHAD)/makefiles/$(VERSION) \
+            ulinearsolver_silent PRECIS=$(PRECIS) PWD=$(PWD)/../general )
+scu:
+	( cd ../general ; $(MAKE) -f $(GALAHAD)/makefiles/$(VERSION) \
+            scu.o PRECIS=$(PRECIS) PWD=$(PWD)/../general )
+gltr:
+	( cd ../qp ; $(MAKE) -f $(GALAHAD)/makefiles/$(VERSION) \
+            roots.o gltr.o PRECIS=$(PRECIS) PWD=$(PWD)/../qp )
+sbls:
+	( cd ../sbls ; $(MAKE) -f $(GALAHAD)/makefiles/$(VERSION) \
+            sbls.o PRECIS=$(PRECIS) PWD=$(PWD)/../sbls )
+qpd:
+	( cd ../qp ; $(MAKE) -f $(GALAHAD)/makefiles/$(VERSION) \
+            qpt.o qpp.o roots.o qpd.o PRECIS=$(PRECIS) PWD=$(PWD)/../qp )
+copyright:
+	( cd ../general ; $(MAKE) -f $(GALAHAD)/makefiles/$(VERSION) \
+            copyright.o PRECIS=$(PRECIS) PWD=$(PWD)/../general )
+nlpt:
+	( cd ../filtrane ; $(MAKE) -f $(GALAHAD)/makefiles/$(VERSION) \
+            nlpt.o PRECIS=$(PRECIS) PWD=$(PWD)/../filtrane )
+presolve:
+	( cd ../pre ; $(MAKE) -f $(GALAHAD)/makefiles/$(VERSION) \
+            presolve.o PRECIS=$(PRECIS) PWD=$(PWD)/../pre )
+fdc:
+	( cd ../fdc ; $(MAKE) -f $(GALAHAD)/makefiles/$(VERSION) \
+            fdc.o PRECIS=$(PRECIS) PWD=$(PWD)/../fdc )
+
+# run spec-sheet example tests
+
+lcfds: $(LCFDS)
+	$(FORTRAN) $(RUNFFLAGS) $(SPECIAL) -o run_lcf $(RLCFDS)
+	- ./run_lcf >& lcfds.output
+	cat lcfds.output
+	rm ./run_lcf
+
+lcfdt: $(LCFDT)
+	echo " Exhaustive test of subroutine interface to lcf"
+	$(FORTRAN) $(RUNFFLAGS) $(SPECIAL) -o run_lcf $(RLCFDT)
+	- ./run_lcf >& lcfdt.output
+	cat lcfdt.output
+	rm ./run_lcf
+
+lcfss: $(LCFSS)
+	$(FORTRAN) $(RUNFFLAGS) $(SPECIAL) -o run_lcf $(RLCFSS)
+	- ./run_lcf >& lcfs.output
+	cat lcfs.output
+	rm ./run_lcf
+
+lcfst: $(LCFST)
+	echo " Exhaustive test of subroutine interface to lcf"
+	$(FORTRAN) $(RUNFFLAGS) $(SPECIAL) -o run_lcf $(RLCFST)
+	- ./run_lcf >& lcft.output
+	cat lcft.output
+	rm ./run_lcf
+
+#  Substantial GALAHAD packages
+
+lcf.o: $(LG)(lcf.o)
+
+$(LG)(lcf.o):  ../lcf/lcf.f90
+	@printf ' %-9s %-15s\t\t' "Compiling" "lcf  " 
+	$(SED) -f $(SEDS)  ../lcf/lcf.f90 > $(OBJ)/lcf1.f90
+	$(SED) -f $(LSEDS) $(OBJ)/lcf1.f90 > $(OBJ)/lcf2.f90
+	$(SED) -f $(LPSEDS) $(OBJ)/lcf2.f90 > $(OBJ)/lcf3.f90
+	$(SED) "s/^.$(NOT95)/     /" $(OBJ)/lcf3.f90 > $(OBJ)/lcf.f90
+	cd $(OBJ); $(FORTRAN) -o lcf.o $(FFLAGSS) lcf.f90 \
+                || ( printf ' %-26s' "=> Disabling optimization " ; \
+                   $(FORTRAN) -o lcf.o $(FFLAGSN) lcf.f90 )
+	cd $(OBJ); $(ARR) lcf.o ; $(RM) lcf.f90 lcf1.f90 lcf2.f90 \
+                                         lcf3.f90 lcf.o
+	$(RMARFILE) uselcf.o
+	$(RMOBFILE) lcfs.o
+	$(RMOBFILE) lcft.o
+	$(MVMODS)
+	@printf '[ OK ]\n'
+
+# CUTEr/AMPL interfaces
+
+uselcf.o: $(LG)(uselcf.o)
+
+$(LG)(uselcf.o): ../lcf/uselcf.f90
+	@printf ' %-9s %-15s\t\t' "Compiling" "uselcf   " 
+	$(SED) -f $(SEDS) ../lcf/uselcf.f90 > $(OBJ)/uselcf1.f90
+	$(SED) -f $(LSEDS) $(OBJ)/uselcf1.f90 > $(OBJ)/uselcf2.f90
+	$(SED) "s/^.$(NOT95)/     /" $(OBJ)/uselcf2.f90 > $(OBJ)/uselcf.f90
+	cd $(OBJ); $(FORTRAN) -o uselcf.o $(FFLAGSS) uselcf.f90 \
+                || ( printf ' %-26s' "=> Disabling optimization " ; \
+                   $(FORTRAN) -o uselcf.o $(FFLAGSN) uselcf.f90 )
+	cd $(OBJ); $(ARR) uselcf.o ; $(RM) uselcf.f90 uselcf1.f90 \
+                                           uselcf2.f90 uselcf.o
+	$(RMOBFILE) runlcf_sif.o
+	$(MVMODS)
+	@printf '[ OK ]\n'
+
+#  main programs
+
+runlcf_sif.o: $(OBJ)/runlcf_sif.o
+
+$(OBJ)/runlcf_sif.o: ../lcf/runlcf_sif.f90
+	@printf ' %-9s %-15s\t\t' "Compiling" "runlcf_sif" 
+	$(SED) -f $(SEDS) ../lcf/runlcf_sif.f90 > $(OBJ)/runlcf_sif.f90
+	cd $(OBJ); $(FORTRAN) -o runlcf_sif.o $(FFLAGSS) runlcf_sif.f90
+	rm $(OBJ)/runlcf_sif.f90
+	@printf '[ OK ]\n'
+
+#  test decks
+
+lcfs.o: $(OBJ)/lcfs.o
+
+$(OBJ)/lcfs.o: ../lcf/lcfs.f90
+	@printf ' %-9s %-15s\t\t' "Compiling" "lcfs  " 
+	$(SED) -f $(SEDS) ../lcf/lcfs.f90 > $(OBJ)/lcfs1.f90
+	$(SED) -f $(LSEDS) $(OBJ)/lcfs1.f90 > $(OBJ)/lcfs.f90
+	cd $(OBJ) ; $(FORTRAN) -o lcfs.o $(FFLAGS) lcfs.f90
+	rm $(OBJ)/*.f90
+	@printf '[ OK ]\n'
+
+lcft.o: $(OBJ)/lcft.o
+
+$(OBJ)/lcft.o: ../lcf/lcft.f90
+	@printf ' %-9s %-15s\t\t' "Compiling" "lcft  " 
+	$(SED) -f $(SEDS) ../lcf/lcft.f90 > $(OBJ)/lcft1.f90
+	$(SED) -f $(LSEDS) $(OBJ)/lcft1.f90 > $(OBJ)/lcft.f90
+	cd $(OBJ) ; $(FORTRAN) -o lcft.o $(FFLAGSS) lcft.f90
+	rm $(OBJ)/*.f90
+	@printf '[ OK ]\n'
+
+#  generate HSL codes from GALAHAD ones
+
+hslgen: 
+	$(SED) -f ../hsl/gal2hsl ../eqp/lcf.f90 > ../hsl/hsl_ve16/ve16d.f90
+	$(SED) -f ../hsl/gal2hsl ../sbls/sbls.f90 > ../hsl/hsl_mi14/mi14d.f90
+
+#  book keeping
+
+clean: 
+	@printf ' %-9s\t\t' "Cleaning" 
+	$(RM) $(LGS) $(LGD) $(LG) $(OBJ)/lcfs.o $(OBJ)/lcft.o
+	@printf '[ OK ]\n'
+
+cleanall: 
+	@printf ' %-14s\t\t' "Removing all $(PRECIS) precision object and module files" 
+	$(RM) $(OBJ)/* $(MOD)/*
+	@printf '[ OK ]\n'
+
+rmlcf: 
+	@printf ' %-9s %-15s\t\t' "Removing" "lcf from archive " 
+	$(RMARFILE) lcf.o
+	@printf '[ OK ]\n'
+

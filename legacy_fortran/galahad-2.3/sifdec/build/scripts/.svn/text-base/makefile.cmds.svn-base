@@ -1,0 +1,136 @@
+
+#ifdef FromInstallSifDec
+
+#ifdef sun
+#include <sun.cf>
+#endif
+
+#ifdef hpux
+#include <hp.cf>
+#endif
+
+#ifdef _CRAY
+#include <cray.cf>
+#endif
+
+#ifdef sgi
+#include <sgi.cf>
+#endif
+
+#if defined(ibm) || defined(_IBMR2) || defined(ibm032) || defined(aix)
+#include <ibm.cf>
+#endif
+
+#ifdef DGUX
+#include <DGUX.cf>
+#endif
+
+#ifdef __osf__
+#include <osf1.cf>
+#endif
+
+#ifdef WIN32
+#include <Win32.cf>
+#endif
+
+#ifdef linux 
+#include <linux.cf>
+#endif
+
+#include <all.cf>
+
+/* Put this in a separate file and include it from here and Umake.tmpl ! */
+
+COMPILE      = CompileCmd
+LOAD         = LoadCmd
+ISF9095      = CompilerIsF9095
+COMPILE9095  = Compile9095Cmd
+LOAD9095     = Load9095Cmd
+FFLAGS       = FortranFlags
+SPECIALFLAGS = SpecialFlags
+CCOMPILE     = CCompileCmd
+CLOAD        = CLoadCmd
+CFLAGS       = CFlags
+TMP          = TempDirectory
+SYSTEM       = SystemTag
+KEYSYS       = KeySys
+MKDIR        = MkdirCmd
+CP           = CpCmd
+RM           = RmCmd
+MV           = MvCmd
+CAT          = CatCmd
+CHMOD        = ChmodCmd
+SED          = SedCmd
+LN           = LnCmd
+LS           = LsCmd
+AR           = ArCmd
+ARFLAGS      = ArFlags
+RMDIR        = RmdirCmd
+GREP         = GrepCmd
+AWK          = AwkCmd
+HEAD         = HeadCmd
+TAIL         = TailCmd
+WC           = WcCmd
+MAKE         = MakeCmd
+MEXFORTRAN   = MexFortranCmd 
+MEXFFLAGS    = MexFFlags
+
+#endif
+
+INTERFACESSRC = $(SIFDEC)/build/prototypes
+
+CMDS = cmds
+
+all::
+
+/* ========================
+ * Create the commands file
+ */
+
+slash.sed:
+	$(LN) -s $(SIFDEC)/build/scripts/slash.sed ./
+
+${CMDS} : $(INTERFACESSRC)/cmds.pro slash.sed
+	$(RM) cmds
+	@printf ' %-27s\t\t' "Getting UNIX commands right"
+	echo 's/\$${SYSTEM}/'`echo $(SYSTEM) | $(SED) -f slash.sed`'/g'   >  castscript.sed
+	echo 's/\$${KEYSYS}/'`echo $(KEYSYS) | $(SED) -f slash.sed`'/g'   >> castscript.sed
+	echo 's/\$${TMP}/'`echo $(TMP) | $(SED) -f slash.sed`'/g'         >> castscript.sed
+	echo 's/\$${MKDIR}/'`echo $(MKDIR) | $(SED) -f slash.sed`'/g'     >> castscript.sed
+	echo 's/\$${CP}/'`echo $(CP) | $(SED) -f slash.sed`'/g'           >> castscript.sed
+	echo 's/\$${RM}/'`echo $(RM) | $(SED) -f slash.sed`'/g'           >> castscript.sed
+	echo 's/\$${MV}/'`echo $(MV) | $(SED) -f slash.sed`'/g'           >> castscript.sed
+	echo 's/\$${CAT}/'`echo $(CAT) | $(SED) -f slash.sed`'/g'         >> castscript.sed
+	echo 's/\$${CHMOD}/'`echo $(CHMOD) | $(SED) -f slash.sed`'/g'     >> castscript.sed
+	echo 's/\$${SED}/'`echo $(SED) | $(SED) -f slash.sed`'/g'         >> castscript.sed
+	echo 's/\$${LN}/'`echo $(LN) | $(SED) -f slash.sed`'/g'           >> castscript.sed
+	echo 's/\$${LS}/'`echo $(LS) | $(SED) -f slash.sed`'/g'           >> castscript.sed
+	echo 's/\$${AR}/'`echo $(AR) | $(SED) -f slash.sed`'/g'           >> castscript.sed
+	echo 's/\$${RMDIR}/'`echo $(RMDIR) | $(SED) -f slash.sed`'/g'     >> castscript.sed
+	echo 's/\$${GREP}/'`echo $(GREP) | $(SED) -f slash.sed`'/g'       >> castscript.sed
+	echo 's/\$${AWK}/'`echo $(AWK) | $(SED) -f slash.sed`'/g'         >> castscript.sed
+	echo 's/\$${HEAD}/'`echo $(HEAD) | $(SED) -f slash.sed`'/g'       >> castscript.sed
+	echo 's/\$${TAIL}/'`echo $(TAIL) | $(SED) -f slash.sed`'/g'       >> castscript.sed
+	echo 's/\$${WC}/'`echo $(WC) | $(SED) -f slash.sed`'/g'           >> castscript.sed
+	echo 's/\$${MAKE}/'`echo $(MAKE) | $(SED) -f slash.sed`'/g'       >> castscript.sed
+	echo 's/\$${COMPILE}/'`echo $(COMPILE) | $(SED) -f slash.sed`'/g' >> castscript.sed
+	echo 's/\$${LOAD}/'`echo $(LOAD) | $(SED) -f slash.sed`'/g'       >> castscript.sed
+	echo 's/\$${ISF9095}/'`echo $(ISF9095) | $(SED) -f slash.sed`'/g' >> castscript.sed
+	echo 's/\$${COMPILE9095}/'`echo $(COMPILE9095) | $(SED) -f slash.sed`'/g' >> castscript.sed
+	echo 's/\$${LOAD9095}/'`echo $(LOAD9095) | $(SED) -f slash.sed`'/g' >> castscript.sed
+	echo 's/\$${FFLAGS}/'`echo $(FFLAGS) | $(SED) -f slash.sed`'/g'    >> castscript.sed
+	echo 's/\$${SPECIALFLAGS}/'`echo $(SPECIALFLAGS) | $(SED) -f slash.sed`'/g'    >> castscript.sed
+	echo 's/\$${CCOMPILE}/'`echo $(CCOMPILE) | $(SED) -f slash.sed`'/g' >> castscript.sed
+	echo 's/\$${CLOAD}/'`echo $(CLOAD) | $(SED) -f slash.sed`'/g'      >> castscript.sed
+	echo 's/\$${CFLAGS}/'`echo $(CFLAGS) | $(SED) -f slash.sed`'/g'    >> castscript.sed
+	echo 's/\$${MEXFORTRAN}/'`echo $(MEXFORTRAN) | $(SED) -f slash.sed`'/g' >> castscript.sed
+	echo 's/\$${MEXFFLAGS}/'`echo $(MEXFFLAGS) | $(SED) -f slash.sed`'/g' >> castscript.sed
+	$(SED) -f castscript.sed $(INTERFACESSRC)/cmds.pro > $@
+	$(RM) castscript.sed
+	@printf '[Ok]\n'
+
+all:: slash.sed ${CMDS}
+
+clean:: slash.sed
+
+purge:: ${CMDS}

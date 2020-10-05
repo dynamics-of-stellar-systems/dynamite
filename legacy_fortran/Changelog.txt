@@ -1,0 +1,14 @@
+V07062013
+	JJA added spherical gNFW profile in dmpotent.f90 and 
+	functions in sub/specfunc_beta.f90. Tested against 
+	NFW form.
+V25102010
+        Fixed NFW bug in dmpotent.f90
+
+V18032010 
+        Added dmpotent.f90 for all DM haloes and black holes
+        Added Galahad instructions
+        Added energy conservation check in orbit integration
+        
+        
+  

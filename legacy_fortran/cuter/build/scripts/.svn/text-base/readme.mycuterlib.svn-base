@@ -1,0 +1,35 @@
+
+CUTEr README file.				       September 2001.
+
+======================================================================
+
+  Please read this file prior to any modification in this directory.
+
+======================================================================
+
+This directory  contains the static library libcuter.a  built from the
+various CUTEr tools.  These tools and their usage  are detailed in the
+paper, the CUTEr General Documentation and the man pages. Please refer
+to these documents for more information.
+
+The Makefile found in this directory recognizes the following targets:
+
+castDotSed:  casting script for the CUTEr tools
+
+libcuter.a:  the CUTEr static library
+
+all:	     libcuter.a
+
+install:     installs the library libcuter.a
+
+======================================================================
+
+			      Good luck!
+
+Nicholas I.M. Gould,				     n.gould@rl.ac.uk,
+Dominique Orban,				     orban@cerfacs.fr,
+Philippe L. Toint.			    philippe.toint@fundp.ac.be
+
+======================================================================
+
+CUTEr README file.				       September 2001.

@@ -1,0 +1,88 @@
+
+                      *****************************
+		      *                           *
+                      *   USING VE14 WITH CUTEr   *
+		      *                           *
+                      *****************************
+
+               ( Last modified on 15 Sep 1996 at 16:51:55 )
+
+WHAT IS  VE14?
+--------------
+
+VE14 is a subroutine for the solution of the general, large, quadratic
+programming problem within a feasible region defined by simple bound
+constraints. It uses a barrier-type algorithm, and provides a choice between
+the classical log-barrier function, the Jittorntrum-Osborne barrier and the
+Lagrangian barrier of Conn, Gould and Toint.  The first two choices only
+generate feasible points, while the last has often proved to be the fastest.
+
+VE14 is part of the HSL (formerly the HARWELL SUBROUTINE LIBRARY), and was 
+written by Nick Gould. It is available from the United Kingdom Atomic Energy 
+Authority, Harwell, subject to certain license agreements.  It is copyrighted 
+jointly by the UKAEA and SERC (Science and Engineering Research Council).
+
+
+CREATING THE OBJECT MODULE FOR VE14
+-----------------------------------
+
+For building the double precision version, the VE14 double precision
+subroutine and dependencies should be concatenated in a new file called
+ve14d.f. This file should then be compiled (but not linked) and the resulting
+object file ve14d.o placed (or linked to from a file) in the directory
+$CUTER/common/src/pkg/ve14 or $MYCUTER/double/bin, under the name ve14.o.
+
+The procedure is identical for the single precision, except that the names
+ve14d.f and ve14d.o are replaced by ve14s.f and ve14s.o, respectively, and the
+file ve14.o should be found under $MYCUTER/single/bin.
+
+
+USING THE VE14 INTERFACE TOOL
+-----------------------------
+
+Suppose you wish to solve the problem written in SIF format contained
+in the file probname.SIF.
+
+The VE14 interface tools require two input files:
+
+   probname.SIF   specifies the problem in SIF format
+   VE14.SPC       sets values for VE14 run-time parameters
+
+If no VE14.SPC file is present in the current directory, the default
+version is copied from the $CUTER/ve14 directory. This default
+file is as follows:
+
+         3    ITYPEB, barrier (1=classical,2=Osborne+Jittorntrum,3=Lagrangian)
+   0.00001    STOPG,  the projected gradient stopping tolerance
+
+
+The commands to use this package are the two scripts
+sdve14 and ve14.
+
+The reader is referred to the papers quoted below, the documentation of the
+routine in the Harwell Subrooutine Library or the code itself if he or 
+she wishes to modify these parameters.
+
+
+REFERENCES
+----------
+
+A. Fiacco and G. McCormick,
+"Nonlinear programming: sequential unconstrained minimization techniques",
+Wiley, New York, 1968.
+
+K. Jittorntrum and M. Osborne,
+"A modified barrier function method with improved rate of convergence for
+degenerate problems",
+Journal of the Australian Mathematical Society, Series B,
+vol. 21. pp. 305-329, 1980.
+
+A.R. Conn, N. Gould and Ph.L. Toint,
+"A globally convergent Lagrangian barrier algorithm for optimization with
+general inequality constraints and simple bounds",
+Mathematics of Computation, to appear, 1996.
+
+Harwell Subroutine Library,
+"A catalogue of subroutines (release 11)",
+Advanced Computing Department, Harwell Laboratory, Harwell, UK, 1993.
+

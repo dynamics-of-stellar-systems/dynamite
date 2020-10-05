@@ -1,0 +1,29 @@
+K 25
+svn:wc:ra_dav:version-url
+V 64
+/SVN/cuter/!svn/ver/71/sifdec/branches/SifDec2/common/src/select
+END
+slct_new.f
+K 25
+svn:wc:ra_dav:version-url
+V 75
+/SVN/cuter/!svn/ver/71/sifdec/branches/SifDec2/common/src/select/slct_new.f
+END
+slct_old.f
+K 25
+svn:wc:ra_dav:version-url
+V 75
+/SVN/cuter/!svn/ver/71/sifdec/branches/SifDec2/common/src/select/slct_old.f
+END
+slct.f
+K 25
+svn:wc:ra_dav:version-url
+V 71
+/SVN/cuter/!svn/ver/71/sifdec/branches/SifDec2/common/src/select/slct.f
+END
+clsf.f
+K 25
+svn:wc:ra_dav:version-url
+V 71
+/SVN/cuter/!svn/ver/71/sifdec/branches/SifDec2/common/src/select/clsf.f
+END

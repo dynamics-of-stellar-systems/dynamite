@@ -1,0 +1,312 @@
+
+SifDec README file.					   March 2003.
+
+
+======================================================================
+
+Before you start to using this software, please read the file LICENSE,
+	     located in the same directory as this file.
+
+======================================================================
+
+This README file should be located in the directory where you unpacked
+the SifDec distribution. Its purpose is to get you started with SifDec
+by
+
+ (a) guiding you through the directory structure,
+ (b) briefly describing how to install SifDec,
+ (c) pointing to documentation, scattered over the subdirectories.
+
+It was our intention to keep this REAME file short so as to get you up
+and   running    with   SifDec   as   quickly  and    as   easily   as
+possible. Documentation on all aspects  of the package may be found in
+at least one form in the distribution. Different documentation formats
+are available on a website at  http://cuter.rl.ac.uk/cuter-www/sifdec/
+
+The information below is structured as follows
+
+
+ I......The SifDec distribution and its directory structure.
+
+ II.....Installing a first version of SifDec on your system.
+
+ III....Where to find additional documentation.
+
+
+======================================================================
+
+ [ I.	The SifDec distribution and its directory structure ]
+
+  After  unpacking  the  compressed  tarfile   containing  the  SifDec
+distribution, the following files should be present in your directory:
+
+    -rw-r--r--   BUGS
+    -rw-r--r--   LICENSE
+    -rw-r--r--   README
+    drwxr-xr-x   build/
+    drwxr-xr-x   common/
+    drwxr-xr-x   config/
+    lrwxrwxrwx   install_sifdec -> ./build/scripts/install_sifdec*
+    lrwxrwxrwx   install_script_sifdec -> ./build/scripts/install_script_sifdec*
+    lrwxrwxrwx   uninstall_sifdec -> ./build/scripts/uninstall_sifdec*
+    lrwxrwxrwx   update_sifdec -> ./build/scripts/update_sifdec*
+
+We now briefly examine each of these files or directories in turn.
+
+  BUGS		file describing when and how to report SifDec bugs
+
+  LICENSE	licensing information
+
+  README	this file
+
+  build/	directory containing some scripts, prototype files and
+		architecture-dependent  configuration files  needed by
+		the installation script.  The subdirectories of build/
+		should be arch/, prototypes/ and scripts/.
+
+  common/	directory  containing all the files that are common to
+		all the  local  installations  of SifDec.  These files
+		include source files,  documentation files, man pages,
+		SIF-encoded problems,  matlab interfaces  and so on...
+		The subdirectory structure under common/  should be as
+		follows (indentation indicates depth):
+
+		doc/			General documentation,
+		man/
+		  man1/			Section 1 manpages,
+		sif/			SIF-encoded test problems,
+		src/
+		  select/		select source files,
+		  sifdec/		SIF decoder source files.
+
+  config        directory  containing  all the information  pertaining
+                to Umakefiles.  It includes the rules used to generate
+                the Makefiles  and  the  data  files  related  to  the
+                various  supported architectures.
+
+  install_sifdec
+		main installation script. This file is a symbolic link
+		to build/scripts/install_sifdec. Normally, this is the
+		first script that you will run in order to install the
+		version of SifDec suited to your needs and system.
+
+  uninstall_sifdec
+		maintenance script used to remove an installed version
+		of SifDec. Offers the possibility to remove either the
+		single or double precision version only.  This file is
+		a symbolic link to build/scripts/uninstall_sifdec.
+
+  update_sifdec	used to incorporate changes, bug fixes,  new  versions
+		of a  small number of  source files,  this script is a
+		symbolic link to build/script/update_sifdec.
+
+  version.date	contains the date and time of the last rebuild of this
+		SifDec distribution (prior to your download).
+
+
+This brief overview of the SifDec directory structure should be enough
+for  you to  get  started with  SifDec  and start  coding, testing  or
+exploring. More  information is found  in documentation pointed  to in
+section III below.
+
+
+   --- NOTE: ---
+
+After a first installation, a  new directory called log/ will be added
+to the  above list, containing  a file named  install.log, summarizing
+all the current  (installed) versions of SifDec on  your system.  This
+file persists even  if you uninstall all the  present versions and, in
+this case, is empty. It is  strongly advised *not* to delete or modify
+by hand this log file.
+
+
+======================================================================
+
+ [ II.	Installing a first version of SifDec on your system ]
+
+ The first step in installing a version of SifDec on your system is to
+simply launch the  install_sifdec  script briefly described in section
+I  and  to  follow the  directions  that  appear  on the  screen.  The
+installation phase  does not require  answers to tricky  questions and
+should be  easy to go through.  Should you come  across any particular
+difficulty, we  suggest you  move on to  section III below  and follow
+links  to more  detailed documentation.  It  may also  be valuable  to
+examine  the   install_sifdec   script   itself  as   it   should   be
+self-documented.  To start the  installation phase,  simply cd  to the
+directory where the SifDec distribution was unpacked and type
+
+	prompt% ./install_sifdec
+
+at the command prompt. You  will be asked simple questions, like which
+platform you wish to install SifDec on, which compiler you wish to use
+which precision version and size you wish to handle, and the directory
+you wish  to install to. SifDec  will then do the  rest, printing some
+information on the screen as it proceeds. For a first installation, we
+recommend  that you  agree with  the installation  script and  then go
+ahead   customizing  your   installation  as   you  progress   in  the
+documentation.  A   sample  installation  session   follows.  All  the
+prompting comes from the installation script and the answers '5', '2',
+'d', 'm' and 'y' are from the user:
+
+     Select platform
+	    (1) Compaq (DEC) alpha
+	    (2) Cray
+	    (3) HP workstation
+	    (4) IBM RS/6000
+	    (5) PC
+	    (6) SGI workstation
+	    (7) SUN workstation
+	    (0) Other (user-defined)
+    5
+     Select Fortran compiler
+            [1 ]  Fujitsu frt
+            [2 ]  Intel ifc
+            [3 ]  Layhey lf95
+            [4 ]  Portland Group pgf77
+            [5 ]  Portland Group pgf90
+            [6 ]  Linux f77-f2c
+            [7 ]  GNU g77
+            [8 ]  GNU g77 without etime
+            [9 ]  NAG f90
+            [10]  NAG f95
+    2
+     Set install precision (D=double, s=single):
+    d
+     Set install size (L=large, m=medium, s=small, c=customized):
+    m
+     By default, SifDec with your selections will be installed in
+      /home/me/Sifdec/SifDec.medium.pc.lnx.ifc
+     Is this OK (Y/n)?
+    y
+
+The installation script then proceeds creating the directory structure
+where your  medium double-precision version of ifc-based  SifDec for a
+PC    running   Linux    will    be   hosted,    in   the    directory
+/home/me/Sifdec/SifDec.medium.pc.lnx.ifc.      Follow     the    final
+instructions, updating  your path,  MANPATH, LIBPATH and  creating the
+appropriate  environment variables.   If you  do not  understand those
+directions, please  ask your local system  administrator.  Changing to
+the newly-created directory, we find the following structure:
+
+    bin/		precision-independent scripts,
+    config/             umake configuration files,
+    double/
+      bin/		precision-dependent scripts and relocatables,
+      config/		system-dependent configuration files.
+
+The installation scripts will ask you a couple more questions, to
+which you should answer positively if you wish to complete the
+installation. These last operations may also be performed by hand, as
+we now describe. However, for a first installation, we recommend
+answering 'yes' to the questions.
+
+Only  the directory  structure  has  been created  at  this point  and
+nothing has been  compiled yet. You must issue  an additional command,
+from  the  newly-created directory,  which  is,  in  this case  called
+/home/me/Sifdec/SifDec.medium.pc.lnx.ifc. Issuing
+
+	prompt% ./install_mysifdec
+
+at the command  prompt will create the various  Makefiles necessary to
+compile all  the SifDec components, from the  Umakefiles. This process
+is generally  referred to as  'bootstrapping'. Once the  above command
+has finished executing, simply issue the usual
+
+	prompt% make all
+
+to start  compiling everything. This process  should complete smoothly
+after  a short  while. Note  that,  as usual,  make outputs  a lot  of
+information on  the screen.  It may thus  be much more  informative in
+this case to issue
+
+	prompt% make -s all
+
+to  keep make  silent and  let  general information  only be  printed.
+Please  refer  to  the README  file found  under  $MYSIFDEC for  more
+information on this process.
+
+The  directory  /home/me/Sifdec/SifDec.medium.pc.lnx.ifc/bin  contains
+the  scripts  that  you will  run  in  order  to decode  a  particular
+SIF-encoded problem. For instance, you could issue the command
+
+	prompt% sifdecode KISSING2
+
+and thereby decode the  constrained problem KISSING2.SIF, creating the
+files
+
+    -rw-r--r--     1859 ELFUNS.f
+    -rw-r--r--        0 EXTERN.f
+    -rw-r--r--      336 GROUPS.f
+    -rw-r--r--   278350 OUTSDIF.d
+    -rw-r--r--      908 RANGES.f
+    -rw-r--r--      297 SETTYP.f
+
+(note  that the exact  files size  may be  slightly different  on your
+local system.)
+
+
+IMPORTANT  NOTE:  Optimization and  linear  algebra  packages used  to
+actually solve the problem, or transform it, are *not* provided in the
+SifDec  distribution. The CUTEr package
+
+   http://cuter.rl.ac.uk/cuter-www/
+
+provides a number of tools and interfaces to such packages. You
+should contact their authors or people in charge in order to get a
+copy.
+
+======================================================================
+
+ [ III.	Where to find additional documentation ]
+
+Although this  README file should be  enough to put you  on the tracks
+and start using SifDec --- especially if you are already familiar with
+any of  its predecessors ---  it clearly is insufficient  for advanced
+use  and customization.  As required by the  SifDec  main installation
+script,  you  should  have  defined  an  environment  variable  called
+SIFDEC and set it to the  directory where SifDec was unpacked.  We use
+this environment  variable to  locate files in  the remainder  of this
+document.
+
+The  general SifDec documentation  may be  found, in Portable Document
+Format  (pdf)  in the  file  $SIFDEC/common/doc/general.pdf. This file
+should contain most of the information you need to efficiently use and
+manage  SifDec.  Even  though  all  the  scripts  are  intended to  be
+self-explanatory and self-documented, we strongly advise that you read
+this file and/or backup your  data prior to any uncertain manipulation
+and/or modification.
+
+All the SifDec  interfaces, ie the scripts that you  may run to decode
+an individual  problem, are documented  under the form of  UNIX manual
+pages, section 1.  These manpages are found under
+
+	$SIFDEC/common/man/man1
+
+If  your MANPATH  has  been  correctly set  to  incorporate the  above
+directory at the end of the installation, you should be able to access
+the manpages using the usual command. For instance
+
+	prompt% man sifdecode
+
+should format the  manpage for the SifDec script  sifdecode (decode or
+obtain information about a particular problem).
+
+Finally, as  already mentioned, documentation  may be found  by simply
+examining   the  source  code.   The  scripts   are  intended   to  be
+self-documented   and  their   purpose  should   be  clear   from  the
+comments. You are encouraged to read source code.
+
+======================================================================
+
+			      Good luck!
+
+Nick I.M. Gould,				     n.gould@rl.ac.uk,
+Dominique Orban,				     orban@cerfacs.fr,
+Philippe L. Toint.			    philippe.toint@fundp.ac.be
+
+======================================================================
+
+SifDec README file.					   March 2003.
+
+
+

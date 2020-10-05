@@ -1,0 +1,452 @@
+/* ==============================================
+ * This file need to be preprocessed twice
+ * because of the special characters it contains.
+ *
+ * Thus in this file, you *must* use the strings
+ * HASHINCLUDE, HASHDEFINE, HASHIFDEF, etc.
+ * instead of the corresponding cpp directives.
+ * cpp directives simply will not make it all the
+ * way to the final Makefile.
+ *
+ * For that reason, we use the string '@@\'
+ * instead of an explicit '\' whenever we want
+ * an explicit newline to be generated after
+ * the two passes of cpp. The string 'BKSL'
+ * represents an explicit backslash. It will be
+ * be substituted when the Umakefile is cast
+ * (or 'bootstrapped') into a Makefile. It is
+ * used to insert backslashes in shell scripts.
+ *
+ * Enlarge your window horizontally to visualize.
+ * ==============================================
+ */
+
+            /* Defines for the first cpp pass */
+
+#define HASHALONE   #
+#define HASHINCLUDE #include
+#define HASHDEFINE  #define
+#define HASHIF      #if
+#define HASHIFDEF   #ifdef
+#define HASHIFNDEF  #ifndef
+#define HASHELSE    #else
+#define HASHENDIF   #endif
+#define HASHUNDEF   #undef
+
+HASHINCLUDE "concat.def"
+
+            /* Now the file Umake.rules itself */
+
+/*
+ * +++++++++++++++++
+ * Rules from Imake
+ * +++++++++++++++++
+ */
+
+/*
+ * Define blank argument NullParameter
+ */
+
+HASHDEFINE NullParameter
+
+/*
+ * Nullify useless targets
+ */
+
+HASHDEFINE DependTarget()
+HASHDEFINE DependSubdirs(arg)
+
+/*
+ * NamedTargetSubdirs - recursively make a series of steps
+ */
+HASHIFNDEF NamedTargetSubdirs
+HASHDEFINE NamedTargetSubdirs(name,dirs,verb,flags,subname)           @@\
+Concat(name,::)                                        @@\
+	@case '${MFLAGS}' in *[ik]*) set +e;; esac;             BKSL  @@\
+	for i in dirs ;                                         BKSL  @@\
+	do                                                      BKSL  @@\
+		(cd $$i ; echo verb "in $(CURRENT_DIR)/$$i..."; BKSL  @@\
+			$(MAKE) $(MFLAGS) flags subname);       BKSL  @@\
+	done
+HASHENDIF
+
+/*
+ * IncludesSubdirs - generate rules to recursively put include files in build
+ */
+HASHIFNDEF IncludesSubdirs
+HASHDEFINE IncludesSubdirs(dirs) \
+ NamedTargetSubdirs(includes,dirs,including,NullParameter,includes)
+HASHENDIF
+
+/*
+ * File operations
+ */
+HASHIFNDEF RemoveFile
+HASHDEFINE RemoveFile(file) $(RM) file
+HASHENDIF /* RemoveFile */
+
+HASHIFNDEF RemoveFiles
+HASHDEFINE RemoveFiles(files) $(RM) files
+HASHENDIF /* RemoveFiles */
+
+HASHIFNDEF MoveToBakFile
+HASHDEFINE MoveToBakFile(file) -@if [ -f file ]; then set -x;  BKSL  @@\
+	$(MV) file Concat(file,.bak); else exit 0; fi
+HASHENDIF /* MoveToBakFile */
+
+HASHIFNDEF RMoveToBakFile
+HASHDEFINE RMoveToBakFile(file) -@if [ -f file ]; then set -x; BKSL  @@\
+	RemoveFile(Concat(file,.bak)); $(MV) file Concat(file,.bak); \             @@\
+	else exit 0; fi
+HASHENDIF /* RMoveToBakFile */
+
+/*
+ * CleanTarget - generate rules to remove any garbage files
+ */
+HASHIFNDEF CleanTarget
+HASHDEFINE CleanTarget()                          @@\
+clean::                                           @@\
+	$(RM) FilesToClean ExtraFilesToClean "#"*
+HASHENDIF /* CleanTarget */
+
+/*
+ * CleanSubdirs - generate rules to recursively clean out garbage files.
+ */
+HASHIFNDEF NamedCleanSubdirs
+HASHDEFINE NamedCleanSubdirs(name,dirs) \
+NamedTargetSubdirs(name,dirs,"cleaning",NullParameter,clean)
+HASHENDIF /* NamedCleanSubdirs */
+
+HASHIFNDEF CleanSubdirs
+HASHDEFINE CleanSubdirs(dirs) \
+NamedCleanSubdirs(clean,dirs)
+HASHENDIF
+
+
+/*
+ * BuildMakefileTarget - generate rules to build a Makefile from an Umakefile
+ * and any special umake flags.  This is generally done automatically by the
+ * template or by any special Umakefiles.  The first argument exists just
+ * because umakeflags is usually empty and some preprocessors will complain
+ * if an empty argument is passed as the sole argument to a macro.
+ */
+HASHIFNDEF BuildMakefileTarget
+HASHDEFINE BuildMakefileTarget(notused,extraparms)                   @@\
+Makefile::                                                           @@\
+	RMoveToBakFile(Makefile)                                     @@\
+	$(UMAKE_CMD) -DTOPDIR=$(TOP) -DCURDIR=$(CURRENT_DIR) umakeflags
+
+HASHENDIF /* BuildMakefileTarget */
+
+/*
+ * MakefileTarget - generate rules to build a normal Makefile.
+ */
+HASHIFNDEF MakefileTarget
+HASHDEFINE MakefileTarget()  \
+BuildMakefileTarget(Umakefile,NullParameter)
+HASHENDIF /* MakefileTarget */
+
+/*
+ * NamedMakeSubdirs - generate rules to do makes in the given subdirectories.
+ * If you want CDEBUGFLAGS passed along to subdirectories, provide a line like
+ * the following in the appropriate Umakefile
+ * 
+ *         #define PassCDebugFlags 'CDEBUGFLAGS=$(CDEBUGFLAGS)'
+ */
+HASHIFNDEF NamedMakeSubdirs
+HASHDEFINE NamedMakeSubdirs(name,dirs) \
+NamedTargetSubdirs(name,dirs,"making" name,PassCDebugFlags,all)
+HASHENDIF /* NamedMakeSubdirs */
+
+HASHIFNDEF MakeSubdirs
+HASHDEFINE MakeSubdirs(dirs)  @@\
+NamedMakeSubdirs(all,dirs)
+HASHENDIF /* MakeSubdirs */
+
+/*
+ * MakeMakeSubdirs - generate rules to recursively recreate Makefiles as part
+ * of the specified step in the build.  If $(TOP) is set to an absolute path, 
+ * do not prepend the ../ prefix.  This makes running things outside of the 
+ * source tree to be much easier.
+ */
+HASHIFNDEF MakeMakeSubdirs
+HASHDEFINE MakeMakeSubdirs(dirs,target)                                    @@\
+Concat(target,::)                                           @@\
+	-@case '${MFLAGS}' in *[ik]*) set +e;; esac; BKSL                  @@\
+	case '${MFLAGS}' in -n) executeit="no";; esac; BKSL                @@\
+	for i in dirs ;BKSL                                                @@\
+	do BKSL                                                            @@\
+		curdir=$(CURRENT_DIR) ; BKSL                           @@\
+		echo "making Makefiles in $$curdir/$$i..."; BKSL           @@\
+		itmp="$$i" ; BKSL                                          @@\
+		curtmp="$(CURRENT_DIR)" ; BKSL                             @@\
+		toptmp=""; BKSL                                            @@\
+		case "$$itmp" in BKSL                                      @@\
+		     ../?*) BKSL                                           @@\
+			while echo "$$itmp" | grep '^../' > /dev/null;BKSL @@\
+			  do BKSL                                          @@\
+			     toptmp="/`basename $$curtmp`$$toptmp"; BKSL   @@\
+			     curtmp="`dirname $$curtmp`"; BKSL             @@\
+			     itmp="`echo $$itmp | sed 's;../;;'`"; BKSL    @@\
+			  done BKSL                                        @@\
+		    ;; BKSL                                                @@\
+		esac; BKSL                                                 @@\
+		case "$$itmp" in BKSL                                      @@\
+		*/?*/?*/?*/?*)	newtop=../../../../..;; BKSL               @@\
+		*/?*/?*/?*)	newtop=../../../..;; BKSL                  @@\
+		*/?*/?*)	newtop=../../..;; BKSL                     @@\
+		*/?*)		newtop=../..;; BKSL                        @@\
+		*)		newtop=..;; BKSL                           @@\
+		esac; BKSL                                                 @@\
+		newtop="$$newtop$$toptmp"; BKSL                            @@\
+		case "$(TOP)" in BKSL                                      @@\
+		/?*) umaketop=$(TOP) BKSL                                  @@\
+		     umakeprefix= ;; BKSL                                  @@\
+		.) umaketop=$$newtop BKSL                                  @@\
+		   umakeprefix=$$newtop/ ;; BKSL                           @@\
+		*) umaketop=$$newtop/$(TOP) BKSL                           @@\
+		   umakeprefix=$$newtop/ ;; BKSL                           @@\
+		esac; BKSL                                                 @@\
+		cd $$i; BKSL                                               @@\
+		RemoveFile(Makefile.bak); BKSL                             @@\
+		if [ -f Makefile ]; then BKSL                              @@\
+			echo "	$(MV) Makefile Makefile.bak"; BKSL         @@\
+			if [ "$$executeit" != "no" ]; then BKSL            @@\
+				$(MV) Makefile Makefile.bak; BKSL          @@\
+			fi; BKSL                                           @@\
+		fi; BKSL                                                   @@\
+		if [ "$$executeit" != "no" ]; then BKSL                    @@\
+			UmakeSubCmdHelper -DTOPDIR=$$umaketop -DCURDIR=$$curdir/$$i; BKSL @@\
+		fi; BKSL                                                   @@\
+		$(MAKE) $(MFLAGS) Makefiles; BKSL                          @@\
+		cd $$newtop; BKSL                                          @@\
+	done
+
+HASHDEFINE UmakeSubCmdHelper $(UMAKE_CMD) -I$$umakeprefix$(IRULESRC) umakeflags
+
+HASHENDIF /* MakeMakeSubdirs */
+
+
+/*
+ * MakefileSubdirs - generate rules to create Makefiles.
+ */
+HASHIFNDEF MakefileSubdirs
+HASHDEFINE MakefileSubdirs(dirs)  \
+MakeMakeSubdirs(dirs,Makefiles)
+HASHENDIF /* MakefileSubdirs */
+
+
+/*
+ * ++++++++++++++++++++++++++++++
+ * Rules added for CUTEr
+ * N. Gould, D. Orban & Ph. Toint
+ * ++++++++++++++++++++++++++++++
+ */
+
+/*
+ * AllTarget - generate rules to build necessary things during make all.
+ */
+HASHIFNDEF AllTarget
+HASHDEFINE AllTarget(depends) \
+all:: depends
+HASHENDIF /* AllTarget */
+
+/*
+ * CleanStuff - generate rules to remove any garbage stuff
+ */
+HASHIFNDEF CleanStuff
+HASHDEFINE CleanStuff(stuff)      @@\
+clean::                           @@\
+	$(RM) stuff
+HASHENDIF /* CleanStuff */
+
+/*
+ * PurgeTarget - similar to CleanStuff but intended as 'veryclean'
+ */
+HASHIFNDEF PurgeTarget
+HASHDEFINE PurgeTarget(stuff)      @@\
+purge::                            @@\
+	$(RM) stuff
+HASHENDIF /* PurgeTarget */
+
+HASHIFNDEF CastFileTarget
+HASHDEFINE CastFileTarget(target,src,dest,list)     @@\
+Concat(target,:) src                 @@\
+	  echo '' > castcmds.sed ;             BKSL @@\
+	  for cmmd in list ;                   BKSL @@\
+	  do                                   BKSL @@\
+		echo "s/\$${$$cmmd}/"$($$cmmd)"/g" >> castcmds.sed ; BKSL @@\
+	  done ;                               BKSL @@\
+	  cat castcmds.sed
+HASHENDIF
+
+HASHIFNDEF CastProgramTarget
+HASHDEFINE CastProgramTarget(src,dest,flags) \
+dest : CastProgram(src,dest,flags)
+HASHENDIF
+/* End of CastProgramTarget() */
+
+HASHIFNDEF SifdecCompile
+HASHDEFINE SifdecCompile(dest,srcdir,src,extradeps)    @@\
+dest : Concat3(srcdir,/,src) $(INTCONFIG)/sifdec.siz $(INTCONFIG)/cast.sed extradeps @@\
+	$(RM) $@ ${@:.o=.f}                                                  @@\
+	@printf ' %-12s %-15s\t\t' "Building" $@                             @@\
+	$(SED) "/#{sizing}/r $(INTCONFIG)/sifdec.siz" Concat(srcdir,/${@:.o=.f}) | $(SED) -f $(INTCONFIG)/cast.sed > ${@:.o=.f}     @@\
+	$(COMPILE) $(FFLAGS) -o $@ ${@:.o=.f}                                @@\
+	@printf '[Ok]\n'
+HASHENDIF
+
+HASHIFNDEF Tools90Compile
+HASHDEFINE Tools90Compile(dest,srcdir,src,extradeps,extrafflags)      @@\
+Concat(dest,:) Concat3(srcdir,/,src) $(INTCONFIG)/tools.siz $(INTCONFIG)/cast90.sed extradeps @@\
+      $(RM) $@ ${@:.o=.f90}                                               @@\
+      @printf ' %-12s %-15s\t\t' "Building" $@                            @@\
+      $(SED) "/#{sizing}/r $(INTCONFIG)/tools.siz" Concat3(srcdir,/,src) | $(SED) -f $(INTCONFIG)/cast90.sed > ${@:.o=.f90} @@\
+      $(COMPILE9095) $(FFLAGS) extrafflags -o $@ ${@:.o=.f90}             @@\
+      @printf '[Ok]\n'
+HASHENDIF
+
+HASHIFNDEF ToolsCompile
+HASHDEFINE ToolsCompile(dest,srcdir,src,extradeps,extrafflags)       @@\
+Concat(dest,:) Concat3(srcdir,/,src) $(INTCONFIG)/tools.siz $(INTCONFIG)/cast.sed extradeps  @@\
+	$(RM) $@ ${@:.o=.f}                                              @@\
+	@printf ' %-12s %-15s\t\t' "Building" $@                         @@\
+	$(SED) "/#{sizing}/r $(INTCONFIG)/tools.siz" Concat3(srcdir,/,src) | $(SED) -f $(INTCONFIG)/cast.sed > ${@:.o=.f}  @@\
+	$(COMPILE) $(FFLAGS) extrafflags -o $@ ${@:.o=.f}                @@\
+	@printf '[Ok]\n'
+HASHENDIF
+
+HASHIFNDEF CToolsCompile
+HASHDEFINE CToolsCompile(dest,srcdir,src,extradeps,extrafflags)  @@\
+Concat(dest,:) Concat3(srcdir,/,src) extradeps     @@\
+	$(RM) $@ ${@:.o=.c}                                      @@\
+	@printf ' %-12s %-15s\t\t' "Building" $@                 @@\
+	$(CCOMPILE) $(CFLAGS) -I$(CUTER)/common/include extrafflags -o $@ Concat3(srcdir,/,src) @@\
+	@printf '[Ok]\n'
+HASHENDIF
+
+HASHIFNDEF Cast90Compile
+HASHDEFINE Cast90Compile(dest,srcdir,srcs,extradeps)  @@\
+Concat(dest,:) srcs $(INTCONFIG)/cast90.sed extradeps         @@\
+	$(RM) $@ ${@:.o=.f90}                        @@\
+	@printf ' %-12s %-15s\t\t' "Building" $@     @@\
+	$(SED) -f $(INTCONFIG)/cast90.sed Concat(srcdir,/${@:.o=.f90}) > ${@:.o=.f90} @@\
+	$(COMPILE9095) $(FFLAGS) -o $@ ${@:.o=.f90}  @@\
+	@printf '[Ok]\n'
+HASHENDIF
+
+HASHIFNDEF CastOnly
+HASHDEFINE CastOnly(src,dest,extradeps)        @@\
+Concat(dest,:) src extradeps                                @@\
+	$(RM) dest                                 @@\
+	@printf ' %-12s %-15s\t\t' "Casting" $@    @@\
+	$(SED) -f $(INTCONFIG)/cast.sed src > dest @@\
+	@printf '[Ok]\n'
+HASHENDIF
+
+HASHIFNDEF CastCompile
+HASHDEFINE CastCompile(dest,srcdir,srcs,extradeps) @@\
+Concat(dest,:) srcs $(INTCONFIG)/cast.sed extradeps         @@\
+	$(RM) $@ ${@:.o=.f}                        @@\
+	@printf ' %-12s %-15s\t\t' "Building" $@   @@\
+	$(SED) -f $(INTCONFIG)/cast.sed Concat(srcdir,/${@:.o=.f}) > ${@:.o=.f} @@\
+	$(COMPILE) $(FFLAGS) -o $@ ${@:.o=.f}      @@\
+	@printf '[Ok]\n'
+HASHENDIF
+
+HASHIFNDEF NormalCompileTarget
+HASHDEFINE NormalCompileTarget(dest,srcdir,srcs,extradeps)  @@\
+Concat(dest,:) srcs extradeps                                    @@\
+	@printf ' %-12s %-15s\t\t' "Building" $@            @@\
+	$(COMPILE) $(FFLAGS) -o $@ Concat(srcdir,/${@:.o=.f})    @@\
+	@printf '[Ok]\n'
+HASHENDIF
+
+/* Build target for a single source file */
+
+HASHIFNDEF ProgramTargetName
+HASHDEFINE ProgramTargetName(target)target
+HASHENDIF
+
+HASHIFNDEF SimpleFortranTarget
+HASHDEFINE SimpleFortranTarget(program,srcdir,src,deplibs,locallibs,syslibs)  @@\
+ProgramTargetName(program): Concat3(srcdir,/,src) deplibs                     @@\
+	$(RM) program                                                         @@\
+	@printf ' %-12s %-15s\t\t' "Linking" program                          @@\
+	$(COMPILE) $(FFLAGS) -o $@.o Concat(srcdir,/$@.f)                     @@\
+	$(LOAD) $(FFLAGS) -o $@ $(F_LDOPTIONS) $@.o deplibs locallibs syslibs $(EXTRA_LOAD_FLAGS) @@\
+	@printf '[Ok]\n'                                                      @@\
+AllTarget(program)                                                            @@\
+PurgeTarget(program)
+HASHENDIF
+
+HASHIFNDEF LinkFortranRule
+HASHDEFINE LinkFortranRule(program,options,objects,libraries)              \
+$(LOAD) $(FFLAGS) -o program options objects libraries $(EXTRA_LOAD_FLAGS)
+HASHENDIF
+/* End of LinkFortranRule() */
+
+HASHIFNDEF NormalFortranProgramTarget
+HASHDEFINE NormalFortranProgramTarget(program,objects,deplibs,locallibs,syslibs) @@\
+Concat(ProgramTargetName(program),:) objects deplibs              @@\
+	$(RM) program                                                            @@\
+	@printf ' %-12s %-15s\t\t' "Linking" program                             @@\
+	LinkFortranRule($@,$(F_LDOPTIONS),objects,locallibs $(LDLIBS) syslibs)   @@\
+	@printf '[Ok]\n'                                                         @@\
+AllTarget(program)                                                               @@\
+PurgeTarget(program)
+HASHENDIF
+/* End of NormalFortranProgramTarget() */
+
+HASHIFNDEF InstallSimple
+HASHDEFINE InstallSimple(srcname,destdir)            @@\
+install:: srcname                                    @@\
+	$(INSTALL) $(INSTALLFLAGS) srcname destdir
+HASHENDIF
+/* End of InstallSimple() */
+
+HASHIFNDEF InstallSimpleTarget
+HASHDEFINE InstallSimpleTarget(step,srcdir,srcname,flags,destdir,dstname) @@\
+Concat(step,:) Concat3(srcdir,/,srcname)                   @@\
+	@printf ' %-12s %-15s\t\t' "Installing" step                      @@\
+	$(INSTALL) $(INSTALLFLAGS) flags Concat3(srcdir,/,srcname) Concat3(destdir,/,dstname) @@\
+	@printf '[Ok]\n'
+HASHENDIF /* InstallSimpleTarget */
+
+HASHIFNDEF InterfaceTarget
+HASHDEFINE InterfaceTarget(interface,srcdir,src,deps)      @@\
+Concat(interface,:) Concat3(srcdir,/,src) deps                     @@\
+	$(RM) $@                                           @@\
+	printf ' %-12s %-15s\t\t' "Casting" $@             @@\
+	$(SED) -f $(INTCONFIG)/script.sed Concat3(srcdir,/,src) > $@  @@\
+	$(CHMOD) 755 $@                                    @@\
+	@printf '[Ok]\n'
+HASHENDIF
+
+HASHIFNDEF MatlabTarget
+HASHDEFINE MatlabTarget(dest,srcdir,src,deps)            @@\
+Concat(dest,:) Concat3(srcdir,/,src) deps                                    @@\
+	$(RM) $@                                         @@\
+	printf ' %-12s %-15s\t\t' "Casting" $@           @@\
+	$(SED) -f $(INTCONFIG)/cast.sed Concat3(srcdir,/,src) > $@  @@\
+	@printf '[Ok]\n'
+HASHENDIF
+
+/*
+ * PurgeSubdirs - generate rules to recursively purge garbage files.
+ */
+HASHIFNDEF NamedPurgeSubdirs
+HASHDEFINE NamedPurgeSubdirs(name,dirs) \
+NamedTargetSubdirs(name,dirs,"purging",NullParameter,purge)
+HASHENDIF /* NamedPurgeSubdirs */
+
+HASHIFNDEF PurgeSubdirs
+HASHDEFINE PurgeSubdirs(dirs) \
+NamedPurgeSubdirs(purge,dirs)
+HASHENDIF
+
+/*
+ * ++++++++++++++++++++++++++++
+ * End of rules added for CUTEr
+ * ++++++++++++++++++++++++++++
+ */

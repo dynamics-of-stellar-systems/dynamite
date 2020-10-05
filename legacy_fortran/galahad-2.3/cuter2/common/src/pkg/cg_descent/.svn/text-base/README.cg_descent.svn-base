@@ -1,0 +1,88 @@
+                   *********************************
+                   *                               *
+                   *  USING CG_DESCENT WITH CUTEr  *
+                   *                               *
+                   *********************************
+
+               ( Last modified on 10 Sep 2004 at 17:25:15 )
+
+
+WHAT IS CG_DESCENT?
+-------------------
+
+The CG_DESCENT package is a nonlinear congugate-gradient
+method for large-scale unconstrained minimization designed 
+by William Hager and Hongchao Zhang (U. Florida).
+
+HOW DO I GET CG_DESCENT?
+------------------------
+
+See
+
+  http://www.math.ufl.edu/~hager/papers/CG/cg.html
+
+
+COMPILING THE OBJECT MODULE FOR CG_DESCENT
+------------------------------------------
+
+The CG_DESCENT file cg_desecent.f should be compiled, and the resulting 
+file cg_descent.o placed in (or symbolically linked to) the directory 
+$MYCUTER/double/bin.
+
+There is no single-precision version.
+
+USING THE CG_DESCENT INTERFACE TOOL
+-----------------------------------
+
+Suppose you wish to solve the problem written in SIF format contained
+in the file probname.SIF.
+
+The CG_DESCENT interface tools require two input files:
+
+   probname.SIF    specifies the problem in SIF format
+   CG_DESCENT.SPC  sets values for CG_DESCENT run-time parameters
+
+If no CG_DESCENT.SPC file is present in the current directory, the default
+version is copied from the $CUTER/common/src/pkg/cg_descent directory. 
+This default file is as follows:
+
+.1d0      delta        (Wolfe line search parameter)
+.9d0      sigma        (Wolfe line search parameter)
+1.d-6     eps          (perturbation parameter for computing fpert)
+.66d0     gamma        (required decay factor in interval)
+5.0d0     rho          (interval growth factor used to get bracketing interval)
+.01d0     eta          (lower bound for cg's beta_k)
+.01d0     psi0         (factor used in starting guess for iteration 1)
+.1d0      psi1         (factor previous step multiplied by in QuadStep)
+2.d0      psi2         (factor previous step is multipled by for startup)
+1.d-12    QuadCutOff   (QuadStep if relative change in f > QuadCutOff)
+0.d-12    StopFact     (factor multiplying starting |grad|_infty in StopRule)
+1.d-3     AWolfeFac    (AWolfe = F => set AWolfe = T if |f-f0| < Awolfe_fac*Ck)
+1.0d0     restart_fac  (restart cg in restart_fac*n iterations)
+500.d0    maxit_fac    (terminate in maxit_fac*n iterations)
+0.d0      feps         (stop when value change <= feps*|f|)
+.7d0      Qdecay       (used in Qk update: Qk = Qdecay*Qk + 1)
+50        nexpand      (number of grow/shrink allowed in bracket)
+50        nsecant      (number of secant steps allowed in line search)
+.true.    PertRule     (F => eps, T => eps*Ck)
+.true.    QuadStep     (use initial quad interpolation in line search)
+.false.   PrintLevel   F (no print) T (intermediate results)
+.true.    PrintFinal   F (no print) T (print error messages, final error)
+.true.    StopRule     T (|grad|_infty <= max(tol,|grad|_0*StopFact) F (... <= tol*(1+|f|))
+.false.   AWolfe       F (Wolfe -- see AWolfeFac above) T (approx Wolfe)
+.false.   Step         F (no initial line search guess) T (guess in gnorm)
+.false.   debug        F (no debugging) T (check for no increase in f)
+
+The commands to use this package are the two scripts sdcgd and cgd.
+
+The reader is referred to the paper quoted below and the code itself if he or 
+she wishes to modify these parameters.
+
+REFERENCE
+---------
+
+ W. W. Hager and H. Zhang, 
+ "CG_DESCENT, A conjugate gradient method with guaranteed descent",
+ Department of Mathematics, University of Florida, Gainesville, FL 32611,
+ January, 2004.
+

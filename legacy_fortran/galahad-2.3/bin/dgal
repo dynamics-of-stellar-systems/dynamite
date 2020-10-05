@@ -1,0 +1,25 @@
+#!/bin/sh
+
+# dgal: generic script to run GALAHAD package on architecture on the
+#   data input in a problem data file
+
+# Use: dgal architecture package [-s] [-h] 
+#                            [-p] [-o j] [-l secs] probname[.data]
+#
+# where: options -s : run the single precision version
+#                     (Default: run the double precision version)
+#                -h : print this help and stop execution
+#                -p : profile the code (when possible)
+#                -o : 0 for silent mode, 1 for brief description of
+#                     the stages executed.
+#                     (Default: -o 0)
+#                -l : limit the cputime used to secs seconds
+#                     (Default: 99999999 seconds)
+#
+#       probname      probname[.data] is the name of the file containing
+#                     the data for the problem of interest.
+
+# N. Gould, D. Orban & Ph. Toint
+# ( Last modified on 19 January 2006 at 19:30:00 GMT )
+
+dgal.sh $*

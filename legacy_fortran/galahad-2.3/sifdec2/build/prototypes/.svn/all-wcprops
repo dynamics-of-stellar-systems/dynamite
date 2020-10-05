@@ -1,0 +1,83 @@
+K 25
+svn:wc:ra_dav:version-url
+V 64
+/SVN/cuter/!svn/ver/152/sifdec/branches/SifDec2/build/prototypes
+END
+run_mysifdec.sh.pro
+K 25
+svn:wc:ra_dav:version-url
+V 83
+/SVN/cuter/!svn/ver/71/sifdec/branches/SifDec2/build/prototypes/run_mysifdec.sh.pro
+END
+usage_mysifdec.sh.pro
+K 25
+svn:wc:ra_dav:version-url
+V 85
+/SVN/cuter/!svn/ver/72/sifdec/branches/SifDec2/build/prototypes/usage_mysifdec.sh.pro
+END
+param.awk
+K 25
+svn:wc:ra_dav:version-url
+V 73
+/SVN/cuter/!svn/ver/71/sifdec/branches/SifDec2/build/prototypes/param.awk
+END
+show.awk
+K 25
+svn:wc:ra_dav:version-url
+V 72
+/SVN/cuter/!svn/ver/71/sifdec/branches/SifDec2/build/prototypes/show.awk
+END
+cast.sed.pro
+K 25
+svn:wc:ra_dav:version-url
+V 76
+/SVN/cuter/!svn/ver/71/sifdec/branches/SifDec2/build/prototypes/cast.sed.pro
+END
+classify.sh.pro
+K 25
+svn:wc:ra_dav:version-url
+V 79
+/SVN/cuter/!svn/ver/71/sifdec/branches/SifDec2/build/prototypes/classify.sh.pro
+END
+classall.sh.pro
+K 25
+svn:wc:ra_dav:version-url
+V 79
+/SVN/cuter/!svn/ver/71/sifdec/branches/SifDec2/build/prototypes/classall.sh.pro
+END
+helpmsg.sh.pro
+K 25
+svn:wc:ra_dav:version-url
+V 78
+/SVN/cuter/!svn/ver/71/sifdec/branches/SifDec2/build/prototypes/helpmsg.sh.pro
+END
+select.sh.pro
+K 25
+svn:wc:ra_dav:version-url
+V 77
+/SVN/cuter/!svn/ver/71/sifdec/branches/SifDec2/build/prototypes/select.sh.pro
+END
+cast90.sed.pro
+K 25
+svn:wc:ra_dav:version-url
+V 78
+/SVN/cuter/!svn/ver/71/sifdec/branches/SifDec2/build/prototypes/cast90.sed.pro
+END
+script.sed.pro
+K 25
+svn:wc:ra_dav:version-url
+V 78
+/SVN/cuter/!svn/ver/71/sifdec/branches/SifDec2/build/prototypes/script.sed.pro
+END
+sifdecode.sh.pro
+K 25
+svn:wc:ra_dav:version-url
+V 81
+/SVN/cuter/!svn/ver/152/sifdec/branches/SifDec2/build/prototypes/sifdecode.sh.pro
+END
+cmds.sh.pro
+K 25
+svn:wc:ra_dav:version-url
+V 76
+/SVN/cuter/!svn/ver/111/sifdec/branches/SifDec2/build/prototypes/cmds.sh.pro
+END

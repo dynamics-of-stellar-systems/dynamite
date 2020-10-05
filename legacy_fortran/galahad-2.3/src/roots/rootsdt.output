@@ -1,0 +1,27 @@
+
+ Quadratic 
+ 2 real roots 
+ roots:   1.0102E+00  1.9700E+00
+
+ Quadratic 
+ 1 real root 
+ roots:   6.6777E-01
+
+ Cubic 
+ 3 real roots 
+ roots:   1.0000E+00  2.0553E+00  2.8952E+00
+
+ Cubic 
+ no real roots 
+
+ Quartic 
+ 4 real roots 
+ roots:   1.0002E+00  1.0002E+00  3.0314E+00  3.9649E+00
+
+ Quartic 
+ 4 real roots 
+ roots:   1.0000E+00  1.0000E+00  1.0000E+00  1.0000E+00
+
+ Tests for error exits 
+ Test 3: exit status -3
+ Test 4: exit status -4

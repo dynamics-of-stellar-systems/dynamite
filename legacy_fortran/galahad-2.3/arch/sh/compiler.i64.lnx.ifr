@@ -1,0 +1,29 @@
+# Intel ifort under linux (Itanium version)
+#
+# Fortran compilation and loading
+#
+
+FORTRAN='ifort'
+BASIC='-c'
+LIBCMD=''
+MODCMD='-module $MOD -I$MOD'
+MVMODS=':'
+OPTIMIZATION='-O3'
+NOOPTIMIZATION='-O0'
+DEBUG=
+F77='-FI -w'
+F90='-w'
+F95='-w'
+NOFMAIN=''
+CCONDEF=
+USUAL=
+SPECIAL=
+F77SUFFIX=f90
+F95SUFFIX=f90
+TIMER=GEN
+BLAS=
+LAPACK=
+HSL=
+METIS=
+NOT95=IS95
+BINSHELL=sh

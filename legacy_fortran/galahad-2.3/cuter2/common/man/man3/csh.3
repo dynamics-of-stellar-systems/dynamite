@@ -1,0 +1,116 @@
+.\" @(#)csh v1.0 11/2000;
+.TH csh 3M "17 Nov 2000"
+.SH NAME
+CSH \- CUTEr tool to evaluate the Hessian of the Lagrangian, in
+sparse format.
+.SH SYNOPSIS
+CALL CSH( N, M, X, LV, V, NNZH, LH, H, IRNH, ICNH )
+.SH DESCRIPTION
+The CSH subroutine evaluates the Hessian of the Lagrangian function
+for the problem decoded from a SIF file by the script \fIsifdecode\fP
+at the point X.  The matrix is stored in sparse format.
+
+The problem under consideration
+consists in minimizing (or maximizing) an objective function
+.EQ
+f(x)
+.EN
+over all
+.EQ
+x
+.EN
+\(mo
+.EQ
+R sup n
+.EN
+subject to
+
+general equations
+.EQ
+c sub i (x) ~=~ 0,
+.EN
+.EQ
+~(i
+.EN
+\(mo
+.EQ
+left { 1 ,..., m sub E right } ),
+.EN
+
+general inequalities
+.EQ
+c sub i sup l (x) ~<=~ c sub i (x) ~<=~ c sub i sup u (x),
+.EN
+.EQ
+~(i
+.EN
+\(mo
+.EQ
+left { m sub E + 1 ,..., m right }),
+.EN
+
+and simple bounds
+.EQ
+b sup l ~<=~ x ~<=~ b sup u.
+.EN
+
+The objective function is group-partially separable and all constraint functions are partially separable.
+
+By convention, the signs of the Lagrange multipliers V are set so the
+Lagrangian function can be written as
+.EQ
+L(X, V) = f(X) + < c(X), V >.
+.EN
+.LP 
+.SH ARGUMENTS
+The arguments of CSH are as follows
+.TP 5
+.B N \fP[in] - integer
+the number of variables for the problem,
+.TP
+.B M \fP[in] - integer
+the total number of general constraints,
+.TP
+.B X \fP[in] - real/double precision
+an array which gives the current estimate of the solution of the
+problem,
+.TP 
+.B LV \fP[in] - integer
+the actual declared dimension of V,
+.TP
+.B V \fP[in] - real/double precision
+an array which gives the Lagrange multipliers,
+.TP
+.B NNZH \fP[out] - integer
+the number of nonzeros in H,
+.TP
+.B LH \fP[in] - integer
+the actual declared dimensions of H, IRNH and ICNH,
+.TP
+.B H \fP[out] - real/double precision
+an array which gives the values of the Hessian matrix of the
+Lagrangian function evaluated at X and V. The i-th entry of H gives
+the value of the nonzero in row IRNH(i) and column ICNH(i). Only the
+upper triangular part of the Hessian is stored,
+.TP
+.B IRNH \fP[out] - integer
+an array which gives the row indices of the nonzeros of the Hessian
+matrix of the Lagrangian function evaluated at X and V, and
+.TP
+.B ICNH \fP[out] - integer
+an array which gives the column indices of the nonzeros of the Hessian
+matrix of the Lagrangian function evaluated at X and V.
+.LP
+.SH AUTHORS
+I. Bongartz, A.R. Conn, N.I.M. Gould, D. Orban and Ph.L. Toint
+.SH "SEE ALSO"
+\fICUTEr (and SifDec): A Constrained and Unconstrained Testing
+Environment, revisited\fP,
+   N.I.M. Gould, D. Orban and Ph.L. Toint,
+   ACM TOMS, \fB29\fP:4, pp.373-394, 2003.
+
+\fICUTE: Constrained and Unconstrained Testing Environment\fP,
+I. Bongartz, A.R. Conn, N.I.M. Gould and Ph.L. Toint, 
+TOMS, \fB21\fP:1, pp.123-160, 1995.
+
+ush(3M), sifdecode(1).

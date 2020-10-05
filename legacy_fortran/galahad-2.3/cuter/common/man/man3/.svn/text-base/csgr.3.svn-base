@@ -1,0 +1,127 @@
+.\" @(#)csgr v1.0 11/2000;
+.TH csgr 3M "17 Nov 2000"
+.SH NAME
+CSGR \- CUTEr tool to evaluate constraints gradients and gradient of
+objective/Lagrangian function.
+.SH SYNOPSIS
+CALL CSGR( N, M, GRLAGF, LV, V, X, NNZJ, LCJAC, CJAC, INDVAR, INDFUN )
+.SH DESCRIPTION
+The CSGR subroutine evaluates the gradients of the general
+constraints and of either the objective function or the Lagrangian
+corresponding to the problem decoded from a SIF file by the script
+\fIsifdecode\fP at the point X. The gradients are stored in a sparse
+format.
+
+The problem under consideration
+consists in minimizing (or maximizing) an objective function
+.EQ
+f(x)
+.EN
+over all
+.EQ
+x
+.EN
+\(mo
+.EQ
+R sup n
+.EN
+subject to
+
+general equations
+.EQ
+c sub i (x) ~=~ 0,
+.EN
+.EQ
+~(i
+.EN
+\(mo
+.EQ
+left { 1 ,..., m sub E right } ),
+.EN
+
+general inequalities
+.EQ
+c sub i sup l (x) ~<=~ c sub i (x) ~<=~ c sub i sup u (x),
+.EN
+.EQ
+~(i
+.EN
+\(mo
+.EQ
+left { m sub E + 1 ,..., m right }),
+.EN
+
+and simple bounds
+.EQ
+b sup l ~<=~ x ~<=~ b sup u.
+.EN
+
+The objective function is group-partially separable and all constraint functions are partially separable.
+
+By convention, the signs of the Lagrange multipliers V are set so the
+Lagrangian function can be written as
+.EQ
+L(X, V) = f(X) + < c(X), V >.
+.EN
+.LP 
+.SH ARGUMENTS
+The arguments of CSGR are as follows
+.TP 5
+.B N \fP[in] - integer
+the number of variables for the problem,
+.TP
+.B M \fP[in] - integer
+the total number of general constraints,
+.TP
+.B GRLAGF \fP[in] - logical
+a logical variable which should be set .TRUE. if the gradient of the
+Lagrangian function is required and .FALSE. if the gradient of the
+objective function is sought,
+.TP
+.B LV \fP[in] - integer
+the actual declared dimension of V,
+.TP
+.B V \fP[in] - real/double precision
+an array which should give the Lagrange multipliers whenever GRLAGF is
+set .TRUE. but need not otherwise be set,
+.TP
+.B X \fP[in] - real/double precision
+an array which gives the current estimate of the solution of the
+problem,
+.TP
+.B NNZJ \fP[out] - integer
+the number of nonzeros in CJAC,
+.TP
+.B LCJAC \fP[in] - integer
+the actual declared dimensions of CJAC, INDVAR and INDFUN,
+.TP
+.B CJAC \fP[out] - real/double precision
+an array which gives the values of the nonzeros of the gradients of
+the objective, or Lagrangian, and general constraint functions
+evaluated at X and V. The i-th entry of CJAC gives the value of the
+derivative with respect to variable INDVAR(i) of function INDFUN(i),
+.TP
+.B INDVAR \fP[out] - integer
+an array whose i-th component is the index of the variable with
+respect to which CJAC(i) is the derivative,
+.TP
+.B INDFUN \fP[out] - integer
+an array whose i-th component is the index of the problem function
+whose value CJAC(i) is the derivative. INDFUN(i) = 0 indicates the
+objective function whenever GRLAGF is .FALSE. or the Lagrangian
+function when GRLAGF is .TRUE., while INDFUN(i) = j > 0 indicates the
+j-th general constraint function.
+.LP
+.SH AUTHORS
+I. Bongartz, A.R. Conn, N.I.M. Gould, D. Orban and Ph.L. Toint
+.SH "SEE ALSO"
+\fICUTEr (and SifDec): A Constrained and Unconstrained Testing
+Environment, revisited\fP,
+   N.I.M. Gould, D. Orban and Ph.L. Toint,
+   ACM TOMS, \fB29\fP:4, pp.373-394, 2003.
+
+\fICUTE: Constrained and Unconstrained Testing Environment\fP,
+I. Bongartz, A.R. Conn, N.I.M. Gould and Ph.L. Toint, 
+TOMS, \fB21\fP:1, pp.123-160, 1995.
+
+ugr(3M), cgr(3M), sifdecode(1).

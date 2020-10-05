@@ -1,0 +1,33 @@
+# Intel ifort (previously ifc) under Mac OsX
+#
+# Fortran compilation and loading
+#
+
+#for ifc pre version 8 replace next line by
+#FORTRAN='ifc'
+FORTRAN='ifort'
+BASIC='-c'
+LIBCMD=''
+#for ifc pre version 7 replace next line by 
+#MODCMD='-cl,$MOD/work.pcl -Vaxlib'
+MODCMD='-module $MOD -I$MOD -Vaxlib'
+MVMODS=':'
+OPTIMIZATION='-O'
+NOOPTIMIZATION='-O0'
+DEBUG=
+F77='-FI -nowarn -xT'
+F90='-nowarn -xT'
+F95='-nowarn -xT'
+NOFMAIN='-nofor-main'
+CCONDEF='-DIntel_ifort'
+USUAL=
+SPECIAL=
+F77SUFFIX=f90
+F95SUFFIX=f90
+TIMER=GEN
+BLAS='-L/Library/Frameworks/Intel_MKL.framework/Libraries/32 -lmkl_lapack -lmkl_ia32 -lguide -lmkl'
+LAPACK=
+HSL=
+METIS=
+NOT95=IS95
+BINSHELL=sh

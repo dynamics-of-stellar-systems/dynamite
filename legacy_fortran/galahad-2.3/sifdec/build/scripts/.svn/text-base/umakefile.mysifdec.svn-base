@@ -1,0 +1,58 @@
+
+/* ===============================
+ * Root Umakefile
+ *
+ * This Umakefile recursively
+ * sneaks into subdirectories and
+ * builds the local SifDec.
+ *
+ * D. Orban for CUTEr & Co, 2001.
+ */
+
+.SUFFIXES: .pro .f .f90
+
+/* =====================================
+ * Hold the conventional rule back.
+ * We want to use special rules instead.
+ */
+
+.f.o:
+	true
+
+.f90.o:
+	true
+
+/* -- */
+
+#define IHaveSubdirs
+#define PassCDebugFlags
+
+INTERFACESSRC = $(SIFDEC)/build/prototypes
+INTCONFIG     = $(MYSIFDEC)/$(PRECISION)/config
+
+all::
+
+baseconfig:
+	cd $(MYSIFDEC)/$(PRECISION)/config; \
+	$(MAKE) $(MFLAGS) all;
+
+AllTarget(baseconfig)
+DependTarget()
+CleanTarget()
+
+/* ============================
+ * Information for the sneaking
+ */
+
+#ifdef SinglePrecision
+SUBDIRS = bin single
+#endif
+#ifdef DoublePrecision
+SUBDIRS = bin double
+#endif
+
+MakeSubdirs($(SUBDIRS))
+DependSubdirs($(SUBDIRS))
+
+PurgeTarget($(INTCONFIG)/cmds)
+PurgeTarget($(INTCONFIG)/local.f)

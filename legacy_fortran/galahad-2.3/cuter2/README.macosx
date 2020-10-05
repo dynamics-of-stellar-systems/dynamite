@@ -1,0 +1,44 @@
+Notes regarding the installation of CUTEr on MAC OS/X platforms
+===============================================================
+
+MAC OS/X users should pay attention to which version of gcc they are using
+if they are installing CUTEr with one of the GNU compilers.
+
+By default, Apple ships a slightly outdated version of gcc. If you want to
+use gfortran, you likely have to install a more recent version of gcc, via
+Fink, or hpc.sourceforce.net, or other means.
+
+Therefore, the path to gcc should be adjusted accordingly. This can be done
+by either editing $CUTER/config/all.cf, or better yet, $MYCUTER/config/all.cf
+prior to running install_mycuter.
+
+Changing $CUTER/config/all.cf is fine if no other user is going to use your
+CUTEr repository.
+
+Otherwise, it is safer to change $MYCUTER/config/all.cf. Follow these steps:
+
+1) Run install_cuter, select the Mac platform, gfortran, gcc and the path
+   where you want your CUTEr instance installed.
+
+2) Answer 'No' to the question 'Do you want install_mycuter' to be run.
+
+3) Go to the directory where your CUTEr instance is being installed and
+   edit config/all.cf. Change the path to gcc (towards the bottom of the
+   file).
+
+4) Make sure the environment variable MYCUTER is set appropriately.
+
+5) From $MYCUTER, run ./install_mycuter.
+
+ Should you encounter any  problem with the installation, please check
+ the CUTEr/SifDec website and discussion forum.
+
+
+Please send all comments/corrections to us. Good luck!
+
+Nick Gould          (n.gould@rl.ac.uk)
+Dominique Orban     (dominique.orban@polymtl.ca)
+Philippe Toint      (philippe.toint@fundp.ac.be)
+
+For CUTEr productions
+This version: 25th July 2007

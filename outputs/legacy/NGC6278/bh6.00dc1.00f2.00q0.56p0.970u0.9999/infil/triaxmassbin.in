@@ -1,7 +1,0 @@
-infil/paramsb.in                           
-1
-"infil/aperture.dat"                          
-1                  [# gaussians]        
-     1.0      1.06  [weight, sigma]  
-"infil/bins.dat"                                                   
-"datfil/mass_aper.dat"                         

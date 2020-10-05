@@ -1,0 +1,31 @@
+-1.000D+00    biginf      = Size of infinite bounds
+ 1.000D-04    stop_p      = Required size of norm of primal infeasibility
+ 1.000D-04    stop_d      = Required size of norm of dual infeasibility
+ 1.000D-04    stop_c      = Required size of norm of complementarity
+-1.000D+00    prfeas      = Minimum primal starting distance from bounds
+-1.000D+00    dufeas      = Minimum dual starting distance from bounds
+-1.000D+00    muzero      = Initial value of the barrier parameter
+ 1.000E-10    inner_stop_absolute = absolute CG stopping tolerence
+ 1.000E-02    inner_stop_relative = relative CG stopping tolerence
+ 1.000E-01    inner_fraction_opt = fraction of optimal model decreas required
+ 1.000E-10    pivot_tol   = pivot tolerence
+-1.000E-10    pivot_tol_for_dependencies = pivot tolerence for dependencies
+-1.000E+06    initial_radius = initial trust-region radius 
+-9.999E-01    reduce_infeas = factor by which infeasibility must be reduced
+     10000    maxit       = Maximum number of iterations
+         1    print_level = Output level
+         6    ioutp       = Output message unit number
+         6    ioutd       = Error message unit number
+         1    itrmax      = Max number of iterative refinement steps
+      1000    cg_maxit    = Maximun number of CG iterations
+         0    factors     = 0=automatic,1=Schur complement,2=augemnted sys
+        35    max_col     = maximum length of column in A for SC factorization
+         0    precon      = 0=auto,1=Id,2=ful,3=ban,4=bar,5=dia,6=5+con,7=band
+         0    nsemib      = semi-bandwidth for options 5+6 above
+     10000    liwmin      = Initial integer workspace allocation for MA27
+     10000    lwmin       = Initial real workspace allocation for MA27
+       100    infeas_max  = max number its without significant improvement
+         F    feasol      = Ensure the final point is feasible?
+         F    print_sol   = Print the full solution
+         F    primal      = primal Hessian rather than primal-dual Hessian
+         T    center      = center in phase-1?

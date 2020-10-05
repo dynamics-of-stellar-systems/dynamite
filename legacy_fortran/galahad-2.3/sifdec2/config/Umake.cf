@@ -1,0 +1,141 @@
+/*
+ * To add support for another platform:
+ * 
+ *     1.  Put a new #ifdef block below that defines MacroIncludeFile and
+ *         MacroFile for your new platform 
+ *         and then #undefs the machine- specific preprocessor symbols
+ *         (to avoid problems with file names). 
+ *
+ *     2.  Create new .cf files with names given by MacroFile and CompilerFile.
+ */
+
+/* Sun workstations */
+
+#ifdef sun
+#define MacroIncludeFile <sun.cf>
+#define MacroFile sun.cf
+#undef sun
+#define SunArchitecture
+#endif /* sun */
+
+/* Hewlett-Packard workstations */
+
+#ifdef hp
+#define MacroIncludeFile <hp.cf>
+#define MacroFile hp.cf
+#undef hp
+#define HPArchitecture
+#endif /* hp */
+
+/* CRAY machines */
+
+#ifdef _CRAY
+#define MacroIncludeFile <cray.cf>
+#define MacroFile cray.cf
+#undef cray
+#undef CRAY
+#undef CRAY1
+#undef CRAY2
+#undef YMP
+#define CrayArchitecture
+#endif /* _CRAY */
+
+/* Silicon Graphics workstations */
+
+#ifdef sgi
+#define MacroIncludeFile <sgi.cf>
+#define MacroFile sgi.cf
+#undef sgi
+#define SGIArchitecture
+#undef mips
+#define MipsArchitecture
+#endif /* sgi */
+
+/* IBM workstations */
+
+#if defined(ibm) || defined(_IBMR2) || defined(ibm032) || defined(aix)
+#define MacroIncludeFile <ibm.cf>
+#define MacroFile ibm.cf
+#ifdef ibm
+#undef ibm
+#endif
+#define IBMArchitecture
+#ifdef i386
+#undef i386
+#define PS2Architecture
+#endif
+#ifdef ibm032
+#undef ibm032
+#define RtArchitecture
+#endif
+#ifdef aix
+#undef aix
+#define AIXArchitecture
+#endif
+#ifdef _IBMR2
+#undef _IBMR2
+#define RsArchitecture
+#endif
+#endif /* ibm */
+
+/* DEC Alpha machines */
+
+#ifdef DGUX
+#define MacroIncludeFile <DGUX.cf>
+#define MacroFile DGUX.cf
+#undef DGUX
+#define DguxArchitecture
+#endif /* DGUX */
+
+/* Compaq Alpha machines */
+
+#ifdef __osf__
+#define MacroIncludeFile <osf1.cf>
+#define MacroFile osf1.cf
+#define OSF1Architecture
+#undef __osf__
+#ifdef __mips__
+#undef __mips__
+#define MipsArchitecture
+#endif
+#ifdef __alpha
+#undef __alpha
+#define AlphaArchitecture
+#endif
+#endif /* __osf__ */
+
+/* Microsoft Windows machines */
+
+#ifdef WIN32
+#define MacroIncludeFile <Win32.cf>
+#define MacroFile Win32.cf
+#define Win32Architecture
+#endif /* WIN32 */
+
+/* Linux boxes */
+
+#ifdef linux 
+#define MacroIncludeFile <linux.cf>
+#define MacroFile linux.cf
+#undef linux
+#define LinuxArchitecture
+#endif /* linux */
+
+/* Mac OSX */
+
+#ifdef mac
+#define MacroIncludeFile <mac.cf>
+#define MacroFile mac.cf
+#undef mac
+#define MacArchitecture
+#endif /* mac */
+
+/*
+ * If neither of the above architecture was selected,
+ * fall back on generic settings, crossing fingers...
+ */
+
+#ifndef MacroIncludeFile
+#define MacroIncludeFile <generic.cf>
+#define MacroFile generic.cf
+#endif

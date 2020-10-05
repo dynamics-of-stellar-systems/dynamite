@@ -1,0 +1,107 @@
+.\" @(#)sifdecode v1.0 03/2000;
+.TH sifdecode 1 "02 Mar 2000"
+.SH NAME
+sifdecode \- SIF-decoding script.
+.SH SYNOPSIS
+\fBsifdecode\fP [\-s] [\-h] [\-k] [\-o \fI0|1\fP] [\-l \fIsecs\fP]
+[\-f] [\-b] [\-a \fI1|2\fP] [\-show] [\-param
+\fIname=value\fP[\fI,name=value...\fP]] [\-force] [\-debug]
+\fIproblem[.SIF]\fP
+.SH DESCRIPTION
+\fIsifdecode\fP applies the SIF decoder to the problem \fIproblem.SIF\fP
+to produce the OUTSDIF.d file and the problem-dependant Fortan
+subroutines. It can be conveniently called from the command line with
+the \-h, \-o, \-show, \-param and \-debug options. Other options are
+useful when \fIsifdecode\fP is called by other interfaces which
+require the decoding of a SIF file, as for instance a CUTEr
+interface.
+.LP 
+.SH sifdecode Options
+You can start sifdecode with the following options:
+.TP 5
+.B \-s
+Run sifdecode in single-precision mode, if available. 
+Double precision is the default.
+.TP
+.B \-h
+Print a short help message.
+.TP
+.B \-k
+Keep the generated executable after use. May be useful when solving a
+particular problem with the same solver with different parameters.
+Deleting the executable after use is the default.
+.TP
+.BI \-o " 0|1"
+Regulate the output level of \fIsifdecode.\fP Verbose mode is \fB-o\fP 1,
+silent mode is \fB-o\fP 0. Silent mode is the default.
+.TP
+.BI \-l " secs"
+Set a limit of \fIsecs\fP second on \fIVA15\fP runtime.
+Unlimited cputime is the default.
+.TP
+.BI \-f
+Use automatic differentiation in Forward mode
+.TP
+.BI \-b
+Use automatic differentiation in Backward mode
+.TP
+.BI \-a " 1|2"
+\-a 1 uses the older HSL automatic differentiation package AD01
+and \-a 2 uses the newer HSL automatic differentiation package
+AD02. \-a 2 is the default.
+.TP
+.BI \-show
+displays possible parameter settings for problem[.SIF]. Other options
+are ignored.
+.TP
+.BI \-param
+Cast problem[.SIF] against explicit parameter settings. Several
+parameter settings may be given as a comma-separated list following
+\-param or using several \-param flags. Use \fIsifdec -show problem\fP
+to view possible settings. If a setting is not allowed in the SIF
+file, no action is taken unless \fI \-force \fP is present.
+.TP
+.BI \-force
+Forces the setting of the parameters named using \fI \-param \fP to
+the given values, even if those values are not predefined in the SIF
+file.
+.TP
+.BI \-debug
+Links all the libraries, creates the executable and stop to allow
+debugging. This option automatically enables \-k, and turns off all
+compiler options except \-g.
+.TP
+.I problem
+\fIproblem.SIF\fP is the name of the file containing the SIF
+information on the problem to be solved.
+.LP
+.SH ENVIRONMENT 
+.TP
+.SB SIFDEC
+Parent directory for SifDec.
+.TP
+.SB MYSIFDEC
+Home directory of the installed SifDec distribution.
+.TP
+.SB MASTSIF
+A pointer to the directory containing the CUTEr/SifDec problems
+collection. If this variable is not set, the current directory is
+searched for \fIproblem.SIF\fP. If it is set, the current directory is
+searched first, and if \fIproblem.SIF\fP is not found there, $MASTSIF
+is searched.
+.SH AUTHORS
+A.R. Conn, N.I.M. Gould, D. Orban and Ph.L. Toint
+.SH "SEE ALSO"
+\fICUTEr (and SifDec): A Constrained and Unconstrained Testing
+Environment, revisited\fP,
+   N.I.M. Gould, D. Orban and Ph.L. Toint, 2002.
+
+\fICUTE: Constrained and Unconstrained Testing Environment\fP,
+   I. Bongartz, A.R. Conn, N.I.M. Gould and Ph.L. Toint, 
+   TOMS, \fB21\fP:1, pp.123-160, 1995.
+
+cob(1), fil(1), gen(1), hrb(1), knit(1), lmb(1), mns(1), nps(1),
+osl(1), prx(1), sdcob(1), sdfil(1), sdgen(1), sdhrb(1), sdknit(1),
+sdlmb(1), sdmns(1), sdnps(1), sdosl(1), sdprx(1), sdsnp(1), sdten(1),
+sdunc(1), sdva15(1), sdve09(1), sdve12(1), sdve14(1), sdvf13(1),
+snp(1), ten(1), unc(1), va15(1), ve09(1), ve12(1), ve14(1), vf13(1).

@@ -1,0 +1,36 @@
+.\" @(#)select v1.0 03/2000;
+.TH sifdecode 1 "02 Mar 2000"
+.SH NAME
+select \- general selection program
+.SH SYNOPSIS
+\fBselect\fP
+.SH DESCRIPTION
+\fIselect\fP probes the classification file using slct.  By default,
+the classification file is assumed to be $MYSIFDEC/CLASSF.DB, but the
+slct program allows the user to give a full path name for the
+classification file, thereby allowing both the filename and the
+directory to be changed.
+.LP 
+.SH ENVIRONMENT 
+.TP
+.SB SIFDEC
+Parent directory for SifDec.
+.TP
+.SB MYSIFDEC
+Home directory of the installed SifDec distribution.
+.TP
+.SB MASTSIF
+A pointer to the directory containing the CUTEr/SifDec problems
+collection.
+.SH AUTHORS
+A.R. Conn, N.I.M. Gould, D. Orban and Ph.L. Toint
+.SH "SEE ALSO"
+\fICUTEr (and SifDec): A Constrained and Unconstrained Testing
+Environment, revisited\fP,
+   N.I.M. Gould, D. Orban and Ph.L. Toint, 2002.
+
+\fICUTE: Constrained and Unconstrained Testing Environment\fP,
+   I. Bongartz, A.R. Conn, N.I.M. Gould and Ph.L. Toint, 
+   TOMS, \fB21\fP:1, pp.123-160, 1995.
+
+classall(1), classify(1).

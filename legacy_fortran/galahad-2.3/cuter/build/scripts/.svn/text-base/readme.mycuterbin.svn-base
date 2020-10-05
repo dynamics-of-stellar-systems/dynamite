@@ -1,0 +1,37 @@
+
+CUTEr README file.				       September 2001.
+
+======================================================================
+
+  Please read this file prior to any modification in this directory.
+
+======================================================================
+
+This   directory   contains  the   various   interfaces  to   existing
+optimization packages, such as MINOS,  Snopt, Knitro, etc. The name of
+the interfaces  matches the patters  pak and sdpak. For  instance, you
+will find cob and sdcob, knit  and sdknit and so forth. The pak script
+assumes  the problem  of interest  has already  been decoded  into the
+appropriate fortran subroutines and data files. The sdpak script first
+calls  the SIF  decoder on  the  specified problem  before spawning  a
+process running the corresponding optimization package.
+
+The targets accepted by the Makefile in this directory are
+
+<interface_name>: 
+	     casts  the named interface(s) against local  architecture
+	     specifications,
+
+all:         all of the above.
+
+======================================================================
+
+			      Good luck!
+
+Nicholas I.M. Gould,				     n.gould@rl.ac.uk,
+Dominique Orban,				     orban@cerfacs.fr,
+Philippe L. Toint.			    philippe.toint@fundp.ac.be
+
+======================================================================
+
+CUTEr README file.				       September 2001.

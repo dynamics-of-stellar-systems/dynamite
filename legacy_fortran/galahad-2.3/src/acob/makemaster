@@ -1,0 +1,284 @@
+#  Main body of the installation makefile for the GALAHAD ACOB package
+
+#  N. Gould, D. Orban and Ph. L. Toint.
+#  This version: 8 II 2008
+
+SHELL = /bin/$(BINSHELL)
+
+#  compiler flags
+
+FFLAGS    = $(BASIC) $(OPTIMIZATION) $(DEBUG) $(MODULES) $(F90) $(USUAL)
+FFLAGSS   = $(BASIC) $(OPTIMIZATION) $(DEBUG) $(MODULES) $(F90) $(SPECIAL)
+FFLAGSN   = $(BASIC) $(NOOPTIMIZATION) $(DEBUG) $(MODULES) $(F90)
+FFLAGS77  = $(BASIC) $(OPTIMIZATION) $(DEBUG) $(MODULES) $(F77) $(USUAL)
+FFLAGS77S = $(BASIC) $(OPTIMIZATION) $(DEBUG) $(MODULES) $(F77) $(SPECIAL)
+RUNFFLAGS =          $(OPTIMIZATION) $(DEBUG) $(MODULES)
+
+#  names of random libraries
+
+LG  = $(OBJ)/libgalahad.a
+LGS = $(OBJS)/libgalahad.a
+LGD = $(OBJD)/libgalahad.a
+
+BLG  = $(OBJ)/libgalahad_blas.a
+BLGS = $(OBJS)/libgalahad_blas.a
+BLGD = $(OBJD)/libgalahad_blas.a
+
+LLG  = $(OBJ)/libgalahad_lapack.a
+LLGS = $(OBJS)/libgalahad_lapack.a
+LLGD = $(OBJD)/libgalahad_lapack.a
+
+HLG  = $(OBJ)/libgalahad_hsl.a
+HLGS = $(OBJS)/libgalahad_hsl.a
+HLGD = $(OBJD)/libgalahad_hsl.a
+
+MLG  = $(OBJ)/libgalahad_metis.a
+MLGS = $(OBJS)/libgalahad_metis.a
+MLGD = $(OBJD)/libgalahad_metis.a
+
+#  Libraries used
+
+LIBS = -lgalahad -lgalahad_hsl -lgalahad_metis -lgalahad_lapack -lgalahad_blas
+
+#  Archive manipulation strings
+
+ARR = $(AR) -rc $(LG)
+RMARFILE = $(GALAHAD)/bin/rmarfile.$(BINSHELL) $(AR) $(GREP) $(LG)
+RMOBFILE = $(GALAHAD)/bin/rmobfile.$(BINSHELL) $(RM) $(OBJ)
+
+BARR = $(AR) -rc $(BLG)
+BRMARFILE = $(GALAHAD)/bin/rmarfile.$(BINSHELL) $(AR) $(GREP) $(BLG)
+
+LARR = $(AR) -rc $(LLG)
+LRMARFILE = $(GALAHAD)/bin/rmarfile.$(BINSHELL) $(AR) $(GREP) $(LLG)
+
+HARR = $(AR) -rc $(HLG)
+HRMARFILE = $(GALAHAD)/bin/rmarfile.$(BINSHELL) $(AR) $(GREP) $(HLG)
+
+MARR = $(AR) -rc $(MLG)
+MRMARFILE = $(GALAHAD)/bin/rmarfile.$(BINSHELL) $(AR) $(GREP) $MHLG)
+
+#  sed scripts
+
+LSEDS = $(GALAHAD)/seds/$(LINEARSOLVER).sed
+LPSEDS = $(GALAHAD)/seds/$(LINEARSOLVER)_precon.sed
+CSEDS = $(GALAHAD)/seds/cutersize.sed
+
+#  compilation agenda
+
+SACOB = nlpt cuter_functions glrt $(LGS)(acob.o)
+DACOB = nlpt cuter_functions glrt $(LGD)(acob.o)
+
+SRUNACOB = copyright $(LGS)(useacob.o) $(OBJS)/runacob_sif.o
+DRUNACOB = copyright $(LGD)(useacob.o) $(OBJD)/runacob_sif.o
+
+ACOBOBJECTSS_CUTER = $(SACOB) $(SRUNACOB)
+ACOBOBJECTSD_CUTER = $(DACOB) $(DRUNACOB)
+
+OBJECTSS_CUTER = $(ACOBOBJECTSS_CUTER)
+OBJECTSD_CUTER = $(ACOBOBJECTSD_CUTER)
+
+ACOBDS = $(DACOB) $(OBJD)/acobs.o
+ACOBDT = $(DACOB) $(OBJD)/acobt.o
+ACOBSS = $(SACOB) $(OBJS)/acobs.o
+ACOBST = $(SACOB) $(OBJS)/acobt.o
+
+RACOBDS = $(OBJD)/acobs.o -L$(OBJD) $(LIBS)
+RACOBDT = $(OBJD)/acobt.o -L$(OBJD) $(LIBS)
+RACOBSS = $(OBJS)/acobs.o -L$(OBJS) $(LIBS)
+RACOBST = $(OBJS)/acobt.o -L$(OBJS) $(LIBS)
+
+SUCC = precision version) compiled successfully
+SUCC_CUTER = precision version) for CUTEr compiled successfully
+
+#  main compilations and runs
+
+all: acob_cuter
+all_acob: acob_cuter
+test: test_acob
+test_nocuter: test_acob_nocuter
+
+# acob
+
+acob_cuter: acob_cuter_$(PRECIS)
+	@printf ' %-21s\n' "GALAHAD: ACOB ($(PRECIS) $(SUCC_CUTER)" 
+acob_cuter_single: $(ACOBOBJECTSS_CUTER)
+	$(RANLIB) $(LGS)
+acob_cuter_double: $(ACOBOBJECTSD_CUTER)
+	$(RANLIB) $(LGD)
+
+acob_silent: acob_$(PRECIS)
+acob: acob_$(PRECIS)
+	@printf ' %-21s\n' "GALAHAD: ACOB ($(PRECIS) $(SUCC)" 
+acob_single: $(ACOBOBJECTSS)
+	$(RANLIB) $(LGS)
+acob_double: $(ACOBOBJECTSD)
+	$(RANLIB) $(LGD)
+
+acobsrunall: acobss acobst
+acobdrunall: acobds acobdt
+acobrunall: acobdrunall acobsrunall
+
+test_acob: test_acob_$(PRECIS)
+
+test_acob_single: acobst $(SRUNACOB)
+	echo ""
+	echo " Testing CUTEr interface to acob"
+	cd $(GALAHAD)/examples ; sdgal $(VERSION) acob -s QPBAND
+	echo ""
+	echo " Tests for acob complete"
+
+test_acob_double: acobdt $(DRUNACOB)
+	echo ""
+	echo " Testing CUTEr interface to acob"
+	cd $(GALAHAD)/examples ; sdgal $(VERSION) acob QPBAND
+	echo ""
+	echo " Tests for acob complete"
+
+test_acob_nocuter: test_acob_nocuter_$(PRECIS)
+
+test_acob_nocuter_single: acobst
+	echo ""
+	echo " Tests for acob complete"
+
+test_acob_nocuter_double: acobdt
+	echo ""
+	echo " Tests for acob complete"
+
+#  basic packages
+
+glrt:
+	( cd ../glrt ; $(MAKE) -f $(GALAHAD)/makefiles/$(VERSION) \
+            glrt_silent PRECIS=$(PRECIS) PWD=$(PWD)/../glrt )
+nlpt:
+	( cd ../filtrane ; $(MAKE) -f $(GALAHAD)/makefiles/$(VERSION) \
+            nlpt.o PRECIS=$(PRECIS) PWD=$(PWD)/../filtrane )
+cuter_functions:
+	( cd ../auxiliary ; $(MAKE) -f $(GALAHAD)/makefiles/$(VERSION) \
+            cuter_functions_silent PRECIS=$(PRECIS) PWD=$(PWD)/../auxiliary )
+copyright:
+	( cd ../general ; $(MAKE) -f $(GALAHAD)/makefiles/$(VERSION) \
+            copyright.o PRECIS=$(PRECIS) PWD=$(PWD)/../general )
+
+# run spec-sheet example tests
+
+acobss: $(ACOBSS)
+	$(FORTRAN) $(RUNFFLAGS) $(SPECIAL) -o run_acob $(RACOBSS)
+	- ./run_acob >& acobs.output
+	cat acobs.output
+	rm ./run_acob
+
+acobst: $(ACOBST)
+	echo " Exhaustive test of subroutine interface to acob"
+	$(FORTRAN) $(RUNFFLAGS) $(SPECIAL) -o run_acob $(RACOBST)
+	- ./run_acob >& acobt.output
+	cat acobt.output
+	rm ./run_acob
+
+acobds: $(ACOBDS)
+	$(FORTRAN) $(RUNFFLAGS) $(SPECIAL) -o run_acob $(RACOBDS)
+	- ./run_acob >& acobds.output
+	cat acobds.output
+	rm ./run_acob
+
+acobdt: $(ACOBDT)
+	echo " Exhaustive test of subroutine interface to acob"
+	$(FORTRAN) $(RUNFFLAGS) $(SPECIAL) -o run_acob $(RACOBDT)
+	- ./run_acob >& acobdt.output
+	cat acobdt.output
+	rm ./run_acob
+
+#  Substantial GALAHAD packages
+
+acob.o: $(LG)(acob.o)
+
+$(LG)(acob.o): ../acob/acob.f90
+	@printf ' %-9s %-15s\t\t' "Compiling" "acob   " 
+	$(SED) -f $(CSEDS) $(CUTERUSED)/$(PRECIS)/config/tools.siz \
+          > $(OBJ)/cutersize.f90
+	$(SED) -f $(SEDS) ../acob/acob.f90 > $(OBJ)/acob1.f90
+	$(SED) -f $(LSEDS) $(OBJ)/acob1.f90 > $(OBJ)/acob2.f90
+	$(SED) -f $(LPSEDS) $(OBJ)/acob2.f90 > $(OBJ)/acob3.f90
+	$(SED) "s/^.$(NOT95)/     /" $(OBJ)/acob3.f90 > $(OBJ)/acob.f90
+	cd $(OBJ); $(FORTRAN) -o acob.o $(FFLAGSS) acob.f90 \
+                || ( printf ' %-26s' "=> Disabling optimization " ; \
+                   $(FORTRAN) -o acob.o $(FFLAGSN) acob.f90 )
+	cd $(OBJ); $(ARR) acob.o ; $(RM) acob.f90 acob1.f90 acob2.f90 \
+                                          acob3.f90 acob.o cutersize.f90
+	$(RMARFILE) useacob.o
+	$(RMOBFILE) acobs.o
+	$(RMOBFILE) acobt.o
+	$(MVMODS)
+	@printf '[ OK ]\n'
+
+
+# CUTEr/AMPL interfaces
+
+useacob.o: $(LG)(useacob.o)
+
+$(LG)(useacob.o): ../acob/useacob.f90
+	@printf ' %-9s %-15s\t\t' "Compiling" "useacob   " 
+	$(SED) -f $(CSEDS) $(CUTERUSED)/$(PRECIS)/config/tools.siz \
+          > $(OBJ)/cutersize.f90
+	$(SED) -f $(SEDS) ../acob/useacob.f90 > $(OBJ)/useacob1.f90
+	$(SED) -f $(LSEDS) $(OBJ)/useacob1.f90 > $(OBJ)/useacob2.f90
+	$(SED) "s/^.$(NOT95)/     /" $(OBJ)/useacob2.f90 > $(OBJ)/useacob.f90
+	cd $(OBJ); $(FORTRAN) -o useacob.o $(FFLAGSS) useacob.f90 \
+                || ( printf ' %-26s' "=> Disabling optimization " ; \
+                   $(FORTRAN) -o useacob.o $(FFLAGSN) useacob.f90 )
+	cd $(OBJ); $(ARR) useacob.o ; $(RM) useacob.f90 useacob1.f90 \
+                                       useacob2.f90 useacob.o  cutersize.f90
+	$(RMOBFILE) runacob_sif.o
+	$(MVMODS)
+	@printf '[ OK ]\n'
+
+#  main programs
+
+runacob_sif.o: $(OBJ)/runacob_sif.o
+
+$(OBJ)/runacob_sif.o: ../acob/runacob_sif.f90
+	@printf ' %-9s %-15s\t\t' "Compiling" "runacob_sif" 
+	$(SED) -f $(SEDS) ../acob/runacob_sif.f90 > $(OBJ)/runacob_sif.f90
+	cd $(OBJ); $(FORTRAN) -o runacob_sif.o $(FFLAGSS) runacob_sif.f90
+	rm $(OBJ)/runacob_sif.f90
+	@printf '[ OK ]\n'
+
+#  test decks
+
+acobs.o: $(OBJ)/acobs.o
+
+$(OBJ)/acobs.o: ../acob/acobs.f90
+	@printf ' %-9s %-15s\t\t' "Compiling" "acobs  " 
+	$(SED) -f $(SEDS) ../acob/acobs.f90 > $(OBJ)/acobs1.f90
+	$(SED) -f $(LSEDS) $(OBJ)/acobs1.f90 > $(OBJ)/acobs.f90
+	cd $(OBJ) ; $(FORTRAN) -o acobs.o $(FFLAGS) acobs.f90
+	rm $(OBJ)/*.f90
+	@printf '[ OK ]\n'
+
+acobt.o: $(OBJ)/acobt.o
+
+$(OBJ)/acobt.o: ../acob/acobt.f90
+	@printf ' %-9s %-15s\t\t' "Compiling" "acobt  " 
+	$(SED) -f $(SEDS) ../acob/acobt.f90 > $(OBJ)/acobt1.f90
+	$(SED) -f $(LSEDS) $(OBJ)/acobt1.f90 > $(OBJ)/acobt.f90
+	cd $(OBJ) ; $(FORTRAN) -o acobt.o $(FFLAGSS) acobt.f90
+	rm $(OBJ)/*.f90
+	@printf '[ OK ]\n'
+
+#  book keeping
+
+clean: 
+	@printf ' %-9s\t\t' "Cleaning" 
+	$(RM) $(LG) $(OBJ)/acobt.o
+	@printf '[ OK ]\n'
+
+cleanall: 
+	@printf ' %-14s\t\t' "Removing all $(PRECIS) precision object and module files" 
+	$(RM) $(OBJ)/* $(MOD)/*
+	@printf '[ OK ]\n'
+
+rmacob: 
+	@printf ' %-9s %-15s\t\t' "Removing" "acob from archive " 
+	$(RMARFILE) acob.o
+	@printf '[ OK ]\n'
+

@@ -1,0 +1,287 @@
+K 25
+svn:wc:ra_dav:version-url
+V 57
+/SVN/cuter/!svn/ver/136/cuter/branches/cuter64/build/arch
+END
+compiler.alp.dux.f90
+K 25
+svn:wc:ra_dav:version-url
+V 78
+/SVN/cuter/!svn/ver/117/cuter/branches/cuter64/build/arch/compiler.alp.dux.f90
+END
+size.small
+K 25
+svn:wc:ra_dav:version-url
+V 68
+/SVN/cuter/!svn/ver/117/cuter/branches/cuter64/build/arch/size.small
+END
+compiler.rs6.aix.x90
+K 25
+svn:wc:ra_dav:version-url
+V 78
+/SVN/cuter/!svn/ver/117/cuter/branches/cuter64/build/arch/compiler.rs6.aix.x90
+END
+compiler.pc.lnx.pgf
+K 25
+svn:wc:ra_dav:version-url
+V 77
+/SVN/cuter/!svn/ver/117/cuter/branches/cuter64/build/arch/compiler.pc.lnx.pgf
+END
+compiler.alp.dux.f77
+K 25
+svn:wc:ra_dav:version-url
+V 78
+/SVN/cuter/!svn/ver/117/cuter/branches/cuter64/build/arch/compiler.alp.dux.f77
+END
+compiler.alp.dux.f95
+K 25
+svn:wc:ra_dav:version-url
+V 78
+/SVN/cuter/!svn/ver/117/cuter/branches/cuter64/build/arch/compiler.alp.dux.f95
+END
+compiler.rs6.aix.x95
+K 25
+svn:wc:ra_dav:version-url
+V 78
+/SVN/cuter/!svn/ver/117/cuter/branches/cuter64/build/arch/compiler.rs6.aix.x95
+END
+compiler.all.all.g77
+K 25
+svn:wc:ra_dav:version-url
+V 78
+/SVN/cuter/!svn/ver/117/cuter/branches/cuter64/build/arch/compiler.all.all.g77
+END
+compiler.rs6.aix.xlf
+K 25
+svn:wc:ra_dav:version-url
+V 78
+/SVN/cuter/!svn/ver/117/cuter/branches/cuter64/build/arch/compiler.rs6.aix.xlf
+END
+compiler.mac.osx.pgf
+K 25
+svn:wc:ra_dav:version-url
+V 78
+/SVN/cuter/!svn/ver/117/cuter/branches/cuter64/build/arch/compiler.mac.osx.pgf
+END
+compiler.all.all.n90
+K 25
+svn:wc:ra_dav:version-url
+V 78
+/SVN/cuter/!svn/ver/117/cuter/branches/cuter64/build/arch/compiler.all.all.n90
+END
+c.arch
+K 25
+svn:wc:ra_dav:version-url
+V 64
+/SVN/cuter/!svn/ver/117/cuter/branches/cuter64/build/arch/c.arch
+END
+compiler.sgi.irx.f77
+K 25
+svn:wc:ra_dav:version-url
+V 78
+/SVN/cuter/!svn/ver/117/cuter/branches/cuter64/build/arch/compiler.sgi.irx.f77
+END
+compiler.all.all.gne
+K 25
+svn:wc:ra_dav:version-url
+V 78
+/SVN/cuter/!svn/ver/117/cuter/branches/cuter64/build/arch/compiler.all.all.gne
+END
+compiler.sgi.irx.m90
+K 25
+svn:wc:ra_dav:version-url
+V 78
+/SVN/cuter/!svn/ver/117/cuter/branches/cuter64/build/arch/compiler.sgi.irx.m90
+END
+compiler.all.all.f2c
+K 25
+svn:wc:ra_dav:version-url
+V 78
+/SVN/cuter/!svn/ver/117/cuter/branches/cuter64/build/arch/compiler.all.all.f2c
+END
+compiler.all.all.n95
+K 25
+svn:wc:ra_dav:version-url
+V 78
+/SVN/cuter/!svn/ver/136/cuter/branches/cuter64/build/arch/compiler.all.all.n95
+END
+size.large
+K 25
+svn:wc:ra_dav:version-url
+V 68
+/SVN/cuter/!svn/ver/136/cuter/branches/cuter64/build/arch/size.large
+END
+compiler.sun.sol.frt
+K 25
+svn:wc:ra_dav:version-url
+V 78
+/SVN/cuter/!svn/ver/117/cuter/branches/cuter64/build/arch/compiler.sun.sol.frt
+END
+compiler.pc.lnx.ifc
+K 25
+svn:wc:ra_dav:version-url
+V 77
+/SVN/cuter/!svn/ver/136/cuter/branches/cuter64/build/arch/compiler.pc.lnx.ifc
+END
+compiler.hp.hpu.f77
+K 25
+svn:wc:ra_dav:version-url
+V 77
+/SVN/cuter/!svn/ver/117/cuter/branches/cuter64/build/arch/compiler.hp.hpu.f77
+END
+compiler.pc.lnx.g95
+K 25
+svn:wc:ra_dav:version-url
+V 77
+/SVN/cuter/!svn/ver/117/cuter/branches/cuter64/build/arch/compiler.pc.lnx.g95
+END
+compiler.pc.lnx.l95
+K 25
+svn:wc:ra_dav:version-url
+V 77
+/SVN/cuter/!svn/ver/117/cuter/branches/cuter64/build/arch/compiler.pc.lnx.l95
+END
+size.custom
+K 25
+svn:wc:ra_dav:version-url
+V 69
+/SVN/cuter/!svn/ver/117/cuter/branches/cuter64/build/arch/size.custom
+END
+compiler.mac.osx.g95
+K 25
+svn:wc:ra_dav:version-url
+V 78
+/SVN/cuter/!svn/ver/117/cuter/branches/cuter64/build/arch/compiler.mac.osx.g95
+END
+compiler.pc.lnx.gfo
+K 25
+svn:wc:ra_dav:version-url
+V 77
+/SVN/cuter/!svn/ver/117/cuter/branches/cuter64/build/arch/compiler.pc.lnx.gfo
+END
+compiler.pc.lnx.p77
+K 25
+svn:wc:ra_dav:version-url
+V 77
+/SVN/cuter/!svn/ver/117/cuter/branches/cuter64/build/arch/compiler.pc.lnx.p77
+END
+compiler.cry.unc.f90
+K 25
+svn:wc:ra_dav:version-url
+V 78
+/SVN/cuter/!svn/ver/117/cuter/branches/cuter64/build/arch/compiler.cry.unc.f90
+END
+compiler.cry.unc.c77
+K 25
+svn:wc:ra_dav:version-url
+V 78
+/SVN/cuter/!svn/ver/117/cuter/branches/cuter64/build/arch/compiler.cry.unc.c77
+END
+size.medium
+K 25
+svn:wc:ra_dav:version-url
+V 69
+/SVN/cuter/!svn/ver/117/cuter/branches/cuter64/build/arch/size.medium
+END
+compiler.pc.lnx.ifr
+K 25
+svn:wc:ra_dav:version-url
+V 77
+/SVN/cuter/!svn/ver/117/cuter/branches/cuter64/build/arch/compiler.pc.lnx.ifr
+END
+compiler.mac.osx.gfo
+K 25
+svn:wc:ra_dav:version-url
+V 78
+/SVN/cuter/!svn/ver/117/cuter/branches/cuter64/build/arch/compiler.mac.osx.gfo
+END
+compiler.mac.osx.p77
+K 25
+svn:wc:ra_dav:version-url
+V 78
+/SVN/cuter/!svn/ver/117/cuter/branches/cuter64/build/arch/compiler.mac.osx.p77
+END
+compiler.alp.t64.f90
+K 25
+svn:wc:ra_dav:version-url
+V 78
+/SVN/cuter/!svn/ver/117/cuter/branches/cuter64/build/arch/compiler.alp.t64.f90
+END
+compiler.rs6.aix.e90
+K 25
+svn:wc:ra_dav:version-url
+V 78
+/SVN/cuter/!svn/ver/117/cuter/branches/cuter64/build/arch/compiler.rs6.aix.e90
+END
+compiler.mac.osx.ifr
+K 25
+svn:wc:ra_dav:version-url
+V 78
+/SVN/cuter/!svn/ver/117/cuter/branches/cuter64/build/arch/compiler.mac.osx.ifr
+END
+f.arch
+K 25
+svn:wc:ra_dav:version-url
+V 64
+/SVN/cuter/!svn/ver/117/cuter/branches/cuter64/build/arch/f.arch
+END
+compiler.alp.t64.f77
+K 25
+svn:wc:ra_dav:version-url
+V 78
+/SVN/cuter/!svn/ver/117/cuter/branches/cuter64/build/arch/compiler.alp.t64.f77
+END
+compiler.alp.t64.f95
+K 25
+svn:wc:ra_dav:version-url
+V 78
+/SVN/cuter/!svn/ver/117/cuter/branches/cuter64/build/arch/compiler.alp.t64.f95
+END
+system.sh.all
+K 25
+svn:wc:ra_dav:version-url
+V 71
+/SVN/cuter/!svn/ver/117/cuter/branches/cuter64/build/arch/system.sh.all
+END
+compiler.pc.lnx.frt
+K 25
+svn:wc:ra_dav:version-url
+V 77
+/SVN/cuter/!svn/ver/117/cuter/branches/cuter64/build/arch/compiler.pc.lnx.frt
+END
+compiler.sun.sol.e90
+K 25
+svn:wc:ra_dav:version-url
+V 78
+/SVN/cuter/!svn/ver/117/cuter/branches/cuter64/build/arch/compiler.sun.sol.e90
+END
+compiler.pc.mgw.g95
+K 25
+svn:wc:ra_dav:version-url
+V 77
+/SVN/cuter/!svn/ver/117/cuter/branches/cuter64/build/arch/compiler.pc.mgw.g95
+END
+compiler.sun.sol.f90
+K 25
+svn:wc:ra_dav:version-url
+V 78
+/SVN/cuter/!svn/ver/117/cuter/branches/cuter64/build/arch/compiler.sun.sol.f90
+END
+compiler.sun.sol.e77
+K 25
+svn:wc:ra_dav:version-url
+V 78
+/SVN/cuter/!svn/ver/117/cuter/branches/cuter64/build/arch/compiler.sun.sol.e77
+END
+compiler.sun.sol.f77
+K 25
+svn:wc:ra_dav:version-url
+V 78
+/SVN/cuter/!svn/ver/117/cuter/branches/cuter64/build/arch/compiler.sun.sol.f77
+END
+compiler.pc.mgw.gfo
+K 25
+svn:wc:ra_dav:version-url
+V 77
+/SVN/cuter/!svn/ver/117/cuter/branches/cuter64/build/arch/compiler.pc.mgw.gfo
+END

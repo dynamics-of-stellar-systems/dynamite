@@ -1,0 +1,119 @@
+K 25
+svn:wc:ra_dav:version-url
+V 54
+/SVN/cuter/!svn/ver/141/sifdec/branches/SifDec2/config
+END
+cray.cf
+K 25
+svn:wc:ra_dav:version-url
+V 61
+/SVN/cuter/!svn/ver/71/sifdec/branches/SifDec2/config/cray.cf
+END
+svr4.cf
+K 25
+svn:wc:ra_dav:version-url
+V 61
+/SVN/cuter/!svn/ver/71/sifdec/branches/SifDec2/config/svr4.cf
+END
+linux.cf
+K 25
+svn:wc:ra_dav:version-url
+V 62
+/SVN/cuter/!svn/ver/71/sifdec/branches/SifDec2/config/linux.cf
+END
+mac.cf
+K 25
+svn:wc:ra_dav:version-url
+V 60
+/SVN/cuter/!svn/ver/98/sifdec/branches/SifDec2/config/mac.cf
+END
+Win32.cf
+K 25
+svn:wc:ra_dav:version-url
+V 62
+/SVN/cuter/!svn/ver/71/sifdec/branches/SifDec2/config/Win32.cf
+END
+Umake.cf
+K 25
+svn:wc:ra_dav:version-url
+V 62
+/SVN/cuter/!svn/ver/71/sifdec/branches/SifDec2/config/Umake.cf
+END
+Umake.rules
+K 25
+svn:wc:ra_dav:version-url
+V 65
+/SVN/cuter/!svn/ver/71/sifdec/branches/SifDec2/config/Umake.rules
+END
+sun.cf
+K 25
+svn:wc:ra_dav:version-url
+V 60
+/SVN/cuter/!svn/ver/71/sifdec/branches/SifDec2/config/sun.cf
+END
+ibm.cf
+K 25
+svn:wc:ra_dav:version-url
+V 60
+/SVN/cuter/!svn/ver/71/sifdec/branches/SifDec2/config/ibm.cf
+END
+hp.cf
+K 25
+svn:wc:ra_dav:version-url
+V 59
+/SVN/cuter/!svn/ver/71/sifdec/branches/SifDec2/config/hp.cf
+END
+DGUX.cf
+K 25
+svn:wc:ra_dav:version-url
+V 61
+/SVN/cuter/!svn/ver/71/sifdec/branches/SifDec2/config/DGUX.cf
+END
+osf1.cf
+K 25
+svn:wc:ra_dav:version-url
+V 61
+/SVN/cuter/!svn/ver/71/sifdec/branches/SifDec2/config/osf1.cf
+END
+all.cf
+K 25
+svn:wc:ra_dav:version-url
+V 60
+/SVN/cuter/!svn/ver/71/sifdec/branches/SifDec2/config/all.cf
+END
+site.def
+K 25
+svn:wc:ra_dav:version-url
+V 62
+/SVN/cuter/!svn/ver/71/sifdec/branches/SifDec2/config/site.def
+END
+generic.cf
+K 25
+svn:wc:ra_dav:version-url
+V 64
+/SVN/cuter/!svn/ver/71/sifdec/branches/SifDec2/config/generic.cf
+END
+noop.rules
+K 25
+svn:wc:ra_dav:version-url
+V 64
+/SVN/cuter/!svn/ver/71/sifdec/branches/SifDec2/config/noop.rules
+END
+concat.def
+K 25
+svn:wc:ra_dav:version-url
+V 64
+/SVN/cuter/!svn/ver/71/sifdec/branches/SifDec2/config/concat.def
+END
+sgi.cf
+K 25
+svn:wc:ra_dav:version-url
+V 60
+/SVN/cuter/!svn/ver/71/sifdec/branches/SifDec2/config/sgi.cf
+END
+Umake.tmpl
+K 25
+svn:wc:ra_dav:version-url
+V 65
+/SVN/cuter/!svn/ver/141/sifdec/branches/SifDec2/config/Umake.tmpl
+END

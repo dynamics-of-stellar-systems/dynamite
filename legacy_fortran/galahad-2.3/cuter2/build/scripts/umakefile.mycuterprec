@@ -1,0 +1,24 @@
+
+/* ===============================
+ * $MYCUTER/precision Imakefile
+ *
+ * This Imakefile recursively
+ * sneaks into subdirectories and
+ * builds the local CUTEr.
+ *
+ * D. Orban for CUTEr, 2001.
+ */
+
+#define IHaveSubdirs
+
+SUBDIRS = bin config lib cuter-specs
+
+all::
+
+MakeSubdirs($(SUBDIRS))
+DependSubdirs($(SUBDIRS))
+
+AllTarget(NullParameter)
+DependTarget()
+CleanTarget()
+PurgeTarget(NullParameter)

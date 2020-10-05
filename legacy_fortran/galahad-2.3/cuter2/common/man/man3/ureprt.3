@@ -1,0 +1,64 @@
+.\" @(#)report v1.0 11/2000;
+.TH report 3 "17 Nov 2000"
+.SH NAME
+UREPRT \- CUTEr tool to obtain statistics concerning function
+evaluation and CPU time used.
+.SH SYNOPSIS
+CALL UREPRT( CALLS, TIME )
+.SH DESCRIPTION
+The UREPRT subroutine obtains statistics concerning function evaluation and CPU
+time used for unconstrained or bound-constrained optimization in a standardized
+format.
+
+The problem under consideration
+consists in minimizing (or maximizing) an objective function
+.EQ
+f(x)
+.EN
+over all
+.EQ
+x
+.EN
+\(mo
+.EQ
+R sup n
+.EN
+subject to the simple bounds
+.EQ
+b sup l ~<=~ x ~<=~ b sup u.
+.EN
+The objective function is group-partially separable.
+
+.LP 
+.SH ARGUMENTS
+The arguments of UREPRT are as follows
+.TP 5
+.B CALLS \fP[out] - real array of length 4
+gives the number of calls to the problem functions:
+.TP 3
+CALLS( 1 ): number of calls to the objective function
+.TP
+CALLS( 2 ): number of calls to the objective gradient
+.TP
+CALLS( 3 ): number of calls to the objective Hessian
+.TP
+CALLS( 4 ): number of Hessian times vector products
+
+.TP
+.B TIME \fP[out] - real array of length 2:
+.TP 3
+TIME( 1 ): CPU time (in seconds) for USETUP
+.TP
+TIME( 2 ): CPU time (in seconds) since the end of USETUP.
+.LP
+.SH AUTHORS
+I. Bongartz, A.R. Conn, N.I.M. Gould, D. Orban and Ph.L. Toint
+.SH "SEE ALSO"
+\fICUTEr (and SifDec): A Constrained and Unconstrained Testing
+Environment, revisited\fP,
+   N.I.M. Gould, D. Orban and Ph.L. Toint,
+   ACM TOMS, \fB29\fP:4, pp.373-394, 2003.
+
+\fICUTE: Constrained and Unconstrained Testing Environment\fP,
+I. Bongartz, A.R. Conn, N.I.M. Gould and Ph.L. Toint, 
+TOMS, \fB21\fP:1, pp.123-160, 1995.

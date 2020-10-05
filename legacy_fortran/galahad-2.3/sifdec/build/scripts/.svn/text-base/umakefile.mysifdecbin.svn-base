@@ -1,0 +1,96 @@
+
+/* ================================
+ * Specialize the SifDec interfaces
+ *
+ * This Umakefile builds the
+ * interfaces, whose destination
+ * is $(MYSIFDEC)/bin
+ * also given by $(INTERFACESBIN)
+ * below.
+ *
+ * D. Orban for CUTEr & Co, 2001.
+ */
+
+.SUFFIXES: .pro
+
+INTERFACESSRC = $(SIFDEC)/build/prototypes
+INTERFACESBIN = $(MYSIFDEC)/bin
+INTCONFIG     = $(MYSIFDEC)/$(PRECISION)/config
+DESTDIR       =
+
+/* ===================================
+ * I need the two following lists here
+ * to make sure we don't have problems
+ * with a make which doesn't support
+ * the $$@ construct.
+ */
+
+INTERFACES_AT_LARGE_DOT_PRO = \
+		      $(INTERFACESSRC)/classall.pro   \
+		      $(INTERFACESSRC)/classify.pro   \
+		      $(INTERFACESSRC)/helpmsg.pro    \
+		      $(INTERFACESSRC)/select.pro     \
+		      $(INTERFACESSRC)/sifdecode.pro
+
+INTERFACES_AT_LARGE = classall   \
+		      classify   \
+		      helpmsg    \
+		      select     \
+		      sifdecode
+
+all::
+
+/* =====================================
+ * Rules for casting the .pro interfaces
+ */
+
+INTERFACES_DEPS = $(INTCONFIG)/cmds $(INTCONFIG)/this_build $(INTCONFIG)/script.sed
+
+InterfaceTarget(classall,$(INTERFACESSRC),classall.pro,$(INTERFACES_DEPS))
+InterfaceTarget(classify,$(INTERFACESSRC),classify.pro,$(INTERFACES_DEPS))
+InterfaceTarget(helpmsg,$(INTERFACESSRC),helpmsg.pro,$(INTERFACES_DEPS))
+InterfaceTarget(select,$(INTERFACESSRC),select.pro,$(INTERFACES_DEPS))
+InterfaceTarget(sifdecode,$(INTERFACESSRC),sifdecode.pro,$(INTERFACES_DEPS))
+
+PurgeTarget($(INTERFACES_AT_LARGE))
+
+/* ============
+ * Now we build
+ */
+
+/* =======================
+ * Install the awk scripts
+ */
+
+InstallSimpleTarget(show.awk,$(INTERFACESSRC),show.awk,NullParameter,$(INTERFACESBIN),show.awk)
+PurgeTarget(show.awk)
+
+InstallSimpleTarget(param.awk,$(INTERFACESSRC),param.awk,NullParameter,$(INTERFACESBIN),param.awk)
+PurgeTarget(param.awk)
+
+
+/* ==================================================
+ * On with the SifDec select and classification tools
+ *
+ */
+
+SLCTSRCDIR = $(SIFDEC)/common/src/select
+SLCTSRCS = $(SLCTSRCDIR)/slct.f $(SLCTSRCDIR)/clsf.f
+
+SimpleFortranTarget(slct,$(SLCTSRCDIR),slct.f,NullParameter,$(LDLIBS),NullParameter)
+SimpleFortranTarget(clsf,$(SLCTSRCDIR),clsf.f,NullParameter,$(LDLIBS),NullParameter)
+
+CleanStuff(slct.o clsf.o)
+AllTarget(slct clsf)
+
+
+/* ==========
+ * Define all
+ */
+
+AllTarget($(INTERFACES_AT_LARGE) show.awk param.awk)
+
+DependTarget()
+
+
+

@@ -1,0 +1,68 @@
+#!/bin/csh
+#  ( Last modified on 23 Dec 2000 at 17:29:56 )
+#
+#{version}
+#version for Intel-like-PC under Linux with g77 (Tue Dec 8 14:37:39 CST 2015)
+
+#  Probes the classification file using slct.  By default,
+#  the classification file is assumed to be $MYSIFDEC/CLASSF.DB,
+#  but the slct program allows the user to give a full path name
+#  for the classification file, thereby allowing both the filename
+#  and the directory to be changed.
+#
+#
+#  A.R. Conn, October 1992, for CGT Productions.
+#  modified by I. Bongartz, May 1994.
+#
+
+#{cmds}
+#
+#  System specifications
+#
+
+set SYSTEM  =  "Linux"
+set KEYSYS  =  "CUNIX"
+
+#
+#  Directory for temporary files
+#
+
+set TMP     =   "/tmp"
+
+
+#
+#  basic system commands
+#
+
+set MKDIR   =   "/bin/mkdir"
+set CP      =   "/bin/cp"
+set RM      =   "/bin/rm -f"
+set MV      =   "/bin/mv"
+set CAT     =   "/bin/cat"
+set CHMOD   =   "/bin/chmod"
+set SED     =   "/bin/sed"
+set LN      =   "/bin/ln"
+set LS      =   "/bin/ls"
+set AR      =   "/usr/bin/ar"
+set RMDIR   =   "/bin/rmdir"
+set GREP    =   "/bin/grep"
+set AWK     =   "/usr/bin/gawk"
+set HEAD    =   "/usr/bin/head"
+set TAIL    =   "/usr/bin/tail"
+set WC      =   "/usr/bin/wc"
+set MAKE    =   "/usr/bin/make"
+
+#
+#  Fortran compilation and loading
+#
+
+set COMPILE     = "g77 -c"
+set LOAD        = "g77"
+set ISF9095     = "no"
+set COMPILE9095 = ""
+set LOAD9095    = ""
+set FFLAGS      = "-O -fno-second-underscore"
+
+echo $MASTSIF > SLCT.DAT
+$MYSIFDEC/bin/slct
+$RM SLCT.DAT

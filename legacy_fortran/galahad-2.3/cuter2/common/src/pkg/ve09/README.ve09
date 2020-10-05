@@ -1,0 +1,71 @@
+
+                      *****************************
+		      *                           *
+                      *   USING VE09 WITH CUTEr   *
+		      *                           *
+                      *****************************
+
+               ( Last modified on 15 Sep 1996 at 16:51:55 )
+
+WHAT IS  VE09?
+--------------
+
+VE09 is a subroutine for the solution of the general, large, quadratic
+programming problem within a feasible region defined by simple bound and
+linear equlaity constraints. It uses an active set approach in which the
+variables are partitioned into free and fixed variables, the latter being
+fixed at one of their bounds. The status of each variable is revised after
+every iteration.
+
+VE09 is part of the HSL (formerly the HARWELL SUBROUTINE LIBRARY), and was 
+written by Nick Gould. It is available from the United Kingdom Atomic Energy 
+Authority, Harwell, subject to certain license agreements.  It is copyrighted 
+jointly by the UKAEA and SERC (Science and Engineering Research Council).
+
+
+CREATING THE OBJECT MODULE FOR VE09
+-----------------------------------
+
+For building the double precision version, the VE09 double precision
+subroutine and dependencies should be concatenated in a new file called
+ve09d.f. This file should then be compiled (but not linked) and the resulting
+object file ve09d.o placed (or linked to from a file) in the directory
+$CUTER/common/src/pkg/ve09 or $MYCUTER/double/bin, under the name ve09.o.
+
+The procedure is identical for the single precision, except that the names
+ve09d.f and ve09d.o are replaced by ve09s.f and ve09s.o, respectively, and the
+file ve09.o should be found under $MYCUTER/single/bin.
+
+
+USING THE VE09 INTERFACE TOOL
+-----------------------------
+
+Suppose you wish to solve the problem written in SIF format contained
+in the file probname.SIF.
+
+The VE09 interface tools require two input files:
+
+   probname.SIF   specifies the problem in SIF format
+   VE09.SPC       sets values for VE09 run-time parameters
+
+If no VE09.SPC file is present in the current directory, the default
+version is copied from the $CUTER/common/src/pkg/ve09 directory. This default
+file is as follows:
+
+      1000    MAXIT,   the maximum number of iterations,
+         F    CONVEX,  the indicator for convexity of the QP.
+
+The commands to use this package are the two scripts
+sdve09 and ve09.
+
+The reader is referred to the paper quoted below, the documentation of the
+routine in the Harwell Subrooutine Library or the code itself if he or 
+she wishes to modify these parameters.
+
+
+REFERENCES
+----------
+
+N.I.M. Gould,
+CSS Report 204, Harwell Laboratory, A.E.R.E., Harwell, 1986.
+

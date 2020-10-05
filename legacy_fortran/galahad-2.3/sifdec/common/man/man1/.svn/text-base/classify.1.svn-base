@@ -1,0 +1,39 @@
+.\" @(#)classify v1.0 03/2000;
+.TH classify 1 "02 Mar 2000"
+.SH NAME
+classify \- secondary classification program
+.SH SYNOPSIS
+\fBclassify\fP \fI[dirname]\fP \fIprobname\fP
+.SH DESCRIPTION
+\fIclassify\fP adds \fIprobname\fP to the database file CLASSF.DB.
+.LP 
+.SH classify Options
+You can start classify with the following options:
+.TP
+.B dirname
+\fIprobname\fP is searched for in \fIdirname\fP. If \fIdirname\fP is
+not specified, MASTSIF is searched.
+.LP
+.SH ENVIRONMENT 
+.TP
+.SB SIFDEC
+Parent directory for SifDec.
+.TP
+.SB MYSIFDEC
+Home directory of the installed SifDec distribution.
+.TP
+.SB MASTSIF
+A pointer to the directory containing the CUTEr/SifDec problems
+collection.
+.SH AUTHORS
+A.R. Conn, N.I.M. Gould, D. Orban and Ph.L. Toint
+.SH "SEE ALSO"
+\fICUTEr (and SifDec): A Constrained and Unconstrained Testing
+Environment, revisited\fP,
+   N.I.M. Gould, D. Orban and Ph.L. Toint, 2002.
+
+\fICUTE: Constrained and Unconstrained Testing Environment\fP,
+   I. Bongartz, A.R. Conn, N.I.M. Gould and Ph.L. Toint, 
+   TOMS, \fB21\fP:1, pp.123-160, 1995.
+
+classall(1), select(1).

@@ -1,0 +1,46 @@
+#
+#  System specifications
+#
+
+set SYSTEM  =  "Linux"
+set KEYSYS  =  "CUNIX"
+
+#
+#  Directory for temporary files
+#
+
+set TMP     =   "/tmp"
+
+
+#
+#  basic system commands
+#
+
+set MKDIR   =   "/bin/mkdir"
+set CP      =   "/bin/cp"
+set RM      =   "/bin/rm -f"
+set MV      =   "/bin/mv"
+set CAT     =   "/bin/cat"
+set CHMOD   =   "/bin/chmod"
+set SED     =   "/bin/sed"
+set LN      =   "/bin/ln"
+set LS      =   "/bin/ls"
+set AR      =   "/usr/bin/ar"
+set RMDIR   =   "/bin/rmdir"
+set GREP    =   "/bin/grep"
+set AWK     =   "/usr/bin/gawk"
+set HEAD    =   "/usr/bin/head"
+set TAIL    =   "/usr/bin/tail"
+set WC      =   "/usr/bin/wc"
+set MAKE    =   "/usr/bin/make"
+
+#
+#  Fortran compilation and loading
+#
+
+set COMPILE     = "g77 -c"
+set LOAD        = "g77"
+set ISF9095     = "no"
+set COMPILE9095 = ""
+set LOAD9095    = ""
+set FFLAGS      = "-O -fno-second-underscore"

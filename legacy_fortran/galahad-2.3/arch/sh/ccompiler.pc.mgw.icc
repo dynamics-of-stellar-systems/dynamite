@@ -1,0 +1,9 @@
+# ICC
+
+#
+#  C compilation and loading
+#
+
+CC=icc
+CCBASIC='-c -ansi'
+CCDEBUG=#-DDEBUG_GALAHAD

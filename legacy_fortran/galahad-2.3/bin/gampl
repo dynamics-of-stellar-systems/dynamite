@@ -1,0 +1,17 @@
+#!/bin/sh
+
+# gampl: generic script to pass an Ampl model to a GALAHAD package
+
+# Use: gampl architecture [-h] [-l secs] [galahad_ampl options]
+
+# where: architecture is the required GALAHAD architecture
+#        options       -h : displays usage message
+#                      -l : limit the cputime used to secs seconds
+#                           (Default: -l 99999999)
+#    galahad_ampl options : if specified, options passed directly
+#                           to the main Galahad/Ampl driver.
+
+# N. Gould, D. Orban & Ph. Toint
+# ( Last modified on 26 July 2005 at 19:30:00 GMT )
+
+gampl.sh $*

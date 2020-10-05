@@ -1,0 +1,20 @@
+#!/bin/csh -f
+#
+#  Update the date to the current one within the files given as arguments
+#
+#  Ph. Toint, September 1996, for CGT Productions.
+#
+
+set DAY   = `date | awk '{printf "%2d\n", $3 }'`
+set MONTH = `date | awk '{printf "%3s\n", $2 }'`
+set YEAR  = `date | awk '{printf "%4d\n", $6 }'`
+set TIME  = `date | awk '{printf "%8s\n", $4 }'`
+foreach i ( $* )
+    awk '{ if ( pos = index( $0, "Last modified on 8 Feb 2001 at 20:11:40" ) \\
+             print substr($0,1,pos + 15),day,month,year,"at",time,")"     \\
+           }                                                              \\
+           else print                                                     \\
+         }' day=$DAY month=$MONTH year=$YEAR time=$TIME $i > $i.tmp
+#    mv $i.tmp $i
+end
+echo "CUTEr: $DAY $MONTH $YEAR at $TIME." > version.date

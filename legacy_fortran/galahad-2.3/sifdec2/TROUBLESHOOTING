@@ -1,0 +1,144 @@
+
+                       TROUBLESHOOTING
+
+In a perfect world, Unix would be Unix, and compilers
+(and our codes!) would not have bugs. However ....
+
+IF...
+
+1. ...THE INSTALLATION FAILS
+----------------------------
+
+The first stage of  the installation generates makefiles and execution
+scripts  appropriate for  the system  you have  described. All  of the
+systems supported  are described in files  in the $SIFDEC/config
+directory. Each file is named
+
+  platform.cf
+
+where platform is the machine you asked for. Examples include sun.cf,
+linux.cf and ibm.cf. The special file all.cf contains common settings
+which apply to all platforms.
+
+If you  have  problems,  you  should  check  the  contents  of all.cf
+and of the file appropriate to  your system and in particular, the
+paths to the basic system commands and compiler settings.  You  might
+try downgrading the level of optimization if appropriate, uninstalling
+(using the uninstall script) and installing again.
+
+The syntax  used in these  files is regular  cpp syntax and  should be
+clear.
+
+
+2. ...THE COMPILATION FAILS
+---------------------------
+
+Check (and edit if necessary) the Makefiles found in the directories
+
+   $MYSIFDEC
+   $MYSIFDEC/bin
+   $MYSIFDEC/precision
+   $MYSIFDEC/precision/config
+   $MYSIFDEC/precision/bin
+   $MYSIFDEC/precision/lib
+
+and re-issue a 'make all' from $MYSIFDEC, paying special attention to
+messages printed to the screen (redirect the output to a file if the
+scrolling is too fast).
+
+For changes to take effect in subsequent rebuilds, the Umakefiles in
+the same directories should be modified correspondingly. Also,
+remember that if your changes should apply system-wide, the Umakefiles
+found in
+
+   $SIFDEC/build/scripts
+
+should be modified, along with the configuration files in
+
+   $SIFDEC/config
+
+if applicable. If you can fix your problem this way, please send us
+a detailed report on the changes you made and we will be happy to
+incorporate them in next releases of SifDec.
+
+To incorporate system-wide changes into your local instance of SifDec,
+it is safest to first
+
+   ./uninstall_sifdec
+
+from $SIFDEC, choose your local instance from the list and uninstall
+it, then
+
+   ./install_sifdec
+
+from the same directory to re-install a fresh version.
+
+
+3. ...THE RUN FAILS
+-------------------
+
+Check your environment variables settings. SIFDEC should point to the
+directory where the distribution was unpacked and MYSIFDEC should
+point to the local instance you are currently using. In addition,
+MASTSIF should point to a directory containing the SIF file(s) you are
+trying to decode, unless you are explicitly specifying a path on the
+command line. Also, make sure $MYSIFDEC/bin appears in your PATH.
+
+You may make sure there was no problem during the compilation by
+changing to $MYSIFDEC and issuing
+
+   make -s purge
+   make all
+
+and paying attention to messages printed to the screen.
+
+Check the basic system commands file
+
+   $MYSIFDEC/<precision>/config/cmds
+
+and the configuration files
+
+   $MYSIFDEC/config/<platform>.cf, and
+   $MYSIFDEC/config/all.cf.
+
+If you need to make changes to the configuration files, you will need
+to re-issue the command
+
+   ./install_mysifdec
+
+from the directory $MYSIFDEC to re-generate the Makefiles and rebuild.
+
+If you are trying to decode a problem in non-default dimensions, check
+the names of the parameters which can be changed for each problem. The
+command
+
+   sifdecode -show <problem.SIF>
+
+shows a list of possibilities, if any.
+
+If the problem persists, inspect the script 'sifdecode', found in
+
+   $MYSIFDEC/bin
+
+
+4. KNOWN PROBLEMS WITH SPECIFIC SYSTEMS
+---------------------------------------
+
+4.1. f90/f95 under SOLARIS
+--------------------------
+
+Optimization has been disabled since any attempt at
+optimization here leads to internal compiler errors here.
+Please grumble to Sun!
+
+5. BUG REPORTS
+--------------
+
+Please consult the file
+
+   $SIFDEC/BUGS
+
+If you think you have found a bug (even better, if you have
+found and fixed one!), please let us know. We will make
+every effort to issue bug fixes (although, this depends on our
+having time, so no guarantees).

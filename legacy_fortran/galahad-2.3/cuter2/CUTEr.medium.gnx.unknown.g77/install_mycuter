@@ -1,0 +1,244 @@
+#!/bin/bash
+
+#
+#  System specifications
+#
+
+SYSTEM="Linux"
+KEYSYS="CUNIX"
+
+#
+#  Directory for temporary files
+#
+
+TMP="/tmp"
+
+
+#
+#  basic system commands
+#
+
+MKDIR="mkdir"
+CP="cp"
+RM="rm -f"
+MV="mv"
+CAT="cat"
+CHMOD="chmod"
+SED="sed"
+LN="ln"
+LS="ls"
+AR="ar"
+RMDIR="rmdir"
+GREP="grep"
+AWK="gawk"
+HEAD="head"
+TAIL="tail"
+WC="wc"
+MAKE="make"
+
+#
+#  Fortran compilation and loading
+#
+
+COMPILE="g77 -c"
+LOAD="g77"
+ISF9095="no"
+COMPILE9095=""
+LOAD9095=""
+FFLAGS="-O -fno-second-underscore -fPIC"
+SPECIALFLAGS=""
+FDEBUGFLAGS="FDebugFlags"
+FPROFILEFLAGS="FProfileFlags"
+
+#
+#  C compilation and loading
+#
+
+CPP="/usr/bin/cpp"
+CCOMPILE="gcc -c -std=c99"
+CLOAD="gcc"
+CFLAGS="-O -fPIC"
+SPECIALLIBS=""
+
+##
+## Note: Recent versions of Matlab use a single script, mex,
+##       to compile both C and Fortran code. This makes the
+##       commands cmex and fmex obsolete. Change the
+##       following lines according to your system specifications.
+##
+
+MEXFORTRAN="mex"
+MEXFFLAGS="-fortran"
+
+# Environment check
+
+if [[ ${CUTER+set} != 'set' ]]; then
+    echo ' CUTER is not set.'
+    echo ' Set it to the appropriate value and re-run.'
+    echo ' Aborting.'
+    exit 1
+fi
+
+if [[ -e ./install_mycuter ]]; then
+    if [[ ${MYCUTER+set} == 'set' && "$MYCUTER" == "$PWD" ]]; then
+        export MYCUTER=`echo ${MYCUTER} | ${SED} 's"/tmp_mnt""'`
+    fi
+else
+    echo ' Launch install_mycuter from its home directory.'
+    echo ' Aborting.'
+    exit 2
+fi
+
+# End of environment check
+
+# Calling sequence for install_mycuter
+
+thisprog=`basename $0`
+let doubleprec=1
+x_umake_flags=( " " )
+let debug=0
+let profile=0
+
+while [[ $# > 0 ]]; do
+    case "$1" in
+        -single)  let doubleprec=0
+                  ;;
+        -double)  let doubleprec=1
+                  ;;
+        -debug)   (( debug == 0 )) && x_umake_flags=( "${x_umake_flags[@]} -Ddebug" )
+                  let debug=1
+                  ;;
+        -profile) (( profile == 0 )) && x_umake_flags=( "${x_umake_flags[@]} -Dprofile" )
+                  let profile=1
+                  ;;
+        *)        echo "Use: ${thisprog} [arg]"
+                  echo "where arg is either"
+                  echo "   -single   install the single precision decoder"
+                  echo "   -double   install the double precision decoder"
+                  echo "   -debug    produce debugging information"
+                  echo "   -profile  produce profiling information"
+                  exit 0
+                  ;;
+    esac
+    shift
+done
+
+if [[ ! -d ${MYCUTER}/double && "${doubleprec}" == "true" ]]; then
+    echo "Please use  install_cuter  to create double precision version"
+    exit 2
+fi
+if [[ ! -d ${MYCUTER}/single && "${singleprec}" == "true" ]]; then
+    echo "Please use  install_cuter  to create single precision version"
+    exit 3
+fi
+
+if [[ -d ${MYCUTER}/double && "${doubleprec}" == "false" ]]; then
+    if [[ -d ${MYCUTER}/single && "${singleprec}" == "false" ]]; then
+        echo "Please specify which precision to build."
+        echo " Use $0 -h for more information."
+        exit 1
+    fi
+fi
+
+(( doubleprec )) && x_umake_flags=( "${x_umake_flags[@]} -DDoublePrecision" ) || \
+                    x_umake_flags=( "${x_umake_flags[@]} -DSinglePrecision" )
+
+# End of arg check
+
+if [[ ${LOQODIR+set} == set ]]; then
+  echo "You appear to have LOQO installed in $LOQODIR"
+  if [[  -f ${LOQODIR}/loqo.h && -f ${LOQODIR}/myalloc.h && -f ${LOQODIR}/libloqo.a  ]]; then
+    x_umake_flags=( "${x_umake_flags[@]} -Dhasloqo")
+  else
+    echo 
+    echo "At least one of the files loqo.h, myalloc.h or libloqo.a"
+    echo "seems to be missing in ${LOQODIR}... Please re-run install_mycuter"
+    echo "when the problem is fixed."
+    echo
+  fi
+else
+  echo "You do not seem to have LOQO installed"
+fi
+if [[ ${KNITRODIR+set} == set ]]; then
+  echo "You appear to have KNITRO installed in $KNITRODIR"
+  if [[ -f ${KNITRODIR}/include/knitro.h && -d ${KNITRODIR}/lib  ]]; then
+    x_umake_flags=("${x_umake_flags[@]} -Dhasknitro")
+  else
+    echo 
+    echo "At least one of the files knitro.h or libknitro*"
+    echo "seems to be missing in ${KNITRODIR}... Please re-run install_mycuter"
+    echo "when the problem is fixed."
+    echo
+  fi
+else
+  echo "You do not seem to have KNITRO installed"
+fi
+if [[ ${TAO_DIR+set} == set ]]; then
+  echo "You appear to have TAO installed in ${TAO_DIR}"
+  x_umake_flags=("${x_umake_flags[@]} -Dhastao")
+else
+  echo "You do not seem to have TAO installed"
+fi
+/home/lzhu/triaxschwarzschild/galahad-2.3/cuter2/bin/umake.sh -I. -Iconfig   -DIsg77 -DIsgcc -UNoCcomp -DMediumSize   ${x_umake_flags[@]}
+$MAKE Makefile
+$MAKE Makefiles
+
+InstallationComplete="False"
+
+echo ''
+echo "install_mycuter : Do you want to 'make all' in"
+echo "${MYCUTER} now (Y/n)?"
+YESNO=""
+while [[ ${YESNO} != 'Y' && ${YESNO} != 'N' ]]; do
+    read YESNO
+    [[ ${YESNO} == "" ]] && YESNO="Y"
+    YESNO=`echo ${YESNO} | tr a-z A-Z`
+done
+
+case ${YESNO} in
+    Y) 
+	    ${MAKE} -s clean
+	    ${MAKE} -s all
+	    ${MAKE} -s clean
+	    InstallationComplete="True"
+	    ;;
+    N) 
+	    echo ' To complete the installation, type'
+	    echo '  make -s all'
+	    echo ' in the directory ${MYCUTER}'
+	    echo ''
+	    echo '  [Installation NOT complete]'
+	    exit 0
+	    ;;
+esac
+
+# Final environment check
+
+if [[ ${MYCUTER+set} != 'set' ]]; then
+    echo " Warning : The environment variable MYCUTER is not set"
+    echo ' It should point to your working CUTEr instance,'
+fi
+
+if [[ ${MASTSIF+set} != 'set' ]]; then
+    echo " Warning : The environment variable MASTSIF is not set"
+    echo ' MASTSIF should point to your main SIF files repository.'
+fi
+
+if [[ "${InstallationComplete}" == "True"  ]]; then
+
+    echo ''
+    echo ' If all your environment variables are properly set,'
+    echo ' you can test your installation using the command:'
+    echo '   runcuter -p gen -D ROSENBR'
+    echo ''
+    echo ' (Note that once your PATH has been updated you need'
+    echo ' to use the  rehash  command to make it active.)'
+    echo ''
+    echo '   [Installation complete]'
+    echo ''
+    echo ' -------------------------------------------------------'
+    echo ' '
+
+fi
+
+# End

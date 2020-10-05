@@ -1,0 +1,36 @@
+#  ( Last modified on 23 Dec 2000 at 17:30:08 )
+#
+#  System specifications (IBM AIX)
+#
+
+SYSTEM="AIX"
+KEYSYS="CUNIX"
+
+#
+#  Directory for temporary files
+#
+
+TMP=/tmp
+
+#
+#  basic system commands
+#
+
+MKDIR="/bin/mkdir"
+CP="/bin/cp"
+RM="/bin/rm -f"
+MV="/bin/mv"
+CAT="/bin/cat"
+CHMOD="/bin/chmod"
+SED="/usr/bin/sed"
+LN="/bin/ln"
+LS="/bin/ls"
+AR="/usr/bin/ar"
+RMDIR="/bin/rmdir"
+GREP="/bin/grep"
+AWK="/bin/awk"
+HEAD="/bin/head"
+TAIL="/bin/tail"
+WC="/bin/wc"
+MAKE="/usr/bin/make"
+RANLIB="/usr/bin/ranlib"

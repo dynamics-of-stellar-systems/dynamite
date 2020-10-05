@@ -1,0 +1,31 @@
+# Digital Fortran 90 under Windows (pc version)
+#
+# Fortran compilation and loading
+#
+
+FORTRAN='f90'
+BASIC='-c'
+LIBCMD=''
+#MODCMD='-module $MOD -I$MOD'
+MODCMD='-I$MOD'
+MVMODS='$(MV) -f $(OBJ)/*.mod $(MOD)/'
+#MVMODS=':'
+OPTIMIZATION='-optimize:3'
+NOOPTIMIZATION='-Od'
+DEBUG=
+F77='-nofree'
+F90=''
+F95=''
+NOFMAIN=''
+CCONDEF=
+USUAL=
+SPECIAL=
+F77SUFFIX=f90
+F95SUFFIX=f90
+TIMER=GEN
+BLAS=
+LAPACK=
+HSL=
+METIS=
+NOT95=IS95
+BINSHELL=sh

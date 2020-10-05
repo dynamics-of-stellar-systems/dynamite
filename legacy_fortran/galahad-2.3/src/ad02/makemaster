@@ -1,0 +1,107 @@
+#  Main body of the installation makefile for the AD02 packages
+
+#  N. Gould, D. Orban and Ph. L. Toint.
+#  This version: 11 IV 2006
+
+SHELL = /bin/$(BINSHELL)
+
+#  compiler flags
+
+FFLAGS    = $(BASIC) $(OPTIMIZATION) $(DEBUG) $(MODULES) $(F90) $(USUAL)
+FFLAGSS   = $(BASIC) $(OPTIMIZATION) $(DEBUG) $(MODULES) $(F90) $(SPECIAL)
+FFLAGSN   = $(BASIC) $(NOOPTIMIZATION) $(DEBUG) $(MODULES) $(F90)
+FFLAGS77  = $(BASIC) $(OPTIMIZATION) $(DEBUG) $(MODULES) $(F77) $(USUAL)
+FFLAGS77S = $(BASIC) $(OPTIMIZATION) $(DEBUG) $(MODULES) $(F77) $(SPECIAL)
+FFLAGS95  = $(BASIC) $(OPTIMIZATION) $(DEBUG) $(MODULES) $(F95) $(USUAL)
+FFLAGS95S = $(BASIC) $(OPTIMIZATION) $(DEBUG) $(MODULES) $(F95) $(SPECIAL)
+FFLAGS95N = $(BASIC) $(NOOPTIMIZATION) $(DEBUG) $(MODULES) $(F95)
+RUNFFLAGS =          $(OPTIMIZATION) $(DEBUG) $(MODULES)
+
+#  names of random libraries
+
+LG  = $(OBJ)/libgalahad.a
+LGS = $(OBJS)/libgalahad.a
+LGD = $(OBJD)/libgalahad.a
+
+BLG  = $(OBJ)/libgalahad_blas.a
+BLGS = $(OBJS)/libgalahad_blas.a
+BLGD = $(OBJD)/libgalahad_blas.a
+
+LLG  = $(OBJ)/libgalahad_lapack.a
+LLGS = $(OBJS)/libgalahad_lapack.a
+LLGD = $(OBJD)/libgalahad_lapack.a
+
+HLG  = $(OBJ)/libgalahad_hsl.a
+HLGS = $(OBJS)/libgalahad_hsl.a
+HLGD = $(OBJD)/libgalahad_hsl.a
+
+MLG  = $(OBJ)/libgalahad_metis.a
+MLGS = $(OBJS)/libgalahad_metis.a
+MLGD = $(OBJD)/libgalahad_metis.a
+
+#  Archive manipulation strings
+
+ARR = $(AR) -rc $(LG)
+RMARFILE = $(GALAHAD)/bin/rmarfile.$(BINSHELL) $(AR) $(GREP) $(LG)
+RMOBFILE = $(GALAHAD)/bin/rmobfile.$(BINSHELL) $(RM) $(OBJ)
+
+BARR = $(AR) -rc $(BLG)
+BRMARFILE = $(GALAHAD)/bin/rmarfile.$(BINSHELL) $(AR) $(GREP) $(BLG)
+
+LARR = $(AR) -rc $(LLG)
+LRMARFILE = $(GALAHAD)/bin/rmarfile.$(BINSHELL) $(AR) $(GREP) $(LLG)
+
+HARR = $(AR) -rc $(HLG)
+HRMARFILE = $(GALAHAD)/bin/rmarfile.$(BINSHELL) $(AR) $(GREP) $(HLG)
+
+MARR = $(AR) -rc $(MLG)
+MRMARFILE = $(GALAHAD)/bin/rmarfile.$(BINSHELL) $(AR) $(GREP) $MHLG)
+
+CPFILE = $(GALAHAD)/bin/cpfile.$(BINSHELL) $(CP)
+
+#  compilation agenda
+
+ad02: ad02_$(PRECIS)
+	@printf ' %-21s\n' "HSL AD02 routines ($(PRECIS) $(SUCC)" 
+ad02_silent: ad02_$(PRECIS)
+ad02_single: $(HLGS)(kb07i.o) $(HLGS)(hsl_ad02s.o)
+ad02_double: $(HLGD)(kb07i.o) $(HLGD)(hsl_ad02d.o)
+
+#  individual compilations
+
+hsl_ad02d.o: $(HLG)(hsl_ad02d.o)
+
+$(HLG)(hsl_ad02d.o): $(AD02)/hsl_ad02d.f90
+	@printf ' %-9s %-15s\t\t' "Compiling" "hsl_ad02d" 
+	$(CP) $(AD02)/hsl_ad02d.f90 $(OBJ)/hsl_ad02d.$(F95SUFFIX)
+	cd $(OBJ); $(FORTRAN) $(FFLAGS95) hsl_ad02d.$(F95SUFFIX) \
+                || ( printf ' %-26s' "=> Disabling optimization " ; \
+                   $(FORTRAN) -o $(AD02)/hsl_ad02d.o $(FFLAGS95N) \
+                     hsl_ad02d.$(F95SUFFIX) )
+	cd $(OBJ); $(HARR) hsl_ad02d.o; $(RM) hsl_ad02d.$(F95SUFFIX) hsl_ad02d.o
+	$(RMARFILE) uselanb.o
+	$(RANLIB) $(HLG)
+	@printf '[ OK ]\n'
+
+hsl_ad02s.o: $(HLG)(hsl_ad02s.o)
+
+$(HLG)(hsl_ad02s.o): $(AD02)/hsl_ad02s.f90
+	@printf ' %-9s %-15s\t\t' "Compiling" "hsl_ad02s" 
+	$(CP) $(AD02)/hsl_ad02s.f90 $(OBJ)/hsl_ad02s.$(F95SUFFIX)
+	cd $(OBJ); $(FORTRAN) $(FFLAGS95) hsl_ad02s.$(F95SUFFIX) \
+                || ( printf ' %-26s' "=> Disabling optimization " ; \
+                   $(FORTRAN) -o $(AD01)/hsl_ad02s.o $(FFLAGS95N) \
+                     hsl_ad02s.$(F95SUFFIX) )
+	cd $(OBJ); $(HARR) hsl_ad02s.o; $(RM) hsl_ad02s.$(F95SUFFIX) hsl_ad02s.o
+	$(RMARFILE) uselanb.o
+	$(RANLIB) $(HLG)
+	@printf '[ OK ]\n'
+
+kb07i.o: $(HLG)(kb07i.o)
+
+$(HLG)(kb07i.o): $(AD02)/kb07i.f
+	@printf ' %-9s %-15s\t\t' "Compiling" "kb07i" 
+	$(CPFILE) $(AD02)/kb07i.f $(OBJ)/kb07i.f90
+	cd $(OBJ); $(FORTRAN) -o kb07i.o $(FFLAGS77) kb07i.f90
+	cd $(OBJ); $(HARR) kb07i.o; $(RM) kb07i.f90 kb07i.o
+	@printf '[ OK ]\n'

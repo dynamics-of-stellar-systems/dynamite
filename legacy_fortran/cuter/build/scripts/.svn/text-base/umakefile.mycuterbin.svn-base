@@ -1,0 +1,237 @@
+
+/* ===============================
+ * Specialize the CUTEr interfaces
+ *
+ * This Imakefile builds the
+ * interfaces, whose destination
+ * is $(MYCUTER)/bin
+ * also given by $(INTERFACESBIN)
+ * below.
+ *
+ * D. Orban for CUTEr, 2001.
+ */
+
+.SUFFIXES: .pro
+
+INTERFACESSRC = $(CUTER)/build/prototypes
+INTERFACESBIN = $(MYCUTER)/bin
+INTCONFIG     = $(MYCUTER)/$(PRECISION)/config
+DESTDIR       =
+
+/* Just a list */
+
+INTERFACES_AT_LARGE = cob	 \
+		      envcheck   \
+		      fil	 \
+		      gen	 \
+		      gen90      \
+		      helpmsg    \
+		      hrb	 \
+                      ipopt      \
+                      la04       \
+		      lmb	 \
+		      mns	 \
+		      mx         \
+		      nps	 \
+		      osl	 \
+		      pds	 \
+		      prx	 \
+		      nits	 \
+		      runpackage \
+		      sdcob      \
+		      sdfil      \
+		      sdgen      \
+		      sdgen90    \
+		      sdhrb      \
+                      sdipopt    \
+                      sdla04     \
+		      sdlmb      \
+		      sdmns      \
+		      sdmx       \
+		      sdnits     \
+		      sdnps      \
+		      sdosl      \
+		      sdpds      \
+		      sdprx      \
+		      sdsnp      \
+		      sdstats    \
+		      sdstn      \
+		      sdten      \
+		      sdunc      \
+		      sdcgp      \
+		      sdcgd      \
+		      sdlbs      \
+		      sdlbb      \
+		      sdtrn      \
+		      sdva15     \
+		      sdve09     \
+		      sdve12     \
+		      sdve14     \
+		      sdvf13     \
+		      snp	 \
+		      stats  \
+		      stn	 \
+		      ten	 \
+		      unc	 \
+		      cgp	 \
+		      cgd	 \
+		      lbs	 \
+		      lbb	 \
+		      trn	 \
+		      va15       \
+		      ve09       \
+		      ve12       \
+		      ve14       \
+		      vf13
+
+#ifndef NoCcomp
+
+C_INTERFACES = sdgenc genc
+
+#ifdef hasloqo
+LOQO_INTERFACES =  sdlqo lqo
+#else
+LOQO_INTERFACES = 
+#endif
+
+#ifdef hasknitro
+KNITRO_INTERFACES = sdknit knit
+#else
+KNITRO_INTERFACES =
+#endif
+
+#endif
+
+#ifdef hastao
+TAO_INTERFACES = sdtao tao
+#else
+TAO_INTERFACES =
+#endif
+
+all::
+
+baseconfig:
+	cd $(MYCUTER)/$(PRECISION)/config; \
+	$(MAKE) $(MFLAGS) all;
+
+all:: baseconfig
+
+/* ====================================
+ * Rule for casting the .pro interfaces
+ */
+
+INTERFACES_DEPS = $(INTCONFIG)/cmds $(INTCONFIG)/this_build $(INTCONFIG)/script.sed
+
+InterfaceTarget(cob,$(INTERFACESSRC),cob.pro,$(INTERFACES_DEPS))
+InterfaceTarget(fil,$(INTERFACESSRC),fil.pro,$(INTERFACES_DEPS))
+InterfaceTarget(gen,$(INTERFACESSRC),gen.pro,$(INTERFACES_DEPS))
+InterfaceTarget(gen90,$(INTERFACESSRC),gen90.pro,$(INTERFACES_DEPS))
+InterfaceTarget(hrb,$(INTERFACESSRC),hrb.pro,$(INTERFACES_DEPS))
+InterfaceTarget(ipopt,$(INTERFACESSRC),ipopt.pro,$(INTERFACES_DEPS))
+InterfaceTarget(la04,$(INTERFACESSRC),la04.pro,$(INTERFACES_DEPS))
+InterfaceTarget(lmb,$(INTERFACESSRC),lmb.pro,$(INTERFACES_DEPS))
+
+/* Process C interfaces, if any */
+
+#ifndef NoCcomp
+
+InterfaceTarget(genc,$(INTERFACESSRC),genc.pro,$(INTERFACES_DEPS))
+
+#ifdef hasloqo
+InterfaceTarget(lqo,$(INTERFACESSRC),lqo.pro,$(INTERFACES_DEPS))
+#endif
+
+#ifdef hasknitro
+InterfaceTarget(knit,$(INTERFACESSRC),knit.pro,$(INTERFACES_DEPS))
+#endif
+
+#endif  /* NoCcomp */
+
+#ifdef hastao
+InterfaceTarget(tao,$(INTERFACESSRC),tao.pro,$(INTERFACES_DEPS))
+#endif
+
+InterfaceTarget(mns,$(INTERFACESSRC),mns.pro,$(INTERFACES_DEPS))
+InterfaceTarget(mx,$(INTERFACESSRC),mx.pro,$(INTERFACES_DEPS))
+InterfaceTarget(nps,$(INTERFACESSRC),nps.pro,$(INTERFACES_DEPS))
+InterfaceTarget(osl,$(INTERFACESSRC),osl.pro,$(INTERFACES_DEPS))
+InterfaceTarget(pds,$(INTERFACESSRC),pds.pro,$(INTERFACES_DEPS))
+InterfaceTarget(prx,$(INTERFACESSRC),prx.pro,$(INTERFACES_DEPS))
+InterfaceTarget(nits,$(INTERFACESSRC),nits.pro,$(INTERFACES_DEPS))
+InterfaceTarget(snp,$(INTERFACESSRC),snp.pro,$(INTERFACES_DEPS))
+InterfaceTarget(stn,$(INTERFACESSRC),stn.pro,$(INTERFACES_DEPS))
+InterfaceTarget(stats,$(INTERFACESSRC),stats.pro,$(INTERFACES_DEPS))
+InterfaceTarget(ten,$(INTERFACESSRC),ten.pro,$(INTERFACES_DEPS))
+InterfaceTarget(unc,$(INTERFACESSRC),unc.pro,$(INTERFACES_DEPS))
+InterfaceTarget(cgp,$(INTERFACESSRC),cgp.pro,$(INTERFACES_DEPS))
+InterfaceTarget(cgd,$(INTERFACESSRC),cgd.pro,$(INTERFACES_DEPS))
+InterfaceTarget(lbs,$(INTERFACESSRC),lbs.pro,$(INTERFACES_DEPS))
+InterfaceTarget(lbb,$(INTERFACESSRC),lbb.pro,$(INTERFACES_DEPS))
+InterfaceTarget(trn,$(INTERFACESSRC),trn.pro,$(INTERFACES_DEPS))
+InterfaceTarget(va15,$(INTERFACESSRC),va15.pro,$(INTERFACES_DEPS))
+InterfaceTarget(ve09,$(INTERFACESSRC),ve09.pro,$(INTERFACES_DEPS))
+InterfaceTarget(ve12,$(INTERFACESSRC),ve12.pro,$(INTERFACES_DEPS))
+InterfaceTarget(ve14,$(INTERFACESSRC),ve14.pro,$(INTERFACES_DEPS))
+InterfaceTarget(vf13,$(INTERFACESSRC),vf13.pro,$(INTERFACES_DEPS))
+
+InterfaceTarget(envcheck,$(INTERFACESSRC),envcheck.pro,$(INTERFACES_DEPS))
+InterfaceTarget(helpmsg,$(INTERFACESSRC),helpmsg.pro,$(INTERFACES_DEPS))
+InterfaceTarget(runpackage,$(INTERFACESSRC),runpackage.pro,$(INTERFACES_DEPS))
+
+InterfaceTarget(sdcob,$(INTERFACESSRC),sdcob.pro,$(INTERFACES_DEPS))
+InterfaceTarget(sdfil,$(INTERFACESSRC),sdfil.pro,$(INTERFACES_DEPS))
+InterfaceTarget(sdgen,$(INTERFACESSRC),sdgen.pro,$(INTERFACES_DEPS))
+InterfaceTarget(sdgen90,$(INTERFACESSRC),sdgen90.pro,$(INTERFACES_DEPS))
+InterfaceTarget(sdhrb,$(INTERFACESSRC),sdhrb.pro,$(INTERFACES_DEPS))
+InterfaceTarget(sdipopt,$(INTERFACESSRC),sdipopt.pro,$(INTERFACES_DEPS))
+InterfaceTarget(sdla04,$(INTERFACESSRC),sdla04.pro,$(INTERFACES_DEPS))
+InterfaceTarget(sdlmb,$(INTERFACESSRC),sdlmb.pro,$(INTERFACES_DEPS))
+
+/* Process C interfaces, if any */
+
+#ifndef NoCcomp
+
+InterfaceTarget(sdgenc,$(INTERFACESSRC),sdgenc.pro,$(INTERFACES_DEPS))
+
+#ifdef hasloqo
+InterfaceTarget(sdlqo,$(INTERFACESSRC),sdlqo.pro,$(INTERFACES_DEPS))
+#endif
+
+#ifdef hasknitro
+InterfaceTarget(sdknit,$(INTERFACESSRC),sdknit.pro,$(INTERFACES_DEPS))
+#endif
+
+#endif /* NoCcomp */
+
+#ifdef hastao
+InterfaceTarget(sdtao,$(INTERFACESSRC),sdtao.pro,$(INTERFACES_DEPS))
+#endif
+
+InterfaceTarget(sdmns,$(INTERFACESSRC),sdmns.pro,$(INTERFACES_DEPS))
+InterfaceTarget(sdmx,$(INTERFACESSRC),sdmx.pro,$(INTERFACES_DEPS))
+InterfaceTarget(sdnps,$(INTERFACESSRC),sdnps.pro,$(INTERFACES_DEPS))
+InterfaceTarget(sdosl,$(INTERFACESSRC),sdosl.pro,$(INTERFACES_DEPS))
+InterfaceTarget(sdpds,$(INTERFACESSRC),sdpds.pro,$(INTERFACES_DEPS))
+InterfaceTarget(sdprx,$(INTERFACESSRC),sdprx.pro,$(INTERFACES_DEPS))
+InterfaceTarget(sdnits,$(INTERFACESSRC),sdnits.pro,$(INTERFACES_DEPS))
+InterfaceTarget(sdsnp,$(INTERFACESSRC),sdsnp.pro,$(INTERFACES_DEPS))
+InterfaceTarget(sdstats,$(INTERFACESSRC),sdstats.pro,$(INTERFACES_DEPS))
+InterfaceTarget(sdstn,$(INTERFACESSRC),sdstn.pro,$(INTERFACES_DEPS))
+InterfaceTarget(sdten,$(INTERFACESSRC),sdten.pro,$(INTERFACES_DEPS))
+InterfaceTarget(sdunc,$(INTERFACESSRC),sdunc.pro,$(INTERFACES_DEPS))
+InterfaceTarget(sdcgp,$(INTERFACESSRC),sdcgp.pro,$(INTERFACES_DEPS))
+InterfaceTarget(sdcgd,$(INTERFACESSRC),sdcgd.pro,$(INTERFACES_DEPS))
+InterfaceTarget(sdlbs,$(INTERFACESSRC),sdlbs.pro,$(INTERFACES_DEPS))
+InterfaceTarget(sdlbb,$(INTERFACESSRC),sdlbb.pro,$(INTERFACES_DEPS))
+InterfaceTarget(sdtrn,$(INTERFACESSRC),sdtrn.pro,$(INTERFACES_DEPS))
+InterfaceTarget(sdva15,$(INTERFACESSRC),sdva15.pro,$(INTERFACES_DEPS))
+InterfaceTarget(sdve09,$(INTERFACESSRC),sdve09.pro,$(INTERFACES_DEPS))
+InterfaceTarget(sdve12,$(INTERFACESSRC),sdve12.pro,$(INTERFACES_DEPS))
+InterfaceTarget(sdve14,$(INTERFACESSRC),sdve14.pro,$(INTERFACES_DEPS))
+InterfaceTarget(sdvf13,$(INTERFACESSRC),sdvf13.pro,$(INTERFACES_DEPS))
+
+PurgeTarget($(INTERFACES_AT_LARGE) $(C_INTERFACES) $(LOQO_INTERFACES) $(KNITRO_INTERFACES) $(TAO_INTERFACES))
+
+AllTarget($(INTERFACES_AT_LARGE) $(C_INTERFACES) $(LOQO_INTERFACES) $(KNITRO_INTERFACES) $(TAO_INTERFACES))
+
+DependTarget()

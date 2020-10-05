@@ -1,0 +1,187 @@
+
+/* Definition of a few local commands */
+
+#define umakeSystemFlag -Dlinux
+#define SystemTag       Linux
+#define KeySys	        CUNIX
+#ifndef IntelLinux
+#define IntelLinux
+#define MachineTag      pc
+#define MachineName     Intel-like-PC
+#define OperatingSystem lnx
+#endif
+
+
+#ifndef SedCmd
+#define SedCmd		/bin/sed
+#endif
+#ifndef HeadCmd
+#define HeadCmd		/usr/bin/head
+#endif
+#ifndef TailCmd
+#define TailCmd		/usr/bin/tail
+#endif
+#ifndef WcCmd
+#define WcCmd		/usr/bin/wc
+#endif
+#ifndef AwkCmd
+#define AwkCmd		/usr/bin/gawk
+#endif
+#define MakeCmd		/usr/bin/make
+
+#ifndef R1Value
+#define R1Value		1.1920930E-07
+#endif
+#ifndef R2Value
+#define R2Value		5.9604646E-08
+#endif
+#ifndef R3Value
+#define R3Value		1.1754945E-38
+#endif
+#ifndef R4Value
+#define R4Value		1.1754945E-38
+#endif
+#ifndef R5Value
+#define R5Value		3.4028234E+38
+#endif
+
+#ifndef D1Value
+#define D1Value		2.2204460492503132D-16
+#endif
+#ifndef D2Value
+#define D2Value		1.1102230246251566D-16
+#endif
+#ifndef D3Value
+#define D3Value		2.225073858507202D-308
+#endif
+#ifndef D4Value
+#define D4Value		2.225073858507202D-308
+#endif
+#ifndef D5Value
+#define D5Value		1.797693134862314D+308
+#endif
+
+/*
+ *  Compiler-related parameters, 
+ *  set by install_cuter at installation time
+ */
+
+#ifdef Isfrt
+#define umakeCompiler90Flag	-DIsa90Compiler
+#define CompilerTagId		frt
+#define umakeCompilerFlag	-DIsfrt
+#define CompileCmd		frt -L /usr/"i386-glibc21-linux"/lib -c -Fixed -w -fw -Wa,-W
+#define LoadCmd			frt -L /usr/"i386-glibc21-linux"/lib
+#define CompilerIsF9095		yes
+#define Compile9095Cmd		frt -L /usr/"i386-glibc21-linux"/lib -c -Am -fs -Wa,-W
+#define Load9095Cmd		frt -L /usr/"i386-glibc21-linux"/lib
+#define FortranFlags		-O
+#define NumberOfBytes		8
+#endif
+
+#ifdef Isifc
+#define umakeCompiler90Flag	-DIsa90Compiler
+#define CompilerTagId		ifc
+#define umakeCompilerFlag	-DIsifc
+#define CompileCmd		ifc -c -FI -Vaxlib 
+#define LoadCmd			ifc -FI -Vaxlib
+#define CompilerIsF9095		yes
+#define Compile9095Cmd		ifc -c -Vaxlib  -w90 -w95
+#define Load9095Cmd		ifc -Vaxlib -w90 -w95
+#define FortranFlags		-O -w -cm
+#define NumberOfBytes		8
+#endif
+
+#ifdef Isifr
+#define umakeCompiler90Flag	-DIsa90Compiler
+#define CompilerTagId		ifort
+#define umakeCompilerFlag	-DIsifr
+#define CompileCmd		ifort -c -FI -Vaxlib 
+#define LoadCmd			ifort -FI -Vaxlib
+#define CompilerIsF9095		yes
+#define Compile9095Cmd		ifort -c -Vaxlib  -w90 -w95
+#define Load9095Cmd		ifort -Vaxlib -w90 -w95
+#define FortranFlags		-O -w -cm
+#define SpecialFlags		-nofor_main
+#define NumberOfBytes		8
+#endif
+
+#ifdef Isp77
+#define umakeCompiler90Flag	
+#define CompilerTagId		pgf77
+#define umakeCompilerFlag	-DIsp77
+#define CompileCmd		pgf77 -c
+#define LoadCmd			pgf77
+#define CompilerIsF9095		no
+#define Compile9095Cmd		
+#define Load9095Cmd		
+#define FortranFlags		-O
+#define NumberOfBytes		8
+#endif
+
+#ifdef Ispgf
+#define umakeCompiler90Flag	-DIsa90Compiler
+#define CompilerTagId		pgf90
+#define umakeCompilerFlag	-DIspgf
+#define CompileCmd		pgf90 -c -Mnofreeform
+#define LoadCmd			pgf90 -Mnofreeform
+#define CompilerIsF9095		yes
+#define Compile9095Cmd		pgf90 -c
+#define Load9095Cmd		pgf90
+#define FortranFlags		-O
+#define NumberOfBytes		8
+#endif
+
+#ifdef Isl95
+#define umakeCompiler90Flag	-DIsa90Compiler
+#define CompilerTagId           l95
+#define umakeCompilerFlag       -DIsl95
+#define CompileCmd              lf95 -c --fix
+#define LoadCmd                 lf95
+#define CompilerIsF9095         yes
+#define Compile9095Cmd          lf95 -c
+#define Load9095Cmd             lf95
+#define FortranFlags            -O
+#define NumberOfBytes           8
+#endif
+
+#ifdef Isg95
+#define umakeCompiler90Flag -DIsa90Compiler
+#define CompilerTagId           g95
+#define umakeCompilerFlag       -DIsg95
+#define CompileCmd              g95 -c -ffixed-form
+#define LoadCmd                 g95 -ffixed-form
+#define CompilerIsF9095         yes
+#define Compile9095Cmd          g95 -c
+#define Load9095Cmd             g95
+#define FortranFlags            -O
+#define NumberOfBytes           8
+#endif
+
+#ifdef Isgfo
+#define umakeCompiler90Flag -DIsa90Compiler
+#define CompilerTagId           gfo
+#define umakeCompilerFlag       -DIsgfo
+#define CompileCmd              gfortran -c -ffixed-form
+#define LoadCmd                 gfortran -ffixed-form
+#define CompilerIsF9095         yes
+#define Compile9095Cmd          gfortran -c
+#define Load9095Cmd             gfortran
+#define FortranFlags            -O
+#define NumberOfBytes           8
+#endif
+
+/*
+ *  Same procedure for C compilers
+ */
+
+#ifdef Isicc
+#define umakeCCompilerExt
+#define CCompilerTagId           icc
+#define umakeCCompilerFlag       -DIsicc
+#define CCompileCmd              icc -c
+#define CLoadCmd                 icc
+#define CFlags                   -O
+#endif
+
+/* -- */

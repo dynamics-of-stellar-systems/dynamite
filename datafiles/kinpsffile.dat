@@ -1,4 +1,0 @@
-#Include each component of the psfs in one line
-#number of kinematic data set, weight, sigma of the gaussian [arcsec]
-1	1.00	1.06
-

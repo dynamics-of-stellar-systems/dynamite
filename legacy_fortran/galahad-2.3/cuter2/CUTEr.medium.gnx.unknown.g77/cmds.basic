@@ -1,0 +1,69 @@
+#
+#  System specifications
+#
+
+SYSTEM="Linux"
+KEYSYS="CUNIX"
+
+#
+#  Directory for temporary files
+#
+
+TMP="/tmp"
+
+
+#
+#  basic system commands
+#
+
+MKDIR="mkdir"
+CP="cp"
+RM="rm -f"
+MV="mv"
+CAT="cat"
+CHMOD="chmod"
+SED="sed"
+LN="ln"
+LS="ls"
+AR="ar"
+RMDIR="rmdir"
+GREP="grep"
+AWK="gawk"
+HEAD="head"
+TAIL="tail"
+WC="wc"
+MAKE="make"
+
+#
+#  Fortran compilation and loading
+#
+
+COMPILE="g77 -c"
+LOAD="g77"
+ISF9095="no"
+COMPILE9095=""
+LOAD9095=""
+FFLAGS="-O -fno-second-underscore -fPIC"
+SPECIALFLAGS=""
+FDEBUGFLAGS="FDebugFlags"
+FPROFILEFLAGS="FProfileFlags"
+
+#
+#  C compilation and loading
+#
+
+CPP="/usr/bin/cpp"
+CCOMPILE="gcc -c -std=c99"
+CLOAD="gcc"
+CFLAGS="-O -fPIC"
+SPECIALLIBS=""
+
+##
+## Note: Recent versions of Matlab use a single script, mex,
+##       to compile both C and Fortran code. This makes the
+##       commands cmex and fmex obsolete. Change the
+##       following lines according to your system specifications.
+##
+
+MEXFORTRAN="mex"
+MEXFFLAGS="-fortran"

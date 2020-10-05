@@ -1,0 +1,29 @@
+# Intel Itanium efc under linux (pc version)
+#
+#  Fortran compilation and loading
+#
+
+FORTRAN='efc'
+BASIC='-c'
+LIBCMD=''
+MODCMD='-module $MOD -I$MOD -Vaxlib'
+MVMODS=':'
+OPTIMIZATION='-O'
+NOOPTIMIZATION='-O0'
+DEBUG=
+F77='-FI -w -q'
+F90='-w -q'
+F95='-w -q'
+NOFMAIN=''
+CCONDEF=
+USUAL=
+SPECIAL=
+F77SUFFIX=f90
+F95SUFFIX=f90
+TIMER=GEN
+BLAS=
+LAPACK=
+HSL=
+METIS=
+NOT95=NOT95
+BINSHELL=sh

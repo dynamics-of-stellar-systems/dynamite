@@ -1,0 +1,525 @@
+#!/bin/csh -f
+#
+# Update script - updates CUTEr tools
+# using the CUTEr directory structure
+#
+# N.Gould, D.Orban & Ph.Toint
+# ( Last modified on 8 Feb 2001 at 20:11:40 )
+#
+# This script is mainly intended to people who
+# do not have access to the patch program.
+# This is a very poor substitute.
+
+#
+# Synopsis:
+# update_cuter [-h] [-m] [-a listFile | newFile]
+#
+# Options:
+#    -h           displays this help message
+#    -m           move files only; do not recompile
+#    -a listFile  updated files are listed in listFile
+#    newFile      specifies the (single) updated file
+#
+
+# - if -m is present, the updated files are simply moved to
+#   their proper location and compilation does not occur.
+#
+# - in the 'newFile' form, newFile is the name
+#   of a new (updated) file (possibly with a path)
+# 
+# - if -a is present, 'listFile' gives the name of a file 
+#   which is assumed to contain
+#   1. The path where the new files can be found
+#   2. A list of the updated files (possibly accompanied
+#      by a destination path, but it is not compulsory);
+#   the third argument is the precision of the version of
+#   of CUTEr one wishes to update.
+#   Example input file:
+#     /home/isd/beer/             <- directory where files are found
+#     talisker.f                  <- first  file to update
+#     oban.pro                    <- second file to update
+#
+#   This means that:
+#
+#   the two files talisker.f and oban.pro should be found under
+#   /home/isd/beer. CUTEr will seek them there, and then treat
+#   them appropriately.
+
+unalias source
+
+if( -e ${MYCUTER}/single/config/cmds ) then
+    source ${MYCUTER}/single/config/cmds
+else if( -e ${MYCUTER}/double/config/cmds ) then
+    source ${MYCUTER}/double/config/cmds
+else if( $?CUTER ) then
+    source ${CUTER}/build/arch/system.all
+else
+    echo " Your environment variables are not properly set "
+    exit 1
+endif
+
+set caller = `echo $0 | $AWK -F/ '{print $NF}'`
+
+# Check the arguments
+
+@ structuredFile = 0
+@ filePosition = 0
+@ moveOnly = 0
+set PREC = ""
+@ narg = $#argv
+@ current = 1
+
+if ( ! $narg ) then
+    echo " ${caller} [-h] [-m] [-a listFile | newFile]"
+    echo '    -h           displays this help message'
+    echo '    -m           move files only; do not recompile'
+    echo '                 If you are using the makefiles, using -m'
+    echo '                 and re-making should be safer than'
+    echo '                 omitting -m'
+    echo '    -a listFile  updated files are listed in listFile'
+    echo '    newFile      specifies the (single) updated file'
+    exit 1
+endif
+
+while( $current <= $narg )
+    set opt=$argv[$current]
+
+#      Help message
+    if ( "$opt" == '-h' || "$opt" == '-help' || "$opt" == '--help' ) then
+	echo " ${caller} [-h] [-m] [-a listFile | newFile]"
+	echo '    -h           displays this help message'
+	echo '    -m           move files only; do not recompile'
+	echo '    -a listFile  updated files are listed in listFile'
+	echo '    newFile      specifies the (single) updated file'
+	exit 0
+
+#      "move only" flag
+    else if ( "$opt" == '-m' ) then
+	@ moveOnly = 1
+
+#      "structured file" flag
+    else if ( "$opt" == '-a' ) then
+
+	if ( $filePosition == 0 ) then
+	    @ structuredFile = 1
+	    @ filePosition   = `expr $current + 1`
+	    @ current++
+	else
+	    echo ' Too many file names specified. Aborting.'
+	    exit 1
+	endif
+
+#      the rest is considered as a file name
+    else if ( "$opt" != '' ) then
+	if ( $structuredFile || ($filePosition != 0) ) then
+	    echo ' Too many file names specified. Aborting.'
+	    echo " Try ${caller} --help"
+	    exit 1
+	else
+	    @ filePosition = $current
+	endif
+    endif
+    @ current++
+end
+
+# Issues:
+#    does the structured file exist?
+#    is its format correct? how do we know?
+#    do the files in the file list belong to CUTEr?
+# Let's first assume the user did things correctly.
+# If something goes wrong, we'll try to skip the
+# entry that caused it and go on.
+
+# Check for installed versions
+# The variable CUTER should be set
+# in the user's environment if there is a CUTEr
+
+# First check if a first installation was performed.
+# If so, move the files to their proper location and recompile them.
+# If not, simply move the files to their proper location.
+
+if ( $?CUTER ) then
+    @ recompile = $?MYCUTER
+else
+    echo " If you have CUTEr installed, you forgot to"
+    echo " set the CUTER environment variable."
+    echo " Aborting."
+    exit 1
+endif
+
+if ( $moveOnly ) @ recompile = 0
+
+# If MYCUTER was set, we use the distribution it points to
+# by default. If that is not ok, ask the user to reset it
+
+
+
+# Ask for which precision to update
+
+if( $recompile ) then
+    @ isDouble = 0
+    @ isSingle = 0
+    if ( -d "${MYCUTER}/double" ) @ isDouble = 1
+    if ( -d "${MYCUTER}/single" ) @ isSingle = 1
+
+    if ( $isDouble && $isSingle ) then
+	echo " update the single (s) or the double (d) distribution ?"
+	set CHOICE = $<
+	set CHOICE = `echo $CHOICE | tr a-z A-Z`
+	while ( $CHOICE != 'S' && $CHOICE != 'D' )
+	    echo 'I am expecting s or d'
+	    set CHOICE = $<
+	    set CHOICE = `echo $CHOICE | tr a-z A-Z`
+	end
+
+	if ( $CHOICE == 'S' ) then
+	    set PREC = "single"
+	else
+	    set PREC = "double"
+	endif
+    else
+	if ( $isSingle ) then
+	    set PREC = "single"
+	else if ( $isDouble ) then
+	    set PREC = "double"
+	else
+	    echo "  Directory ${MYCUTER} does not seem to contain a CUTEr distribution"
+	    exit 1
+	endif
+    endif
+
+    set MYCUTERPREC = ${MYCUTER}/${PREC}
+
+# Get the UNIX commands and compilation commands right
+
+    if ( -e ${MYCUTERPREC}/config/cmds ) then
+	source ${MYCUTERPREC}/config/cmds
+    else
+	@ foundSystem = 1
+	if( `uname` == "SunOS") then
+	    set UMAKE_OPTIONS = -Dsun
+	else if( `uname` == "IRIX64" ) then
+	    set UMAKE_OPTIONS = -Dsgi
+	else if( `uname` == "Linux" || `uname` == "linux" ) then
+	    set UMAKE_OPTIONS = -Dlinux
+	else if( `uname` == "OSF1") then             # For both Compaq and Digital
+	    set UMAKE_OPTIONS = -D__osf__
+	else if( `uname` == "AIX" ) then
+	    set UMAKE_OPTIONS = -Dibm
+	else if( `uname` == "HP" ) then
+	    set UMAKE_OPTIONS = -Dhpux
+	else if( `uname` == "CRAY" ) then
+ 	    set UMAKE_OPTIONS = -D_CRAY
+	else
+	    @ foundSystem = 0
+	endif
+
+	if( $foundSystem == 1 ) then
+	    set CPP = 'cpp -P'
+	    sed -f ${CUTER}/build/scripts/protect.sed ${CUTER}/build/scripts/makefile.cmds | ${CPP} -I${CUTER}/config -I. -DFromInstallCUTEr ${UMAKE_OPTIONS} | sed -f ${CUTER}/build/scripts/gettabs.sed > /tmp/Makefile.cmds.$$
+	    cd /tmp
+	    if( -f "cmds" ) rm -f cmds
+	    make -f Makefile.cmds.$$ cmds >& /dev/null
+	    unalias source
+	    source /tmp/cmds
+	    cd ${CUTER}
+	    $RM /tmp/Makefile.cmds.$$ /tmp/cmds
+	 else
+	    echo "Cannot autodetect your system."
+	    echo "Please re-generate the cmds file using"
+	    echo " ./install_mycuter"
+	    echo "and answering [y]es to  make all  in"
+	    echo $MYCUTER
+	    exit 1
+         endif
+    endif
+else
+    echo "Cannot autodetect your system."
+    echo "Please re-generate the cmds file using"
+    echo " ./install_mycuter"
+    echo "and answering [y]es to  make all  in"
+    echo $MYCUTER
+    exit 1
+endif
+
+# If all seems ok, extract 
+#   homeDir    = the directory in which the new file(s) reside(s)
+#   updateList = the list of new files
+
+if ( $structuredFile ) then
+   set updateFile = $argv[$filePosition]
+   set homeDir    = `$HEAD -1 $updateFile`
+   if ( `echo ${homeDir}:t` == "" ) then
+      set homeDir = `echo $1:h`           # Get rid of trailing slash
+   endif
+   @ nbLines      = `$WC -l $updateFile | "$AWK" '{print $1}'`
+   @ nbFiles      = `expr $nbLines - 1`
+   set updateList = `$TAIL -$nbFiles $updateFile`
+else
+   set homeDir    = `echo $argv[$filePosition]:h`
+   set updateList = `echo $argv[$filePosition]:t`
+   if ( $homeDir == $updateList ) then
+      set homeDir = $CUTER
+   endif
+endif
+   
+if ( -d $homeDir ) then
+    echo ""
+    echo " I'll be looking for the new file(s) in $homeDir"
+    echo ""
+else
+    echo "   $homeDir"
+    echo " does not appear to be a valid directory name"
+    echo " check $updateFile"
+    echo " Aborting."
+    exit 1
+endif
+
+if ( $recompile ) then
+    cd $MYCUTER
+    set workingDistrDir = $MYCUTER
+
+# retrieve the size, machine, os and compiler name.
+
+    set SIZE = `$GREP $workingDistrDir $CUTER/log/install.log | $GREP $PREC | "$AWK" -F! '{print $2}' | "$AWK" '{print $2}'`
+    set MCH = `$GREP $workingDistrDir $CUTER/log/install.log | $GREP $PREC | "$AWK" -F! '{print $2}' | "$AWK" '{print $3}'`
+    set OS = `$GREP $workingDistrDir $CUTER/log/install.log | $GREP $PREC | "$AWK" -F! '{print $2}' | "$AWK" '{print $4}'`
+    set CMP = `$GREP $workingDistrDir $CUTER/log/install.log | $GREP $PREC | "$AWK" -F! '{print $2}' | "$AWK" '{print $5}'`
+
+#  ...perhaps we want to allow the user to set CMP themselves...
+
+    @ nbDistr   = `$WC -l $CUTER/log/install.log | "$AWK" '{print $1}'`
+
+    cd $CUTER
+    echo " Detected $nbDistr CUTEr installation(s) on your system"
+    echo " Recompilation/recasting is needed and will affect"
+    echo "  $workingDistrDir"
+    echo " I presume you are now using a $MCH running $OS with $CMP compiler"
+    echo " Should we proceed (y/n)?"
+    set CHOICE = $<
+    set CHOICE = `echo $CHOICE | tr a-z A-Z`
+    while ( $CHOICE != 'Y' && $CHOICE != 'N' )
+	echo 'I am expecting y or n'
+	set CHOICE = $<
+	set CHOICE = `echo $CHOICE | tr a-z A-Z`
+    end
+
+    if ( $CHOICE == 'N' ) then
+	echo "  Below is a list of your installed CUTEr distribution."
+	echo "  Set MYCUTER to point to whichever distribution"
+	echo "  you wish to update and launch $0 again."
+	echo ""
+# Summary of the installed distributions
+	cd ${CUTER}/log
+	echo ' -----------------------------'
+	cat install.log | "$AWK" -F! '{print $2" version installed in\n  "$3"\n   on "$1"\n"}'
+	echo ' -----------------------------'
+	exit 0
+    endif
+
+# At this point, we need to know whether either of the file needs
+# to be cast or compiled.
+
+    set scriptLoc = ${MYCUTERPREC}/config
+
+endif
+
+#
+# We now examine the files we have been fed with
+#
+
+cd $CUTER
+
+# - maintenance file
+set maintenanceList = 'install_cuter uninstall_cuter'
+
+# - the SIF decoder files :
+set sifDecList  = 'decode.f gps.f inlanc.f local.f makefn.f makegr.f printp.f rest.f sifdec.f utils.f'
+
+set toCompile = ""     # list of fortran files that need compilation
+set toCast    = ""     # list of .pro files - these need casting
+set toMinos   = ""     # the Minos spec files
+
+# The files that need compilation will be stored in $TMP
+
+######
+# ...NOTE: we probably want to log updates in, e.g., log/updates.log
+######
+
+@ compileSifDecoder = 0
+@ nbFilesSeen       = 0
+@ nbFilesTreated    = 0
+@ nbFilesSkipped    = 0
+
+foreach newFile ( $updateList )
+
+    echo " treating $newFile"
+
+# try to guess whether newFile needs casting/compilation or not
+    set fileName  = `echo $newFile  | "$AWK" -F/ '{print $NF}'`
+    set extension = `echo $fileName | "$AWK" -F. '{print $NF}'`
+    set prefix    = `echo $fileName | "$AWK" -F. '{ORS="";for(i=1;i<=NF-2;i++) print $i".";print $(NF-1)}'`
+    set preprefix = `echo $prefix   | "$AWK" -F. '{print $1}'`
+
+    set fileLoc = ${homeDir}/$fileName
+
+    if ( ! -e $fileLoc ) then
+
+        echo " cannot find ${fileLoc} ...skipping"
+	@ nbFilesSkipped++
+
+    else
+
+        @ nbFilesSeen++
+
+#               is it a select tool?
+		if ( $fileName == "clsf.f" || $fileName == "slct.f" ) then
+		    echo "   $fileName is a select/classify tool"
+                    $CP $fileLoc ${CUTER}/common/src/select/$fileName
+
+#               or perhaps a matlab gateway interface
+                else if ( $prefix == "utools" || $prefix == "ctools" || $prefix == "gtools" ) then
+		    echo "   $fileName is a Matlab gateway interface"
+		    $CP $fileLoc ${CUTER}/common/src/tools/${prefix}.ff
+
+#               or a generic interface
+                else if ( $fileName == "gens.f" ||  $fileName == "gend.f" ) then
+		    echo "   $fileName is a generic interface"
+		    $CP $fileLoc ${CUTER}/common/src/pkg/gen/$fileName
+
+#               otherwise, it is either a ma.f, linpac.f or a CUTEr tool
+                else
+		    if ( $thisFileSifDec == 0 ) then
+			echo "   $fileName is a CUTEr tool at large"
+			set is_ma = `echo $fileName | $GREP ma.f`
+			$CP $fileLoc ${CUTER}/common/src/tools/$fileName
+		    endif
+                endif
+
+# it might be a f90 file
+	if ( $extension == "f90" ) then
+	    echo "   $fileName is a f90 tool"
+	    @ nbFilesTreated++
+	    $CP $fileLoc ${CUTER}/common/src/tools/$fileName
+	    set is_ma = `echo $fileName | $GREP ma.f90`
+	    if ( $COMPILE9095 == "" ) then
+		echo "No f90 compiler specified in $MYCUTERPREC/config/cmds"
+		echo "You need to specify one. Skipping compilation."
+	    endif
+
+	else if( "extension" == 'cf' ) then
+
+	    echo "   $fileName is a config file"
+	    @ nbFilesTreated++
+	    $CP $fileLoc ${CUTER}/config
+	    $CP $fileLoc ${MYCUTER}/config
+
+	else if ( $extension == "pro" ) then
+
+# if it is not a Fortran file, it might need casting
+
+	    echo "   $fileName is a prototype"
+            @ nbFilesTreated++
+            set toCast = "${toCast} $fileName"
+            $CP $fileLoc ${CUTER}/build/prototypes/$fileName
+
+	else if ( $prefix == "MINOS" ) then
+
+	    echo "   $fileName is a Minos specification file"
+	    @ nbFilesTreated++
+	    set {toMinos} = "${toMinos} $fileName"
+	    $CP $fileLoc ${CUTER}/common/src/pkg/minos/$fileName
+
+	endif
+
+# other spec files
+
+	if ( $extension == "SPC" || $extension == "spc" && $prefix != "MINOS" ) then
+
+	    echo "   $fileName is a $prefix specification file"
+	    @ nbFilesTreated++
+
+#           treat special cases
+
+	    if ( $prefix == "STNMIN" ) then
+		set packageDir = "stenmin"
+	    else if ( $prefix == "VE12" ) then
+		set packageDir = "hsl_ve12"
+	    else
+		set packageDir = `echo $prefix | tr A-Z a-z`
+	    endif
+
+	    $CP $fileLoc ${CUTER}/common/src/pkg/${packageDir}/$fileName
+
+	endif
+
+# knitro.sizes is a special case
+
+	if ( $fileName == "knitro.sizes" ) then
+
+	    echo "   $fileName is the Knitro sizing file"
+	    @ nbFilesTreated++
+	    $CP $fileLoc ${CUTER}/common/src/pkg/knitro/$fileName
+	    $CP $fileLoc ${MYCUTERPREC}/bin/$fileName
+
+	endif
+
+# or it is an architecture file (compiler.*, size.* or system.*)
+
+	if ( $preprefix == 'compiler' || $prefix == 'size' || $prefix == 'system' ) then
+	    echo "   $fileName looks like an architecture file"
+	    @ nbFilesTreated++
+	    $CP $fileLoc ${CUTER}/build/arch
+	endif
+
+# finally, it may be a maintenance file
+
+	foreach mfile ( $maintenanceList )
+
+	    if ( $mfile == $fileName ) then
+		echo "   $fileName is a maintenance tool"
+		@ nbFilesTreated++
+		$CP $fileLoc ${CUTER}/build/scripts
+	    endif
+
+	end
+
+	if ( $fileName == 'update_cuter' ) then
+	    echo "***Please update $fileName manually. Skipping."
+	endif
+
+    endif
+
+end
+
+# Recompile if requested
+
+if( $recompile ) then
+    set UMAKE_FLAGS = ''
+    if( "$PREC" == 'single' ) set UMAKE_FLAGS = '-DSinglePrecision'
+    if( "$PREC" == 'double' ) set UMAKE_FLAGS = '-DDoublePrecision'
+    cd $MYCUTER
+    ./install_mycuter $UMAKE_FLAGS
+endif
+
+# Invoke Mr. Clean
+
+@ mrClean = 0
+
+if ( $mrClean ) then
+
+    echo "cleaning..."
+    foreach newFile ( $updateList )
+        $RM $fileLoc
+    end
+
+endif
+
+# Before we finish, the user needs to reset their MYCUTER
+# in case they changed it.
+
+echo " Update complete."
+echo " $nbFilesTreated out of $nbFilesSeen files found were succesfully treated."
+echo " Skipped ${nbFilesSkipped}."
+echo " Do not forget to restore your MYCUTER if you changed it."
+exit 0

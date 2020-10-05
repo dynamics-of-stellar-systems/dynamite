@@ -1,0 +1,46 @@
+
+CUTEr README file.				       September 2001.
+
+======================================================================
+
+  Please read this file prior to any modification in this directory.
+
+======================================================================
+
+This directory contains all the CUTEr main programs, whose relocatable
+files match the regular expression *ma.f and which will be linked when
+used,  and the  Matlab-CUTEr interfaces  source files,  which  will be
+compiled when  in Matlab.  If you  are using a  Fortan 90/95 compiler,
+you will also find cuterinter.o and readin.o.
+
+The Makefile found in this directory recognizes the following targets:
+
+baseconfig:     makes sure the basic casting scripts are ready to use
+
+linpac.o:	compiles but does not link the linpac,
+
+knitro.sizes:	casts the sizing tool for Knitro,
+
+[f90tool].o:    f90-compiles  but  does  not  link  the  corresponding 
+		F90/95 tool,
+
+[int]ma.o:  	compiles but does not link  the  main program for  the
+		interface [int],
+
+gen.o:		compiles but does not link the generic interface,
+
+[cgu]tools.f:	casts the Matlab-CUTEr [cgu]tools,
+
+all:		all of the above.
+
+======================================================================
+
+			      Good luck!
+
+Nicholas I.M. Gould,				     n.gould@rl.ac.uk,
+Dominique Orban,				     orban@cerfacs.fr,
+Philippe L. Toint.			    philippe.toint@fundp.ac.be
+
+======================================================================
+
+CUTEr README file.				       September 2001.

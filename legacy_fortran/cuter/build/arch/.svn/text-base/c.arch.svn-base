@@ -1,0 +1,40 @@
+###
+# CUTEr C compilers configuration file.
+# The organization of this file is as follows:
+#   Column 1 : System name ('all' applies to all),
+#   Column 2 : Operating system name ('all' applies to all),
+#   Column 3 : Compiler nickname,
+#   Column 4 : Compiler symbol for umake (MUST correspond to sys.cf),
+#   Column 5 : Compiler description (MUST NOT include spaces; replace
+#              any whitespace character by an underscore: _ 
+#              Underscores will be replaced by whitespaces when
+#              printing is required).
+#
+# Everything appearing on the right of a hash ( '#' ) is treated as a
+#  comment and as such, ignored.
+# Likewise, empty lines and lines which contain only blanks are ignored.
+#
+###
+
+# All platforms and operating systems
+
+all    ; all    ; gcc ; -DIsgcc ; GNU_gcc
+all    ; all    ; gpp ; -DIsgpp ; GNU_g++
+
+# Intel-like PCs
+
+pc     ; lnx    ; icc ; -DIsicc ; Intel_icc
+
+# IBMs
+
+rs6    ; aix    ; xlc ; -DIsxlc ; IBM_xlc
+
+# SUN workstations
+
+sun    ; sol    ; wsc ; -DIswsc ; Sun_Workshop6_C
+sun    ; sol    ; wsc ; -DIswsp ; Sun_Workshop6_C++
+
+# Compaq Alpha workstations
+
+alp    ; t64    ; cqc ; -DIscqc ; Compaq_C
+alp    ; t64    ; cqp ; -DIscqp ; Compaq_C++

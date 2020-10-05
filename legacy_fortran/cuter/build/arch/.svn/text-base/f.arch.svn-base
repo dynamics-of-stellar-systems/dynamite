@@ -1,0 +1,74 @@
+###
+# CUTEr Fortran compilers configuration file.
+# The organization of this file is as follows:
+#   Column 1 : System name ('all' applies to all),
+#   Column 2 : Operating system name ('all' applies to all),
+#   Column 3 : Compiler nickname,
+#   Column 4 : Compiler symbol for imake (MUST correspond to sys.cf),
+#   Column 5 : Compiler description (MUST NOT include spaces; replace
+#              any whitespace character by an underscore: _ 
+#              Underscores will be replaced by whitespaces when
+#              printing is required).
+#
+# Everything appearing on the right of a hash ( '#' ) is treated as a
+#  comment and as such, ignored.
+# Empty lines and lines which contain only blanks are ignored.
+#
+###
+
+# All platforms and operating systems
+
+all    ; all    ; f2c ; -DIsf2c ; Linux_f77-f2c
+all    ; all    ; g77 ; -DIsg77 ; GNU_g77
+all    ; all    ; gne ; -DIsgne ; GNU_g77_without_etime
+all    ; all    ; n90 ; -DIsn90 ; NAG_f90
+all    ; all    ; n95 ; -DIsn95 ; NAG_f95
+
+# Compaq Alphas
+
+alp    ; dux    ; f77 ; -DIsf77 ; f77
+alp    ; dux    ; f90 ; -DIsf90 ; Compaq_f90
+alp    ; dux    ; f95 ; -DIsf95 ; Compaq_f95
+alp    ; t64    ; f77 ; -DIsf77 ; Compaq_f77
+alp    ; t64    ; f90 ; -DIsf90 ; Compaq_f90
+alp    ; t64    ; f95 ; -DIsf95 ; Compaq_f95
+
+# CRAY machines
+
+cry    ; unc    ; c77 ; -DIsc77 ; Cray_cf77
+cry    ; unc    ; f90 ; -DIsf90 ; Cray_f90
+
+# HP workstations
+
+hp     ; hpu    ; f77 ; -DIsf77 ; HP_f77
+
+# Intel-like PCs
+
+pc     ; lnx    ; frt ; -DIsfrt ; Fujitsu_frt
+#pc     ; lnx    ; ifc ; -DIsifc ; Intel_ifc
+pc     ; lnx    ; ifr ; -DIsifr ; Intel_ifort_8.0
+pc     ; lnx    ; l95 ; -DIsl95 ; Layhey_lf95
+pc     ; lnx    ; p77 ; -DIsp77 ; Portland_Group_pgf77
+pc     ; lnx    ; pgf ; -DIspgf ; Portland_Group_pgf90
+pc     ; lnx    ; g95 ; -DIsg95 ; GNU_g95
+pc     ; lnx    ; gfo ; -DIsgfo ; GNU_gfortran
+
+# IBMs
+
+rs6    ; aix    ; e90 ; -DIse90 ; Edinburgh_epcf90
+rs6    ; aix    ; xlf ; -DIsxlf ; IBM_xlf
+rs6    ; aix    ; x90 ; -DIsx90 ; IBM_xlf90
+rs6    ; aix    ; x95 ; -DIsx95 ; IBM_xlf95
+
+# SGI workstations
+
+sgi    ; irx    ; f77 ; -DIsf77 ; SGI_f77
+sgi    ; irx    ; m90 ; -DIsm90 ; MIPSpro_f90
+
+# Sun workstations
+
+sun    ; sol    ; e77 ; -DIse77 ; Edinburgh_epcf77
+sun    ; sol    ; e90 ; -DIse90 ; Edinburgh_epcf90
+sun    ; sol    ; f77 ; -DIsf77 ; Sun_f77
+sun    ; sol    ; f90 ; -DIsf90 ; Sun_f90
+sun    ; sol    ; frt ; -DIsfrt ; Fujitsu_frt

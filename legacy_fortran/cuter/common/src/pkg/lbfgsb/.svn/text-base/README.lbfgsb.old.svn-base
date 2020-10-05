@@ -1,0 +1,78 @@
+                      *******************************
+		      *                             *
+                      *  Using L-BFGS-B with CUTEr  *
+		      *                             *
+                      *******************************
+
+                ( Last modified on 15 Sep 1996 at 16:51:55 )
+
+
+WHAT IS L-BFGS-B?
+-----------------
+
+L-BFGS-B is a nonlinear programming code for unconstrained or bound
+constrained problems, using the limited memory BFGS quasi-Newton update.  
+
+L-BFGS-B is available from J. Nocedal, Department of Electrical Engineering
+and Computer Sciences, Nothwestern University, Evanston IL 60201, USA (email:
+nocedal@venus.eecs.nwu.edu).
+
+
+CREATING THE OBJECT MODULE FOR LBFGS
+------------------------------------
+
+Remove the subroutines daxpy, dcopy, ddot and dscal from the file of the LBFGS
+distribution called routines.f and name the resulting file lbfgsd.f. (CUTE
+also uses the BLAS subroutines daxpy, dcopy, ddot and dscal.  They are
+contained in the CUTE Fortran file named linpac.f.  To avoid multiply defined
+subroutines when LBFGS is linked with the CUTE tools, the duplicate BLAS
+subroutines must be removed from LBFGS.)
+
+Compile (but do not link) lbfgsd.f. The resulting object file lbfgsd.o 
+should be placed in your directory $CUTER/common/src/pkg/lbfgs or 
+$MYCUTER/[single|double]/bin under the name lbfgsb.o.
+
+
+USING THE LBFGS INTERFACE TOOL
+------------------------------
+
+Suppose you wish to solve the problem written in SIF format contained
+in the file probname.SIF.
+
+The LBFGS interface tools require two input files:
+
+   probname.SIF   specifies the problem in SIF format
+   LBFGS.SPC      sets values for LBFGS run-time parameters
+
+If no LBFGS.SPC file is present in the current directory, the default
+version is copied from the $CUTER/common/src/pkg/lbfgs directory. 
+This default file is as follows:
+
+         5   M,      the maximum number of variable metric corrections
+       0.0   FACTR,  the factor in built-in stopping test
+   0.00001   GTOL,   termination criterion on infinity norm of the gradient
+         0   IPRINT, the output specifier
+         1   ISBMIN, the minimization method in the subspace
+     10000   MAXIT,  the maximum number of iterations
+     10000   MAXCLL, the maximum number of function calls
+
+The commands to use this package are the two scripts
+sdlmb and lmb.
+
+The reader is referred to the papers quoted below if he or she wishes
+to modify these parameters.
+
+REFERENCES
+----------
+
+R. H. Byrd, P. Lu, J. Nocedal and C. Zhu, ``A limited
+memory algorithm for bound constrained optimization'',
+SIAM J. Scientific Computing 16 (1995), no. 5.
+
+C. Zhu, R.H. Byrd, P. Lu, J. Nocedal, ``L-BFGS-B: a
+limited memory FORTRAN code for solving bound constrained
+optimization problems'', Tech. Report, EECS Department,
+Northwestern University, 1994.
+
+(Postscript files of these papers are available via anonymous
+ftp to eecs.nwu.edu in the directory pub/lbfgs/lbfgs_bcm.)

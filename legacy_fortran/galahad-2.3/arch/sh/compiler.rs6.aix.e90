@@ -1,0 +1,30 @@
+# EPC f90 under AIX
+
+#
+#  Fortran compilation and loading
+#
+
+FORTRAN='epcf90'
+BASIC='-c -us'
+LIBCMD=''
+MODCMD='-cl,$MOD/work.pcl'
+MVMODS=':'
+OPTIMIZATION='-O'
+NOOPTIMIZATION=''
+DEBUG=
+F77='-FI -w'
+F90=''
+F95=''
+NOFMAIN=''
+CCONDEF=
+USUAL=
+SPECIAL=
+F77SUFFIX=f90
+F95SUFFIX=f90
+TIMER=RS6
+BLAS=
+LAPACK=
+HSL=
+METIS=
+NOT95=NOT95
+BINSHELL=sh

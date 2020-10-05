@@ -1,0 +1,56 @@
+.\" @(#)uvarty v1.0 11/2000;
+.TH uvarty 3M "17 Nov 2000"
+.SH NAME
+UVARTY \- CUTEr tool to determine the type of each variable.
+.SH SYNOPSIS
+CALL UVARTY( N, IVARTY )
+.SH DESCRIPTION
+The UVARTY subroutine determines the type (continuous, 0-1,
+integer) of each variable involved in the problem decoded
+from a SIF file by the script \fIsifdecode\fP.
+
+The problem under consideration
+consists in minimizing (or maximizing) an objective function
+.EQ
+f(x)
+.EN
+over all
+.EQ
+x
+.EN
+\(mo
+.EQ
+R sup n
+.EN
+subject to the simple bounds
+.EQ
+b sup l ~<=~ x ~<=~ b sup u.
+.EN
+The objective function is group-partially separable.
+
+.LP 
+.SH ARGUMENTS
+The arguments of UVARTY are as follows
+.TP 5
+.B N \fP[in] - integer
+the number of variables for the problem,
+.TP
+.B IVARTY \fP[out] - integer
+an integer array whose i-th component indicates the type of variable
+i. Possible values are 0 (a variable whose value may be any real
+number), 1 (an integer variable that can only take the values zero or
+one) and 2 (a variable that can only take integer values). 
+.LP
+.SH AUTHORS
+I. Bongartz, A.R. Conn, N.I.M. Gould, D. Orban and Ph.L. Toint
+.SH "SEE ALSO"
+\fICUTEr (and SifDec): A Constrained and Unconstrained Testing
+Environment, revisited\fP,
+   N.I.M. Gould, D. Orban and Ph.L. Toint,
+   ACM TOMS, \fB29\fP:4, pp.373-394, 2003.
+
+\fICUTE: Constrained and Unconstrained Testing Environment\fP,
+I. Bongartz, A.R. Conn, N.I.M. Gould and Ph.L. Toint, 
+TOMS, \fB21\fP:1, pp.123-160, 1995.
+
+cvarty(3M), sifdecode(1).

@@ -1,0 +1,84 @@
+
+                      *****************************
+		      *                           *
+                      *   USING VF13 WITH CUTEr   *
+		      *                           *
+                      *****************************
+
+               ( Last modified on 15 Sep 1996 at 16:51:55 )
+
+WHAT IS  VF13?
+--------------
+
+VF13 is a subroutine for the solution of the general nonlinear programming
+problem, involving a possibly nonlinear objective function and possibly
+nonlinear inequality and equality constraints.  It uses a sequential quadratic
+programming (SQP) approach and allows for a non-monotonic decrease of the
+merit function using safeguards (the watchdog technique).
+
+VF13 is part of the HARWELL SUBROUTINE LIBRARY, and was written by
+M.J.D. Powell. .  It is available from the United Kingdom Atomic Energy
+Authority, Harwell, subject to certain license agreements.  It is copyrighted
+jointly by the UKAEA and SERC (Science and Engineering Research Council).
+
+
+CREATING THE OBJECT MODULE FOR VF13
+-----------------------------------
+
+For building the double precision version, the VF13 double precision
+subroutine and dependencies should be concatenated in a new file called
+vf13d.f. This file should then be compiled (but not linked) and the resulting
+object file vf13d.o should be placed (or linked to from a file) in the directory
+$CUTER/common/src/pkg/vf13 or $MYCUTER/double/bin, under the name vf13.o.
+
+The procedure is identical for the single precision, except that the names
+vf13d.f and vf13d.o are replaced by vf13s.f and vf13s.o, respectively, and the
+file vf13.o should be found under $MYCUTER/single/bin.
+
+
+USING THE VF13 INTERFACE TOOL
+-----------------------------
+
+Suppose you wish to solve the problem written in SIF format contained
+in the file probname.SIF.
+
+The VF13 interface tools require two input files:
+
+   probname.SIF   specifies the problem in SIF format
+   VF13.SPC       sets values for VF13 run-time parameters
+
+If no VF13.SPC file is present in the current directory, the default
+version is copied from the $CUTER/common/src/pkg/vf13 directory. 
+This default file is as follows:
+
+      1000    MAXFUN, the maximum number of function calls,
+         0    IPRINT, the output specifier (0 = no internal printout),
+ 0.0000001    ACCREQ, the accuracy requirement,
+         F    DEBUG,  true for maximal printout before and after VF13.
+
+The commands to use this package are the two scripts
+sdvf13 and vf13.
+
+The reader is referred to the papers quoted below, the documentation of the
+routine in the Harwell Subrooutine Library or the code itself if he or 
+she wishes to modify these parameters.
+
+
+REFERENCES
+----------
+
+M.J.D. Powell,
+"Extensions to subroutine VF02",
+in "System Modeling and Optimization", Lectures Notes in Control and
+Information Sciences 38, R.F. Drenick and F. Kozin (eds.), Springer Verlag,
+Heidelberg, pp. 520-538, 1982.
+
+R.M. Chamberlain, C. Lemarechal, H.C. Pedersen and M.J.D. Powell,
+"The watchdog technique for forcing convergence in algorithms for constrained
+optimization",
+Mathematical Programming Study 16, pp. 1-17, 1982.
+
+M.J.D. Powell,
+"On the quadratic programming algorithm of Goldfarb and Idnani",
+Mathematical Programming Study 25, pp. 46-61, 1985.
+
