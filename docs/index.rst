@@ -76,6 +76,7 @@ More Information
    team.rst
    getting_involved.rst
    license.rst
+   making_the_docs.rst
 
 Indices and tables
 ==================
