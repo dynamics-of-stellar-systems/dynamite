@@ -48,4 +48,3 @@ These members are involved in projects related to DYNAMITE, both scientific and 
 * Ryan Leamann
 * Michela Rubino
 * Gauri Sharma
-

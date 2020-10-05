@@ -33,7 +33,9 @@ release = 'v0.0'
 extensions = ['sphinx.ext.mathjax',
               'sphinx.ext.autodoc',
               'sphinx.ext.doctest',
-              'sphinx.ext.inheritance_diagram'
+              'sphinx.ext.inheritance_diagram',
+              'nbsphinx',
+              'IPython.sphinxext.ipython_console_highlighting'
 ]
 
 # Add any paths that contain templates here, relative to this directory.
