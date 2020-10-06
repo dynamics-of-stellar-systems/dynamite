@@ -114,10 +114,9 @@ nbsphinx_prolog = """
 
 **Note**:
 
-This page was generated from a Jupyter notebook which can be found in
-your DYNAMITE directory::
-
-    docs/{{ env.doc2path(env.docname, base=None) }}
+This page was generated from a Jupyter notebook which can be found at
+``docs/{{ env.doc2path(env.docname, base=None) }}``
+in your DYNAMITE directory.
 
 ----
 """
