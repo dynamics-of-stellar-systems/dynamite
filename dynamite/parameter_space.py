@@ -286,7 +286,7 @@ class LegacyGridSearch(ParameterGenerator):
     def specific_generate_method(self, **kwargs):
         """
         Generates list of new models self.model_list. Each element of
-        self.model_list is a list of Parameter objects. The grid search is the
+        self.model_list is a list of Parameter objects. The grid search is
         driven by the parameter set with the smallest chi2 value min_chi2.
         Note that the parameter space setting 'which_chi2' determines whether
         chi2 or kinchi2 is used. All models with abs(chi2-min_chi2)<=
@@ -317,6 +317,8 @@ class LegacyGridSearch(ParameterGenerator):
         min_chi2 = np.min(self.current_models.table[chi2])
         prop_mask = abs(self.current_models.table[chi2] - min_chi2) <= thresh
         prop_list = self.current_models.table[prop_mask]
+        print(min_chi2, thresh)
+        prop_list.pprint_all()
         self.model_list = []
         step_ok = True
         while step_ok and len(self.model_list) == 0:

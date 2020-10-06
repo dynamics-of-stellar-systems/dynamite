@@ -105,7 +105,7 @@ system_components:
                 binfile: "bins.dat"          # integrated only
                 maskfile: maskfile.dat       # made-up filename
 
-system_parameters: # physical system standalone parameters
+system_parameters:
     ml: # M/L
         par_generator_settings:
             lo: 4.
@@ -121,7 +121,7 @@ system_parameters: # physical system standalone parameters
 # Define other settings e.g. for the orbit library and weight solver
 ###############################################################################
 
-orblib_settings: # don't put in physical system -> config object
+orblib_settings:
     nE: 2
     logrmin: -0.101275
     logrmax: 1.99123
@@ -150,7 +150,7 @@ weight_solver_settings:
     ml_scale_factor: 1.0
     nnls_solver: 1
 
-parameter_space_settings: # don't put in physical system -> settings object
+parameter_space_settings:
     generator_type: "LegacyGridSearch"
     which_chi2: "chi2"
     generator_settings:
@@ -171,6 +171,7 @@ io_settings: # paths can be given with or without trailing slash
     all_models_file: "all_models.ecsv"
 
 executor_settings:
+#    type: "Local"
     type: "Slurm"     # e.g. Local, Slurm, etc etc
     example_slurm_setting_1: 'I love Slurm!'
     example_slurm_setting_2: 'I love Slurm even more!!'
