@@ -65,7 +65,7 @@ class Parameter(object):
         else:
             raw_value = par_value
         return raw_value
-
+        
 
 class ParameterSpace(list):
 
@@ -98,6 +98,13 @@ class ParameterSpace(list):
                      for (pv0, p) in zip(par_val, self)]
         return raw_value
 
+    def get_parameter_from_name(self, name):
+        name_array = np.array(self.par_names)
+        idx = np.where(name_array == 'f')
+        error_msg = f"There should be 1 and only 1 parameter named {name}"
+        assert len(idx[0]) == 1, error_msg
+        parameter = self[idx[0][0]]
+        return parameter
 
 class ParameterGenerator(object):
 
