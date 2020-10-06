@@ -9,7 +9,7 @@ import dynamite_src as dyn
 
 fname = './model_example/NGC6278/input_data/config_legacy_example.yaml'
 fname = './model_example/NGC6278/config_legacy_example.yaml'
-c = dyn.config_reader.ConfigurationReaderYaml(fname)
+c = dyn.config_reader.Configuration(fname)
 
 # extract parameter space
 parspace = dyn.parameter_space.ParameterSpace(c.system)

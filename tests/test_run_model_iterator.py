@@ -10,7 +10,7 @@ import matplotlib.pyplot as plt
 
 # read configuration
 fname = 'tests/NGC6278/config.yaml'
-c = dyn.config_reader.ConfigurationReaderYaml(fname, silent=True)
+c = dyn.config_reader.Configuration(fname, silent=True)
 parspace = dyn.parameter_space.ParameterSpace(c.system)
 all_models = dyn.model.AllModels(parspace=parspace, settings=c.settings)
 

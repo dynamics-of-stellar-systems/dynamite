@@ -1,13 +1,5 @@
-#!/usr/bin/env python3
-# -*- coding: utf-8 -*-
-"""
-Created on Tue Jun 16 15:14:17 2020
-
-@author: maindl
-"""
 
 # some tricks to add the current path to sys.path (so the imports below work)
-
 import os.path
 import sys
 
@@ -16,7 +8,6 @@ if not this_dir in sys.path:
     sys.path.append(this_dir)
 
 # import required modules/packages
-
 import yaml
 import physical_system as physys
 import parameter_space as parspace
@@ -67,7 +58,7 @@ class Settings(object):
         return (f'{self.__class__.__name__}({self.__dict__})')
 
 
-class ConfigurationReaderYaml(object):
+class Configuration(object):
     """
     Reads the configuration file and instantiates the objects
     self.system, ...

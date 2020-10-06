@@ -25,7 +25,7 @@ your local triaxialschwarzschild directory:
 
 # read configuration
 fname = 'model_example/NGC6278/config_legacy_example.yaml'
-c = dyn.config_reader.ConfigurationReaderYaml(fname, silent=True)
+c = dyn.config_reader.Configuration(fname, silent=True)
 
 parspace = dyn.parameter_space.ParameterSpace(c.system)
 print('Free parameters are:')
