@@ -74,6 +74,13 @@ class System(object):
     def __repr__(self):
         return f'{self.__class__.__name__} with {self.__dict__}'
 
+    def get_component_from_name(self, cmp_name):
+        cmp_list_list = np.array([cmp0.name for cmp0 in self.cmp_list])
+        idx = np.where(cmp_list_list == cmp_name)
+        error_msg = f"There should be 1 and only 1 component named {cmp_name}"
+        assert len(idx[0]) == 1, error_msg
+        component = self.cmp_list[idx[0][0]]
+        return component
 
 class Component(object):
 

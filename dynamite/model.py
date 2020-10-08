@@ -6,7 +6,7 @@ from astropy import table
 from astropy.io import ascii
 
 import weight_solvers as ws
-import orblib
+import orblib as dyn_orblib
 
 class AllModels(object):
 
@@ -173,38 +173,6 @@ class Model(object):
         if not os.path.exists(path):
             os.makedirs(path)
 
-    def run(self):
-        if self.dummy_run:
-            self.do_dummy_run()
-        else:
-            self.do_real_run()
-
-    def do_dummy_run(self, dummy_chi2_function):
-        self.chi2 = dummy_chi2_function(self.parset)
-        self.kinchi2 = 0.
-
-    def do_real_run(self):
-        # orb_lib = orblib.OrbitLibrary(
-        #     system=system,
-        #     settings=settings.orblib_settings)
-        # weight_solver = ... instantiate the selected solver
-        # weight_solver.set_orb_lib(orb_lib)
-        # orb_wts, chi2 = weight_solver.solve()
-        # # do colouring
-        # orb_labels = []
-        # for cmp in system.cmp_list:
-        #     for pop_data0 in cmp.population_data:
-        #         orb_labels0 = pop_data0.colouring_recipe(orb_lib,
-        #                                                   orb_wts)
-        #         orb_labels += [orb_labels0]
-        # # store resuult
-        # self.parset = parset
-        # self.orb_lib = orb_lib
-        # self.orb_wts = orb_wts
-        # self.chi2 = chi2
-        # self.orb_labels = orb_labels
-        pass
-
 
 class LegacySchwarzschildModel(Model):
 
@@ -225,48 +193,46 @@ class LegacySchwarzschildModel(Model):
         # and also the model directories
         self.create_model_directory(self.directory_noml+'infil/')
         self.create_model_directory(self.directory_noml+'datfil/')
-        
+
     def get_orblib(self):
-
-        # add communication to the user
+        # make orbit libary object
+        orblib = dyn_orblib.LegacyOrbitLibrary(
+                system=self.system,
+                mod_dir=self.directory_noml,
+                settings=self.settings.orblib_settings,
+                legacy_directory=self.legacy_directory,
+                executor=self.executor)
+        self.orblib = orblib
         # check if orbit library was calculated already
-        if not os.path.isfile(self.directory_noml+'datfil/orblib.dat.bz2') or not os.path.isfile(self.directory_noml+'datfil/orblibbox.dat.bz2') :
-
-            #prepare the fortran input files for orblib, possibly as template files
+        check1 = os.path.isfile(self.directory_noml+'datfil/orblib.dat.bz2')
+        check2 = os.path.isfile(self.directory_noml+'datfil/orblibbox.dat.bz2')
+        if not check1 or not check2:
+            # prepare the fortran input files for orblib
             self.create_fortran_input_orblib(self.directory_noml+'infil/')
-
             # TODO: create these input files via prepare_data
-            shutil.copyfile(self.in_dir+'kin_data.dat', self.directory_noml+'infil/kin_data.dat')
-            shutil.copyfile(self.in_dir+'aperture.dat', self.directory_noml+'infil/aperture.dat')
-            shutil.copyfile(self.in_dir+'bins.dat', self.directory_noml+'infil/bins.dat')
-
-            #calculate orbit libary
-            orb_lib = orblib.LegacyOrbitLibrary(
-                    system=self.system,
-                    mod_dir=self.directory_noml,
-                    settings=self.settings.orblib_settings,
-                    legacy_directory=self.legacy_directory,
-                    executor=self.executor)
+            shutil.copyfile(self.in_dir+'kin_data.dat',
+                            self.directory_noml+'infil/kin_data.dat')
+            shutil.copyfile(self.in_dir+'aperture.dat',
+                            self.directory_noml+'infil/aperture.dat')
+            shutil.copyfile(self.in_dir+'bins.dat',
+                            self.directory_noml+'infil/bins.dat')
+            # calculate orbit libary
+            self.orblib.get_orbit_library()
 
     def get_weights(self):
-
-        #prepare fortran input file for nnls
+        # prepare fortran input file for nnls
         self.create_fortran_input_nnls(self.directory_noml)
-
-        #apply the nnls
-        weight_solver = ws.LegacyWeightSolver(
+        # create the weight solver object
+        self.weight_solver = ws.LegacyWeightSolver(
                 system=self.system,
                 mod_dir=self.directory_noml,
                 settings=self.settings.weight_solver_settings,
                 legacy_directory=self.legacy_directory,
                 ml=self.parset['ml'],
                 executor=self.executor)
-
-        chi2, kinchi2 = weight_solver.solve()
-
         # TODO: extract other outputs e.g. orbital weights
-
-        # store result
+        chi2, kinchi2 = self.weight_solver.solve()
+        # store chi2 to the model
         self.chi2 = chi2
         self.kinchi2 = kinchi2
 

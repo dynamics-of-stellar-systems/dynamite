@@ -9,9 +9,8 @@ if not this_dir in sys.path:
 
 import numpy as np
 import copy
-# import schwarzschild
-#from astropy import table
 import parameter_space as parspace
+from astropy.table import Table
 
 class Parameter(object):
 
@@ -65,7 +64,7 @@ class Parameter(object):
         else:
             raw_value = par_value
         return raw_value
-        
+
 
 class ParameterSpace(list):
 
@@ -100,11 +99,21 @@ class ParameterSpace(list):
 
     def get_parameter_from_name(self, name):
         name_array = np.array(self.par_names)
-        idx = np.where(name_array == 'f')
+        idx = np.where(name_array == name)
         error_msg = f"There should be 1 and only 1 parameter named {name}"
         assert len(idx[0]) == 1, error_msg
         parameter = self[idx[0][0]]
         return parameter
+
+    def get_parset(self):
+        t = Table()
+        for par in self:
+            raw_value = par.value
+            par_value = par.get_par_value_from_raw_value(raw_value)
+            t[par.name] = [par_value]
+        # extract 0th - i.e. the only - row from the table
+        parset = t[0]
+        return parset
 
 class ParameterGenerator(object):
 

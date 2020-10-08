@@ -287,7 +287,6 @@ class GaussHermite(Kinematics, data.Integrated):
         v_sig : array (n_regions,)
             gauss hermite sigma parameters
         vel_hist : Histogram object
-            THIS IS
             velocity histograms where vel_hist.y has shape (n_hists, n_vbins)
         max_order : int
             maximum order hermite polynomial desired in the expansion
@@ -341,7 +340,7 @@ class Histogram(object):
         whether or not has been normalised to pdf
 
     """
-    def __init__(self, xedg, y, normalise=True):
+    def __init__(self, xedg=None, y=None, normalise=True):
         self.xedg = xedg
         self.x = (xedg[:-1] + xedg[1:])/2.
         self.dx = xedg[1:] - xedg[:-1]
