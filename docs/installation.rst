@@ -106,23 +106,22 @@ Download from `github <https://github.com/dynamics-of-stellar-systems/triaxschwa
 Installation of GALAHAD
 -----------------------
 
-GALAHAD is a "library of thread-safe Fortran 90 packages for large-scale nonlinear optimization". The DYNAMITE code comes with Version 2.3.  An updated version of GALAHAD could be obtained `here <http://www.galahad.rl.ac.uk/doc.html>`_ (last updated in 2018), but the most recent version seems to not work. The GALAHAD package included in DYNAMITE can be found in the folder ``.../triaxschwarzschild``.
+GALAHAD is a "library of thread-safe Fortran 90 packages for large-scale nonlinear optimization". The DYNAMITE code comes with Version 2.3.  An updated version of GALAHAD could be obtained `here <http://www.galahad.rl.ac.uk/doc.html>`_ (last updated in 2018), but the most recent version seems to not work. The GALAHAD package included in DYNAMITE can be found in the folder ``.../legacy_fortran``.
 
-For the installation go into the folder ``.../triaxschwarzschild/galahad-2.3/`` and type ::
+For the installation go into the folder ``.../legacy_fortran/galahad-2.3/`` and type ::
 
     ./install_galahad
 
 In the following installation, a number of prompts start. The answers differ for the different operation system and are shown in the following.
 
 
-Install Galahad, Version 2.3 - Prompt answers
+Install Galahad, Version 2.3 - Prompt answers for Ubuntu 
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 Prompts from ``./install_galahad``. The answers for the recommended installation are marked in bold.
 
 **Select platform**
 
-When using Ubuntu:
 
 * Compaq (DEC) alpha
 * Cray
@@ -131,7 +130,64 @@ When using Ubuntu:
 * **PC**
 * ...
 
-When using MacOS:
+
+**Select operating system**
+
+* Windows 2000/XP with MinGW/Msys
+* **Linux**
+
+**Select compiler**
+
+When using Ubuntu:
+
+* Windows 2000/XP with MinGW/Msys
+* **Linux**
+
+
+**Select subset of GALAHAD packages to be installed (the chosen subset will optionally be installed below)**
+
+* Everything
+* Everything for SIF/CUTEr
+* Everything for AMPL
+* LANCELOT B and its interface to SIF
+* LANCELOT B and its interface to AMPL
+* Just LANCELOT B
+* **The QP packages and their interfaces to CUTEr**
+* The QP packages and their interfaces to AMPL
+* Just the QP packages and their dependencies
+* FILTRANE and its interface to CUTEr
+* FILTRANE and its interface to AMPL
+* Just FILTRANE and its dependencies
+
+**By default, the CUTEr you wish to use is installed in**
+
+* y(es)
+* **n(o)**
+
+**Enter alternative directory for CUTEr:**
+
+  | ``/Users/.../dynamite/legacy_fortran/cuter`` (Note: Put your full directory path here)
+
+**Do you now wish to compile the package subset you selected earlier?**
+
+* **y(es)**
+* n(o)
+
+**The package subset may be installed in either single or double precision. Which precision do you require for the installed subset?**
+
+* **D for double precision**
+* S for single precision
+
+**Do you also wish to install the single precision version?**
+
+* y(es)
+* **n(o)**
+
+Install Galahad, Version 2.3 - Prompt answers for MacOS
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Prompts from ``./install_galahad``. The answers for the recommended installation are marked in bold.
+
+**Select platform**
 
 * Compaq (DEC) alpha
 * Cray
@@ -145,17 +201,7 @@ When using MacOS:
 * SUN workstation
 * **MAC OS/X**
 
-**Select operating system**
-
-* Windows 2000/XP with MinGW/Msys
-* **Linux**
-
 **Select compiler**
-
-When using Ubuntu:
-
-* Windows 2000/XP with MinGW/Msys
-* **Linux**
 
 When using MacOS:
 
@@ -188,7 +234,7 @@ When using MacOS:
 
 **Enter alternative directory for CUTEr:**
 
-  | ``/Users/.../triaxschwarz/triaxschwarzschild/cuter`` (Note: Put your full directory path here)
+  | ``/Users/.../dynamite/legacy_fortran/cuter`` (Note: Put your full directory path here)
 
 **Do you now wish to compile the package subset you selected earlier?**
 
@@ -204,6 +250,7 @@ When using MacOS:
 
 * y(es)
 * **n(o)**
+
 
 Finalizing the installation of GALAHAD
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
