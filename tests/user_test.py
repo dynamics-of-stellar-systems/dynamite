@@ -6,10 +6,10 @@
 
 import os
 import sys
+import shutil
 
 os.chdir('..')
 this_dir = os.getcwd()
-#print(f'working directory: {this_dir}')
 if not this_dir in sys.path:
     sys.path.append(this_dir)
 
@@ -20,10 +20,17 @@ from astropy import table
 
 def run_user_test():
 
+    # delete previous output if available
+    models_folder = this_dir+'/'+'tests/NGC6278/models'
+    models_file = this_dir+'/'+'tests/NGC6278/all_models.ecsv'
+    shutil.rmtree(models_folder, ignore_errors=True)
+    if os.path.isfile(models_file):
+        os.remove(models_file)
+
     # read configuration
     fname = 'tests/NGC6278/user_test_config.yaml'
     c = dyn.config_reader.ConfigurationReaderYaml(fname, silent=True)
-    
+
     # "run" the models
     t = time.perf_counter()
     smi = dyn.model_iterator.ModelIterator(
