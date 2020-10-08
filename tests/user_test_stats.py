@@ -16,8 +16,9 @@ this_dir = os.getcwd()
 if not this_dir in sys.path:
     sys.path.append(this_dir)
 
-models_folder = this_dir+'/'+'tests/NGC6278/models'
-models_file = this_dir+'/'+'tests/NGC6278/all_models.ecsv'
+models_folder = this_dir+'/tests/NGC6278/models'
+models_file = this_dir+'/tests/NGC6278/all_models.ecsv'
+output_file = this_dir+'/tests/chi2_compare.dat'
 
 # set n_chi2 to the sample size
 n_chi2 = 5
@@ -62,4 +63,4 @@ print(t)
 #                   113.23921805508898, 312.363540790302, 234.2891485666512]
 # print(t)
 
-t.write('tests/chi2_compare.dat', format='ascii')
+t.write(output_file, format='ascii')

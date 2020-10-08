@@ -8,21 +8,22 @@ import os
 import sys
 import shutil
 
-os.chdir('..')
-this_dir = os.getcwd()
-if not this_dir in sys.path:
-    sys.path.append(this_dir)
+if os.getcwd().rpartition('/')[0] not in sys.path:
+    sys.path.append(os.getcwd().rpartition('/')[0])
 
 import time
-import dynamite as dyn
 import matplotlib.pyplot as plt
 from astropy import table
+import dynamite as dyn
 
 def run_user_test():
 
+    # set working directory to dynamite
+    os.chdir(os.getcwd().rpartition('/')[0])
+
     # delete previous output if available
-    models_folder = this_dir+'/'+'tests/NGC6278/models'
-    models_file = this_dir+'/'+'tests/NGC6278/all_models.ecsv'
+    models_folder = 'tests/NGC6278/models'
+    models_file = 'tests/NGC6278/all_models.ecsv'
     shutil.rmtree(models_folder, ignore_errors=True)
     if os.path.isfile(models_file):
         os.remove(models_file)
