@@ -81,7 +81,8 @@ class Local(Executor):
         txt_file = open(cmdstr, "w")
         txt_file.write('#!/bin/bash' + '\n')
         txt_file.write(
-            'grep finished datfil/orbstart.dat || ' + self.legacy_directory +'/orbitstart < infil/orbstart.in >> datfil/orbstart.log' + '\n')
+        #    'grep finished datfil/orbstart.dat || ' + self.legacy_directory +'/orbitstart < infil/orbstart.in >> datfil/orbstart.log' + '\n')
+             self.legacy_directory +'/orbitstart < infil/orbstart.in >> datfil/orbstart.log' + '\n')
         txt_file.close()
         #returns the name of the executable
         return cmdstr
@@ -91,8 +92,11 @@ class Local(Executor):
         cmdstr_tube = 'cmdb' + str(self.system.name) + '_' + str(int(np.random.uniform(0, 1) * 100000.0))
         txt_file = open(cmdstr_tube, "w")
         txt_file.write('#!/bin/bash' + '\n')
-        txt_file.write('grep Writing datfil/orblib.dat.tmp && rm -f datfil/orblib.dat.tmp datfil/orblib.dat' + '\n')
+        #txt_file.write('grep Writing datfil/orblib.dat.tmp && rm -f datfil/orblib.dat.tmp datfil/orblib.dat' + '\n')
+        txt_file.write('touch datfil/orblib.dat.tmp datfil/orblib.dat' + '\n')
+        txt_file.write('rm -f datfil/orblib.dat.tmp datfil/orblib.dat' + '\n')
         txt_file.write( self.legacy_directory +'/orblib < infil/orblib.in >> datfil/orblib.log' + '\n')
+        txt_file.write('touch datfil/mass_qgrid.dat datfil/mass_radmass.dat datfil/mass_aper.dat' + '\n')
         txt_file.write('rm datfil/mass_qgrid.dat datfil/mass_radmass.dat datfil/mass_aper.dat' + '\n')
         txt_file.write( self.legacy_directory + '/triaxmass       < infil/triaxmass.in ' + '\n')
         txt_file.write( self.legacy_directory + '/triaxmassbin    < infil/triaxmassbin.in ' + '\n')
@@ -104,8 +108,10 @@ class Local(Executor):
         cmdstr_box = 'cmdc' + str(self.system.name) + '_' + str(int(np.random.uniform(0, 1) * 100000.0))
         txt_file = open(cmdstr_box, "w")
         txt_file.write('#!/bin/bash' + '\n')
-        txt_file.write(
-            'grep Writing datfil/orblibbox.dat.tmp && rm -f datfil/orblibbox.dat.tmp datfil/orblibbox.dat' + '\n')
+        #txt_file.write(
+        #    'grep Writing datfil/orblibbox.dat.tmp && rm -f datfil/orblibbox.dat.tmp datfil/orblibbox.dat' + '\n')
+        txt_file.write('touch datfil/orblibbox.dat.tmp datfil/orblibbox.dat' + '\n')
+        txt_file.write('rm -f datfil/orblibbox.dat.tmp datfil/orblibbox.dat' + '\n')
         txt_file.write(self.legacy_directory + '/orblib < infil/orblibbox.in >> datfil/orblibbox.log' + '\n')
         txt_file.write('# if the gzipped orbit library does not exist zip it' + '\n')
         txt_file.write('test -e datfil/orblibbox.dat.bz2 || bzip2 -k datfil/orblibbox.dat' + '\n')
