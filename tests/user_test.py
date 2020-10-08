@@ -13,12 +13,13 @@ this_dir = os.getcwd()
 if not this_dir in sys.path:
     sys.path.append(this_dir)
 
-import numpy as np
+import time
 import dynamite as dyn
 import matplotlib.pyplot as plt
-import time
+from astropy import table
 
 def run_user_test():
+
     # read configuration
     fname = 'tests/NGC6278/user_test_config.yaml'
     c = dyn.config_reader.ConfigurationReaderYaml(fname, silent=True)
@@ -44,15 +45,30 @@ def run_user_test():
                 s=200)
     cb=plt.colorbar()
     cb.set_label('chi2', y=1.1, labelpad=-40, rotation=0)
-    plt.gca().set_title(f'all iterations')
+    plt.gca().set_title('all iterations')
     plt.gca().set_yscale('log')
     plt.xlabel('iteration')
     plt.xticks(range(0,max(c.all_models.table['which_iter'])+1))
     plt.ylabel('mass')
     plt.show()
-    
+
     # save the all_models table
     c.all_models.save()
+
+    # compare to chi2 in chi2_compare.dat
+    chi2_compare = table.Table.read('tests/chi2_compare.dat', format='ascii')
+    plt.vlines(chi2_compare['model_id'],
+               chi2_compare['chi2_min'],
+               chi2_compare['chi2_max'])
+    plt.plot([i for i in range(len(c.all_models.table))],
+             c.all_models.table['chi2'],
+             'rx')
+    plt.gca().set_title('calculated chi2 vs should-be range')
+    plt.xlabel('model_id')
+    plt.xticks(range(len(c.all_models.table)))
+    plt.ylabel('chi2')
+    plt.show()
+    print(f'chi2 statistics for comparison:\n{chi2_compare}')
 
     return c.all_models.table
 
