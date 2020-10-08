@@ -2,6 +2,7 @@ import os
 import numpy as np
 import subprocess
 import orblib
+from astropy import table
 
 class WeightSolver(object):
 
@@ -58,26 +59,57 @@ class LegacyWeightSolver(WeightSolver):
         self.legacy_directory = legacy_directory
         self.ml=ml
         self.executor = executor
+        self.mod_dir_with_ml = self.mod_dir + 'ml' + '{:01.2f}'.format(self.ml)
+        self.fname_nn_kinem = self.mod_dir_with_ml + '/nn_kinem.out'
+        self.fname_nn_nnls = self.mod_dir_with_ml + '/nn_nnls.out'
 
     def solve(self):
-        #set the current directory to the directory in which the models are computed
-        cur_dir=os.getcwd()
-        os.chdir(self.mod_dir)
-        print("Fit the orbit library to the kinematic data.")
-        cmdstr = self.executor.write_executable_for_weight_solver(self.ml)
-        self.executor.execute(cmdstr)
-        #set the current directory to the dynamite directory
-        os.chdir(cur_dir)
-        chi2, kinchi2 = self.read_output()
-        print("NNLS is finished.")
+        check1 = os.path.isfile(self.fname_nn_kinem)
+        check2 = os.path.isfile(self.fname_nn_nnls)
+        if not check1 or not check2:
+            # set the current directory to the directory in which the models are computed
+            cur_dir = os.getcwd()
+            os.chdir(self.mod_dir)
+            print("Fit the orbit library to the kinematic data.")
+            cmdstr = self.executor.write_executable_for_weight_solver(self.ml)
+            self.executor.execute(cmdstr)
+            #set the current directory to the dynamite directory
+            os.chdir(cur_dir)
+            print("NNLS problem solved")
+        else:
+            print("NNLS solution read from existing output")
+        weights = self.read_weights()
+        chi2, kinchi2 = self.read_chi2()
         return chi2, kinchi2
 
-    def read_output(self):
+    def read_weights(self):
+        fname = self.mod_dir_with_ml + '/nn_orb.out'
+        col_names = ['orb_idx',
+                     'E_idx',
+                     'I2_idx',
+                     'I3_idx',
+                     'I_dont_know', # NOTE: this column = 0 - unclear what it is
+                     'orb_type',
+                     'weight',
+                     'lcut'] # NOTE: see lines 1321-1322 of triaxnnls_CRcut.f90
+        # NOTE: possible that column 'lcut' is not present when a different
+        # "triaxnnls" file is used
+        dtype = [int, int, int, int, int, int, np.float64, int]
+        weights = np.genfromtxt(fname,
+                                skip_header=1,
+                                names=col_names,
+                                dtype=dtype)
+        weights = table.Table(weights)
+        # TODO: find out what the following column should be doing
+        weights.remove_column('I_dont_know')
+        self.weights = weights
+
+    def read_chi2(self):
         ''' taken useful parts from triax_extract_chi2_iter in schw_domoditer,
         in particular lines 181-212
         '''
         # read amount of observables and kinematic moments
-        fname = self.mod_dir + 'ml'+'{:01.2f}'.format(self.ml)+'/nn_kinem.out'
+        fname = self.fname_nn_kinem
         a = self.__read_file_element(fname, [1, 1], [1, 2])
         ngh = np.int64(a[1])  # number of 'observables'
         nobs = np.int64(a[1])
@@ -85,11 +117,11 @@ class LegacyWeightSolver(WeightSolver):
         ncon = np.int64(a[0])
         rows = 3 + np.arange(nobs)  # rows 1- 9
         cols = 3 + np.zeros(nobs, dtype=int)  # skip over text
-        fname = self.mod_dir + 'ml'+'{:01.2f}'.format(self.ml)+ '/nn_nnls.out'
+        fname = self.fname_nn_nnls
         chi2vec = self.__read_file_element(fname, rows, cols)
         chi2vec = np.double(chi2vec)
         chi2 = sum(chi2vec)
-        fname = self.mod_dir + 'ml'+'{:01.2f}'.format(self.ml)+'/nn_kinem.out'  #why is that in here twice?
+        fname = self.fname_nn_kinem
         ka = np.genfromtxt(fname, skip_header=1)
         k = np.arange(ngh) * 3 + 3
         kinchi2 = sum(sum(pow(((ka[:, k] - ka[:, k + 1]) / ka[:, k + 2]), 2.0)))

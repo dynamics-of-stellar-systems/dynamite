@@ -17,14 +17,9 @@ system_components:
 
     black_hole:
         parameters:
-            mass: # log(BHmass)
-                par_generator_settings:
-                    lo: 1.0
-                    hi: 10.0
-                    step: 1.
-                    minstep: 0.
+            mass:
                 fixed: True
-                value: 5.0
+                value: 6.0
                 logarithmic: True
                 LaTeX: "$M_{BH}$"
             a: # scale length
@@ -38,24 +33,12 @@ system_components:
     dark_halo:
         parameters:
             dc: # NFW Darkmatter concentration
-                par_generator_settings:
-                    lo: 2.0
-                    hi: 4.0
-                    step: 1.0
-                    minstep: 0.1
-                logarithmic: True
                 fixed: True
-                value: 3.0
-                LaTeX: "$log(C)$"
+                value: 10.0
+                LaTeX: "$c_{NFW}$"
             f: # NFW Darkmatter fraction
-                par_generator_settings:
-                    lo: 0.0
-                    hi: 2.0
-                    step: 0.5
-                    minstep: 0.1
-                logarithmic: True
-                fixed: False
-                value: 1.0
+                fixed: True
+                value: 100.0
                 LaTeX: "$log(M_{200}/M_{star})$"
         type: NFW
         include: True
@@ -76,11 +59,11 @@ system_components:
                 gpe_parspace_settings:
                     kernel: "to be defined"
                 par_generator_settings:
-                    lo: 0.99
-                    hi: 0.999
+                    lo: 0.05
+                    hi: 0.99
                     step: 0.02
                     minstep: 0.01
-                fixed: True
+                fixed: False
                 value: 0.99
                 LaTeX: "$p_{min}$"
             u: # sigma_obs / sigma_intrinsic
@@ -89,7 +72,7 @@ system_components:
                     hi: 1.0
                     step: 0.01
                     minstep: 0.01
-                fixed: True
+                fixed: False
                 value: 0.9999
                 LaTeX: "$u_{min}$"
         type: "TriaxialVisibleComponent" # class name
@@ -108,12 +91,12 @@ system_components:
 system_parameters: # physical system standalone parameters
     ml: # M/L
         par_generator_settings:
-            lo: 4.
-            hi: 6.
+            lo: 0.8
+            hi: 7.5
             step: 1.0
             minstep: 0.5
         fixed: False
-        value: 5.
+        value: 3.0
         LaTeX: "$Y_{r}$"
 
 ###############################################################################
@@ -122,7 +105,7 @@ system_parameters: # physical system standalone parameters
 ###############################################################################
 
 orblib_settings: # don't put in physical system -> config object
-    nE: 2
+    nE: 5
     logrmin: -0.101275
     logrmax: 1.99123
     nI2: 4        # must be >= 4
@@ -136,7 +119,7 @@ orblib_settings: # don't put in physical system -> config object
     accuracy: '1.0d-5'
     hist_vel: '2719.8215332031'
     hist_sigma: '0.0000'  #check what this is
-    hist_bins: '203'
+    hist_bins: '205'
 
 weight_solver_settings:
     type: "LegacyWeightSolver"
@@ -158,8 +141,8 @@ parameter_space_settings: # don't put in physical system -> settings object
         threshold_del_chi2: 0.5  # LegacyGridSearch setting
     stopping_criteria:
         min_delta_chi2 : 0.5
-        n_max_mods : 10
-        n_max_iter : 10
+        n_max_mods : 100
+        n_max_iter : 100
 
 legacy_settings:
     use_legacy_mode: True
@@ -174,7 +157,3 @@ executor_settings:
     type: "Slurm"     # e.g. Local, Slurm, etc etc
     example_slurm_setting_1: 'I love Slurm!'
     example_slurm_setting_2: 'I love Slurm even more!!'
-
-
-
-# end

@@ -25,5 +25,7 @@ legacy_fortran/triaxnnls_CRcut
 tests/NGC6278/models/*
 tests/NGC6278/all_models.ecsv
 docs/_build/
+docs/.DS_Store
+docs/tutorial_notebooks/.DS_Store
 docs/tutorial_notebooks/.ipynb_checkpoints/*
 docs/tutorial_notebooks/NGC6278_output/*
