@@ -42,7 +42,8 @@ def run_user_test():
     print(f'Computation time: {delt} seconds = {delt/60} minutes')
     
     # print all model results
-    c.all_models.table.pprint_all()
+#    c.all_models.table.pprint_all()
+    c.all_models.table.pprint(max_lines=-1, max_width=-1)
     
     # plot the models
     plt.scatter(c.all_models.table['which_iter'],

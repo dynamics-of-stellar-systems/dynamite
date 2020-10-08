@@ -318,7 +318,8 @@ class LegacyGridSearch(ParameterGenerator):
         prop_mask = abs(self.current_models.table[chi2] - min_chi2) <= thresh
         prop_list = self.current_models.table[prop_mask]
         print(min_chi2, thresh)
-        prop_list.pprint_all()
+#        prop_list.pprint_all()
+        prop_list.pprint(max_lines=-1, max_width=-1)
         self.model_list = []
         step_ok = True
         while step_ok and len(self.model_list) == 0:
