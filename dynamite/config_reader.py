@@ -14,6 +14,8 @@ import parameter_space as parspace
 import kinematics as kinem
 import populations as popul
 import mges as mge
+import model
+import executor
 
 class Settings(object):
     """
@@ -91,7 +93,7 @@ class Configuration(object):
             raise FileNotFoundError('Please specify filename')
 
         self.system = physys.System() # instantiate System object
-        self.settings = Settings() # instantiate Configuration object
+        self.settings = Settings() # instantiate Settings object
 
         if not silent: # get paths first
             print('io_settings...')
@@ -218,7 +220,7 @@ class Configuration(object):
                 for other, data in value.items():
                     setattr(self.system, other, data)
 
-            # add orbit library settings to config object
+            # add orbit library settings to Settings object
 
             elif key == 'orblib_settings':
                 if not silent:
@@ -226,7 +228,7 @@ class Configuration(object):
                     print(f' {tuple(value.keys())}')
                 self.settings.add('orblib_settings', value)
 
-            # add parameter space settings to config object
+            # add parameter space settings to Settings object
 
             elif key == 'parameter_space_settings':
                 if not silent:
@@ -234,7 +236,7 @@ class Configuration(object):
                     print(f' {tuple(value.keys())}')
                 self.settings.add('parameter_space_settings', value)
 
-            # add legacy settings to config object
+            # add legacy settings to Settings object
 
             elif key == 'legacy_settings':
                 if not silent:
@@ -248,7 +250,7 @@ class Configuration(object):
                     value['directory'] = value['directory'][:-1]
                 self.settings.add('legacy_settings', value)
 
-            # add output settings to config object
+            # add output settings to Settings object
 
             elif key == 'io_settings':
                 pass # io_settings (paths) have been assigned already...
@@ -257,7 +259,7 @@ class Configuration(object):
                 #     print(f' {tuple(value.keys())}')
                 # self.settings.add('io_settings', value)
 
-            # add weight_solver_settings to config object
+            # add weight_solver_settings to Settings object
 
             elif key == 'weight_solver_settings':
                 if not silent:
@@ -265,7 +267,7 @@ class Configuration(object):
                     print(f' {tuple(value.keys())}')
                 self.settings.add('weight_solver_settings', value)
 
-            # add executor_settings to config object
+            # add executor_settings to Settings object
 
             elif key == 'executor_settings':
                 if not silent:
@@ -277,20 +279,32 @@ class Configuration(object):
                 raise ValueError(f'Unknown configuration key: {key}')
 
         self.system.validate() # now also adds the right parameter sformat
-        #self.config.validate()
-
         if not silent:
             print(f'**** System assembled:\n{self.system}')
             print(f'**** Settings:\n{self.settings}')
-
         self.validate()
         if not silent:
             print('**** Configuration validated')
 
         self.parspace = parspace.ParameterSpace(self.system)
         if not silent:
-            print(f'**** Instantiated parameter space')
+            print('**** Instantiated parameter space')
             print(f'**** Parameter space:\n{self.parspace}')
+
+        self.all_models = model.AllModels(parspace=self.parspace,
+                                          settings=self.settings)
+        if not silent:
+            print('**** Instantiated AllModels object:\n'
+                  f'{self.all_models.table}')
+
+        kw_executor = {'system':self.system,
+                       'legacy_directory':
+                           self.settings.legacy_settings['directory'],
+                       'executor_settings':self.settings.executor_settings}
+        executor_type = self.settings.executor_settings['type']
+        self.executor = getattr(executor, executor_type)(**kw_executor)
+        if not silent:
+            print(f'**** Instantiated executor object: {executor_type}')
 
     def validate(self):
         """
