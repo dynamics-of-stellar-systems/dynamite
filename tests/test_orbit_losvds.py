@@ -53,7 +53,7 @@ def run_user_test(make_comparison_losvd=False):
     if os.path.isfile(models_file):
         os.remove(models_file)
     plotdir = 'tests/NGC6278/plots/'
-    if not os.path.isfile(plotdir):
+    if not os.path.isdir(plotdir):
         os.mkdir(plotdir)
     plotfile = plotdir+'orbit_losvds.png'
     if os.path.isfile(plotfile):
@@ -92,7 +92,7 @@ def run_user_test(make_comparison_losvd=False):
         ax = plot_losvds(comparison_losvd,
                          orb_idx,
                          aperture_idx_list)
-        ax = plot_losvds(comparison_losvd,
+        ax = plot_losvds(model.orblib.losvd_histograms,
                          orb_idx,
                          aperture_idx_list,
                          ls='--',
