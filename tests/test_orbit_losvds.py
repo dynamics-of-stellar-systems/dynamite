@@ -55,13 +55,15 @@ def run_user_test(make_comparison_losvd=False):
     plotdir = 'tests/NGC6278/plots/'
     if not os.path.isfile(plotdir):
         os.mkdir(plotdir)
+    plotfile = plotdir+'orbit_losvds.png'
+    if os.path.isfile(plotfile):
+        os.remove(plotfile)
 
     # read configuration
     fname = 'tests/NGC6278/user_test_config.yaml'
     c = dyn.config_reader.Configuration(fname, silent=True)
 
     parset = c.parspace.get_parset()
-
     model = dyn.model.LegacySchwarzschildModel(
         system=c.system,
         settings=c.settings,
@@ -97,7 +99,7 @@ def run_user_test(make_comparison_losvd=False):
                          color='r',
                          ax=ax)
         fig = plt.gcf()
-        fig.savefig(plotdir + 'orbit_losvds.png')
+        fig.savefig(plotfile)
 
     return 0
 
