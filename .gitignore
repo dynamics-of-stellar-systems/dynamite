@@ -1,7 +1,7 @@
 # Compiled source #
 ###################
+.DS_Store
 dynamite/__pycache__
-tests/__pycache__
 legacy_fortran/galahad-2.3/bin/sys/*
 legacy_fortran/galahad-2.3/makefiles/*
 legacy_fortran/galahad-2.3/modules/*
@@ -22,8 +22,11 @@ legacy_fortran/triaxmass
 legacy_fortran/triaxmassbin
 legacy_fortran/triaxnnls_CRcut
 .spyproject
+tests/.DS_Store
+tests/__pycache__
 tests/NGC6278/models/*
 tests/NGC6278/all_models.ecsv
+tests/NGC6278/plots/*
 docs/_build/
 docs/.DS_Store
 docs/tutorial_notebooks/.DS_Store
