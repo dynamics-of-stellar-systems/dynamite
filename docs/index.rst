@@ -40,7 +40,7 @@ Each page is an ipython notebook which you can either view in the browser, or do
    :caption: Tutorials:
 
    tutorial_notebooks/running_a_model.ipynb
-   tutorial_notebooks/running_a_grid_of_models.ipynb
+   tutorial_notebooks/exploring_model_output.ipynb
 
 Documentation
 =============

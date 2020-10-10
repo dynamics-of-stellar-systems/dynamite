@@ -32,3 +32,5 @@ docs/.DS_Store
 docs/tutorial_notebooks/.DS_Store
 docs/tutorial_notebooks/.ipynb_checkpoints/*
 docs/tutorial_notebooks/NGC6278_output/*
+plotbin/.DS_Store
+plotbin/__pycache__/*
