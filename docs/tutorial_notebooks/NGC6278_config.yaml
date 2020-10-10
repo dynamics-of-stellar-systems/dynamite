@@ -86,7 +86,6 @@ system_components:
                 datafile: "gauss_hermite_kins.ecvs"  # both discr. & integrated
                 aperturefile: "aperture.dat" # integrated only
                 binfile: "bins.dat"          # integrated only
-                maskfile: maskfile.dat       # made-up filename
 
 system_parameters: # physical system standalone parameters
     ml: # M/L
@@ -154,6 +153,4 @@ io_settings: # paths can be given with or without trailing slash
     all_models_file: "all_models.ecsv"
 
 executor_settings:
-    type: "Slurm"     # e.g. Local, Slurm, etc etc
-    example_slurm_setting_1: 'I love Slurm!'
-    example_slurm_setting_2: 'I love Slurm even more!!'
+    type: "Local"     # e.g. Local, Slurm, etc etc

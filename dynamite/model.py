@@ -20,13 +20,14 @@ class AllModels(object):
         filename = settings.io_settings['all_models_file']
         filename = f'{outdir}{filename}'
         self.filename = filename
-        print(filename)
         self.parspace = parspace
         if from_file and os.path.isfile(filename):
-            print(f'reading {filename} into table attribute')
+            print('Previous models have been found:')
+            print(f'Reading {filename} into AllModels.table')
             self.read_completed_model_file()
         else:
-            print(f'making empty table attribute')
+            print('No previous models have been found:')
+            print(f'Making an empty table in AllModels.table')
             self.make_empty_table()
 
     def make_empty_table(self):
