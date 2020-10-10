@@ -209,12 +209,14 @@ class LegacySchwarzschildModel(Model):
         if not check1 or not check2:
             # prepare the fortran input files for orblib
             self.create_fortran_input_orblib(self.directory_noml+'infil/')
-            # TODO: create these input files via prepare_data
-            shutil.copyfile(self.in_dir+'kin_data.dat',
-                            self.directory_noml+'infil/kin_data.dat')
-            shutil.copyfile(self.in_dir+'aperture.dat',
+            kinematics = self.system.cmp_list[2].kinematic_data[0]
+            old_filename = self.directory_noml+'infil/kin_data.dat'
+            kinematics.convert_to_old_format(old_filename)
+            aperture_file = self.in_dir + kinematics.aperturefile
+            shutil.copyfile(aperture_file,
                             self.directory_noml+'infil/aperture.dat')
-            shutil.copyfile(self.in_dir+'bins.dat',
+            binfile = self.in_dir + kinematics.binfile
+            shutil.copyfile(binfile,
                             self.directory_noml+'infil/bins.dat')
             # calculate orbit libary
             self.orblib.get_orbit_library()

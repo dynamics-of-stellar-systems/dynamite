@@ -102,6 +102,37 @@ class GaussHermite(Kinematics, data.Integrated):
         data.write(filename_new_format, format='ascii.ecsv')
         return
 
+    def convert_to_old_format(self, filename_old_format):
+        # taken from generate_input_califa.py
+        # NOTE: this only works for n_gh = 4
+        # TODO: generalise for all n_gh
+        nbins = len(self.data)
+        n_gh = 4
+        comment = '{0} {1}'.format(nbins, n_gh)
+        idx = np.arange(nbins)+1
+        velSym = self.data['v'].data
+        dvelSym = self.data['dv'].data
+        sigSym = self.data['sigma'].data
+        dsigSym = self.data['dsigma'].data
+        n_gh_col = np.full_like(velSym, n_gh)
+        h3Sym = self.data['h3'].data
+        dh3Sym = self.data['dh3'].data
+        h4Sym = self.data['h4'].data
+        dh4Sym = self.data['dh4'].data
+        array_to_print = np.transpose([idx,
+                                       velSym, dvelSym,
+                                       sigSym, dsigSym,
+                                       n_gh_col,
+                                       h3Sym, dh3Sym,
+                                       h4Sym, dh4Sym])
+        fmt = '%5i %13.8s %13.8s %13.8s %13.8s %5i %13.8s %13.8s %13.8s %13.8s'
+        np.savetxt(filename_old_format,
+                   array_to_print,
+                   fmt = fmt,
+                   header=comment,
+                   comments='')
+        return 0
+
     def get_hermite_polynomial_coeffients(self, max_order=None):
         """Get coeffients for hermite polynomials normalised as in eqn 14 of
         Capellari 2016
