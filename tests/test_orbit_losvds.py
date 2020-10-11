@@ -10,9 +10,6 @@ import matplotlib.pyplot as plt
 from astropy import table
 import dynamite as dyn
 
-print('Using DYNAMITE version:', dyn.__version__)
-print('Located at:', dyn.__path__)
-
 def plot_losvds(losvd_histogram,
                 orb_idx,
                 aperture_idx_list,
@@ -38,6 +35,9 @@ def plot_losvds(losvd_histogram,
     return ax
 
 def run_orbit_losvd_test(make_comparison_losvd=False):
+
+    print('Using DYNAMITE version:', dyn.__version__)
+    print('Located at:', dyn.__path__)
 
     # read configuration
     fname = 'user_test_config.yaml'
@@ -95,6 +95,8 @@ def run_orbit_losvd_test(make_comparison_losvd=False):
                          ax=ax)
         fig = plt.gcf()
         fig.savefig(plotfile)
+
+    print(f'Look at {plotfile}')
 
     return 0
 
