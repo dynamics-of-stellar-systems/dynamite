@@ -11,21 +11,23 @@ System requirements
 
 Computers running the DYNAMITE models must meet the following hardware requirements.
 
-**Minimum Hardware Requirements**
+.. **Minimum Hardware Requirements**
 
-* Processor:
-* Processor speed:
-* Random access memory (RAM):
-* GPU
-* Hard disk capacity:
+.. * Processor:
+.. * Processor speed:
+.. * Random access memory (RAM):
+.. * GPU
+.. * Hard disk capacity:
 
 **Recommended Hardware Requirements**
 
-* Processor:
-* Processor speed:
-* access memory (RAM):
-* GPU
-* Hard disk capacity:
+We recommend at least 50-100 GB of hard disk space for running the dynamical models. The DYNAMITE software only takes 150 MB, but the orbit libraries can become very large. As examples one model for the following orbit libraries has the size:
+
+* (nE, nI2, nI3) = (5,4,3)    : 85 MB
+* (nE, nI2, nI3) = (21,8,7)   : 664 MB
+* (nE, nI2, nI3) = (41,11,11) : 2.55 GB
+
+And usually, for one galaxy you will create at least 30 models to find the best-fitting model parameters.
 
 
 .. _software-requirements:
@@ -33,14 +35,23 @@ Computers running the DYNAMITE models must meet the following hardware requireme
 Software requirements
 =====================
 
+Fortran compiler
+----------------
+
 The current version of DYNAMITE is based on routines which were written in Fortran. It is therefore necessary to have a pre-installed Fortran compiler. The best-suited Fortran compiler differs with different operation systems.
 
 If you are using Linux, you will need ``ifort`` or ``gcc-gfortran``.
 
-If you are using macOS, you will need ``gfortran``, which can be installed in a number of different ways. In the following, we explain the installation via Homebrew and via MacPorts. Homebrew can be used to install the latest GCC and all additional libraries in the following way::
+If you are using macOS, you will need ``gfortran``, which can be installed in a number of different ways.
+
+**Important:** If you install the GCC package, do **not** install GCC 10 or higher as we noted  significant differences with this version.
+
+**MacOS:**
+
+In the following, we explain the installation of the GCC Fortran compiler via Homebrew and via MacPorts. **Homebrew** can be used to install the latest GCC and all additional libraries in the following way::
 
     brew update
-    brew install gcc
+    brew install gcc@9
 
 We can check if gfortran is installed by typing in the Terminal::
 
@@ -50,7 +61,9 @@ with the output: ``gfortran(1) - GNU Fortran compiler``. The command ::
 
     which gfortran
 
-returns its location, for example: ``/usr/local/bin/gfortran``. Alternatively, you can also install GCC with MacPorts. The installation is then a bit different::
+returns its location, for example: ``/usr/local/bin/gfortran``.
+
+Alternatively, you can also install GCC with **MacPorts**. The installation is then a bit different::
 
     sudo port selfupdate
     sudo upgrade outdated
@@ -69,30 +82,40 @@ to install it and make it the default version (including gfortran). Check and di
 
 which returns something like ``/opt/local/bin/gfortran``.
 
-In any case, when using macOS/Linux, the basic requirements for this code are reasonably current versions of python (tested with Legacy Python 2.7, Python 3.6, Python 3.7, and Python 3.8) and the following python libraries::
 
-  numpy
-  glob
-  re
-  os
-  matplotlib
-  astropy
-  math
-  shutil
-  scipy
-  ast
-  argparse
-  configparser
 
-Pre-Installation Checklist
---------------------------
+Python
+------
 
-...
+The user is communicating with the Fortran source code via Python. The basic requirement for DYNAMITE is therefore a reasonably current version of Python (tested with Legacy Python 2.7, Python 3.6, Python 3.7, and Python 3.8) and the following python libraries:
+
+* astropy
+* PyYAML
+
+* numpy
+* matplotlib
+
+* glob
+* os
+* shutil
+
+
+
+.. Pre-Installation Checklist
+.. --------------------------
+
 
 Known problems
 --------------
 
-Make sure that the compiler is installed with the proper libraries.
+* Make sure that the compiler collection is installed with the proper libraries. If you get problems running Galahad or DYNAMITE, try to reinstall GCC and make sure that the Fortran compiler is included in your installation
+
+* Do not use GCC 10 or higher
+
+
+
+
+
 
 
 .. _install-procedure:
@@ -100,7 +123,7 @@ Make sure that the compiler is installed with the proper libraries.
 Installation and Configure Procedure
 ====================================
 
-Download from `github <https://github.com/dynamics-of-stellar-systems/triaxschwarz>`_, unzip and move the DYNAMITE code to the directory in which you want to install it. Make sure that your system fulfills the software requirements specified in Section~\ref{soft_requirements} (in particular the Fortran compiler).
+Download from `github <https://github.com/dynamics-of-stellar-systems/dynamite>`_, unzip and move the DYNAMITE code to the directory in which you want to install it. Make sure that your system fulfills the :ref:`software requirements <software-requirements>` (in particular the Fortran compiler).
 
 
 Installation of GALAHAD
@@ -114,55 +137,62 @@ For the installation go into the folder ``.../legacy_fortran/galahad-2.3/`` and 
 
 In the following installation, a number of prompts start. The answers differ for the different operation system and are shown in the following.
 
+During the installation, your terminal might express several warnings. These are however not critical if your installation finishes properly.
 
-Install Galahad, Version 2.3 - Prompt answers for Ubuntu 
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Install Galahad, Version 2.3 - Prompt answers for Ubuntu
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 Prompts from ``./install_galahad``. The answers for the recommended installation are marked in bold.
 
 **Select platform**
 
 
-* Compaq (DEC) alpha
-* Cray
-* HP Workstation
-* IBM RS/6000
-* **PC**
-* ...
+1. Compaq (DEC) alpha
+2. Cray
+3. HP Workstation
+4. IBM RS/6000
+5. **PC <--**
+6. ...
 
 
 **Select operating system**
 
-* Windows 2000/XP with MinGW/Msys
-* **Linux**
+1. Windows 2000/XP with MinGW/Msys
+2. **Linux <--**
 
 **Select compiler**
 
-When using Ubuntu:
+1. NAG f90
+2. NAG f95
+3. Intel Itanium efc under linux (pc version)
+4. Fujitsu frt under linux (pc version)
+5. GNU g95 under linux (pc version)
+6. **GNU gfortran under linux (pc version) <--**
+7. **Intel ifort (previously ifc) under linux (pc version) <--**
+8. Lahey lf95 under linux (pc version)
+9. Portland Group pgf90 under linux (pc version)
 
-* Windows 2000/XP with MinGW/Msys
-* **Linux**
-
+(Note: pick either ``gfortran`` or ``ifort`` depending on what you installed above)
 
 **Select subset of GALAHAD packages to be installed (the chosen subset will optionally be installed below)**
 
-* Everything
-* Everything for SIF/CUTEr
-* Everything for AMPL
-* LANCELOT B and its interface to SIF
-* LANCELOT B and its interface to AMPL
-* Just LANCELOT B
-* **The QP packages and their interfaces to CUTEr**
-* The QP packages and their interfaces to AMPL
-* Just the QP packages and their dependencies
-* FILTRANE and its interface to CUTEr
-* FILTRANE and its interface to AMPL
-* Just FILTRANE and its dependencies
+1. Everything
+2. Everything for SIF/CUTEr
+3. Everything for AMPL
+4. LANCELOT B and its interface to SIF
+5. LANCELOT B and its interface to AMPL
+6. Just LANCELOT B
+7. **The QP packages and their interfaces to CUTEr <--**
+8. The QP packages and their interfaces to AMPL
+9. Just the QP packages and their dependencies
+10. FILTRANE and its interface to CUTEr
+11. FILTRANE and its interface to AMPL
+12. Just FILTRANE and its dependencies
 
 **By default, the CUTEr you wish to use is installed in**
 
 * y(es)
-* **n(o)**
+* **n(o) <--**
 
 **Enter alternative directory for CUTEr:**
 
@@ -170,67 +200,63 @@ When using Ubuntu:
 
 **Do you now wish to compile the package subset you selected earlier?**
 
-* **y(es)**
+* **y(es) <--**
 * n(o)
 
 **The package subset may be installed in either single or double precision. Which precision do you require for the installed subset?**
 
-* **D for double precision**
+* **D for double precision <--**
 * S for single precision
 
 **Do you also wish to install the single precision version?**
 
 * y(es)
-* **n(o)**
+* **n(o) <--**
 
 Install Galahad, Version 2.3 - Prompt answers for MacOS
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 Prompts from ``./install_galahad``. The answers for the recommended installation are marked in bold.
 
 **Select platform**
 
-* Compaq (DEC) alpha
-* Cray
-* HP Workstation
-* IBM RS/6000
-* PC
-* PC with ..
-* PC with
-* PC with
-* SGI workstation
-* SUN workstation
-* **MAC OS/X**
+1. Compaq (DEC) alpha
+2. Cray
+3. HP Workstation
+4. IBM RS/6000
+5. PC
+6. PC with ..
+7. PC with
+8. PC with
+9. SGI workstation
+10. SUN workstation
+11. **MAC OS/X <--**
 
 **Select compiler**
 
 When using MacOS:
 
-* NAG f90
-* NAG f95
-* AbSoft f95
-* GNU g95 under OS/X
-* **GNU gfortran under OS/X**
-* Intel ifort (previously ifc) under Mac OsX
+1. NAG f90
+2. NAG f95
+3. AbSoft f95
+4. GNU g95 under OS/X
+5. **GNU gfortran under OS/X <--**
+6. Intel ifort (previously ifc) under Mac OsX
 
 **Select subset of GALAHAD packages to be installed (the chosen subset will optionally be installed below)**
 
-* Everything
-* Everything for SIF/CUTEr
-* Everything for AMPL
-* LANCELOT B and its interface to SIF
-* LANCELOT B and its interface to AMPL
-* Just LANCELOT B
-* **The QP packages and their interfaces to CUTEr**
-* The QP packages and their interfaces to AMPL
-* Just the QP packages and their dependencies
-* FILTRANE and its interface to CUTEr
-* FILTRANE and its interface to AMPL
-* Just FILTRANE and its dependencies
+1. Everything
+2. Everything for SIF/CUTEr
+3. Everything for AMPL
+4. LANCELOT B and its interface to SIF
+5. LANCELOT B and its interface to AMPL
+6. Just LANCELOT B
+7. **The QP packages and their interfaces to CUTEr <--**
+8. ...
 
 **By default, the CUTEr you wish to use is installed in**
 
 * y(es)
-* **n(o)**
+* **n(o) <--**
 
 **Enter alternative directory for CUTEr:**
 
@@ -238,18 +264,18 @@ When using MacOS:
 
 **Do you now wish to compile the package subset you selected earlier?**
 
-* **y(es)**
+* **y(es) <--**
 * n(o)
 
 **The package subset may be installed in either single or double precision. Which precision do you require for the installed subset?**
 
-* **D for double precision**
+* **D for double precision <--**
 * S for single precision
 
 **Do you also wish to install the single precision version?**
 
 * y(es)
-* **n(o)**
+* **n(o) <--**
 
 
 Finalizing the installation of GALAHAD
@@ -257,40 +283,41 @@ Finalizing the installation of GALAHAD
 
 Set environment variables and path as prompted at the end of successful Galahad installation e.g. in your .bashrc file.
 
-  | COMMENT: At the end of the installation, the output hints towards the README.bashrc and README.cshrc files, to look up how to set the environment variables correctly. The content of these files however is a bit confusing, so maybe this could be changed.
 
 **Example: GALAHAD environment variables**
 
 Output from GALAHAD::
 
     Remember to set the environment variable
-    GALAHAD to /home/fs71474/sthater/triaxschwarz/galahad-2.3
+    GALAHAD to /home/fs71474/sthater/legacy_fortran/galahad-2.3
     In addition, please update your MANPATH to include
-    /home/fs71474/sthater/triaxschwarz/galahad-2.3/man
+    /home/fs71474/sthater/legacy_fortran/galahad-2.3/man
     and your PATH to include
-    /home/fs71474/sthater/triaxschwarz/galahad-2.3/bin
+    /home/fs71474/sthater/legacy_fortran/galahad-2.3/bin
 
 Update in .bashrc::
 
-    export GALAHAD="/home/fs71474/sthater/triaxschwarz/galahad-2.3/galahad"
-    export MANPATH="$/home/fs71474/sthater/triaxschwarz/galahad-2.3/man:$/home/fs71474/sthater/triaxschwarz/galahad-2.3/man"
-    export PATH="$/home/fs71474/sthater/triaxschwarz/galahad-2.3/bin:$PATH"
+    export GALAHAD="/home/fs71474/sthater/legacy_fortran/galahad-2.3"
+    export MANPATH="/home/fs71474/sthater/legacy_fortran/galahad-2.3/man:$/home/fs71474/sthater/legacy_fortran/galahad-2.3/man"
+    export PATH="/home/fs71474/sthater/legacy_fortran/galahad-2.3/bin:$PATH"
 
 
 Compiling the DYNAMITE code
 ---------------------------
 
-Go back to ``.../triaxschwarzschild``. Before you proceed, it is necessary to make three changes to the ``Makefile``:
+Go back to ``.../legacy_fortran``. Before you proceed, it is necessary to make three changes to the ``Makefile``:
 
-* Change the local path of Galahad (``GALAHADDIR``) to something like ``/Users/.../triaxschwarz/triaxschwarzschild/galahad-2.3``.
+* Change the local path of Galahad (``GALAHADDIR``) to the path of your GALAHAD variable in the .bashrc (something like ``/Users/.../.../legacy_fortran/galahad-2.3``).
 * Select the appropriate choice of ``GALAHADTYPE`` variable depending on your system (possible options are commented out)
 * Look for the definition of the ``all:`` (this should be right after the definition of the ``GALAHADTYPE`` variable). Make sure that ``triaxgasnnls`` is **NOT** in the list.
 
-If you install and run DYNAMITE on your own computer, there seems to be a memory allocation problem when building the orbit library. This problem has currently been tackled by adding a line in the source code (the line ``print*, t1,t2,t3`` right after ``losvel(:) = t1 * vel(:,1) + t2 * vel(:,2) + t3 * vel(:,3)`` in the subroutine ``project_n(type,pos,vel,proj,losvel,n)``).
+If you install and run DYNAMITE on your own computer, there seems to be a memory allocation problem when building the orbit library. This problem has currently been tackled by adding a line in the source code (the line ``print*, t1,t2,t3`` right after ``losvel(:) = t1 * vel(:,1) + t2 * vel(:,2) + t3 * vel(:,3)`` in the subroutine ``project_n(type,pos,vel,proj,losvel,n)``). If you work in a cluster system, you can probably delete these lines (to speed up the code), but please do a careful check here!
 
 Proceed with the following command from the terminal::
 
     make all
+
+Your terminal will likely express several warnings again, but these are not critical and refer to different coding conventions in earlier fortran versions.
 
 DYNAMITE should now be installed and ready to be run! You can try the test run as explained in Test_ run.
 
@@ -311,8 +338,19 @@ Post-Installation
 Post-installation checklist
 ---------------------------
 
-* Check that all files are there
-* Check which NNLS you want to be used
+Congratulations! You have successfully installed DYNAMITE on your system!
+
+Please check, that you have the following files in ``.../legacy_fortran``.
+
+.f90 files and executables (no ending) for
+
+* orbitstart
+* orblib
+* triaxmass
+* triaxmassbin
+* triaxnnls_CRcut
+* modelgen
+* partgen
 
 .. _Test:
 
@@ -320,29 +358,16 @@ Test run
 --------
 
 You can have a test run of the Dynamite code and the analysis scripts on the S0 galaxy NGC 6278. In the end you should get similar plots to the ones shown in `Zhu et al. 2018, MNRAS, 473, 3000 <https://arxiv.org/pdf/1709.06649.pdf>`_.
-For this testrun, we have created a data directory in ``/Users/.../triaxschwarz/model_example/NGC6278``, containing all the necessary data. This directory only includes the folder ``infil``, which contains the input files of the DYNAMITE code. If you run the code with your own data, make sure that your galaxy folder (named by the object name) has all input files with the parameters set properly for your galaxy.
-Before starting the DYNAMITE run, you need to change the directories in the ``my_config.ini``-file which is located in the folder ``/Users/.../triaxschwarz/schwpy``.
+For this testrun, we have created a data directory in ``/Users/.../tests/NGC6278``, containing all the necessary data. This directory only includes the configuration file ``user_test_config.yaml`` and a folder ``input_data``, which contains the input files of the DYNAMITE code. If you run the code with your own data, make sure that your galaxy folder (named by the object name) has all input files with the parameters set properly for your galaxy.
 
-This directory specifies the folder of your Dynamite code (the Fortran scripts)::
+Go now to the folder:
 
-    exepath = '/Users/.../triaxschwarz/triaxschwarzschild/'
+``.../tests``
 
-This directory specifies the parent folder of your future models::
-    w_dir="/Users/sabine/Triaxschwarzschild/model_example/"
+Finally, we can start our first models now. In the terminal, type ::
 
-``object="NGC6278"``
-Here you declare the name of the galaxy that you want to model. The name should also be used for the data folder which contains your galaxy input files.
+    python user_test
 
-Finally, we can start the first models now. In the terminal, type ::
-
-    python schw_run.py -f my_config.ini
-    python schw_run.py -f -m my_config.ini
-
-Note: When running the code, the NNLS skips one M/L and the model for M/L=0.8 is not made. Only when I delete all M/L files and start ``schw_run`` again, it makes all models. ::
-
-    python schw_run.py -d my_config.ini
-    python schw_run.py -d -m my_config.ini
-    python schw_run.py -p  my_config.ini
 
 
 Troubleshooting

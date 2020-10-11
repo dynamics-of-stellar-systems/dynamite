@@ -18,7 +18,7 @@ The development team are those currently involved in coding for DYNAMITE:
 
 * Prashin Jethwa (``prashin.jethwa@univie.ac.at``), postdoc at Uni Wien, co-ordinating and coding for DYNAMITE;
 
-* Sabine Thater (``sabine.thater@univie.ac.at``), postdoc at Uni Wien working on the development of DYNAMITE. In the past, she applied the axisymmetric and the triaxial Schwarzschild code to centers of galaxies. She is also the main author of the Schwpy installation guide.
+* Sabine Thater (``sabine.thater@univie.ac.at``), postdoc at Uni Wien working on the development of DYNAMITE. In her research, she applies the axisymmetric and the triaxial Schwarzschild code to centres of galaxies. Please contact her if you have questions about the DYNAMITE installation guide.
 
 * Thomas Maindl (``thomas.maindl@univie.ac.at``)
 
