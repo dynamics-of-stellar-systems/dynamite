@@ -30,7 +30,7 @@ def run_user_test():
 
     # read configuration
     fname = 'tests/NGC6278/user_test_config.yaml'
-    c = dyn.config_reader.ConfigurationReaderYaml(fname, silent=True)
+    c = dyn.config_reader.Configuration(fname, silent=True)
 
     # "run" the models
     t = time.perf_counter()

@@ -43,9 +43,9 @@ def plot_losvds(losvd_histogram,
 
 def run_user_test(make_comparison_losvd=False):
 
-    ## set working directory to dynamite
-    # os.chdir(os.getcwd().rpartition('/')[0])
-
+    # set working directory to dynamite
+    os.chdir(os.getcwd().rpartition('/')[0])
+    print(os.getcwd())
     # delete previous output if available
     models_folder = 'tests/NGC6278/models'
     models_file = 'tests/NGC6278/all_models.ecsv'
