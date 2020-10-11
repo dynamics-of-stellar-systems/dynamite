@@ -70,7 +70,7 @@ html_theme = 'classic'
 # so a file named "default.css" will overwrite the builtin "default.css".
 html_static_path = ['_static']
 
-html_logo = 'logothicksmall.png'
+html_logo = 'DynamiteLogo.png'
 
 html_sidebars = { '**': ['globaltoc.html', 'relations.html', 'sourcelink.html', 'searchbox.html'] }
 
@@ -111,12 +111,9 @@ latex_engine = 'pdflatex'
 #latex_use_modindex = True
 
 nbsphinx_prolog = """
-
 **Note**:
-
 This page was generated from a Jupyter notebook which can be found at
 ``docs/{{ env.doc2path(env.docname, base=None) }}``
 in your DYNAMITE directory.
-
 ----
 """
