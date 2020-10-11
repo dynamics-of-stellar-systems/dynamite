@@ -133,13 +133,40 @@ class AllModels(object):
 
 
 class Model(object):
-
+    '''
+    A DYNAMITE model. The Model can be run by running the methods (i)
+    get_orblib, (ii) get_weights, (iii) (in the future) do_orbit_colouring.
+    Ruuning each of these methods will adds a new attribute to the model, e.g.
+    model.get_orblib(...) --> creates an attribute --> model.orblib
+    model.get_weights(...) --> creates an attribute --> model.weight_solver
+    '''
     def __init__(self,
                  system=None,
                  settings=None,
-                 parset=None,
+                 executor=None,
                  parspace=None,
-                 executor=None):
+                 parset=None):
+        """
+        Parameters
+        ----------
+        system : dyn.physical_system.System
+            Object holding information about the physical system being modelled.
+        settings : dyn.config_reader.Settings
+            Object holding other settings
+        parspace : dyn.parameter_space.ParameterSpace
+            A list of parameter objects for this model
+        executor : dyn.executor.Executor
+            Handles differences between execting models on your local machines
+            vs submission on clusters, HPC modes etc
+        parset : row of an Astropy Table
+            contains the values of the potential parameters for this model
+
+        Returns
+        -------
+        Nothing returned. Attributes holidng outputs are are added to the object
+        when methods are run.
+
+        """
         self.system = system
         self.settings = settings
         self.parset = parset
