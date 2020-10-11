@@ -1,0 +1,176 @@
+# Example yaml configuration file for the legacy implementation
+# All relevant input is in one file with two sections: SYSTEM and SETTINGS
+
+# Start of yaml document
+---
+###############################################################################
+# SECTION 1 : SYSTEM
+# Define the physical system (e.g. the galaxy or globular cluster being )
+###############################################################################
+
+system_attributes:
+    distMPc: 39.96
+    name: "NGC6278"
+    position_angle: 97.69
+
+system_components:
+
+    black_hole:
+        parameters:
+            mass: # log(BHmass)
+                par_generator_settings:
+                    lo: 1.0
+                    hi: 10.0
+                    step: 1.
+                    minstep: 0.
+                fixed: False
+                value: 5.0
+                logarithmic: True
+                LaTeX: "$M_{BH}$"
+            a: # scale length
+                fixed: True
+                value: 1.e-3  # dot required, renders as str '1e-3' otherwise
+                LaTeX: "$a_{BH}$"
+        type: "Plummer" # class name
+        include: True
+        contributes_to_potential: True
+
+    dark_halo:
+        parameters:
+            dc: # NFW Darkmatter concentration
+                par_generator_settings:
+                    lo: 2.0
+                    hi: 4.0
+                    step: 1.0
+                    minstep: 0.1
+                logarithmic: True
+                fixed: True
+                value: 3.0
+                LaTeX: "$log(C)$"
+            f: # NFW Darkmatter fraction
+                par_generator_settings:
+                    lo: 0.0
+                    hi: 2.0
+                    step: 0.5
+                    minstep: 0.1
+                logarithmic: True
+                fixed: True
+                value: 1.0
+                LaTeX: "$log(M_{200}/M_{star})$"
+        type: NFW
+        include: True
+        contributes_to_potential: True
+
+    stars:
+        parameters:
+            q: # intrinsic flattening (C/A)
+                par_generator_settings:
+                    lo: 0.05
+                    hi: 0.99
+                    step: 0.04
+                    minstep: 0.02
+                fixed: True
+                value: 0.54
+                LaTeX: "$q_{min}$"
+            p: # intrinsic B/A
+                gpe_parspace_settings:
+                    kernel: "to be defined"
+                par_generator_settings:
+                    lo: 0.99
+                    hi: 0.999
+                    step: 0.02
+                    minstep: 0.01
+                fixed: True
+                value: 0.99
+                LaTeX: "$p_{min}$"
+            u: # sigma_obs / sigma_intrinsic
+                par_generator_settings:
+                    lo: 0.95
+                    hi: 1.0
+                    step: 0.01
+                    minstep: 0.01
+                fixed: True
+                value: 0.9999
+                LaTeX: "$u_{min}$"
+        type: "TriaxialVisibleComponent" # class name
+        mge_file: "mge.ecvs"
+        include: True
+        contributes_to_potential: True
+        kinematics: # optional, only specified for components with kinematics
+            set1:
+                weight: 1.0 # weight of kinematics data specified by name
+                type: GaussHermite # specifies which object class to create
+                datafile: "gauss_hermite_kins.ecvs"  # both discr. & integrated
+                aperturefile: "aperture.dat" # integrated only
+                binfile: "bins.dat"          # integrated only
+                maskfile: maskfile.dat       # made-up filename
+
+system_parameters:
+    ml: # M/L
+        par_generator_settings:
+            lo: 4.
+            hi: 6.
+            step: 1.0
+            minstep: 0.5
+        fixed: True
+        value: 5.
+        LaTeX: "$Y_{r}$"
+
+###############################################################################
+# SECTION 2: SETTINGS
+# Define other settings e.g. for the orbit library and weight solver
+###############################################################################
+
+orblib_settings:
+    nE: 2
+    logrmin: -0.101275
+    logrmax: 1.99123
+    nI2: 4        # must be >= 4
+    nI3: 3
+    dithering: 1
+    #the following values should usually not be changed
+    orbital_periods: 200
+    sampling: 50000
+    starting_orbit: 1
+    number_orbits: -1 #-1 --> all orbits
+    accuracy: '1.0d-5'
+    hist_vel: '2719.8215332031'
+    hist_sigma: '0.0000'  #check what this is
+    hist_bins: '203'
+
+weight_solver_settings:
+    type: "LegacyWeightSolver"
+    setting1: True
+    setting2: False
+    regularisation: 0
+    number_GH: 4
+    GH_sys_err: '0.0 0.0 0.0 0.0 0.3 0.3 0.6 0.6'
+    lum_intr_rel_err: 0.01
+    sb_proj_rel_err: 0.02
+    ml_scale_factor: 1.0
+    nnls_solver: 1
+
+parameter_space_settings:
+    generator_type: "LegacyGridSearch"
+    which_chi2: "chi2"
+    generator_settings:
+        specificsetting: 25
+        threshold_del_chi2: 0.5  # LegacyGridSearch setting
+    stopping_criteria:
+        min_delta_chi2 : 0.5
+        n_max_mods : 5
+        n_max_iter : 10
+
+legacy_settings:
+    use_legacy_mode: True
+    directory: "default"
+
+io_settings: # paths can be given with or without trailing slash
+    input_directory: "NGC6278_input/"
+    output_directory: "NGC6278_output/"
+    all_models_file: "all_models.ecsv"
+
+executor_settings:
+    type: "Local"
+
+# end
