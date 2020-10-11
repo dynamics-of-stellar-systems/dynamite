@@ -116,7 +116,7 @@ class LegacyOrbitLibrary(OrbitLibrary):
                 if (ivmin <= ivmax):
                     tmp = orblibf.read_reals(float)
                     velhist[j, ivmin+nvhist:ivmax+nvhist+1, k] = tmp
-        subprocess.call(['rm', 'datfil/{fileroot}.dat'])
+        subprocess.call(['rm', f'datfil/{fileroot}.dat'])
         os.chdir(cur_dir)
         vedg_pos = np.arange(1, nbins_vhist+1, 2) * dvhist/2.
         vedg_neg = -vedg_pos[::-1]

@@ -10,6 +10,9 @@ import matplotlib.pyplot as plt
 from astropy import table
 import dynamite as dyn
 
+print('Using DYNAMITE version:', dyn.__version__)
+print('Located at:', dyn.__path__)
+
 def plot_losvds(losvd_histogram,
                 orb_idx,
                 aperture_idx_list,
@@ -36,22 +39,24 @@ def plot_losvds(losvd_histogram,
 
 def run_orbit_losvd_test(make_comparison_losvd=False):
 
+    # read configuration
+    fname = 'user_test_config.yaml'
+    c = dyn.config_reader.Configuration(fname, silent=True)
+
+    io_settings = c.settings.io_settings
+    outdir = io_settings['output_directory']
     # delete previous output if available
-    models_folder = 'NGC6278/models'
-    models_file = 'NGC6278/all_models.ecsv'
+    models_folder = outdir + 'models/'
+    models_file = outdir + io_settings['all_models_file']
     shutil.rmtree(models_folder, ignore_errors=True)
     if os.path.isfile(models_file):
         os.remove(models_file)
-    plotdir = 'NGC6278/plots/'
+    plotdir = outdir + 'plots/'
     if not os.path.isdir(plotdir):
         os.mkdir(plotdir)
-    plotfile = plotdir+'orbit_losvds.png'
+    plotfile = plotdir + 'orbit_losvds.png'
     if os.path.isfile(plotfile):
         os.remove(plotfile)
-
-    # read configuration
-    fname = 'NGC6278/user_test_config.yaml'
-    c = dyn.config_reader.Configuration(fname, silent=True)
 
     parset = c.parspace.get_parset()
     model = dyn.model.LegacySchwarzschildModel(
@@ -65,7 +70,7 @@ def run_orbit_losvd_test(make_comparison_losvd=False):
     model.get_orblib()
     model.orblib.read_losvd_histograms()
 
-    fname = 'NGC6278/comparison_losvd.npz'
+    fname = outdir + 'comparison_losvd.npz'
     if make_comparison_losvd:
         np.savez(fname,
                  xedg=model.orblib.losvd_histograms.xedg,

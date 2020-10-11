@@ -23,7 +23,7 @@ system_components:
                     hi: 10.0
                     step: 1.
                     minstep: 0.
-                fixed: True
+                fixed: False
                 value: 5.0
                 logarithmic: True
                 LaTeX: "$M_{BH}$"
@@ -54,7 +54,7 @@ system_components:
                     step: 0.5
                     minstep: 0.1
                 logarithmic: True
-                fixed: False
+                fixed: True
                 value: 1.0
                 LaTeX: "$log(M_{200}/M_{star})$"
         type: NFW
@@ -105,14 +105,14 @@ system_components:
                 binfile: "bins.dat"          # integrated only
                 maskfile: maskfile.dat       # made-up filename
 
-system_parameters: # physical system standalone parameters
+system_parameters:
     ml: # M/L
         par_generator_settings:
             lo: 4.
             hi: 6.
             step: 1.0
             minstep: 0.5
-        fixed: False
+        fixed: True
         value: 5.
         LaTeX: "$Y_{r}$"
 
@@ -121,7 +121,7 @@ system_parameters: # physical system standalone parameters
 # Define other settings e.g. for the orbit library and weight solver
 ###############################################################################
 
-orblib_settings: # don't put in physical system -> config object
+orblib_settings:
     nE: 2
     logrmin: -0.101275
     logrmax: 1.99123
@@ -150,7 +150,7 @@ weight_solver_settings:
     ml_scale_factor: 1.0
     nnls_solver: 1
 
-parameter_space_settings: # don't put in physical system -> settings object
+parameter_space_settings:
     generator_type: "LegacyGridSearch"
     which_chi2: "chi2"
     generator_settings:
@@ -158,7 +158,7 @@ parameter_space_settings: # don't put in physical system -> settings object
         threshold_del_chi2: 0.5  # LegacyGridSearch setting
     stopping_criteria:
         min_delta_chi2 : 0.5
-        n_max_mods : 3
+        n_max_mods : 5
         n_max_iter : 10
 
 legacy_settings:
@@ -166,15 +166,11 @@ legacy_settings:
     directory: "default"
 
 io_settings: # paths can be given with or without trailing slash
-    input_directory: "tests/NGC6278/input_data"
-    output_directory: "tests/NGC6278/"
+    input_directory: "NGC6278_input/"
+    output_directory: "NGC6278_output/"
     all_models_file: "all_models.ecsv"
 
 executor_settings:
-    type: "Slurm"     # e.g. Local, Slurm, etc etc
-    example_slurm_setting_1: 'I love Slurm!'
-    example_slurm_setting_2: 'I love Slurm even more!!'
-
-
+    type: "Local"
 
 # end
