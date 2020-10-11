@@ -16,11 +16,11 @@ Development team
 
 The development team are those currently involved in coding for DYNAMITE:
 
-* Prashin Jethwa (``prashin.jethwa@univie.ac.at``), postdoc at Uni Wien, co-ordinating and coding for DYNAMITE;
+* Prashin Jethwa (``prashin.jethwa@univie.ac.at``), postdoc at Uni Wien, co-ordinating and coding for DYNAMITE.
 
 * Sabine Thater (``sabine.thater@univie.ac.at``), postdoc at Uni Wien working on the development of DYNAMITE. In her research, she applies the axisymmetric and the triaxial Schwarzschild code to centres of galaxies. Please contact her if you have questions about the DYNAMITE installation guide.
 
-* Thomas Maindl (``thomas.maindl@univie.ac.at``)
+* Thomas Maindl (``thomas.maindl@univie.ac.at``, ``thomas.maindl@sdb.ltd``), scientific computing expert. Active contributor and adviser on DYNAMITE software architecture, class structure, coding, and building the code.
 
 * Glenn van de Ven (``glenn.vandeven@univie.ac.at``), one of the authors of the original triaxial Schwarzschild code that DYNAMITE is based upon.
 
