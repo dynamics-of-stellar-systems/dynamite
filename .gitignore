@@ -34,3 +34,6 @@ docs/tutorial_notebooks/.ipynb_checkpoints/*
 docs/tutorial_notebooks/NGC6278_output/*
 plotbin/.DS_Store
 plotbin/__pycache__/*
+build/*
+dist/*
+dynamite.egg-info/*
