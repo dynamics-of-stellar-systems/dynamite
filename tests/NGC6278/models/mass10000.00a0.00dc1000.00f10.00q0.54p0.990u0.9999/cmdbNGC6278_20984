@@ -1,9 +1,0 @@
-#!/bin/bash
-grep Writing datfil/orblib.dat.tmp && rm -f datfil/orblib.dat.tmp datfil/orblib.dat
-/home/alice/old_home/Work/Vienna/DYNAMITE/dynamite/dynamite/../legacy_fortran/orblib < infil/orblib.in >> datfil/orblib.log
-rm datfil/mass_qgrid.dat datfil/mass_radmass.dat datfil/mass_aper.dat
-/home/alice/old_home/Work/Vienna/DYNAMITE/dynamite/dynamite/../legacy_fortran/triaxmass       < infil/triaxmass.in 
-/home/alice/old_home/Work/Vienna/DYNAMITE/dynamite/dynamite/../legacy_fortran/triaxmassbin    < infil/triaxmassbin.in 
-# if the gzipped orbit library does not exist zip it
-test -e datfil/orblib.dat.bz2 || bzip2 -k datfil/orblib.dat
-rm datfil/orblib.dat

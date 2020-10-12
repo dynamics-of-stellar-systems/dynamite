@@ -1,7 +1,0 @@
-#!/bin/bash
-# if the gzipped orbit library exist unzip it
-test -e ../datfil/orblib.dat || bunzip2 -k  datfil/orblib.dat.bz2 
-test -e ../datfil/orblibbox.dat || bunzip2 -k  datfil/orblibbox.dat.bz2
-test -e ml5.00/nn_kinem.out || /home/alice/old_home/Work/Vienna/DYNAMITE/dynamite/dynamite/../legacy_fortran/triaxnnls_CRcut < ml5.00/nn.in >>ml5.00/nnls.log
-rm datfil/orblib.dat
-rm datfil/orblibbox.dat

@@ -1,2 +1,0 @@
-#!/bin/bash
-grep finished datfil/orbstart.dat || /home/alice/old_home/Work/Vienna/DYNAMITE/dynamite/dynamite/../legacy_fortran/orbitstart < infil/orbstart.in >> datfil/orbstart.log
