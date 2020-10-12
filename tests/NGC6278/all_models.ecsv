@@ -1,0 +1,25 @@
+# %ECSV 0.9
+# ---
+# datatype:
+# - {name: mass, datatype: float64}
+# - {name: a, datatype: float64}
+# - {name: dc, datatype: float64}
+# - {name: f, datatype: float64}
+# - {name: q, datatype: float64}
+# - {name: p, datatype: float64}
+# - {name: u, datatype: float64}
+# - {name: ml, datatype: float64}
+# - {name: chi2, datatype: float64}
+# - {name: kinchi2, datatype: float64}
+# - {name: time_modified, datatype: datetime64}
+# - {name: orblib_done, datatype: bool}
+# - {name: weights_done, datatype: bool}
+# - {name: all_done, datatype: bool}
+# - {name: which_iter, datatype: int64}
+# schema: astropy-2.0
+mass a dc f q p u ml chi2 kinchi2 time_modified orblib_done weights_done all_done which_iter
+100000.0 0.001 1000.0 10.0 0.54 0.99 0.9999 5.0 3690.820906 4274018.186703384 2020-10-09T10:24:06.000 True True True 0
+10000.0 0.001 1000.0 10.0 0.54 0.99 0.9999 5.0 12266.262302 4164524.9802124104 2020-10-09T10:24:58.000 True True True 1
+1000000.0 0.001 1000.0 10.0 0.54 0.99 0.9999 5.0 3870.1204839999996 4099178.8485854673 2020-10-09T10:25:53.000 True True True 1
+31622.776601683792 0.001 1000.0 10.0 0.54 0.99 0.9999 5.0 3756.289208 4130127.46569186 2020-10-09T10:26:45.000 True True True 2
+316227.7660168379 0.001 1000.0 10.0 0.54 0.99 0.9999 5.0 4730.463216 4130653.639628466 2020-10-09T10:27:35.000 True True True 2

@@ -1,0 +1,14 @@
+infil/parameters.in
+0                                  [ regularization strength, 0 = no regularization ]
+ml5.00/nn
+datfil/mass_qgrid.dat
+datfil/mass_aper.dat
+4	                           [ # of GH moments to constrain the model]
+infil/kin_data.dat
+0.0 0.0 0.0 0.0 0.3 0.3 0.6 0.6    [ systemic error of v, sigma, h3, h4... ]
+0.01                               [ relative error for intrinsic luminosity ]
+0.02                               [ relative error for projected SB ]
+1.0                                [ scale factor related to M/L, sqrt( (M/L)_k / (M/L)_ref ) ]
+datfil/orblib.dat
+datfil/orblibbox.dat
+1                                  [ nnls solver ]

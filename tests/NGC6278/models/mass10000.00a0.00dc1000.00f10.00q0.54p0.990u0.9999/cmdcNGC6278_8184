@@ -1,0 +1,6 @@
+#!/bin/bash
+grep Writing datfil/orblibbox.dat.tmp && rm -f datfil/orblibbox.dat.tmp datfil/orblibbox.dat
+/home/alice/old_home/Work/Vienna/DYNAMITE/dynamite/dynamite/../legacy_fortran/orblib < infil/orblibbox.in >> datfil/orblibbox.log
+# if the gzipped orbit library does not exist zip it
+test -e datfil/orblibbox.dat.bz2 || bzip2 -k datfil/orblibbox.dat
+rm datfil/orblibbox.dat

@@ -1,0 +1,18 @@
+#counterrotation_setupfile_version_1
+infil/parameters.in
+datfil/beginbox.dat
+200                            [orbital periods to intergrate orbits]
+50000                          [points to sample for each orbit in the merid. plane]
+1                              [starting orbit]
+-1                             [orbits  to intergrate; -1 --> all orbits]
+1.0d-5                         [accuracy]
+1                              [number of psfs of the kinematic cubes]
+1                              [# of gaussians components]
+1.0   1.06                    [weight, sigma]
+1                              [apertures]
+"infil/aperture.dat"
+1                              [use psf 1] 
+2719.8215332031  0.0000  203   [histogram]
+1                              [use binning for aperture 1] 
+"infil/bins.dat"
+datfil/orblibbox.dat 
