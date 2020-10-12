@@ -56,8 +56,6 @@ system_components:
                 value: 0.54
                 LaTeX: "$q_{min}$"
             p: # intrinsic B/A
-                gpe_parspace_settings:
-                    kernel: "to be defined"
                 par_generator_settings:
                     lo: 0.05
                     hi: 0.99
@@ -132,7 +130,7 @@ weight_solver_settings:
     ml_scale_factor: 1.0
     nnls_solver: 1
 
-parameter_space_settings: # don't put in physical system -> settings object
+parameter_space_settings:
     generator_type: "LegacyGridSearch"
     which_chi2: "chi2"
     generator_settings:
@@ -140,15 +138,15 @@ parameter_space_settings: # don't put in physical system -> settings object
         threshold_del_chi2: 0.5  # LegacyGridSearch setting
     stopping_criteria:
         min_delta_chi2 : 0.5
-        n_max_mods : 100
-        n_max_iter : 100
+        n_max_mods : 50
+        n_max_iter : 10
 
 legacy_settings:
     use_legacy_mode: True
     directory: "default"
 
 io_settings: # paths can be given with or without trailing slash
-    input_directory: "../../tests/NGC6278/input_data"
+    input_directory: "NGC6278_input/"
     output_directory: "NGC6278_output/"
     all_models_file: "all_models.ecsv"
 
