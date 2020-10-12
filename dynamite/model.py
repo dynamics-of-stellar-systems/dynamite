@@ -20,13 +20,14 @@ class AllModels(object):
         filename = settings.io_settings['all_models_file']
         filename = f'{outdir}{filename}'
         self.filename = filename
-        print(filename)
         self.parspace = parspace
         if from_file and os.path.isfile(filename):
-            print(f'reading {filename} into table attribute')
+            print('Previous models have been found:')
+            print(f'Reading {filename} into AllModels.table')
             self.read_completed_model_file()
         else:
-            print(f'making empty table attribute')
+            print('No previous models have been found:')
+            print(f'Making an empty table in AllModels.table')
             self.make_empty_table()
 
     def make_empty_table(self):
@@ -132,13 +133,40 @@ class AllModels(object):
 
 
 class Model(object):
-
+    '''
+    A DYNAMITE model. The Model can be run by running the methods (i)
+    get_orblib, (ii) get_weights, (iii) (in the future) do_orbit_colouring.
+    Ruuning each of these methods will adds a new attribute to the model, e.g.
+    model.get_orblib(...) --> creates an attribute --> model.orblib
+    model.get_weights(...) --> creates an attribute --> model.weight_solver
+    '''
     def __init__(self,
                  system=None,
                  settings=None,
-                 parset=None,
+                 executor=None,
                  parspace=None,
-                 executor=None):
+                 parset=None):
+        """
+        Parameters
+        ----------
+        system : dyn.physical_system.System
+            Object holding information about the physical system being modelled.
+        settings : dyn.config_reader.Settings
+            Object holding other settings
+        parspace : dyn.parameter_space.ParameterSpace
+            A list of parameter objects for this model
+        executor : dyn.executor.Executor
+            Handles differences between execting models on your local machines
+            vs submission on clusters, HPC modes etc
+        parset : row of an Astropy Table
+            contains the values of the potential parameters for this model
+
+        Returns
+        -------
+        Nothing returned. Attributes holidng outputs are are added to the object
+        when methods are run.
+
+        """
         self.system = system
         self.settings = settings
         self.parset = parset
@@ -209,12 +237,14 @@ class LegacySchwarzschildModel(Model):
         if not check1 or not check2:
             # prepare the fortran input files for orblib
             self.create_fortran_input_orblib(self.directory_noml+'infil/')
-            # TODO: create these input files via prepare_data
-            shutil.copyfile(self.in_dir+'kin_data.dat',
-                            self.directory_noml+'infil/kin_data.dat')
-            shutil.copyfile(self.in_dir+'aperture.dat',
+            kinematics = self.system.cmp_list[2].kinematic_data[0]
+            old_filename = self.directory_noml+'infil/kin_data.dat'
+            kinematics.convert_to_old_format(old_filename)
+            aperture_file = self.in_dir + kinematics.aperturefile
+            shutil.copyfile(aperture_file,
                             self.directory_noml+'infil/aperture.dat')
-            shutil.copyfile(self.in_dir+'bins.dat',
+            binfile = self.in_dir + kinematics.binfile
+            shutil.copyfile(binfile,
                             self.directory_noml+'infil/bins.dat')
             # calculate orbit libary
             self.orblib.get_orbit_library()
