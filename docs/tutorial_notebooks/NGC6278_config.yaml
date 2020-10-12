@@ -37,9 +37,15 @@ system_components:
                 value: 10.0
                 LaTeX: "$c_{NFW}$"
             f: # NFW Darkmatter fraction
-                fixed: True
-                value: 100.0
+                fixed: False
+                value: 1.0
                 LaTeX: "$log(M_{200}/M_{star})$"
+                logarithmic: True
+                par_generator_settings:
+                    lo: 0.
+                    hi: 3.
+                    step: 0.05
+                    minstep: 0.01
         type: NFW
         include: True
         contributes_to_potential: True
@@ -47,30 +53,15 @@ system_components:
     stars:
         parameters:
             q: # intrinsic flattening (C/A)
-                par_generator_settings:
-                    lo: 0.05
-                    hi: 0.99
-                    step: 0.04
-                    minstep: 0.02
                 fixed: True
                 value: 0.54
                 LaTeX: "$q_{min}$"
             p: # intrinsic B/A
-                par_generator_settings:
-                    lo: 0.05
-                    hi: 0.99
-                    step: 0.02
-                    minstep: 0.01
-                fixed: False
+                fixed: True
                 value: 0.99
                 LaTeX: "$p_{min}$"
             u: # sigma_obs / sigma_intrinsic
-                par_generator_settings:
-                    lo: 0.95
-                    hi: 1.0
-                    step: 0.01
-                    minstep: 0.01
-                fixed: False
+                fixed: True
                 value: 0.9999
                 LaTeX: "$u_{min}$"
         type: "TriaxialVisibleComponent" # class name
