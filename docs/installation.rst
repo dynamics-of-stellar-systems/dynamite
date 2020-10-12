@@ -384,6 +384,22 @@ You can check the output in the directory ``.../tests/NGC6278_output/plots``, wh
 .. image:: orbit_losvds.png
 
 
+NNLS test run
+-------------
+
+To check that also the NNLS (Non-Negative Least Square) part of the code is also working without problems, you can run::
+
+    python test_nnls.py
+
+in the ``.../tests/`` directory, which takes less than two minutes to run.
+
+You can check the output in the directory ``.../tests/NGC6278_output/plots``, where you should find a plot called ``chi2_vs_model_id.png``, looking like the following figure.
+
+.. image:: chi2_vs_model_id.png
+
+You should not worry if the red crosses in the image you obtain are slightly outside the black circles, the code is running correctly.
+
+
 ..
     NGC 6278 test run
     -----------------
