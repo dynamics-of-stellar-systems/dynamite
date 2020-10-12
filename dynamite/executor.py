@@ -165,8 +165,8 @@ class Slurm(Local):
                  **kwargs):
         super().__init__(**kwargs)
         # example of how to access the executor settings:
-        print(self.executor_settings['example_slurm_setting_1'])
-        print(self.executor_settings['example_slurm_setting_2'])
+        # print(self.executor_settings['example_slurm_setting_1'])
+        # print(self.executor_settings['example_slurm_setting_2'])
 
 
 

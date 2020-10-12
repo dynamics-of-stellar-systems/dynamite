@@ -37,9 +37,15 @@ system_components:
                 value: 10.0
                 LaTeX: "$c_{NFW}$"
             f: # NFW Darkmatter fraction
-                fixed: True
-                value: 100.0
+                fixed: False
+                value: 1.0
                 LaTeX: "$log(M_{200}/M_{star})$"
+                logarithmic: True
+                par_generator_settings:
+                    lo: 0.
+                    hi: 3.
+                    step: 0.05
+                    minstep: 0.01
         type: NFW
         include: True
         contributes_to_potential: True
@@ -47,32 +53,15 @@ system_components:
     stars:
         parameters:
             q: # intrinsic flattening (C/A)
-                par_generator_settings:
-                    lo: 0.05
-                    hi: 0.99
-                    step: 0.04
-                    minstep: 0.02
                 fixed: True
                 value: 0.54
                 LaTeX: "$q_{min}$"
             p: # intrinsic B/A
-                gpe_parspace_settings:
-                    kernel: "to be defined"
-                par_generator_settings:
-                    lo: 0.05
-                    hi: 0.99
-                    step: 0.02
-                    minstep: 0.01
-                fixed: False
+                fixed: True
                 value: 0.99
                 LaTeX: "$p_{min}$"
             u: # sigma_obs / sigma_intrinsic
-                par_generator_settings:
-                    lo: 0.95
-                    hi: 1.0
-                    step: 0.01
-                    minstep: 0.01
-                fixed: False
+                fixed: True
                 value: 0.9999
                 LaTeX: "$u_{min}$"
         type: "TriaxialVisibleComponent" # class name
@@ -86,7 +75,6 @@ system_components:
                 datafile: "gauss_hermite_kins.ecvs"  # both discr. & integrated
                 aperturefile: "aperture.dat" # integrated only
                 binfile: "bins.dat"          # integrated only
-                maskfile: maskfile.dat       # made-up filename
 
 system_parameters: # physical system standalone parameters
     ml: # M/L
@@ -133,7 +121,7 @@ weight_solver_settings:
     ml_scale_factor: 1.0
     nnls_solver: 1
 
-parameter_space_settings: # don't put in physical system -> settings object
+parameter_space_settings:
     generator_type: "LegacyGridSearch"
     which_chi2: "chi2"
     generator_settings:
@@ -141,19 +129,17 @@ parameter_space_settings: # don't put in physical system -> settings object
         threshold_del_chi2: 0.5  # LegacyGridSearch setting
     stopping_criteria:
         min_delta_chi2 : 0.5
-        n_max_mods : 100
-        n_max_iter : 100
+        n_max_mods : 50
+        n_max_iter : 10
 
 legacy_settings:
     use_legacy_mode: True
     directory: "default"
 
 io_settings: # paths can be given with or without trailing slash
-    input_directory: "../../tests/NGC6278/input_data"
+    input_directory: "NGC6278_input/"
     output_directory: "NGC6278_output/"
     all_models_file: "all_models.ecsv"
 
 executor_settings:
-    type: "Slurm"     # e.g. Local, Slurm, etc etc
-    example_slurm_setting_1: 'I love Slurm!'
-    example_slurm_setting_2: 'I love Slurm even more!!'
+    type: "Local"     # e.g. Local, Slurm, etc etc
