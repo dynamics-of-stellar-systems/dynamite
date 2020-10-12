@@ -37,3 +37,4 @@ plotbin/__pycache__/*
 build/*
 dist/*
 dynamite.egg-info/*
+list_of_created_files.txt
