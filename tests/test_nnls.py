@@ -83,15 +83,24 @@ def run_user_test(stat_mode=False):
         plt.savefig(plotfile_ml)
 
         # compare to chi2 in chi2_compare.dat
-        plt.figure()
         chi2_compare = table.Table.read(stat_file, format='ascii')
-        plt.vlines(chi2_compare['model_id'],
-                   chi2_compare['chi2_min'],
-                   chi2_compare['chi2_max'])
+        radius = (np.max(chi2_compare['chi2_average']) - \
+                 np.min(chi2_compare['chi2_average'])) / 10
+        print(f'Radius={radius}')
+        plt.figure()
+        plt.scatter(chi2_compare['model_id'],
+                    chi2_compare['chi2_average'],
+                    s=400,
+                    facecolors='none',
+                    edgecolors='black')
+        # plt.vlines(chi2_compare['model_id'],
+        #            chi2_compare['chi2_min'],
+        #            chi2_compare['chi2_max'])
         plt.plot([i for i in range(len(c.all_models.table))],
                   c.all_models.table['chi2'],
                   'rx')
-        plt.gca().set_title('calculated chi2 vs should-be range')
+        plt.gca().set_title('calculated chi2 (red) vs should-be range '
+                            '(black circles)')
         plt.xlabel('model_id')
         plt.xticks(range(len(c.all_models.table)))
         plt.ylabel('chi2')
