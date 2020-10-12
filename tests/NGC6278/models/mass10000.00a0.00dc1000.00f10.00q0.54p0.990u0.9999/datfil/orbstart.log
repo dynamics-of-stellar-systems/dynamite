@@ -1,0 +1,64 @@
+ Gravitational Constant in km^3/(s^2 Msun)   132746089775.99997     
+ parsec in km   30856775810788.379     
+ 
+ Give the name of the file with input parameters
+   * Conversion from arcsec to km:   5977930912419636.0     
+ The softening lenght of the black hole is    202641725.84473339       Schwarschild radii
+  Setting up triaxial potential routines
+ middle axis ratio P
+  0.99716328163156698       0.99463559878399632       0.99999714214578317       0.98999999986191867       0.99999714214578317       0.98999999986191867     
+ minor  axis ratio q
+  0.89348951579106328       0.78682946077209115       0.99989826110567903       0.54000000000276049       0.99989826110567903       0.54000000000276049     
+ triaxiality parameters:
+   2.8091474129707882E-002   2.8091474129707968E-002   2.8091474129857311E-002   2.8091474129707496E-002   2.8091474129857311E-002   2.8091474129707496E-002
+ Unitless Length of the projected major axis: U
+  0.99997153172294051       0.99994623226994572       0.99999997127932383       0.99989999999863488       0.99999997127932383       0.99989999999863477     
+   * Masses of the individual gausses
+   6914368632.4868689        9561332395.7930069        3214595868.8074231        17883845280.078598        5266848827.5254250        38402767192.035011     
+ Total mass (Msun) projected:   81243758196.726334     
+ Total mass (Msun) intrinsic:   81243758196.726318     
+   Testing the accuracy of the approximation regimes.
+   Triaxial potential routines setup finished
+ Parameters of NFW concentration and fraction   1000.0000000000000        10.000000000000000     
+ Parameters of NFW potential (rho_c in solarmass/km^3 and r_c in km):    5.6773235010685904E-038   5775935977663766.0     
+ Total stellar mass is (Msun):    81243758196.726334     
+ Total dark halo mass (M200 in Msun):    812437581967.26355     
+   *  Reading interpolation table from disk.
+   *  Interpolation file could not be read
+  Setting up interpolating grid
+ inner and outer radius of interpolation
+   7.9199965114229443E-003   185.39741530572491     
+    Time spent initializing :   44.2555199     seconds
+   *  Writing interpolation table to disk.
+   * Testing accuracy of interpolation
+   * Max relative acceleration error   2.4735376716988421E-005
+   * Mean relative acceleration error   3.7420267149497540E-006
+   * Potential interpolation setup
+ Maximum triaxility:   2.8091474129857311E-002
+ Radiia of the energies in arcsec:
+  0.79199966884486661        98.000885537094035     
+ Potentials of the energies
+   2695196.6569134290        162787.47259576578     
+ Finding R_eq
+ Finding inner tubes
+           1           4  0.641127765               2           3
+           1           3  0.646639228               4           3
+           1           2  0.647041202      0.731622338               5
+           1           1  0.647312045      0.733975708               5
+ irregular energy
+           2           4  0.535928667               2           3
+           2           3  0.535719633               4           3
+           2           2  0.535719633      0.617240429               3
+           2           1  0.535755873      0.617735028               5
+ irregular energy
+ galaxy is triaxial
+ Finding outer tubes
+ Short to box conversion at  0.96411277407861451      , which is to close enough to the outer boundary
+ Short to box conversion at  0.95359286500362883      , which is to close enough to the outer boundary
+ last irregular energy is :           0
+ moved for dithering to:           0
+  Writing datfil/begin.dat                                                                                                                                                                                                                                                
+  Writing datfil/beginbox.dat                                                                                                                                                                                                                                             
+   * Number of times the points where inside the interpolation:           0
+   * Number of times the points where outside the interpolation:          87
+   * Potential interpolation stopped

@@ -1,0 +1,154 @@
+   * Read parameters.in
+ Gravitational Constant in km^3/(s^2 Msun)   132746089775.99997     
+ parsec in km   30856775810788.379     
+ 
+ Give the name of the file with input parameters
+   * Conversion from arcsec to km:   5977930912419636.0     
+ The softening lenght of the black hole is    20264172.584473342       Schwarschild radii
+  Give the regularization strenght
+   0.0000000000000000     
+   * Regularisation Disabled
+   * Give root file name for results
+ ml5.00/nn
+  
+ Give input file with intrinsic masses
+ This is mass mass_qgrid.dat
+ datfil/mass_qgrid.dat
+  Number of intrinsic mass constraints:
+           6           6          10 =         360
+ Give input file with intrinsic masses
+ This is mass mass_qgrid.dat
+ datfil/mass_radmass.dat                                                                                                                                                                                                                                         
+  Number of energies:
+           2 =           2
+   5.1340259378727528E-002  0.94865968916509291     
+ Give input file with projected mass
+ at the kinematical constraint points
+ datfil/mass_aper.dat                                                                                                                                                                                                                                            
+ number of aperture constraints:         152
+   Give the number of hermite moments to be fitted
+ Give input file with observed kinematical data
+ at the constraint points
+ infil/kin_data.dat                                                                                                                                                                                                                                              
+ ntemp,nconstr         152         152           4
+   * reading kinematics           4
+ Give the kinematic systematic error for each moment.
+   0.0000000000000000        0.0000000000000000        0.0000000000000000        0.0000000000000000     
+ Total constraints allocated:        1121
+  Give the relative error on the intrinsic mass
+   1.0000000000000000E-002
+   * Adding total mass equals   0.99999994836654482       constraint
+   * Constraint on total mass is within:    5.1633455178112797E-008
+  * Give the relative error on the projected mass in the apertures
+   2.0000000000000000E-002
+   * Storing Velocity and Sigma
+   * Storing Hermite moments
+   * What is the velocity scaling factor?
+   1.0000000000000000     
+   * Reading orbit libraries
+ Give first orbitlibrary name:
+ datfil/orblib.dat                                                                                                                                                                                                                                               
+          24           2           4           3           1
+          16           6           6          10
+   * Intrinisic grid radii:
+   0.0000000000000000        1.1963892415187645        1.8072573430610992        2.7300304873203221        4.1239652395461128        6.2296334696532716        9.4104413863818319        14.215347904161083        21.473606575858032        32.437882103452644        9800.0885537094036     
+ Give second orbitlibrary name:
+ Remember that this library is not (velocity) mirrored
+         152         101   13.398135631542365     
+  Allocating Matrix :        1121          72
+  Reading orbitlibrary :           1
+  Orbit :           1           0
+  Orbit :           2           2
+  Orbit :           3           4
+  Orbit :           4           6
+  Orbit :           5           8
+  Orbit :           6          10
+  Orbit :           7          12
+  Orbit :           8          14
+  Orbit :           9          16
+  Orbit :          10          18
+  Orbit :          11          20
+  Orbit :          12          22
+  Orbit :          13          24
+  Orbit :          14          26
+  Orbit :          15          28
+  Orbit :          16          30
+  Orbit :          17          32
+  Orbit :          18          34
+  Orbit :          19          36
+  Orbit :          20          38
+  Orbit :          21          40
+  Orbit :          22          42
+  Orbit :          23          44
+  Orbit :          24          46
+  Reading orbitlibrary :           2
+  Orbit :           1          48
+  Orbit :           2          49
+  Orbit :           3          50
+  Orbit :           4          51
+  Orbit :           5          52
+  Orbit :           6          53
+  Orbit :           7          54
+  Orbit :           8          55
+  Orbit :           9          56
+  Orbit :          10          57
+  Orbit :          11          58
+  Orbit :          12          59
+  Orbit :          13          60
+  Orbit :          14          61
+  Orbit :          15          62
+  Orbit :          16          63
+  Orbit :          17          64
+  Orbit :          18          65
+  Orbit :          19          66
+  Orbit :          20          67
+  Orbit :          21          68
+  Orbit :          22          69
+  Orbit :          23          70
+  Orbit :          24          71
+   * Orbits in fit :          72
+  Done
+ Which solver do you want?
+ (0) Least squares with bounds and constraints FitZeroMoment
+ (1) NNLS 
+ (2) NNLS and save the matrix to disk to save memory
+ (3) Read solution from ./datfil/abel_orb.out
+ (4) Least squares with bounds and constraints savetodisk,FitZeroMoment
+ (5) Least squares with bounds and constraints ConstrainZeroMoment (Preferred)
+ (6) Least squares with bounds and constraints savetodisk,ConstrainZeroMoment
+           1
+ Starting Solver
+  Starting NNLS in function
+ doing NNLS fit ...
+  
+ NNLS fit performed
+  2.060564163111E+03     1
+  
+ sum orbweight :  0.99999994351912114     
+  Making predictions
+  mass   360        4.026610E+06        2.006641E+03        11185.026769
+     0   152        2.156242E+05        4.643535E+02         1418.580286
+     1   152        9.108210E+01        9.543694E+00            0.599224
+     2   152        3.573701E+03        5.978044E+01           23.511192
+     3   152        2.259131E+01        4.753031E+00            0.148627
+     4   152        3.446496E+00        1.856474E+00            0.022674
+   reg     0        0.000000E+00        0.000000E+00                 NaN
+   total  1121        4.245925E+06        2.060564E+03         3787.622356
+   kin   608        3.690821E+03        6.075213E+01            6.070429
+   * Reading orbit libraries
+  Reading orbitlibrary :           1
+  Reading orbitlibrary :           2
+   done reading orblibs
+ writing ml5.00/nnintrinsic_moments.out
+ Redraw          25
+ Redraw         125
+ Redraw         625
+ Redraw          25
+ Redraw          25
+ Redraw         125
+ Redraw         625
+ Redraw          25
+ Redraw         125
+ Redraw         625
+ Redraw        3125
+ writing kinem.out

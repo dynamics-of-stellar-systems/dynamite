@@ -46,7 +46,8 @@ If you are using macOS, you will need ``gfortran``, which can be installed in a 
 
 **Important:** If you install the GCC package, do **not** install GCC 10 or higher as we noted  significant differences with this version.
 
-**MacOS:**
+macOS
+^^^^^
 
 In the following, we explain the installation of the GCC Fortran compiler via Homebrew and via MacPorts. **Homebrew** can be used to install the latest GCC and all additional libraries in the following way::
 
@@ -87,17 +88,7 @@ which returns something like ``/opt/local/bin/gfortran``.
 Python
 ------
 
-The user is communicating with the Fortran source code via Python. The basic requirement for DYNAMITE is therefore a reasonably current version of Python (tested with Legacy Python 2.7, Python 3.6, Python 3.7, and Python 3.8) and the following python libraries:
-
-* astropy
-* PyYAML
-
-* numpy
-* matplotlib
-
-* glob
-* os
-* shutil
+The user is communicating with the Fortran source code via Python. The basic requirement for DYNAMITE is therefore a reasonably current version of Python (tested with Legacy Python 2.7, Python 3.6, Python 3.7, and Python 3.8).
 
 
 
@@ -108,9 +99,9 @@ The user is communicating with the Fortran source code via Python. The basic req
 Known problems
 --------------
 
-* Make sure that the compiler collection is installed with the proper libraries. If you get problems running Galahad or DYNAMITE, try to reinstall GCC and make sure that the Fortran compiler is included in your installation
+* Make sure that the compiler collection is installed with the proper libraries. If you get problems running Galahad or DYNAMITE, try to reinstall GCC and make sure that the Fortran compiler is included in your installation.
 
-* Do not use GCC 10 or higher
+* Do not use GCC 10 or higher!
 
 
 
@@ -123,11 +114,12 @@ Known problems
 Installation and Configure Procedure
 ====================================
 
-Download from `github <https://github.com/dynamics-of-stellar-systems/dynamite>`_, unzip and move the DYNAMITE code to the directory in which you want to install it. Make sure that your system fulfills the :ref:`software requirements <software-requirements>` (in particular the Fortran compiler).
+Download from `github <https://github.com/dynamics-of-stellar-systems/dynamite>`_, unzip and move the DYNAMITE code to the directory in which you want to install it. Make sure that your system fulfills the :ref:`software-requirements` listed above (in particular the Fortran compiler).
 
+The installation of DYNAMITE consists of three steps, as detailed below.
 
-Installation of GALAHAD
------------------------
+1. Installation of GALAHAD
+--------------------------
 
 GALAHAD is a "library of thread-safe Fortran 90 packages for large-scale nonlinear optimization". The DYNAMITE code comes with Version 2.3.  An updated version of GALAHAD could be obtained `here <http://www.galahad.rl.ac.uk/doc.html>`_ (last updated in 2018), but the most recent version seems to not work. The GALAHAD package included in DYNAMITE can be found in the folder ``.../legacy_fortran``.
 
@@ -139,8 +131,8 @@ In the following installation, a number of prompts start. The answers differ for
 
 During the installation, your terminal might express several warnings. These are however not critical if your installation finishes properly.
 
-Install Galahad, Version 2.3 - Prompt answers for Ubuntu
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Install Galahad, Version 2.3 - Prompt answers for Linux
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 Prompts from ``./install_galahad``. The answers for the recommended installation are marked in bold.
 
@@ -189,14 +181,14 @@ Prompts from ``./install_galahad``. The answers for the recommended installation
 11. FILTRANE and its interface to AMPL
 12. Just FILTRANE and its dependencies
 
-**By default, the CUTEr you wish to use is installed in**
+**By default, the CUTEr you wish to use is installed in ... Is this OK?**
 
 * y(es)
 * **n(o) <--**
 
 **Enter alternative directory for CUTEr:**
 
-  | ``/Users/.../dynamite/legacy_fortran/cuter`` (Note: Put your full directory path here)
+  | ``/home/.../dynamite/legacy_fortran/cuter`` (Note: Put your full directory path here)
 
 **Do you now wish to compile the package subset you selected earlier?**
 
@@ -213,7 +205,7 @@ Prompts from ``./install_galahad``. The answers for the recommended installation
 * y(es)
 * **n(o) <--**
 
-Install Galahad, Version 2.3 - Prompt answers for MacOS
+Install Galahad, Version 2.3 - Prompt answers for macOS
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 Prompts from ``./install_galahad``. The answers for the recommended installation are marked in bold.
 
@@ -253,7 +245,7 @@ When using MacOS:
 7. **The QP packages and their interfaces to CUTEr <--**
 8. ...
 
-**By default, the CUTEr you wish to use is installed in**
+**By default, the CUTEr you wish to use is installed in ... Is this OK?**
 
 * y(es)
 * **n(o) <--**
@@ -289,25 +281,25 @@ Set environment variables and path as prompted at the end of successful Galahad 
 Output from GALAHAD::
 
     Remember to set the environment variable
-    GALAHAD to /home/fs71474/sthater/legacy_fortran/galahad-2.3
+     GALAHAD to /home/.../legacy_fortran/galahad-2.3
     In addition, please update your MANPATH to include
-    /home/fs71474/sthater/legacy_fortran/galahad-2.3/man
+       /home/.../legacy_fortran/galahad-2.3/man
     and your PATH to include
-    /home/fs71474/sthater/legacy_fortran/galahad-2.3/bin
+       /home/.../legacy_fortran/galahad-2.3/bin
 
 Update in .bashrc::
 
-    export GALAHAD="/home/fs71474/sthater/legacy_fortran/galahad-2.3"
-    export MANPATH="/home/fs71474/sthater/legacy_fortran/galahad-2.3/man:$/home/fs71474/sthater/legacy_fortran/galahad-2.3/man"
-    export PATH="/home/fs71474/sthater/legacy_fortran/galahad-2.3/bin:$PATH"
+    export GALAHAD="/home/.../legacy_fortran/galahad-2.3"
+    export MANPATH="$MANPATH:/home/.../legacy_fortran/galahad-2.3/man"
+    export PATH="$PATH:/home/.../legacy_fortran/galahad-2.3/bin"
 
 
-Compiling the DYNAMITE code
----------------------------
+2. Compiling the Fortran programs
+----------------------------------
 
-Go back to ``.../legacy_fortran``. Before you proceed, it is necessary to make three changes to the ``Makefile``:
+Go back to ``.../legacy_fortran``. Before you proceed, it is necessary to make the following three changes to the ``Makefile``:
 
-* Change the local path of Galahad (``GALAHADDIR``) to the path of your GALAHAD variable in the .bashrc (something like ``/Users/.../.../legacy_fortran/galahad-2.3``).
+* Change the local path of Galahad (``GALAHADDIR``) to the path of your GALAHAD variable in the .bashrc (something like ``/home/.../.../legacy_fortran/galahad-2.3``).
 * Select the appropriate choice of ``GALAHADTYPE`` variable depending on your system (possible options are commented out)
 * Look for the definition of the ``all:`` (this should be right after the definition of the ``GALAHADTYPE`` variable). Make sure that ``triaxgasnnls`` is **NOT** in the list.
 
@@ -317,60 +309,97 @@ Proceed with the following command from the terminal::
 
     make all
 
-Your terminal will likely express several warnings again, but these are not critical and refer to different coding conventions in earlier fortran versions.
+Your terminal will likely express several warnings again, but these are not critical and refer to different coding conventions in earlier Fortran versions. Now, take a look in the directory ``.../legacy_fortran`` and check that you have .f90 files and executables (no ending) for:
 
-DYNAMITE should now be installed and ready to be run! You can try the test run as explained in Test_ run.
+* modelgen
+* orbitstart
+* orblib
+* partgen
+* triaxmass
+* triaxmassbin
+* triaxnnls_CRcut
+
+
+3. Installing DYNAMITE
+----------------------
+
+If all these files are there, you can proceed with the installation, by going back to ``.../dynamite`` and running::
+
+    python setup.py install
+
+To make uninstalling easier, it is useful to record the files which have been created when you install the package. This can be done by::
+
+    python setup.py install --record list_of_created_files.txt
+
+Several Python packages are installed in this way, including:
+
+      * astropy
+      * PyYAML
+      * numpy
+      * matplotlib
+      * glob
+      * os
+      * shutil
+
+DYNAMITE should now be installed and ready to be run! You can now try the examples proposed in :ref:`test-run`.
 
 
 Uninstalling DYNAMITE from the system
 -------------------------------------
-With the following command from the terminal::
+
+To remove all compiled Fortran codes, go back to ``.../legacy_fortran``, and type the following command from the terminal::
 
     make distclean
 
-all compiled Fortran codes are removed.
+If you used the ``--record`` option suggested above when installing the python part of the code, you can easily uninstall it by manually removing all the files listed in the text file.
+
+
+..
+    Post-Installation
+    =================
+
+    Post-installation checklist
+    ---------------------------
+
+    Congratulations! You have successfully installed DYNAMITE on your system!
 
 
 
-Post-Installation
-=================
+.. _test-run:
 
-Post-installation checklist
----------------------------
+Test runs
+=========
 
-Congratulations! You have successfully installed DYNAMITE on your system!
+LOSVD test run
+--------------
 
-Please check, that you have the following files in ``.../legacy_fortran``.
+As a first check, to make sure that everything is working in the correct way, you can carry out this simple and quick test. Go into the directory ``.../tests/``, and run::
 
-.f90 files and executables (no ending) for
+    python test_orbit_losvds.py
 
-* orbitstart
-* orblib
-* triaxmass
-* triaxmassbin
-* triaxnnls_CRcut
-* modelgen
-* partgen
+This code takes about one minute to run.
 
-.. _Test:
+You can check the output in the directory ``.../tests/NGC6278_output/plots``, where you should find a plot called ``orbit_losvds.png``, looking like the following figure.
 
-Test run
---------
+.. image:: orbit_losvds.png
 
-You can have a test run of the Dynamite code and the analysis scripts on the S0 galaxy NGC 6278. In the end you should get similar plots to the ones shown in `Zhu et al. 2018, MNRAS, 473, 3000 <https://arxiv.org/pdf/1709.06649.pdf>`_.
-For this testrun, we have created a data directory in ``/Users/.../tests/NGC6278``, containing all the necessary data. This directory only includes the configuration file ``user_test_config.yaml`` and a folder ``input_data``, which contains the input files of the DYNAMITE code. If you run the code with your own data, make sure that your galaxy folder (named by the object name) has all input files with the parameters set properly for your galaxy.
 
-Go now to the folder:
+..
+    NGC 6278 test run
+    -----------------
 
-``.../tests``
+    You can have a test run of the DYNAMITE code and the analysis scripts on the S0 galaxy NGC 6278. In the end you should get similar plots to the ones shown in `Zhu et al. 2018, MNRAS, 473, 3000 <https://arxiv.org/pdf/1709.06649.pdf>`_.
+    For this test run, we have created a data directory in ``.../tests/NGC6278``, containing all the necessary data. This directory only includes the configuration file ``user_test_config.yaml`` and a folder ``input_data``, which contains the input files of the DYNAMITE code. If you run the code with your own data, make sure that your galaxy folder (named by the object name) has all input files with the parameters set properly for your galaxy.
 
-Finally, we can start our first models now. In the terminal, type ::
+    To run this test, go to the folder ``.../tests`` and start your model by typing in the terminal::
 
-    python user_test
+        python user_test
 
 
 
 Troubleshooting
 ===============
 
-...
+* Do not use GCC 10 or higher!
+
+(under construction...)
