@@ -131,6 +131,8 @@ class LegacyOrbitLibrary(OrbitLibrary):
                 if (ivmin <= ivmax):
                     tmp = orblibf.read_reals(float)
                     velhist[j, ivmin+nvhist:ivmax+nvhist+1, k] = tmp
+        # close the Fortran file object
+        orblibf.close()
         subprocess.call(['rm', f'datfil/{fileroot}.dat'])
         os.chdir(cur_dir)
         vedg_pos = np.arange(1, nbins_vhist+1, 2) * dvhist/2.
