@@ -49,7 +49,7 @@ setuptools.setup(
             "../legacy_fortran/triaxmass",
             "../legacy_fortran/triaxmassbin",
             "../legacy_fortran/triaxnnls_CRcut",
-            "../plotbin/*",
+            "../plotbin4dyn/*",
         ]
     },
 )

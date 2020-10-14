@@ -1,8 +1,12 @@
 import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib import colors
-from plotbin import sauron_colormap as pb_sauron_colormap
-from plotbin import cap_display_pixels
+from plotbin4dyn import sauron_colormap as pb_sauron_colormap
+from plotbin4dyn import cap_display_pixels
+
+# TODO: use Capellari's latest version of plotbin rather than (the locally
+# packaged up version which we've called plotbin4dyn). This will require
+# re-writing something in plot_kinematic_maps
 
 class Plotter(object):
 
