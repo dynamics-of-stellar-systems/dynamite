@@ -15,6 +15,21 @@ class OrbitLibrary(object):
     def __init__(self,
                  system=None,
                  settings=None):
+        """A class for orbit libraries.
+
+        Parameters
+        ----------
+        system : type
+            Description of parameter `system`.
+        settings : type
+            Description of parameter `settings`.
+
+        Returns
+        -------
+        type
+            Description of returned object.
+
+        """
         self.system = system
         self.settings = settings
         self.generate_ics()
