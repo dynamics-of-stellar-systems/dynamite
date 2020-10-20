@@ -147,7 +147,6 @@ weight_solver_settings:
     GH_sys_err: '0.0 0.0 0.0 0.0 0.3 0.3 0.6 0.6'
     lum_intr_rel_err: 0.01
     sb_proj_rel_err: 0.02
-    ml_scale_factor: 1.0
     nnls_solver: 1
 
 parameter_space_settings:
