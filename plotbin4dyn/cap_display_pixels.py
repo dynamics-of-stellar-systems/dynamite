@@ -44,7 +44,7 @@ from matplotlib.ticker import MaxNLocator
 from scipy.spatial import distance
 import numpy as np
 
-from plotbin.sauron_colormap import register_sauron_colormap
+from plotbin4dyn.sauron_colormap import register_sauron_colormap
 
 ##############################################################################
 
