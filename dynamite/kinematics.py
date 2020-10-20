@@ -3,7 +3,6 @@ import data
 import numpy as np
 from scipy import special, stats
 from astropy import table
-from astropy.io import ascii
 
 # TODO: move some of the kwargs from the init of 'Kinematics' to the init of
 # higher level data classes, e.g. all Integrated objects will need aperturefile,

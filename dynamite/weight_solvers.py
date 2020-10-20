@@ -1,7 +1,5 @@
 import os
 import numpy as np
-import subprocess
-import orblib
 from astropy import table
 
 class WeightSolver(object):

@@ -1,5 +1,4 @@
 import os
-import glob
 import shutil #used to easily copy files
 import numpy as np
 from astropy import table
