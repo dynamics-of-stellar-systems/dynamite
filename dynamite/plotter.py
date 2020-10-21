@@ -1,6 +1,5 @@
 import numpy as np
 import matplotlib.pyplot as plt
-from matplotlib import colors
 from plotbin4dyn import sauron_colormap as pb_sauron_colormap
 from plotbin4dyn import cap_display_pixels
 

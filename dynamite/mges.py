@@ -1,8 +1,6 @@
 import data
 import numpy as np
 from astropy import table
-from astropy.io import ascii
-
 
 class MGE(data.Data):
 
