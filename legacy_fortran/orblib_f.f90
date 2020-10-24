@@ -797,9 +797,9 @@ contains
     ! vel (:, (r,z,theta))
     real (kind=dp),intent(in ),dimension(size(pos,1),3) :: vel
     ! proj(:,(x',y'))
-    real (kind=dp),intent(out),dimension(:,:)           :: proj
+    real (kind=dp),intent(out),dimension(size(pos,1),2)           :: proj
     ! losvd (:)
-    real (kind=dp),intent(out),dimension(:)             :: losvel
+    real (kind=dp),intent(out),dimension(size(pos,1))             :: losvel
     integer (kind=i4b),intent(in)                       :: type,n
   !----------------------------------------------------------------------
     real (kind=dp)              :: t1, t2, t3,theta,phi
