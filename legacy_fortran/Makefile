@@ -10,7 +10,13 @@
 FAST=TRUE
 #PROFILE=TRUE
 ABEL_NO_INTERPOL=true
+compilerpath=/home/edward/gcc-10.1.0/bin
+#compilerpath=/home/edward/gcc-9.3.0/bin
 compiler=gfortran
+flags=-fno-use-linker-plugin
+GALAHADDIR=/home/edward/src/galahad
+#GALAHADDIR=/home/edward/src/dynamite/legacy_fortran/galahad-2.3
+GALAHADTYPE=pc.lnx.gfo/double
 
 #PROFILEDIR=~/profile/
 
@@ -38,9 +44,9 @@ endif
 endif
 
 
-fortran90 = $(compiler) $(flags)     -c
-fortran77 = $(compiler) $(flags) -W0 -c
-link      = $(compiler) $(flags)     -o
+fortran90 = $(compilerpath)/$(compiler) $(flags)     -c
+fortran77 = $(compilerpath)/$(compiler) $(flags) -W0 -c
+link      = $(compilerpath)/$(compiler) $(flags)     -o
 endif
 
 ifeq ($(compiler),F)
@@ -57,13 +63,13 @@ endif
 
 ifeq ($(compiler),gfortran)
   ifdef FAST
-   flags =    -ffast-math -O3 -march=native -fomit-frame-pointer -m64
+   flags +=    -ffast-math -O3 -march=native -fomit-frame-pointer -m64
    flags +=    -funroll-loops -ftree-loop-linear
 #   flags += -fno-protect-parens
 #   flags +=  -fwhole-file #-fwhole-program # -flto
    flags += -std=legacy
   else
-   flags =  -m64 -g  -ggdb -fbounds-check -fcheck-array-temporaries
+   flags +=  -m64 -g  -ggdb -fbounds-check -fcheck-array-temporaries
    #flags = -m64   -g -ffast-math -O3 -march=native -fomit-frame-pointer -m64
   endif
 
@@ -83,14 +89,15 @@ ifeq ($(compiler),gfortran)
   # On MAC OS X te build static binaries
   flags += -static-libgfortran -static-libgcc
 
-  fortran90 = gfortran $(flags) -c
-  fortran77 = gfortran $(flags) -c
-  link = gfortran $(flags) -o
+  fortran90 = $(compilerpath)/gfortran $(flags) -c
+  fortran77 = $(compilerpath)/gfortran $(flags) -c
+  link = $(compilerpath)/gfortran $(flags) -o
+#  link = gfortran $(flags) -o
 endif
 
 # define local Galahad directory --> need to be changed for your system
 #GALAHADDIR =/Users/pjethwa/Astro/Science/dynamite/dynamite_repo/legacy_fortran/galahad-2.3
-GALAHADDIR =/home/alice/old_home/Work/Vienna/DYNAMITE/dynamite/legacy_fortran/galahad-2.3
+#GALAHADDIR=/home/edward/src/dynamite/legacy_fortran/galahad-2.3
 
 # Define galahad compiled libary choice (platform dependant)
 
@@ -100,6 +107,7 @@ GALAHADDIR =/home/alice/old_home/Work/Vienna/DYNAMITE/dynamite/legacy_fortran/ga
 # linux, ifort
 # GALAHADTYPE= pc.lnx.ifc/double
 GALAHADTYPE= pc.lnx.gfo/double
+
 ##########################################################
 
 all : orbitstart orblib triaxmass triaxmassbin triaxnnls_CRcut modelgen partgen
@@ -268,7 +276,8 @@ OBJECTS5_out = nnls95.o iniparam_f.o numeric_kinds_f.o gausherm.o triaxnnls_CRcu
 
 
 triaxnnls_CRcut : $(OBJECTS5_out)
-	$(link) triaxnnls_CRcut $(OBJECTS5_out)   -I$(GALAHADDIR)/modules/$(GALAHADTYPE)  -L$(GALAHADDIR)/objects/$(GALAHADTYPE)  -lgalahad  -lgalahad_hsl -lgalahad_metis -lgalahad_lapack -lgalahad_blas
+	$(link) triaxnnls_CRcut $(OBJECTS5_out)   -I$(GALAHADDIR)/modules/$(GALAHADTYPE)  -L$(GALAHADDIR)/objects/$(GALAHADTYPE)  -lgalahad  -lgalahad_hsl -lgalahad_metis -lgalahad_lapack -lgalahad_blas -lgalahad_pardiso -lgalahad_wsmp -lgalahad_spral -lomp
+#	$(link) triaxnnls_CRcut $(OBJECTS5_out) -I$(GALAHADDIR)/modules/$(GALAHADTYPE)  -L$(GALAHADDIR)/objects/$(GALAHADTYPE)  -lgalahad  -lgalahad_hsl -lgalahad_metis -lgalahad_lapack -lgalahad_blas -lomp
 
 triaxnnls_CRcut.o : triaxnnls_CRcut.f90 numeric_kinds_f.o iniparam_f.o
 	$(fortran90) triaxnnls_CRcut.f90  -I$(GALAHADDIR)/modules/$(GALAHADTYPE)  -L$(GALAHADDIR)/objects/$(GALAHADTYPE)
