@@ -321,7 +321,9 @@ class LegacyGridSearch(ParameterGenerator):
                 settings = par.par_generator_settings
                 if par.fixed is False:
                     self.step.append(settings['step'])
-                    # use 'minstep' value if present, otherwise use 'step'
+                    # Use 'minstep' value if present, otherwise use 'step'.
+                    # Explicitly set minstep=0 to allow arbitrarily
+                    # small steps, not recommended.
                     self.minstep.append(settings['minstep'] \
                         if 'minstep' in settings else self.step)
                 else:
@@ -360,8 +362,6 @@ class LegacyGridSearch(ParameterGenerator):
             return ###########################################################
         thresh = \
             self.parspace_settings['generator_settings']['threshold_del_chi2']
-        # chi2 = 'chi2' if self.parspace_settings['which_chi2'] == 'chi2' \
-        #     else 'kinchi2'
         min_chi2 = np.min(self.current_models.table[self.chi2])
         prop_mask = abs(self.current_models.table[self.chi2]-min_chi2)<=thresh
         prop_list = self.current_models.table[prop_mask]
@@ -375,10 +375,6 @@ class LegacyGridSearch(ParameterGenerator):
                 lo = self.lo[paridx] #par.par_generator_settings['lo']
                 hi = self.hi[paridx] #par.par_generator_settings['hi']
                 step = self.step[paridx] #par.par_generator_settings['step']
-                # minstep: use step if minstep does not exist (explicitly set
-                # minstep=0 to allow arbitrarily small steps, not recommended)
-                # minstep = par.par_generator_settings['minstep'] \
-                #     if 'minstep' in par.par_generator_settings else step:
                 minstep = self.minstep[paridx]
                 for m in prop_list: # for all models within threshold_del_chi2
                     for p in self.new_parset:
@@ -397,8 +393,6 @@ class LegacyGridSearch(ParameterGenerator):
                 step_ok = False
                 for par in [p for p in self.new_parset if not p.fixed]:
                     paridx = self.new_parset.index(par)
-                    # if 'minstep' not in par.par_generator_settings:
-                    #     continue # missing minstep => assume minstep=step
                     minstep = self.minstep[paridx]
                     if par.par_generator_settings['step']/2 >= minstep:
                         par.par_generator_settings['step'] /= 2
@@ -415,8 +409,6 @@ class LegacyGridSearch(ParameterGenerator):
             models0 = self.current_models.table[mask]
             mask = self.current_models.table['which_iter'] == last_iter-1
             models1 = self.current_models.table[mask]
-            # chi2 = 'chi2' if self.parspace_settings['which_chi2'] == 'chi2' \
-            #     else 'kinchi2'
             # Don't use abs() so we catch increasing chi2 values, too:
             delta_chi2 = np.min(models1[self.chi2])-np.min(models0[self.chi2])
             if delta_chi2 <= \
