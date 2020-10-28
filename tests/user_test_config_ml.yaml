@@ -150,7 +150,8 @@ weight_solver_settings:
     nnls_solver: 1
 
 parameter_space_settings:
-    generator_type: "LegacyGridSearch"
+#    generator_type: "LegacyGridSearch"
+    generator_type: "GridWalk"
     which_chi2: "chi2"
     generator_settings:
         specificsetting: 25

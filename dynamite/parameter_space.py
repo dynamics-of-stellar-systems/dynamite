@@ -127,6 +127,22 @@ class ParameterGenerator(object):
         self.parspace_settings = parspace_settings
         self.status = {}
         self.name = name
+        self.chi2 = 'chi2' if self.parspace_settings['which_chi2'] == 'chi2' \
+                else 'kinchi2'
+        self.lo = []
+        self.hi = []
+        try:
+            for par in self.par_space:
+                settings = par.par_generator_settings
+                if par.fixed is False:
+                    self.lo.append(settings['lo'])
+                    self.hi.append(settings['hi'])
+                else:
+                    self.lo.append([])
+                    self.hi.append([])
+        except:
+            raise ValueError('ParameterGenerator: non-fixed parameters '
+                             'need hi and lo settings')
 
     def generate(self,
                  current_models=None,
@@ -298,6 +314,22 @@ class LegacyGridSearch(ParameterGenerator):
         # We need a local parameter copy because we don't want to change the
         # minstep in the original par_space:
         self.new_parset = [copy.deepcopy(p) for p in self.par_space]
+        self.step = []
+        self.minstep = []
+        try:
+            for par in self.par_space:
+                settings = par.par_generator_settings
+                if par.fixed is False:
+                    self.step.append(settings['step'])
+                    # use 'minstep' value if present, otherwise use 'step'
+                    self.minstep.append(settings['minstep'] \
+                        if 'minstep' in settings else self.step)
+                else:
+                    self.step.append([])
+                    self.minstep.append([])
+        except:
+            raise ValueError('LegacyGridSearch: non-fixed parameters need '
+                             'step setting')
 
     def specific_generate_method(self, **kwargs):
         """
@@ -328,10 +360,10 @@ class LegacyGridSearch(ParameterGenerator):
             return ###########################################################
         thresh = \
             self.parspace_settings['generator_settings']['threshold_del_chi2']
-        chi2 = 'chi2' if self.parspace_settings['which_chi2'] == 'chi2' \
-            else 'kinchi2'
-        min_chi2 = np.min(self.current_models.table[chi2])
-        prop_mask = abs(self.current_models.table[chi2] - min_chi2) <= thresh
+        # chi2 = 'chi2' if self.parspace_settings['which_chi2'] == 'chi2' \
+        #     else 'kinchi2'
+        min_chi2 = np.min(self.current_models.table[self.chi2])
+        prop_mask = abs(self.current_models.table[self.chi2]-min_chi2)<=thresh
         prop_list = self.current_models.table[prop_mask]
         self.model_list = []
         step_ok = True
@@ -340,13 +372,14 @@ class LegacyGridSearch(ParameterGenerator):
                 par = self.new_parset[paridx]
                 if par.fixed: # parameter fixed -> do nothing
                     continue
-                lo = par.par_generator_settings['lo']
-                hi = par.par_generator_settings['hi']
-                step = par.par_generator_settings['step']
+                lo = self.lo[paridx] #par.par_generator_settings['lo']
+                hi = self.hi[paridx] #par.par_generator_settings['hi']
+                step = self.step[paridx] #par.par_generator_settings['step']
                 # minstep: use step if minstep does not exist (explicitly set
                 # minstep=0 to allow arbitrarily small steps, not recommended)
-                minstep = par.par_generator_settings['minstep'] \
-                    if 'minstep' in par.par_generator_settings else step
+                # minstep = par.par_generator_settings['minstep'] \
+                #     if 'minstep' in par.par_generator_settings else step:
+                minstep = self.minstep[paridx]
                 for m in prop_list: # for all models within threshold_del_chi2
                     for p in self.new_parset:
                         p.value = p.get_raw_value_from_par_value(m[p.name])
@@ -363,9 +396,10 @@ class LegacyGridSearch(ParameterGenerator):
             if len(self.model_list) == 0:
                 step_ok = False
                 for par in [p for p in self.new_parset if not p.fixed]:
-                    if 'minstep' not in par.par_generator_settings:
-                        continue # missing minstep => assume minstep=step
-                    minstep = par.par_generator_settings['minstep']
+                    paridx = self.new_parset.index(par)
+                    # if 'minstep' not in par.par_generator_settings:
+                    #     continue # missing minstep => assume minstep=step
+                    minstep = self.minstep[paridx]
                     if par.par_generator_settings['step']/2 >= minstep:
                         par.par_generator_settings['step'] /= 2
                         step_ok = True
@@ -381,10 +415,10 @@ class LegacyGridSearch(ParameterGenerator):
             models0 = self.current_models.table[mask]
             mask = self.current_models.table['which_iter'] == last_iter-1
             models1 = self.current_models.table[mask]
-            chi2 = 'chi2' if self.parspace_settings['which_chi2'] == 'chi2' \
-                else 'kinchi2'
+            # chi2 = 'chi2' if self.parspace_settings['which_chi2'] == 'chi2' \
+            #     else 'kinchi2'
             # Don't use abs() so we catch increasing chi2 values, too:
-            delta_chi2 = np.min(models1[chi2]) - np.min(models0[chi2])
+            delta_chi2 = np.min(models1[self.chi2])-np.min(models0[self.chi2])
             if delta_chi2 <= \
                 self.parspace_settings['stopping_criteria']['min_delta_chi2']:
                 self.status['min_delta_chi2_reached'] = True
@@ -400,6 +434,22 @@ class GridWalk(ParameterGenerator):
         super().__init__(par_space=par_space,
                          parspace_settings=parspace_settings,
                          name='GridWalk')
+        self.step = []
+        self.minstep = []
+        try:
+            for par in self.par_space:
+                settings = par.par_generator_settings
+                if par.fixed is False:
+                    self.step.append(settings['step'])
+                    # use 'minstep' value if present, otherwise use 'step'
+                    self.minstep.append(settings['minstep'] \
+                        if 'minstep' in settings else self.step)
+                else:
+                    self.step.append([])
+                    self.minstep.append([])
+        except:
+            raise ValueError('GridWalk: non-fixed parameters need '
+                             'step setting')
 
     def specific_generate_method(self, **kwargs):
         """
@@ -426,10 +476,8 @@ class GridWalk(ParameterGenerator):
             # (all parameters at their .value level)
             self.model_list = [[p for p in self.par_space]]
         else: # Subsequent iterations...
-            # center criterion: min(chi2) or min(kinchi2)
-            chi2 = 'chi2' if self.parspace_settings['which_chi2'] == 'chi2' \
-                else 'kinchi2'
-            center_idx = np.argmin(self.current_models.table[chi2])
+            # center criterion: min(chi2)
+            center_idx = np.argmin(self.current_models.table[self.chi2])
             n_par = self.par_space.n_par
             center = list(self.current_models.table[center_idx])[:n_par]
             raw_center = self.par_space.get_raw_value_from_param_value(center)
@@ -481,14 +529,12 @@ class GridWalk(ParameterGenerator):
                 raise ValueError('Something is wrong: fixed parameter value '
                                  'not in center')
         else:
-            lo = par.par_generator_settings['lo']
-            hi = par.par_generator_settings['hi']
-            step = par.par_generator_settings['step']
+            lo = self.lo[paridx]
+            hi = self.hi[paridx]
+            step = self.step[paridx]
+            minstep = self.minstep[paridx]
             # up to 3 *distinct* par_values (clipped lo, mid, hi values)
             par_values = []
-            # use 'minstep' value if present, otherwise use 'step'
-            minstep = par.par_generator_settings['minstep'] \
-                if 'minstep' in par.par_generator_settings else step
             # start with lo...
             delta = center[paridx] - self.clip(center[paridx] - step, lo, hi)
             if abs(delta) >= minstep:
@@ -574,10 +620,8 @@ class GridWalk(ParameterGenerator):
             models0 = self.current_models.table[mask]
             mask = self.current_models.table['which_iter'] == last_iter-1
             models1 = self.current_models.table[mask]
-            chi2 = 'chi2' if self.parspace_settings['which_chi2'] == 'chi2' \
-                else 'kinchi2'
             # Don't use abs() so we catch increasing chi2 values, too:
-            delta_chi2 = np.min(models1[chi2]) - np.min(models0[chi2])
+            delta_chi2 = np.min(models1[self.chi2])-np.min(models0[self.chi2])
             if delta_chi2 <= \
                 self.parspace_settings['stopping_criteria']['min_delta_chi2']:
                 self.status['min_delta_chi2_reached'] = True
