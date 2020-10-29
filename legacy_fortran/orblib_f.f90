@@ -853,9 +853,6 @@ contains
     t3 = cos(theta)           * vsgn(3,n,type)
     losvel(:) = t1 * vel(:,1) + t2 * vel(:,2) + t3 * vel(:,3)
 
-    !Comment from Giulia
-    print*, t1,t2,t3
-
   !xaa = (-sin(phi)*x+cos(phi)*y)*sin(psi)-(-cos(theta)*cos(phi)*x-cos(theta)*sin(phi)*y+sin(theta)*z)*cos(psi);
   !yaa = (-sin(phi)*x+cos(phi)*y)*cos(psi)+(-cos(theta)*cos(phi)*x-cos(theta)*sin(phi)*y+sin(theta)*z)*sin(psi);
 
