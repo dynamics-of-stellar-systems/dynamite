@@ -1,6 +1,8 @@
 # Example yaml configuration file for the legacy implementation
 # All relevant input is in one file with two sections: SYSTEM and SETTINGS
 
+#The input files used in this config-file are the same as in tests/NGC6278_input
+
 # Start of yaml document
 ---
 ###############################################################################
