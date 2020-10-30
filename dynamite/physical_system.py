@@ -139,16 +139,18 @@ class Component(object):
         # if len(self.parameters) != len(par):
         #     raise ValueError(f'{self.__class__.__name__} needs exactly '
         #         f'{len(par)} paramater(s), not {len(self.parameters)}')
-        if set([p.name for p in self.parameters]) != set(par):
+        pars = [p.name[:p.name.rindex('_'+self.name)] for p in self.parameters]
+        if set(pars) != set(par):
             raise ValueError(f'{self.__class__.__name__} needs parameters '
-                             f'{par}, not {[p.name for p in self.parameters]}')
+                             f'{list(par)}, '
+                             f'not {[p.name for p in self.parameters]}')
         self.set_format(par_format)
 
     def set_format(self, par_format=None):
         if par_format is None:
             raise ValueError(f'{self.__class__.__name__}: no format string')
         for p in self.parameters:
-            p.update(sformat = par_format[p.name])
+            p.update(sformat=par_format[p.name[:p.name.rindex('_'+self.name)]])
 
     def __repr__(self):
         return (f'\n{self.__class__.__name__}({self.__dict__}\n)')

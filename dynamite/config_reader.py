@@ -161,7 +161,8 @@ class Configuration(object):
                         print(f" Has parameters "
                               f"{tuple(data_comp['parameters'].keys())}")
                     for par, data_par in data_comp['parameters'].items():
-                        the_parameter = parspace.Parameter(name=par,**data_par)
+                        p = par + '_' + comp
+                        the_parameter = parspace.Parameter(name=p,**data_par)
                         par_list.append(the_parameter)
                     c.parameters = par_list
 
