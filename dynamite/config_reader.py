@@ -393,8 +393,8 @@ class Configuration(object):
             raise ValueError('Unknown which_chi2 setting, use chi2 or kinchi2')
         chi2abs = 'threshold_del_chi2_abs'
         chi2scaled = 'threshold_del_chi2_sqrt2nobs'
-        thresh = self.settings.parameter_space_settings['generator_settings']
-        if chi2abs in thresh and chi2scaled in thresh:
+        gen_set = self.settings.parameter_space_settings['generator_settings']
+        if chi2abs in gen_set and chi2scaled in gen_set:
             raise ValueError(f'Only specify one of {chi2abs}, {chi2scaled}, '
                              'not both')
 
