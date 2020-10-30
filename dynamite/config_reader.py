@@ -10,6 +10,7 @@ Created on Tue Jun 16 15:14:17 2020
 
 import os.path
 import sys
+import math
 
 this_dir = os.path.dirname(__file__)
 if not this_dir in sys.path:
@@ -244,6 +245,23 @@ class Configuration(object):
                     print('parameter_space_settings...')
                     print(f' {tuple(value.keys())}')
                 self.settings.add('parameter_space_settings', value)
+                ps_settings = self.settings.parameter_space_settings
+                if 'generator_settings' in ps_settings:
+                    # This is a bit risky as the system hasn't been validated
+                    # yet...
+                    for c in self.system.cmp_list:
+                        if c.name == 'stars':
+                            n_obs = len(c.mge.data)
+                            break
+                    gen_settings = ps_settings['generator_settings']
+                    chi2 = 0
+                    chi2abs = 'threshold_del_chi2_abs'
+                    chi2scaled = 'threshold_del_chi2_sqrt2nobs'
+                    if chi2abs in gen_settings:
+                        chi2 = gen_settings[chi2abs]
+                    if chi2scaled in gen_settings:
+                        chi2 = gen_settings[chi2scaled] * math.sqrt(2*n_obs)
+                    gen_settings['threshold_del_chi2'] = chi2
 
             # add legacy settings to Settings object
 
@@ -373,6 +391,12 @@ class Configuration(object):
         if self.settings.parameter_space_settings["which_chi2"] not in \
             ["chi2", "kinchi2"]:
             raise ValueError('Unknown which_chi2 setting, use chi2 or kinchi2')
+        chi2abs = 'threshold_del_chi2_abs'
+        chi2scaled = 'threshold_del_chi2_sqrt2nobs'
+        thresh = self.settings.parameter_space_settings['generator_settings']
+        if chi2abs in thresh and chi2scaled in thresh:
+            raise ValueError(f'Only specify one of {chi2abs}, {chi2scaled}, '
+                             'not both')
 
 
     # def read_parameters(self, par=None, items=None):

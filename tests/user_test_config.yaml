@@ -154,7 +154,9 @@ parameter_space_settings:
     which_chi2: "chi2"
     generator_settings:
         specificsetting: 25
-        threshold_del_chi2: 0.5  # LegacyGridSearch setting
+        # For LegacyGridSearch, specify ONE of the following two settings
+        #threshold_del_chi2_abs: 0.5  # absolute change in chi2 threshold
+        threshold_del_chi2_sqrt2nobs: 0.1  # given in units of sqrt(2*n_obs)
     stopping_criteria:
         min_delta_chi2 : 0.5
         n_max_mods : 5
