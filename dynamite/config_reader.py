@@ -249,10 +249,13 @@ class Configuration(object):
                 if 'generator_settings' in ps_settings:
                     # This is a bit risky as the system hasn't been validated
                     # yet...
-                    for c in self.system.cmp_list:
-                        if c.name == 'stars':
-                            n_obs = len(c.mge.data)
-                            break
+                    n_obs = next((len(c.mge.data) \
+                                  for c in self.system.cmp_list \
+                                  if c.name == 'stars'), False)
+                    if n_obs is False:
+                        raise ValueError('stars component must occur before '
+                                         'parameter_space_settings in'
+                                         'configuration file')
                     gen_settings = ps_settings['generator_settings']
                     chi2 = 0
                     chi2abs = 'threshold_del_chi2_abs'
