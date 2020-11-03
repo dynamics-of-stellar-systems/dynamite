@@ -797,9 +797,9 @@ contains
     ! vel (:, (r,z,theta))
     real (kind=dp),intent(in ),dimension(size(pos,1),3) :: vel
     ! proj(:,(x',y'))
-    real (kind=dp),intent(out),dimension(:,:)           :: proj
+    real (kind=dp),intent(out),dimension(size(pos,1),2)           :: proj
     ! losvd (:)
-    real (kind=dp),intent(out),dimension(:)             :: losvel
+    real (kind=dp),intent(out),dimension(size(pos,1))             :: losvel
     integer (kind=i4b),intent(in)                       :: type,n
   !----------------------------------------------------------------------
     real (kind=dp)              :: t1, t2, t3,theta,phi
@@ -852,9 +852,6 @@ contains
     t2 = sin(theta)*sin(phi)  * vsgn(2,n,type) 
     t3 = cos(theta)           * vsgn(3,n,type)
     losvel(:) = t1 * vel(:,1) + t2 * vel(:,2) + t3 * vel(:,3)
-
-    !Comment from Giulia
-    print*, t1,t2,t3
 
   !xaa = (-sin(phi)*x+cos(phi)*y)*sin(psi)-(-cos(theta)*cos(phi)*x-cos(theta)*sin(phi)*y+sin(theta)*z)*cos(psi);
   !yaa = (-sin(phi)*x+cos(phi)*y)*cos(psi)+(-cos(theta)*cos(phi)*x-cos(theta)*sin(phi)*y+sin(theta)*z)*sin(psi);
