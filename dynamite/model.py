@@ -246,6 +246,7 @@ class LegacySchwarzschildModel(Model):
             shutil.copyfile(binfile,
                             self.directory_noml+'infil/bins.dat')
             # calculate orbit libary
+            self.orblib.get_orbit_ics()
             self.orblib.get_orbit_library()
 
     def get_weights(self):
