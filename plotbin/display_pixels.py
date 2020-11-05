@@ -44,7 +44,7 @@ from matplotlib.ticker import MaxNLocator
 from scipy.spatial import distance
 import numpy as np
 
-from plotbin4dyn.sauron_colormap import register_sauron_colormap
+from plotbin.sauron_colormap import register_sauron_colormap
 
 ##############################################################################
 
@@ -96,8 +96,8 @@ def display_pixels(x, y, val, pixelsize=None, vmin=None, vmax=None,
     img[j, k] = val
     img = np.ma.masked_array(img, mask)
 
-    #assert np.all(np.abs(np.append(j - x1, k - y1)) < 0.1), \
-    #    'The coordinates (x, y) must come from an axis-aligned image'
+    assert np.all(np.abs(np.append(j - x1, k - y1)) < 0.1), \
+        'The coordinates (x, y) must come from an axis-aligned image'
 
     ax = plt.gca()
 

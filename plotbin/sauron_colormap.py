@@ -120,10 +120,13 @@ if __name__ == '__main__':
     register_sauron_colormap()
     
     plt.clf()
+
     plt.subplot(121)
     plt.imshow(img, cmap='sauron')
     plt.title("SAURON colormap")
+
     plt.subplot(122)
     plt.imshow(img, cmap='sauron_r')
     plt.title("reversed colormap")
-    plt.pause(0.01)
+
+    plt.pause(1)

@@ -7,14 +7,15 @@ V1.0.2: Updated documentation and included usage warning,
     MC, Oxford, 11 January 2015
 V1.0.3: Use for loop with large arrays to reduce memory usage.
     MC, Oxford, 5 July 2017
-V1.0.4: Changed imports for plotbin as a package. MC, Oxford, 17 April 2018    
+V1.0.4: Changed imports for plotbin as a package. MC, Oxford, 17 April 2018
+V1.0.5: Fixed import typo. MC, Asiago, 3 August 2018
 
 """
 
 import warnings
 import numpy as np
 
-from plotbin.cap_display_pixels import display_pixels
+from plotbin.display_pixels import display_pixels
 
 def display_bins_generators(xBin, yBin, velBin, x, y, angle=None, **kwargs):
     """

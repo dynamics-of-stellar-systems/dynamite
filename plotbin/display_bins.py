@@ -25,12 +25,14 @@ MODIFICATION HISTORY:
         Thanks to Rebekka Schupp (MPIA) for the feedback.
         MC, Oxford, 31 July 2017
     V1.0.3: Changed imports for plotbin as a package. MC, Oxford, 17 April 2018
+    V1.0.4: Fixed display_pixels import. Thanks to Adriano Poci (Macquarie).
+        MC, Oxford, 3 May 2019
     
 """
 
 import numpy as np
 
-from plotbin.cap_display_pixels import display_pixels
+from plotbin.display_pixels import display_pixels
 
 def display_bins(x, y, bin_num, vel_bin, **kwargs):
 
