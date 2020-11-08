@@ -236,8 +236,8 @@ class LegacySchwarzschildModel(Model):
         if not check1 or not check2:
             # prepare the fortran input files for orblib
             self.create_fortran_input_orblib(self.directory_noml+'infil/')
-            stars_idx = [c.name for c in self.system.cmp_list].index('stars')
-            kinematics = self.system.cmp_list[stars_idx].kinematic_data[0]
+            stars = self.system.get_component_from_name('stars')
+            kinematics = stars.kinematic_data[0]
             old_filename = self.directory_noml+'infil/kin_data.dat'
             kinematics.convert_to_old_format(old_filename)
             aperture_file = self.in_dir + kinematics.aperturefile
@@ -272,8 +272,7 @@ class LegacySchwarzschildModel(Model):
         #write parameters.in
         #-------------------
 
-        stars_idx = [c.name for c in self.system.cmp_list].index('stars')
-        stars=self.system.cmp_list[stars_idx]
+        stars = self.system.get_component_from_name('stars')
 
         #used to derive the viewing angles
         q=self.parset['q']
@@ -290,7 +289,7 @@ class LegacySchwarzschildModel(Model):
         #TODO: which dark matter profile
         dm_specs='1 2'
 
-        theta,psi,phi=self.system.cmp_list[stars_idx].triax_pqu2tpp(p,q,qobs,u)
+        theta,psi,phi = stars.triax_pqu2tpp(p,q,qobs,u)
 
         #header
         len_mge=len(stars.mge.data)
