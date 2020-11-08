@@ -1,7 +1,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 from plotbin import sauron_colormap as pb_sauron_colormap
-from plotbin import display_pixels
+from plotbin import cap_display_pixels as display_pixels
 
 # TODO: use Capellari's latest version of plotbin rather than (the locally
 # packaged up version which we've called plotbin4dyn). This will require
