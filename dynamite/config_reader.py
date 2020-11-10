@@ -245,26 +245,6 @@ class Configuration(object):
                     print('parameter_space_settings...')
                     print(f' {tuple(value.keys())}')
                 self.settings.add('parameter_space_settings', value)
-                ps_settings = self.settings.parameter_space_settings
-                if 'generator_settings' in ps_settings:
-                    # This is a bit risky as the system hasn't been validated
-                    # yet...
-                    n_obs = next((len(c.mge.data) \
-                                  for c in self.system.cmp_list \
-                                  if c.name == 'stars'), False)
-                    if n_obs is False:
-                        raise ValueError('stars component must occur before '
-                                         'parameter_space_settings in'
-                                         'configuration file')
-                    gen_settings = ps_settings['generator_settings']
-                    chi2 = 0
-                    chi2abs = 'threshold_del_chi2_abs'
-                    chi2scaled = 'threshold_del_chi2_sqrt2nobs'
-                    if chi2abs in gen_settings:
-                        chi2 = gen_settings[chi2abs]
-                    if chi2scaled in gen_settings:
-                        chi2 = gen_settings[chi2scaled] * math.sqrt(2*n_obs)
-                    gen_settings['threshold_del_chi2'] = chi2
 
             # add legacy settings to Settings object
 
@@ -312,6 +292,11 @@ class Configuration(object):
         if not silent:
             print(f'**** System assembled:\n{self.system}')
             print(f'**** Settings:\n{self.settings}')
+
+        if 'generator_settings' in self.settings.parameter_space_settings:
+            self.set_threshold_del_chi2( \
+                self.settings.parameter_space_settings['generator_settings'])
+
         self.validate()
         if not silent:
             print('**** Configuration validated')
@@ -335,6 +320,34 @@ class Configuration(object):
         self.executor = getattr(executor, executor_type)(**kw_executor)
         if not silent:
             print(f'**** Instantiated executor object: {executor_type}')
+
+    def set_threshold_del_chi2(self, generator_settings):
+        """
+        Sets threshold_del_chi2 depending on scaled or unscaled input. Works
+        with the legacy setup only ('stars' component with one set of
+        kinematics).
+
+        Parameters
+        ----------
+        generator_settings : generator_settings dict
+
+        Returns
+        -------
+        None.
+
+        """
+        chi2abs = 'threshold_del_chi2_abs'
+        chi2scaled = 'threshold_del_chi2_sqrt2nobs'
+        if chi2abs in generator_settings or chi2scaled in generator_settings:
+            number_GH = self.settings.weight_solver_settings['number_GH']
+            stars = self.system.get_component_from_name('stars')
+            n_obs = number_GH * len(stars.kinematic_data[0].data)
+            chi2 = 0
+            if chi2abs in generator_settings:
+                chi2 = generator_settings[chi2abs]
+            else:
+                chi2 = generator_settings[chi2scaled] * math.sqrt(2*n_obs)
+            generator_settings['threshold_del_chi2'] = chi2
 
     def validate(self):
         """
