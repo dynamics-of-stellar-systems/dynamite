@@ -156,7 +156,8 @@ parameter_space_settings:
         specificsetting: 25
         threshold_del_chi2: 0.5  # LegacyGridSearch setting
     stopping_criteria:
-        min_delta_chi2 : 0.5
+        min_delta_chi2_abs : 0.5  # absolute "optimality tolerance"
+        #min_delta_chi2_rel : 0.05 # relative "optimality tolerance"
         n_max_mods : 5
         n_max_iter : 10
 
