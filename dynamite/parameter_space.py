@@ -327,11 +327,13 @@ class LegacyGridSearch(ParameterGenerator):
                     self.minstep.append(settings['minstep'] \
                         if 'minstep' in settings else self.step)
                 else:
-                    self.step.append([])
-                    self.minstep.append([])
+                    self.step.append(None)
+                    self.minstep.append(None)
         except:
             raise ValueError('LegacyGridSearch: non-fixed parameters need '
                              'step setting')
+        self.thresh = \
+            self.parspace_settings['generator_settings']['threshold_del_chi2']
         stop_crit = parspace_settings['stopping_criteria']
         self.min_delta_chi2_abs = stop_crit.get('min_delta_chi2_abs')
         self.min_delta_chi2_rel = stop_crit.get('min_delta_chi2_rel')
@@ -363,10 +365,9 @@ class LegacyGridSearch(ParameterGenerator):
             # (all parameters at their .value level)
             self.model_list = [[p for p in self.par_space]]
             return ###########################################################
-        thresh = \
-            self.parspace_settings['generator_settings']['threshold_del_chi2']
         min_chi2 = np.min(self.current_models.table[self.chi2])
-        prop_mask = abs(self.current_models.table[self.chi2]-min_chi2)<=thresh
+        prop_mask = \
+            abs(self.current_models.table[self.chi2]-min_chi2) <= self.thresh
         prop_list = self.current_models.table[prop_mask]
         self.model_list = []
         step_ok = True
@@ -397,8 +398,11 @@ class LegacyGridSearch(ParameterGenerator):
                 for par in [p for p in self.new_parset if not p.fixed]:
                     paridx = self.new_parset.index(par)
                     minstep = self.minstep[paridx]
-                    if par.par_generator_settings['step']/2 >= minstep:
-                        par.par_generator_settings['step'] /= 2
+                    if self.step[paridx]/2 >= minstep:
+                        self.step[paridx] /= 2
+                        # the following line is just to record the step size
+                        # in self.new_parset and can be commented out...
+                        par.par_generator_settings['step'] = self.step[paridx]
                         step_ok = True
         return
 
