@@ -332,6 +332,9 @@ class LegacyGridSearch(ParameterGenerator):
         except:
             raise ValueError('LegacyGridSearch: non-fixed parameters need '
                              'step setting')
+        stop_crit = parspace_settings['stopping_criteria']
+        self.min_delta_chi2_abs = stop_crit.get('min_delta_chi2_abs')
+        self.min_delta_chi2_rel = stop_crit.get('min_delta_chi2_rel')
 
     def specific_generate_method(self, **kwargs):
         """
@@ -409,10 +412,14 @@ class LegacyGridSearch(ParameterGenerator):
             models0 = self.current_models.table[mask]
             mask = self.current_models.table['which_iter'] == last_iter-1
             models1 = self.current_models.table[mask]
-            # Don't use abs() so we catch increasing chi2 values, too:
+            # Don't use abs() so we stop on increasing chi2 values, too:
             delta_chi2 = np.min(models1[self.chi2])-np.min(models0[self.chi2])
-            if delta_chi2 <= \
-                self.parspace_settings['stopping_criteria']['min_delta_chi2']:
+            if self.min_delta_chi2_rel is not None:
+                delta_chi2 /= np.min(models1[self.chi2])
+                delta_chi2 /= self.min_delta_chi2_rel
+            else:
+                delta_chi2 /= self.min_delta_chi2_abs
+            if delta_chi2 <= 1:
                 self.status['min_delta_chi2_reached'] = True
         # (ii) if step_size < min_step_size for all params
         #       => dealt with by grid_walk (doesn't create such models)
@@ -442,6 +449,9 @@ class GridWalk(ParameterGenerator):
         except:
             raise ValueError('GridWalk: non-fixed parameters need '
                              'step setting')
+        stop_crit = parspace_settings['stopping_criteria']
+        self.min_delta_chi2_abs = stop_crit.get('min_delta_chi2_abs')
+        self.min_delta_chi2_rel = stop_crit.get('min_delta_chi2_rel')
 
     def specific_generate_method(self, **kwargs):
         """
@@ -612,10 +622,14 @@ class GridWalk(ParameterGenerator):
             models0 = self.current_models.table[mask]
             mask = self.current_models.table['which_iter'] == last_iter-1
             models1 = self.current_models.table[mask]
-            # Don't use abs() so we catch increasing chi2 values, too:
+            # Don't use abs() so we stop on increasing chi2 values, too:
             delta_chi2 = np.min(models1[self.chi2])-np.min(models0[self.chi2])
-            if delta_chi2 <= \
-                self.parspace_settings['stopping_criteria']['min_delta_chi2']:
+            if self.min_delta_chi2_rel is not None:
+                delta_chi2 /= np.min(models1[self.chi2])
+                delta_chi2 /= self.min_delta_chi2_rel
+            else:
+                delta_chi2 /= self.min_delta_chi2_abs
+            if delta_chi2 <= 1:
                 self.status['min_delta_chi2_reached'] = True
         # (ii) if step_size < min_step_size for all params
         #       => dealt with by grid_walk (doesn't create such models)
