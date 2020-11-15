@@ -68,6 +68,20 @@ class Settings(object):
     def __repr__(self):
         return (f'{self.__class__.__name__}({self.__dict__})')
 
+class UniqueKeyLoader(yaml.SafeLoader):
+    """
+    Special yaml loader with duplicate key checking.
+    Credits: ErichBSchulz,
+    https://stackoverflow.com/questions/33490870/parsing-yaml-in-python-detect-duplicated-keys
+    """
+    def construct_mapping(self, node, deep=False):
+        mapping = []
+        for key_node, value_node in node.value:
+            key = self.construct_object(key_node, deep=deep)
+            assert key not in mapping, \
+                f'Duplicate key in configuration file: {key}'
+            mapping.append(key)
+        return super().construct_mapping(node, deep)
 
 class Configuration(object):
     """
@@ -97,7 +111,9 @@ class Configuration(object):
 
         if filename is not None:
             with open(filename, 'r') as f:
-                self.params = yaml.safe_load(f)
+                # self.params = yaml.safe_load(f)
+                config_text = f.read()
+                self.params = yaml.load(config_text, Loader=UniqueKeyLoader)
         else:
             raise FileNotFoundError('Please specify filename')
 
