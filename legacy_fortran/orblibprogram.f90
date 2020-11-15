@@ -38,6 +38,19 @@ program counterrotation
   use high_level, only : setup,run,stob
   implicit none
   real (kind=dp) :: t1,t2
+
+  ! START reproducible orbit library
+  ! comment the following lines out for stochastic orbit library creation
+  integer                             :: i_seed
+  integer, dimension (:), allocatable :: a_seed
+
+  call random_seed(size=i_seed)
+  allocate(a_seed(1:i_seed))
+  a_seed = 4242
+  call random_seed(put=a_seed)
+  deallocate(a_seed)
+  ! END reproducible orbit library
+
   print*,"  ** Triaxial Orbit library by Remco C.E. van den Bosch <bosch@strw.leidenuniv.nl>"
   print*,"  * Jan 2007 "
   print*,"  * $Id: orblibprogram.f90,v 1.1 2010/03/17 12:56:57 bosch Exp $"  

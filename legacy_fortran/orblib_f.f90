@@ -70,7 +70,10 @@ contains
 
     print*,"  * Seeding native Random generator"
     if (.not. initialized) then
-      call random_seed()
+      ! START reproducible orbit library
+      ! uncomment the following line for stochastic orbit library creation
+      !call random_seed()
+      ! END reproducible orbit library
       print*,"  * Internal Compiler random functions needs to be checked."
       initialized =  .true.
     end if

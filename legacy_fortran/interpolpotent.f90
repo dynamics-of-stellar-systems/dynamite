@@ -147,7 +147,10 @@ subroutine ip_testaccuracy(error)
   maxdiff=0.0_dp
   meandiff=0.0_dp
   t4=0.0_dp
-  call random_seed()
+  ! START reproducible orbit library
+  ! uncomment the following line for stochastic orbit library creation
+  !call random_seed()
+  ! END reproducible orbit library
   do i=1,20000 
 
      call random_number(r)
