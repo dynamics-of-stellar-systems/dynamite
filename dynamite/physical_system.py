@@ -178,7 +178,7 @@ class AxisymmetricVisibleComponent(VisibleComponent):
         super().__init__(symmetry='axisymm', **kwds)
 
     def validate(self):
-        par_format = {'par1':'6.2f', 'par2':'6.3f'}
+        par_format = {'par1':'6.3g', 'par2':'6.4g'}
         super().validate(par_format)
 
 
@@ -188,7 +188,7 @@ class TriaxialVisibleComponent(VisibleComponent):
         super().__init__(symmetry='triax', **kwds)
 
     def validate(self):
-        par_format = {'q':'6.2f', 'p':'6.3f', 'u':'7.4f'}
+        par_format = {'q':'6.3g', 'p':'6.4g', 'u':'7.5g'}
         super().validate(par_format=par_format)
 
     def triax_pqu2tpp(self,p,q,qobs,u):
@@ -268,7 +268,7 @@ class Plummer(DarkComponent):
         return rho
 
     def validate(self):
-        par_format = {'mass':'6.2f', 'a':'7.2f'}
+        par_format = {'mass':'6.3g', 'a':'7.3g'}
         super().validate(par_format)
         # if len(self.parameters) != 2:
         #     raise ValueError(f'{self.__class__.__name__} needs exactly 2 '
@@ -282,7 +282,7 @@ class NFW(DarkComponent):
         super().__init__(symmetry='spherical', **kwds)
 
     def validate(self):
-        par_format = {'dc':'6.2f', 'f':'6.2f'}
+        par_format = {'dc':'6.3g', 'f':'6.3g'}
         super().validate(par_format)
         # if len(self.parameters) != 2:
         #     raise ValueError(f'{self.__class__.__name__} needs exactly 2 '
@@ -296,7 +296,7 @@ class Hernquist(DarkComponent):
         super().__init__(symmetry='spherical', **kwds)
 
     def validate(self):
-        par_format = {'rhoc':'6.2f', 'rc':'6.2f'}
+        par_format = {'rhoc':'6.3g', 'rc':'6.3g'}
         super().validate(par_format)
         # if len(self.parameters) != 2:
         #     raise ValueError(f'{self.__class__.__name__} needs exactly 2 '
@@ -310,7 +310,7 @@ class TriaxialCoredLogPotential(DarkComponent):
         super().__init__(symmetry='triaxial', **kwds)
 
     def validate(self):
-        par_format = {'Vc':'6.2f', 'rho':'6.2f', 'p':'6.2f', 'q':'6.2f'}
+        par_format = {'Vc':'6.3g', 'rho':'6.3g', 'p':'6.3g', 'q':'6.3g'}
         super().validate(par_format)
         # if len(self.parameters) != 4:
         #     raise ValueError(f'{self.__class__.__name__} needs exactly 4 '
@@ -324,8 +324,8 @@ class GeneralisedNFW(DarkComponent):
         super().__init__(symmetry='triaxial', **kwds)
 
     def validate(self):
-        par_format = {'concentration':'6.2f', 'Mvir':'6.2f',
-                      'inner_log_slope':'6.2f'}
+        par_format = {'concentration':'6.3g', 'Mvir':'6.3g',
+                      'inner_log_slope':'6.3g'}
         super().validate(par_format)
         # if len(self.parameters) != 3:
         #     raise ValueError(f'{self.__class__.__name__} needs exactly 3 '
