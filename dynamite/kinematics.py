@@ -124,7 +124,7 @@ class GaussHermite(Kinematics, data.Integrated):
                                        n_gh_col,
                                        h3Sym, dh3Sym,
                                        h4Sym, dh4Sym])
-        fmt = '%5i %13.8s %13.8s %13.8s %13.8s %5i %13.8s %13.8s %13.8s %13.8s'
+        fmt = '%5i %13.13s %13.13s %13.13s %13.13s %5i %13.13s %13.13s %13.13s %13.13s'
         np.savetxt(filename_old_format,
                    array_to_print,
                    fmt = fmt,
