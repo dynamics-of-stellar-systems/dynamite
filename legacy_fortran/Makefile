@@ -215,7 +215,7 @@ triaxmassbin: $(MGEOBJ) triaxmassbin.f90
 #
 #######################################################
 
-ORBLIBCDE= $(MGECDE) sub/numrec_arloc.f $(DOPCDE) orblib_f.f90
+ORBLIBCDE= ran1_nr.f $(MGECDE) sub/numrec_arloc.f $(DOPCDE) orblib_f.f90
 ORBLIBOBJ= $(MGEOBJ) numrec_arloc.o $(DOPOBJ) orblib_f.o
 ORBLIBWGASCDE= $(MGECDE) sub/numrec_arloc.f $(DOPCDE) orblibwgas_f.f90
 ORBLIBWGASOBJ= $(MGEOBJ) numrec_arloc.o $(DOPOBJ) orblibwgas_f.o

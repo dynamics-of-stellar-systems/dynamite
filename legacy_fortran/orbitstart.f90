@@ -919,17 +919,37 @@ use initial_parameters
 use interpolpot
 use triaxpotent
 
-! START reproducible orbit library
-! comment the following lines out for stochastic orbit library creation
-integer                             :: i_seed
-integer, dimension (:), allocatable :: a_seed
+implicit none
 
-call random_seed(size=i_seed)
-allocate(a_seed(1:i_seed))
-a_seed = 42
-call random_seed(put=a_seed)
-deallocate(a_seed)
-! END reproducible orbit library
+integer :: r_seed
+real :: ran1, r_num
+
+! read random number seed, any value <= 0 results in stochastic seed
+read (unit=*, fmt=*) r_seed
+if (r_seed == 0) then
+  write(*,*) "Using stochastic random number generator"
+  call random_seed()
+  call random_number(r_num)
+  r_seed = 2147483647 * r_num
+else
+  write(*,*) "Using random number seed ", r_seed
+end if
+r_num = ran1(-r_seed)
+
+! integer :: i, r_seed
+! character(len=32) :: r_seed_str
+! 
+! ! START reproducible orbit library
+! ! comment the following lines out for stochastic orbit library creation
+! integer                             :: i_seed
+! integer, dimension (:), allocatable :: a_seed
+! 
+! call random_seed(size=i_seed)
+! allocate(a_seed(1:i_seed))
+! a_seed = 42
+! call random_seed(put=a_seed)
+! deallocate(a_seed)
+! ! END reproducible orbit library
 
 call iniparam()
 call ip_setup()
