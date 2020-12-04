@@ -10,6 +10,7 @@ Created on Tue Jun 16 15:14:17 2020
 
 import os.path
 import sys
+import math
 
 this_dir = os.path.dirname(__file__)
 if not this_dir in sys.path:
@@ -88,6 +89,12 @@ class Configuration(object):
     Reads the configuration file and instantiates the objects
     self.system, ...
     """
+
+    # Class attributes
+    # threshold_delta_chi2 variants for LegacyGridSearch parameter generator
+    thresh_chi2_abs = 'threshold_del_chi2_abs'
+    thresh_chi2_scaled = 'threshold_del_chi2_as_frac_of_sqrt2nobs'
+
     def __init__(self, filename=None, silent=False):
         """
         Reads configuration file and instantiates objects.
@@ -308,6 +315,11 @@ class Configuration(object):
         if not silent:
             print(f'**** System assembled:\n{self.system}')
             print(f'**** Settings:\n{self.settings}')
+
+        if 'generator_settings' in self.settings.parameter_space_settings:
+            self.set_threshold_del_chi2( \
+                self.settings.parameter_space_settings['generator_settings'])
+
         self.validate()
         if not silent:
             print('**** Configuration validated')
@@ -331,6 +343,46 @@ class Configuration(object):
         self.executor = getattr(executor, executor_type)(**kw_executor)
         if not silent:
             print(f'**** Instantiated executor object: {executor_type}')
+
+    def set_threshold_del_chi2(self, generator_settings):
+        """
+        Sets threshold_del_chi2 depending on scaled or unscaled input. Works
+        with the legacy setup only ('stars' component with one set of
+        kinematics).
+
+        Parameters
+        ----------
+        generator_settings : generator_settings dict
+
+        Returns
+        -------
+        None.
+
+        """
+        chi2abs = self.__class__.thresh_chi2_abs
+        chi2scaled = self.__class__.thresh_chi2_scaled
+        if chi2abs in generator_settings or chi2scaled in generator_settings:
+            two_n_obs = self.get_2n_obs()
+            if chi2abs in generator_settings:
+                thresh = generator_settings[chi2abs]
+            else:
+                thresh = generator_settings[chi2scaled] * math.sqrt(two_n_obs)
+            generator_settings['threshold_del_chi2'] = thresh
+
+    def get_2n_obs(self):
+        """
+        Returns 2*n_obs = number_GH * number_spatial_bins. Works with the
+        legacy setup only ('stars' component with one set of kinematics).
+
+        Returns
+        -------
+        two_n_obs : 2*n_obs, int
+
+        """
+        number_GH = self.settings.weight_solver_settings['number_GH']
+        stars = self.system.get_component_from_name('stars')
+        two_n_obs = 2 * number_GH * len(stars.kinematic_data[0].data)
+        return two_n_obs
 
     def validate(self):
         """
@@ -390,6 +442,12 @@ class Configuration(object):
         if self.settings.parameter_space_settings["which_chi2"] not in \
             ["chi2", "kinchi2"]:
             raise ValueError('Unknown which_chi2 setting, use chi2 or kinchi2')
+        chi2abs = self.__class__.thresh_chi2_abs
+        chi2scaled = self.__class__.thresh_chi2_scaled
+        gen_set = self.settings.parameter_space_settings['generator_settings']
+        if chi2abs in gen_set and chi2scaled in gen_set:
+            raise ValueError(f'Only specify one of {chi2abs}, {chi2scaled}, '
+                             'not both')
 
 
     # def read_parameters(self, par=None, items=None):
