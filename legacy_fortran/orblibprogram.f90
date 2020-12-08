@@ -44,7 +44,7 @@ program counterrotation
 
 ! read random number seed, any value <= 0 results in stochastic seed
   read (unit=*, fmt=*) r_seed
-  if (r_seed == 0) then
+  if (r_seed <= 0) then
      write(*,*) "Using stochastic random number generator"
      call random_seed()
      call random_number(r_num)

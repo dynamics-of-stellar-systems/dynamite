@@ -135,6 +135,7 @@ subroutine ip_testaccuracy(error)
   integer (kind=i4b) :: i,j,k
   real (kind=dp) :: x,y,z,theta,phi,r,vx,vy,vz,rlogpolmax,t1,t2,t3, &
        maxdiff,t4,meandiff,len,diff
+  real (kind=sp) :: ran1
 
   !
   ! test the accuracy of the interpolation
@@ -153,9 +154,12 @@ subroutine ip_testaccuracy(error)
   ! END reproducible orbit library
   do i=1,20000 
 
-     call random_number(r)
-     call random_number(theta)
-     call random_number(phi)
+     r = ran1(1)
+     theta = ran1(1)
+     phi = ran1(1)
+!      call random_number(r)
+!      call random_number(theta)
+!      call random_number(phi)
 
      r  =  10 ** (rlogminp + (rlogpolmax-rlogminp) * r)
      theta=theta*pio2_d

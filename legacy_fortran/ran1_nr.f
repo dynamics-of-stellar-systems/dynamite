@@ -11,7 +11,7 @@ C     negative integer to initialize; thereafter, idum is not altered between
 C     successive deviates in a sequence. RNMX should approximate the largest
 C     floating value that is less than 1.
       INTEGER j,k,iv(NTAB),iy
-      SAVE iv,iy
+      SAVE iv,iy,idum
       DATA iv /NTAB*0/, iy /0/
       if (init.le.0.or.iy.eq.0) then
             init=max(-init,1)
