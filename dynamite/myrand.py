@@ -7,25 +7,24 @@ class MyRand(object):
     '''
     Class that provides the function random() which returns a 'random number'
     in the open(!) interval (0,1). The class has been created for TESTING and
-    DEVELOPMENT purposes and ALWAYS PRODUCES THE SAME SEQUENCE of 'random
-    numbers' (as long as no multiple threads are running). This also works
-    'cross-language' with the Fortran implementation. If desired, the sequence
-    can be changed by assigning the class attribute MyRand.idum a different
-    negative integer.
+    DEVELOPMENT purposes and PRODUCES THE SAME SEQUENCE of 'random numbers'
+    for a given seed < 0 (as long as no multiple threads are running).
+    This also works 'cross-language' with the Fortran implementation.
     '''
 
-    idum = -42
+    idum = -4242
     iv = None
     iy = None
 
-    def __init__(self):
-        self.idum = self.__class__.idum
+    def __init__(self, seed=None):
+        self.idum = self.__class__.idum if seed==None else seed
         self.iv = self.__class__.iv
         self.iy = self.__class__.iy
 
-    def random(self):
+    def ran1(self):
         '''
         From Numerical Recipes in F77, 2nd. Edition, corresponds to ran1.
+        Adapted to double precision (Python float).
         “Minimal” random number generator of Park and Miller with Bays-Durham
         shuffle and added safeguards. Returns a uniform random deviate between
         0.0 and 1.0 (exclusive of the endpoint values). Call with self.idum a
@@ -35,7 +34,7 @@ class MyRand(object):
 
         Returns
         -------
-        np.float32
+        float
             Next 'random number' in the sequence.
 
         '''
@@ -45,13 +44,17 @@ class MyRand(object):
         # NTAB=32,NDIV=1+(IM-1)/NTAB,EPS=1.2e-7,RNMX=1.-EPS
         IA=16807
         IM=2147483647
-        AM=np.float32(1./IM)
+        # AM=np.float32(1./IM)
+        AM=1/IM
         IQ=127773
         IR=2836
         NTAB=32
         NDIV=1+int((IM-1)/NTAB)
-        EPS=np.float32(1.2e-7)
-        RNMX=np.float32(1.-EPS)
+        # EPS=np.float32(1.2e-7)
+        # RNMX=np.float32(1.-EPS)
+        EPS=1.2e-7
+        RNMX=1.-EPS
+        RNMX = 1-2.23e-16 # 2.23d-16 is approx. np.finfo(float).eps
     
         # INTEGER j,k,iv(NTAB),iy
         # SAVE iv,iy
@@ -82,4 +85,4 @@ class MyRand(object):
         j = 1 + self.iy // NDIV
         self.iy = self.iv[j-1]
         self.iv[j-1] = self.idum
-        return min(np.float32(AM*self.iy),RNMX)
+        return min(AM*self.iy,RNMX)

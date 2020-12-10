@@ -135,7 +135,7 @@ subroutine ip_testaccuracy(error)
   integer (kind=i4b) :: i,j,k
   real (kind=dp) :: x,y,z,theta,phi,r,vx,vy,vz,rlogpolmax,t1,t2,t3, &
        maxdiff,t4,meandiff,len,diff
-  real (kind=sp) :: ran1
+  real (kind=dp) :: ran1
 
   !
   ! test the accuracy of the interpolation
@@ -154,12 +154,12 @@ subroutine ip_testaccuracy(error)
   ! END reproducible orbit library
   do i=1,20000 
 
-     r = ran1(1)
-     theta = ran1(1)
-     phi = ran1(1)
-!      call random_number(r)
-!      call random_number(theta)
-!      call random_number(phi)
+      r = ran1(1)
+      theta = ran1(1)
+      phi = ran1(1)
+!       call random_number(r)
+!       call random_number(theta)
+!       call random_number(phi)
 
      r  =  10 ** (rlogminp + (rlogpolmax-rlogminp) * r)
      theta=theta*pio2_d
@@ -180,7 +180,7 @@ subroutine ip_testaccuracy(error)
        write(unit=*,fmt="(1es15.3,4f15.3,4e15.3)"),diff,theta*180/pi_d,phi*180/pi_d,log10(r),rlogminp,&
               (vx-t1)/t1,(vy-t2)/t2,(vz-t3)/t3,len
      endif
-     end do
+  end do
 
   close (unit=30)
   meandiff = meandiff/(20000.0)
