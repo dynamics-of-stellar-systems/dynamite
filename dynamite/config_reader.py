@@ -434,8 +434,8 @@ class Configuration(object):
                              'must be GridWalk or LegacyGridSearch')
         chi2abs = self.__class__.thresh_chi2_abs
         chi2scaled = self.__class__.thresh_chi2_scaled
-        gen_set = self.settings.parameter_space_settings['generator_settings']
-        if chi2abs in gen_set and chi2scaled in gen_set:
+        gen_set=self.settings.parameter_space_settings.get('generator_settings')
+        if gen_set != None and (chi2abs in gen_set and chi2scaled in gen_set):
             raise ValueError(f'Only specify one of {chi2abs}, {chi2scaled}, '
                              'not both')
 
