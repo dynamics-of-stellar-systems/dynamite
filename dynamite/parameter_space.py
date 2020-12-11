@@ -125,10 +125,13 @@ class ParameterGenerator(object):
         if not parspace_settings:
             raise ValueError('ParameterGenerator needs parspace_settings')
         self.parspace_settings = parspace_settings
+        which_chi2 = self.parspace_settings.get('which_chi2')
+        if which_chi2 not in ['chi2', 'kinchi2']:
+          raise ValueError('Unknown or missing which_chi2 setting, '
+                           'use chi2 or kinchi2')
+        self.chi2 = 'chi2' if which_chi2 == 'chi2' else 'kinchi2'
         self.status = {}
         self.name = name
-        self.chi2 = 'chi2' if self.parspace_settings['which_chi2'] == 'chi2' \
-                else 'kinchi2'
         self.lo = []
         self.hi = []
         try:
@@ -143,6 +146,14 @@ class ParameterGenerator(object):
         except:
             raise ValueError('ParameterGenerator: non-fixed parameters '
                              'need hi and lo settings')
+        try:
+            stop_crit = parspace_settings['stopping_criteria']
+        except:
+            raise ValueError('ParameterGenerator: need stopping criteria')
+        if stop_crit.get('n_max_mods') is None and \
+           stop_crit.get('n_max_iter') is None:
+            raise ValueError('ParameterGenerator: need n_max_mods and '
+                             'n_max_iter stopping criteria settings')
 
     def generate(self,
                  current_models=None,
@@ -332,11 +343,20 @@ class LegacyGridSearch(ParameterGenerator):
         except:
             raise ValueError('LegacyGridSearch: non-fixed parameters need '
                              'step setting')
-        self.thresh = \
+        try:
+            self.thresh = \
             self.parspace_settings['generator_settings']['threshold_del_chi2']
+        except:
+            raise ValueError('LegacyGridSearch: need generator_settings - '
+                'threshold_del_chi2 (absolute or scaled - see documentation)')
         stop_crit = parspace_settings['stopping_criteria']
-        self.min_delta_chi2_abs = stop_crit.get('min_delta_chi2_abs')
-        self.min_delta_chi2_rel = stop_crit.get('min_delta_chi2_rel')
+        self.min_delta_chi2_abs = stop_crit.get('min_delta_chi2_abs', False)
+        self.min_delta_chi2_rel = stop_crit.get('min_delta_chi2_rel', False)
+        if (not self.min_delta_chi2_abs and not self.min_delta_chi2_rel) \
+           or \
+           (self.min_delta_chi2_abs and self.min_delta_chi2_rel):
+            raise ValueError('LegacyGridSearch: specify exactly one of the '
+                             'options min_delta_chi2_abs, min_delta_chi2_rel')
 
     def specific_generate_method(self, **kwargs):
         """
@@ -454,8 +474,13 @@ class GridWalk(ParameterGenerator):
             raise ValueError('GridWalk: non-fixed parameters need '
                              'step setting')
         stop_crit = parspace_settings['stopping_criteria']
-        self.min_delta_chi2_abs = stop_crit.get('min_delta_chi2_abs')
-        self.min_delta_chi2_rel = stop_crit.get('min_delta_chi2_rel')
+        self.min_delta_chi2_abs = stop_crit.get('min_delta_chi2_abs', False)
+        self.min_delta_chi2_rel = stop_crit.get('min_delta_chi2_rel', False)
+        if (not self.min_delta_chi2_abs and not self.min_delta_chi2_rel) \
+           or \
+           (self.min_delta_chi2_abs and self.min_delta_chi2_rel):
+            raise ValueError('GridWalk: specify exactly one of the '
+                             'options min_delta_chi2_abs, min_delta_chi2_rel')
 
     def specific_generate_method(self, **kwargs):
         """
