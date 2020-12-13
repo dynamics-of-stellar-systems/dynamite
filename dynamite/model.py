@@ -289,27 +289,35 @@ class LegacySchwarzschildModel(Model):
 
         # Dark matter profile
         # dm_specs='1 2'
-        dark_halo = self.system.get_component_from_name('dark_halo')
-        dm_type = type(dark_halo).__name__
-        if dm_type == 'NFW':
-            dm_type_no = 1
-        elif dm_type == 'Hernquist':
-            dm_type_no = 2
-        elif dm_type == 'TriaxialCoredLogPotential':
-            dm_type_no = 3
-        elif dm_type == 'GeneralisedNFW' or dm_type == 'GeneralizedNFW':
-            dm_type_no = 5
-        else:
-            raise ValueError(f'Unknown dark halo type {dm_type}')
-        dm_n_par = len(dark_halo.par_names)
-        dm_specs = f'{dm_type_no} {dm_n_par}'
-        # print(f'dm_type: {dm_type}, dm_type_no: {dm_type_no}, dm_specs: {dm_specs}')
-        dm_par_val = ''
-        for dm_p in dark_halo.par_names:
-            dm_p_name = dm_p + '_dark_halo'
-            dm_par_val += f'{self.parset[dm_p_name]} '
-        # print(f'dm_par_val: {dm_par_val}, compare to:')
-        # print(str(self.parset['dc_dark_halo']) +' ' + str(self.parset['f_dark_halo']))
+        try:
+            dark_halo = self.system.get_component_from_name('dark_halo')
+            dm_type = type(dark_halo).__name__
+            # Assign dm_type_no according to the dark halo types in
+            # Legacy Fortran (given in dmpotent.f90).
+            if dm_type == 'NFW':
+                dm_type_no = 1
+            elif dm_type == 'Hernquist':
+                dm_type_no = 2
+            elif dm_type == 'TriaxialCoredLogPotential':
+                dm_type_no = 3
+            elif dm_type == 'GeneralisedNFW' or dm_type == 'GeneralizedNFW':
+                dm_type_no = 5
+            else:
+                raise ValueError(f'Unknown dark halo type {dm_type}')
+            dm_n_par = len(dark_halo.par_names)
+            dm_specs = f'{dm_type_no} {dm_n_par}'
+            # print(f'dm_type: {dm_type}, dm_type_no: {dm_type_no}, dm_specs: {dm_specs}')
+            dm_par_val = ''
+            for dm_p in dark_halo.par_names:
+                dm_p_name = dm_p + '_dark_halo'
+                dm_par_val += f'{self.parset[dm_p_name]} '
+            # print(f'dm_par_val: {dm_par_val}, compare to:')
+            # print(str(self.parset['dc_dark_halo']) +' ' + str(self.parset['f_dark_halo']))
+        except AssertionError:
+            dm_specs = '0 0'
+            dm_par_val = ''
+            print("WARNING: no or multiple 'dark_halo' components found - "
+                  "ignoring dark halos in the simulation!")
 
         theta,psi,phi = stars.triax_pqu2tpp(p,q,qobs,u)
 

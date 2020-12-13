@@ -174,21 +174,31 @@ class VisibleComponent(Component):
 
 class AxisymmetricVisibleComponent(VisibleComponent):
 
+    par_names  = ['par1', 'par2']
+    format_str = ['6.3g', '6.4g']
+
     def __init__(self, **kwds):
         super().__init__(symmetry='axisymm', **kwds)
 
     def validate(self):
-        par_format = {'par1':'6.3g', 'par2':'6.4g'}
+        # par_format = {'par1':'6.3g', 'par2':'6.4g'}
+        par_format = \
+            dict(zip(self.__class__.par_names, self.__class__.format_str))
         super().validate(par_format)
 
 
 class TriaxialVisibleComponent(VisibleComponent):
 
+    par_names  = ['q'   , 'p'   , 'u']
+    format_str = ['6.3g', '6.4g', '7.5g']
+
     def __init__(self, **kwds):
         super().__init__(symmetry='triax', **kwds)
 
     def validate(self):
-        par_format = {'q':'6.3g', 'p':'6.4g', 'u':'7.5g'}
+        # par_format = {'q':'6.3g', 'p':'6.4g', 'u':'7.5g'}
+        par_format = \
+            dict(zip(self.__class__.par_names, self.__class__.format_str))
         super().validate(par_format=par_format)
 
     def triax_pqu2tpp(self,p,q,qobs,u):
@@ -258,6 +268,9 @@ class DarkComponent(Component):
 
 class Plummer(DarkComponent):
 
+    par_names  = ['mass', 'a']
+    format_str = ['6.3g', '7.3g']
+
     def __init__(self, **kwds):
         super().__init__(symmetry='spherical', **kwds)
 
@@ -268,7 +281,9 @@ class Plummer(DarkComponent):
         return rho
 
     def validate(self):
-        par_format = {'mass':'6.3g', 'a':'7.3g'}
+        # par_format = {'mass':'6.3g', 'a':'7.3g'}
+        par_format = \
+            dict(zip(self.__class__.par_names, self.__class__.format_str))
         super().validate(par_format)
         # if len(self.parameters) != 2:
         #     raise ValueError(f'{self.__class__.__name__} needs exactly 2 '
@@ -279,9 +294,10 @@ class NFW(DarkComponent):
 
     # Define parameter names as class attribute, will be used in legacy
     # create_fortran_input_orblib, their sequence must match sequence in
-    # Legacy Fortran code!
+    # Legacy Fortran code (given in dmpotent.f90)!
     par_names  = ['dc'  , 'f']
     format_str = ['6.3g', '6.3g']
+
     def __init__(self, **kwds):
         self.legacy_code = 1
         super().__init__(symmetry='spherical', **kwds)
@@ -300,6 +316,7 @@ class Hernquist(DarkComponent):
 
     par_names  = ['rhoc', 'rc']
     format_str = ['6.3g', '6.3g']
+
     def __init__(self, **kwds):
         self.legacy_dm_code = 2
         super().__init__(symmetry='spherical', **kwds)
@@ -318,6 +335,7 @@ class TriaxialCoredLogPotential(DarkComponent):
 
     par_names  = ['Vc'  , 'rho' , 'p'   , 'q']
     format_str = ['6.3g', '6.3g', '6.3g', '6.3g']
+
     def __init__(self, **kwds):
         self.legacy_dm_code = 3
         super().__init__(symmetry='triaxial', **kwds)
@@ -336,6 +354,7 @@ class GeneralisedNFW(DarkComponent):
 
     par_names  = ['concentration', 'Mvir', 'inner_log_slope']
     format_str = ['6.3g'         , '6.3g', '6.3g']
+
     def __init__(self, **kwds):
         self.legacy_dm_code = 5
         super().__init__(symmetry='triaxial', **kwds)
@@ -349,9 +368,5 @@ class GeneralisedNFW(DarkComponent):
         # if len(self.parameters) != 3:
         #     raise ValueError(f'{self.__class__.__name__} needs exactly 3 '
         #                      f'paramaters, not {len(self.parameters)}')
-
-
-
-
 
 # end
