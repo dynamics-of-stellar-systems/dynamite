@@ -277,12 +277,19 @@ class Plummer(DarkComponent):
 
 class NFW(DarkComponent):
 
+    # Define parameter names as class attribute, will be used in legacy
+    # create_fortran_input_orblib, their sequence must match sequence in
+    # Legacy Fortran code!
+    par_names  = ['dc'  , 'f']
+    format_str = ['6.3g', '6.3g']
     def __init__(self, **kwds):
         self.legacy_code = 1
         super().__init__(symmetry='spherical', **kwds)
 
     def validate(self):
-        par_format = {'dc':'6.3g', 'f':'6.3g'}
+        # par_format = {'dc':'6.3g', 'f':'6.3g'}
+        par_format = \
+            dict(zip(self.__class__.par_names, self.__class__.format_str))
         super().validate(par_format)
         # if len(self.parameters) != 2:
         #     raise ValueError(f'{self.__class__.__name__} needs exactly 2 '
@@ -291,12 +298,16 @@ class NFW(DarkComponent):
 
 class Hernquist(DarkComponent):
 
+    par_names  = ['rhoc', 'rc']
+    format_str = ['6.3g', '6.3g']
     def __init__(self, **kwds):
         self.legacy_dm_code = 2
         super().__init__(symmetry='spherical', **kwds)
 
     def validate(self):
-        par_format = {'rhoc':'6.3g', 'rc':'6.3g'}
+        # par_format = {'rhoc':'6.3g', 'rc':'6.3g'}
+        par_format = \
+            dict(zip(self.__class__.par_names, self.__class__.format_str))
         super().validate(par_format)
         # if len(self.parameters) != 2:
         #     raise ValueError(f'{self.__class__.__name__} needs exactly 2 '
@@ -305,12 +316,16 @@ class Hernquist(DarkComponent):
 
 class TriaxialCoredLogPotential(DarkComponent):
 
+    par_names  = ['Vc'  , 'rho' , 'p'   , 'q']
+    format_str = ['6.3g', '6.3g', '6.3g', '6.3g']
     def __init__(self, **kwds):
         self.legacy_dm_code = 3
         super().__init__(symmetry='triaxial', **kwds)
 
     def validate(self):
-        par_format = {'Vc':'6.3g', 'rho':'6.3g', 'p':'6.3g', 'q':'6.3g'}
+        # par_format = {'Vc':'6.3g', 'rho':'6.3g', 'p':'6.3g', 'q':'6.3g'}
+        par_format = \
+            dict(zip(self.__class__.par_names, self.__class__.format_str))
         super().validate(par_format)
         # if len(self.parameters) != 4:
         #     raise ValueError(f'{self.__class__.__name__} needs exactly 4 '
@@ -319,13 +334,17 @@ class TriaxialCoredLogPotential(DarkComponent):
 
 class GeneralisedNFW(DarkComponent):
 
+    par_names  = ['concentration', 'Mvir', 'inner_log_slope']
+    format_str = ['6.3g'         , '6.3g', '6.3g']
     def __init__(self, **kwds):
         self.legacy_dm_code = 5
         super().__init__(symmetry='triaxial', **kwds)
 
     def validate(self):
-        par_format = {'concentration':'6.3g', 'Mvir':'6.3g',
-                      'inner_log_slope':'6.3g'}
+        # par_format = {'concentration':'6.3g', 'Mvir':'6.3g',
+        #               'inner_log_slope':'6.3g'}
+        par_format = \
+            dict(zip(self.__class__.par_names, self.__class__.format_str))
         super().validate(par_format)
         # if len(self.parameters) != 3:
         #     raise ValueError(f'{self.__class__.__name__} needs exactly 3 '

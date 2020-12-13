@@ -287,8 +287,29 @@ class LegacySchwarzschildModel(Model):
         # r_BH='1d-03'
         # Done! This is now paramater "a" of the Plummer
 
-        #TODO: which dark matter profile
-        dm_specs='1 2'
+        # Dark matter profile
+        # dm_specs='1 2'
+        dark_halo = self.system.get_component_from_name('dark_halo')
+        dm_type = type(dark_halo).__name__
+        if dm_type == 'NFW':
+            dm_type_no = 1
+        elif dm_type == 'Hernquist':
+            dm_type_no = 2
+        elif dm_type == 'TriaxialCoredLogPotential':
+            dm_type_no = 3
+        elif dm_type == 'GeneralisedNFW' or dm_type == 'GeneralizedNFW':
+            dm_type_no = 5
+        else:
+            raise ValueError(f'Unknown dark halo type {dm_type}')
+        dm_n_par = len(dark_halo.par_names)
+        dm_specs = f'{dm_type_no} {dm_n_par}'
+        # print(f'dm_type: {dm_type}, dm_type_no: {dm_type_no}, dm_specs: {dm_specs}')
+        dm_par_val = ''
+        for dm_p in dark_halo.par_names:
+            dm_p_name = dm_p + '_dark_halo'
+            dm_par_val += f'{self.parset[dm_p_name]} '
+        # print(f'dm_par_val: {dm_par_val}, compare to:')
+        # print(str(self.parset['dc_dark_halo']) +' ' + str(self.parset['f_dark_halo']))
 
         theta,psi,phi = stars.triax_pqu2tpp(p,q,qobs,u)
 
@@ -305,7 +326,8 @@ class LegacySchwarzschildModel(Model):
              str(self.settings.orblib_settings['nI3']) +'\n' + \
              str(self.settings.orblib_settings['dithering']) +'\n' + \
              dm_specs +'\n' + \
-             str(self.parset['dc_dark_halo']) +' ' + str(self.parset['f_dark_halo'])
+             dm_par_val
+             # str(self.parset['dc_dark_halo']) +' ' + str(self.parset['f_dark_halo'])
 
         #parameters.in
         np.savetxt(path+'parameters.in',stars.mge.data,header=str(len_mge),footer=text,comments='',fmt=['%10.2f','%10.5f','%10.5f','%10.2f'])
