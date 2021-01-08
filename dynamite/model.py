@@ -252,7 +252,7 @@ class LegacySchwarzschildModel(Model):
 
     def get_weights(self):
         # prepare fortran input file for nnls
-        self.create_fortran_input_nnls(self.directory_noml)
+        self.create_fortran_input_nnls(self.directory_noml, self.parset['ml'])
         # create the weight solver object
         self.weight_solver = ws.LegacyWeightSolver(
                 system=self.system,
@@ -423,7 +423,7 @@ class LegacySchwarzschildModel(Model):
         triaxmassbin_file.write(text)
         triaxmassbin_file.close()
 
-    def create_fortran_input_nnls(self,path):
+    def create_fortran_input_nnls(self,path,ml):
 
         #for the ml the model is only scaled. We therefore need to know what is the ml that was used for the orbit library
         infile=path+'infil/parameters.in'
@@ -445,8 +445,8 @@ class LegacySchwarzschildModel(Model):
         str(self.settings.weight_solver_settings['lum_intr_rel_err']) + '                               [ relative error for intrinsic luminosity ]' +'\n' + \
         str(self.settings.weight_solver_settings['sb_proj_rel_err']) + '                               [ relative error for projected SB ]' + '\n' + \
         str(np.sqrt(self.parset['ml']/ml_orblib))  + '                                [ scale factor related to M/L, sqrt( (M/L)_k / (M/L)_ref ) ]' + '\n' + \
-        'datfil/orblib.dat' +'\n' + \
-        'datfil/orblibbox.dat' +'\n' + \
+        f'datfil/orblib_{ml}.dat' +'\n' + \
+        f'datfil/orblibbox_{ml}.dat' +'\n' + \
         str(self.settings.weight_solver_settings['nnls_solver']) + '                                  [ nnls solver ]'
 
         nn_file= open(path+'ml'+'{:01.2f}'.format(self.parset['ml'])+'/nn.in',"w")

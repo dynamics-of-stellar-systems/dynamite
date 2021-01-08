@@ -76,7 +76,7 @@ class Local(Executor):
         super().__init__(**kwargs)
 
     def write_executable_for_ics(self):
-        cmdstr = 'cmda' + str(self.system.name) + '_' + str(int(np.random.uniform(0, 1) * 100000.0))
+        cmdstr = 'cmd_orb_start'
         #create the fortran executable
         txt_file = open(cmdstr, "w")
         txt_file.write('#!/bin/bash' + '\n')
@@ -89,7 +89,7 @@ class Local(Executor):
 
     def write_executable_for_integrate_orbits(self):
         #tubeorbits
-        cmdstr_tube = 'cmdb' + str(self.system.name) + '_' + str(int(np.random.uniform(0, 1) * 100000.0))
+        cmdstr_tube = 'cmd_tube_orbs'
         txt_file = open(cmdstr_tube, "w")
         txt_file.write('#!/bin/bash' + '\n')
         #txt_file.write('grep Writing datfil/orblib.dat.tmp && rm -f datfil/orblib.dat.tmp datfil/orblib.dat' + '\n')
@@ -105,7 +105,7 @@ class Local(Executor):
         txt_file.write('rm datfil/orblib.dat' + '\n')
         txt_file.close()
         #boxorbits
-        cmdstr_box = 'cmdc' + str(self.system.name) + '_' + str(int(np.random.uniform(0, 1) * 100000.0))
+        cmdstr_box = 'cmd_box_orbs'
         txt_file = open(cmdstr_box, "w")
         txt_file.write('#!/bin/bash' + '\n')
         #txt_file.write(
@@ -121,18 +121,19 @@ class Local(Executor):
         return cmdstr_tube, cmdstr_box
 
     def write_executable_for_weight_solver(self, ml):
-        '{:06.2f}'.format(ml)
-        nn='ml'+'{:01.2f}'.format(ml)+'/nn'
-        cmdstr = 'cmdd' + str(self.system.name) + '_' + str(int(np.random.uniform(0, 1) * 100000.0))
+        nn = f'ml{ml:01.2f}/nn'
+        cmdstr = f'cmd_nnls_{ml}'
         txt_file = open(cmdstr, "w")
         txt_file.write('#!/bin/bash' + '\n')
         txt_file.write('# if the gzipped orbit library exist unzip it' + '\n')
-        txt_file.write('test -e ../datfil/orblib.dat || bunzip2 -k  datfil/orblib.dat.bz2 ' + '\n')
-        txt_file.write('test -e ../datfil/orblibbox.dat || bunzip2 -k  datfil/orblibbox.dat.bz2' + '\n')
+        txt_file.write(f'test -e datfil/orblib_{ml}.dat || bunzip2 -c  datfil/orblib.dat.bz2 > datfil/orblib_{ml}.dat' + '\n')
+        txt_file.write(f'test -e datfil/orblibbox_{ml}.dat || bunzip2 -c  datfil/orblibbox.dat.bz2 > datfil/orblibbox_{ml}.dat' + '\n')
         txt_file.write('test -e ' + str(nn) + '_kinem.out || ' +
-                           self.legacy_directory +'/triaxnnls_CRcut < ' + str(nn) + '.in >>' +str(nn) + 'ls.log' + '\n') #TODO: specify which nnls to use
-        txt_file.write('rm datfil/orblib.dat' + '\n')
-        txt_file.write('rm datfil/orblibbox.dat' + '\n')
+                       self.legacy_directory +
+                       f'/triaxnnls_CRcut < {nn}.in >> {nn}ls.log' + '\n')
+        #TODO: specify which nnls to use
+        txt_file.write(f'rm datfil/orblib_{ml}.dat' + '\n')
+        txt_file.write(f'rm datfil/orblibbox_{ml}.dat' + '\n')
         txt_file.close()
         return cmdstr
 

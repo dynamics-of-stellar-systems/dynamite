@@ -1,7 +1,8 @@
 import model
 import parameter_space
 import numpy as np
-
+import pathos
+from pathos.multiprocessing import Pool
 
 class ModelIterator(object):
 
@@ -12,7 +13,8 @@ class ModelIterator(object):
                  model_kwargs={},
                  executor=None,
                  do_dummy_run=None,
-                 dummy_chi2_function=None):
+                 dummy_chi2_function=None,
+                 ncpus=1):
         stopping_crit = settings.parameter_space_settings['stopping_criteria']
         n_max_iter = stopping_crit['n_max_iter']
         self.n_max_mods = stopping_crit['n_max_mods']
@@ -29,7 +31,8 @@ class ModelIterator(object):
             settings=settings,
             par_generator=par_generator,
             do_dummy_run=do_dummy_run,
-            dummy_chi2_function=dummy_chi2_function)
+            dummy_chi2_function=dummy_chi2_function,
+            ncpus=ncpus)
         if len(self.all_models.table)>0:
             previous_iter = np.max(self.all_models.table['which_iter'])+1
         else:
@@ -45,6 +48,7 @@ class ModelIterator(object):
             if status['stop'] is True:
                 print(f'Stopping after iteration {total_iter_count}')
                 print(status)
+                print(f'Saving all_models table')
                 break
             print(f'{par_generator_type}: "iteration {total_iter_count}"')
             status = model_inner_iterator.run_iteration(iter, executor=executor)
@@ -59,7 +63,8 @@ class ModelInnerIterator(object):
                  settings=None,
                  par_generator=None,
                  do_dummy_run=False,
-                 dummy_chi2_function=None):
+                 dummy_chi2_function=None,
+                 ncpus=1):
         self.system = system
         self.all_models = all_models
         self.settings = settings
@@ -70,6 +75,7 @@ class ModelInnerIterator(object):
             assert dummy_chi2_function is not None
             # TODO: assert dummy_chi2_function is a valid function of parset
         self.dummy_chi2_function = dummy_chi2_function
+        self.ncpus = ncpus
 
     def run_iteration(self, iter, executor=None):
         self.par_generator.generate(current_models=self.all_models)
@@ -78,30 +84,14 @@ class ModelInnerIterator(object):
             # find models not yet done
             rows_to_do = np.where(self.all_models.table['all_done'] == False)
             rows_to_do = rows_to_do[0]
-            n_to_do = len(rows_to_do)
+            self.n_to_do = len(rows_to_do)
+            input_list = []
             for i, row in enumerate(rows_to_do):
-                print(f'... running model {i+1} out of {n_to_do}')
-                # extract the parameter values
-                parset0 = self.all_models.table[row]
-                parset0 = parset0[self.parspace.par_names]
-                # create and run the model
-                mod0 = self.create_model(parset0, executor=executor)
-                if self.do_dummy_run:
-                    mod0.chi2 = self.dummy_chi2_function(parset0)
-                    mod0.kinchi2 = 0.
-                else:
-                    mod0.setup_directories()
-                    mod0.get_orblib()
-                    self.all_models.table['orblib_done'][row] = True
-                    mod0.get_weights()
-                    self.all_models.table['weights_done'][row] = True
-                # store results
-                self.all_models.table['chi2'][row] = mod0.chi2
-                self.all_models.table['kinchi2'][row] = mod0.kinchi2
-                # 'which_iter' column is filled by ParameterGenerator.add_model
-                self.all_models.table['all_done'][row] = True
-                time_now = np.datetime64('now', 'ms')
-                self.all_models.table['time_modified'][row] = time_now
+                input_list += [(i, row, executor)]
+            with Pool(self.ncpus) as p:
+                output = p.map(self.create_and_run_model, input_list)
+            # save the output
+            self.write_output_to_all_models_table(rows_to_do, output)
         return self.par_generator.status
 
     def create_model(self,
@@ -129,8 +119,37 @@ class ModelInnerIterator(object):
                              """)
         return mod
 
+    def create_and_run_model(self, input):
+        i, row, executor = input
+        print(f'... running model {i+1} out of {self.n_to_do}')
+        # extract the parameter values
+        parset0 = self.all_models.table[row]
+        parset0 = parset0[self.parspace.par_names]
+        # create and run the model
+        mod0 = self.create_model(parset0, executor=executor)
+        if self.do_dummy_run:
+            mod0.chi2 = self.dummy_chi2_function(parset0)
+            mod0.kinchi2 = 0.
+        else:
+            mod0.setup_directories()
+            mod0.get_orblib()
+            orb_done = True
+            mod0.get_weights()
+            wts_done = True
+        all_done = True
+        time = np.datetime64('now', 'ms')
+        output = orb_done, wts_done, mod0.chi2, mod0.kinchi2, all_done, time
+        return output
 
-
+    def write_output_to_all_models_table(self, rows_to_do, output):
+        for i, row in enumerate(rows_to_do):
+            orb_done, wts_done, chi2, kinchi2, all_done, time = output[i]
+            self.all_models.table['orblib_done'][row] = orb_done
+            self.all_models.table['weights_done'][row] = wts_done
+            self.all_models.table['chi2'][row] = chi2
+            self.all_models.table['kinchi2'][row] = kinchi2
+            self.all_models.table['all_done'][row] = all_done
+            self.all_models.table['time_modified'][row] = time
 
 
 

@@ -44,7 +44,7 @@ system_components:
                     step: 1.0
                     minstep: 0.1
                 logarithmic: True
-                fixed: True
+                fixed: False
                 value: 3.0
                 LaTeX: "$log(C)$"
             f: # NFW Darkmatter fraction
@@ -54,7 +54,7 @@ system_components:
                     step: 0.5
                     minstep: 0.1
                 logarithmic: True
-                fixed: True
+                fixed: False
                 value: 1.0
                 LaTeX: "$log(M_{200}/M_{star})$"
         type: NFW
@@ -67,10 +67,10 @@ system_components:
                 par_generator_settings:
                     lo: 0.05
                     hi: 0.99
-                    step: 0.04
+                    step: 0.08
                     minstep: 0.02
                 fixed: True
-                value: 0.54
+                value: 0.5
                 LaTeX: "$q_{min}$"
             p: # intrinsic B/A
                 gpe_parspace_settings:
@@ -161,12 +161,12 @@ parameter_space_settings:
     stopping_criteria:
         min_delta_chi2_abs : 0.5  # absolute "optimality tolerance"
         #min_delta_chi2_rel : 0.05 # relative "optimality tolerance"
-        n_max_mods : 3
-        n_max_iter : 10
+        n_max_mods : 30
+        n_max_iter : 20
 
 legacy_settings:
     use_legacy_mode: True
-    directory: "/Users/pjethwa/Astro/Science/dynamite/dynamite_repo/legacy_fortran"
+    directory: "default"
 
 io_settings: # paths can be given with or without trailing slash
     input_directory: "NGC6278_input/"
