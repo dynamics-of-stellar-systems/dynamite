@@ -166,7 +166,7 @@ parameter_space_settings:
 
 legacy_settings:
     use_legacy_mode: True
-    directory: "/Users/pjethwa/Astro/Science/dynamite/dynamite_repo/legacy_fortran"
+    directory: "default"
 
 io_settings: # paths can be given with or without trailing slash
     input_directory: "NGC6278_input/"
