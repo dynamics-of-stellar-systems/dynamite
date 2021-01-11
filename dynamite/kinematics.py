@@ -73,10 +73,6 @@ class GaussHermite(Kinematics, data.Integrated):
         n_vbins, n_gh = int(n_vbins), int(n_gh)
         self.n_vbins = n_vbins
         self.n_gh = n_gh
-        # n_gh read from the file header is currently unused and incorrect
-        # TODO: fix/remove it... for now hardcode n_gh = 4
-        self.n_gh = 4
-        # TODO: move names/dtypes to the file header
         names = ['vbin_id', 'v', 'dv', 'sigma', 'dsigma', 'n_gh']
         for i_gh in range(3, self.n_gh+1):
             names += [f'h{i_gh}', f'dh{i_gh}']
@@ -88,8 +84,6 @@ class GaussHermite(Kinematics, data.Integrated):
                              skip_header=1,
                              names=names,
                              dtype=dtype)
-        # 6th column of kin_data.dat is == (unused and incorrect?) n_gh
-        # TODO: remove it
         return data
 
     def convert_file_from_old_format(self,
@@ -102,11 +96,14 @@ class GaussHermite(Kinematics, data.Integrated):
         return
 
     def convert_to_old_format(self, filename_old_format):
-        # taken from generate_input_califa.py
-        # NOTE: this only works for n_gh = 4
-        # TODO: generalise for all n_gh
         nbins = len(self.data)
-        n_gh = 4
+        # extract n_gh from list of column names
+        colnames = self.data.colnames
+        idx = ['h' in x and 'd' not in x for x in colnames]
+        idx = np.where(idx)[0]
+        n_gh = [int(colnames[idx0][1]) for idx0 in idx]
+        n_gh = np.max(n_gh)
+        # write comment string
         comment = '{0} {1}'.format(nbins, n_gh)
         idx = np.arange(nbins)+1
         velSym = self.data['v'].data
@@ -114,17 +111,14 @@ class GaussHermite(Kinematics, data.Integrated):
         sigSym = self.data['sigma'].data
         dsigSym = self.data['dsigma'].data
         n_gh_col = np.full_like(velSym, n_gh)
-        h3Sym = self.data['h3'].data
-        dh3Sym = self.data['dh3'].data
-        h4Sym = self.data['h4'].data
-        dh4Sym = self.data['dh4'].data
-        array_to_print = np.transpose([idx,
-                                       velSym, dvelSym,
-                                       sigSym, dsigSym,
-                                       n_gh_col,
-                                       h3Sym, dh3Sym,
-                                       h4Sym, dh4Sym])
-        fmt = '%5i %13.13s %13.13s %13.13s %13.13s %5i %13.13s %13.13s %13.13s %13.13s'
+        array_to_print = [idx, velSym, dvelSym, sigSym, dsigSym, n_gh_col]
+        fmt = '%5i %13.13s %13.13s %13.13s %13.13s %5i '
+        for i in range(3, n_gh+1):
+            hi_Sym = self.data[f'h{i}'].data
+            dhi_Sym = self.data[f'dh{i}'].data
+            array_to_print += [hi_Sym, dhi_Sym]
+            fmt += '%13.13s %13.13s '
+        array_to_print = np.transpose(array_to_print)
         np.savetxt(filename_old_format,
                    array_to_print,
                    fmt = fmt,

@@ -1,4 +1,5 @@
 from astropy.io import ascii
+from astropy.table import Table
 
 
 class Data(object):
@@ -9,7 +10,7 @@ class Data(object):
                  input_directory=None
                  ):
         self.name = name
-        if not hasattr(self, input_directory):
+        if not hasattr(self, 'input_directory'):
             self.datafile = datafile
             self.input_directory = input_directory if input_directory else ''
             if datafile is not None:
@@ -36,8 +37,26 @@ class Integrated(Data):
         self.binfile = binfile
         self.maskfile = maskfile
         super().__init__(**kwargs)
-        self.PSF = self.data.meta['PSF']
+        if hasattr(self, 'data'):
+            self.PSF = self.data.meta['PSF']
         pass
+
+    def add_psf_to_datafile(self,
+                            sigma=[1.],
+                            weight=[1.],
+                            datafile='datafile.ecsv'):
+        assert type(sigma) is list
+        assert type(sigma) is list
+        assert isinstance(datafile, str)
+        if hasattr(self, 'PSF'):
+            print('Warning: this dataset already has an associated PSF')
+            print('Possibly overwriting an existing PSF in the datafile')
+        psf = {'sigma':sigma, 'weight':weight}
+        meta = {'PSF':psf}
+        old_table = ascii.read(datafile)
+        new_table = Table(old_table, meta=meta)
+        new_table.write(datafile, format='ascii.ecsv', overwrite=True)
+
 
 
 
