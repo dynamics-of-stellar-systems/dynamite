@@ -291,21 +291,10 @@ class LegacySchwarzschildModel(Model):
         # dm_specs='1 2'
         try:
             dark_halo = self.system.get_component_from_name('dark_halo')
-            dm_type = type(dark_halo).__name__
             # Assign dm_type_no according to the dark halo types in
             # Legacy Fortran (given in dmpotent.f90).
-            if dm_type == 'NFW':
-                dm_type_no = 1
-            elif dm_type == 'Hernquist':
-                dm_type_no = 2
-            elif dm_type == 'TriaxialCoredLogPotential':
-                dm_type_no = 3
-            elif dm_type == 'GeneralisedNFW' or dm_type == 'GeneralizedNFW':
-                dm_type_no = 5
-            else:
-                raise ValueError(f'Unknown dark halo type {dm_type}')
             dm_n_par = len(dark_halo.par_names)
-            dm_specs = f'{dm_type_no} {dm_n_par}'
+            dm_specs = f'{dark_halo.legacy_code} {dm_n_par}'
             # print(f'dm_type: {dm_type}, dm_type_no: {dm_type_no}, dm_specs: {dm_specs}')
             dm_par_val = ''
             for dm_p in dark_halo.par_names:

@@ -318,7 +318,7 @@ class Hernquist(DarkComponent):
     format_str = ['6.3g', '6.3g']
 
     def __init__(self, **kwds):
-        self.legacy_dm_code = 2
+        self.legacy_code = 2
         super().__init__(symmetry='spherical', **kwds)
 
     def validate(self):
@@ -337,7 +337,7 @@ class TriaxialCoredLogPotential(DarkComponent):
     format_str = ['6.3g', '6.3g', '6.3g', '6.3g']
 
     def __init__(self, **kwds):
-        self.legacy_dm_code = 3
+        self.legacy_code = 3
         super().__init__(symmetry='triaxial', **kwds)
 
     def validate(self):
@@ -356,7 +356,7 @@ class GeneralisedNFW(DarkComponent):
     format_str = ['6.3g'         , '6.3g', '6.3g']
 
     def __init__(self, **kwds):
-        self.legacy_dm_code = 5
+        self.legacy_code = 5
         super().__init__(symmetry='triaxial', **kwds)
 
     def validate(self):
