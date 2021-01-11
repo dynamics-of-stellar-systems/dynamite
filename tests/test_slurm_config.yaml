@@ -122,11 +122,11 @@ system_parameters:
 ###############################################################################
 
 orblib_settings:
-    nE: 6
+    nE: 3
     logrmin: -0.101275
     logrmax: 1.99123
-    nI2: 5        # must be >= 4
-    nI3: 4
+    nI2: 4        # must be >= 4
+    nI3: 2
     dithering: 1
     #the following values should usually not be changed
     orbital_periods: 200
@@ -161,8 +161,8 @@ parameter_space_settings:
     stopping_criteria:
         min_delta_chi2_abs : 0.5  # absolute "optimality tolerance"
         #min_delta_chi2_rel : 0.05 # relative "optimality tolerance"
-        n_max_mods : 30
-        n_max_iter : 20
+        n_max_mods : 5
+        n_max_iter : 5
 
 legacy_settings:
     use_legacy_mode: True
@@ -172,8 +172,5 @@ io_settings: # paths can be given with or without trailing slash
     input_directory: "NGC6278_input/"
     output_directory: "NGC6278_output/"
     all_models_file: "all_models.ecsv"
-
-executor_settings:
-    type: "Local"
 
 # end

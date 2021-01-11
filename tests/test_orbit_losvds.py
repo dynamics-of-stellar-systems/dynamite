@@ -63,7 +63,6 @@ def run_orbit_losvd_test(make_comparison_losvd=False):
         system=c.system,
         settings=c.settings,
         parspace=c.parspace,
-        executor=c.executor,
         parset=parset)
     model.setup_directories()
     model.get_model_directory()

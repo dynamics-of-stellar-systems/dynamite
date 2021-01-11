@@ -1,6 +1,7 @@
 import os
 import numpy as np
 from astropy import table
+import subprocess
 
 class WeightSolver(object):
 
@@ -49,14 +50,12 @@ class LegacyWeightSolver(WeightSolver):
                  mod_dir=None,
                  settings=None,
                  legacy_directory=None,
-                 ml=None,
-                 executor=None):
+                 ml=None):
         self.system = system
         self.mod_dir = mod_dir
         self.settings = settings
         self.legacy_directory = legacy_directory
         self.ml=ml
-        self.executor = executor
         self.mod_dir_with_ml = self.mod_dir + 'ml' + '{:01.2f}'.format(self.ml)
         self.fname_nn_kinem = self.mod_dir_with_ml + '/nn_kinem.out'
         self.fname_nn_nnls = self.mod_dir_with_ml + '/nn_nnls.out'
@@ -69,8 +68,8 @@ class LegacyWeightSolver(WeightSolver):
             cur_dir = os.getcwd()
             os.chdir(self.mod_dir)
             print("Fit the orbit library to the kinematic data.")
-            cmdstr = self.executor.write_executable_for_weight_solver(self.ml)
-            self.executor.execute(cmdstr)
+            cmdstr = self.write_executable_for_weight_solver(self.ml)
+            p = subprocess.call('bash '+cmdstr, shell=True)
             #set the current directory to the dynamite directory
             os.chdir(cur_dir)
             print("NNLS problem solved")
@@ -79,6 +78,23 @@ class LegacyWeightSolver(WeightSolver):
         weights = self.read_weights()
         chi2, kinchi2 = self.read_chi2()
         return chi2, kinchi2
+
+    def write_executable_for_weight_solver(self, ml):
+        nn = f'ml{ml:01.2f}/nn'
+        cmdstr = f'cmd_nnls_{ml}'
+        txt_file = open(cmdstr, "w")
+        txt_file.write('#!/bin/bash' + '\n')
+        txt_file.write('# if the gzipped orbit library exist unzip it' + '\n')
+        txt_file.write(f'test -e datfil/orblib_{ml}.dat || bunzip2 -c  datfil/orblib.dat.bz2 > datfil/orblib_{ml}.dat' + '\n')
+        txt_file.write(f'test -e datfil/orblibbox_{ml}.dat || bunzip2 -c  datfil/orblibbox.dat.bz2 > datfil/orblibbox_{ml}.dat' + '\n')
+        txt_file.write('test -e ' + str(nn) + '_kinem.out || ' +
+                       self.legacy_directory +
+                       f'/triaxnnls_CRcut < {nn}.in >> {nn}ls.log' + '\n')
+        #TODO: specify which nnls to use
+        txt_file.write(f'rm datfil/orblib_{ml}.dat' + '\n')
+        txt_file.write(f'rm datfil/orblibbox_{ml}.dat' + '\n')
+        txt_file.close()
+        return cmdstr
 
     def read_weights(self):
         fname = self.mod_dir_with_ml + '/nn_orb.out'

@@ -11,7 +11,6 @@ class ModelIterator(object):
                  all_models=None,
                  settings=None,
                  model_kwargs={},
-                 executor=None,
                  do_dummy_run=None,
                  dummy_chi2_function=None,
                  ncpus=1):
@@ -51,7 +50,7 @@ class ModelIterator(object):
                 print(f'Saving all_models table')
                 break
             print(f'{par_generator_type}: "iteration {total_iter_count}"')
-            status = model_inner_iterator.run_iteration(iter, executor=executor)
+            status = model_inner_iterator.run_iteration(iter)
 
 
 class ModelInnerIterator(object):
@@ -77,7 +76,7 @@ class ModelInnerIterator(object):
         self.dummy_chi2_function = dummy_chi2_function
         self.ncpus = ncpus
 
-    def run_iteration(self, iter, executor=None):
+    def run_iteration(self, iter):
         self.par_generator.generate(current_models=self.all_models)
         # generate parameter sets for this iteration
         if self.par_generator.status['stop'] is False:
@@ -87,7 +86,7 @@ class ModelInnerIterator(object):
             self.n_to_do = len(rows_to_do)
             input_list = []
             for i, row in enumerate(rows_to_do):
-                input_list += [(i, row, executor)]
+                input_list += [(i, row)]
             with Pool(self.ncpus) as p:
                 output = p.map(self.create_and_run_model, input_list)
             # save the output
@@ -95,13 +94,11 @@ class ModelInnerIterator(object):
         return self.par_generator.status
 
     def create_model(self,
-                     parset,
-                     executor=None):
+                     parset):
         model_kwargs = {'system':self.system,
                         'settings':self.settings,
                         'parspace':self.parspace,
-                        'parset':parset,
-                        'executor':executor}
+                        'parset':parset}
         # create a model object based on choices in settings
         if self.settings.legacy_settings['use_legacy_mode']:
             mod = getattr(model, 'LegacySchwarzschildModel')(**model_kwargs)
@@ -120,13 +117,13 @@ class ModelInnerIterator(object):
         return mod
 
     def create_and_run_model(self, input):
-        i, row, executor = input
+        i, row = input
         print(f'... running model {i+1} out of {self.n_to_do}')
         # extract the parameter values
         parset0 = self.all_models.table[row]
         parset0 = parset0[self.parspace.par_names]
         # create and run the model
-        mod0 = self.create_model(parset0, executor=executor)
+        mod0 = self.create_model(parset0)
         if self.do_dummy_run:
             mod0.chi2 = self.dummy_chi2_function(parset0)
             mod0.kinchi2 = 0.

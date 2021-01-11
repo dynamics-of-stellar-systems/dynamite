@@ -56,8 +56,7 @@ def run_user_test(stat_mode=False):
     smi = dyn.model_iterator.ModelIterator(
         system=c.system,
         all_models=c.all_models,
-        settings=c.settings,
-        executor=c.executor)
+        settings=c.settings)
     delt = time.perf_counter()-t
     print(f'Computation time: {delt} seconds = {delt/60} minutes')
 

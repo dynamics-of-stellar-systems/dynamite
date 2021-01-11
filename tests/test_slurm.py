@@ -20,6 +20,8 @@ except KeyError:
     import multiprocessing
     ncpus = multiprocessing.cpu_count()
     print('Slurm not detected')
+
+ncpus = 3
 print(f'{ncpus} CPUs found')
 
 import time
@@ -28,9 +30,9 @@ import matplotlib.pyplot as plt
 from astropy import table
 import shutil
 
-# following lines needed to take dynmaite from the directory above
-#  - comment out if using a version installed elsewhere
-sys.path.append('../')
+# # following lines needed to take dynmaite from the directory above
+# #  - comment out if using a version installed elsewhere
+# sys.path.append('../')
 
 import dynamite as dyn
 
@@ -64,7 +66,6 @@ def run_user_test(stat_mode=False):
         system=c.system,
         all_models=c.all_models,
         settings=c.settings,
-        executor=c.executor,
         ncpus=ncpus)
     delt = time.perf_counter()-t
     print(f'Computation time: {delt} seconds = {delt/60} minutes')

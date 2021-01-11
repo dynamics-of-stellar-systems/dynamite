@@ -142,7 +142,6 @@ class Model(object):
     def __init__(self,
                  system=None,
                  settings=None,
-                 executor=None,
                  parspace=None,
                  parset=None):
         """
@@ -154,9 +153,6 @@ class Model(object):
             Object holding other settings
         parspace : dyn.parameter_space.ParameterSpace
             A list of parameter objects for this model
-        executor : dyn.executor.Executor
-            Handles differences between execting models on your local machines
-            vs submission on clusters, HPC modes etc
         parset : row of an Astropy Table
             contains the values of the potential parameters for this model
 
@@ -170,7 +166,6 @@ class Model(object):
         self.settings = settings
         self.parset = parset
         self.parspace = parspace
-        self.executor = executor
 
     def get_model_directory(self):
         out_dir = self.settings.io_settings['output_directory']
@@ -227,8 +222,7 @@ class LegacySchwarzschildModel(Model):
                 system=self.system,
                 mod_dir=self.directory_noml,
                 settings=self.settings.orblib_settings,
-                legacy_directory=self.legacy_directory,
-                executor=self.executor)
+                legacy_directory=self.legacy_directory)
         self.orblib = orblib
         # check if orbit library was calculated already
         check1 = os.path.isfile(self.directory_noml+'datfil/orblib.dat.bz2')
@@ -259,8 +253,7 @@ class LegacySchwarzschildModel(Model):
                 mod_dir=self.directory_noml,
                 settings=self.settings.weight_solver_settings,
                 legacy_directory=self.legacy_directory,
-                ml=self.parset['ml'],
-                executor=self.executor)
+                ml=self.parset['ml'])
         # TODO: extract other outputs e.g. orbital weights
         chi2, kinchi2 = self.weight_solver.solve()
         # store chi2 to the model
