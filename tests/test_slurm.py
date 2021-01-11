@@ -8,31 +8,12 @@
 
 # to submit this on cluster do ``sbatch test_slurm.py``
 
-# following lines needed to use sbatch on python script, taken from page 71 of
-# https://www.cism.ucl.ac.be/Services/Formations/python/2016/index.html
-import os
-import sys
-sys.path.append(os.getcwd())
-try:
-    ncpus = int(os.environ["SLURM_JOB_CPUS_PER_NODE"])
-    print('Slurm detected')
-except KeyError:
-    import multiprocessing
-    ncpus = multiprocessing.cpu_count()
-    print('Slurm not detected')
-
-ncpus = 3
-print(f'{ncpus} CPUs found')
-
 import time
 import numpy as np
 import matplotlib.pyplot as plt
-from astropy import table
-import shutil
 
-# # following lines needed to take dynmaite from the directory above
-# #  - comment out if using a version installed elsewhere
-# sys.path.append('../')
+import os
+import shutil
 
 import dynamite as dyn
 
@@ -66,7 +47,7 @@ def run_user_test(stat_mode=False):
         system=c.system,
         all_models=c.all_models,
         settings=c.settings,
-        ncpus=ncpus)
+        ncpus=c.settings.multiprocessing_settings['ncpus'])
     delt = time.perf_counter()-t
     print(f'Computation time: {delt} seconds = {delt/60} minutes')
 
