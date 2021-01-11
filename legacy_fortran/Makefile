@@ -90,16 +90,17 @@ endif
 
 # define local Galahad directory --> need to be changed for your system
 #GALAHADDIR =/Users/pjethwa/Astro/Science/dynamite/dynamite_repo/legacy_fortran/galahad-2.3
-GALAHADDIR =/home/alice/old_home/Work/Vienna/DYNAMITE/dynamite/legacy_fortran/galahad-2.3
+#GALAHADDIR =/home/alice/old_home/Work/Vienna/DYNAMITE/dynamite/legacy_fortran/galahad-2.3
+GALAHADDIR =$(CURDIR)/galahad-2.3
 
 # Define galahad compiled libary choice (platform dependant)
 
 # MAC, gfortran
-#GALAHADTYPE= mac.osx.gfo/double/
+GALAHADTYPE= mac.osx.gfo/double/
 
 # linux, ifort
 # GALAHADTYPE= pc.lnx.ifc/double
-GALAHADTYPE= pc.lnx.gfo/double
+#GALAHADTYPE= pc.lnx.gfo/double
 ##########################################################
 
 all : orbitstart orblib triaxmass triaxmassbin triaxnnls_CRcut modelgen partgen
@@ -135,8 +136,8 @@ DOPOBJ = dop853.o
 #
 ######################################################
 
-MGECDE = sub/numeric_kinds_f.f90 sub/dqxgs.f sub/ellipint.f90 iniparam_f.f90 triaxpotent.f90 dmpotent.f90 interpolpotent.f90 sub/specfunc_beta.f90
-MGEOBJ = numeric_kinds_f.o dqxgs.o iniparam_f.o triaxpotent.o dmpotent.o interpolpotent.o ellipint.o specfunc_beta.o
+MGECDE = ran1_nr.f sub/numeric_kinds_f.f90 sub/dqxgs.f sub/ellipint.f90 iniparam_f.f90 triaxpotent.f90 dmpotent.f90 interpolpotent.f90 sub/specfunc_beta.f90
+MGEOBJ = ran1_nr.o numeric_kinds_f.o dqxgs.o iniparam_f.o triaxpotent.o dmpotent.o interpolpotent.o ellipint.o specfunc_beta.o
 
 iniparam_f.o: iniparam_f.f90 numeric_kinds_f.o
 	$(fortran90) iniparam_f.f90
@@ -155,6 +156,9 @@ interpolpotent.o : interpolpotent.f90 triaxpotent.o numeric_kinds_f.o iniparam_f
 # AUX routines
 #
 ###################################################
+
+ran1_nr.o : ./ran1_nr.f
+	$(fortran77) ./ran1_nr.f
 
 numeric_kinds_f.o : ./sub/numeric_kinds_f.f90
 	$(fortran90) ./sub/numeric_kinds_f.f90

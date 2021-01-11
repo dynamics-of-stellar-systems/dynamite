@@ -38,6 +38,23 @@ program counterrotation
   use high_level, only : setup,run,stob
   implicit none
   real (kind=dp) :: t1,t2
+
+  integer :: r_seed
+  real (kind=dp) :: ran1, r_num
+
+! read random number seed, any value <= 0 results in stochastic seed
+  read (unit=*, fmt=*) r_seed
+  if (r_seed <= 0) then
+    call random_seed()
+    call random_number(r_num)
+    r_seed = 2147483647 * r_num
+    r_num = ran1(-r_seed)
+    write(*,*) "Using ran1 with random seed ", r_seed
+  else
+    r_num = ran1(-r_seed)
+    write(*,*) "Using ran1 with given seed ", r_seed
+  end if
+
   print*,"  ** Triaxial Orbit library by Remco C.E. van den Bosch <bosch@strw.leidenuniv.nl>"
   print*,"  * Jan 2007 "
   print*,"  * $Id: orblibprogram.f90,v 1.1 2010/03/17 12:56:57 bosch Exp $"  

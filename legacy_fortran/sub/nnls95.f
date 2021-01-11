@@ -56,7 +56,7 @@ C     ------------------------------------------------------------------
       double precision A(MDA,N), B(M), W(N), X(N), ZZ(M)
 c     integer INDEX(*)
 c     double precision A(MDA,*), B(*), W(*), X(*), ZZ(*)
-      double precision ALPHA, ASAVE, CC, DIFF, DUMMY, FACTOR, RNORM
+      double precision ALPHA, ASAVE, CC, DIFF, DUMMY(1), FACTOR, RNORM
       double precision SM, SS, T, TEMP, TWO, UNORM, UP, WMAX, SMDUM
       double precision ZERO, ZTEST
       parameter(FACTOR = 0.01d0)

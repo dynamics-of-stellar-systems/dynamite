@@ -5,7 +5,7 @@
 # we assume that this script is located and run in the folder dynamite/tests
 
 import os
-import sys
+#import sys
 import shutil
 
 # if os.getcwd().rpartition('/')[0] not in sys.path:

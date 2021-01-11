@@ -331,8 +331,9 @@ To make uninstalling easier, it is useful to record the files which have been cr
 
     python setup.py install --record list_of_created_files.txt
 
-Several Python packages are installed in this way, including:
+Several Python packages are installed in this way (if they are not already), including:
 
+      * plotbin
       * astropy
       * PyYAML
       * numpy

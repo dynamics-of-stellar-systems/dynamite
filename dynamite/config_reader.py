@@ -1,15 +1,9 @@
-#!/usr/bin/env python3
-# -*- coding: utf-8 -*-
-"""
-Created on Tue Jun 16 15:14:17 2020
-
-@author: maindl
-"""
 
 # some tricks to add the current path to sys.path (so the imports below work)
 
 import os.path
 import sys
+import math
 
 this_dir = os.path.dirname(__file__)
 if not this_dir in sys.path:
@@ -68,12 +62,32 @@ class Settings(object):
     def __repr__(self):
         return (f'{self.__class__.__name__}({self.__dict__})')
 
+class UniqueKeyLoader(yaml.SafeLoader):
+    """
+    Special yaml loader with duplicate key checking.
+    Credits: ErichBSchulz,
+    https://stackoverflow.com/questions/33490870/parsing-yaml-in-python-detect-duplicated-keys
+    """
+    def construct_mapping(self, node, deep=False):
+        mapping = []
+        for key_node, value_node in node.value:
+            key = self.construct_object(key_node, deep=deep)
+            assert key not in mapping, \
+                f'Duplicate key in configuration file: {key}'
+            mapping.append(key)
+        return super().construct_mapping(node, deep)
 
 class Configuration(object):
     """
     Reads the configuration file and instantiates the objects
     self.system, ...
     """
+
+    # Class attributes
+    # threshold_delta_chi2 variants for LegacyGridSearch parameter generator
+    thresh_chi2_abs = 'threshold_del_chi2_abs'
+    thresh_chi2_scaled = 'threshold_del_chi2_as_frac_of_sqrt2nobs'
+
     def __init__(self, filename=None, silent=False):
         """
         Reads configuration file and instantiates objects.
@@ -97,7 +111,9 @@ class Configuration(object):
 
         if filename is not None:
             with open(filename, 'r') as f:
-                self.params = yaml.safe_load(f)
+                # self.params = yaml.safe_load(f)
+                config_text = f.read()
+                self.params = yaml.load(config_text, Loader=UniqueKeyLoader)
         else:
             raise FileNotFoundError('Please specify filename')
 
@@ -161,7 +177,8 @@ class Configuration(object):
                         print(f" Has parameters "
                               f"{tuple(data_comp['parameters'].keys())}")
                     for par, data_par in data_comp['parameters'].items():
-                        the_parameter = parspace.Parameter(name=par,**data_par)
+                        p = par + '_' + comp
+                        the_parameter = parspace.Parameter(name=p,**data_par)
                         par_list.append(the_parameter)
                     c.parameters = par_list
 
@@ -291,9 +308,14 @@ class Configuration(object):
         if not silent:
             print(f'**** System assembled:\n{self.system}')
             print(f'**** Settings:\n{self.settings}')
+
         self.validate()
         if not silent:
             print('**** Configuration validated')
+
+        if 'generator_settings' in self.settings.parameter_space_settings:
+            self.set_threshold_del_chi2( \
+                self.settings.parameter_space_settings['generator_settings'])
 
         self.parspace = parspace.ParameterSpace(self.system)
         if not silent:
@@ -314,6 +336,46 @@ class Configuration(object):
         self.executor = getattr(executor, executor_type)(**kw_executor)
         if not silent:
             print(f'**** Instantiated executor object: {executor_type}')
+
+    def set_threshold_del_chi2(self, generator_settings):
+        """
+        Sets threshold_del_chi2 depending on scaled or unscaled input. Works
+        with the legacy setup only ('stars' component with one set of
+        kinematics).
+
+        Parameters
+        ----------
+        generator_settings : generator_settings dict
+
+        Returns
+        -------
+        None.
+
+        """
+        chi2abs = self.__class__.thresh_chi2_abs
+        chi2scaled = self.__class__.thresh_chi2_scaled
+        if chi2abs in generator_settings or chi2scaled in generator_settings:
+            two_n_obs = self.get_2n_obs()
+            if chi2abs in generator_settings:
+                thresh = generator_settings[chi2abs]
+            else:
+                thresh = generator_settings[chi2scaled] * math.sqrt(two_n_obs)
+            generator_settings['threshold_del_chi2'] = thresh
+
+    def get_2n_obs(self):
+        """
+        Returns 2*n_obs = number_GH * number_spatial_bins. Works with the
+        legacy setup only ('stars' component with one set of kinematics).
+
+        Returns
+        -------
+        two_n_obs : 2*n_obs, int
+
+        """
+        number_GH = self.settings.weight_solver_settings['number_GH']
+        stars = self.system.get_component_from_name('stars')
+        two_n_obs = 2 * number_GH * len(stars.kinematic_data[0].data)
+        return two_n_obs
 
     def validate(self):
         """
@@ -370,9 +432,12 @@ class Configuration(object):
         if gen_type != 'GridWalk' and gen_type != 'LegacyGridSearch':
             raise ValueError('Legacy mode: parameter space generator_type '
                              'must be GridWalk or LegacyGridSearch')
-        if self.settings.parameter_space_settings["which_chi2"] not in \
-            ["chi2", "kinchi2"]:
-            raise ValueError('Unknown which_chi2 setting, use chi2 or kinchi2')
+        chi2abs = self.__class__.thresh_chi2_abs
+        chi2scaled = self.__class__.thresh_chi2_scaled
+        gen_set=self.settings.parameter_space_settings.get('generator_settings')
+        if gen_set != None and (chi2abs in gen_set and chi2scaled in gen_set):
+            raise ValueError(f'Only specify one of {chi2abs}, {chi2scaled}, '
+                             'not both')
 
 
     # def read_parameters(self, par=None, items=None):

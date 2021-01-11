@@ -1,11 +1,14 @@
 import numpy as np
 import matplotlib.pyplot as plt
-from plotbin4dyn import sauron_colormap as pb_sauron_colormap
-from plotbin4dyn import cap_display_pixels
+from plotbin import sauron_colormap as pb_sauron_colormap
+from plotbin import display_pixels
 
 # TODO: use Capellari's latest version of plotbin rather than (the locally
 # packaged up version which we've called plotbin4dyn). This will require
 # re-writing something in plot_kinematic_maps
+# UPDATE: changed plot_kinematic_maps to work with Cappellari's latest version of plotbin.
+# Galaxy image was rotated and then plotted, now it is rotated while it's plotted.
+# This also solve the white pixels bug in the kinematic maps.
 
 class Plotter(object):
 
@@ -149,8 +152,8 @@ class Plotter(object):
 
         radeg = 57.2958
         #print('PA: ', angle_deg)
-        xi = np.cos(angle_deg / radeg) * xt - np.sin(angle_deg / radeg) * yt
-        yi = np.sin(angle_deg / radeg) * xt + np.cos(angle_deg / radeg) * yt
+        xi = xt
+        yi = yt
 
         # read bins.dat
         stars = self.system.get_component_from_name('stars')
@@ -190,8 +193,8 @@ class Plotter(object):
         minfm = min(np.array(list(map(np.log10, fluxm[grid[s]] / max(fluxm)))))
         maxfm = max(np.array(list(map(np.log10, fluxm[grid[s]] / max(fluxm)))))
 
-        # The galaxy has already rotated with PA to make major axis aligned with x
-        angle_deg = 0
+        # The galaxy has NOT already rotated with PA to make major axis aligned with x
+        
         # filename3 = figdir + object + '_kin4.pdf'
 
         fig = plt.figure(figsize=(27, 12))
@@ -214,27 +217,27 @@ class Plotter(object):
         ### PLOT THE REAL DATA
         plt.subplot(3, 5, 1)
         c = np.array(list(map(np.log10, flux[grid[s]] / max(flux))))
-        cap_display_pixels.display_pixels(x, y, c,
+        display_pixels.display_pixels(x, y, c,
                                           vmin=minf, vmax=maxf,
                                           label='log10(SB)',
                                           **kw_display_pixels)
         plt.subplot(3, 5, 2)
-        cap_display_pixels.display_pixels(x, y, vel[grid[s]],
+        display_pixels.display_pixels(x, y, vel[grid[s]],
                                           vmin=-1.0 * vmax, vmax=vmax,
                                           label='Velocity',
                                           **kw_display_pixels)
         plt.subplot(3, 5, 3)
-        cap_display_pixels.display_pixels(x, y, sig[grid[s]],
+        display_pixels.display_pixels(x, y, sig[grid[s]],
                                           vmin=smin, vmax=smax,
                                           label='Sigma',
                                           **kw_display_pixels)
         plt.subplot(3, 5, 4)
-        cap_display_pixels.display_pixels(x, y, h3[grid[s]],
+        display_pixels.display_pixels(x, y, h3[grid[s]],
                                           vmin=h3min, vmax=h3max,
                                           label=r'$h_{3}$',
                                           **kw_display_pixels)
         plt.subplot(3, 5, 5)
-        cap_display_pixels.display_pixels(x, y, h4[grid[s]],
+        display_pixels.display_pixels(x, y, h4[grid[s]],
                                           vmin=h4min, vmax=h4max,
                                           label=r'$h_{4}$',
                                           **kw_display_pixels)
@@ -242,27 +245,27 @@ class Plotter(object):
         ### PLOT THE MODEL DATA
         plt.subplot(3, 5, 6)
         c = np.array(list(map(np.log10, fluxm[grid[s]] / max(fluxm))))
-        cap_display_pixels.display_pixels(x, y, c,
+        display_pixels.display_pixels(x, y, c,
                                           vmin=minfm, vmax=maxfm,
                                           label='log10(SB) (model)',
                                           **kw_display_pixels)
         plt.subplot(3, 5, 7)
-        cap_display_pixels.display_pixels(x, y, velm[grid[s]],
+        display_pixels.display_pixels(x, y, velm[grid[s]],
                                           vmin=-1.0 * vmax, vmax=vmax,
                                           label='Velocity (model)',
                                           **kw_display_pixels)
         plt.subplot(3, 5, 8)
-        cap_display_pixels.display_pixels(x, y, sigm[grid[s]],
+        display_pixels.display_pixels(x, y, sigm[grid[s]],
                                           vmin=smin, vmax=smax,
                                           label='Sigma (model)',
                                           **kw_display_pixels)
         plt.subplot(3, 5, 9)
-        cap_display_pixels.display_pixels(x, y, h3m[grid[s]],
+        display_pixels.display_pixels(x, y, h3m[grid[s]],
                                           vmin=h3min, vmax=h3max,
                                           label=r'$h_{3}$'+' (model)',
                                           **kw_display_pixels)
         plt.subplot(3, 5, 10)
-        cap_display_pixels.display_pixels(x, y, h4m[grid[s]],
+        display_pixels.display_pixels(x, y, h4m[grid[s]],
                                           vmin=h4min, vmax=h4max,
                                           label=r'$h_{4}$'+' (model)',
                                           **kw_display_pixels)
@@ -271,31 +274,31 @@ class Plotter(object):
         ### PLOT THE ERROR NORMALISED RESIDUALS
         plt.subplot(3, 5, 11)
         c = (fluxm[grid[s]] - flux[grid[s]]) / flux[grid[s]]
-        cap_display_pixels.display_pixels(x, y, c,
+        display_pixels.display_pixels(x, y, c,
                                           vmin=-0.05, vmax=0.05,
                                           label=r'$\delta_{flux}$',
                                           **kw_display_pixels)
         plt.subplot(3, 5, 12)
         c = (velm[grid[s]] - vel[grid[s]]) / dvel[grid[s]]
-        cap_display_pixels.display_pixels(x, y, c,
+        display_pixels.display_pixels(x, y, c,
                                           vmin=-10, vmax=10,
                                           label=r'$\delta_{vel}$',
                                           **kw_display_pixels)
         plt.subplot(3, 5, 13)
         c = (sigm[grid[s]] - sig[grid[s]]) / dsig[grid[s]]
-        cap_display_pixels.display_pixels(x, y, c,
+        display_pixels.display_pixels(x, y, c,
                                           vmin=-10, vmax=10,
                                           label=r'$\delta_{sigma}$',
                                           **kw_display_pixels)
         plt.subplot(3, 5, 14)
         c = (h3m[grid[s]] - h3[grid[s]]) / dh3[grid[s]]
-        cap_display_pixels.display_pixels(x, y, c,
+        display_pixels.display_pixels(x, y, c,
                                           vmin=-1, vmax=1,
                                           label=r'$\delta_{h_3}$',
                                           **kw_display_pixels)
         plt.subplot(3, 5, 15)
         c = (h4m[grid[s]] - h4[grid[s]]) / dh4[grid[s]]
-        cap_display_pixels.display_pixels(x, y, c,
+        display_pixels.display_pixels(x, y, c,
                                           vmin=-1, vmax=1,
                                           label=r'$\delta_{h_4}$',
                                           **kw_display_pixels)

@@ -56,31 +56,31 @@ class LegacyOrbitLibrary(OrbitLibrary):
         self.legacy_directory = legacy_directory
         self.executor = executor
 
-    def get_orbit_library(self):
-        #set the current directory to the directory in which the models are computed
-        cur_dir=os.getcwd()
+    def get_orbit_ics(self):
+        cur_dir = os.getcwd()
         os.chdir(self.mod_dir)
-        print("Calculating the orbit library for the proposed potential.")
-        #generate the initial conditions for the orbit library
-        self.generate_ics()
-        self.integrate_orbits()
-        #set the current directory to the dynamite directory
-        os.chdir(cur_dir)
-        print("Orbit integration is finished.")
-
-    def generate_ics(self):
+        print("Calculating the initial conditions for this potential")
         cmdstr = self.executor.write_executable_for_ics()
         self.executor.execute(cmdstr)
+        os.chdir(cur_dir)
+        print("Orbit integration is finished.")
 
     def read_ics(self):
         # ...
         pass
 
-    def integrate_orbits(self):
+    def get_orbit_library(self):
+        # move to model directory
+        cur_dir = os.getcwd()
+        os.chdir(self.mod_dir)
+        print("Calculating the orbit library for the proposed potential.")
         cmdstrs = self.executor.write_executable_for_integrate_orbits()
         cmdstr_tube, cmdstr_box = cmdstrs
         self.executor.execute(cmdstr_tube)
         self.executor.execute(cmdstr_box)
+        print("Orbit integration is finished.")
+        # move back to original directory
+        os.chdir(cur_dir)
 
     def read_orbit_base(self, fileroot):
         """Read a zipped Fortran orbit library from the file
