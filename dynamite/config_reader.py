@@ -311,7 +311,7 @@ class Configuration(object):
                     sys.path.append(os.getcwd())
                 except KeyError:
                     pass
-                if value['ncpus']=='all':
+                if value['ncpus']=='all_available':
                     try:
                         ncpus = int(os.environ["SLURM_JOB_CPUS_PER_NODE"])
                     except KeyError:

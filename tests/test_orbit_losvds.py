@@ -58,6 +58,10 @@ def run_orbit_losvd_test(make_comparison_losvd=False):
     if os.path.isfile(plotfile):
         os.remove(plotfile)
 
+    # re-read configuration now that old output has been deleted
+    fname = 'user_test_config.yaml'
+    c = dyn.config_reader.Configuration(fname, silent=True)
+
     parset = c.parspace.get_parset()
     model = dyn.model.LegacySchwarzschildModel(
         system=c.system,

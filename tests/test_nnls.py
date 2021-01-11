@@ -44,6 +44,10 @@ def run_user_test(stat_mode=False):
     if os.path.isfile(plotfile_chi2):
         os.remove(plotfile_chi2)
 
+    # re-read configuration now that old output has been deleted
+    fname = 'user_test_config_ml.yaml'
+    c = dyn.config_reader.Configuration(fname, silent=True)
+
     stat_file = outdir + "chi2_compare_ml_" \
                 f"{c.settings.orblib_settings['nE']}" \
                 f"{c.settings.orblib_settings['nI2']}" \
@@ -56,7 +60,8 @@ def run_user_test(stat_mode=False):
     smi = dyn.model_iterator.ModelIterator(
         system=c.system,
         all_models=c.all_models,
-        settings=c.settings)
+        settings=c.settings,
+        ncpus=c.settings.multiprocessing_settings['ncpus'])
     delt = time.perf_counter()-t
     print(f'Computation time: {delt} seconds = {delt/60} minutes')
 

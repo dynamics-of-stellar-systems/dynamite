@@ -6,7 +6,11 @@
 #SBATCH --output=dynamite_output.log
 #SBATCH --error=dynamite_error.log
 
-# to submit this on cluster do ``sbatch test_slurm.py``
+# new in config file - multiprocessing_settings: ncpus
+# set this either to an integer or to 'all_available'
+
+# to submit this locally, run ``python test_slurm.py``
+# to submit this on cluster with slurm run ``sbatch test_slurm.py``
 
 import time
 import numpy as np
@@ -40,6 +44,10 @@ def run_user_test(stat_mode=False):
     plotfile = plotdir + 'slurm_model_timings.png'
     if os.path.isfile(plotfile):
         os.remove(plotfile)
+
+    # re-read configuration now that old output has been deleted
+    fname = 'test_slurm_config.yaml'
+    c = dyn.config_reader.Configuration(fname, silent=True)
 
     # "run" the models
     t = time.perf_counter()
