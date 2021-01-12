@@ -44,8 +44,6 @@ If you are using Linux, you will need ``ifort`` or ``gcc-gfortran``.
 
 If you are using macOS, you will need ``gfortran``, which can be installed in a number of different ways.
 
-**Important:** If you install the GCC package, do **not** install GCC 10 or higher as we noted  significant differences with this version.
-
 macOS
 ^^^^^
 
@@ -100,8 +98,6 @@ Known problems
 --------------
 
 * Make sure that the compiler collection is installed with the proper libraries. If you get problems running Galahad or DYNAMITE, try to reinstall GCC and make sure that the Fortran compiler is included in your installation.
-
-* Do not use GCC 10 or higher!
 
 
 
@@ -303,8 +299,6 @@ Go back to ``.../legacy_fortran``. Before you proceed, it is necessary to make t
 * Select the appropriate choice of ``GALAHADTYPE`` variable depending on your system (possible options are commented out)
 * Look for the definition of the ``all:`` (this should be right after the definition of the ``GALAHADTYPE`` variable). Make sure that ``triaxgasnnls`` is **NOT** in the list.
 
-If you install and run DYNAMITE on your own computer, there seems to be a memory allocation problem when building the orbit library. This problem has currently been tackled by adding a line in the source code (the line ``print*, t1,t2,t3`` right after ``losvel(:) = t1 * vel(:,1) + t2 * vel(:,2) + t3 * vel(:,3)`` in the subroutine ``project_n(type,pos,vel,proj,losvel,n)``). If you work in a cluster system, you can probably delete these lines (to speed up the code), but please do a careful check here!
-
 Proceed with the following command from the terminal::
 
     make all
@@ -417,6 +411,6 @@ You should not worry if the red crosses in the image you obtain are slightly out
 Troubleshooting
 ===============
 
-* Do not use GCC 10 or higher!
+* 
 
 (under construction...)
