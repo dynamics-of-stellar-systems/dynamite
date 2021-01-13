@@ -59,6 +59,38 @@ class LegacyWeightSolver(WeightSolver):
         self.mod_dir_with_ml = self.mod_dir + 'ml' + '{:01.2f}'.format(self.ml)
         self.fname_nn_kinem = self.mod_dir_with_ml + '/nn_kinem.out'
         self.fname_nn_nnls = self.mod_dir_with_ml + '/nn_nnls.out'
+        # prepare fortran input file for nnls
+        self.create_fortran_input_nnls(self.mod_dir, ml)
+
+    def create_fortran_input_nnls(self,path,ml):
+
+        #for the ml the model is only scaled. We therefore need to know what is the ml that was used for the orbit library
+        infile=path+'infil/parameters.in'
+        lines = [line.rstrip('\n').split() for line in open(infile)]
+        ml_orblib=float((lines[-9])[0])
+
+        #-------------------
+        #write nn.in
+        #-------------------
+
+        text='infil/parameters.in' +'\n' + \
+        str(self.settings['regularisation'])   + '                                  [ regularization strength, 0 = no regularization ]' +'\n'  + \
+        'ml'+ '{:01.2f}'.format(ml) + '/nn' +'\n' + \
+        'datfil/mass_qgrid.dat' +'\n' + \
+        'datfil/mass_aper.dat' +'\n' + \
+        str(self.settings['number_GH']) + '	                           [ # of GH moments to constrain the model]' +'\n' + \
+        'infil/kin_data.dat' +'\n' + \
+        str(self.settings['GH_sys_err']) + '    [ systemic error of v, sigma, h3, h4... ]' + '\n' + \
+        str(self.settings['lum_intr_rel_err']) + '                               [ relative error for intrinsic luminosity ]' +'\n' + \
+        str(self.settings['sb_proj_rel_err']) + '                               [ relative error for projected SB ]' + '\n' + \
+        str(np.sqrt(ml/ml_orblib))  + '                                [ scale factor related to M/L, sqrt( (M/L)_k / (M/L)_ref ) ]' + '\n' + \
+        f'datfil/orblib_{ml}.dat' +'\n' + \
+        f'datfil/orblibbox_{ml}.dat' +'\n' + \
+        str(self.settings['nnls_solver']) + '                                  [ nnls solver ]'
+
+        nn_file= open(path+'ml'+'{:01.2f}'.format(ml)+'/nn.in',"w")
+        nn_file.write(text)
+        nn_file.close()
 
     def solve(self):
         check1 = os.path.isfile(self.fname_nn_kinem)
@@ -95,6 +127,36 @@ class LegacyWeightSolver(WeightSolver):
         txt_file.write(f'rm datfil/orblibbox_{ml}.dat' + '\n')
         txt_file.close()
         return cmdstr
+
+    def create_fortran_input_nnls(self,path,ml):
+
+        #for the ml the model is only scaled. We therefore need to know what is the ml that was used for the orbit library
+        infile=path+'infil/parameters.in'
+        lines = [line.rstrip('\n').split() for line in open(infile)]
+        ml_orblib=float((lines[-9])[0])
+
+        #-------------------
+        #write nn.in
+        #-------------------
+
+        text='infil/parameters.in' +'\n' + \
+        str(self.settings['regularisation'])   + '                                  [ regularization strength, 0 = no regularization ]' +'\n'  + \
+        'ml'+ '{:01.2f}'.format(ml) + '/nn' +'\n' + \
+        'datfil/mass_qgrid.dat' +'\n' + \
+        'datfil/mass_aper.dat' +'\n' + \
+        str(self.settings['number_GH']) + '	                           [ # of GH moments to constrain the model]' +'\n' + \
+        'infil/kin_data.dat' +'\n' + \
+        str(self.settings['GH_sys_err']) + '    [ systemic error of v, sigma, h3, h4... ]' + '\n' + \
+        str(self.settings['lum_intr_rel_err']) + '                               [ relative error for intrinsic luminosity ]' +'\n' + \
+        str(self.settings['sb_proj_rel_err']) + '                               [ relative error for projected SB ]' + '\n' + \
+        str(np.sqrt(ml/ml_orblib))  + '                                [ scale factor related to M/L, sqrt( (M/L)_k / (M/L)_ref ) ]' + '\n' + \
+        f'datfil/orblib_{ml}.dat' +'\n' + \
+        f'datfil/orblibbox_{ml}.dat' +'\n' + \
+        str(self.settings['nnls_solver']) + '                                  [ nnls solver ]'
+
+        nn_file= open(path+'ml'+'{:01.2f}'.format(ml)+'/nn.in',"w")
+        nn_file.write(text)
+        nn_file.close()
 
     def read_weights(self):
         fname = self.mod_dir_with_ml + '/nn_orb.out'
