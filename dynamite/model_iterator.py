@@ -130,9 +130,9 @@ class ModelInnerIterator(object):
             mod0.kinchi2 = 0.
         else:
             mod0.setup_directories()
-            mod0.get_orblib()
+            orblib = mod0.get_orblib()
             orb_done = True
-            mod0.get_weights()
+            mod0.get_weights(orblib)
             wts_done = True
         all_done = True
         time = np.datetime64('now', 'ms')

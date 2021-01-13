@@ -226,17 +226,24 @@ class LegacySchwarzschildModel(Model):
                 input_directory=self.settings.io_settings['input_directory'],
                 parset=self.parset)
         orblib.get_orblib()
+        orblib.read_losvd_histograms()
+        return orblib
 
-    def get_weights(self):
+    def get_weights(self, orblib):
         # create the weight solver object
-        self.weight_solver = ws.LegacyWeightSolver(
+        weight_solver = ws.LegacyWeightSolver(
                 system=self.system,
                 mod_dir=self.directory_noml,
                 settings=self.settings.weight_solver_settings,
                 legacy_directory=self.legacy_directory,
                 ml=self.parset['ml'])
+
+        # weight_solver = ws.PrashsCoolNewWeightSolver(
+        #     system=self.system,
+        #     settings=self.settings.weight_solver_settings)
+
         # TODO: extract other outputs e.g. orbital weights
-        chi2, kinchi2 = self.weight_solver.solve()
+        chi2, kinchi2 = weight_solver.solve(orblib)
         # store chi2 to the model
         self.chi2 = chi2
         self.kinchi2 = kinchi2

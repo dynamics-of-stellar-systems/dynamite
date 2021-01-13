@@ -63,6 +63,16 @@ class GaussHermite(Kinematics, data.Integrated):
         # super goes left to right, i.e. first calls "Kinematics" __init__, then
         # calls data.Integrated's __init__
         super().__init__(**kwargs)
+        self.max_gh_order = self.get_highest_order_gh_coefficient()
+
+    def get_highest_order_gh_coefficient(self, max_gh_check=20):
+        colnames = self.data.colnames
+        gh_order_in_table = [i for i in range(max_gh_check) if f'h{i}' in colnames and f'dh{i}' in colnames]
+        try:
+            max_gh_order = np.max(gh_order_in_table)
+        except ValueError:
+            max_gh_order = None
+        return max_gh_order
 
     def read_file_old_format(self, filename):
         f = open(filename)
@@ -317,7 +327,8 @@ class GaussHermite(Kinematics, data.Integrated):
         v_sig : array (n_regions,)
             gauss hermite sigma parameters
         vel_hist : Histogram object
-            velocity histograms where vel_hist.y has shape (n_hists, n_vbins)
+            velocity histograms where vel_hist.y has shape
+            (n_orbits, n_vbins, n_regions)
         max_order : int
             maximum order hermite polynomial desired in the expansion
             e.g. max_order = 1 --> use h0, h1
@@ -334,18 +345,30 @@ class GaussHermite(Kinematics, data.Integrated):
         coef = self.get_hermite_polynomial_coeffients(max_order=max_order)
         nrm = stats.norm()
         hpolys = self.evaluate_hermite_polynomials(coef, w)
-        h = np.einsum('ij,kj,lkj,j->ikl',           # integral in eqn 7
-                      np.atleast_2d(vel_hist.y),
+        # TODO: optimize the next line for (i) vel_hist.dx is constant, (ii)
+        # arrays are too large for memory e.g. using dask
+        h = np.einsum('ijk,kj,lkj,j->ikl', # integral in eqn 7
+                      vel_hist.y,
                       nrm.pdf(w),
                       hpolys,
                       vel_hist.dx,
                       optimize=True)
-        h *= 2 * np.pi**0.5                         # pre-factor in eqn 7
+        h *= 2 * np.pi**0.5 # pre-factor in eqn 7
         return h
 
-    def transform_orbits_to_observables(self, orb_lib):
-        # actual code to transform orbits to GH coefficients
-        return gauss_hermite_coefficients
+    def transform_to_observables(self, orblib):
+        v_mu = self.data['v']
+        v_sig = self.data['sigma']
+        orblib_gh_coefs = self.get_gh_expansion_coefficients(
+            v_mu=v_mu,
+            v_sig=v_sig,
+            vel_hist=orblib.losvd_histograms,
+            max_order=self.max_gh_order)
+        # TODO: construct observed uncertainties = expressions for Dh1, Dh2 and
+        # add systematic uncertainties. Return observed/orbital quantities to be
+        # modelled, i.e. h1, h2, h3, h4 + uncertainties (i.e. not V, sigma)
+        mu_obs, sigma_obs, mu_obs = 1, 1, 1
+        return mu_obs, sigma_obs, mu_obs
 
 
 class Histogram(object):
@@ -384,6 +407,10 @@ class Histogram(object):
         norm = np.sum(self.y*self.dx, axis=-1)
         self.y = (self.y.T/norm).T
         self.normalised = True
+
+    def scale_x_values(self, scale_factor):
+        self.x *= scale_factor
+        self.dx *= scale_factor
 
 
 

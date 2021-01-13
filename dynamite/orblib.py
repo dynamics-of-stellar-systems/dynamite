@@ -320,8 +320,8 @@ class LegacyOrbitLibrary(OrbitLibrary):
         tmp = orblibf.read_ints(np.int32)
         norb, t2, t3, t4, ndith = tmp
         # from qgrid_setup_write, lines 2339-1350:
-        tmp = orblibf.read_ints(np.int32)
-        size_ql_1, size_qph_minus1, size_qth_minus1, size_qlr_minus1 = tmp
+        quad_light_grid_sizes = orblibf.read_ints(np.int32)
+        size_ql, size_qph, size_qth, size_qlr = quad_light_grid_sizes
         quad_lr = orblibf.read_reals(float)
         quad_lth = orblibf.read_reals(float)
         quad_lph = orblibf.read_reals(float)
@@ -334,15 +334,27 @@ class LegacyOrbitLibrary(OrbitLibrary):
         orbtypes = np.zeros((norb, ndith**3), dtype=int)
         nbins_vhist = 2*nvhist + 1
         velhist = np.zeros((norb, nbins_vhist, nconstr))
+        density_3D = np.zeros((norb, size_qlr, size_qth, size_qph))
         for j in range(norb):
             t1,t2,t3,t4,t5 = orblibf.read_ints(np.int32)
             orbtypes[j, :] = orblibf.read_ints(np.int32)
             quad_light = orblibf.read_reals(float)
+            quad_light = np.reshape(quad_light, quad_light_grid_sizes[::-1])
+            # quad_light stores orbit features in 3D (r,th,phi) bins.
+            # Quad_light[ir,it,ip,XXX] stores
+            # - the zeroth moment i.e. density for XXX=0,
+            # - the first moments x,y,z,vx,vy,vz for XXX=slice(1,7)
+            # - 2nd moments vx^2,vy^2,vz^2,vx*vy,vy*vz,vz*vx for XXX=slice(7,13)
+            # - an averaged orbit classification for XXX=slice(13,None)
+            # in the bin indexed by (ir,it,ip).
+            # We need to extract 3D density for use in weight solving.
+            density_3D[j] = quad_light[:,:,:,0]
             for k in range(nconstr):
                 ivmin, ivmax = orblibf.read_ints(np.int32)
                 if (ivmin <= ivmax):
                     tmp = orblibf.read_reals(float)
                     velhist[j, ivmin+nvhist:ivmax+nvhist+1, k] = tmp
+        orblibf.close()
         subprocess.call(['rm', f'datfil/{fileroot}.dat'])
         os.chdir(cur_dir)
         vedg_pos = np.arange(1, nbins_vhist+1, 2) * dvhist/2.
@@ -351,7 +363,7 @@ class LegacyOrbitLibrary(OrbitLibrary):
         velhist = dyn_kin.Histogram(xedg=vedg,
                                     y=velhist,
                                     normalise=False)
-        return velhist
+        return velhist, density_3D
 
     def duplicate_flip_and_interlace_orblib(self, orblib):
         """ Take an orbit library, create a duplicate library with the velocity
@@ -374,7 +386,6 @@ class LegacyOrbitLibrary(OrbitLibrary):
         """
         error_msg = 'velocity array must be symmetric'
         assert np.all(orblib.xedg == -orblib.xedg[::-1]), error_msg
-
         losvd = orblib.y
         n_orbs, n_vel_bins, n_spatial_bins = losvd.shape
         reveresed_losvd = losvd[:, ::-1, :]
@@ -421,15 +432,31 @@ class LegacyOrbitLibrary(OrbitLibrary):
 
     def read_losvd_histograms(self):
         '''
-        Reads the LOSVD histograms: reads box orbits and non-box orbits, flips
+        Reads the LOSVD histograms: reads box orbits and tube orbits, flips
         the latter, and combines. Sets the 'losvd_histograms' attribute which
-        is a Histogram of the combined orbit libraries. (I thnk) this ordering
-        is compatible with the weights read in by LegacyWeightSolver.read_weights
+        is a Histogram of the combined orbit libraries.
         '''
-        tube_orblib = self.read_orbit_base('orblib')
+        # TODO: check if this ordering is compatible with weights read in by
+        # LegacyWeightSolver.read_weights
+        tube_orblib, tube_density_3D = self.read_orbit_base('orblib')
         tube_orblib = self.duplicate_flip_and_interlace_orblib(tube_orblib)
-        box_orblib = self.read_orbit_base('orblibbox')
+        # duplicate and interlace tube_density_3D array
+        tube_density_3D = np.repeat(tube_density_3D, 2, axis=0)
+        box_orblib, box_density_3D = self.read_orbit_base('orblibbox')
         orblib = self.combine_orblibs(tube_orblib, box_orblib)
+        # combine the two density_3D arrays
+        density_3D = np.vstack((tube_density_3D, box_density_3D))
         self.losvd_histograms = orblib
+        ml_current = self.parset['ml']
+        ml_original = self.get_ml_of_original_orblib()
+        scale_factor = np.sqrt(ml_current/ml_original)
+        self.losvd_histograms.scale_x_values(scale_factor)
+        self.density_3D = density_3D
+
+    def get_ml_of_original_orblib(self):
+        infile = self.mod_dir + 'infil/parameters.in'
+        lines = [line.rstrip('\n').split() for line in open(infile)]
+        ml_original = float((lines[-9])[0])
+        return ml_original
 
 # end

@@ -92,7 +92,9 @@ class LegacyWeightSolver(WeightSolver):
         nn_file.write(text)
         nn_file.close()
 
-    def solve(self):
+    def solve(self, orblib):
+        # note: orblib is provided as an argument for consistency with future
+        # WeightSolver implementations but are not used in this legacy method
         check1 = os.path.isfile(self.fname_nn_kinem)
         check2 = os.path.isfile(self.fname_nn_nnls)
         if not check1 or not check2:
@@ -216,5 +218,36 @@ class LegacyWeightSolver(WeightSolver):
         for i in range(0, len(rows)):
             output.append(lines[rows[i] - 1][cols[i] - 1])
         return output
+
+
+
+
+
+
+class PrashsCoolNewWeightSolver(WeightSolver):
+
+    def __init__(self,
+                 system=None,
+                 settings=None):
+        self.settings = settings
+        self.all_kinematic_data = system.get_all_kinematic_data()
+        self.observed_density_3D = 1. # TODO: read mass_qgrid.dat
+        self.observed_density_2D = 1. # TODO read mass_aper.dat
+
+    def solve(self, orblib):
+        observed_and_orbital_quantities = []
+        for kinematics in self.all_kinematic_data:
+            observed_and_orbital_quantities += [
+                kinematics.transform_to_observables(orblib)
+                ]
+        orbit_density_3D = orblib.density_3D
+        orbit_density_2D = np.sum(orblib.losvd_histograms.y, (1,2))
+        return
+
+
+
+
+
+
 
 # end
