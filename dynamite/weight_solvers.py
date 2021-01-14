@@ -182,6 +182,13 @@ class LegacyWeightSolver(WeightSolver):
         weights.remove_column('I_dont_know')
         self.weights = weights
 
+    def read_orbmat(self):
+        fname = self.mod_dir_with_ml + '/nn_orbmat.out'
+        orbmat = np.genfromtxt(fname, skip_header=1)
+        size = np.genfromtxt(fname, skip_footer=orbmat.shape[0], dtype=int)
+        orbmat = np.reshape(orbmat, size)
+        return orbmat
+
     def read_chi2(self):
         ''' taken useful parts from triax_extract_chi2_iter in schw_domoditer,
         in particular lines 181-212
@@ -235,6 +242,8 @@ class PrashsCoolNewWeightSolver(WeightSolver):
         self.observed_density_2D = 1. # TODO read mass_aper.dat
 
     def solve(self, orblib):
+        # NNLS matrix is constructured in lines 186-306 of triaxnnls_CRcut.f90
+        # re-implement it here
         observed_and_orbital_quantities = []
         for kinematics in self.all_kinematic_data:
             observed_and_orbital_quantities += [
@@ -243,6 +252,9 @@ class PrashsCoolNewWeightSolver(WeightSolver):
         orbit_density_3D = orblib.density_3D
         orbit_density_2D = np.sum(orblib.losvd_histograms.y, (1,2))
         return
+
+
+
 
 
 

@@ -132,7 +132,7 @@ class ModelInnerIterator(object):
             mod0.setup_directories()
             orblib = mod0.get_orblib()
             orb_done = True
-            mod0.get_weights(orblib)
+            weight_solver = mod0.get_weights(orblib)
             wts_done = True
         all_done = True
         time = np.datetime64('now', 'ms')
