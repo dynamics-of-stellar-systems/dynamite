@@ -1,30 +1,19 @@
 # %ECSV 0.9
 # ---
 # datatype:
-# - name: vbin_id
-#   datatype: int64
-# - name: v
-#   datatype: float64
-# - name: dv
-#   datatype: float64
-# - name: sigma
-#   datatype: float64
-# - name: dsigma
-#   datatype: float64
-# - name: h3
-#   datatype: float64
-# - name: dh3
-#   datatype: float64
-# - name: h4
-#   datatype: float64
-# - name: dh4
-#   datatype: float64
-# meta: !!omap
-# - PSF:
-#     sigma:
-#     - 1.06
-#     weight:
-#     - 1.0
+# - {name: vbin_id, datatype: int64}
+# - {name: v, datatype: float64}
+# - {name: dv, datatype: float64}
+# - {name: sigma, datatype: float64}
+# - {name: dsigma, datatype: float64}
+# - {name: h3, datatype: float64}
+# - {name: dh3, datatype: float64}
+# - {name: h4, datatype: float64}
+# - {name: dh4, datatype: float64}
+# meta:
+#   PSF:
+#     sigma: [1.06]
+#     weight: [1.0]
 # schema: astropy-2.0
 vbin_id v dv sigma dsigma h3 dh3 h4 dh4
 1 -55.1457 2.0968 193.5 2.0798 0.077 0.3 0.0 0.3

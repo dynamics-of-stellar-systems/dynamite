@@ -52,9 +52,12 @@ contains
     !----------------------------------------------------------------------
     real (kind=sp), dimension(2) :: v
     real (kind=sp) :: rsq
+    real (kind=dp) :: ran1
 
     do
-       call random_number(v)
+        v(1) = ran1(1)
+        v(2) = ran1(1)
+!         call random_number(v)
        v = 2.0_sp*v - 1.0_sp
        rsq = sum(v**2)
        if (rsq > 0.0_sp .and. rsq < 1.0_sp) exit
@@ -70,7 +73,10 @@ contains
 
     print*,"  * Seeding native Random generator"
     if (.not. initialized) then
-      call random_seed()
+      ! START reproducible orbit library
+      ! uncomment the following line for stochastic orbit library creation
+      !call random_seed()
+      ! END reproducible orbit library
       print*,"  * Internal Compiler random functions needs to be checked."
       initialized =  .true.
     end if
@@ -613,10 +619,12 @@ end subroutine real_integrator
     real   (kind=dp ),save          :: XOUT
     integer(kind=i4b),save          :: count=0
     real   (kind=dp )               :: contd8,step,rnd
+    real   (kind=dp )               :: ran1
     step=RPAR(2)
     IF (NR == 1) THEN
        ! Start storing the orbit after 1+? steps to avoid aliasing
-       call random_number(rnd) ! 0 < rnd < 1    
+        rnd = ran1(1)
+!         call random_number(rnd) ! 0 < rnd < 1    
        XOUT=X+step*(1.0_dp+rnd)
        count=0
        IPAR(1)=0
@@ -1010,6 +1018,7 @@ contains
     real (kind=sp), dimension(size(vec,1)) :: t
     integer (kind=i4b), dimension(size(vec,1)) :: ind
     integer (kind=i4b) :: j
+    real (kind=dp) :: ran1
 
     
     if (psf_kind(pf)==1) then
@@ -1027,7 +1036,10 @@ contains
        ! to the weight of the corresponding Gaussian component.
        ! M. Cappellari, 14 January 2003
        call random_gauss(gaus(:,:))
-       call random_number(t(:))
+        do j=1,size(vec,1) ! no forall, want this to be serialized...
+          t(j) = ran1(1)
+        end do
+!         call random_number(t(:))
        ind = t*(size(vec,1)-1) + 1 ! n=size(vec,1) random integers in [1,n]
        forall (j=1:2)
           gaus(:,j) = vec(:,j) + gaus(:,j)*psf_randomsigma(ind(:),pf)

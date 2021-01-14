@@ -93,14 +93,14 @@ system_components:
                 value: 0.9999
                 LaTeX: "$u_{min}$"
         type: "TriaxialVisibleComponent" # class name
-        mge_file: "mge.ecvs"
+        mge_file: "mge.ecsv"
         include: True
         contributes_to_potential: True
         kinematics: # optional, only specified for components with kinematics
             set1:
                 weight: 1.0 # weight of kinematics data specified by name
                 type: GaussHermite # specifies which object class to create
-                datafile: "gauss_hermite_kins.ecvs"  # both discr. & integrated
+                datafile: "gauss_hermite_kins.ecsv"  # both discr. & integrated
                 aperturefile: "aperture.dat" # integrated only
                 binfile: "bins.dat"          # integrated only
                 maskfile: maskfile.dat       # made-up filename
@@ -137,6 +137,9 @@ orblib_settings:
     hist_vel: '2719.8215332031'
     hist_sigma: '0.0000'  #check what this is
     hist_bins: '203'
+    # the following is intended for development & debugging and should be
+    # set to 0 for productive use
+    random_seed: 4242 # integer; any value <= 0 results in stochastic seed
 
 weight_solver_settings:
     type: "LegacyWeightSolver"
@@ -151,12 +154,16 @@ weight_solver_settings:
 
 parameter_space_settings:
     generator_type: "LegacyGridSearch"
+    #generator_type: "GridWalk"
     which_chi2: "chi2"
     generator_settings:
         specificsetting: 25
-        threshold_del_chi2: 0.5  # LegacyGridSearch setting
+        # For LegacyGridSearch, specify ONE of the following two settings
+        #threshold_del_chi2_abs: 0.5  # absolute change in chi2 threshold
+        threshold_del_chi2_as_frac_of_sqrt2nobs: 0.1
     stopping_criteria:
-        min_delta_chi2 : 0.5
+        min_delta_chi2_abs : 0.5  # absolute "optimality tolerance"
+        #min_delta_chi2_rel : 0.05 # relative "optimality tolerance"
         n_max_mods : 3
         n_max_iter : 10
 

@@ -32,9 +32,10 @@ docs/.DS_Store
 docs/tutorial_notebooks/.DS_Store
 docs/tutorial_notebooks/.ipynb_checkpoints/*
 docs/tutorial_notebooks/NGC6278_output/*
-plotbin/.DS_Store
-plotbin/__pycache__/*
+plotbin4dyn/.DS_Store
+plotbin4dyn/__pycache__/*
 build/*
 dist/*
 dynamite.egg-info/*
 list_of_created_files.txt
+ran1_nr
