@@ -48,7 +48,8 @@ class ModelIterator(object):
                 break
             print(f'{par_generator_type}: "iteration {total_iter_count}"')
             status = model_inner_iterator.run_iteration(iter, executor=executor)
-
+        # save the all models table
+        self.all_models.save()
 
 class ModelInnerIterator(object):
 

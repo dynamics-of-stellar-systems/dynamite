@@ -27,6 +27,7 @@ tests/__pycache__
 tests/NGC6278_output/models/*
 tests/NGC6278_output/all_models.ecsv
 tests/NGC6278_output/plots/*
+tests/dm_halos/*output/
 docs/_build/
 docs/.DS_Store
 docs/tutorial_notebooks/.DS_Store
