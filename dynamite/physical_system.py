@@ -31,12 +31,6 @@ class System(object):
 #        for idx, component in enumerate(args):
         for component in args:
             self.add_component(component)
-            # self.n_cmp += 1
-            # self.cmp_list += [component]
-            # self.n_pot += component.contributes_to_potential
-            # self.n_kin += len(component.kinematic_data)
-            # self.n_pop += len(component.population_data)
-            # self.n_par += len(component.parameters)
 
     def add_component(self, cmp):
         self.cmp_list += [cmp]
@@ -64,6 +58,11 @@ class System(object):
         """
         if len(self.cmp_list) != len(set(self.cmp_list)):
             raise ValueError('No duplicate component names allowed')
+        if self.parameters is not None:
+            for p in self.parameters:
+                if any([p.name.endswith('_'+c.name) for c in self.cmp_list]):
+                    raise ValueError('System parameter cannot end with '
+                                     f'"_component": {p.name}')
         if not(self.distMPc and self.name and self.position_angle):
             raise ValueError('System needs distMPc, name, '
                              'and position_angle attributes')
@@ -92,7 +91,7 @@ class System(object):
 
         """
         isvalid = np.all(np.sign(tuple(par.values())) >= 0)
-        return isvalid
+        return bool(isvalid)
 
     def __repr__(self):
         return f'{self.__class__.__name__} with {self.__dict__}'
@@ -196,7 +195,7 @@ class Component(object):
 
         """
         isvalid = np.all(np.sign(tuple(par.values())) >= 0)
-        return isvalid
+        return bool(isvalid)
 
     def __repr__(self):
         return (f'\n{self.__class__.__name__}({self.__dict__}\n)')
@@ -269,7 +268,7 @@ class TriaxialVisibleComponent(VisibleComponent):
 
         """
         tpp = self.triax_pqu2tpp(par['p'], par['q'], par['u'])
-        return not np.any(np.isnan(tpp))
+        return bool(not np.any(np.isnan(tpp)))
 
     def triax_pqu2tpp(self,p,q,u):
         """
