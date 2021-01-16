@@ -49,7 +49,7 @@ class System(object):
     def validate(self):
         """
         Ensures the System has the required attributes, at least one component,
-        and the ml parameter.
+        no duplicate component names, and the ml parameter.
         Additionally, the sformat string for the ml parameter is set.
 
         Raises
@@ -62,6 +62,8 @@ class System(object):
         None.
 
         """
+        if len(self.cmp_list) != len(set(self.cmp_list)):
+            raise ValueError('No duplicate component names allowed')
         if not(self.distMPc and self.name and self.position_angle):
             raise ValueError('System needs distMPc, name, '
                              'and position_angle attributes')
@@ -70,6 +72,27 @@ class System(object):
         if len(self.parameters) != 1 and self.parameters[0].name != 'ml':
             raise ValueError('System needs ml as its sole parameter')
         self.parameters[0].update(sformat = '6.2f')
+
+    def validate_parset(self, par):
+        """
+        Validates the system's parameter values. Kept separate from the
+        validate method to facilitate easy calling from the parameter
+        generator class.
+
+        Parameters
+        ----------
+        par : dict
+            { "p":val, ... } where "p" are the system's parameters and
+            val are their respective values
+
+        Returns
+        -------
+        isvalid : bool
+            True if the parameter set is valid, False otherwise
+
+        """
+        isvalid = np.all(np.sign(tuple(par.values())) >= 0)
+        return isvalid
 
     def __repr__(self):
         return f'{self.__class__.__name__} with {self.__dict__}'
@@ -152,6 +175,29 @@ class Component(object):
         for p in self.parameters:
             p.update(sformat=par_format[p.name[:p.name.rindex('_'+self.name)]])
 
+    def validate_parset(self, par):
+        """
+        Validates the component's parameter values. Kept separate from the
+        validate method to facilitate easy calling from the parameter
+        generator class. This method does a rudimentary check for non-
+        negativity and is intended to be implemented separately for each
+        component subclass.
+
+        Parameters
+        ----------
+        par : dict
+            { "p":val, ... } where "p" are the component's parameters and
+            val are their respective values
+
+        Returns
+        -------
+        isvalid : bool
+            True if the parameter set is valid, False otherwise
+
+        """
+        isvalid = np.all(np.sign(tuple(par.values())) >= 0)
+        return isvalid
+
     def __repr__(self):
         return (f'\n{self.__class__.__name__}({self.__dict__}\n)')
 
@@ -186,15 +232,49 @@ class TriaxialVisibleComponent(VisibleComponent):
 
     def __init__(self, **kwds):
         super().__init__(symmetry='triax', **kwds)
+        self.qobs = np.nan
 
     def validate(self):
+        """
+        In addition to validating parameter names and setting their sformat
+        strings, also set self.qobs (minimal flattening from mge data)
+
+        Returns
+        -------
+        None.
+
+        """
         par_format = {'q':'6.3g', 'p':'6.4g', 'u':'7.5g'}
         super().validate(par_format=par_format)
+        self.qobs = np.amin(self.mge.data['q'])
+        if self.qobs is np.nan:
+            raise ValueError(f'{self.__class__.__name__}.qobs is np.nan')
 
-    def triax_pqu2tpp(self,p,q,qobs,u):
+    def validate_parset(self, par):
+        """
+        Validates the triaxial component's p, q, u parameter set. Requires
+        self.qobs to be set. A parameter set is valid if the resulting
+        (theta, psi, phi) are not np.nan.
+
+        Parameters
+        ----------
+        par : dict
+            { "p":val, ... } where "p" are the component's parameters and
+            val are their respective values
+
+        Returns
+        -------
+        bool
+            True if the parameter set is valid, False otherwise
+
+        """
+        tpp = self.triax_pqu2tpp(par['p'], par['q'], par['u'])
+        return not np.any(np.isnan(tpp))
+
+    def triax_pqu2tpp(self,p,q,u):
         """
         transfer (p, q, u) to the three viewing angles (theta, psi, phi)
-        with known flatting qobs.
+        with known flatting self.qobs.
         Taken from schw_basics
         We should possibly revisit the expressions later
 
@@ -203,7 +283,7 @@ class TriaxialVisibleComponent(VisibleComponent):
         p2 = np.double(p) ** 2
         q2 = np.double(q) ** 2
         u2 = np.double(u) ** 2
-        o2 = np.double(qobs) ** 2
+        o2 = np.double(self.qobs) ** 2
 
         w1 = (u2 - q2) * (o2 * u2 - q2) / ((1.0 - q2) * (p2 - q2))
         w2 = (u2 - p2) * (p2 - o2 * u2) * (1.0 - q2) / ((1.0 - u2) * (1.0 - o2 * u2) * (p2 - q2))
