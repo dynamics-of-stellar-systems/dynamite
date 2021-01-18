@@ -11,6 +11,7 @@ import shutil
 # if os.getcwd().rpartition('/')[0] not in sys.path:
 #     sys.path.append(os.getcwd().rpartition('/')[0])
 
+import logging
 import time
 import numpy as np
 import matplotlib.pyplot as plt
@@ -142,8 +143,31 @@ def create_stats(n_chi2=10):
 
     t.write(output_file+f'_{n_chi2}.dat', format='ascii')
 
+def initialize_logging():
+    # create logger
+    logger = logging.getLogger()
+    logger.setLevel(logging.DEBUG)
+    # create file handler
+    fh = logging.FileHandler('test_nnls.log', mode='w')
+    fh.setLevel(logging.DEBUG)
+    # create console handler
+    ch = logging.StreamHandler()
+    ch.setLevel(logging.INFO)
+    # create formatter and add it to the handlers
+    # formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+    # formatter = logging.Formatter('[%(levelname)s] %(asctime)s.%(msecs)03d - %(name)s - %(message)s', "%Y-%m-%d %H:%M:%S")
+    formatter = logging.Formatter('[%(levelname)s] %(asctime)s - %(name)s - %(message)s', "%H:%M:%S")
+    fh.setFormatter(formatter)
+    ch.setFormatter(formatter)
+    # add the handlers to the logger
+    logger.addHandler(fh)
+    logger.addHandler(ch)
+
+    logger.info(f'Using DYNAMITE version: {dyn.__version__}')
+    logger.info(f'Located at: {dyn.__path__}')
 
 if __name__ == '__main__':
+    initialize_logging()
     run_user_test()
 
 # end
