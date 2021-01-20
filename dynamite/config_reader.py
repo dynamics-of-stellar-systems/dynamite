@@ -75,6 +75,7 @@ class UniqueKeyLoader(yaml.SafeLoader):
     Credits: ErichBSchulz,
     https://stackoverflow.com/questions/33490870/parsing-yaml-in-python-detect-duplicated-keys
     """
+
     def construct_mapping(self, node, deep=False):
         logger = logging.getLogger(f'{__name__}.{__class__.__name__}')
         mapping = []
@@ -99,6 +100,7 @@ class Configuration(object):
     # threshold_delta_chi2 variants for LegacyGridSearch parameter generator
     thresh_chi2_abs = 'threshold_del_chi2_abs'
     thresh_chi2_scaled = 'threshold_del_chi2_as_frac_of_sqrt2nobs'
+    # logger = logging.getLogger(f'{__name__}.{__qualname__}')
 
     def __init__(self, filename=None, silent=None):
         """
@@ -200,8 +202,8 @@ class Configuration(object):
                         text = f'Component {comp} needs parameters'
                         logger.error(text)
                         raise ValueError(text)
-                    logger.info('Has parameters '
-                                f'{tuple(data_comp["parameters"].keys())}')
+                    logger.debug('Has parameters '
+                                 f'{tuple(data_comp["parameters"].keys())}')
                     # if not silent:
                     #     print(f" Has parameters "
                     #           f"{tuple(data_comp['parameters'].keys())}")
@@ -216,7 +218,7 @@ class Configuration(object):
                     if 'kinematics' in data_comp:
                     # shall we include a check here (e.g., only
                     # VisibleComponent has kinematics?)
-                        logger.info('Has kinematics '
+                        logger.debug('Has kinematics '
                                     f'{tuple(data_comp["kinematics"].keys())}')
                         # if not silent:
                         #     print(f" Has kinematics "
@@ -274,7 +276,7 @@ class Configuration(object):
             # add system attributes
 
             elif key == 'system_attributes':
-                logger.info(f'system_attributes: {tuple(value.keys())}')
+                logger.debug(f'system_attributes: {tuple(value.keys())}')
                 # if not silent:
                 #     print('system_attributes...')
                 #     print(f' {tuple(value.keys())}')
@@ -349,7 +351,7 @@ class Configuration(object):
         self.system.validate() # now also adds the right parameter sformat
         logger.info('System assembled')
         logger.debug(f'System: {self.system}')
-        logger.debug(f'Settings:\n{self.settings}')
+        logger.debug(f'Settings: {self.settings}')
         # if not silent:
         #     print(f'**** System assembled:\n{self.system}')
         #     print(f'**** Settings:\n{self.settings}')

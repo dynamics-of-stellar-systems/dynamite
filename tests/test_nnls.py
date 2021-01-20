@@ -20,8 +20,11 @@ import dynamite as dyn
 
 def run_user_test(stat_mode=False):
 
-    print('Using DYNAMITE version:', dyn.__version__)
-    print('Located at:', dyn.__path__)
+    logger = logging.getLogger()
+    logger.info(f'Using DYNAMITE version: {dyn.__version__}')
+    logger.info(f'Located at: {dyn.__path__}')
+    # print('Using DYNAMITE version:', dyn.__version__)
+    # print('Located at:', dyn.__path__)
 
     # read configuration
     fname = 'user_test_config_ml.yaml'
@@ -60,7 +63,8 @@ def run_user_test(stat_mode=False):
         settings=c.settings,
         executor=c.executor)
     delt = time.perf_counter()-t
-    print(f'Computation time: {delt} seconds = {delt/60} minutes')
+    logger.info(f'Computation time: {delt} seconds = {delt/60} minutes')
+    # print(f'Computation time: {delt} seconds = {delt/60} minutes')
 
     # print all model results
 #    c.all_models.table.pprint_all()
@@ -87,7 +91,8 @@ def run_user_test(stat_mode=False):
         chi2_compare = table.Table.read(stat_file, format='ascii')
         radius = (np.max(chi2_compare['chi2_average']) - \
                  np.min(chi2_compare['chi2_average'])) / 10
-        print(f'Radius={radius}')
+        logger.debug(f'Radius={radius}')
+        # print(f'Radius={radius}')
         plt.figure()
         plt.scatter(chi2_compare['model_id'],
                     chi2_compare['chi2_average'],
@@ -107,9 +112,14 @@ def run_user_test(stat_mode=False):
         plt.ylabel('chi2')
         plt.savefig(plotfile_chi2)
 
-        print(f'Look at {plotfile_ml} and {plotfile_chi2}')
-        print('chi2 statistics for comparison:\n')
-        print(chi2_compare.pprint(max_lines=-1, max_width=-1))
+        logger.info(f'Look at {plotfile_ml} and {plotfile_chi2}')
+        chi2stat = ''
+        for s in chi2_compare.pformat(max_lines=-1, max_width=-1):
+            chi2stat += '\n'+s
+        logger.info(f'chi2 statistics for comparison: {chi2stat}')
+        # print(f'Look at {plotfile_ml} and {plotfile_chi2}')
+        # print('chi2 statistics for comparison:\n')
+        # print(chi2_compare.pprint(max_lines=-1, max_width=-1))
 
     return c.all_models.table, \
         stat_file, \
@@ -156,15 +166,13 @@ def initialize_logging():
     # create formatter and add it to the handlers
     # formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
     # formatter = logging.Formatter('[%(levelname)s] %(asctime)s.%(msecs)03d - %(name)s - %(message)s', "%Y-%m-%d %H:%M:%S")
-    formatter = logging.Formatter('[%(levelname)s] %(asctime)s - %(name)s - %(message)s', "%H:%M:%S")
+    formatter = logging.Formatter('[%(levelname)s] %(asctime)s - %(name)s - %(funcName)s:%(lineno)d - %(message)s', "%H:%M:%S")
+    # formatter = logging.Formatter('[%(levelname)s] %(asctime)s - %(filename)s %(funcName)s:%(lineno)d - %(message)s', "%H:%M:%S")
     fh.setFormatter(formatter)
     ch.setFormatter(formatter)
     # add the handlers to the logger
     logger.addHandler(fh)
     logger.addHandler(ch)
-
-    logger.info(f'Using DYNAMITE version: {dyn.__version__}')
-    logger.info(f'Located at: {dyn.__path__}')
 
 if __name__ == '__main__':
     initialize_logging()
