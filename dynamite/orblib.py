@@ -2,6 +2,7 @@ import os
 import numpy as np
 import subprocess
 from scipy.io import FortranFile
+import logging
 
 import sys
 this_dir = os.path.dirname(__file__)
@@ -57,28 +58,30 @@ class LegacyOrbitLibrary(OrbitLibrary):
         self.executor = executor
 
     def get_orbit_ics(self):
+        logger = logging.getLogger(f'{__name__}.{__class__.__name__}')
         cur_dir = os.getcwd()
         os.chdir(self.mod_dir)
-        print("Calculating the initial conditions for this potential")
+        logger.info("Calculating the initial conditions for this potential")
         cmdstr = self.executor.write_executable_for_ics()
         self.executor.execute(cmdstr)
         os.chdir(cur_dir)
-        print("Orbit integration is finished.")
+        logger.info("Orbit integration is finished.")
 
     def read_ics(self):
         # ...
         pass
 
     def get_orbit_library(self):
+        logger = logging.getLogger(f'{__name__}.{__class__.__name__}')
         # move to model directory
         cur_dir = os.getcwd()
         os.chdir(self.mod_dir)
-        print("Calculating the orbit library for the proposed potential.")
+        logger.info("Calculating the orbit library for the proposed potential.")
         cmdstrs = self.executor.write_executable_for_integrate_orbits()
         cmdstr_tube, cmdstr_box = cmdstrs
         self.executor.execute(cmdstr_tube)
         self.executor.execute(cmdstr_box)
-        print("Orbit integration is finished.")
+        logger.info("Orbit integration is finished.")
         # move back to original directory
         os.chdir(cur_dir)
 
@@ -159,8 +162,11 @@ class LegacyOrbitLibrary(OrbitLibrary):
             the duplicated, flipped and interlaced orblib
 
         """
+        logger = logging.getLogger(f'{__name__}.{__class__.__name__}')
+        logger.debug('Checking for symmetric velocity array...')
         error_msg = 'velocity array must be symmetric'
         assert np.all(orblib.xedg == -orblib.xedg[::-1]), error_msg
+        logger.debug('...check ok.')
 
         losvd = orblib.y
         n_orbs, n_vel_bins, n_spatial_bins = losvd.shape
@@ -187,15 +193,20 @@ class LegacyOrbitLibrary(OrbitLibrary):
             the combined orbit libraries
 
         """
+        logger = logging.getLogger(f'{__name__}.{__class__.__name__}')
         # check orblibs are compatible
         n_orbs1, n_vel_bins1, n_spatial_bins1 = orblib1.y.shape
         n_orbs2, n_vel_bins2, n_spatial_bins2 = orblib2.y.shape
+        logger.debug('Checking number of velocity bins...')
         error_msg = 'orblibs have different number of velocity bins'
         assert n_vel_bins1==n_vel_bins2, error_msg
+        logger.debug('Checking velocity arrays...')
         error_msg = 'orblibs have different velocity arrays'
         assert np.array_equal(orblib1.x, orblib2.x), error_msg
+        logger.debug('Checking number of spatial bins...')
         error_msg = 'orblibs have different number of spatial bins'
         assert n_spatial_bins1==n_spatial_bins2, error_msg
+        logger.debug('...checks ok.')
         new_losvd = np.zeros((n_orbs1 + n_orbs2,
                               n_vel_bins1,
                               n_spatial_bins1))

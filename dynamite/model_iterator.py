@@ -1,6 +1,7 @@
 import model
 import parameter_space
 import numpy as np
+import logging
 
 
 class ModelIterator(object):
@@ -13,6 +14,9 @@ class ModelIterator(object):
                  executor=None,
                  do_dummy_run=None,
                  dummy_chi2_function=None):
+ 
+        logger = logging.getLogger(f'{__name__}.{__class__.__name__}')
+
         stopping_crit = settings.parameter_space_settings['stopping_criteria']
         n_max_iter = stopping_crit['n_max_iter']
         self.n_max_mods = stopping_crit['n_max_mods']
@@ -43,10 +47,12 @@ class ModelIterator(object):
                 status['n_max_mods_reached'] = True
                 status['stop'] = True
             if status['stop'] is True:
-                print(f'Stopping after iteration {total_iter_count}')
-                print(status)
+                logger.info(f'Stopping after iteration {total_iter_count}')
+                logger.debug(status)
                 break
-            print(f'{par_generator_type}: "iteration {total_iter_count}"')
+            logger.info(f'{par_generator_type}: "iteration '
+                        f'{total_iter_count}"')
+            # print(f'{par_generator_type}: "iteration {total_iter_count}"')
             status = model_inner_iterator.run_iteration(iter, executor=executor)
 
 
@@ -72,6 +78,9 @@ class ModelInnerIterator(object):
         self.dummy_chi2_function = dummy_chi2_function
 
     def run_iteration(self, iter, executor=None):
+
+        logger = logging.getLogger(f'{__name__}.{__class__.__name__}')
+
         self.par_generator.generate(current_models=self.all_models)
         # generate parameter sets for this iteration
         if self.par_generator.status['stop'] is False:
@@ -80,7 +89,7 @@ class ModelInnerIterator(object):
             rows_to_do = rows_to_do[0]
             n_to_do = len(rows_to_do)
             for i, row in enumerate(rows_to_do):
-                print(f'... running model {i+1} out of {n_to_do}')
+                logger.info(f'... running model {i+1} out of {n_to_do}')
                 # extract the parameter values
                 parset0 = self.all_models.table[row]
                 parset0 = parset0[self.parspace.par_names]
@@ -107,6 +116,9 @@ class ModelInnerIterator(object):
     def create_model(self,
                      parset,
                      executor=None):
+
+        logger = logging.getLogger(f'{__name__}.{__class__.__name__}')
+
         model_kwargs = {'system':self.system,
                         'settings':self.settings,
                         'parspace':self.parspace,
@@ -121,18 +133,14 @@ class ModelInnerIterator(object):
             # (i) weight solver
             # (iii) colour solver
             # mod = getattr(model, '...')(**model_kwargs)
-            raise ValueError("""
-                             Only Legacy Mode currently implemented. Set
-                                 legacy_settings:
-                                     use_legacy_mode: True
-                             in the config file
-                             """)
+            text = ("""
+                    Only Legacy Mode currently implemented. Set
+                        legacy_settings:
+                            use_legacy_mode: True
+                    in the config file
+                    """)
+            logger.error(text)
+            raise ValueError(text)
         return mod
-
-
-
-
-
-
 
 # end

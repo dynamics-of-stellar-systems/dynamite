@@ -1,6 +1,7 @@
 import os
 import numpy as np
 from astropy import table
+import logging
 
 class WeightSolver(object):
 
@@ -62,6 +63,7 @@ class LegacyWeightSolver(WeightSolver):
         self.fname_nn_nnls = self.mod_dir_with_ml + '/nn_nnls.out'
 
     def solve(self):
+        logger = logging.getLogger(f'{__name__}.{__class__.__name__}')
         check1 = os.path.isfile(self.fname_nn_kinem)
         check2 = os.path.isfile(self.fname_nn_nnls)
         if not check1 or not check2:

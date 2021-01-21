@@ -7,6 +7,7 @@ import numpy as np
 
 import os.path
 import sys
+import logging
 
 this_dir = os.path.dirname(__file__)
 if not this_dir in sys.path:
@@ -62,23 +63,32 @@ class System(object):
         None.
 
         """
+        logger = logging.getLogger(f'{__name__}.{__class__.__name__}')
         if not(self.distMPc and self.name and self.position_angle):
-            raise ValueError('System needs distMPc, name, '
-                             'and position_angle attributes')
+            text = 'System needs distMPc, name, and position_angle attributes'
+            logger.error(text)
+            raise ValueError(text)
         if not self.cmp_list:
-            raise ValueError('System has no components')
+            text = 'System has no components'
+            logger.error(text)
+            raise ValueError(text)
         if len(self.parameters) != 1 and self.parameters[0].name != 'ml':
-            raise ValueError('System needs ml as its sole parameter')
+            text = 'System needs ml as its sole parameter'
+            logger.error(text)
+            raise ValueError(text)
         self.parameters[0].update(sformat = '6.2f')
 
     def __repr__(self):
         return f'{self.__class__.__name__} with {self.__dict__}'
 
     def get_component_from_name(self, cmp_name):
+        logger = logging.getLogger(f'{__name__}.{__class__.__name__}')
         cmp_list_list = np.array([cmp0.name for cmp0 in self.cmp_list])
         idx = np.where(cmp_list_list == cmp_name)
+        logger.debug(f'Checking for 1 and only 1 component {cmp_name}...')
         error_msg = f"There should be 1 and only 1 component named {cmp_name}"
         assert len(idx[0]) == 1, error_msg
+        logger.debug('...check ok.')
         component = self.cmp_list[idx[0][0]]
         return component
 
@@ -124,31 +134,43 @@ class Component(object):
         None.
 
         """
+        logger = logging.getLogger(f'{__name__}.{__class__.__name__}')
         # if self.symmetry not in self.symmetries:
         #     raise ValueError('Illegal symmetry ' + str(self.symmetry) + \
         #                      '. Allowed: ' + str(self.symmetries))
         par = par_format.keys()
         errstr = f'Component {self.__class__.__name__} needs attribute '
         if self.visible is None:
-            raise ValueError(errstr + 'visible')
+            text = errstr + 'visible'
+            logger.error(text)
+            raise ValueError(text)
         if self.contributes_to_potential is None:
-            raise ValueError(errstr + 'contributes_to_potential')
+            text = errstr + 'contributes_to_potential'
+            logger.error(text)
+            raise ValueError(text)
         if not self.parameters:
-            raise ValueError(errstr + 'parameters')
+            text = errstr + 'parameters'
+            logger.error(text)
+            raise ValueError(text)
 
         # if len(self.parameters) != len(par):
         #     raise ValueError(f'{self.__class__.__name__} needs exactly '
         #         f'{len(par)} paramater(s), not {len(self.parameters)}')
         pars = [p.name[:p.name.rindex('_'+self.name)] for p in self.parameters]
         if set(pars) != set(par):
-            raise ValueError(f'{self.__class__.__name__} needs parameters '
-                             f'{list(par)}, '
-                             f'not {[p.name for p in self.parameters]}')
+            text = f'{self.__class__.__name__} needs parameters ' + \
+                   f'{list(par)}, not {[p.name for p in self.parameters]}'
+            logger.error(text)
+            raise ValueError(text)
+
         self.set_format(par_format)
 
     def set_format(self, par_format=None):
+        logger = logging.getLogger(f'{__name__}.{__class__.__name__}')
         if par_format is None:
-            raise ValueError(f'{self.__class__.__name__}: no format string')
+            text = f'{self.__class__.__name__}: no format string'
+            logger.error(text)
+            raise ValueError(text)
         for p in self.parameters:
             p.update(sformat=par_format[p.name[:p.name.rindex('_'+self.name)]])
 
@@ -166,10 +188,12 @@ class VisibleComponent(Component):
         super().__init__(visible=True, **kwds)
 
     def validate(self, **kwds):
+        logger = logging.getLogger(f'{__name__}.{__class__.__name__}')
         super().validate(**kwds)
         if not isinstance(self.mge, mge.MGE):
-            raise ValueError(f'{self.__class__.__name__}.mge must be '
-                             'mges.MGE object')
+            text = f'{self.__class__.__name__}.mge must be mges.MGE object'
+            logger.error(text)
+            raise ValueError(text)
 
 
 class AxisymmetricVisibleComponent(VisibleComponent):

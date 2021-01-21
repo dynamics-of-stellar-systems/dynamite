@@ -1,3 +1,5 @@
+import logging
+
 class Populations(object):
     """
     Populations class holding attributes and methods pertaining to population data
@@ -41,15 +43,24 @@ class Populations(object):
         None.
 
         """
-        
+
+        logger = logging.getLogger(f'{__name__}.{__class__.__name__}')
         for k, v in kwargs.items():
             if k not in self.__class__.values:
-                raise ValueError('Invalid population key ' + k + '. Allowed keys: ' + str(tuple(self.__class__.values)))
+                text = 'Invalid population key ' + k + '. Allowed keys: ' + \
+                       str(tuple(self.__class__.values))
+                logger.error(text)
+                raise ValueError(text)
             setattr(self, k, v)
 
     def validate(self): # here we can put more validation...
+        logger = logging.getLogger(f'{__name__}.{__class__.__name__}')
         if sorted(self.__class__.values) != sorted(self.__dict__.keys()):
-            raise ValueError('Population attributes can only be ' + str(tuple(self.__class__.values)) + ', not ' + str(tuple(self.__dict__.keys())))
+            text = 'Population attributes can only be ' + \
+                   str(tuple(self.__class__.values)) + ', not ' + \
+                   str(tuple(self.__dict__.keys()))
+            logger.error(text)
+            raise ValueError(text)
 
     def __repr__(self):
         return f'{self.__class__.__name__}({self.__dict__})'

@@ -1,6 +1,6 @@
 from astropy.io import ascii
 from astropy.table import Table
-
+import logging
 
 class Data(object):
 
@@ -45,12 +45,17 @@ class Integrated(Data):
                             sigma=[1.],
                             weight=[1.],
                             datafile='datafile.ecsv'):
+        logger = logging.getLogger(f'{__name__}.{__class__.__name__}')
         assert type(sigma) is list
         assert type(sigma) is list
         assert isinstance(datafile, str)
         if hasattr(self, 'PSF'):
-            print('Warning: this dataset already has an associated PSF')
-            print('Possibly overwriting an existing PSF in the datafile')
+            logger.warning('Warning: this dataset already has an ' + \
+                           'associated PSF')
+            logger.warning('Possibly overwriting an existing PSF in the ' + \
+                           'datafile')
+            # print('Warning: this dataset already has an associated PSF')
+            # print('Possibly overwriting an existing PSF in the datafile')
         psf = {'sigma':sigma, 'weight':weight}
         meta = {'PSF':psf}
         old_table = ascii.read(datafile)

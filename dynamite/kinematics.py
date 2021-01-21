@@ -3,6 +3,7 @@ import data
 import numpy as np
 from scipy import special, stats
 from astropy import table
+import logging
 
 # TODO: move some of the kwargs from the init of 'Kinematics' to the init of
 # higher level data classes, e.g. all Integrated objects will need aperturefile,
@@ -44,14 +45,23 @@ class Kinematics(data.Data):
 
         """
 
+        logger = logging.getLogger(f'{__name__}.{__class__.__name__}')
         for k, v in kwargs.items():
             if k not in self.__class__.values:
-                raise ValueError('Invalid kinematics key ' + k + '. Allowed keys: ' + str(tuple(self.__class__.values)))
+                text = 'Invalid kinematics key ' + k + '. Allowed keys: ' + \
+                    str(tuple(self.__class__.values))
+                logger.error(text)
+                raise ValueError(text)
             setattr(self, k, v)
 
     def validate(self): # here we can put more validation...
+        logger = logging.getLogger(f'{__name__}.{__class__.__name__}')
         if sorted(self.__class__.values) != sorted(self.__dict__.keys()):
-            raise ValueError('Kinematics attributes can only be ' + str(tuple(self.__class__.values)) + ', not ' + str(tuple(self.__dict__.keys())))
+            text = 'Kinematics attributes can only be ' + \
+                str(tuple(self.__class__.values)) + ', not ' + \
+                str(tuple(self.__dict__.keys()))
+            logger.error(text)
+            raise ValueError(text)
 
     def __repr__(self):
         return f'{self.__class__.__name__}({self.__dict__})'

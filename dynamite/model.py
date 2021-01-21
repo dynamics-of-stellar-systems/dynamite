@@ -3,6 +3,7 @@ import shutil #used to easily copy files
 import numpy as np
 from astropy import table
 from astropy.io import ascii
+import logging
 
 import weight_solvers as ws
 import orblib as dyn_orblib
@@ -14,6 +15,10 @@ class AllModels(object):
                  filename='all_models.ecsv',
                  settings=None,
                  parspace=None):
+
+        logger = logging.getLogger(f'{__name__}.{__class__.__name__}')
+
+
         # self.settings = settings
         outdir = settings.io_settings['output_directory']
         filename = settings.io_settings['all_models_file']
@@ -21,12 +26,12 @@ class AllModels(object):
         self.filename = filename
         self.parspace = parspace
         if from_file and os.path.isfile(filename):
-            print('Previous models have been found:')
-            print(f'Reading {filename} into AllModels.table')
+            logger.info('Previous models have been found:')
+            logger.info(f'Reading {filename} into AllModels.table')
             self.read_completed_model_file()
         else:
-            print('No previous models have been found:')
-            print(f'Making an empty table in AllModels.table')
+            logger.info('No previous models have been found:')
+            logger.info(f'Making an empty table in AllModels.table')
             self.make_empty_table()
 
     def make_empty_table(self):
@@ -459,22 +464,5 @@ class LegacySchwarzschildModel(Model):
         nn_file= open(path+'ml'+'{:01.2f}'.format(self.parset['ml'])+'/nn.in',"w")
         nn_file.write(text)
         nn_file.close()
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 # end
