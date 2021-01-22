@@ -64,7 +64,8 @@ def run_user_test(stat_mode=False):
         executor=c.executor)
     delt = time.perf_counter()-t
     logger.info(f'Computation time: {delt} seconds = {delt/60} minutes')
-    # print(f'Computation time: {delt} seconds = {delt/60} minutes')
+    # print to console regardless of logging level
+    print(f'Computation time: {delt} seconds = {delt/60} minutes')
 
     # print all model results
 #    c.all_models.table.pprint_all()
@@ -117,9 +118,10 @@ def run_user_test(stat_mode=False):
         for s in chi2_compare.pformat(max_lines=-1, max_width=-1):
             chi2stat += '\n'+s
         logger.info(f'chi2 statistics for comparison: {chi2stat}')
-        # print(f'Look at {plotfile_ml} and {plotfile_chi2}')
-        # print('chi2 statistics for comparison:\n')
-        # print(chi2_compare.pprint(max_lines=-1, max_width=-1))
+        # print to console regardless of logging level
+        print(f'Look at {plotfile_ml} and {plotfile_chi2}')
+        print('chi2 statistics for comparison:\n')
+        chi2_compare.pprint(max_lines=-1, max_width=-1)
 
     return c.all_models.table, \
         stat_file, \
@@ -154,6 +156,16 @@ def create_stats(n_chi2=10):
     t.write(output_file+f'_{n_chi2}.dat', format='ascii')
 
 def initialize_logging():
+    """
+    Logging setup for (1) creating a .log file with logging level DEBUG and
+    detailed logging information and (2) more concide logging to the console
+    with logging level INFO.
+
+    Returns
+    -------
+    None.
+
+    """
     # create logger
     logger = logging.getLogger()
     logger.setLevel(logging.DEBUG)
@@ -166,15 +178,21 @@ def initialize_logging():
     # create formatter and add it to the handlers
     # formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
     # formatter = logging.Formatter('[%(levelname)s] %(asctime)s.%(msecs)03d - %(name)s - %(message)s', "%Y-%m-%d %H:%M:%S")
-    formatter = logging.Formatter('[%(levelname)s] %(asctime)s - %(name)s - %(funcName)s:%(lineno)d - %(message)s', "%H:%M:%S")
     # formatter = logging.Formatter('[%(levelname)s] %(asctime)s - %(filename)s %(funcName)s:%(lineno)d - %(message)s', "%H:%M:%S")
-    fh.setFormatter(formatter)
-    ch.setFormatter(formatter)
+    file_formatter = logging.Formatter( \
+        '[%(levelname)s] %(asctime)s - %(name)s - '
+        '%(filename)s:%(funcName)s:%(lineno)d - %(message)s', "%b %d %H:%M:%S" \
+        )
+    console_formatter = logging.Formatter( \
+        '[%(levelname)s] %(asctime)s - %(name)s - %(message)s', "%H:%M:%S")
+    fh.setFormatter(file_formatter)
+    ch.setFormatter(console_formatter)
     # add the handlers to the logger
     logger.addHandler(fh)
     logger.addHandler(ch)
 
 if __name__ == '__main__':
+
     initialize_logging()
     run_user_test()
 

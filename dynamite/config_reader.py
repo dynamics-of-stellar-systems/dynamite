@@ -124,8 +124,7 @@ class Configuration(object):
         """
         logger = logging.getLogger(f'{__name__}.{__class__.__name__}')
         if silent is not None:
-            logger.warning("'silent' option is deprecated and will be "
-                           "ignored")
+            logger.warning("'silent' option is deprecated and ignored")
         try:
             with open(filename, 'r') as f:
                 # self.params = yaml.safe_load(f)

@@ -61,11 +61,12 @@ class LegacyOrbitLibrary(OrbitLibrary):
         logger = logging.getLogger(f'{__name__}.{__class__.__name__}')
         cur_dir = os.getcwd()
         os.chdir(self.mod_dir)
-        logger.info("Calculating the initial conditions for this potential")
         cmdstr = self.executor.write_executable_for_ics()
+        logger.info(f'Calculating initial conditions: {cmdstr}')
         self.executor.execute(cmdstr)
+        logfile = self.mod_dir + cmdstr[cmdstr.rindex('&>')+3:]
+        logger.debug(f'...done. Logfile: {logfile}')
         os.chdir(cur_dir)
-        logger.info("Orbit integration is finished.")
 
     def read_ics(self):
         # ...
@@ -76,12 +77,16 @@ class LegacyOrbitLibrary(OrbitLibrary):
         # move to model directory
         cur_dir = os.getcwd()
         os.chdir(self.mod_dir)
-        logger.info("Calculating the orbit library for the proposed potential.")
         cmdstrs = self.executor.write_executable_for_integrate_orbits()
         cmdstr_tube, cmdstr_box = cmdstrs
+        logger.info(f'Integrating orbit library tube orbits: {cmdstr_tube}')
         self.executor.execute(cmdstr_tube)
+        logfile = self.mod_dir + cmdstr_tube[cmdstr_tube.rindex('&>')+3:]
+        logger.debug(f'...done. Logfile: {logfile}')
+        logger.info(f'Integrating orbit library box orbits: {cmdstr_box}')
         self.executor.execute(cmdstr_box)
-        logger.info("Orbit integration is finished.")
+        logfile = self.mod_dir + cmdstr_box[cmdstr_box.rindex('&>')+3:]
+        logger.debug(f'...done. Logfile: {logfile}')
         # move back to original directory
         os.chdir(cur_dir)
 

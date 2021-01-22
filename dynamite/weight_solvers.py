@@ -70,14 +70,15 @@ class LegacyWeightSolver(WeightSolver):
             # set the current directory to the directory in which the models are computed
             cur_dir = os.getcwd()
             os.chdir(self.mod_dir)
-            print("Fit the orbit library to the kinematic data.")
             cmdstr = self.executor.write_executable_for_weight_solver(self.ml)
+            logger.info(f"Fit orbit library to the kinematic data: {cmdstr}")
             self.executor.execute(cmdstr)
+            logfile = self.mod_dir + cmdstr[cmdstr.rindex('&>')+3:]
+            logger.debug(f'...done, NNLS problem solved. Logfile: {logfile}')
             #set the current directory to the dynamite directory
             os.chdir(cur_dir)
-            print("NNLS problem solved")
         else:
-            print("NNLS solution read from existing output")
+            logger.info("NNLS solution read from existing output")
         weights = self.read_weights()
         chi2, kinchi2 = self.read_chi2()
         return chi2, kinchi2

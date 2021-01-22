@@ -85,6 +85,7 @@ class Local(Executor):
              self.legacy_directory +'/orbitstart < infil/orbstart.in >> datfil/orbstart.log' + '\n')
         txt_file.close()
         #returns the name of the executable
+        cmdstr += f' &> {cmdstr}.log'
         return cmdstr
 
     def write_executable_for_integrate_orbits(self):
@@ -118,6 +119,8 @@ class Local(Executor):
         txt_file.write('rm datfil/orblibbox.dat' + '\n')
         txt_file.close()
         #returns the name of the executables
+        cmdstr_tube += f' &> {cmdstr_tube}.log'
+        cmdstr_box += f' &> {cmdstr_box}.log'
         return cmdstr_tube, cmdstr_box
 
     def write_executable_for_weight_solver(self, ml):
@@ -134,6 +137,7 @@ class Local(Executor):
         txt_file.write('rm datfil/orblib.dat' + '\n')
         txt_file.write('rm datfil/orblibbox.dat' + '\n')
         txt_file.close()
+        cmdstr += f' &> {cmdstr}.log'
         return cmdstr
 
     # def execute_ics(self, cmdstr):

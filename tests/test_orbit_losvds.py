@@ -8,6 +8,7 @@ import numpy as np
 import time
 import matplotlib.pyplot as plt
 from astropy import table
+import logging
 import dynamite as dyn
 
 def plot_losvds(losvd_histogram,
@@ -36,8 +37,8 @@ def plot_losvds(losvd_histogram,
 
 def run_orbit_losvd_test(make_comparison_losvd=False):
 
-    print('Using DYNAMITE version:', dyn.__version__)
-    print('Located at:', dyn.__path__)
+    logging.info('Using DYNAMITE version:', dyn.__version__)
+    logging.info('Located at:', dyn.__path__)
 
     # read configuration
     fname = 'user_test_config.yaml'
@@ -96,11 +97,19 @@ def run_orbit_losvd_test(make_comparison_losvd=False):
         fig = plt.gcf()
         fig.savefig(plotfile)
 
+    logging.info(f'Look at {plotfile}')
+    # we want to print to the console regardless of the logging level
     print(f'Look at {plotfile}')
 
     return 0
 
 if __name__ == '__main__':
+
+    # For an ultra-minimal logging configuration, not even the
+    # logging.basicConfig call is necessary, but here we want to log on the
+    # INFO level.
+
+    logging.basicConfig(level=logging.INFO)
     run_orbit_losvd_test()
 
 # end

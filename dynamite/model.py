@@ -26,12 +26,12 @@ class AllModels(object):
         self.filename = filename
         self.parspace = parspace
         if from_file and os.path.isfile(filename):
-            logger.info('Previous models have been found:')
-            logger.info(f'Reading {filename} into AllModels.table')
+            logger.info('Previous models have been found: '
+                        f'Reading {filename} into {__class__.__name__}.table')
             self.read_completed_model_file()
         else:
-            logger.info('No previous models have been found:')
-            logger.info(f'Making an empty table in AllModels.table')
+            logger.info('No previous models have been found: '
+                        f'Making an empty table in {__class__.__name__}.table')
             self.make_empty_table()
 
     def make_empty_table(self):
