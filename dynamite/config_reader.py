@@ -164,7 +164,7 @@ class Configuration(object):
             if key == 'system_components':
                 # if not silent:
                 #     print('model_components:')
-                logger.info('model_components:')
+                logger.info('model_components...')
                 for comp, data_comp in value.items():
                     if not data_comp['include']:
                             # if not silent:
@@ -177,7 +177,7 @@ class Configuration(object):
                     # if not silent:
                     #     print(f" {comp}... instantiating {data_comp['type']} "
                     #           "object")
-                    logger.info(f"{comp}... instantiating {data_comp['type']} "
+                    logger.debug(f"{comp}... instantiating {data_comp['type']} "
                               "object")
                     if 'contributes_to_potential' not in data_comp:
                         text = f'Component {comp} needs ' + \
@@ -236,7 +236,7 @@ class Configuration(object):
                     if 'populations' in data_comp:
                     # shall we include a check here (e.g., only
                     # VisibleComponent has populations?)
-                        logger.info(f'Has populations '
+                        logger.debug(f'Has populations '
                                 f'{tuple(data_comp["populations"].keys())}')
                         # if not silent:
                         #     print(f" Has populations "
@@ -259,7 +259,8 @@ class Configuration(object):
             # add system parameters
 
             elif key == 'system_parameters':
-                logger.info(f'system_parameters: {tuple(value.keys())}')
+                logger.info('system_parameters...')
+                logger.debug(f'system_parameters: {tuple(value.keys())}')
                 # if not silent:
                 #     print('system_parameters...')
                 #     print(f' {tuple(value.keys())}')
@@ -275,6 +276,7 @@ class Configuration(object):
             # add system attributes
 
             elif key == 'system_attributes':
+                logger.info('system_attributes...')
                 logger.debug(f'system_attributes: {tuple(value.keys())}')
                 # if not silent:
                 #     print('system_attributes...')
@@ -285,7 +287,8 @@ class Configuration(object):
             # add orbit library settings to Settings object
 
             elif key == 'orblib_settings':
-                logger.info(f'orblib_settings: {tuple(value.keys())}')
+                logger.info('orblib_settings...')
+                logger.debug(f'orblib_settings: {tuple(value.keys())}')
                 # if not silent:
                 #     print('orblib_settings...')
                 #     print(f' {tuple(value.keys())}')
@@ -294,7 +297,8 @@ class Configuration(object):
             # add parameter space settings to Settings object
 
             elif key == 'parameter_space_settings':
-                logger.info(f'parameter_space_settings: {tuple(value.keys())}')
+                logger.info('parameter_space_settings...')
+                logger.debug(f'parameter_space_settings: {tuple(value.keys())}')
                 # if not silent:
                 #     print('parameter_space_settings...')
                 #     print(f' {tuple(value.keys())}')
@@ -303,7 +307,8 @@ class Configuration(object):
             # add legacy settings to Settings object
 
             elif key == 'legacy_settings':
-                logger.info(f'legacy_settings: {tuple(value.keys())}')
+                logger.info('legacy_settings...')
+                logger.debug(f'legacy_settings: {tuple(value.keys())}')
                 # if not silent:
                 #     print('legacy_settings...')
                 #     print(f' {tuple(value.keys())}')
@@ -327,7 +332,8 @@ class Configuration(object):
             # add weight_solver_settings to Settings object
 
             elif key == 'weight_solver_settings':
-                logger.info(f'weight_solver_settings: {tuple(value.keys())}')
+                logger.info('weight_solver_settings...')
+                logger.debug(f'weight_solver_settings: {tuple(value.keys())}')
                 # if not silent:
                 #     print('weight_solver_settings...')
                 #     print(f' {tuple(value.keys())}')
@@ -336,7 +342,8 @@ class Configuration(object):
             # add executor_settings to Settings object
 
             elif key == 'executor_settings':
-                logger.info(f'executor_settings: {tuple(value.keys())}')
+                logger.info('executor_settings...')
+                logger.debug(f'executor_settings: {tuple(value.keys())}')
                 # if not silent:
                 #     print('executor_settings...')
                 #     print(f' {tuple(value.keys())}')
