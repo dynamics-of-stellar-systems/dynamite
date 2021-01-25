@@ -44,8 +44,6 @@ If you are using Linux, you will need ``ifort`` or ``gcc-gfortran``.
 
 If you are using macOS, you will need ``gfortran``, which can be installed in a number of different ways.
 
-**Important:** If you install the GCC package, do **not** install GCC 10 or higher as we noted  significant differences with this version.
-
 macOS
 ^^^^^
 
@@ -100,8 +98,6 @@ Known problems
 --------------
 
 * Make sure that the compiler collection is installed with the proper libraries. If you get problems running Galahad or DYNAMITE, try to reinstall GCC and make sure that the Fortran compiler is included in your installation.
-
-* Do not use GCC 10 or higher!
 
 
 
@@ -297,19 +293,16 @@ Update in .bashrc::
 2. Compiling the Fortran programs
 ----------------------------------
 
-Go back to ``.../legacy_fortran``. Before you proceed, it is necessary to make the following three changes to the ``Makefile``:
+Go back to ``.../legacy_fortran``. Before you proceed, it is necessary to make the following changes to the ``Makefile``:
 
-* Change the local path of Galahad (``GALAHADDIR``) to the path of your GALAHAD variable in the .bashrc (something like ``/home/.../.../legacy_fortran/galahad-2.3``).
-* Select the appropriate choice of ``GALAHADTYPE`` variable depending on your system (possible options are commented out)
+* Select the appropriate choice of ``GALAHADTYPE`` variable depending on your system (comment out the options that don't apply')
 * Look for the definition of the ``all:`` (this should be right after the definition of the ``GALAHADTYPE`` variable). Make sure that ``triaxgasnnls`` is **NOT** in the list.
-
-If you install and run DYNAMITE on your own computer, there seems to be a memory allocation problem when building the orbit library. This problem has currently been tackled by adding a line in the source code (the line ``print*, t1,t2,t3`` right after ``losvel(:) = t1 * vel(:,1) + t2 * vel(:,2) + t3 * vel(:,3)`` in the subroutine ``project_n(type,pos,vel,proj,losvel,n)``). If you work in a cluster system, you can probably delete these lines (to speed up the code), but please do a careful check here!
 
 Proceed with the following command from the terminal::
 
     make all
 
-Your terminal will likely express several warnings again, but these are not critical and refer to different coding conventions in earlier Fortran versions. Now, take a look in the directory ``.../legacy_fortran`` and check that you have .f90 files and executables (no ending) for:
+Your terminal will likely express several warnings again, but these are not critical and refer to different coding conventions in earlier Fortran versions. Now, take a look in the directory ``.../legacy_fortran`` and check that you have .f90 files and executables (no file name extension) for:
 
 * modelgen
 * orbitstart
@@ -417,6 +410,40 @@ You should not worry if the red crosses in the image you obtain are slightly out
 Troubleshooting
 ===============
 
-* Do not use GCC 10 or higher!
+Fortran code calls fail
+-----------------------
+
+Try to clean up and recompile. In ``.../legacy_fortran``, issue::
+
+    make distclean
+    make all
+
+and in ``.../dynamite``, re-install with the command::
+
+    python setup.py install
+
+Python install fails
+--------------------
+
+Try ``python3``instead of ``python``::
+
+    python3 setup.py install
+
+Compile errors when building legacy Fortran code
+------------------------------------------------
+
+If you get errors of the kind::
+
+    f951: sorry, unimplemented: Graphite loop optimizations cannot be used (isl is not available) (-fgraphite, -fgraphite-identity, -floop-nest-optimize, -floop-parallelize-all)
+
+it may be indicative of gfortran being built without isl. If you cannot or do not want to re-build the compiler (e.g., on a cluster), then open the ``Makefile`` in ``.../legacy_fortran`` and change the line::
+
+       flags +=    -funroll-loops -ftree-loop-linear
+
+to::
+
+       flags +=    -funroll-loops # -ftree-loop-linear
+
+(``-ftree-loop-linear`` is the same as ``-floop-nest-optimize`` and poses a problem if gcc/gfortran is compiled without isl).
 
 (under construction...)
