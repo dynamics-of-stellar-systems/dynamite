@@ -137,7 +137,10 @@ orblib_settings:
     hist_vel: '2719.8215332031'
     hist_sigma: '0.0000'  #check what this is
     hist_bins: '203'
-
+    # the following is intended for development & debugging and should be
+    # set to 0 for productive use
+    random_seed: 4242 # integer; any value <= 0 results in stochastic seed
+    
 weight_solver_settings:
     type: "LegacyWeightSolver"
     setting1: True
