@@ -67,7 +67,7 @@ system_components:
                 par_generator_settings:
                     lo: 0.05
                     hi: 0.99
-                    step: 0.4
+                    step: 0.2
                     minstep: 0.05
                 fixed: False
                 value: 0.5
@@ -77,8 +77,8 @@ system_components:
                     kernel: "to be defined"
                 par_generator_settings:
                     lo: 0.05
-                    hi: 0.99
-                    step: 0.4
+                    hi: 0.999
+                    step: 0.2
                     minstep: 0.05
                 fixed: False
                 value: 0.99
@@ -87,20 +87,20 @@ system_components:
                 par_generator_settings:
                     lo: 0.05
                     hi: 1.0
-                    step: 0.4
+                    step: 0.2
                     minstep: 0.05
                 fixed: False
                 value: 0.9999
                 LaTeX: "$u_{min}$"
         type: "TriaxialVisibleComponent" # class name
-        mge_file: "mge.ecsv"
+        mge_file: "mge.ecvs"
         include: True
         contributes_to_potential: True
         kinematics: # optional, only specified for components with kinematics
             set1:
                 weight: 1.0 # weight of kinematics data specified by name
                 type: GaussHermite # specifies which object class to create
-                datafile: "gauss_hermite_kins.ecsv"  # both discr. & integrated
+                datafile: "gauss_hermite_kins.ecvs"  # both discr. & integrated
                 aperturefile: "aperture.dat" # integrated only
                 binfile: "bins.dat"          # integrated only
                 maskfile: maskfile.dat       # made-up filename
@@ -137,7 +137,7 @@ orblib_settings:
     hist_vel: '2719.8215332031'
     hist_sigma: '0.0000'  #check what this is
     hist_bins: '203'
-    random_seed: 4242 # integ
+    random_seed: 4242 # integer or 0 for random
 
 weight_solver_settings:
     type: "LegacyWeightSolver"
@@ -162,8 +162,8 @@ parameter_space_settings:
     stopping_criteria:
         min_delta_chi2_abs : 0.5  # absolute "optimality tolerance"
         #min_delta_chi2_rel : 0.05 # relative "optimality tolerance"
-        n_max_mods : 5
-        n_max_iter : 5
+        n_max_mods : 50
+        n_max_iter : 10
 
 legacy_settings:
     use_legacy_mode: True
