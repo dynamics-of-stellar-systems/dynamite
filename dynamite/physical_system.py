@@ -178,8 +178,8 @@ class Component(object):
         """
         Validates the component's parameter values. Kept separate from the
         validate method to facilitate easy calling from the parameter
-        generator class. This method does a rudimentary check for non-
-        negativity and is intended to be implemented separately for each
+        generator class. This is a `placeholder` method which always returns
+        `True`. Specific implementations should be implemented for each
         component subclass.
 
         Parameters
@@ -194,8 +194,8 @@ class Component(object):
             True if the parameter set is valid, False otherwise
 
         """
-        isvalid = np.all(np.sign(tuple(par.values())) >= 0)
-        return bool(isvalid)
+        isvalid = True
+        return isvalid
 
     def __repr__(self):
         return (f'\n{self.__class__.__name__}({self.__dict__}\n)')

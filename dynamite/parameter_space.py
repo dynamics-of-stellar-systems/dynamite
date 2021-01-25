@@ -191,9 +191,9 @@ class ParameterGenerator(object):
         (i) evaluates stopping criteria, and stop if necessary
         (ii) runs the specific_generate_method of the child class, which
         updates self.model_list with a list of propsal models
-        (iii) removes previously run models from self.model_list
+        (iii) removes previously run and/or invalid models from self.model_list
         (iv) converts parameters from raw_values to par_values
-        (v) adds new models to current_models.table
+        (v) adds new, valid models to current_models.table
         (vi) update and return the status dictionary
 
         Parameters
