@@ -310,7 +310,8 @@ class LegacySchwarzschildModel(Model):
         #write orbstart.in
         #-------------------
 
-        text='infil/parameters.in' +'\n' + \
+        text = f"{self.settings.orblib_settings['random_seed']}\n"
+        text += 'infil/parameters.in' +'\n' + \
         'datfil/orbstart.dat' +'\n' + \
         'datfil/begin.dat' +'\n' + \
         'datfil/beginbox.dat'
@@ -329,6 +330,8 @@ class LegacySchwarzschildModel(Model):
         n_psf=[[1]]   #len(stars.kinematic_data) #needs to be revised
 
         #TODO:needs to be slightly changed for more psfs, loop
+
+        text0 = f"{self.settings.orblib_settings['random_seed']}\n"
 
         text1='#counterrotation_setupfile_version_1' +'\n' + \
             'infil/parameters.in' +'\n' + \
@@ -353,6 +356,7 @@ class LegacySchwarzschildModel(Model):
               'datfil/orblib.dat '
 
         orblib_file= open(path+'orblib.in',"w")
+        orblib_file.write(text0)
         orblib_file.write(text1)
         orblib_file.write(psf)
         orblib_file.write(text2)
@@ -363,6 +367,8 @@ class LegacySchwarzschildModel(Model):
         #-------------------
 
         #TODO:why not paramsb.in?
+        text0 = f"{self.settings.orblib_settings['random_seed']}\n"
+
         text1='#counterrotation_setupfile_version_1' +'\n' + \
             'infil/parameters.in' +'\n' + \
             'datfil/beginbox.dat' +'\n' + \
@@ -382,6 +388,7 @@ class LegacySchwarzschildModel(Model):
               'datfil/orblibbox.dat '
 
         orblibbox_file= open(path+'orblibbox.in',"w")
+        orblibbox_file.write(text0)
         orblibbox_file.write(text1)
         orblibbox_file.write(psf) #this is the same as for orblib.in
         orblibbox_file.write(text2)

@@ -1,10 +1,3 @@
-#!/usr/bin/env python3
-# -*- coding: utf-8 -*-
-"""
-Created on Tue Jun 16 15:14:17 2020
-
-@author: maindl
-"""
 
 # some tricks to add the current path to sys.path (so the imports below work)
 
@@ -330,13 +323,13 @@ class Configuration(object):
             print(f'**** System assembled:\n{self.system}')
             print(f'**** Settings:\n{self.settings}')
 
-        if 'generator_settings' in self.settings.parameter_space_settings:
-            self.set_threshold_del_chi2( \
-                self.settings.parameter_space_settings['generator_settings'])
-
         self.validate()
         if not silent:
             print('**** Configuration validated')
+
+        if 'generator_settings' in self.settings.parameter_space_settings:
+            self.set_threshold_del_chi2( \
+                self.settings.parameter_space_settings['generator_settings'])
 
         self.parspace = parspace.ParameterSpace(self.system)
         if not silent:
@@ -444,13 +437,10 @@ class Configuration(object):
         if gen_type != 'GridWalk' and gen_type != 'LegacyGridSearch':
             raise ValueError('Legacy mode: parameter space generator_type '
                              'must be GridWalk or LegacyGridSearch')
-        if self.settings.parameter_space_settings["which_chi2"] not in \
-            ["chi2", "kinchi2"]:
-            raise ValueError('Unknown which_chi2 setting, use chi2 or kinchi2')
         chi2abs = self.__class__.thresh_chi2_abs
         chi2scaled = self.__class__.thresh_chi2_scaled
-        gen_set = self.settings.parameter_space_settings['generator_settings']
-        if chi2abs in gen_set and chi2scaled in gen_set:
+        gen_set=self.settings.parameter_space_settings.get('generator_settings')
+        if gen_set != None and (chi2abs in gen_set and chi2scaled in gen_set):
             raise ValueError(f'Only specify one of {chi2abs}, {chi2scaled}, '
                              'not both')
 
