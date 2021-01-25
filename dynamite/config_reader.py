@@ -219,6 +219,11 @@ class Configuration(object):
 
                     # add component to system
                     c.validate() # now also adds the right parameter sformat
+                    parset = {p.name[:p.name.rfind(f'_{c.name}')]:p.value \
+                              for p in c.parameters}
+                    if not c.validate_parset(parset):
+                        raise ValueError(f'{c.name}: invalid parameters '
+                                         f'{parset}')
                     self.system.add_component(c)
 
             # add system parameters
@@ -319,6 +324,9 @@ class Configuration(object):
                 raise ValueError(f'Unknown configuration key: {key}')
 
         self.system.validate() # now also adds the right parameter sformat
+        parset = {p.name:p.value for p in self.system.parameters}
+        if not self.system.validate_parset(parset):
+            raise ValueError(f'Invalid sysetm parameters {parset}')
         if not silent:
             print(f'**** System assembled:\n{self.system}')
             print(f'**** Settings:\n{self.settings}')

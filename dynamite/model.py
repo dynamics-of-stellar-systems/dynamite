@@ -274,7 +274,7 @@ class LegacySchwarzschildModel(Model):
         u=self.parset['u_stars']
 
         #the minimal flattening from stellar mge
-        qobs=np.amin(stars.mge.data['q'])
+        # qobs=np.amin(stars.mge.data['q'])
 
         #TODO: add softening length somewhere
         # r_BH='1d-03'
@@ -283,7 +283,7 @@ class LegacySchwarzschildModel(Model):
         #TODO: which dark matter profile
         dm_specs='1 2'
 
-        theta,psi,phi = stars.triax_pqu2tpp(p,q,qobs,u)
+        theta,psi,phi = stars.triax_pqu2tpp(p,q,u)
 
         #header
         len_mge=len(stars.mge.data)
