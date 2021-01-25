@@ -137,6 +137,7 @@ orblib_settings:
     hist_vel: '2719.8215332031'
     hist_sigma: '0.0000'  #check what this is
     hist_bins: '203'
+    random_seed: 4242 # integ
 
 weight_solver_settings:
     type: "LegacyWeightSolver"
