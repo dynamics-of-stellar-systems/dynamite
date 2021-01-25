@@ -18,7 +18,6 @@ import kinematics as kinem
 import populations as popul
 import mges as mge
 import model
-import executor
 
 class Settings(object):
     """
@@ -39,25 +38,25 @@ class Settings(object):
             self.io_settings = values
         elif kind == 'weight_solver_settings':
             self.weight_solver_settings = values
-        elif kind == 'executor_settings':
-            self.executor_settings = values
+        elif kind == 'multiprocessing_settings':
+            self.multiprocessing_settings = values
         else:
             raise ValueError("""Config only takes orblib_settings
                              and parameter_space_settings
                              and legacy settings
                              and io_settings
                              and weight_solver_settings
-                             and executor_settings""")
+                             and multiprocessing_settings""")
 
     def validate(self):
         if not(self.orblib_settings and self.parameter_space_settings and
                self.output_settings and self.weight_solver_settings
-               and self.executor_settings):
+               and self.multiprocessing_settings):
             raise ValueError("""Config needs orblib_settings
                              and parameter_space_settings
                              and io_settings
                              and weight_solver_settings
-                             and executor_settings""")
+                             and multiprocessing_settings""")
 
     def __repr__(self):
         return (f'{self.__class__.__name__}({self.__dict__})')
@@ -293,13 +292,28 @@ class Configuration(object):
                     print(f' {tuple(value.keys())}')
                 self.settings.add('weight_solver_settings', value)
 
-            # add executor_settings to Settings object
+            # add multiprocessing_settings to Settings object
 
-            elif key == 'executor_settings':
+            elif key == 'multiprocessing_settings':
                 if not silent:
-                    print('executor_settings...')
+                    print('multiprocessing_settings...')
                     print(f' {tuple(value.keys())}')
-                self.settings.add('executor_settings', value)
+                # if submitted as slurm script we must add cwd to path
+                try: # check if Slurm being using
+                    os.environ["SLURM_JOB_CPUS_PER_NODE"]
+                    sys.path.append(os.getcwd())
+                except KeyError:
+                    pass
+                if value['ncpus']=='all_available':
+                    try:
+                        ncpus = int(os.environ["SLURM_JOB_CPUS_PER_NODE"])
+                    except KeyError:
+                        import multiprocessing
+                        ncpus = multiprocessing.cpu_count()
+                    value['ncpus'] = ncpus
+                if not silent:
+                    print(f"... using {value['ncpus']} CPUs.")
+                self.settings.add('multiprocessing_settings', value)
 
             else:
                 raise ValueError(f'Unknown configuration key: {key}')
@@ -327,15 +341,6 @@ class Configuration(object):
         if not silent:
             print('**** Instantiated AllModels object:\n'
                   f'{self.all_models.table}')
-
-        kw_executor = {'system':self.system,
-                       'legacy_directory':
-                           self.settings.legacy_settings['directory'],
-                       'executor_settings':self.settings.executor_settings}
-        executor_type = self.settings.executor_settings['type']
-        self.executor = getattr(executor, executor_type)(**kw_executor)
-        if not silent:
-            print(f'**** Instantiated executor object: {executor_type}')
 
     def set_threshold_del_chi2(self, generator_settings):
         """

@@ -48,22 +48,32 @@ class LegacyOrbitLibrary(OrbitLibrary):
                  system=None,
                  mod_dir=None,
                  settings=None,
-                 legacy_directory=None,
-                 executor=None):
+                 legacy_directory=None):
         self.system = system
         self.mod_dir = mod_dir
         self.settings = settings
         self.legacy_directory = legacy_directory
-        self.executor = executor
 
     def get_orbit_ics(self):
         cur_dir = os.getcwd()
         os.chdir(self.mod_dir)
         print("Calculating the initial conditions for this potential")
-        cmdstr = self.executor.write_executable_for_ics()
-        self.executor.execute(cmdstr)
+        cmdstr = self.write_executable_for_ics()
+        p = subprocess.call('bash '+cmdstr, shell=True)
         os.chdir(cur_dir)
         print("Orbit integration is finished.")
+
+    def write_executable_for_ics(self):
+        cmdstr = 'cmd_orb_start'
+        #create the fortran executable
+        txt_file = open(cmdstr, "w")
+        txt_file.write('#!/bin/bash' + '\n')
+        txt_file.write(
+        #    'grep finished datfil/orbstart.dat || ' + self.legacy_directory +'/orbitstart < infil/orbstart.in >> datfil/orbstart.log' + '\n')
+             self.legacy_directory +'/orbitstart < infil/orbstart.in >> datfil/orbstart.log' + '\n')
+        txt_file.close()
+        #returns the name of the executable
+        return cmdstr
 
     def read_ics(self):
         # ...
@@ -74,13 +84,45 @@ class LegacyOrbitLibrary(OrbitLibrary):
         cur_dir = os.getcwd()
         os.chdir(self.mod_dir)
         print("Calculating the orbit library for the proposed potential.")
-        cmdstrs = self.executor.write_executable_for_integrate_orbits()
-        cmdstr_tube, cmdstr_box = cmdstrs
-        self.executor.execute(cmdstr_tube)
-        self.executor.execute(cmdstr_box)
+        cmdstr_tube, cmdstr_box = self.write_executable_for_integrate_orbits()
+        p = subprocess.call('bash '+cmdstr_tube, shell=True)
+        p = subprocess.call('bash '+cmdstr_box, shell=True)
         print("Orbit integration is finished.")
         # move back to original directory
         os.chdir(cur_dir)
+
+    def write_executable_for_integrate_orbits(self):
+        #tubeorbits
+        cmdstr_tube = 'cmd_tube_orbs'
+        txt_file = open(cmdstr_tube, "w")
+        txt_file.write('#!/bin/bash' + '\n')
+        #txt_file.write('grep Writing datfil/orblib.dat.tmp && rm -f datfil/orblib.dat.tmp datfil/orblib.dat' + '\n')
+        txt_file.write('touch datfil/orblib.dat.tmp datfil/orblib.dat' + '\n')
+        txt_file.write('rm -f datfil/orblib.dat.tmp datfil/orblib.dat' + '\n')
+        txt_file.write( self.legacy_directory +'/orblib < infil/orblib.in >> datfil/orblib.log' + '\n')
+        txt_file.write('touch datfil/mass_qgrid.dat datfil/mass_radmass.dat datfil/mass_aper.dat' + '\n')
+        txt_file.write('rm datfil/mass_qgrid.dat datfil/mass_radmass.dat datfil/mass_aper.dat' + '\n')
+        txt_file.write( self.legacy_directory + '/triaxmass       < infil/triaxmass.in ' + '\n')
+        txt_file.write( self.legacy_directory + '/triaxmassbin    < infil/triaxmassbin.in ' + '\n')
+        txt_file.write('# if the gzipped orbit library does not exist zip it' + '\n')
+        txt_file.write('test -e datfil/orblib.dat.bz2 || bzip2 -k datfil/orblib.dat' + '\n')
+        txt_file.write('rm datfil/orblib.dat' + '\n')
+        txt_file.close()
+        #boxorbits
+        cmdstr_box = 'cmd_box_orbs'
+        txt_file = open(cmdstr_box, "w")
+        txt_file.write('#!/bin/bash' + '\n')
+        #txt_file.write(
+        #    'grep Writing datfil/orblibbox.dat.tmp && rm -f datfil/orblibbox.dat.tmp datfil/orblibbox.dat' + '\n')
+        txt_file.write('touch datfil/orblibbox.dat.tmp datfil/orblibbox.dat' + '\n')
+        txt_file.write('rm -f datfil/orblibbox.dat.tmp datfil/orblibbox.dat' + '\n')
+        txt_file.write(self.legacy_directory + '/orblib < infil/orblibbox.in >> datfil/orblibbox.log' + '\n')
+        txt_file.write('# if the gzipped orbit library does not exist zip it' + '\n')
+        txt_file.write('test -e datfil/orblibbox.dat.bz2 || bzip2 -k datfil/orblibbox.dat' + '\n')
+        txt_file.write('rm datfil/orblibbox.dat' + '\n')
+        txt_file.close()
+        #returns the name of the executables
+        return cmdstr_tube, cmdstr_box
 
     def read_orbit_base(self, fileroot):
         """Read a zipped Fortran orbit library from the file

@@ -25,7 +25,6 @@ model = dyn.model.LegacySchwarzschildModel(
   system=c.system,
   settings=c.settings,
   parspace=c.parspace,
-  executor=c.executor,
   parset=parset)          # make a Schwarzschild model
 model.setup_directories() # make directory tree
 model.get_orblib()        # make an orbit library
