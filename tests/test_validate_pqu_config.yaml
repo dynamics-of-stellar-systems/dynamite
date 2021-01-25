@@ -93,14 +93,14 @@ system_components:
                 value: 0.9999
                 LaTeX: "$u_{min}$"
         type: "TriaxialVisibleComponent" # class name
-        mge_file: "mge.ecvs"
+        mge_file: "mge.ecsv"
         include: True
         contributes_to_potential: True
         kinematics: # optional, only specified for components with kinematics
             set1:
                 weight: 1.0 # weight of kinematics data specified by name
                 type: GaussHermite # specifies which object class to create
-                datafile: "gauss_hermite_kins.ecvs"  # both discr. & integrated
+                datafile: "gauss_hermite_kins.ecsv"  # both discr. & integrated
                 aperturefile: "aperture.dat" # integrated only
                 binfile: "bins.dat"          # integrated only
                 maskfile: maskfile.dat       # made-up filename
