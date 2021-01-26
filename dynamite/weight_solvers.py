@@ -318,6 +318,10 @@ class PrashsCoolNewWeightSolver(WeightSolver):
         con[idx] = np.ravel(self.obs_gh.T)
         econ[idx] = np.ravel(self.obs_gh_err.T)
         kinematics = self.system.cmp_list[2].kinematic_data[0]
+        # to mimic `triaxnnnls_CRcut.f90`
+        # Set the first and last point in the velocity histograms to zero
+        orblib.losvd_histograms.y[:,0,:] = 0.
+        orblib.losvd_histograms.y[:,-1,:] = 0.
         orb_gh = kinematics.transform_orblib_to_observables(orblib)
         # apply 'ling_CR_cut' - cutting orbits where |V - V_obs|> 3sigma_obs
         # see Zhu+2018 MNRAS 2018 473 3000 for details
@@ -348,15 +352,10 @@ class PrashsCoolNewWeightSolver(WeightSolver):
         # divide constraint vector and matrix by errors
         rhs = con/econ
         orbmat = (orbmat.T/econ).T
-        if self.ling_CR_cut:
-            return orbmat, rhs, cut
         return orbmat, rhs
 
     def solve(self, orblib):
-        if self.ling_CR_cut:
-            A, b, cut = self.construct_nnls_matrix_and_rhs(orblib)
-        else:
-            A, b = self.construct_nnls_matrix_and_rhs(orblib)
+        A, b = self.construct_nnls_matrix_and_rhs(orblib)
         solution = optimize.nnls(A, b)
         return solution
 
