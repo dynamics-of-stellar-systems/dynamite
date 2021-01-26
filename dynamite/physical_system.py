@@ -285,7 +285,7 @@ class TriaxialVisibleComponent(VisibleComponent):
         o2 = np.double(self.qobs) ** 2
 
         # Treat possible divisions by zero...
-        eps = np.finfo(np.double).eps
+        eps = max(np.finfo(np.double).eps, np.finfo(np.double).epsneg)
         if abs((1.0 - q2) * (p2 - q2)) > eps:
             w1 = (u2 - q2) * (o2 * u2 - q2) / ((1.0 - q2) * (p2 - q2))
         else:
