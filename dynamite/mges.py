@@ -27,6 +27,33 @@ class MGE(data.Data):
     def __repr__(self):
         return f'{self.__class__.__name__}({self.__dict__})'
 
+    def get_projected_masses(self, parset, apertures):
+        # TODO:
+        # calculate the mass of the mge in observed 2D apertures given the
+        # parameter set containing intrinsic axis ratios (p, q, u)
+        # for now, use legacy implementation below which reads from file
+        pass
+
+    def get_projected_masses_from_file(self, directory_noml):
+        fname = f'{directory_noml}datfil/mass_aper.dat'
+        aperture_masses = np.loadtxt(fname, skiprows=1)
+        # remove first column (aperture index)
+        aperture_masses = aperture_masses[:,1]
+        return aperture_masses
+
+    def get_intrinsic_masses(self, parset, grid):
+        # TODO: reimplement
+        # calculate the mass of the mge in observed 3D grid given the
+        # parameter set containing intrinsic axis ratios (p, q, u)
+        # for now, use legacy implementation below which reads from file
+        pass
+
+    def get_intrinsic_masses_from_file(self, directory_noml):
+        fname = f'{directory_noml}datfil/mass_qgrid.dat'
+        shape = np.loadtxt(fname, max_rows=1, dtype=int)
+        intrinsic_masses = np.loadtxt(fname, skiprows=1)
+        intrinsic_masses = np.reshape(intrinsic_masses, shape)
+        return intrinsic_masses
 
 # TODO:
 # class MGE_from_image(MGE):

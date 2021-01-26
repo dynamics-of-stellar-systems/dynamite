@@ -2,6 +2,7 @@ import os
 import numpy as np
 from astropy import table
 import subprocess
+from scipy import optimize
 
 class WeightSolver(object):
 
@@ -92,7 +93,7 @@ class LegacyWeightSolver(WeightSolver):
         nn_file.write(text)
         nn_file.close()
 
-    def solve(self, orblib):
+    def solve(self, orblib, ret_weights=False):
         # note: orblib is provided as an argument for consistency with future
         # WeightSolver implementations but are not used in this legacy method
         check1 = os.path.isfile(self.fname_nn_kinem)
@@ -166,28 +167,36 @@ class LegacyWeightSolver(WeightSolver):
                      'E_idx',
                      'I2_idx',
                      'I3_idx',
-                     'I_dont_know', # NOTE: this column = 0 - unclear what it is
+                     'totalnotregularizable', # see line 535 of orblib_f.f90
                      'orb_type',
                      'weight',
-                     'lcut'] # NOTE: see lines 1321-1322 of triaxnnls_CRcut.f90
-        # NOTE: possible that column 'lcut' is not present when a different
-        # "triaxnnls" file is used
+                     'lcut'] # lines 1321-1322 of triaxnnls_CRcut.f90
+        # NOTE: column 'lcut' is not present if different "triaxnnls" file used
         dtype = [int, int, int, int, int, int, np.float64, int]
         weights = np.genfromtxt(fname,
                                 skip_header=1,
                                 names=col_names,
                                 dtype=dtype)
         weights = table.Table(weights)
-        # TODO: find out what the following column should be doing
-        weights.remove_column('I_dont_know')
         self.weights = weights
 
-    def read_orbmat(self):
+    def read_nnls_orbmat_noerror(self):
+        fname = self.mod_dir_with_ml + '/nn_orbmat_noerror.out'
+        orbmat_shape = np.loadtxt(fname, max_rows=1, dtype=int)
+        orbmat_noerror = np.loadtxt(fname, skiprows=1)
+        orbmat_noerror = np.reshape(orbmat_noerror, orbmat_shape)
+        return orbmat_noerror
+
+    def read_nnls_orbmat_rhs_and_solution(self):
         fname = self.mod_dir_with_ml + '/nn_orbmat.out'
-        orbmat = np.genfromtxt(fname, skip_header=1)
-        size = np.genfromtxt(fname, skip_footer=orbmat.shape[0], dtype=int)
-        orbmat = np.reshape(orbmat, size)
-        return orbmat
+        orbmat_shape = np.loadtxt(fname, max_rows=1, dtype=int)
+        orbmat_size = np.product(orbmat_shape)
+        tmp = np.loadtxt(fname, skiprows=1)
+        orbmat = tmp[0:orbmat_size]
+        orbmat = np.reshape(orbmat, orbmat_shape)
+        rhs = tmp[orbmat_size:orbmat_size+orbmat_shape[1]]
+        solution = tmp[orbmat_size+orbmat_shape[1]:]
+        return orbmat, rhs, solution
 
     def read_chi2(self):
         ''' taken useful parts from triax_extract_chi2_iter in schw_domoditer,
@@ -228,31 +237,98 @@ class LegacyWeightSolver(WeightSolver):
 
 
 
-
-
-
 class PrashsCoolNewWeightSolver(WeightSolver):
 
     def __init__(self,
                  system=None,
-                 settings=None):
+                 settings=None,
+                 directory_noml=None):
+        self.system = system
         self.settings = settings
-        self.all_kinematic_data = system.get_all_kinematic_data()
-        self.observed_density_3D = 1. # TODO: read mass_qgrid.dat
-        self.observed_density_2D = 1. # TODO read mass_aper.dat
+        self.direc = directory_noml
+        self.get_observed_constraints()
+        self.ennumerate_constraints()
+
+    def get_observed_constraints(self):
+        mge = self.system.cmp_list[2].mge
+        # intrinsic mass
+        intrinsic_masses = mge.get_intrinsic_masses_from_file(self.direc)
+        self.intrinsic_masses = intrinsic_masses
+        self.intrinsic_mass_error = self.settings['lum_intr_rel_err']
+        # projected
+        projected_masses = mge.get_projected_masses_from_file(self.direc)
+        self.projected_masses = projected_masses
+        self.projected_mass_error = self.settings['sb_proj_rel_err']
+        # total mass constraint
+        self.total_mass = np.sum(intrinsic_masses)
+        self.total_mass_error = np.min([self.intrinsic_mass_error/10.,
+                                        np.abs(1. - self.total_mass)])
+        # get observed gh values and errors
+        kinematics = self.system.cmp_list[2].kinematic_data[0]
+        tmp = kinematics.get_observed_values_and_uncertainties()
+        obs_gh, obs_gh_err = tmp
+        # ... and scale both by projected masses
+        obs_gh = (obs_gh.T * self.projected_masses).T
+        obs_gh_err = (obs_gh_err.T * self.projected_masses).T
+        self.obs_gh = obs_gh
+        self.obs_gh_err = obs_gh_err
+
+    def ennumerate_constraints(self):
+        # enumerate constriants
+        n_intrinsic = np.product(self.intrinsic_masses.shape)
+        n_apertures = len(self.projected_masses)
+        n_gh = self.settings['number_GH']
+        # constraints = tot mass, intrinsic masses, projected masses, kinematics
+        n_total_constraints = 1 + n_intrinsic + n_apertures + n_gh * n_apertures
+        self.n_intrinsic = n_intrinsic
+        self.n_apertures = n_apertures
+        self.n_gh = n_gh
+        self.n_total_constraints = n_total_constraints
+
+    def construct_nnls_matrix_and_rhs(self, orblib):
+        # vectors of observed constraints, errors, and orbit properties
+        con = np.zeros(self.n_total_constraints)
+        econ = np.zeros(self.n_total_constraints)
+        orbmat = np.zeros((self.n_total_constraints, orblib.n_orbs))
+        # total mass
+        con[0] = self.total_mass
+        econ[0] = self.total_mass_error
+        if econ[0]<=0.0:
+            econ[0] = con[0]*0.01
+        orbmat[0,:] = 1.
+        # intrinsic mass
+        idx = slice(1,1+self.n_intrinsic)
+        con[idx] = np.ravel(self.intrinsic_masses)
+        error = self.intrinsic_masses * self.intrinsic_mass_error
+        error = np.abs(np.ravel(error))
+        error[np.where(error<=0.)] = 1.0e-16
+        econ[idx] = np.abs(np.ravel(error))
+        orb_int_masses = orblib.intrinsic_masses
+        orb_int_masses = np.reshape(orb_int_masses, (orblib.n_orbs, -1))
+        orbmat[idx,:] = orb_int_masses.T
+        # projected mass
+        idx = slice(1+self.n_intrinsic, 1+self.n_intrinsic+self.n_apertures)
+        con[idx] = self.projected_masses
+        econ[idx] = np.abs(self.projected_masses * self.projected_mass_error)
+        orbmat[idx,:] = orblib.projected_masses.T
+        # kinematics
+        idx = slice(1+self.n_intrinsic+self.n_apertures, None)
+        con[idx] = np.ravel(self.obs_gh.T)
+        econ[idx] = np.ravel(self.obs_gh_err.T)
+        kinematics = self.system.cmp_list[2].kinematic_data[0]
+        orb_gh = kinematics.transform_orblib_to_observables(orblib)
+        orb_gh = np.swapaxes(orb_gh, 1, 2)
+        orb_gh = np.reshape(orb_gh, (orblib.n_orbs,-1))
+        orbmat[361+152:,:] = orb_gh.T
+        # divide constraint vector and matrix by errors
+        rhs = con/econ
+        orbmat = (orbmat.T/econ).T
+        return orbmat, rhs
 
     def solve(self, orblib):
-        # NNLS matrix is constructured in lines 186-306 of triaxnnls_CRcut.f90
-        # re-implement it here
-        observed_and_orbital_quantities = []
-        for kinematics in self.all_kinematic_data:
-            observed_and_orbital_quantities += [
-                kinematics.transform_to_observables(orblib)
-                ]
-        orbit_density_3D = orblib.density_3D
-        orbit_density_2D = np.sum(orblib.losvd_histograms.y, (1,2))
-        return
-
+        A, b = self.construct_nnls_matrix_and_rhs(orblib)
+        solution = optimize.nnls(A, b)
+        return solution
 
 
 

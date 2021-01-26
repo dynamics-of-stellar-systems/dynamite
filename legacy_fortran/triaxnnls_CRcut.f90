@@ -1181,6 +1181,19 @@ subroutine donnls_nosave()
   tmpcon=con
   tmpecon=econ
 
+  ! --- ADDED BY PRASH 19/01/21 TO PRINT ORBMAT NOERROR ---
+  open (unit=36,file=trim(outroot)//"_orbmat_noerror.out",status="replace",action="write",form="formatted")
+  print*, "Storing nonzero ORBMAT elements on file..."
+  write (unit=36, fmt=*) orbitsinfit, size(con)
+  len = 0
+  do k=1,orbitsinfit
+     do j=1,size(con)
+         write (unit=36, fmt=*) orbmat(j,k)
+     end do
+  end do
+  close (unit=36, STATUS='KEEP')
+  ! --- END ADDED BY PRASH 19/01/21 TO PRINT ORBMAT NOERROR ---
+
   ! first element is the total mass = 1 constraint.
   ! in qp this has zero error, but nnls cant cope with that.
   if (econ(1) <= 0.0_dp ) econ(1) = con(1)*1.0e-2_dp
@@ -1206,15 +1219,26 @@ subroutine donnls_nosave()
           write (unit=36, fmt=*) orbmat(j,k)
       end do
    end do
+
+   ! write RHS to PRASH's file
+   do j=1,size(con)
+     write (unit=36, fmt=*) b(j)
+   end do
+
    print*, "Nonzero elements (%):", len*100.0_sp/(orbitsinfit*size(con))
-   close (unit=36, STATUS='KEEP')
-   !END --- ADDED BY PRASH 13/01/21 TO PRINT ORBMAT ---
 
    print*, "doing NNLS fit ..."
    print*, " "
 
    call nnls(orbmat(:,1:orbitsinfit),size(con),size(con),orbitsinfit,&
         b,orbweight,rmsresid,w,zz,index,mode)
+
+    ! write solution to PRASH's file
+    do k=1,orbitsinfit
+      write (unit=36, fmt=*) orbweight(k)
+    end do
+    close (unit=36, STATUS='KEEP')
+    !END --- ADDED BY PRASH 13/01/21 TO PRINT ORBMAT ---
 
    ! write some info to screen
    print*, "NNLS fit performed"

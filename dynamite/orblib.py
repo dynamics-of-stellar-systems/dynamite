@@ -451,7 +451,9 @@ class LegacyOrbitLibrary(OrbitLibrary):
         ml_original = self.get_ml_of_original_orblib()
         scale_factor = np.sqrt(ml_current/ml_original)
         self.losvd_histograms.scale_x_values(scale_factor)
-        self.density_3D = density_3D
+        self.intrinsic_masses = density_3D
+        self.n_orbs = self.losvd_histograms.y.shape[0]
+        self.projected_masses = np.sum(self.losvd_histograms.y, 1)
 
     def get_ml_of_original_orblib(self):
         infile = self.mod_dir + 'infil/parameters.in'

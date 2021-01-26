@@ -237,15 +237,13 @@ class LegacySchwarzschildModel(Model):
                 settings=self.settings.weight_solver_settings,
                 legacy_directory=self.legacy_directory,
                 ml=self.parset['ml'])
-        # weight_solver = ws.PrashsCoolNewWeightSolver(
-        #     system=self.system,
-        #     settings=self.settings.weight_solver_settings)
         # TODO: extract other outputs e.g. orbital weights
         chi2, kinchi2 = weight_solver.solve(orblib)
         # store chi2 to the model
         self.chi2 = chi2
         self.kinchi2 = kinchi2
         return weight_solver
+
 
 
 

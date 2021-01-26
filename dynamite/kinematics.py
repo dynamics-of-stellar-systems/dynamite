@@ -64,6 +64,7 @@ class GaussHermite(Kinematics, data.Integrated):
         # calls data.Integrated's __init__
         super().__init__(**kwargs)
         self.max_gh_order = self.get_highest_order_gh_coefficient()
+        self.n_apertures = len(self.data)
 
     def get_highest_order_gh_coefficient(self, max_gh_check=20):
         colnames = self.data.colnames
@@ -356,19 +357,45 @@ class GaussHermite(Kinematics, data.Integrated):
         h *= 2 * np.pi**0.5 # pre-factor in eqn 7
         return h
 
-    def transform_to_observables(self, orblib):
+    def transform_orblib_to_observables(self, orblib, max_gh_order=None):
+        if max_gh_order is None:
+            max_gh_order = self.max_gh_order
         v_mu = self.data['v']
         v_sig = self.data['sigma']
         orblib_gh_coefs = self.get_gh_expansion_coefficients(
             v_mu=v_mu,
             v_sig=v_sig,
             vel_hist=orblib.losvd_histograms,
-            max_order=self.max_gh_order)
-        # TODO: construct observed uncertainties = expressions for Dh1, Dh2 and
-        # add systematic uncertainties. Return observed/orbital quantities to be
-        # modelled, i.e. h1, h2, h3, h4 + uncertainties (i.e. not V, sigma)
-        mu_obs, sigma_obs, mu_obs = 1, 1, 1
-        return mu_obs, sigma_obs, mu_obs
+            max_order=max_gh_order)
+        # in triaxnnls, GH coefficients are divided by velocity spacing of the
+        # histogram. This is equivalent to normalising LOSVDs as probability
+        # densities before calculating the GH coefficients. For now, do as was
+        # done previously:
+        dv = orblib.losvd_histograms.dx
+        assert np.allclose(dv, dv[0]), 'LOSVD velocity spacing must be uniform'
+        orblib_gh_coefs /= dv[0]
+        # remove h0 as this is not fit
+        orblib_gh_coefs = orblib_gh_coefs[:,:,1:]
+        return orblib_gh_coefs
+
+    def get_observed_values_and_uncertainties(self, max_gh_order=None):
+        if max_gh_order is None:
+            max_gh_order = self.max_gh_order
+        # construct observed values
+        observed_values = np.zeros((self.n_apertures, max_gh_order))
+        # h1, h2 = 0, 0
+        # h3, h4, etc... are taken from the data table
+        for i in range(3, self.max_gh_order+1):
+            observed_values[:,i-1] = self.data[f'h{i}']
+        # construct uncertainties
+        uncertainties = np.zeros_like(observed_values)
+        # uncertainties on h1,h2 from vdMarel + Franx 93
+        uncertainties[:,0] = self.data['dv']/np.sqrt(2)/self.data['sigma']
+        uncertainties[:,1] = self.data['dsigma']/np.sqrt(2)/self.data['sigma']
+        # uncertainties h3, h4, etc... are taken from data table
+        for i in range(3, self.max_gh_order+1):
+            uncertainties[:,i-1] = self.data[f'dh{i}']
+        return observed_values, uncertainties
 
 
 class Histogram(object):
