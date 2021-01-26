@@ -242,10 +242,12 @@ class PrashsCoolNewWeightSolver(WeightSolver):
     def __init__(self,
                  system=None,
                  settings=None,
-                 directory_noml=None):
+                 directory_noml=None,
+                 ling_CR_cut=False):
         self.system = system
         self.settings = settings
         self.direc = directory_noml
+        self.ling_CR_cut = ling_CR_cut
         self.get_observed_constraints()
         self.ennumerate_constraints()
 
@@ -317,16 +319,44 @@ class PrashsCoolNewWeightSolver(WeightSolver):
         econ[idx] = np.ravel(self.obs_gh_err.T)
         kinematics = self.system.cmp_list[2].kinematic_data[0]
         orb_gh = kinematics.transform_orblib_to_observables(orblib)
+        # apply 'ling_CR_cut' - cutting orbits where |V - V_obs|> 3sigma_obs
+        # see Zhu+2018 MNRAS 2018 473 3000 for details
+        if self.ling_CR_cut:
+            orb_mu_v = orblib.losvd_histograms.get_mean()
+            obs_mu_v = kinematics.data['v']
+            obs_sig_v = kinematics.data['sigma']
+            delta_v = np.abs(orb_mu_v - obs_mu_v)
+            condition1 = (np.abs(obs_mu_v)/obs_sig_v > 1.5)
+            condition2 = (delta_v/obs_sig_v > 3.0)
+            condition3 = (obs_mu_v*orb_mu_v < 0)
+            idx_cut = np.where(condition1 & condition2 & condition3)
+            cut = np.zeros_like(orb_mu_v, dtype=bool)
+            cut[idx_cut] = True
+            naperture_cut = np.sum(cut, 1)
+            # orbit 'j' is "bad" in naperture_cut[j] apertures
+            # if an orbit is bad in 0 or 1 apertures, then we ignore this
+            cut[naperture_cut<1,:] = False
+            # to cut an orbit, replace it's h1 by 3.0/dvhist(i)
+            idx_cut = np.where(cut)
+            v_range = float(orblib.settings['hist_vel'])
+            n_bins = orblib.losvd_histograms.x.size
+            dvhist = v_range/n_bins
+            orb_gh[idx_cut[0], idx_cut[1], 0] = 3./dvhist
         orb_gh = np.swapaxes(orb_gh, 1, 2)
         orb_gh = np.reshape(orb_gh, (orblib.n_orbs,-1))
         orbmat[361+152:,:] = orb_gh.T
         # divide constraint vector and matrix by errors
         rhs = con/econ
         orbmat = (orbmat.T/econ).T
+        if self.ling_CR_cut:
+            return orbmat, rhs, cut
         return orbmat, rhs
 
     def solve(self, orblib):
-        A, b = self.construct_nnls_matrix_and_rhs(orblib)
+        if self.ling_CR_cut:
+            A, b, cut = self.construct_nnls_matrix_and_rhs(orblib)
+        else:
+            A, b = self.construct_nnls_matrix_and_rhs(orblib)
         solution = optimize.nnls(A, b)
         return solution
 

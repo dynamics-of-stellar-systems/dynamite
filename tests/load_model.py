@@ -10,7 +10,7 @@ print('Located at:', dyn.__path__)
 # read configuration
 fname = 'test_reimplement_nnls.yaml'
 c = dyn.config_reader.Configuration(fname, silent=True)
-parset0 = c.all_models.get_parset_from_row(2)
+parset0 = c.all_models.get_parset_from_row(0)
 mod0 = dyn.model.LegacySchwarzschildModel(system=c.system,
                                           settings=c.settings,
                                           parspace=c.parspace,
@@ -27,9 +27,16 @@ orbmat_with_error, rhs, solution = ws0.read_nnls_orbmat_rhs_and_solution()
 weight_solver = dyn.weight_solvers.PrashsCoolNewWeightSolver(
     system=c.system,
     settings=c.settings.weight_solver_settings,
-    directory_noml=mod0.directory_noml)
-
+    directory_noml=mod0.directory_noml,
+    ling_CR_cut=False)
 orbmat_prash, rhs_prash = weight_solver.construct_nnls_matrix_and_rhs(orblib0)
+
+weight_solver = dyn.weight_solvers.PrashsCoolNewWeightSolver(
+    system=c.system,
+    settings=c.settings.weight_solver_settings,
+    directory_noml=mod0.directory_noml,
+    ling_CR_cut=True)
+orbmat_prash_cut, rhs_prash_cut, cut = weight_solver.construct_nnls_matrix_and_rhs(orblib0)
 
 solution_prash = weight_solver.solve(orblib0)
 
@@ -90,9 +97,24 @@ def compare_columns_of_orbmat_noerr(i):
     fig.tight_layout()
 
 def compare_orbmat(no_error=True):
-    is_close = np.isclose(orbmat_with_error, orbmat_prash.T)
+    #is_close = np.isclose(orbmat_with_error, orbmat_prash.T)
+    is_close = orbmat_with_error - orbmat_prash.T
     fig, ax = plt.subplots(1, 1)
     col = ax.imshow(is_close,
+                    interpolation='none',
+                    aspect='auto',
+                    cmap=plt.cm.Greys_r,
+                    vmax=1.)
+    ax.set_ylabel('orbit')
+    ax.set_xlabel('constraint')
+    fig.colorbar(col)
+    fig.tight_layout()
+
+
+def compare_orbmat_cut_nocut(no_error=True):
+    xxx = (orbmat_prash==orbmat_prash_cut).T
+    fig, ax = plt.subplots(1, 1)
+    col = ax.imshow(xxx,
                     interpolation='none',
                     aspect='auto',
                     cmap=plt.cm.Greys_r)

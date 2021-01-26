@@ -405,7 +405,7 @@ class Histogram(object):
     ----------
     xedg : array (n_bins+1,)
         histogram bin edges
-    y : (n_histograms, n_bins+1,)
+    y : (n_orbits, n_bins+1, n_apertures)
         histogram values
     normalise : bool, default=True
         whether to normalise to pdf
@@ -420,25 +420,38 @@ class Histogram(object):
         whether or not has been normalised to pdf
 
     """
-    def __init__(self, xedg=None, y=None, normalise=True):
+    def __init__(self, xedg=None, y=None, normalise=False):
         self.xedg = xedg
         self.x = (xedg[:-1] + xedg[1:])/2.
         self.dx = xedg[1:] - xedg[:-1]
         self.y = y
         if normalise:
             self.normalise()
-        else:
-            self.normalised = False
+
+    def get_normalisation(self):
+        na = np.newaxis
+        norm = np.sum(self.y*self.dx[na,:,na], axis=1)
+        return norm
 
     def normalise(self):
-        norm = np.sum(self.y*self.dx, axis=-1)
-        self.y = (self.y.T/norm).T
-        self.normalised = True
+        norm = self.get_normalisation()
+        na = np.newaxis
+        tmp = self.y/norm[:,na,:]
+        # where norm=0, tmp=nan. Fix this:
+        idx = np.where(norm==0.)
+        tmp[idx[0],:,idx[1]] = 0.
+        # replace self.y with normalised y
+        self.y = tmp
 
     def scale_x_values(self, scale_factor):
         self.x *= scale_factor
         self.dx *= scale_factor
 
-
+    def get_mean(self):
+        na = np.newaxis
+        mean = np.sum(self.x[na,:,na] * self.y * self.dx[na,:,na], axis=1)
+        norm = self.get_normalisation()
+        mean /= norm
+        return mean
 
 # end
