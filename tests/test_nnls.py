@@ -5,14 +5,16 @@
 # we assume that this script is located and run in the folder dynamite/tests
 
 import os
-#import sys
 import shutil
-
-# if os.getcwd().rpartition('/')[0] not in sys.path:
-#     sys.path.append(os.getcwd().rpartition('/')[0])
-
 import time
 import numpy as np
+
+# Set matplotlib backend to 'Agg' (compatible when X11 is not running
+# e.g., on a cluster). Note that the backend can only be set BEFORE
+# matplotlib is used or even submodules are imported!
+import matplotlib
+matplotlib.use('Agg')
+
 import matplotlib.pyplot as plt
 from astropy import table
 import dynamite as dyn

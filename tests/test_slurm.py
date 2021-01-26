@@ -13,7 +13,13 @@
 # to submit this on cluster with slurm run ``sbatch test_slurm.py``
 
 import time
-import numpy as np
+
+# Set matplotlib backend to 'Agg' (compatible when X11 is not running
+# e.g., on a cluster). Note that the backend can only be set BEFORE
+# matplotlib is used or even submodules are imported!
+import matplotlib
+matplotlib.use('Agg')
+
 import matplotlib.pyplot as plt
 
 import os

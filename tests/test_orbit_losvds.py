@@ -2,10 +2,16 @@
 # -*- coding: utf-8 -*-
 
 import os
-import sys
 import shutil
 import numpy as np
 import time
+
+# Set matplotlib backend to 'Agg' (compatible when X11 is not running
+# e.g., on a cluster). Note that the backend can only be set BEFORE
+# matplotlib is used or even submodules are imported!
+import matplotlib
+matplotlib.use('Agg')
+
 import matplotlib.pyplot as plt
 from astropy import table
 import dynamite as dyn
