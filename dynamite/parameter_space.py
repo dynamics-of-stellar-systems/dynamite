@@ -466,7 +466,7 @@ class LegacyGridSearch(ParameterGenerator):
             models1 = self.current_models.table[mask]
             # Don't use abs() so we stop on increasing chi2 values, too:
             delta_chi2 = np.min(models1[self.chi2])-np.min(models0[self.chi2])
-            if self.min_delta_chi2_rel is not None:
+            if self.min_delta_chi2_rel:
                 delta_chi2 /= np.min(models1[self.chi2])
                 delta_chi2 /= self.min_delta_chi2_rel
             else:
@@ -681,7 +681,7 @@ class GridWalk(ParameterGenerator):
             models1 = self.current_models.table[mask]
             # Don't use abs() so we stop on increasing chi2 values, too:
             delta_chi2 = np.min(models1[self.chi2])-np.min(models0[self.chi2])
-            if self.min_delta_chi2_rel is not None:
+            if self.min_delta_chi2_rel:
                 delta_chi2 /= np.min(models1[self.chi2])
                 delta_chi2 /= self.min_delta_chi2_rel
             else:
