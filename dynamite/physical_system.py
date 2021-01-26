@@ -284,41 +284,34 @@ class TriaxialVisibleComponent(VisibleComponent):
         u2 = np.double(u) ** 2
         o2 = np.double(self.qobs) ** 2
 
-        # Treat possible divisions by zero...
-        eps = max(np.finfo(np.double).eps, np.finfo(np.double).epsneg)
-        if abs((1.0 - q2) * (p2 - q2)) > eps:
+        # Check for possible triaxial deprojection (v. d. Bosch 2004)
+        t = (1.0-p2)/(1-q2)
+        if not (0 <= t <= 1) or not (0 < q <= p <= 1):
+            theta = phi = psi = np.nan
+        else:
             w1 = (u2 - q2) * (o2 * u2 - q2) / ((1.0 - q2) * (p2 - q2))
-        else:
-            w1 = np.nan
-        if abs((1.0 - u2) * (1.0 - o2 * u2) * (p2 - q2)) > eps:
             w2 = (u2 - p2) * (p2 - o2 * u2) * (1.0 - q2) / ((1.0 - u2) * (1.0 - o2 * u2) * (p2 - q2))
-        else:
-            w2 = np.nan
-        if abs((1.0 - u2) * (u2 - p2) * (o2 * u2 - q2)) > eps:
             w3 = (1.0 - o2 * u2) * (p2 - o2 * u2) * (u2 - q2) / ((1.0 - u2) * (u2 - p2) * (o2 * u2 - q2))
-        else:
-            w3 = np.nan
-
-        if w1 >=0.0 :
-            theta = np.arccos(np.sqrt(w1)) * 180 /np.pi
-        else:
-            theta=np.nan
-
-        if w2 >=0.0 :
-            phi = np.arctan(np.sqrt(w2)) * 180 /np.pi
-        else:
-            phi=np.nan
-
-        if w3 >=0.0 :
-            psi = 180 - np.arctan(np.sqrt(w3)) * 180 /np.pi
-        else:
-            psi=np.nan
+    
+            if w1 >=0.0 :
+                theta = np.arccos(np.sqrt(w1)) * 180 /np.pi
+            else:
+                theta=np.nan
+    
+            if w2 >=0.0 :
+                phi = np.arctan(np.sqrt(w2)) * 180 /np.pi
+            else:
+                phi=np.nan
+    
+            if w3 >=0.0 :
+                psi = 180 - np.arctan(np.sqrt(w3)) * 180 /np.pi
+            else:
+                psi=np.nan
 
         # print("******************************")
         # print('theta, phi, psi')
         # print(theta, phi, psi)
         # print("******************************")
-
         return theta,psi,phi
 
 

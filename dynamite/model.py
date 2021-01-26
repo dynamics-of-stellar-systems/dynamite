@@ -284,6 +284,7 @@ class LegacySchwarzschildModel(Model):
         dm_specs='1 2'
 
         theta,psi,phi = stars.triax_pqu2tpp(p,q,u)
+        print(f'XXXXXXX MODEL.PY XXXXX theta={theta}, phi={phi}, psi={psi}')
 
         #header
         len_mge=len(stars.mge.data)
