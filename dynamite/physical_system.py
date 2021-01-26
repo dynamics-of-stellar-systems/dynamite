@@ -284,9 +284,20 @@ class TriaxialVisibleComponent(VisibleComponent):
         u2 = np.double(u) ** 2
         o2 = np.double(self.qobs) ** 2
 
-        w1 = (u2 - q2) * (o2 * u2 - q2) / ((1.0 - q2) * (p2 - q2))
-        w2 = (u2 - p2) * (p2 - o2 * u2) * (1.0 - q2) / ((1.0 - u2) * (1.0 - o2 * u2) * (p2 - q2))
-        w3 = (1.0 - o2 * u2) * (p2 - o2 * u2) * (u2 - q2) / ((1.0 - u2) * (u2 - p2) * (o2 * u2 - q2))
+        # Treat possible divisions by zero...
+        eps = np.finfo(np.double).eps
+        if abs((1.0 - q2) * (p2 - q2)) > eps:
+            w1 = (u2 - q2) * (o2 * u2 - q2) / ((1.0 - q2) * (p2 - q2))
+        else:
+            w1 = np.nan
+        if abs((1.0 - u2) * (1.0 - o2 * u2) * (p2 - q2)) > eps:
+            w2 = (u2 - p2) * (p2 - o2 * u2) * (1.0 - q2) / ((1.0 - u2) * (1.0 - o2 * u2) * (p2 - q2))
+        else:
+            w2 = np.nan
+        if abs((1.0 - u2) * (u2 - p2) * (o2 * u2 - q2)) > eps:
+            w3 = (1.0 - o2 * u2) * (p2 - o2 * u2) * (u2 - q2) / ((1.0 - u2) * (u2 - p2) * (o2 * u2 - q2))
+        else:
+            w3 = np.nan
 
         if w1 >=0.0 :
             theta = np.arccos(np.sqrt(w1)) * 180 /np.pi
