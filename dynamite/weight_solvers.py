@@ -243,11 +243,11 @@ class PrashsCoolNewWeightSolver(WeightSolver):
                  system=None,
                  settings=None,
                  directory_noml=None,
-                 ling_CR_cut=False):
+                 CRcut=False):
         self.system = system
         self.settings = settings
         self.direc = directory_noml
-        self.ling_CR_cut = ling_CR_cut
+        self.CRcut = CR_cut
         self.get_observed_constraints()
         self.ennumerate_constraints()
 
@@ -323,9 +323,9 @@ class PrashsCoolNewWeightSolver(WeightSolver):
         orblib.losvd_histograms.y[:,0,:] = 0.
         orblib.losvd_histograms.y[:,-1,:] = 0.
         orb_gh = kinematics.transform_orblib_to_observables(orblib)
-        # apply 'ling_CR_cut' - cutting orbits where |V - V_obs|> 3sigma_obs
+        # apply 'CRcut' - cutting orbits where |V - V_obs|> 3sigma_obs
         # see Zhu+2018 MNRAS 2018 473 3000 for details
-        if self.ling_CR_cut:
+        if self.CRcut:
             orb_mu_v = orblib.losvd_histograms.get_mean()
             obs_mu_v = kinematics.data['v']
             obs_sig_v = kinematics.data['sigma']

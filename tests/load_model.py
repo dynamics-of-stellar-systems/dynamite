@@ -30,7 +30,7 @@ weight_solver = dyn.weight_solvers.PrashsCoolNewWeightSolver(
     system=c.system,
     settings=c.settings.weight_solver_settings,
     directory_noml=mod0.directory_noml,
-    ling_CR_cut=True)
+    CRcut=True)
 orbmat_with_error_pjcut, rhs_pjcut = weight_solver.construct_nnls_matrix_and_rhs(orblib0)
 
 solution_pjcut = weight_solver.solve(orblib0)
