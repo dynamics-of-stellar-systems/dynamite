@@ -51,7 +51,6 @@ class ModelIterator(object):
                 break
             print(f'{par_generator_type}: "iteration {total_iter_count}"')
             status = model_inner_iterator.run_iteration(iter)
-        self.all_models.save()
 
 
 class ModelInnerIterator(object):
@@ -79,6 +78,7 @@ class ModelInnerIterator(object):
 
     def run_iteration(self, iter):
         self.par_generator.generate(current_models=self.all_models)
+        self.all_models.save() # save all_models table once parameters are added
         # generate parameter sets for this iteration
         if self.par_generator.status['stop'] is False:
             # find models not yet done
@@ -92,6 +92,7 @@ class ModelInnerIterator(object):
                 output = p.map(self.create_and_run_model, input_list)
             # save the output
             self.write_output_to_all_models_table(rows_to_do, output)
+            self.all_models.save() # save all_models table once models are run
         return self.par_generator.status
 
     def create_model(self,
