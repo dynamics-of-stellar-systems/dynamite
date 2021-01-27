@@ -274,7 +274,7 @@ class TriaxialVisibleComponent(VisibleComponent):
         """
         transfer (p, q, u) to the three viewing angles (theta, psi, phi)
         with known flatting self.qobs.
-        Taken from schw_basics
+        Taken from schw_basics, same as in vdB et al. 2008, MNRAS 385,2,647
         We should possibly revisit the expressions later
 
         """
@@ -284,11 +284,19 @@ class TriaxialVisibleComponent(VisibleComponent):
         u2 = np.double(u) ** 2
         o2 = np.double(self.qobs) ** 2
 
-        # Check for possible triaxial deprojection (v. d. Bosch 2004)
-        t = (1.0-p2)/(1-q2)
-        if not (0 <= t <= 1) or not (0 < q <= p <= 1):
+        # Check for possible triaxial deprojection (v. d. Bosch 2004,
+        # triaxpotent.f90 and v. d. Bosch et al. 2008, MNRAS 385, 2, 647)
+        str = f'{q} <= {p} <= {1}, ' \
+              f'{max((q/self.qobs,p))} <= {u} <= {min((p/self.qobs),1)}, ' \
+              f'q\'={self.qobs}'
+        # 0<=t<=1, t = (1-p2)/(1-q2) and p,q>0 is the same as 0<q<=p<=1 and q<1
+        t = (1-p2)/(1-q2)
+        if not (0 <= t <= 1) or \
+           not (max((q/self.qobs,p)) <= u <= min((p/self.qobs),1)) :
             theta = phi = psi = np.nan
+            print('DEPROJ FAIL: '+str)
         else:
+            print('DEPROJ PASS: '+str)
             w1 = (u2 - q2) * (o2 * u2 - q2) / ((1.0 - q2) * (p2 - q2))
             w2 = (u2 - p2) * (p2 - o2 * u2) * (1.0 - q2) / ((1.0 - u2) * (1.0 - o2 * u2) * (p2 - q2))
             w3 = (1.0 - o2 * u2) * (p2 - o2 * u2) * (u2 - q2) / ((1.0 - u2) * (u2 - p2) * (o2 * u2 - q2))
@@ -309,8 +317,7 @@ class TriaxialVisibleComponent(VisibleComponent):
                 psi=np.nan
 
         # print("******************************")
-        # print('theta, phi, psi')
-        # print(theta, phi, psi)
+        print(f'theta={theta}, phi={phi}, psi={psi}')
         # print("******************************")
         return theta,psi,phi
 
