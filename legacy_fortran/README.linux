@@ -1,0 +1,25 @@
+How to compile dynamite on a (recent) Linux distribution using
+(recent) gfortran and latest Galahad:
+
+Set the following environment variables correctly:
+
+$ export DYNAMITE=path/to/dynamite/repository
+$ export FORTRAN=path/to/your/gfortran
+$ export HSLARCHIVE=path/to/hslarchive-galahad (most likely hslarchive-galahad-3.00000.0.tar.gz)
+$ export GALAHADDIR=$DYNAMITE/legacy_fortran/galahad
+
+Now download and compile galahad and its dependencies:
+
+$ ./compile_deps.sh
+
+Then patch a file in dynamite:
+
+$ patch -p1 < linux.patch
+
+Finally, compile dynamite using the Linux-specific Makefile:
+
+$ make -f Makefile.linux
+
+
+
+

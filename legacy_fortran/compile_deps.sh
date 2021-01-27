@@ -80,7 +80,7 @@ cd ${GALAHAD}/src
 
 make -f ../makefiles/${VERSION} qp_cutest FORTRAN=${FORTRAN} || exit 1
 
-echo All compiled\! Make sure to set GALAHADDIR=${GALAHAD} in Makefile.linux before compiling dynamite
+echo All dependencies compiled\! Make sure to set GALAHADDIR=${GALAHAD} before compiling dynamite
 
 
 

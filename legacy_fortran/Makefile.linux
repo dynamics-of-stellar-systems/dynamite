@@ -10,17 +10,17 @@
 FAST=TRUE
 #PROFILE=TRUE
 ABEL_NO_INTERPOL=true
-compilerpath=/usr/bin/
-compiler=gfortran
+#FORTRAN=path/to/gfortran
+compilername=gfortran
 #flags=-fno-use-linker-plugin
-GALAHADDIR=/home/edward/research/dynamite/legacy_fortran/galahad
+#GALAHADDIR=path/to/galahad
 GALAHADTYPE=pc.lnx.gfo/double
 
 #PROFILEDIR=~/profile/
 
-flags += -Wuninitialized -Wmaybe-uninitialized
+flags += -Wuninitialized
 
-ifeq ($(compiler),ifort)
+ifeq ($(compilername),ifort)
 ifdef FAST
   #flags = -fast
   flags += -O3 -IPO -xT -prefetch -pad
@@ -44,24 +44,24 @@ endif
 endif
 
 
-fortran90 = $(compilerpath)/$(compiler) $(flags)     -c
-fortran77 = $(compilerpath)/$(compiler) $(flags) -W0 -c
-link      = $(compilerpath)/$(compiler) $(flags)     -o
+fortran90 = $(FORTRAN) $(flags)     -c
+fortran77 = $(FORTRAN) $(flags) -W0 -c
+link      = $(FORTRAN) $(flags)     -o
 endif
 
-ifeq ($(compiler),F)
+ifeq ($(compilername),F)
   fortran90 = F -ieee=stop -C -O4   -c
   fortran77 = g77.old -O2   -c
   link = F -ieee=stop -C -O4   -o
 endif
 
-ifeq ($(compiler),g95)
+ifeq ($(compilername),g95)
   fortran90 = ~/local/bin/g95 -c -O3 -m64  -c
   fortran77 = ~/local/bin/g95 -c -O3 -m64  -c
   link = ~/local/bin/g95 -o -O3 -m64 -o
 endif
 
-ifeq ($(compiler),gfortran)
+ifeq ($(compilername),gfortran)
   ifdef FAST
    flags +=    -ffast-math -O3 -march=native -fomit-frame-pointer -m64
    flags +=    -funroll-loops -ftree-loop-linear
@@ -89,9 +89,9 @@ ifeq ($(compiler),gfortran)
   # On MAC OS X te build static binaries
   flags += -static-libgfortran -static-libgcc
 
-  fortran90 = $(compilerpath)/gfortran $(flags) -c
-  fortran77 = $(compilerpath)/gfortran $(flags) -c
-  link = $(compilerpath)/gfortran $(flags) -o
+  fortran90 = $(FORTRAN) $(flags) -c
+  fortran77 = $(FORTRAN) $(flags) -c
+  link = $(FORTRAN) $(flags) -o
 #  link = gfortran $(flags) -o
 endif
 
