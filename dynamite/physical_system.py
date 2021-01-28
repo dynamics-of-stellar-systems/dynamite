@@ -279,6 +279,10 @@ class TriaxialVisibleComponent(VisibleComponent):
 
         """
 
+        # avoid legacy_fortran's u=1 (rather, phi=psi=90deg) problem
+        if u == 1:
+            u *= (1-np.finfo(float).epsneg)  # same value as for np.double
+
         p2 = np.double(p) ** 2
         q2 = np.double(q) ** 2
         u2 = np.double(u) ** 2
@@ -286,17 +290,17 @@ class TriaxialVisibleComponent(VisibleComponent):
 
         # Check for possible triaxial deprojection (v. d. Bosch 2004,
         # triaxpotent.f90 and v. d. Bosch et al. 2008, MNRAS 385, 2, 647)
-        str = f'{q} <= {p} <= {1}, ' \
-              f'{max((q/self.qobs,p))} <= {u} <= {min((p/self.qobs),1)}, ' \
-              f'q\'={self.qobs}'
+        # DEBUG str = f'{q} <= {p} <= {1}, ' \
+        # DEBUG       f'{max((q/self.qobs,p))} <= {u} <= {min((p/self.qobs),1)}, ' \
+        # DEBUG       f'q\'={self.qobs}'
         # 0<=t<=1, t = (1-p2)/(1-q2) and p,q>0 is the same as 0<q<=p<=1 and q<1
         t = (1-p2)/(1-q2)
         if not (0 <= t <= 1) or \
            not (max((q/self.qobs,p)) <= u <= min((p/self.qobs),1)) :
             theta = phi = psi = np.nan
-            print('DEPROJ FAIL: '+str)
+            # DEBUG print('DEPROJ FAIL: '+str)
         else:
-            print('DEPROJ PASS: '+str)
+            # DEBUG print('DEPROJ PASS: '+str)
             w1 = (u2 - q2) * (o2 * u2 - q2) / ((1.0 - q2) * (p2 - q2))
             w2 = (u2 - p2) * (p2 - o2 * u2) * (1.0 - q2) / ((1.0 - u2) * (1.0 - o2 * u2) * (p2 - q2))
             w3 = (1.0 - o2 * u2) * (p2 - o2 * u2) * (u2 - q2) / ((1.0 - u2) * (u2 - p2) * (o2 * u2 - q2))
@@ -317,7 +321,7 @@ class TriaxialVisibleComponent(VisibleComponent):
                 psi=np.nan
 
         # print("******************************")
-        print(f'theta={theta}, phi={phi}, psi={psi}')
+        # DEBUG print(f'theta={theta}, phi={phi}, psi={psi}')
         # print("******************************")
         return theta,psi,phi
 
