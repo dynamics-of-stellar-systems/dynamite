@@ -313,8 +313,19 @@ class LegacyOrbitLibrary(OrbitLibrary):
         """
         cur_dir = os.getcwd()
         os.chdir(self.mod_dir)
-        subprocess.call(['bunzip2', '-k', f'datfil/{fileroot}.dat.bz2'])
-        orblibf = FortranFile(f'datfil/{fileroot}.dat', 'r')
+        # unzip orblib to a temproary file with ml value attached
+        # ml value is needed to prevent different processes clashing
+        ml = self.parset['ml']
+        aaa = subprocess.run(['bunzip2', '-c', f'datfil/{fileroot}.dat.bz2'],
+                             stdout=subprocess.PIPE)
+        tmpfname = f'datfil/{fileroot}_{ml}.dat'
+        tmpf = open(tmpfname, "wb")
+        tmpf.write(aaa.stdout)
+        tmpf.close()
+        # read the fortran file
+        orblibf = FortranFile(tmpfname, 'r')
+        # remove temproary file
+        subprocess.call(['rm', tmpfname])
         # read size of orbit library
         # from integrator_setup_write, lines 506 - 5129:
         tmp = orblibf.read_ints(np.int32)
@@ -355,7 +366,6 @@ class LegacyOrbitLibrary(OrbitLibrary):
                     tmp = orblibf.read_reals(float)
                     velhist[j, ivmin+nvhist:ivmax+nvhist+1, k] = tmp
         orblibf.close()
-        subprocess.call(['rm', f'datfil/{fileroot}.dat'])
         os.chdir(cur_dir)
         vedg_pos = np.arange(1, nbins_vhist+1, 2) * dvhist/2.
         vedg_neg = -vedg_pos[::-1]
