@@ -40,21 +40,21 @@ system_components:
             dc: # NFW Darkmatter concentration
                 par_generator_settings:
                     lo: 2.0
-                    hi: 4.0
+                    hi: 20.0
                     step: 1.0
                     minstep: 0.1
-                logarithmic: True
+                logarithmic: False
                 fixed: True
-                value: 3.0
-                LaTeX: "$log(C)$"
+                value: 12.
+                LaTeX: "$c$"
             f: # NFW Darkmatter fraction
                 par_generator_settings:
-                    lo: 0.0
-                    hi: 2.0
-                    step: 0.5
+                    lo: -1.
+                    hi: 3.
+                    step: 1.
                     minstep: 0.1
                 logarithmic: True
-                fixed: True
+                fixed: False
                 value: 1.0
                 LaTeX: "$log(M_{200}/M_{star})$"
         type: NFW
@@ -122,13 +122,13 @@ system_parameters:
 ###############################################################################
 
 orblib_settings:
-    nE: 2
+    nE: 6
     logrmin: -0.101275
     logrmax: 1.99123
     nI2: 4        # must be >= 4
-    nI3: 2
-    dithering: 1
-    #the following values should usually not be changed
+    nI3: 4
+    dithering: 2
+    # the following values should usually not be changed
     orbital_periods: 30
     sampling: 50000
     starting_orbit: 1
@@ -161,8 +161,8 @@ parameter_space_settings:
     stopping_criteria:
         min_delta_chi2_abs : 0.5  # absolute "optimality tolerance"
         #min_delta_chi2_rel : 0.05 # relative "optimality tolerance"
-        n_max_mods : 3
-        n_max_iter : 2
+        n_max_mods : 20
+        n_max_iter : 10
 
 legacy_settings:
     use_legacy_mode: True
@@ -174,6 +174,6 @@ io_settings: # paths can be given with or without trailing slash
     all_models_file: "all_models.ecsv"
 
 multiprocessing_settings:
-    ncpus: 1 # integer or 'all_available'
+    ncpus: 5 # integer or 'all_available'
 
 # end

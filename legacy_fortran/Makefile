@@ -103,7 +103,7 @@ GALAHADTYPE= mac.osx.gfo/double/
 #GALAHADTYPE= pc.lnx.gfo/double
 ##########################################################
 
-all : orbitstart orblib triaxmass triaxmassbin triaxnnls_CRcut modelgen partgen
+all : orbitstart orblib triaxmass triaxmassbin triaxnnls_CRcut triaxnnls_noCRcut modelgen partgen
 
 #########################################################
 #
@@ -111,8 +111,8 @@ all : orbitstart orblib triaxmass triaxmassbin triaxnnls_CRcut modelgen partgen
 #
 #########################################################
 
-RCS : Makefile run_model.sh iniparam_f.f90 orblib_f.f90 orblibwgas_f.f90 triaxpotent.f90 interpolpotent.f90 orblibprogram.f90    triaxmassbin.f90 modelgen.f90           triaxmass.f90 orbitstart.f90  triaxnnls_CRcut.f90   triaxnnls_scratch_nosave.f90 triaxgasnnls.f90 dmpotent.f90 partgen.f90
-	ci -q -l -mcompile Makefile run_model.sh iniparam_f.f90 orblib_f.f90orblibwgas_f.f90 triaxpotent.f90 interpolpotent.f90  orblibprogram.f90  triaxmassbin.f90 modelgen.f90 triaxmass.f90 orbitstart.f90 triaxnnls_CRcut.f90  triaxnnls_scratch_nosave.f90 triaxgasnnls.f90 dmpotent.f90 partgen.f90
+RCS : Makefile run_model.sh iniparam_f.f90 orblib_f.f90 orblibwgas_f.f90 triaxpotent.f90 interpolpotent.f90 orblibprogram.f90    triaxmassbin.f90 modelgen.f90           triaxmass.f90 orbitstart.f90  triaxnnls_CRcut.f90    triaxnnls_noCRcut.f90   triaxnnls_scratch_nosave.f90 triaxgasnnls.f90 dmpotent.f90 partgen.f90
+	ci -q -l -mcompile Makefile run_model.sh iniparam_f.f90 orblib_f.f90orblibwgas_f.f90 triaxpotent.f90 interpolpotent.f90  orblibprogram.f90  triaxmassbin.f90 modelgen.f90 triaxmass.f90 orbitstart.f90 triaxnnls_CRcut.f90  triaxnnls_noCRcut.f90   triaxnnls_scratch_nosave.f90 triaxgasnnls.f90 dmpotent.f90 partgen.f90
 
 ##########################################################
 #
@@ -262,6 +262,7 @@ orbitstartabel : $(ORBLIBABELOBJ) orbitstart.f90
 ##############################################################
 #
 # triaxnnls_CRcut
+# triaxnnls_noCRcut
 # triaxnnls_scratch_nosave
 ##############################################################
 
@@ -302,6 +303,19 @@ triaxgasnnls : $(OBJECTS6)
 
 triaxgasnnls.o : triaxgasnnls.f90 numeric_kinds_f.o iniparam_f.o
 	$(fortran90) triaxgasnnls.f90  -I$(GALAHADDIR)/modules/$(GALAHADTYPE)  -L$(GALAHADDIR)/objects/$(GALAHADTYPE)
+
+##############################################################
+#
+##############################################################
+
+OBJECTS7 = nnls95.o iniparam_f.o numeric_kinds_f.o gausherm.o triaxnnls_noCRcut.o
+
+triaxnnls_noCRcut : $(OBJECTS7)
+	$(link) triaxnnls_noCRcut $(OBJECTS7)   -I$(GALAHADDIR)/modules/$(GALAHADTYPE)  -L$(GALAHADDIR)/objects/$(GALAHADTYPE)  -lgalahad  -lgalahad_hsl -lgalahad_metis -lgalahad_lapack -lgalahad_blas
+
+triaxnnls_noCRcut.o : triaxnnls_noCRcut.f90 numeric_kinds_f.o iniparam_f.o
+	$(fortran90) triaxnnls_noCRcut.f90  -I$(GALAHADDIR)/modules/$(GALAHADTYPE)  -L$(GALAHADDIR)/objects/$(GALAHADTYPE)
+
 
 ##########################################
 #

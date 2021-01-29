@@ -3,6 +3,7 @@ import numpy as np
 from astropy import table
 import subprocess
 from scipy import optimize
+import cvxopt
 
 class WeightSolver(object):
 
@@ -51,7 +52,8 @@ class LegacyWeightSolver(WeightSolver):
                  mod_dir=None,
                  settings=None,
                  legacy_directory=None,
-                 ml=None):
+                 ml=None,
+                 CRcut=False):
         self.system = system
         self.mod_dir = mod_dir
         self.settings = settings
@@ -60,6 +62,7 @@ class LegacyWeightSolver(WeightSolver):
         self.mod_dir_with_ml = self.mod_dir + 'ml' + '{:01.2f}'.format(self.ml)
         self.fname_nn_kinem = self.mod_dir_with_ml + '/nn_kinem.out'
         self.fname_nn_nnls = self.mod_dir_with_ml + '/nn_nnls.out'
+        self.CRcut = CRcut
         # prepare fortran input file for nnls
         self.create_fortran_input_nnls(self.mod_dir, ml)
 
@@ -122,10 +125,14 @@ class LegacyWeightSolver(WeightSolver):
         txt_file.write('# if the gzipped orbit library exist unzip it' + '\n')
         txt_file.write(f'test -e datfil/orblib_{ml}.dat || bunzip2 -c  datfil/orblib.dat.bz2 > datfil/orblib_{ml}.dat' + '\n')
         txt_file.write(f'test -e datfil/orblibbox_{ml}.dat || bunzip2 -c  datfil/orblibbox.dat.bz2 > datfil/orblibbox_{ml}.dat' + '\n')
-        txt_file.write('test -e ' + str(nn) + '_kinem.out || ' +
-                       self.legacy_directory +
-                       f'/triaxnnls_CRcut < {nn}.in >> {nn}ls.log' + '\n')
-        #TODO: specify which nnls to use
+        if self.CRcut is True:
+            txt_file.write('test -e ' + str(nn) + '_kinem.out || ' +
+                           self.legacy_directory +
+                           f'/triaxnnls_CRcut < {nn}.in >> {nn}ls.log' + '\n')
+        else:
+            txt_file.write('test -e ' + str(nn) + '_kinem.out || ' +
+                           self.legacy_directory +
+                           f'/triaxnnls_noCRcut < {nn}.in >> {nn}ls.log' + '\n')
         txt_file.write(f'rm datfil/orblib_{ml}.dat' + '\n')
         txt_file.write(f'rm datfil/orblibbox_{ml}.dat' + '\n')
         txt_file.close()
@@ -243,13 +250,16 @@ class PrashsCoolNewWeightSolver(WeightSolver):
                  system=None,
                  settings=None,
                  directory_noml=None,
-                 CRcut=False):
+                 CRcut=False,
+                 nnls_solver='scipy'):
         self.system = system
         self.settings = settings
         self.direc = directory_noml
-        self.CRcut = CR_cut
+        self.CRcut = CRcut
         self.get_observed_constraints()
         self.ennumerate_constraints()
+        assert nnls_solver in ['scipy', 'cvxopt']
+        self.nnls_solver = nnls_solver
 
     def get_observed_constraints(self):
         mge = self.system.cmp_list[2].mge
@@ -356,12 +366,50 @@ class PrashsCoolNewWeightSolver(WeightSolver):
 
     def solve(self, orblib):
         A, b = self.construct_nnls_matrix_and_rhs(orblib)
-        solution = optimize.nnls(A, b)
-        return solution
+        if self.nnls_solver is 'scipy':
+            solution = optimize.nnls(A, b)
+            weights = solution[0]
+        elif self.nnls_solver is 'cvxopt':
+            P = np.dot(A.T, A)
+            q = -1.*np.dot(A.T, b) # note: factor 2 added in CvxoptNonNegSolver
+            solver = CvxoptNonNegSolver(P, q)
+            weights = solver.beta
+        chi2_all = (np.dot(A, weights) - b)**2.
+        chi2_gh = np.sum(chi2_all[1+self.n_intrinsic+self.n_apertures:])
+        return weights, chi2_gh
 
 
 
+class CvxoptNonNegSolver():
+    """Solves the QP problem:
+        argmin (1/2 beta^T P beta + q beta T)
+        subject to (component-wise) beta > 0
 
+    Parameters
+    ----------
+    P : array (p, p)
+        quadratic part of objective function
+    q : array (p,)
+        linear part of objective function
+
+    Attributes
+    ----------
+    success : bool
+        whether solver was successful
+    beta : array (p,)
+        solution
+
+    """
+
+    def __init__(self, P=None, q=None):
+        p = P.shape[0]
+        P = cvxopt.matrix(P)
+        q = cvxopt.matrix(q)
+        G = cvxopt.matrix(-np.identity(p))
+        h = cvxopt.matrix(np.zeros(p))
+        sol = cvxopt.solvers.qp(P, q, G, h)
+        self.success = sol['status']=='optimal'
+        self.beta = np.squeeze(np.array(sol['x']))
 
 
 
