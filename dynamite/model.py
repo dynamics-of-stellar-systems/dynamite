@@ -10,15 +10,14 @@ import orblib as dyn_orblib
 class AllModels(object):
 
     def __init__(self,
+                 system=None,
                  from_file=True,
                  filename='all_models.ecsv',
                  settings=None,
                  parspace=None):
-        # self.settings = settings
-        outdir = settings.io_settings['output_directory']
-        filename = settings.io_settings['all_models_file']
-        filename = f'{outdir}{filename}'
-        self.filename = filename
+        self.system = system
+        self.settings = settings
+        self.set_filename(settings.io_settings['all_models_file'])
         self.parspace = parspace
         if from_file and os.path.isfile(filename):
             print('Previous models have been found:')
@@ -28,6 +27,11 @@ class AllModels(object):
             print('No previous models have been found:')
             print(f'Making an empty table in AllModels.table')
             self.make_empty_table()
+
+    def set_filename(self, filename):
+        outdir = self.settings.io_settings['output_directory']
+        filename = f'{outdir}{filename}'
+        self.filename = filename
 
     def make_empty_table(self):
         names = self.parspace.par_names.copy()
@@ -127,6 +131,14 @@ class AllModels(object):
         parset = self.table[row_id][self.parspace.par_names]
         return parset
 
+    def get_model_from_row(self, row_id):
+        parset0 = self.get_parset_from_row(row_id)
+        mod0 = Model(system=self.system,
+                     settings=self.settings,
+                     parspace=self.parspace,
+                     parset=parset0)
+        return mod0
+
     def save(self):
         self.table.write(self.filename, format='ascii.ecsv', overwrite=True)
 
@@ -166,6 +178,13 @@ class Model(object):
         self.settings = settings
         self.parset = parset
         self.parspace = parspace
+        # directory of the Schwarzschild fortran files
+        self.legacy_directory = self.settings.legacy_settings['directory']
+        # directory of the input kinematics
+        self.in_dir = self.settings.io_settings['input_directory']
+        self.directory = self.get_model_directory()
+        # TODO: replace following with use string.split() or /../
+        self.directory_noml=self.directory[:-7]
 
     def get_model_directory(self):
         out_dir = self.settings.io_settings['output_directory']
@@ -194,6 +213,62 @@ class Model(object):
     def create_model_directory(self, path):
         if not os.path.exists(path):
             os.makedirs(path)
+
+    def setup_directories(self):
+        # create self.directory if it doesn't exist
+        self.create_model_directory(self.directory)
+        # and also the model directories
+        self.create_model_directory(self.directory_noml+'infil/')
+        self.create_model_directory(self.directory_noml+'datfil/')
+
+    def get_orblib(self):
+        # make orbit libary object
+        orblib = dyn_orblib.LegacyOrbitLibrary(
+                system=self.system,
+                mod_dir=self.directory_noml,
+                settings=self.settings.orblib_settings,
+                legacy_directory=self.legacy_directory,
+                input_directory=self.settings.io_settings['input_directory'],
+                parset=self.parset)
+        orblib.get_orblib()
+        orblib.read_losvd_histograms()
+        return orblib
+
+    def get_orblib(self):
+        # make orbit libary object
+        orblib = dyn_orblib.LegacyOrbitLibrary(
+                system=self.system,
+                mod_dir=self.directory_noml,
+                settings=self.settings.orblib_settings,
+                legacy_directory=self.legacy_directory,
+                input_directory=self.settings.io_settings['input_directory'],
+                parset=self.parset)
+        orblib.get_orblib()
+        orblib.read_losvd_histograms()
+        return orblib
+
+    def get_weights(self, orblib=None):
+        # create the weight solver object
+        ws_type = self.settings.weight_solver_settings['type']
+        if ws_type=='LegacyWeightSolver':
+            weight_solver = ws.LegacyWeightSolver(
+                    system=self.system,
+                    mod_dir=self.directory_noml,
+                    settings=self.settings.weight_solver_settings,
+                    legacy_directory=self.legacy_directory,
+                    ml=self.parset['ml'])
+        elif ws_type=='NNLS':
+            weight_solver = ws.NNLS(
+                    system=self.system,
+                    settings=self.settings.weight_solver_settings,
+                    directory_with_ml=self.directory)
+        else:
+            raise ValueError('Unknown WeightSolver type')
+        weights, chi2_tot, chi2_kin = weight_solver.solve(orblib)
+        self.chi2 = chi2_tot # instrinsic/projected mass + GH coeeficients 1-Ngh
+        self.kinchi2 = chi2_kin # GH coeeficients 1-Ngh
+        self.weights = weights
+        return weight_solver
 
 
 class LegacySchwarzschildModel(Model):
@@ -238,11 +313,15 @@ class LegacySchwarzschildModel(Model):
                 legacy_directory=self.legacy_directory,
                 ml=self.parset['ml'])
         # TODO: extract other outputs e.g. orbital weights
-        chi2, kinchi2 = weight_solver.solve(orblib)
+        weights, chi2_tot, chi2_kin = weight_solver.solve(orblib)
         # store chi2 to the model
-        self.chi2 = chi2
-        self.kinchi2 = kinchi2
+        self.chi2 = chi2_tot # instrinsic/projected mass + GH coeeficients 1-Ngh
+        self.kinchi2 = chi2_kin # GH coeeficients 1-Ngh
+        self.weights = weights
         return weight_solver
+
+
+
 
 
 

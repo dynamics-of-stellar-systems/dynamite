@@ -95,29 +95,6 @@ class ModelInnerIterator(object):
             self.all_models.save() # save all_models table once models are run
         return self.par_generator.status
 
-    def create_model(self,
-                     parset):
-        model_kwargs = {'system':self.system,
-                        'settings':self.settings,
-                        'parspace':self.parspace,
-                        'parset':parset}
-        # create a model object based on choices in settings
-        if self.settings.legacy_settings['use_legacy_mode']:
-            mod = getattr(model, 'LegacySchwarzschildModel')(**model_kwargs)
-        else:
-            # TODO: create other model classes based on a choice of:
-            # (i) orbit library generator
-            # (i) weight solver
-            # (iii) colour solver
-            # mod = getattr(model, '...')(**model_kwargs)
-            raise ValueError("""
-                             Only Legacy Mode currently implemented. Set
-                                 legacy_settings:
-                                     use_legacy_mode: True
-                             in the config file
-                             """)
-        return mod
-
     def create_and_run_model(self, input):
         i, row = input
         print(f'... running model {i+1} out of {self.n_to_do}')
@@ -125,7 +102,10 @@ class ModelInnerIterator(object):
         parset0 = self.all_models.table[row]
         parset0 = parset0[self.parspace.par_names]
         # create and run the model
-        mod0 = self.create_model(parset0)
+        mod0 = model.Model(system=self.system,
+                           settings=self.settings,
+                           parspace=self.parspace,
+                           parset=parset0)
         if self.do_dummy_run:
             mod0.chi2 = self.dummy_chi2_function(parset0)
             mod0.kinchi2 = 0.

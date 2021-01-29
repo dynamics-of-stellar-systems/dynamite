@@ -7,42 +7,40 @@ import cvxopt
 
 class WeightSolver(object):
 
-    def __init__(self,
-                 weight_solver_args={}
-                 ):
-        self.weight_solver_args = weight_solver_args
+    def __init__(self):
+        """Generic WeightSolver class
 
-    def set_kinematics(self, system):
-        self.kinematics = []
-        for component in system.cmp_list:
-            self.kinematics += component.kinematic_data
+        Specific implementations are defined as sub-classes. Each one should
+        have a main method `solve`
 
-    def set_orb_lib(self, orb_lib):
-        self.orb_lib = orb_lib
+        """
+        pass
 
-    def get_observables_from_orbits(self):
-        self.orb_observed = []
-        for kin_data0 in self.kinematics:
-            orb_obs0 = kin_data0.transform_orbits_to_observables(self.orb_lib)
-            self.orb_observed += [orb_obs0]
+    def solve(self, orblib):
+        """Template solve method
 
-    def solve(self):
-        # placeholder function to solve for weights given
-        # self.kinematics.values and self.orb_observed
-        # return wts, chi2
-        return 0, 0
+        Parameters
+        ----------
+        orblib : dyn.OrbitLibrary object
 
-
-class NNLS(WeightSolver):
-
-    def __init__(self,
-                 **kwargs):
-        super(NNLS, self).__init__(*kwargs)     # initialise parent class
-
-    def solve(self):
-        # actual code to do NNLS
-        # return MAP_weight
-        return 0, 0
+        Returns
+        -------
+        weights : array
+            orbit weights
+        chi2_all : float
+            a total chi2 value
+        chi2_kin : float
+            a chi2 value purely for kinematics
+        """
+        print("Using WeightSolver : {add name of WeightSolver here}!")
+        # ...
+        # calculate orbit weights, and model chi2 values here
+        # ...
+        weights = 0.
+        chi2_tot = 0.
+        chi2_kin = 0.
+        # ...
+        return weights, chi2_tot, chi2_kin
 
 
 class LegacyWeightSolver(WeightSolver):
@@ -62,6 +60,8 @@ class LegacyWeightSolver(WeightSolver):
         self.mod_dir_with_ml = self.mod_dir + 'ml' + '{:01.2f}'.format(self.ml)
         self.fname_nn_kinem = self.mod_dir_with_ml + '/nn_kinem.out'
         self.fname_nn_nnls = self.mod_dir_with_ml + '/nn_nnls.out'
+        if 'CRcut' in settings.keys():
+            CRcut = settings['CRcut']
         self.CRcut = CRcut
         # prepare fortran input file for nnls
         self.create_fortran_input_nnls(self.mod_dir, ml)
@@ -96,12 +96,33 @@ class LegacyWeightSolver(WeightSolver):
         nn_file.write(text)
         nn_file.close()
 
-    def solve(self, orblib, ret_weights=False):
-        # note: orblib is provided as an argument for consistency with future
-        # WeightSolver implementations but are not used in this legacy method
+    def solve(self, orblib=None):
+        """Main method to solve NNLS problem.
+
+        Parameters
+        ----------
+        orblib : dyn.OrbitLibrary
+            This parameter is not used in this Legacy implementation (as all
+            orbit library information is read from files). It is included here
+            for consistency with later WeightSolver implementations
+
+        Returns
+        -------
+        weights : array
+            orbit weights
+        chi2_all : float
+            sum of squared residuals for intrinsic masses, projected_masses and
+            GH coefficients from h_1 to h_n
+        chi2_kin : float
+            sum of squared residuals for GH coefficients h_1 to h_n
+
+        """
+        print("Using WeightSolver : LegacyWeightSolver")
         check1 = os.path.isfile(self.fname_nn_kinem)
         check2 = os.path.isfile(self.fname_nn_nnls)
-        if not check1 or not check2:
+        fname = self.mod_dir_with_ml + '/nn_orbmat.out'
+        check3 = os.path.isfile(fname)
+        if not check1 or not check2 or not check3:
             # set the current directory to the directory in which the models are computed
             cur_dir = os.getcwd()
             os.chdir(self.mod_dir)
@@ -113,9 +134,8 @@ class LegacyWeightSolver(WeightSolver):
             print("NNLS problem solved")
         else:
             print("NNLS solution read from existing output")
-        weights = self.read_weights()
-        chi2, kinchi2 = self.read_chi2()
-        return chi2, kinchi2
+        wts, chi2_tot, chi2_kin = self.get_weights_and_chi2_from_orbmat_file()
+        return wts, chi2_tot, chi2_kin
 
     def write_executable_for_weight_solver(self, ml):
         nn = f'ml{ml:01.2f}/nn'
@@ -140,7 +160,7 @@ class LegacyWeightSolver(WeightSolver):
 
     def create_fortran_input_nnls(self,path,ml):
 
-        #for the ml the model is only scaled. We therefore need to know what is the ml that was used for the orbit library
+        # for the ml the model is only scaled. We therefore need to know what is the ml that was used for the orbit library
         infile=path+'infil/parameters.in'
         lines = [line.rstrip('\n').split() for line in open(infile)]
         ml_orblib=float((lines[-9])[0])
@@ -169,6 +189,16 @@ class LegacyWeightSolver(WeightSolver):
         nn_file.close()
 
     def read_weights(self):
+        """Read the file  `nn_orb.out` into an astropy table
+
+        Returns
+        -------
+        None
+
+            sets an attribute self.weights which is an astropy table containing
+            the orbital weights
+
+        """
         fname = self.mod_dir_with_ml + '/nn_orb.out'
         col_names = ['orb_idx',
                      'E_idx',
@@ -187,13 +217,6 @@ class LegacyWeightSolver(WeightSolver):
         weights = table.Table(weights)
         self.weights = weights
 
-    def read_nnls_orbmat_noerror(self):
-        fname = self.mod_dir_with_ml + '/nn_orbmat_noerror.out'
-        orbmat_shape = np.loadtxt(fname, max_rows=1, dtype=int)
-        orbmat_noerror = np.loadtxt(fname, skiprows=1)
-        orbmat_noerror = np.reshape(orbmat_noerror, orbmat_shape)
-        return orbmat_noerror
-
     def read_nnls_orbmat_rhs_and_solution(self):
         fname = self.mod_dir_with_ml + '/nn_orbmat.out'
         orbmat_shape = np.loadtxt(fname, max_rows=1, dtype=int)
@@ -201,14 +224,60 @@ class LegacyWeightSolver(WeightSolver):
         tmp = np.loadtxt(fname, skiprows=1)
         orbmat = tmp[0:orbmat_size]
         orbmat = np.reshape(orbmat, orbmat_shape)
+        orbmat = orbmat.T
         rhs = tmp[orbmat_size:orbmat_size+orbmat_shape[1]]
         solution = tmp[orbmat_size+orbmat_shape[1]:]
         return orbmat, rhs, solution
 
+    def get_weights_and_chi2_from_orbmat_file(self):
+        """
+        Return weights and chi2 values from the file nn_orbmat.out
+
+        Returns
+        -------
+        (weights, chi2_all, chi2_gh)
+
+            weights : array of orbit weights
+            chi2_all : sum of squared residuals for intrinsic masses,
+            projected_masses and GH coefficients h_1 to h_n
+            chi2_kin : sum of squared residuals for GH coefficients h_1 to h_n
+
+        Note
+        -----
+        Chi2 values returned differ from `read_chi2` method. See that docstring.
+
+        """
+        A, b, weights = self.read_nnls_orbmat_rhs_and_solution()
+        chi2_vector = (np.dot(A, weights) - b)**2.
+        chi2_tot = np.sum(chi2_vector)
+        mge = self.system.cmp_list[2].mge
+        intrinsic_masses = mge.get_intrinsic_masses_from_file(self.mod_dir)
+        projected_masses = mge.get_projected_masses_from_file(self.mod_dir)
+        n_intrinsic = np.product(intrinsic_masses.shape)
+        n_apertures = len(projected_masses)
+        chi2_kin = np.sum(chi2_vector[1+n_intrinsic+n_apertures:])
+        return weights, chi2_tot, chi2_kin
+
     def read_chi2(self):
-        ''' taken useful parts from triax_extract_chi2_iter in schw_domoditer,
-        in particular lines 181-212
-        '''
+        """Read chi2 values from `nn_kinem.out`
+
+        Taken from old `schwpy` code, lines 181-212 of schw_domoditer.py
+
+        Returns
+        -------
+        (chi2, kinchi2)
+            chi2 = sum of sq. residuals of observed GH coefficients h_1 to h_N
+            kinchi2 = sum of sq. residuals of V, sigma, and GH coefficients from
+            h_3 to h_N
+
+        Note
+        -----
+        these are NOT the same chi2 values given by self.get_chi2_from_orbmat.
+        They differ in (i) including intrinsic/projected mass constraints (ii)
+        using h1/h2 vs V/sigma, and (iii) if CRcut==True, whether the 'cut'
+        orbits - with artificially large h1 - are included (here they aren't)
+
+        """
         # read amount of observables and kinematic moments
         fname = self.fname_nn_kinem
         a = self.__read_file_element(fname, [1, 1], [1, 2])
@@ -225,16 +294,29 @@ class LegacyWeightSolver(WeightSolver):
         fname = self.fname_nn_kinem
         ka = np.genfromtxt(fname, skip_header=1)
         k = np.arange(ngh) * 3 + 3
+        # k = is array of column indices, for [V, sigma, h3, ..., h_ngh]
+        #                       observed   modelled        error
         kinchi2 = sum(sum(pow(((ka[:, k] - ka[:, k + 1]) / ka[:, k + 2]), 2.0)))
         return chi2, kinchi2
 
     def __read_file_element(self, infile, rows, cols):
-        """Taken from schw_misc
-        !@brief read fields in a tabular data according to the their row/column.
-        @details Function description.
-        @param[in] infile input file
-        @param[in] row array of locations (row), indexing starts from 1.
-        @param[in] cols array of locations (column), indexing starts from 1.
+        """Read fields in a tabular data according to the their row/column.
+
+        Taken from schwpy schw_misc
+
+        Parameters
+        ----------
+        infile : string
+            input file
+        rows : array of ints
+            row array of locations indexed starts from 1
+        cols : array of ints
+            column array of locations indexed starts from 1
+
+        Returns
+        -------
+        array read from given locations in file
+
         """
         lines = [line.rstrip('\n').split() for line in open(infile)]
         output=[]
@@ -244,31 +326,36 @@ class LegacyWeightSolver(WeightSolver):
 
 
 
-class PrashsCoolNewWeightSolver(WeightSolver):
+class NNLS(WeightSolver):
 
     def __init__(self,
                  system=None,
                  settings=None,
-                 directory_noml=None,
+                 directory_with_ml=None,
                  CRcut=False,
-                 nnls_solver='scipy'):
+                 nnls_solver=None):
         self.system = system
         self.settings = settings
-        self.direc = directory_noml
+        self.direc_with_ml = directory_with_ml
+        self.direc_no_ml = directory_with_ml[:-7]
+        if nnls_solver is None:
+            nnls_solver = settings['nnls_solver']
+        assert nnls_solver in ['scipy', 'cvxopt'], 'Unknown nnls_solver'
+        self.nnls_solver = nnls_solver
+        if 'CRcut' in settings.keys():
+            CRcut = settings['CRcut']
         self.CRcut = CRcut
         self.get_observed_constraints()
         self.ennumerate_constraints()
-        assert nnls_solver in ['scipy', 'cvxopt']
-        self.nnls_solver = nnls_solver
 
     def get_observed_constraints(self):
         mge = self.system.cmp_list[2].mge
         # intrinsic mass
-        intrinsic_masses = mge.get_intrinsic_masses_from_file(self.direc)
+        intrinsic_masses = mge.get_intrinsic_masses_from_file(self.direc_no_ml)
         self.intrinsic_masses = intrinsic_masses
         self.intrinsic_mass_error = self.settings['lum_intr_rel_err']
         # projected
-        projected_masses = mge.get_projected_masses_from_file(self.direc)
+        projected_masses = mge.get_projected_masses_from_file(self.direc_no_ml)
         self.projected_masses = projected_masses
         self.projected_mass_error = self.settings['sb_proj_rel_err']
         # total mass constraint
@@ -365,19 +452,53 @@ class PrashsCoolNewWeightSolver(WeightSolver):
         return orbmat, rhs
 
     def solve(self, orblib):
-        A, b = self.construct_nnls_matrix_and_rhs(orblib)
-        if self.nnls_solver is 'scipy':
-            solution = optimize.nnls(A, b)
-            weights = solution[0]
-        elif self.nnls_solver is 'cvxopt':
-            P = np.dot(A.T, A)
-            q = -1.*np.dot(A.T, b) # note: factor 2 added in CvxoptNonNegSolver
-            solver = CvxoptNonNegSolver(P, q)
-            weights = solver.beta
-        chi2_all = (np.dot(A, weights) - b)**2.
-        chi2_gh = np.sum(chi2_all[1+self.n_intrinsic+self.n_apertures:])
-        return weights, chi2_gh
+        """Solve for orbit weights
 
+        Parameters
+        ----------
+        orblib : dyn.OrbitLibrary
+            must have attributes losvd_histograms, intrinsic_masses, and
+            projected_masses
+
+        Returns
+        -------
+        (weights, chi2_all, chi2_gh)
+
+            weights : array of orbit weights
+            chi2_all : sum of squared residuals for intrinsic masses,
+            projected_masses and GH coefficients h_1 to h_n
+            chi2_kin : sum of squared residuals for GH coefficients h_1 to h_n
+
+        Note
+        -------
+        Returned chi2 values are not the same as LegacyWeightSolver.read_chi2 -
+        see the docstring for that method
+
+        """
+        print("Using WeightSolver : NNLS")
+        A, b = self.construct_nnls_matrix_and_rhs(orblib)
+        weight_file = self.direc_with_ml + 'orbit_weights.txt'
+        if os.path.isfile(weight_file):
+            weights = np.genfromtxt(weight_file)
+            print("NNLS solution read from existing output")
+        else:
+            if self.nnls_solver=='scipy':
+                solution = optimize.nnls(A, b)
+                weights = solution[0]
+            elif self.nnls_solver=='cvxopt':
+                P = np.dot(A.T, A)
+                q = -1.*np.dot(A.T, b)
+                solver = CvxoptNonNegSolver(P, q)
+                weights = solver.beta
+            else:
+                raise ValueError('Unknown nnls_solver')
+            np.savetxt(weight_file, weights)
+            print("NNLS problem solved")
+        # calculate chi2
+        chi2_vector = (np.dot(A, weights) - b)**2.
+        chi2_tot = np.sum(chi2_vector)
+        chi2_kin = np.sum(chi2_vector[1+self.n_intrinsic+self.n_apertures:])
+        return weights, chi2_tot, chi2_kin
 
 
 class CvxoptNonNegSolver():

@@ -347,7 +347,8 @@ class Configuration(object):
             print(f'**** Parameter space:\n{self.parspace}')
 
         self.all_models = model.AllModels(parspace=self.parspace,
-                                          settings=self.settings)
+                                          settings=self.settings,
+                                          system=self.system)
         if not silent:
             print('**** Instantiated AllModels object:\n'
                   f'{self.all_models.table}')

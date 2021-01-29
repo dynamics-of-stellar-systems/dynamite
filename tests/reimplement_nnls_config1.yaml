@@ -112,7 +112,7 @@ system_parameters:
             hi: 9.
             step: 4.0
             minstep: 0.5
-        fixed: False
+        fixed: True
         value: 5.
         LaTeX: "$Y_{r}$"
 
@@ -140,14 +140,13 @@ orblib_settings:
 
 weight_solver_settings:
     type: "LegacyWeightSolver"
-    setting1: True
-    setting2: False
-    regularisation: 0
+    nnls_solver: 1
+    CRcut: True
     number_GH: 4
     GH_sys_err: '0.0 0.0 0.0 0.0 0.3 0.3 0.6 0.6'
     lum_intr_rel_err: 0.01
     sb_proj_rel_err: 0.02
-    nnls_solver: 1
+    regularisation: 0
 
 parameter_space_settings:
     generator_type: "LegacyGridSearch"
@@ -161,8 +160,8 @@ parameter_space_settings:
     stopping_criteria:
         min_delta_chi2_abs : 0.5  # absolute "optimality tolerance"
         #min_delta_chi2_rel : 0.05 # relative "optimality tolerance"
-        n_max_mods : 20
-        n_max_iter : 10
+        n_max_mods : 5
+        n_max_iter : 2
 
 legacy_settings:
     use_legacy_mode: True
@@ -171,7 +170,7 @@ legacy_settings:
 io_settings: # paths can be given with or without trailing slash
     input_directory: "NGC6278_input/"
     output_directory: "NGC6278_output/"
-    all_models_file: "all_models.ecsv"
+    all_models_file: "all_models_LegacyWS.ecsv"
 
 multiprocessing_settings:
     ncpus: 5 # integer or 'all_available'
