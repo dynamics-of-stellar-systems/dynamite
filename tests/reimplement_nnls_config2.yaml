@@ -140,7 +140,7 @@ orblib_settings:
 
 weight_solver_settings:
     type: "NNLS"
-    nnls_solver: 'scipy'  # either 'scipy', 'cvxopt'
+    nnls_solver: 'scipy'
     CRcut: False
     number_GH: 4
     GH_sys_err: '0.0 0.0 0.0 0.0 0.3 0.3 0.6 0.6'
@@ -164,7 +164,6 @@ parameter_space_settings:
         n_max_iter : 3
 
 legacy_settings:
-    use_legacy_mode: True
     directory: "default"
 
 io_settings: # paths can be given with or without trailing slash

@@ -51,7 +51,7 @@ system_components:
                 par_generator_settings:
                     lo: -1.
                     hi: 3.
-                    step: 1.
+                    step: 2.
                     minstep: 0.1
                 logarithmic: True
                 fixed: False
@@ -112,7 +112,7 @@ system_parameters:
             hi: 9.
             step: 4.0
             minstep: 0.5
-        fixed: True
+        fixed: False
         value: 5.
         LaTeX: "$Y_{r}$"
 
@@ -141,7 +141,7 @@ orblib_settings:
 weight_solver_settings:
     type: "LegacyWeightSolver"
     nnls_solver: 1
-    CRcut: True
+    CRcut: False
     number_GH: 4
     GH_sys_err: '0.0 0.0 0.0 0.0 0.3 0.3 0.6 0.6'
     lum_intr_rel_err: 0.01
@@ -160,11 +160,10 @@ parameter_space_settings:
     stopping_criteria:
         min_delta_chi2_abs : 0.5  # absolute "optimality tolerance"
         #min_delta_chi2_rel : 0.05 # relative "optimality tolerance"
-        n_max_mods : 5
-        n_max_iter : 2
+        n_max_mods : 10
+        n_max_iter : 3
 
 legacy_settings:
-    use_legacy_mode: True
     directory: "default"
 
 io_settings: # paths can be given with or without trailing slash
