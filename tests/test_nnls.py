@@ -23,12 +23,14 @@ def run_user_test(stat_mode=False):
     logger = logging.getLogger()
     logger.info(f'Using DYNAMITE version: {dyn.__version__}')
     logger.info(f'Located at: {dyn.__path__}')
-    # print('Using DYNAMITE version:', dyn.__version__)
-    # print('Located at:', dyn.__path__)
+    # print to console anyway...
+    print('Using DYNAMITE version:', dyn.__version__)
+    print('Located at:', dyn.__path__)
 
     # read configuration
+    os.chdir(os.path.dirname(__file__))
     fname = 'user_test_config_ml.yaml'
-    c = dyn.config_reader.Configuration(fname, silent=True)
+    c = dyn.config_reader.Configuration(fname, silent=True, reset_logging=True)
 
     io_settings = c.settings.io_settings
     outdir = io_settings['output_directory']
@@ -118,7 +120,7 @@ def run_user_test(stat_mode=False):
         for s in chi2_compare.pformat(max_lines=-1, max_width=-1):
             chi2stat += '\n'+s
         logger.info(f'chi2 statistics for comparison: {chi2stat}')
-        # print to console regardless of logging level
+        # print to console anyway...
         print(f'Look at {plotfile_ml} and {plotfile_chi2}')
         print('chi2 statistics for comparison:\n')
         chi2_compare.pprint(max_lines=-1, max_width=-1)
@@ -155,45 +157,8 @@ def create_stats(n_chi2=10):
 
     t.write(output_file+f'_{n_chi2}.dat', format='ascii')
 
-def initialize_logging():
-    """
-    Logging setup for (1) creating a .log file with logging level DEBUG and
-    detailed logging information and (2) more concide logging to the console
-    with logging level INFO.
-
-    Returns
-    -------
-    None.
-
-    """
-    # create logger
-    logger = logging.getLogger()
-    logger.setLevel(logging.DEBUG)
-    # create file handler
-    fh = logging.FileHandler('test_nnls.log', mode='w')
-    fh.setLevel(logging.DEBUG)
-    # create console handler
-    ch = logging.StreamHandler()
-    ch.setLevel(logging.INFO)
-    # create formatter and add it to the handlers
-    # formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
-    # formatter = logging.Formatter('[%(levelname)s] %(asctime)s.%(msecs)03d - %(name)s - %(message)s', "%Y-%m-%d %H:%M:%S")
-    # formatter = logging.Formatter('[%(levelname)s] %(asctime)s - %(filename)s %(funcName)s:%(lineno)d - %(message)s', "%H:%M:%S")
-    file_formatter = logging.Formatter( \
-        '[%(levelname)s] %(asctime)s - %(name)s - '
-        '%(filename)s:%(funcName)s:%(lineno)d - %(message)s', "%b %d %H:%M:%S" \
-        )
-    console_formatter = logging.Formatter( \
-        '[%(levelname)s] %(asctime)s - %(name)s - %(message)s', "%H:%M:%S")
-    fh.setFormatter(file_formatter)
-    ch.setFormatter(console_formatter)
-    # add the handlers to the logger
-    logger.addHandler(fh)
-    logger.addHandler(ch)
-
 if __name__ == '__main__':
 
-    initialize_logging()
     run_user_test()
 
 # end

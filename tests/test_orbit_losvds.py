@@ -37,12 +37,12 @@ def plot_losvds(losvd_histogram,
 
 def run_orbit_losvd_test(make_comparison_losvd=False):
 
-    logging.info('Using DYNAMITE version:', dyn.__version__)
-    logging.info('Located at:', dyn.__path__)
+    logging.info(f'Using DYNAMITE version: {dyn.__version__}')
+    logging.info(f'Located at: {dyn.__path__}')
 
     # read configuration
     fname = 'user_test_config.yaml'
-    c = dyn.config_reader.Configuration(fname, silent=True)
+    c = dyn.config_reader.Configuration(fname,silent=True,reset_logging=False)
 
     io_settings = c.settings.io_settings
     outdir = io_settings['output_directory']

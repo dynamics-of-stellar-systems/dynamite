@@ -102,7 +102,7 @@ class Configuration(object):
     thresh_chi2_scaled = 'threshold_del_chi2_as_frac_of_sqrt2nobs'
     # logger = logging.getLogger(f'{__name__}.{__qualname__}')
 
-    def __init__(self, filename=None, silent=None):
+    def __init__(self, filename=None, silent=None, reset_logging=False):
         """
         Reads configuration file and instantiates objects.
         Does some rudimentary checks for consistency.
@@ -111,6 +111,9 @@ class Configuration(object):
         ----------
         filename : string, needs to refer to an existing file including path
         silent : DEPRECATED (diagnostic output handled by logging module)
+        reset_logging : bool, if False: use the calling application's logging
+                                        settings
+                              if True: set logging to Dynamite defaults
 
         Raises
         ------
@@ -123,6 +126,13 @@ class Configuration(object):
 
         """
         logger = logging.getLogger(f'{__name__}.{__class__.__name__}')
+        if reset_logging is True:
+            logger.debug('Dynamite: resetting logging configuration')
+            self.dynamite_logging()
+            logger.debug('Dynamite: logging set to Dynamite defaults')
+        else:
+            logger.debug("Dynamite: using the calling application's logging "
+                         "settings")
         if silent is not None:
             logger.warning("'silent' option is deprecated and ignored")
         try:
@@ -518,25 +528,39 @@ class Configuration(object):
             raise ValueError(f'Only specify one of {chi2abs}, {chi2scaled}, '
                              'not both')
 
-
-    # def read_parameters(self, par=None, items=None):
-    #     """
-    #     Will add each key-value pair in items to parameters object par by calling
-    #     par.add(...) and subsequently calls the par.validate() method.
-
-    #     Parameters
-    #     ----------
-    #     par : ...parameters object, optional
-    #         The default is None.
-    #     items : dictionary, optional
-    #         The default is None.
-
-    #     Returns
-    #     -------
-    #     None.
-
-    #     """
-
-    #     for p, v in items:
-    #         par.add(name=p, **v)
-    #     par.validate()
+    def dynamite_logging(self):
+        """
+        Dynamite default logging setup. ONLY use if logging has not been
+        configured outside of Dynamite.
+        (1) creates a dynamite.log file with logging level DEBUG
+        (2) more concise logging to the console with logging level INFO
+    
+        Returns
+        -------
+        None.
+    
+        """
+        # create logger
+        logger = logging.getLogger()
+        logger.setLevel(logging.DEBUG)
+        # create file handler
+        fh = logging.FileHandler('dynamite.log', mode='w')
+        fh.setLevel(logging.DEBUG)
+        # create console handler
+        ch = logging.StreamHandler()
+        ch.setLevel(logging.INFO)
+        # create formatter and add it to the handlers
+        # formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+        # formatter = logging.Formatter('[%(levelname)s] %(asctime)s.%(msecs)03d - %(name)s - %(message)s', "%Y-%m-%d %H:%M:%S")
+        # formatter = logging.Formatter('[%(levelname)s] %(asctime)s - %(filename)s %(funcName)s:%(lineno)d - %(message)s', "%H:%M:%S")
+        file_formatter = logging.Formatter( \
+            '[%(levelname)s] %(asctime)s - %(name)s - '
+            '%(filename)s:%(funcName)s:%(lineno)d - '
+            '%(message)s', "%b %d %H:%M:%S" )
+        console_formatter = logging.Formatter( \
+            '[%(levelname)s] %(asctime)s - %(name)s - %(message)s', "%H:%M:%S")
+        fh.setFormatter(file_formatter)
+        ch.setFormatter(console_formatter)
+        # add the handlers to the logger
+        logger.addHandler(fh)
+        logger.addHandler(ch)
