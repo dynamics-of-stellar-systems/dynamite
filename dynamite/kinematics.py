@@ -25,6 +25,7 @@ class Kinematics(data.Data):
         self.type = type
         self.__class__.values = list(self.__dict__.keys())
         super().__init__(**kwargs)
+        self.logger = logging.getLogger(f'{__name__}.{__class__.__name__}')
 
     def update(self, **kwargs):
         """
@@ -45,22 +46,20 @@ class Kinematics(data.Data):
 
         """
 
-        logger = logging.getLogger(f'{__name__}.{__class__.__name__}')
         for k, v in kwargs.items():
             if k not in self.__class__.values:
                 text = 'Invalid kinematics key ' + k + '. Allowed keys: ' + \
                     str(tuple(self.__class__.values))
-                logger.error(text)
+                self.logger.error(text)
                 raise ValueError(text)
             setattr(self, k, v)
 
     def validate(self): # here we can put more validation...
-        logger = logging.getLogger(f'{__name__}.{__class__.__name__}')
         if sorted(self.__class__.values) != sorted(self.__dict__.keys()):
             text = 'Kinematics attributes can only be ' + \
                 str(tuple(self.__class__.values)) + ', not ' + \
                 str(tuple(self.__dict__.keys()))
-            logger.error(text)
+            self.logger.error(text)
             raise ValueError(text)
 
     def __repr__(self):
@@ -73,6 +72,7 @@ class GaussHermite(Kinematics, data.Integrated):
         # super goes left to right, i.e. first calls "Kinematics" __init__, then
         # calls data.Integrated's __init__
         super().__init__(**kwargs)
+        self.logger = logging.getLogger(f'{__name__}.{__class__.__name__}')
 
     def read_file_old_format(self, filename):
         f = open(filename)
@@ -94,6 +94,7 @@ class GaussHermite(Kinematics, data.Integrated):
                              skip_header=1,
                              names=names,
                              dtype=dtype)
+        self.logger.debug(f'File {filename} read (old format)')
         return data
 
     def convert_file_from_old_format(self,
@@ -103,6 +104,7 @@ class GaussHermite(Kinematics, data.Integrated):
         data = table.Table(data)
         data.remove_column('n_gh')
         data.write(filename_new_format, format='ascii.ecsv')
+        self.logger.debug(f'File {filename_new_format} written (new format)')
         return
 
     def convert_to_old_format(self, filename_old_format):
@@ -134,6 +136,7 @@ class GaussHermite(Kinematics, data.Integrated):
                    fmt = fmt,
                    header=comment,
                    comments='')
+        self.logger.debug(f'File {filename_old_format} written (old format)')
         return 0
 
     def get_hermite_polynomial_coeffients(self, max_order=None):

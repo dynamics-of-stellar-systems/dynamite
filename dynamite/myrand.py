@@ -1,7 +1,5 @@
-#!/usr/bin/env python3
-# -*- coding: utf-8 -*-
-
 import numpy as np
+import logging
 
 class MyRand(object):
     '''
@@ -17,9 +15,11 @@ class MyRand(object):
     iy = None
 
     def __init__(self, seed=None):
+        self.logger = logging.getLogger(f'{__name__}.{__class__.__name__}')
         self.idum = self.__class__.idum if seed==None else seed
         self.iv = self.__class__.iv
         self.iy = self.__class__.iy
+        self.logger.debug(f'Random number seed: {self.idum}')
 
     def ran1(self):
         '''

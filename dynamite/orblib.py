@@ -51,6 +51,7 @@ class LegacyOrbitLibrary(OrbitLibrary):
                  settings=None,
                  legacy_directory=None,
                  executor=None):
+        self.logger = logging.getLogger(f'{__name__}.{__class__.__name__}')
         self.system = system
         self.mod_dir = mod_dir
         self.settings = settings
@@ -58,14 +59,13 @@ class LegacyOrbitLibrary(OrbitLibrary):
         self.executor = executor
 
     def get_orbit_ics(self):
-        logger = logging.getLogger(f'{__name__}.{__class__.__name__}')
         cur_dir = os.getcwd()
         os.chdir(self.mod_dir)
         cmdstr = self.executor.write_executable_for_ics()
-        logger.info(f'Calculating initial conditions: {cmdstr}')
+        self.logger.info(f'Calculating initial conditions: {cmdstr}')
         self.executor.execute(cmdstr)
         logfile = self.mod_dir + cmdstr[cmdstr.rindex('&>')+3:]
-        logger.debug(f'...done. Logfile: {logfile}')
+        self.logger.debug(f'...done. Logfile: {logfile}')
         os.chdir(cur_dir)
 
     def read_ics(self):
@@ -73,20 +73,20 @@ class LegacyOrbitLibrary(OrbitLibrary):
         pass
 
     def get_orbit_library(self):
-        logger = logging.getLogger(f'{__name__}.{__class__.__name__}')
         # move to model directory
         cur_dir = os.getcwd()
         os.chdir(self.mod_dir)
         cmdstrs = self.executor.write_executable_for_integrate_orbits()
         cmdstr_tube, cmdstr_box = cmdstrs
-        logger.info(f'Integrating orbit library tube orbits: {cmdstr_tube}')
+        self.logger.info('Integrating orbit library tube orbits: ' + \
+                         f'{cmdstr_tube}')
         self.executor.execute(cmdstr_tube)
         logfile = self.mod_dir + cmdstr_tube[cmdstr_tube.rindex('&>')+3:]
-        logger.debug(f'...done. Logfile: {logfile}')
-        logger.info(f'Integrating orbit library box orbits: {cmdstr_box}')
+        self.logger.debug(f'...done. Logfile: {logfile}')
+        self.logger.info(f'Integrating orbit library box orbits: {cmdstr_box}')
         self.executor.execute(cmdstr_box)
         logfile = self.mod_dir + cmdstr_box[cmdstr_box.rindex('&>')+3:]
-        logger.debug(f'...done. Logfile: {logfile}')
+        self.logger.debug(f'...done. Logfile: {logfile}')
         # move back to original directory
         os.chdir(cur_dir)
 
@@ -167,11 +167,10 @@ class LegacyOrbitLibrary(OrbitLibrary):
             the duplicated, flipped and interlaced orblib
 
         """
-        logger = logging.getLogger(f'{__name__}.{__class__.__name__}')
-        logger.debug('Checking for symmetric velocity array...')
+        self.logger.debug('Checking for symmetric velocity array...')
         error_msg = 'velocity array must be symmetric'
         assert np.all(orblib.xedg == -orblib.xedg[::-1]), error_msg
-        logger.debug('...check ok.')
+        self.logger.debug('...check ok.')
 
         losvd = orblib.y
         n_orbs, n_vel_bins, n_spatial_bins = losvd.shape
@@ -198,20 +197,19 @@ class LegacyOrbitLibrary(OrbitLibrary):
             the combined orbit libraries
 
         """
-        logger = logging.getLogger(f'{__name__}.{__class__.__name__}')
         # check orblibs are compatible
         n_orbs1, n_vel_bins1, n_spatial_bins1 = orblib1.y.shape
         n_orbs2, n_vel_bins2, n_spatial_bins2 = orblib2.y.shape
-        logger.debug('Checking number of velocity bins...')
+        self.logger.debug('Checking number of velocity bins...')
         error_msg = 'orblibs have different number of velocity bins'
         assert n_vel_bins1==n_vel_bins2, error_msg
-        logger.debug('Checking velocity arrays...')
+        self.logger.debug('Checking velocity arrays...')
         error_msg = 'orblibs have different velocity arrays'
         assert np.array_equal(orblib1.x, orblib2.x), error_msg
-        logger.debug('Checking number of spatial bins...')
+        self.logger.debug('Checking number of spatial bins...')
         error_msg = 'orblibs have different number of spatial bins'
         assert n_spatial_bins1==n_spatial_bins2, error_msg
-        logger.debug('...checks ok.')
+        self.logger.debug('...checks ok.')
         new_losvd = np.zeros((n_orbs1 + n_orbs2,
                               n_vel_bins1,
                               n_spatial_bins1))

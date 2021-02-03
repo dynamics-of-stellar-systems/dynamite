@@ -19,6 +19,7 @@ import mges as mge
 class System(object):
 
     def __init__(self, *args):
+        self.logger = logging.getLogger(f'{__name__}.{__class__.__name__}')
         self.n_cmp = 0
         self.cmp_list = []
         self.n_pot = 0
@@ -63,18 +64,17 @@ class System(object):
         None.
 
         """
-        logger = logging.getLogger(f'{__name__}.{__class__.__name__}')
         if not(self.distMPc and self.name and self.position_angle):
             text = 'System needs distMPc, name, and position_angle attributes'
-            logger.error(text)
+            self.logger.error(text)
             raise ValueError(text)
         if not self.cmp_list:
             text = 'System has no components'
-            logger.error(text)
+            self.logger.error(text)
             raise ValueError(text)
         if len(self.parameters) != 1 and self.parameters[0].name != 'ml':
             text = 'System needs ml as its sole parameter'
-            logger.error(text)
+            self.logger.error(text)
             raise ValueError(text)
         self.parameters[0].update(sformat = '6.2f')
 
@@ -82,13 +82,12 @@ class System(object):
         return f'{self.__class__.__name__} with {self.__dict__}'
 
     def get_component_from_name(self, cmp_name):
-        logger = logging.getLogger(f'{__name__}.{__class__.__name__}')
         cmp_list_list = np.array([cmp0.name for cmp0 in self.cmp_list])
         idx = np.where(cmp_list_list == cmp_name)
-        logger.debug(f'Checking for 1 and only 1 component {cmp_name}...')
+        self.logger.debug(f'Checking for 1 and only 1 component {cmp_name}...')
         error_msg = f"There should be 1 and only 1 component named {cmp_name}"
         assert len(idx[0]) == 1, error_msg
-        logger.debug('...check ok.')
+        self.logger.debug('...check ok.')
         component = self.cmp_list[idx[0][0]]
         return component
 
@@ -102,6 +101,7 @@ class Component(object):
                  kinematic_data=[],              # a list of Kinematic objects
                  population_data=[],             # a list of Population objects
                  parameters=[]):                 # a list of Parameter objects
+        self.logger = logging.getLogger(f'{__name__}.{__class__.__name__}')
         if name == None:
             self.name = self.__class__.__name__
         else:
@@ -134,7 +134,6 @@ class Component(object):
         None.
 
         """
-        logger = logging.getLogger(f'{__name__}.{__class__.__name__}')
         # if self.symmetry not in self.symmetries:
         #     raise ValueError('Illegal symmetry ' + str(self.symmetry) + \
         #                      '. Allowed: ' + str(self.symmetries))
@@ -142,15 +141,15 @@ class Component(object):
         errstr = f'Component {self.__class__.__name__} needs attribute '
         if self.visible is None:
             text = errstr + 'visible'
-            logger.error(text)
+            self.logger.error(text)
             raise ValueError(text)
         if self.contributes_to_potential is None:
             text = errstr + 'contributes_to_potential'
-            logger.error(text)
+            self.logger.error(text)
             raise ValueError(text)
         if not self.parameters:
             text = errstr + 'parameters'
-            logger.error(text)
+            self.logger.error(text)
             raise ValueError(text)
 
         # if len(self.parameters) != len(par):
@@ -160,16 +159,15 @@ class Component(object):
         if set(pars) != set(par):
             text = f'{self.__class__.__name__} needs parameters ' + \
                    f'{list(par)}, not {[p.name for p in self.parameters]}'
-            logger.error(text)
+            self.logger.error(text)
             raise ValueError(text)
 
         self.set_format(par_format)
 
     def set_format(self, par_format=None):
-        logger = logging.getLogger(f'{__name__}.{__class__.__name__}')
         if par_format is None:
             text = f'{self.__class__.__name__}: no format string'
-            logger.error(text)
+            self.logger.error(text)
             raise ValueError(text)
         for p in self.parameters:
             p.update(sformat=par_format[p.name[:p.name.rindex('_'+self.name)]])
@@ -186,13 +184,13 @@ class VisibleComponent(Component):
          # visible components have MGE surface density
         self.mge = mge
         super().__init__(visible=True, **kwds)
+        self.logger = logging.getLogger(f'{__name__}.{__class__.__name__}')
 
     def validate(self, **kwds):
-        logger = logging.getLogger(f'{__name__}.{__class__.__name__}')
         super().validate(**kwds)
         if not isinstance(self.mge, mge.MGE):
             text = f'{self.__class__.__name__}.mge must be mges.MGE object'
-            logger.error(text)
+            self.logger.error(text)
             raise ValueError(text)
 
 

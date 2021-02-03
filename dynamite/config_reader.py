@@ -26,11 +26,11 @@ class Settings(object):
     Class that collects misc configuration settings
     """
     def __init__(self):
+        self.logger = logging.getLogger(f'{__name__}.{__class__.__name__}')
         self.orblib_settings = {}
         self.parameter_space_settings = {}
 
     def add(self, kind, values):
-        logger = logging.getLogger(f'{__name__}.{__class__.__name__}')
         if kind == 'orblib_settings':
             self.orblib_settings = values
         elif kind == 'parameter_space_settings':
@@ -50,11 +50,10 @@ class Settings(object):
                              and io_settings
                              and weight_solver_settings
                              and executor_settings"""
-            logger.error(text)
+            self.logger.error(text)
             raise ValueError(text)
 
     def validate(self):
-        logger = logging.getLogger(f'{__name__}.{__class__.__name__}')
         if not(self.orblib_settings and self.parameter_space_settings and
                self.output_settings and self.weight_solver_settings
                and self.executor_settings):
@@ -63,7 +62,7 @@ class Settings(object):
                              and io_settings
                              and weight_solver_settings
                              and executor_settings"""
-            logger.error(text)
+            self.logger.error(text)
             raise ValueError(text)
 
     def __repr__(self):
@@ -77,13 +76,13 @@ class UniqueKeyLoader(yaml.SafeLoader):
     """
 
     def construct_mapping(self, node, deep=False):
-        logger = logging.getLogger(f'{__name__}.{__class__.__name__}')
+        self.logger = logging.getLogger(f'{__name__}.{__class__.__name__}')
         mapping = []
         for key_node, value_node in node.value:
             key = self.construct_object(key_node, deep=deep)
             if key in mapping:
                 text = f'Duplicate key in configuration file: {key}'
-                logger.error(text)
+                self.logger.error(text)
                 raise AssertionError(text)
             # assert key not in mapping, \
             #     f'Duplicate key in configuration file: {key}'
@@ -125,7 +124,8 @@ class Configuration(object):
         None.
 
         """
-        logger = logging.getLogger(f'{__name__}.{__class__.__name__}')
+        self.logger = logging.getLogger(f'{__name__}.{__class__.__name__}')
+        logger = self.logger
         if reset_logging is True:
             logger.debug('Dynamite: resetting logging configuration')
             self.dynamite_logging()
@@ -134,7 +134,7 @@ class Configuration(object):
             logger.debug("Dynamite: using the calling application's logging "
                          "settings")
         if silent is not None:
-            logger.warning("'silent' option is deprecated and ignored")
+            self.logger.warning("'silent' option is deprecated and ignored")
         try:
             with open(filename, 'r') as f:
                 # self.params = yaml.safe_load(f)
@@ -456,47 +456,47 @@ class Configuration(object):
         None.
 
         """
-        logger = logging.getLogger(f'{__name__}.{__class__.__name__}')
+        # logger = logging.getLogger(f'{__name__}.{__class__.__name__}')
         if sum(1 for i in self.system.cmp_list \
                if isinstance(i, physys.Plummer)) != 1:
-            logger.error('System needs to have exactly one Plummer object')
-            raise ValueError('System needs to have exactly one Plummer object')
+            self.logger.error('System must have exactly one Plummer object')
+            raise ValueError('System must have exactly one Plummer object')
         if sum(1 for i in self.system.cmp_list \
                if isinstance(i, physys.VisibleComponent)) != 1:
-            logger.error('System needs to have exactly one '
-                         'VisibleComponent object')
+            self.logger.error('System needs to have exactly one '
+                              'VisibleComponent object')
             raise ValueError('System needs to have exactly one '
                              'VisibleComponent object')
         if sum(1 for i in self.system.cmp_list \
                if issubclass(type(i), physys.DarkComponent)
                and not isinstance(i, physys.Plummer)) > 1:
-            logger.error('System needs to have zero or one DM Halo object')
-            raise ValueError('System needs to have zero or one DM Halo object')
+            self.logger.error('System must have zero or one DM Halo object')
+            raise ValueError('System must have zero or one DM Halo object')
         if not ( 1 < len(self.system.cmp_list) < 4):
-            logger.error('System needs to comprise exactly one Plummer, '
-                         'one VisibleComponent, and zero or one DM Halo '
-                         'object(s)')
-            raise ValueError('System needs to comprise exactly one Plummer, '
+            self.logger.error('System needs to comprise exactly one Plummer, '
                               'one VisibleComponent, and zero or one DM Halo '
                               'object(s)')
+            raise ValueError('System needs to comprise exactly one Plummer, '
+                             'one VisibleComponent, and zero or one DM Halo '
+                             'object(s)')
 
         for c in self.system.cmp_list:
             if issubclass(type(c), physys.VisibleComponent): # Check vis. comp.
                 if c.kinematic_data:
                     for kin_data in c.kinematic_data:
                         if kin_data.type != 'GaussHermite':
-                            logger.error('VisibleComponent kinematics '
-                                         'need GaussHermite type')
+                            self.logger.error('VisibleComponent kinematics '
+                                              'need GaussHermite type')
                             raise ValueError('VisibleComponent kinematics '
                                              'need GaussHermite type')
                 else:
-                    logger.error('VisibleComponent must have kinematics '
-                                 'of type GaussHermite')
+                    self.logger.error('VisibleComponent must have kinematics '
+                                      'of type GaussHermite')
                     raise ValueError('VisibleComponent must have kinematics '
                                      'of type GaussHermite')
                 if c.symmetry != 'triax':
-                    logger.error('Legacy mode: VisibleComponent must be '
-                                 'triaxial')
+                    self.logger.error('Legacy mode: VisibleComponent must be '
+                                      'triaxial')
                     raise ValueError('Legacy mode: VisibleComponent must be '
                                      'triaxial')
                 continue
@@ -506,25 +506,25 @@ class Configuration(object):
                 if type(c) not in [physys.NFW, physys.Hernquist,
                                    physys.TriaxialCoredLogPotential,
                                    physys.GeneralisedNFW]:
-                    logger.error(f'DM Halo needs to be of type NFW, '
-                                 f'Hernquist, TriaxialCoredLogPotential, '
-                                 f'or GeneralisedNFW, not {type(c)}')
+                    self.logger.error(f'DM Halo needs to be of type NFW, '
+                                      f'Hernquist, TriaxialCoredLogPotential, '
+                                      f'or GeneralisedNFW, not {type(c)}')
                     raise ValueError(f'DM Halo needs to be of type NFW, '
                                      f'Hernquist, TriaxialCoredLogPotential, '
                                      f'or GeneralisedNFW, not {type(c)}')
 
         gen_type = self.settings.parameter_space_settings["generator_type"]
         if gen_type != 'GridWalk' and gen_type != 'LegacyGridSearch':
-            logger.error('Legacy mode: parameter space generator_type '
-                         'must be GridWalk or LegacyGridSearch')
+            self.logger.error('Legacy mode: parameter space generator_type '
+                              'must be GridWalk or LegacyGridSearch')
             raise ValueError('Legacy mode: parameter space generator_type '
                              'must be GridWalk or LegacyGridSearch')
         chi2abs = self.__class__.thresh_chi2_abs
         chi2scaled = self.__class__.thresh_chi2_scaled
         gen_set=self.settings.parameter_space_settings.get('generator_settings')
         if gen_set != None and (chi2abs in gen_set and chi2scaled in gen_set):
-            logger.error(f'Only specify one of {chi2abs}, {chi2scaled}, '
-                         'not both')
+            self.logger.error(f'Only specify one of {chi2abs}, {chi2scaled}, '
+                              'not both')
             raise ValueError(f'Only specify one of {chi2abs}, {chi2scaled}, '
                              'not both')
 

@@ -52,6 +52,7 @@ class LegacyWeightSolver(WeightSolver):
                  legacy_directory=None,
                  ml=None,
                  executor=None):
+        self.logger = logging.getLogger(f'{__name__}.{__class__.__name__}')
         self.system = system
         self.mod_dir = mod_dir
         self.settings = settings
@@ -63,7 +64,6 @@ class LegacyWeightSolver(WeightSolver):
         self.fname_nn_nnls = self.mod_dir_with_ml + '/nn_nnls.out'
 
     def solve(self):
-        logger = logging.getLogger(f'{__name__}.{__class__.__name__}')
         check1 = os.path.isfile(self.fname_nn_kinem)
         check2 = os.path.isfile(self.fname_nn_nnls)
         if not check1 or not check2:
@@ -71,14 +71,16 @@ class LegacyWeightSolver(WeightSolver):
             cur_dir = os.getcwd()
             os.chdir(self.mod_dir)
             cmdstr = self.executor.write_executable_for_weight_solver(self.ml)
-            logger.info(f"Fit orbit library to the kinematic data: {cmdstr}")
+            self.logger.info("Fit orbit library to the kinematic data: " + \
+                             f"{cmdstr}")
             self.executor.execute(cmdstr)
             logfile = self.mod_dir + cmdstr[cmdstr.rindex('&>')+3:]
-            logger.debug(f'...done, NNLS problem solved. Logfile: {logfile}')
+            self.logger.debug('...done, NNLS problem solved. Logfile: ' + \
+                              f'{logfile}')
             #set the current directory to the dynamite directory
             os.chdir(cur_dir)
         else:
-            logger.info("NNLS solution read from existing output")
+            self.logger.info("NNLS solution read from existing output")
         weights = self.read_weights()
         chi2, kinchi2 = self.read_chi2()
         return chi2, kinchi2

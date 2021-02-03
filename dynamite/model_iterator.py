@@ -15,7 +15,7 @@ class ModelIterator(object):
                  do_dummy_run=None,
                  dummy_chi2_function=None):
  
-        logger = logging.getLogger(f'{__name__}.{__class__.__name__}')
+        self.logger = logging.getLogger(f'{__name__}.{__class__.__name__}')
 
         stopping_crit = settings.parameter_space_settings['stopping_criteria']
         n_max_iter = stopping_crit['n_max_iter']
@@ -47,10 +47,10 @@ class ModelIterator(object):
                 status['n_max_mods_reached'] = True
                 status['stop'] = True
             if status['stop'] is True:
-                logger.info(f'Stopping after iteration {total_iter_count}')
-                logger.debug(status)
+                self.logger.info(f'Stopping after iteration {total_iter_count}')
+                self.logger.debug(status)
                 break
-            logger.info(f'{par_generator_type}: "iteration '
+            self.logger.info(f'{par_generator_type}: "iteration '
                         f'{total_iter_count}"')
             # print(f'{par_generator_type}: "iteration {total_iter_count}"')
             status = model_inner_iterator.run_iteration(iter, executor=executor)
@@ -66,6 +66,7 @@ class ModelInnerIterator(object):
                  par_generator=None,
                  do_dummy_run=False,
                  dummy_chi2_function=None):
+        self.logger = logging.getLogger(f'{__name__}.{__class__.__name__}')
         self.system = system
         self.all_models = all_models
         self.settings = settings
@@ -79,8 +80,6 @@ class ModelInnerIterator(object):
 
     def run_iteration(self, iter, executor=None):
 
-        logger = logging.getLogger(f'{__name__}.{__class__.__name__}')
-
         self.par_generator.generate(current_models=self.all_models)
         # generate parameter sets for this iteration
         if self.par_generator.status['stop'] is False:
@@ -89,7 +88,7 @@ class ModelInnerIterator(object):
             rows_to_do = rows_to_do[0]
             n_to_do = len(rows_to_do)
             for i, row in enumerate(rows_to_do):
-                logger.info(f'... running model {i+1} out of {n_to_do}')
+                self.logger.info(f'... running model {i+1} out of {n_to_do}')
                 # extract the parameter values
                 parset0 = self.all_models.table[row]
                 parset0 = parset0[self.parspace.par_names]
@@ -117,8 +116,6 @@ class ModelInnerIterator(object):
                      parset,
                      executor=None):
 
-        logger = logging.getLogger(f'{__name__}.{__class__.__name__}')
-
         model_kwargs = {'system':self.system,
                         'settings':self.settings,
                         'parspace':self.parspace,
@@ -139,7 +136,7 @@ class ModelInnerIterator(object):
                             use_legacy_mode: True
                     in the config file
                     """)
-            logger.error(text)
+            self.logger.error(text)
             raise ValueError(text)
         return mod
 

@@ -26,6 +26,7 @@ class Parameter(object):
                  gpe_parspace_settings=None,
                  logarithmic=False,
                  ):
+        self.logger = logging.getLogger(f'{__name__}.{__class__.__name__}')
         self.name = name
         self.fixed = fixed
         self.LaTeX = LaTeX
@@ -37,22 +38,20 @@ class Parameter(object):
         self.__class__.attributes = list(self.__dict__.keys())
 
     def update(self, **kwargs):
-        logger = logging.getLogger(f'{__name__}.{__class__.__name__}')
         for k, v in kwargs.items():
             if k not in self.__class__.attributes:
                 text = (f'Invalid parameter key {k}. Allowed keys: '
                         f'{str(tuple(self.__class__.attributes))}')
-                logging.error(text)
+                self.logger.error(text)
                 raise ValueError(text)
             setattr(self, k, v)
 
     def validate(self):
-        logger = logging.getLogger(f'{__name__}.{__class__.__name__}')
         if sorted(self.__class__.attributes) != sorted(self.__dict__.keys()):
             text = (f'Parameter attributes can only be '
                     f'{str(tuple(self.__class__.attributes))}, '
                     f'not {str(tuple(self.__dict__.keys()))}')
-            logging.error(text)
+            self.logger.error(text)
             raise ValueError(text)
 
     def __repr__(self):
@@ -76,6 +75,7 @@ class Parameter(object):
 class ParameterSpace(list):
 
     def __init__(self, system):
+        self.logger = logging.getLogger(f'{__name__}.{__class__.__name__}')
         for cmp in system.cmp_list:
             for par in cmp.parameters:
                 self.append(par)
@@ -105,13 +105,12 @@ class ParameterSpace(list):
         return raw_value
 
     def get_parameter_from_name(self, name):
-        logger = logging.getLogger(f'{__name__}.{__class__.__name__}')
         name_array = np.array(self.par_names)
         idx = np.where(name_array == name)
-        logger.debug(f'Checking unique parameter name {name}...')
+        self.logger.debug(f'Checking unique parameter name {name}...')
         error_msg = f"There should be 1 and only 1 parameter named {name}"
         assert len(idx[0]) == 1, error_msg
-        logger.debug('...check ok.')
+        self.logger.debug('...check ok.')
         parameter = self[idx[0][0]]
         return parameter
 
@@ -131,17 +130,17 @@ class ParameterGenerator(object):
                  par_space=[],
                  parspace_settings=None,
                  name=None):
-        logger = logging.getLogger(f'{__name__}.{__class__.__name__}')
+        self.logger = logging.getLogger(f'{__name__}.{__class__.__name__}')
         self.par_space = par_space
         if not parspace_settings:
             text = 'ParameterGenerator needs parspace_settings'
-            logger.error(text)
+            self.logger.error(text)
             raise ValueError(text)
         self.parspace_settings = parspace_settings
         which_chi2 = self.parspace_settings.get('which_chi2')
         if which_chi2 not in ['chi2', 'kinchi2']:
           text = 'Unknown or missing which_chi2 setting, use chi2 or kinchi2'
-          logger.error(text)
+          self.logger.error(text)
           raise ValueError(text)
         self.chi2 = 'chi2' if which_chi2 == 'chi2' else 'kinchi2'
         self.status = {}
@@ -160,19 +159,19 @@ class ParameterGenerator(object):
         except:
             text = 'ParameterGenerator: non-fixed parameters ' + \
                    'need hi and lo settings'
-            logger.error(text)
+            self.logger.error(text)
             raise ValueError(text)
         try:
             stop_crit = parspace_settings['stopping_criteria']
         except:
             text = 'ParameterGenerator: need stopping criteria'
-            logger.error(text)
+            self.logger.error(text)
             raise ValueError(text)
         if stop_crit.get('n_max_mods') is None and \
            stop_crit.get('n_max_iter') is None:
             text = 'ParameterGenerator: need n_max_mods and ' + \
                    'n_max_iter stopping criteria settings'
-            logger.error(text)
+            self.logger.error(text)
             raise ValueError(text)
 
     def generate(self,
@@ -209,11 +208,10 @@ class ParameterGenerator(object):
             - plus any criteria specific to the child class
 
         """
-        logger = logging.getLogger(f'{__name__}.{__class__.__name__}')
         if current_models is None:
             errormsg = "current_models needs to be a valid " \
                        "schwarzschild.AllModels instance"
-            logger.error(errormsg)
+            self.logger.error(errormsg)
             raise ValueError(errormsg)
         else:
             self.current_models = current_models
@@ -231,8 +229,8 @@ class ParameterGenerator(object):
                 if self._is_newmodel(m, eps=1e-10):
                     self.add_model(m, n_iter=this_iter)
                     newmodels += 1
-        logger.info(f'{self.name} added {newmodels} new model(s) out of '
-                    f'{len(self.model_list)}')
+        self.logger.info(f'{self.name} added {newmodels} new model(s) out of '
+                         f'{len(self.model_list)}')
         self.status['n_new_models'] = newmodels
         last_iter_check = True if newmodels == 0 else False
         self.status['last_iter_added_no_new_models'] = last_iter_check
@@ -263,9 +261,8 @@ class ParameterGenerator(object):
         None.
 
         """
-        logger = logging.getLogger(f'{__name__}.{__class__.__name__}')
         if not model:
-            logger.error('No or empty model')
+            self.logger.error('No or empty model')
             raise ValueError('No or empty model')
         raw_row = [p.value for p in model]
         row = self.par_space.get_param_value_from_raw_value(raw_row)
@@ -324,9 +321,8 @@ class ParameterGenerator(object):
         isnew : True if model is a new model, False otherwise.
 
         """
-        logger = logging.getLogger(f'{__name__}.{__class__.__name__}')
         if any(map(lambda t: not isinstance(t, parspace.Parameter), model)):
-            logger.error('Model arg. must be list of Parameter objects')
+            self.logger.error('Model arg. must be list of Parameter objects')
             raise ValueError('Model arg. must be list of Parameter objects')
         raw_model_values = [p.value for p in model]
         model_values = \
@@ -348,7 +344,7 @@ class LegacyGridSearch(ParameterGenerator):
         super().__init__(par_space=par_space,
                          parspace_settings=parspace_settings,
                          name='LegacyGridSearch')
-        logger = logging.getLogger(f'{__name__}.{__class__.__name__}')
+        self.logger = logging.getLogger(f'{__name__}.{__class__.__name__}')
         # We need a local parameter copy because we don't want to change the
         # minstep in the original par_space:
         self.new_parset = [copy.deepcopy(p) for p in self.par_space]
@@ -369,7 +365,7 @@ class LegacyGridSearch(ParameterGenerator):
                     self.minstep.append(None)
         except:
             text = 'LegacyGridSearch: non-fixed parameters need step setting'
-            logger.error(text)
+            self.logger.error(text)
             raise ValueError(text)
         try:
             self.thresh = \
@@ -377,7 +373,7 @@ class LegacyGridSearch(ParameterGenerator):
         except:
             text = 'LegacyGridSearch: need generator_settings - ' + \
                 'threshold_del_chi2 (absolute or scaled - see documentation)'
-            logger.error(text)
+            self.logger.error(text)
             raise ValueError(text)
         stop_crit = parspace_settings['stopping_criteria']
         self.min_delta_chi2_abs = stop_crit.get('min_delta_chi2_abs', False)
@@ -387,7 +383,7 @@ class LegacyGridSearch(ParameterGenerator):
            (self.min_delta_chi2_abs and self.min_delta_chi2_rel):
             text = 'LegacyGridSearch: specify exactly one of the ' + \
                    'options min_delta_chi2_abs, min_delta_chi2_rel'
-            logger.error(text)
+            self.logger.error(text)
             raise ValueError(text)
 
     def specific_generate_method(self, **kwargs):
@@ -489,7 +485,7 @@ class GridWalk(ParameterGenerator):
         super().__init__(par_space=par_space,
                          parspace_settings=parspace_settings,
                          name='GridWalk')
-        logger = logging.getLogger(f'{__name__}.{__class__.__name__}')
+        self.logger = logging.getLogger(f'{__name__}.{__class__.__name__}')
         self.step = []
         self.minstep = []
         try:
@@ -505,7 +501,7 @@ class GridWalk(ParameterGenerator):
                     self.minstep.append([])
         except:
             text = 'GridWalk: non-fixed parameters need step setting'
-            logger.error(text)
+            self.logger.error(text)
             raise ValueError(text)
 
         stop_crit = parspace_settings['stopping_criteria']
@@ -516,7 +512,7 @@ class GridWalk(ParameterGenerator):
            (self.min_delta_chi2_abs and self.min_delta_chi2_rel):
             text = 'GridWalk: specify exactly one of the ' + \
                    'options min_delta_chi2_abs, min_delta_chi2_rel'
-            logger.error(text)
+            self.logger.error(text)
             raise ValueError(text)
 
     def specific_generate_method(self, **kwargs):
@@ -584,10 +580,9 @@ class GridWalk(ParameterGenerator):
         None. Sets self.model_list to the resulting models.
 
         """
-        logger = logging.getLogger(f'{__name__}.{__class__.__name__}')
         if center == None:
             text = 'Need center'
-            logger.error(text)
+            self.logger.error(text)
             raise ValueError(text)
         if not par:
             par = self.par_space[0]
@@ -598,7 +593,7 @@ class GridWalk(ParameterGenerator):
             par_values = [par.value]
             if abs(center[paridx] - par.value) > eps:
                 text='Something is wrong: fixed parameter value not in center'
-                logger.error(text)
+                self.logger.error(text)
                 raise ValueError(text)
         else:
             lo = self.lo[paridx]
