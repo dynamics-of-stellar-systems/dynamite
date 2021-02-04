@@ -1,8 +1,6 @@
 # Example yaml configuration file for the legacy implementation
 # All relevant input is in one file with two sections: SYSTEM and SETTINGS
 
-#The input files used in this config-file are the same as in docs/tutorial_notebooks/NGC6278_input
-
 # Start of yaml document
 ---
 ###############################################################################
@@ -25,7 +23,7 @@ system_components:
                     hi: 10.0
                     step: 1.
                     minstep: 0.
-                fixed: False
+                fixed: True
                 value: 5.0
                 logarithmic: True
                 LaTeX: "$M_{BH}$"
@@ -46,7 +44,7 @@ system_components:
                     step: 1.0
                     minstep: 0.1
                 logarithmic: True
-                fixed: True
+                fixed: False
                 value: 3.0
                 LaTeX: "$log(C)$"
             f: # NFW Darkmatter fraction
@@ -56,7 +54,7 @@ system_components:
                     step: 0.5
                     minstep: 0.1
                 logarithmic: True
-                fixed: True
+                fixed: False
                 value: 1.0
                 LaTeX: "$log(M_{200}/M_{star})$"
         type: NFW
@@ -69,10 +67,10 @@ system_components:
                 par_generator_settings:
                     lo: 0.05
                     hi: 0.99
-                    step: 0.04
+                    step: 0.08
                     minstep: 0.02
                 fixed: True
-                value: 0.54
+                value: 0.5
                 LaTeX: "$q_{min}$"
             p: # intrinsic B/A
                 gpe_parspace_settings:
@@ -110,11 +108,11 @@ system_components:
 system_parameters:
     ml: # M/L
         par_generator_settings:
-            lo: 4.
-            hi: 6.
-            step: 1.0
+            lo: 1.
+            hi: 9.
+            step: 4.0
             minstep: 0.5
-        fixed: True
+        fixed: False
         value: 5.
         LaTeX: "$Y_{r}$"
 
@@ -124,11 +122,11 @@ system_parameters:
 ###############################################################################
 
 orblib_settings:
-    nE: 2
+    nE: 3
     logrmin: -0.101275
     logrmax: 1.99123
     nI2: 4        # must be >= 4
-    nI3: 3
+    nI3: 2
     dithering: 1
     #the following values should usually not be changed
     orbital_periods: 200
@@ -156,6 +154,7 @@ weight_solver_settings:
 
 parameter_space_settings:
     generator_type: "LegacyGridSearch"
+    #generator_type: "GridWalk"
     which_chi2: "chi2"
     generator_settings:
         specificsetting: 25
@@ -166,7 +165,7 @@ parameter_space_settings:
         min_delta_chi2_abs : 0.5  # absolute "optimality tolerance"
         #min_delta_chi2_rel : 0.05 # relative "optimality tolerance"
         n_max_mods : 5
-        n_max_iter : 10
+        n_max_iter : 5
 
 legacy_settings:
     use_legacy_mode: True
@@ -178,6 +177,6 @@ io_settings: # paths can be given with or without trailing slash
     all_models_file: "all_models.ecsv"
 
 multiprocessing_settings:
-    ncpus: 1 # integer or 'all_available'
+    ncpus: 'all_available' # integer or 'all_available'
 
 # end

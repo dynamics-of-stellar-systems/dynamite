@@ -2,10 +2,16 @@
 # -*- coding: utf-8 -*-
 
 import os
-import sys
 import shutil
 import numpy as np
 import time
+
+# Set matplotlib backend to 'Agg' (compatible when X11 is not running
+# e.g., on a cluster). Note that the backend can only be set BEFORE
+# matplotlib is used or even submodules are imported!
+import matplotlib
+matplotlib.use('Agg')
+
 import matplotlib.pyplot as plt
 from astropy import table
 import logging
@@ -59,12 +65,15 @@ def run_orbit_losvd_test(make_comparison_losvd=False):
     if os.path.isfile(plotfile):
         os.remove(plotfile)
 
+    # re-read configuration now that old output has been deleted
+    fname = 'user_test_config.yaml'
+    c = dyn.config_reader.Configuration(fname, silent=True)
+
     parset = c.parspace.get_parset()
     model = dyn.model.LegacySchwarzschildModel(
         system=c.system,
         settings=c.settings,
         parspace=c.parspace,
-        executor=c.executor,
         parset=parset)
     model.setup_directories()
     model.get_model_directory()

@@ -5,15 +5,17 @@
 # we assume that this script is located and run in the folder dynamite/tests
 
 import os
-#import sys
 import shutil
-
-# if os.getcwd().rpartition('/')[0] not in sys.path:
-#     sys.path.append(os.getcwd().rpartition('/')[0])
-
 import logging
 import time
 import numpy as np
+
+# Set matplotlib backend to 'Agg' (compatible when X11 is not running
+# e.g., on a cluster). Note that the backend can only be set BEFORE
+# matplotlib is used or even submodules are imported!
+import matplotlib
+matplotlib.use('Agg')
+
 import matplotlib.pyplot as plt
 from astropy import table
 import dynamite as dyn
@@ -50,6 +52,10 @@ def run_user_test(stat_mode=False):
     if os.path.isfile(plotfile_chi2):
         os.remove(plotfile_chi2)
 
+    # re-read configuration now that old output has been deleted
+    fname = 'user_test_config_ml.yaml'
+    c = dyn.config_reader.Configuration(fname, silent=True)
+
     stat_file = outdir + "chi2_compare_ml_" \
                 f"{c.settings.orblib_settings['nE']}" \
                 f"{c.settings.orblib_settings['nI2']}" \
@@ -63,7 +69,7 @@ def run_user_test(stat_mode=False):
         system=c.system,
         all_models=c.all_models,
         settings=c.settings,
-        executor=c.executor)
+        ncpus=c.settings.multiprocessing_settings['ncpus'])
     delt = time.perf_counter()-t
     logger.info(f'Computation time: {delt} seconds = {delt/60} minutes')
     # print to console regardless of logging level
@@ -158,7 +164,6 @@ def create_stats(n_chi2=10):
     t.write(output_file+f'_{n_chi2}.dat', format='ascii')
 
 if __name__ == '__main__':
-
     run_user_test()
 
 # end

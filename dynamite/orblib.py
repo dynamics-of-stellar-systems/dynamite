@@ -49,24 +49,34 @@ class LegacyOrbitLibrary(OrbitLibrary):
                  system=None,
                  mod_dir=None,
                  settings=None,
-                 legacy_directory=None,
-                 executor=None):
+                 legacy_directory=None):
         self.logger = logging.getLogger(f'{__name__}.{__class__.__name__}')
         self.system = system
         self.mod_dir = mod_dir
         self.settings = settings
         self.legacy_directory = legacy_directory
-        self.executor = executor
 
     def get_orbit_ics(self):
         cur_dir = os.getcwd()
         os.chdir(self.mod_dir)
-        cmdstr = self.executor.write_executable_for_ics()
-        self.logger.info(f'Calculating initial conditions: {cmdstr}')
-        self.executor.execute(cmdstr)
-        logfile = self.mod_dir + cmdstr[cmdstr.rindex('&>')+3:]
-        self.logger.debug(f'...done. Logfile: {logfile}')
+        cmdstr = self.write_executable_for_ics()
+        self.logger.info('Calculating initial conditions')
+        p = subprocess.call('bash '+cmdstr, shell=True)
+        self.logger.debug('...done. ' + \
+                          f'Logfile: {self.mod_dir}datfil/orbstart.log')
         os.chdir(cur_dir)
+
+    def write_executable_for_ics(self):
+        cmdstr = 'cmd_orb_start'
+        #create the fortran executable
+        txt_file = open(cmdstr, "w")
+        txt_file.write('#!/bin/bash' + '\n')
+        txt_file.write(
+        #    'grep finished datfil/orbstart.dat || ' + self.legacy_directory +'/orbitstart < infil/orbstart.in >> datfil/orbstart.log' + '\n')
+             self.legacy_directory +'/orbitstart < infil/orbstart.in 2>&1 >> datfil/orbstart.log' + '\n')
+        txt_file.close()
+        #returns the name of the executable
+        return cmdstr
 
     def read_ics(self):
         # ...
@@ -76,19 +86,52 @@ class LegacyOrbitLibrary(OrbitLibrary):
         # move to model directory
         cur_dir = os.getcwd()
         os.chdir(self.mod_dir)
-        cmdstrs = self.executor.write_executable_for_integrate_orbits()
-        cmdstr_tube, cmdstr_box = cmdstrs
-        self.logger.info('Integrating orbit library tube orbits: ' + \
-                         f'{cmdstr_tube}')
-        self.executor.execute(cmdstr_tube)
-        logfile = self.mod_dir + cmdstr_tube[cmdstr_tube.rindex('&>')+3:]
-        self.logger.debug(f'...done. Logfile: {logfile}')
-        self.logger.info(f'Integrating orbit library box orbits: {cmdstr_box}')
-        self.executor.execute(cmdstr_box)
-        logfile = self.mod_dir + cmdstr_box[cmdstr_box.rindex('&>')+3:]
-        self.logger.debug(f'...done. Logfile: {logfile}')
+        cmdstr_tube, cmdstr_box = self.write_executable_for_integrate_orbits()
+        self.logger.info('Integrating orbit library tube orbits')
+        p = subprocess.call('bash '+cmdstr_tube, shell=True)
+        self.logger.debug('...done. ' + \
+                          f'Logfiles: {self.mod_dir}datfil/orblib.log, ' + \
+                          f'{self.mod_dir}datfil/triaxmass.log, ' + \
+                          f'{self.mod_dir}datfil/triaxmassbin.log')
+        self.logger.info(f'Integrating orbit library box orbits')
+        p = subprocess.call('bash '+cmdstr_box, shell=True)
+        self.logger.debug('...done. ' + \
+                          f'Logfile: {self.mod_dir}datfil/orblibbox.log')
         # move back to original directory
         os.chdir(cur_dir)
+
+    def write_executable_for_integrate_orbits(self):
+        #tubeorbits
+        cmdstr_tube = 'cmd_tube_orbs'
+        txt_file = open(cmdstr_tube, "w")
+        txt_file.write('#!/bin/bash' + '\n')
+        #txt_file.write('grep Writing datfil/orblib.dat.tmp && rm -f datfil/orblib.dat.tmp datfil/orblib.dat' + '\n')
+        txt_file.write('touch datfil/orblib.dat.tmp datfil/orblib.dat' + '\n')
+        txt_file.write('rm -f datfil/orblib.dat.tmp datfil/orblib.dat' + '\n')
+        txt_file.write( self.legacy_directory +'/orblib < infil/orblib.in >> datfil/orblib.log' + '\n')
+        txt_file.write('touch datfil/mass_qgrid.dat datfil/mass_radmass.dat datfil/mass_aper.dat' + '\n')
+        txt_file.write('rm datfil/mass_qgrid.dat datfil/mass_radmass.dat datfil/mass_aper.dat' + '\n')
+        txt_file.write( self.legacy_directory + '/triaxmass       < infil/triaxmass.in >> datfil/triaxmass.log' + '\n')
+        txt_file.write( self.legacy_directory + '/triaxmassbin    < infil/triaxmassbin.in >> datfil/triaxmassbin.log' + '\n')
+        txt_file.write('# if the gzipped orbit library does not exist zip it' + '\n')
+        txt_file.write('test -e datfil/orblib.dat.bz2 || bzip2 -k datfil/orblib.dat' + '\n')
+        txt_file.write('rm datfil/orblib.dat' + '\n')
+        txt_file.close()
+        #boxorbits
+        cmdstr_box = 'cmd_box_orbs'
+        txt_file = open(cmdstr_box, "w")
+        txt_file.write('#!/bin/bash' + '\n')
+        #txt_file.write(
+        #    'grep Writing datfil/orblibbox.dat.tmp && rm -f datfil/orblibbox.dat.tmp datfil/orblibbox.dat' + '\n')
+        txt_file.write('touch datfil/orblibbox.dat.tmp datfil/orblibbox.dat' + '\n')
+        txt_file.write('rm -f datfil/orblibbox.dat.tmp datfil/orblibbox.dat' + '\n')
+        txt_file.write(self.legacy_directory + '/orblib < infil/orblibbox.in >> datfil/orblibbox.log' + '\n')
+        txt_file.write('# if the gzipped orbit library does not exist zip it' + '\n')
+        txt_file.write('test -e datfil/orblibbox.dat.bz2 || bzip2 -k datfil/orblibbox.dat' + '\n')
+        txt_file.write('rm datfil/orblibbox.dat' + '\n')
+        txt_file.close()
+        #returns the name of the executables
+        return cmdstr_tube, cmdstr_box
 
     def read_orbit_base(self, fileroot):
         """Read a zipped Fortran orbit library from the file
