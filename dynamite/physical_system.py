@@ -82,6 +82,12 @@ class System(object):
         component = self.cmp_list[idx[0][0]]
         return component
 
+    def get_all_kinematic_data(self):
+        all_kinematics = []
+        for component in self.cmp_list:
+            all_kinematics += component.kinematic_data
+        return all_kinematics
+
 class Component(object):
 
     def __init__(self,

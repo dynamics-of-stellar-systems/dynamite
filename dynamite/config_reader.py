@@ -221,6 +221,9 @@ class Configuration(object):
                     c.validate() # now also adds the right parameter sformat
                     self.system.add_component(c)
 
+                # once all components added, put all kinematic_data in a list
+                self.system.get_all_kinematic_data()
+
             # add system parameters
 
             elif key == 'system_parameters':
@@ -337,7 +340,8 @@ class Configuration(object):
             print(f'**** Parameter space:\n{self.parspace}')
 
         self.all_models = model.AllModels(parspace=self.parspace,
-                                          settings=self.settings)
+                                          settings=self.settings,
+                                          system=self.system)
         if not silent:
             print('**** Instantiated AllModels object:\n'
                   f'{self.all_models.table}')
