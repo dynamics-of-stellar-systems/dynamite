@@ -167,8 +167,8 @@ class ParameterGenerator(object):
             text = 'ParameterGenerator: need stopping criteria'
             self.logger.error(text)
             raise ValueError(text)
-        if stop_crit.get('n_max_mods') is None and \
-           stop_crit.get('n_max_iter') is None:
+        if not stop_crit.get('n_max_mods') and \
+           not stop_crit.get('n_max_iter'):
             text = 'ParameterGenerator: need n_max_mods and ' + \
                    'n_max_iter stopping criteria settings'
             self.logger.error(text)
@@ -466,7 +466,7 @@ class LegacyGridSearch(ParameterGenerator):
             models1 = self.current_models.table[mask]
             # Don't use abs() so we stop on increasing chi2 values, too:
             delta_chi2 = np.min(models1[self.chi2])-np.min(models0[self.chi2])
-            if self.min_delta_chi2_rel is not None:
+            if self.min_delta_chi2_rel:
                 delta_chi2 /= np.min(models1[self.chi2])
                 delta_chi2 /= self.min_delta_chi2_rel
             else:
@@ -545,12 +545,12 @@ class GridWalk(ParameterGenerator):
             n_par = self.par_space.n_par
             center = list(self.current_models.table[center_idx])[:n_par]
             raw_center = self.par_space.get_raw_value_from_param_value(center)
-            # print(f'center: {center}')
+            self.logger.debug(f'center: {center}')
             # Build model_list by walking the grid
             self.model_list = []
             self.grid_walk(center=raw_center)
             # for m in self.model_list:
-            #     print(f'{[(p.name, p.value) for p in m]}')
+            #     self.logger.debug(f'{[(p.name, p.value) for p in m]}')
         return
 
     def grid_walk(self, center=None, par=None, eps=1e-6):
@@ -580,14 +580,15 @@ class GridWalk(ParameterGenerator):
         None. Sets self.model_list to the resulting models.
 
         """
-        if center == None:
+        if center is None:
             text = 'Need center'
             self.logger.error(text)
             raise ValueError(text)
         if not par:
             par = self.par_space[0]
         paridx = self.par_space.index(par)
-        # print(f'Call with paridx={paridx}, n_par={self.par_space.n_par}')
+        self.logger.debug(f'Call with paridx={paridx}, '
+                          f'n_par={self.par_space.n_par}')
 
         if par.fixed:
             par_values = [par.value]
@@ -631,21 +632,22 @@ class GridWalk(ParameterGenerator):
             if not self.model_list: # add first entry if model_list is empty
                 self.model_list = [[parcpy]]
                 models_prev = [[]]
-                # print(f'new model list, starting w/parameter {parcpy.name}')
+                self.logger.debug('new model list, starting w/parameter '
+                                  f'{parcpy.name}')
             elif parcpy.name in [p.name for p in self.model_list[0]]:
                 # in this case, create new (partial) model by copying last
                 # models and setting the new parameter value
                 for m in models_prev:
                     new_model = m + [parcpy]
                     self.model_list.append(new_model)
-                # print(f'{parcpy.name} is in '
-                #       f'{[p.name for p in self.model_list[0]]}, '
-                #       f'added {parcpy.name}={parcpy.value}')
+                self.logger.debug(f'{parcpy.name} is in '
+                      f'{[p.name for p in self.model_list[0]]}, '
+                      f'added {parcpy.name}={parcpy.value}')
             else: # new parameter: append it to existing (partial) models
                 models_prev = copy.deepcopy(self.model_list)
                 for m in self.model_list:
                     m.append(parcpy)
-                # print(f'new parameter {parcpy.name}={parcpy.value}')
+                self.logger.debug(f'new parameter {parcpy.name}={parcpy.value}')
 
         # call recursively until all paramaters are done:
         if paridx < self.par_space.n_par - 1:
@@ -691,7 +693,7 @@ class GridWalk(ParameterGenerator):
             models1 = self.current_models.table[mask]
             # Don't use abs() so we stop on increasing chi2 values, too:
             delta_chi2 = np.min(models1[self.chi2])-np.min(models0[self.chi2])
-            if self.min_delta_chi2_rel is not None:
+            if self.min_delta_chi2_rel:
                 delta_chi2 /= np.min(models1[self.chi2])
                 delta_chi2 /= self.min_delta_chi2_rel
             else:

@@ -21,12 +21,13 @@ legacy_fortran/partgen
 legacy_fortran/triaxmass
 legacy_fortran/triaxmassbin
 legacy_fortran/triaxnnls_CRcut
+legacy_fortran/triaxnnls_noCRcut
 legacy_fortran/.DS_Store
 .spyproject
 tests/.DS_Store
 tests/__pycache__
 tests/NGC6278_output/models/*
-tests/NGC6278_output/all_models.ecsv
+tests/NGC6278_output/all_models*
 tests/NGC6278_output/plots/*
 docs/_build/
 docs/.DS_Store

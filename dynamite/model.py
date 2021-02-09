@@ -11,6 +11,7 @@ import orblib as dyn_orblib
 class AllModels(object):
 
     def __init__(self,
+                 system=None,
                  from_file=True,
                  filename='all_models.ecsv',
                  settings=None,
@@ -18,11 +19,9 @@ class AllModels(object):
 
         self.logger = logging.getLogger(f'{__name__}.{__class__.__name__}')
 
-        # self.settings = settings
-        outdir = settings.io_settings['output_directory']
-        filename = settings.io_settings['all_models_file']
-        filename = f'{outdir}{filename}'
-        self.filename = filename
+        self.system = system
+        self.settings = settings
+        self.set_filename(settings.io_settings['all_models_file'])
         self.parspace = parspace
         if from_file and os.path.isfile(filename):
             self.logger.info('Previous models have been found: '
@@ -32,6 +31,11 @@ class AllModels(object):
             self.logger.info('No previous models have been found: '
                         f'Making an empty table in {__class__.__name__}.table')
             self.make_empty_table()
+
+    def set_filename(self, filename):
+        outdir = self.settings.io_settings['output_directory']
+        filename = f'{outdir}{filename}'
+        self.filename = filename
 
     def make_empty_table(self):
         names = self.parspace.par_names.copy()
@@ -50,7 +54,7 @@ class AllModels(object):
         # self.table = table.Table(data,
         #                          names=names,
         #                          dtype=dtype)
-        # print(names, dtype)
+        # self.logger.debug(names, dtype)
         self.table = table.Table(names=names, dtype=dtype)
         return
 
@@ -135,6 +139,14 @@ class AllModels(object):
         parset = self.table[row_id][self.parspace.par_names]
         return parset
 
+    def get_model_from_row(self, row_id):
+        parset0 = self.get_parset_from_row(row_id)
+        mod0 = Model(system=self.system,
+                     settings=self.settings,
+                     parspace=self.parspace,
+                     parset=parset0)
+        return mod0
+
     def save(self):
         self.table.write(self.filename, format='ascii.ecsv', overwrite=True)
         self.logger.debug(f'Model table written to file {self.filename}')
@@ -175,6 +187,13 @@ class Model(object):
         self.settings = settings
         self.parset = parset
         self.parspace = parspace
+        # directory of the Schwarzschild fortran files
+        self.legacy_directory = self.settings.legacy_settings['directory']
+        # directory of the input kinematics
+        self.in_dir = self.settings.io_settings['input_directory']
+        self.directory = self.get_model_directory()
+        # TODO: replace following with use string.split() or /../
+        self.directory_noml=self.directory[:-7]
 
     def get_model_directory(self):
         out_dir = self.settings.io_settings['output_directory']
@@ -204,6 +223,62 @@ class Model(object):
         if not os.path.exists(path):
             os.makedirs(path)
 
+    def setup_directories(self):
+        # create self.directory if it doesn't exist
+        self.create_model_directory(self.directory)
+        # and also the model directories
+        self.create_model_directory(self.directory_noml+'infil/')
+        self.create_model_directory(self.directory_noml+'datfil/')
+
+    def get_orblib(self):
+        # make orbit libary object
+        orblib = dyn_orblib.LegacyOrbitLibrary(
+                system=self.system,
+                mod_dir=self.directory_noml,
+                settings=self.settings.orblib_settings,
+                legacy_directory=self.legacy_directory,
+                input_directory=self.settings.io_settings['input_directory'],
+                parset=self.parset)
+        orblib.get_orblib()
+        orblib.read_losvd_histograms()
+        return orblib
+
+    def get_orblib(self):
+        # make orbit libary object
+        orblib = dyn_orblib.LegacyOrbitLibrary(
+                system=self.system,
+                mod_dir=self.directory_noml,
+                settings=self.settings.orblib_settings,
+                legacy_directory=self.legacy_directory,
+                input_directory=self.settings.io_settings['input_directory'],
+                parset=self.parset)
+        orblib.get_orblib()
+        orblib.read_losvd_histograms()
+        return orblib
+
+    def get_weights(self, orblib=None):
+        # create the weight solver object
+        ws_type = self.settings.weight_solver_settings['type']
+        if ws_type=='LegacyWeightSolver':
+            weight_solver = ws.LegacyWeightSolver(
+                    system=self.system,
+                    mod_dir=self.directory_noml,
+                    settings=self.settings.weight_solver_settings,
+                    legacy_directory=self.legacy_directory,
+                    ml=self.parset['ml'])
+        elif ws_type=='NNLS':
+            weight_solver = ws.NNLS(
+                    system=self.system,
+                    settings=self.settings.weight_solver_settings,
+                    directory_with_ml=self.directory)
+        else:
+            raise ValueError('Unknown WeightSolver type')
+        weights, chi2_tot, chi2_kin = weight_solver.solve(orblib)
+        self.chi2 = chi2_tot # instrinsic/projected mass + GH coeeficients 1-Ngh
+        self.kinchi2 = chi2_kin # GH coeeficients 1-Ngh
+        self.weights = weights
+        return weight_solver
+
 
 class LegacySchwarzschildModel(Model):
 
@@ -231,235 +306,28 @@ class LegacySchwarzschildModel(Model):
                 system=self.system,
                 mod_dir=self.directory_noml,
                 settings=self.settings.orblib_settings,
-                legacy_directory=self.legacy_directory)
-        self.orblib = orblib
-        # check if orbit library was calculated already
-        check1 = os.path.isfile(self.directory_noml+'datfil/orblib.dat.bz2')
-        check2 = os.path.isfile(self.directory_noml+'datfil/orblibbox.dat.bz2')
-        if not check1 or not check2:
-            # prepare the fortran input files for orblib
-            self.create_fortran_input_orblib(self.directory_noml+'infil/')
-            stars = self.system.get_component_from_name('stars')
-            kinematics = stars.kinematic_data[0]
-            old_filename = self.directory_noml+'infil/kin_data.dat'
-            kinematics.convert_to_old_format(old_filename)
-            aperture_file = self.in_dir + kinematics.aperturefile
-            shutil.copyfile(aperture_file,
-                            self.directory_noml+'infil/aperture.dat')
-            binfile = self.in_dir + kinematics.binfile
-            shutil.copyfile(binfile,
-                            self.directory_noml+'infil/bins.dat')
-            # calculate orbit libary
-            self.orblib.get_orbit_ics()
-            self.orblib.get_orbit_library()
+                legacy_directory=self.legacy_directory,
+                input_directory=self.settings.io_settings['input_directory'],
+                parset=self.parset)
+        orblib.get_orblib()
+        orblib.read_losvd_histograms()
+        return orblib
 
-    def get_weights(self):
-        # prepare fortran input file for nnls
-        self.create_fortran_input_nnls(self.directory_noml, self.parset['ml'])
+    def get_weights(self, orblib):
         # create the weight solver object
-        self.weight_solver = ws.LegacyWeightSolver(
+        weight_solver = ws.LegacyWeightSolver(
                 system=self.system,
                 mod_dir=self.directory_noml,
                 settings=self.settings.weight_solver_settings,
                 legacy_directory=self.legacy_directory,
                 ml=self.parset['ml'])
         # TODO: extract other outputs e.g. orbital weights
-        chi2, kinchi2 = self.weight_solver.solve()
+        weights, chi2_tot, chi2_kin = weight_solver.solve(orblib)
         # store chi2 to the model
-        self.chi2 = chi2
-        self.kinchi2 = kinchi2
+        self.chi2 = chi2_tot # instrinsic/projected mass + GH coeeficients 1-Ngh
+        self.kinchi2 = chi2_kin # GH coeeficients 1-Ngh
+        self.weights = weights
+        return weight_solver
 
-    def create_fortran_input_orblib(self,path):
-
-        #-------------------
-        #write parameters.in
-        #-------------------
-
-        stars = self.system.get_component_from_name('stars')
-
-        #used to derive the viewing angles
-        q=self.parset['q_stars']
-        p=self.parset['p_stars']
-        u=self.parset['u_stars']
-
-        #the minimal flattening from stellar mge
-        qobs=np.amin(stars.mge.data['q'])
-
-        #TODO: add softening length somewhere
-        # r_BH='1d-03'
-        # Done! This is now paramater "a" of the Plummer
-
-        #TODO: which dark matter profile
-        dm_specs='1 2'
-
-        theta,psi,phi = stars.triax_pqu2tpp(p,q,qobs,u)
-
-        #header
-        len_mge=len(stars.mge.data)
-        #footer (#double check the order of theta, phi, psi) and dm properties
-        text=str(self.system.distMPc)+'\n'+ \
-             '{:06.9f}'.format(theta)+' '+ '{:06.9f}'.format(phi)+' '+ '{:06.9f}'.format(psi) + '\n' + \
-             str(self.parset['ml'])+'\n' + \
-             str(self.parset['mass_black_hole'])+'\n' + \
-             str(self.parset['a_black_hole'])+'\n' + \
-             str(self.settings.orblib_settings['nE']) +' ' +str(self.settings.orblib_settings['logrmin']) +' ' +str(self.settings.orblib_settings['logrmax'])+ '\n' + \
-             str(self.settings.orblib_settings['nI2']) +'\n' + \
-             str(self.settings.orblib_settings['nI3']) +'\n' + \
-             str(self.settings.orblib_settings['dithering']) +'\n' + \
-             dm_specs +'\n' + \
-             str(self.parset['dc_dark_halo']) +' ' + str(self.parset['f_dark_halo'])
-
-        #parameters.in
-        np.savetxt(path+'parameters.in',stars.mge.data,header=str(len_mge),footer=text,comments='',fmt=['%10.2f','%10.5f','%10.5f','%10.2f'])
-
-        #parmsb.in (assumed to be the same as paramters.in)
-        np.savetxt(path+'paramsb.in',stars.mge.data,header=str(len_mge),footer=text,comments='',fmt=['%10.2f','%10.5f','%10.5f','%10.2f'])
-
-        #-------------------
-        #write orbstart.in
-        #-------------------
-
-        text = f"{self.settings.orblib_settings['random_seed']}\n"
-        text += 'infil/parameters.in' +'\n' + \
-        'datfil/orbstart.dat' +'\n' + \
-        'datfil/begin.dat' +'\n' + \
-        'datfil/beginbox.dat'
-
-        orbstart_file= open(path+'orbstart.in',"w")
-        orbstart_file.write(text)
-        orbstart_file.close()
-
-        #-------------------
-        #write orblib.in
-        #-------------------
-
-        i=0
-        psf_weight=(stars.kinematic_data[0].PSF['weight'])[i]
-        psf_sigma=(stars.kinematic_data[0].PSF['sigma'])[i]
-        n_psf=[[1]]   #len(stars.kinematic_data) #needs to be revised
-
-        #TODO:needs to be slightly changed for more psfs, loop
-
-        text0 = f"{self.settings.orblib_settings['random_seed']}\n"
-
-        text1='#counterrotation_setupfile_version_1' +'\n' + \
-            'infil/parameters.in' +'\n' + \
-            'datfil/begin.dat' +'\n' + \
-            str(self.settings.orblib_settings['orbital_periods']) + '                            [orbital periods to intergrate orbits]' +'\n' + \
-            str(self.settings.orblib_settings['sampling']) + '                          [points to sample for each orbit in the merid. plane]' +'\n' + \
-            str(self.settings.orblib_settings['starting_orbit']) + '                              [starting orbit]' +'\n' + \
-            str(self.settings.orblib_settings['number_orbits']) + '                             [orbits  to intergrate; -1 --> all orbits]' +'\n' + \
-            str(self.settings.orblib_settings['accuracy']) + '                         [accuracy]' +'\n' + \
-            str(len(stars.kinematic_data)) + '                              [number of psfs of the kinematic cubes]' +'\n'
-
-        psf= str(len(stars.kinematic_data[0].PSF['sigma'])) + '                              [# of gaussians components]'  +'\n' + \
-             str(psf_weight) + '   ' + str(psf_sigma) + '                    [weight, sigma]' +  '\n'
-
-
-        text2=str(len(stars.kinematic_data)) + '                              [apertures]' +'\n'  + \
-              '"infil/' + stars.kinematic_data[0].aperturefile +'"' +'\n'  + \
-              '1                              [use psf 1] ' +'\n'  + \
-              self.settings.orblib_settings['hist_vel'] + '  ' + self.settings.orblib_settings['hist_sigma'] + '  ' + self.settings.orblib_settings['hist_bins'] +'   [histogram]' +'\n'  + \
-              '1                              [use binning for aperture 1] ' +'\n'  + \
-              '"infil/' + stars.kinematic_data[0].binfile +'"' +'\n'  + \
-              'datfil/orblib.dat '
-
-        orblib_file= open(path+'orblib.in',"w")
-        orblib_file.write(text0)
-        orblib_file.write(text1)
-        orblib_file.write(psf)
-        orblib_file.write(text2)
-        orblib_file.close()
-
-        #-------------------
-        #write orblibbox.in
-        #-------------------
-
-        #TODO:why not paramsb.in?
-        text0 = f"{self.settings.orblib_settings['random_seed']}\n"
-
-        text1='#counterrotation_setupfile_version_1' +'\n' + \
-            'infil/parameters.in' +'\n' + \
-            'datfil/beginbox.dat' +'\n' + \
-            str(self.settings.orblib_settings['orbital_periods']) + '                            [orbital periods to intergrate orbits]' +'\n' + \
-            str(self.settings.orblib_settings['sampling']) + '                          [points to sample for each orbit in the merid. plane]' +'\n' + \
-            str(self.settings.orblib_settings['starting_orbit']) + '                              [starting orbit]' +'\n' + \
-            str(self.settings.orblib_settings['number_orbits']) + '                             [orbits  to intergrate; -1 --> all orbits]' +'\n' + \
-            str(self.settings.orblib_settings['accuracy']) + '                         [accuracy]' +'\n' + \
-            str(len(stars.kinematic_data)) + '                              [number of psfs of the kinematic cubes]' +'\n'
-
-        text2=str(len(stars.kinematic_data)) + '                              [apertures]' +'\n'  + \
-              '"infil/' + stars.kinematic_data[0].aperturefile +'"' +'\n'  + \
-              '1                              [use psf 1] ' +'\n'  + \
-              self.settings.orblib_settings['hist_vel'] + '  ' + self.settings.orblib_settings['hist_sigma'] + '  ' + self.settings.orblib_settings['hist_bins'] +'   [histogram]' +'\n'  + \
-              '1                              [use binning for aperture 1] ' +'\n'  + \
-              '"infil/' + stars.kinematic_data[0].binfile +'"' +'\n'  + \
-              'datfil/orblibbox.dat '
-
-        orblibbox_file= open(path+'orblibbox.in',"w")
-        orblibbox_file.write(text0)
-        orblibbox_file.write(text1)
-        orblibbox_file.write(psf) #this is the same as for orblib.in
-        orblibbox_file.write(text2)
-        orblibbox_file.close()
-
-        #-------------------
-        #write triaxmass.in
-        #-------------------
-
-        text='infil/paramsb.in' +'\n' + \
-        'datfil/orblib.dat' +'\n' + \
-        'datfil/mass_radmass.dat' +'\n' + \
-        'datfil/mass_qgrid.dat'
-
-        triaxmass_file= open(path+'triaxmass.in',"w")
-        triaxmass_file.write(text)
-        triaxmass_file.close()
-
-        #-------------------
-        #write triaxmassbin.in
-        #-------------------
-
-        text='infil/paramsb.in' +'\n' + \
-              str(int(np.max(n_psf))) + '                              [# of apertures]'  +'\n'  + \
-              '"infil/' + stars.kinematic_data[0].aperturefile +'"' + '\n' + \
-              str(len(stars.kinematic_data[0].PSF['sigma'])) + '                              [# of gaussians components]'  +'\n' + \
-              str(psf_weight) + '   ' + str(psf_sigma) + '                     [weight sigma]' +  '\n'  + \
-              '"infil/' + stars.kinematic_data[0].binfile +'"' +'\n'  + \
-              '"datfil/mass_aper.dat"'
-
-        triaxmassbin_file= open(path+'triaxmassbin.in',"w")
-        triaxmassbin_file.write(text)
-        triaxmassbin_file.close()
-
-    def create_fortran_input_nnls(self,path,ml):
-
-        #for the ml the model is only scaled. We therefore need to know what is the ml that was used for the orbit library
-        infile=path+'infil/parameters.in'
-        lines = [line.rstrip('\n').split() for line in open(infile)]
-        ml_orblib=float((lines[-9])[0])
-
-        #-------------------
-        #write nn.in
-        #-------------------
-
-        text='infil/parameters.in' +'\n' + \
-        str(self.settings.weight_solver_settings['regularisation'])   + '                                  [ regularization strength, 0 = no regularization ]' +'\n'  + \
-        'ml'+ '{:01.2f}'.format(self.parset['ml']) + '/nn' +'\n' + \
-        'datfil/mass_qgrid.dat' +'\n' + \
-        'datfil/mass_aper.dat' +'\n' + \
-        str(self.settings.weight_solver_settings['number_GH']) + '	                           [ # of GH moments to constrain the model]' +'\n' + \
-        'infil/kin_data.dat' +'\n' + \
-        str(self.settings.weight_solver_settings['GH_sys_err']) + '    [ systemic error of v, sigma, h3, h4... ]' + '\n' + \
-        str(self.settings.weight_solver_settings['lum_intr_rel_err']) + '                               [ relative error for intrinsic luminosity ]' +'\n' + \
-        str(self.settings.weight_solver_settings['sb_proj_rel_err']) + '                               [ relative error for projected SB ]' + '\n' + \
-        str(np.sqrt(self.parset['ml']/ml_orblib))  + '                                [ scale factor related to M/L, sqrt( (M/L)_k / (M/L)_ref ) ]' + '\n' + \
-        f'datfil/orblib_{ml}.dat' +'\n' + \
-        f'datfil/orblibbox_{ml}.dat' +'\n' + \
-        str(self.settings.weight_solver_settings['nnls_solver']) + '                                  [ nnls solver ]'
-
-        nn_file= open(path+'ml'+'{:01.2f}'.format(self.parset['ml'])+'/nn.in',"w")
-        nn_file.write(text)
-        nn_file.close()
 
 # end

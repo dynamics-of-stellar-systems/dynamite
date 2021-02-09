@@ -50,12 +50,10 @@ class ModelIterator(object):
             if status['stop'] is True:
                 self.logger.info(f'Stopping after iteration {total_iter_count}')
                 self.logger.debug(status)
-                print(f'Saving all_models table')
                 break
             self.logger.info(f'{par_generator_type}: "iteration '
                         f'{total_iter_count}"')
             status = model_inner_iterator.run_iteration(iter)
-        self.all_models.save()
 
 
 class ModelInnerIterator(object):
@@ -84,6 +82,7 @@ class ModelInnerIterator(object):
 
     def run_iteration(self, iter):
         self.par_generator.generate(current_models=self.all_models)
+        self.all_models.save() # save all_models table once parameters are added
         # generate parameter sets for this iteration
         if self.par_generator.status['stop'] is False:
             # find models not yet done
@@ -97,32 +96,8 @@ class ModelInnerIterator(object):
                 output = p.map(self.create_and_run_model, input_list)
             # save the output
             self.write_output_to_all_models_table(rows_to_do, output)
+            self.all_models.save() # save all_models table once models are run
         return self.par_generator.status
-
-    def create_model(self,
-                     parset):
-        model_kwargs = {'system':self.system,
-                        'settings':self.settings,
-                        'parspace':self.parspace,
-                        'parset':parset}
-        # create a model object based on choices in settings
-        if self.settings.legacy_settings['use_legacy_mode']:
-            mod = getattr(model, 'LegacySchwarzschildModel')(**model_kwargs)
-        else:
-            # TODO: create other model classes based on a choice of:
-            # (i) orbit library generator
-            # (i) weight solver
-            # (iii) colour solver
-            # mod = getattr(model, '...')(**model_kwargs)
-            text = ("""
-                    Only Legacy Mode currently implemented. Set
-                        legacy_settings:
-                            use_legacy_mode: True
-                    in the config file
-                    """)
-            self.logger.error(text)
-            raise ValueError(text)
-        return mod
 
     def create_and_run_model(self, input):
         i, row = input
@@ -131,15 +106,18 @@ class ModelInnerIterator(object):
         parset0 = self.all_models.table[row]
         parset0 = parset0[self.parspace.par_names]
         # create and run the model
-        mod0 = self.create_model(parset0)
+        mod0 = model.Model(system=self.system,
+                           settings=self.settings,
+                           parspace=self.parspace,
+                           parset=parset0)
         if self.do_dummy_run:
             mod0.chi2 = self.dummy_chi2_function(parset0)
             mod0.kinchi2 = 0.
         else:
             mod0.setup_directories()
-            mod0.get_orblib()
+            orblib = mod0.get_orblib()
             orb_done = True
-            mod0.get_weights()
+            weight_solver = mod0.get_weights(orblib)
             wts_done = True
         all_done = True
         time = np.datetime64('now', 'ms')

@@ -1,15 +1,6 @@
-
-# some tricks to add the current path to sys.path (so the imports below work)
-
 import os.path
 import sys
 import math
-
-# this_dir = os.path.dirname(__file__)
-# if not this_dir in sys.path:
-#     sys.path.append(this_dir)
-
-# import required modules/packages
 
 import yaml
 import logging
@@ -252,6 +243,9 @@ class Configuration(object):
                     c.validate() # now also adds the right parameter sformat
                     self.system.add_component(c)
 
+                # once all components added, put all kinematic_data in a list
+                self.system.get_all_kinematic_data()
+
             # add system parameters
 
             elif key == 'system_parameters':
@@ -306,10 +300,6 @@ class Configuration(object):
 
             elif key == 'io_settings':
                 pass # io_settings (paths) have been assigned already...
-                # if not silent:
-                #     print('io_settings...')
-                #     print(f' {tuple(value.keys())}')
-                # self.settings.add('io_settings', value)
 
             # add weight_solver_settings to Settings object
 
@@ -337,7 +327,7 @@ class Configuration(object):
                         ncpus = multiprocessing.cpu_count()
                     value['ncpus'] = ncpus
                 if not silent:
-                    print(f"... using {value['ncpus']} CPUs.")
+                    logger.info(f"... using {value['ncpus']} CPUs.")
                 self.settings.add('multiprocessing_settings', value)
 
             else:
@@ -362,7 +352,8 @@ class Configuration(object):
         logger.debug(f'Parameter space: {self.parspace}')
 
         self.all_models = model.AllModels(parspace=self.parspace,
-                                          settings=self.settings)
+                                          settings=self.settings,
+                                          system=self.system)
         logger.info('Instantiated AllModels object')
         logger.debug(f'AllModels:\n{self.all_models.table}')
 

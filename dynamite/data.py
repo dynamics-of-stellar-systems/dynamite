@@ -52,8 +52,6 @@ class Integrated(Data):
             self.logger.warning('Warning: this dataset already has an ' + \
                                 'associated PSF! Possibly overwriting an ' + \
                                 'existing PSF in the datafile')
-            # print('Warning: this dataset already has an associated PSF')
-            # print('Possibly overwriting an existing PSF in the datafile')
         psf = {'sigma':sigma, 'weight':weight}
         meta = {'PSF':psf}
         old_table = ascii.read(datafile)

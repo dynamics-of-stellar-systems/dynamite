@@ -21,6 +21,11 @@
 ! 2021/01/18 Prashin Jethwa
 ! create output file `*_orbmat.out` with A,b,x from NNLS problem Ax=b
 
+! 2021/01/20 Prashin Jethwa
+! this duplicates triaxnnls_CRcut but `CRcut` (lines 304-414) is commented out
+! other versions without CRcut (e.g. triaxnnls_scratch_nosave) formatted output
+! differently and hence were incompatible with DYNAMITE
+
 module NNLSfit
 
 use numeric_kinds
@@ -295,18 +300,17 @@ contains
                 ! We cut it in the way by setting hh(1) = an unreasonably high value
             		! hh(1) = 3.0/dvhist(i) (orbmat(massconstr+nconstr+l+1,orboffset) = 3.0/dvhist(i)) for these apertures !
 
-                !naperture_cut  ! recored the total number of aperture that orbit 'orboffset' is bad for.
-            		!aperture_cut   ! default= 0, the orbit is fine; =1 the orbit is bad for this aperture.
-                !label the orbits being cutted in this way as lcut = naperture_cut
-                if (naperture_cut > 1) then
-                   lcut(orboffset) = 2.0
-                   do l=1,nconstr ! loop over aperture
-                      if (aperture_cut(l) > 0) then
-                         orbmat(massconstr+nconstr+l+1,orboffset) = 3.0/dvhist(i)
-                      endif
-                   end do
-                end if
-
+                ! !naperture_cut  ! recored the total number of aperture that orbit 'orboffset' is bad for.
+            		! !aperture_cut   ! default= 0, the orbit is fine; =1 the orbit is bad for this aperture.
+                ! !label the orbits being cutted in this way as lcut = naperture_cut
+                ! if (naperture_cut > 1) then
+                !    lcut(orboffset) = 2.0
+                !    do l=1,nconstr ! loop over aperture
+                !       if (aperture_cut(l) > 0) then
+                !          orbmat(massconstr+nconstr+l+1,orboffset) = 3.0/dvhist(i)
+                !       endif
+                !    end do
+                ! end if
 
           end do
        end do

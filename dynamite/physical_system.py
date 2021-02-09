@@ -91,6 +91,12 @@ class System(object):
         component = self.cmp_list[idx[0][0]]
         return component
 
+    def get_all_kinematic_data(self):
+        all_kinematics = []
+        for component in self.cmp_list:
+            all_kinematics += component.kinematic_data
+        return all_kinematics
+
 class Component(object):
 
     def __init__(self,
@@ -208,6 +214,7 @@ class TriaxialVisibleComponent(VisibleComponent):
 
     def __init__(self, **kwds):
         super().__init__(symmetry='triax', **kwds)
+        self.logger = logging.getLogger(f'{__name__}.{__class__.__name__}')
 
     def validate(self):
         par_format = {'q':'6.3g', 'p':'6.4g', 'u':'7.5g'}
@@ -246,10 +253,7 @@ class TriaxialVisibleComponent(VisibleComponent):
         else:
             psi=np.nan
 
-        # print("******************************")
-        # print('theta, phi, psi')
-        # print(theta, phi, psi)
-        # print("******************************")
+        self.logger.debug('theta={theta}, phi={phi}, psi={psi}')
 
         return theta,psi,phi
 

@@ -6,3 +6,4 @@ matplotlib
 plotbin
 logging
 pathos
+cvxopt
