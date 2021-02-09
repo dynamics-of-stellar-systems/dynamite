@@ -2,6 +2,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from plotbin import sauron_colormap as pb_sauron_colormap
 from plotbin import display_pixels
+import logging
 
 # TODO: use Capellari's latest version of plotbin rather than (the locally
 # packaged up version which we've called plotbin4dyn). This will require
@@ -17,6 +18,7 @@ class Plotter(object):
                  settings=None,
                  parspace=None,
                  all_models=None):
+        self.logger = logging.getLogger(f'{__name__}.{__class__.__name__}')
         self.system = system
         self.settings = settings
         self.parspace = parspace
@@ -109,7 +111,21 @@ class Plotter(object):
         """
         kinem_fname = model.get_model_directory() + 'nn_kinem.out'
         body_kinem = np.genfromtxt(kinem_fname, skip_header=1)
-        id, fluxm, flux, velm, vel, dvel, sigm, sig, dsig, h3m, h3, dh3, h4m, h4, dh4 = body_kinem.T
+
+        if self.settings.weight_solver_settings['number_GH'] == 2:
+            id, fluxm, flux, velm, vel, dvel, sigm, sig, dsig = body_kinem.T
+            
+            #to not need to change the plotting routine below, higher moments are set to 0 
+            h3m, h3, dh3, h4m, h4, dh4 = vel*0, vel*0, vel*0+0.4, vel*0, vel*0, vel*0+0.4
+        
+        if self.settings.weight_solver_settings['number_GH'] == 4:
+            id, fluxm, flux, velm, vel, dvel, sigm, sig, dsig, h3m, h3, dh3, h4m, h4, dh4 = body_kinem.T
+
+        if self.settings.weight_solver_settings['number_GH'] == 6:
+            id, fluxm, flux, velm, vel, dvel, sigm, sig, dsig, h3m, h3, dh3, h4m, h4, dh4, h5m, h5, dh5, h6m, h6, dh6 = body_kinem.T
+
+            #still ToDO: Add the kinematic map plots for h5 and h6
+
 
         vmax = max(np.hstack((velm, vel)))
         smax = max(np.hstack((sigm, sig)))
@@ -139,7 +155,7 @@ class Plotter(object):
         ny = np.int(lines[4][1])
         dx = sx / nx
 
-        # print("Pixel grid dimension is dx,nx,ny,", dx, nx, ny)
+        self.logger.debug(f"Pixel grid dimension is dx={dx},nx={nx},ny={ny}")
         grid = np.zeros((nx, ny), dtype=int)
 
         xr = np.arange(nx, dtype=float) * dx + minx + 0.5 * dx
@@ -151,7 +167,7 @@ class Plotter(object):
         yt = yi.T.flatten()
 
         radeg = 57.2958
-        #print('PA: ', angle_deg)
+        self.logger.debug(f'PA: {angle_deg}')
         xi = xt
         yi = yt
 

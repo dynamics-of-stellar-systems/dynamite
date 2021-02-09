@@ -2,12 +2,19 @@
 # -*- coding: utf-8 -*-
 
 import os
-import sys
 import shutil
 import numpy as np
 import time
+
+# Set matplotlib backend to 'Agg' (compatible when X11 is not running
+# e.g., on a cluster). Note that the backend can only be set BEFORE
+# matplotlib is used or even submodules are imported!
+import matplotlib
+matplotlib.use('Agg')
+
 import matplotlib.pyplot as plt
 from astropy import table
+import logging
 import dynamite as dyn
 
 def plot_losvds(losvd_histogram,
@@ -36,12 +43,12 @@ def plot_losvds(losvd_histogram,
 
 def run_orbit_losvd_test(make_comparison_losvd=False):
 
-    print('Using DYNAMITE version:', dyn.__version__)
-    print('Located at:', dyn.__path__)
+    logging.info(f'Using DYNAMITE version: {dyn.__version__}')
+    logging.info(f'Located at: {dyn.__path__}')
 
     # read configuration
     fname = 'user_test_config.yaml'
-    c = dyn.config_reader.Configuration(fname, silent=True)
+    c = dyn.config_reader.Configuration(fname,silent=True,reset_logging=False)
 
     io_settings = c.settings.io_settings
     outdir = io_settings['output_directory']
@@ -99,11 +106,19 @@ def run_orbit_losvd_test(make_comparison_losvd=False):
         fig = plt.gcf()
         fig.savefig(plotfile)
 
+    logging.info(f'Look at {plotfile}')
+    # we want to print to the console regardless of the logging level
     print(f'Look at {plotfile}')
 
     return 0
 
 if __name__ == '__main__':
+
+    # For an ultra-minimal logging configuration, not even the
+    # logging.basicConfig call is necessary, but here we want to log on the
+    # INFO level.
+
+    logging.basicConfig(level=logging.INFO)
     run_orbit_losvd_test()
 
 # end

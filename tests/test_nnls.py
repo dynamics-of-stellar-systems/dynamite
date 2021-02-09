@@ -5,26 +5,34 @@
 # we assume that this script is located and run in the folder dynamite/tests
 
 import os
-#import sys
 import shutil
-
-# if os.getcwd().rpartition('/')[0] not in sys.path:
-#     sys.path.append(os.getcwd().rpartition('/')[0])
-
+import logging
 import time
 import numpy as np
+
+# Set matplotlib backend to 'Agg' (compatible when X11 is not running
+# e.g., on a cluster). Note that the backend can only be set BEFORE
+# matplotlib is used or even submodules are imported!
+import matplotlib
+matplotlib.use('Agg')
+
 import matplotlib.pyplot as plt
 from astropy import table
 import dynamite as dyn
 
 def run_user_test(stat_mode=False):
 
+    logger = logging.getLogger()
+    logger.info(f'Using DYNAMITE version: {dyn.__version__}')
+    logger.info(f'Located at: {dyn.__path__}')
+    # print to console anyway...
     print('Using DYNAMITE version:', dyn.__version__)
     print('Located at:', dyn.__path__)
 
     # read configuration
+    os.chdir(os.path.dirname(__file__))
     fname = 'user_test_config_ml.yaml'
-    c = dyn.config_reader.Configuration(fname, silent=True)
+    c = dyn.config_reader.Configuration(fname, silent=True, reset_logging=True)
 
     io_settings = c.settings.io_settings
     outdir = io_settings['output_directory']
@@ -63,6 +71,8 @@ def run_user_test(stat_mode=False):
         settings=c.settings,
         ncpus=c.settings.multiprocessing_settings['ncpus'])
     delt = time.perf_counter()-t
+    logger.info(f'Computation time: {delt} seconds = {delt/60} minutes')
+    # print to console regardless of logging level
     print(f'Computation time: {delt} seconds = {delt/60} minutes')
 
     # print all model results
@@ -90,7 +100,8 @@ def run_user_test(stat_mode=False):
         chi2_compare = table.Table.read(stat_file, format='ascii')
         radius = (np.max(chi2_compare['chi2_average']) - \
                  np.min(chi2_compare['chi2_average'])) / 10
-        print(f'Radius={radius}')
+        logger.debug(f'Radius={radius}')
+        # print(f'Radius={radius}')
         plt.figure()
         plt.scatter(chi2_compare['model_id'],
                     chi2_compare['chi2_average'],
@@ -110,9 +121,15 @@ def run_user_test(stat_mode=False):
         plt.ylabel('chi2')
         plt.savefig(plotfile_chi2)
 
+        logger.info(f'Look at {plotfile_ml} and {plotfile_chi2}')
+        chi2stat = ''
+        for s in chi2_compare.pformat(max_lines=-1, max_width=-1):
+            chi2stat += '\n'+s
+        logger.info(f'chi2 statistics for comparison: {chi2stat}')
+        # print to console anyway...
         print(f'Look at {plotfile_ml} and {plotfile_chi2}')
         print('chi2 statistics for comparison:\n')
-        print(chi2_compare.pprint(max_lines=-1, max_width=-1))
+        chi2_compare.pprint(max_lines=-1, max_width=-1)
 
     return c.all_models.table, \
         stat_file, \
@@ -145,7 +162,6 @@ def create_stats(n_chi2=10):
     np.savetxt(output_file+f'_raw_{n_chi2}.dat', chi2_all)
 
     t.write(output_file+f'_{n_chi2}.dat', format='ascii')
-
 
 if __name__ == '__main__':
     run_user_test()

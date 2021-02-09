@@ -24,13 +24,13 @@ setuptools.setup(
     packages=setuptools.find_packages(),
     classifiers=[
         "Programming Language :: Python :: 3",
-        "Programming Language :: Python :: 3.6",
+        "Programming Language :: Python :: 3.7",
     ],
     project_urls={
         "Source": "https://github.com/dynamics-of-stellar-systems/dynamite/",
         "Documentation": "https://www.univie.ac.at/dynamics/dynamite_docs/index.html",
     },
-    python_requires=">=3.6",
+    python_requires=">=3.7",
     # use the already parsed requirements from requirements.txt
     install_requires=required,
     # extra requirements for testing
@@ -49,6 +49,7 @@ setuptools.setup(
             "../legacy_fortran/triaxmass",
             "../legacy_fortran/triaxmassbin",
             "../legacy_fortran/triaxnnls_CRcut",
+            "../legacy_fortran/triaxnnls_noCRcut",
         ]
     },
 )

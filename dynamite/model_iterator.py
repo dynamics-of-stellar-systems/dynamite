@@ -1,6 +1,7 @@
 import model
 import parameter_space
 import numpy as np
+import logging
 import pathos
 from pathos.multiprocessing import Pool
 
@@ -14,6 +15,8 @@ class ModelIterator(object):
                  do_dummy_run=None,
                  dummy_chi2_function=None,
                  ncpus=1):
+        self.logger = logging.getLogger(f'{__name__}.{__class__.__name__}')
+
         stopping_crit = settings.parameter_space_settings['stopping_criteria']
         n_max_iter = stopping_crit['n_max_iter']
         self.n_max_mods = stopping_crit['n_max_mods']
@@ -45,13 +48,12 @@ class ModelIterator(object):
                 status['n_max_mods_reached'] = True
                 status['stop'] = True
             if status['stop'] is True:
-                print(f'Stopping after iteration {total_iter_count}')
-                print(status)
-                print(f'Saving all_models table')
+                self.logger.info(f'Stopping after iteration {total_iter_count}')
+                self.logger.debug(status)
                 break
-            print(f'{par_generator_type}: "iteration {total_iter_count}"')
+            self.logger.info(f'{par_generator_type}: "iteration '
+                        f'{total_iter_count}"')
             status = model_inner_iterator.run_iteration(iter)
-        self.all_models.save()
 
 
 class ModelInnerIterator(object):
@@ -65,6 +67,7 @@ class ModelInnerIterator(object):
                  do_dummy_run=False,
                  dummy_chi2_function=None,
                  ncpus=1):
+        self.logger = logging.getLogger(f'{__name__}.{__class__.__name__}')
         self.system = system
         self.all_models = all_models
         self.settings = settings
@@ -79,6 +82,7 @@ class ModelInnerIterator(object):
 
     def run_iteration(self, iter):
         self.par_generator.generate(current_models=self.all_models)
+        self.all_models.save() # save all_models table once parameters are added
         # generate parameter sets for this iteration
         if self.par_generator.status['stop'] is False:
             # find models not yet done
@@ -92,47 +96,28 @@ class ModelInnerIterator(object):
                 output = p.map(self.create_and_run_model, input_list)
             # save the output
             self.write_output_to_all_models_table(rows_to_do, output)
+            self.all_models.save() # save all_models table once models are run
         return self.par_generator.status
-
-    def create_model(self,
-                     parset):
-        model_kwargs = {'system':self.system,
-                        'settings':self.settings,
-                        'parspace':self.parspace,
-                        'parset':parset}
-        # create a model object based on choices in settings
-        if self.settings.legacy_settings['use_legacy_mode']:
-            mod = getattr(model, 'LegacySchwarzschildModel')(**model_kwargs)
-        else:
-            # TODO: create other model classes based on a choice of:
-            # (i) orbit library generator
-            # (i) weight solver
-            # (iii) colour solver
-            # mod = getattr(model, '...')(**model_kwargs)
-            raise ValueError("""
-                             Only Legacy Mode currently implemented. Set
-                                 legacy_settings:
-                                     use_legacy_mode: True
-                             in the config file
-                             """)
-        return mod
 
     def create_and_run_model(self, input):
         i, row = input
-        print(f'... running model {i+1} out of {self.n_to_do}')
+        self.logger.info(f'... running model {i+1} out of {self.n_to_do}')
         # extract the parameter values
         parset0 = self.all_models.table[row]
         parset0 = parset0[self.parspace.par_names]
         # create and run the model
-        mod0 = self.create_model(parset0)
+        mod0 = model.Model(system=self.system,
+                           settings=self.settings,
+                           parspace=self.parspace,
+                           parset=parset0)
         if self.do_dummy_run:
             mod0.chi2 = self.dummy_chi2_function(parset0)
             mod0.kinchi2 = 0.
         else:
             mod0.setup_directories()
-            mod0.get_orblib()
+            orblib = mod0.get_orblib()
             orb_done = True
-            mod0.get_weights()
+            weight_solver = mod0.get_weights(orblib)
             wts_done = True
         all_done = True
         time = np.datetime64('now', 'ms')
@@ -148,8 +133,4 @@ class ModelInnerIterator(object):
             self.all_models.table['kinchi2'][row] = kinchi2
             self.all_models.table['all_done'][row] = all_done
             self.all_models.table['time_modified'][row] = time
-
-
-
-
 # end

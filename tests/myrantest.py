@@ -1,4 +1,5 @@
 import subprocess
+import dynamite
 import myrand
 
 seed = -4242

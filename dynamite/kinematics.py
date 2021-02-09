@@ -3,6 +3,7 @@ import data
 import numpy as np
 from scipy import special, stats
 from astropy import table
+import logging
 
 # TODO: move some of the kwargs from the init of 'Kinematics' to the init of
 # higher level data classes, e.g. all Integrated objects will need aperturefile,
@@ -24,6 +25,7 @@ class Kinematics(data.Data):
         self.type = type
         self.__class__.values = list(self.__dict__.keys())
         super().__init__(**kwargs)
+        self.logger = logging.getLogger(f'{__name__}.{__class__.__name__}')
 
     def update(self, **kwargs):
         """
@@ -46,12 +48,19 @@ class Kinematics(data.Data):
 
         for k, v in kwargs.items():
             if k not in self.__class__.values:
-                raise ValueError('Invalid kinematics key ' + k + '. Allowed keys: ' + str(tuple(self.__class__.values)))
+                text = 'Invalid kinematics key ' + k + '. Allowed keys: ' + \
+                    str(tuple(self.__class__.values))
+                self.logger.error(text)
+                raise ValueError(text)
             setattr(self, k, v)
 
     def validate(self): # here we can put more validation...
         if sorted(self.__class__.values) != sorted(self.__dict__.keys()):
-            raise ValueError('Kinematics attributes can only be ' + str(tuple(self.__class__.values)) + ', not ' + str(tuple(self.__dict__.keys())))
+            text = 'Kinematics attributes can only be ' + \
+                str(tuple(self.__class__.values)) + ', not ' + \
+                str(tuple(self.__dict__.keys()))
+            self.logger.error(text)
+            raise ValueError(text)
 
     def __repr__(self):
         return f'{self.__class__.__name__}({self.__dict__})'
@@ -63,6 +72,18 @@ class GaussHermite(Kinematics, data.Integrated):
         # super goes left to right, i.e. first calls "Kinematics" __init__, then
         # calls data.Integrated's __init__
         super().__init__(**kwargs)
+        self.logger = logging.getLogger(f'{__name__}.{__class__.__name__}')
+        self.max_gh_order = self.get_highest_order_gh_coefficient()
+        self.n_apertures = len(self.data)
+
+    def get_highest_order_gh_coefficient(self, max_gh_check=20):
+        colnames = self.data.colnames
+        gh_order_in_table = [i for i in range(max_gh_check) if f'h{i}' in colnames and f'dh{i}' in colnames]
+        try:
+            max_gh_order = np.max(gh_order_in_table)
+        except ValueError:
+            max_gh_order = None
+        return max_gh_order
 
     def read_file_old_format(self, filename):
         f = open(filename)
@@ -84,6 +105,7 @@ class GaussHermite(Kinematics, data.Integrated):
                              skip_header=1,
                              names=names,
                              dtype=dtype)
+        self.logger.debug(f'File {filename} read (old format)')
         return data
 
     def convert_file_from_old_format(self,
@@ -93,6 +115,7 @@ class GaussHermite(Kinematics, data.Integrated):
         data = table.Table(data)
         data.remove_column('n_gh')
         data.write(filename_new_format, format='ascii.ecsv')
+        self.logger.debug(f'File {filename_new_format} written (new format)')
         return
 
     def convert_to_old_format(self, filename_old_format):
@@ -124,6 +147,7 @@ class GaussHermite(Kinematics, data.Integrated):
                    fmt = fmt,
                    header=comment,
                    comments='')
+        self.logger.debug(f'File {filename_old_format} written (old format)')
         return 0
 
     def get_hermite_polynomial_coeffients(self, max_order=None):
@@ -311,7 +335,8 @@ class GaussHermite(Kinematics, data.Integrated):
         v_sig : array (n_regions,)
             gauss hermite sigma parameters
         vel_hist : Histogram object
-            velocity histograms where vel_hist.y has shape (n_hists, n_vbins)
+            velocity histograms where vel_hist.y has shape
+            (n_orbits, n_vbins, n_regions)
         max_order : int
             maximum order hermite polynomial desired in the expansion
             e.g. max_order = 1 --> use h0, h1
@@ -328,18 +353,56 @@ class GaussHermite(Kinematics, data.Integrated):
         coef = self.get_hermite_polynomial_coeffients(max_order=max_order)
         nrm = stats.norm()
         hpolys = self.evaluate_hermite_polynomials(coef, w)
-        h = np.einsum('ij,kj,lkj,j->ikl',           # integral in eqn 7
-                      np.atleast_2d(vel_hist.y),
+        # TODO: optimize the next line for (i) vel_hist.dx is constant, (ii)
+        # arrays are too large for memory e.g. using dask
+        h = np.einsum('ijk,kj,lkj,j->ikl', # integral in eqn 7
+                      vel_hist.y,
                       nrm.pdf(w),
                       hpolys,
                       vel_hist.dx,
                       optimize=True)
-        h *= 2 * np.pi**0.5                         # pre-factor in eqn 7
+        h *= 2 * np.pi**0.5 # pre-factor in eqn 7
         return h
 
-    def transform_orbits_to_observables(self, orb_lib):
-        # actual code to transform orbits to GH coefficients
-        return gauss_hermite_coefficients
+    def transform_orblib_to_observables(self, orblib, max_gh_order=None):
+        if max_gh_order is None:
+            max_gh_order = self.max_gh_order
+        v_mu = self.data['v']
+        v_sig = self.data['sigma']
+        orblib_gh_coefs = self.get_gh_expansion_coefficients(
+            v_mu=v_mu,
+            v_sig=v_sig,
+            vel_hist=orblib.losvd_histograms,
+            max_order=max_gh_order)
+        # in triaxnnls, GH coefficients are divided by velocity spacing of the
+        # histogram. This is equivalent to normalising LOSVDs as probability
+        # densities before calculating the GH coefficients. For now, do as was
+        # done previously:
+        dv = orblib.losvd_histograms.dx
+        assert np.allclose(dv, dv[0]), 'LOSVD velocity spacing must be uniform'
+        orblib_gh_coefs /= dv[0]
+        # remove h0 as this is not fit
+        orblib_gh_coefs = orblib_gh_coefs[:,:,1:]
+        return orblib_gh_coefs
+
+    def get_observed_values_and_uncertainties(self, max_gh_order=None):
+        if max_gh_order is None:
+            max_gh_order = self.max_gh_order
+        # construct observed values
+        observed_values = np.zeros((self.n_apertures, max_gh_order))
+        # h1, h2 = 0, 0
+        # h3, h4, etc... are taken from the data table
+        for i in range(3, self.max_gh_order+1):
+            observed_values[:,i-1] = self.data[f'h{i}']
+        # construct uncertainties
+        uncertainties = np.zeros_like(observed_values)
+        # uncertainties on h1,h2 from vdMarel + Franx 93
+        uncertainties[:,0] = self.data['dv']/np.sqrt(2)/self.data['sigma']
+        uncertainties[:,1] = self.data['dsigma']/np.sqrt(2)/self.data['sigma']
+        # uncertainties h3, h4, etc... are taken from data table
+        for i in range(3, self.max_gh_order+1):
+            uncertainties[:,i-1] = self.data[f'dh{i}']
+        return observed_values, uncertainties
 
 
 class Histogram(object):
@@ -349,7 +412,7 @@ class Histogram(object):
     ----------
     xedg : array (n_bins+1,)
         histogram bin edges
-    y : (n_histograms, n_bins+1,)
+    y : (n_orbits, n_bins+1, n_apertures)
         histogram values
     normalise : bool, default=True
         whether to normalise to pdf
@@ -364,21 +427,38 @@ class Histogram(object):
         whether or not has been normalised to pdf
 
     """
-    def __init__(self, xedg=None, y=None, normalise=True):
+    def __init__(self, xedg=None, y=None, normalise=False):
         self.xedg = xedg
         self.x = (xedg[:-1] + xedg[1:])/2.
         self.dx = xedg[1:] - xedg[:-1]
         self.y = y
         if normalise:
             self.normalise()
-        else:
-            self.normalised = False
+
+    def get_normalisation(self):
+        na = np.newaxis
+        norm = np.sum(self.y*self.dx[na,:,na], axis=1)
+        return norm
 
     def normalise(self):
-        norm = np.sum(self.y*self.dx, axis=-1)
-        self.y = (self.y.T/norm).T
-        self.normalised = True
+        norm = self.get_normalisation()
+        na = np.newaxis
+        tmp = self.y/norm[:,na,:]
+        # where norm=0, tmp=nan. Fix this:
+        idx = np.where(norm==0.)
+        tmp[idx[0],:,idx[1]] = 0.
+        # replace self.y with normalised y
+        self.y = tmp
 
+    def scale_x_values(self, scale_factor):
+        self.x *= scale_factor
+        self.dx *= scale_factor
 
+    def get_mean(self):
+        na = np.newaxis
+        mean = np.sum(self.x[na,:,na] * self.y * self.dx[na,:,na], axis=1)
+        norm = self.get_normalisation()
+        mean /= norm
+        return mean
 
 # end

@@ -40,18 +40,18 @@ system_components:
             dc: # NFW Darkmatter concentration
                 par_generator_settings:
                     lo: 2.0
-                    hi: 4.0
+                    hi: 20.0
                     step: 1.0
                     minstep: 0.1
-                logarithmic: True
-                fixed: False
-                value: 3.0
-                LaTeX: "$log(C)$"
+                logarithmic: False
+                fixed: True
+                value: 12.
+                LaTeX: "$c$"
             f: # NFW Darkmatter fraction
                 par_generator_settings:
-                    lo: 0.0
-                    hi: 2.0
-                    step: 0.5
+                    lo: -1.
+                    hi: 3.
+                    step: 2.
                     minstep: 0.1
                 logarithmic: True
                 fixed: False
@@ -67,10 +67,10 @@ system_components:
                 par_generator_settings:
                     lo: 0.05
                     hi: 0.99
-                    step: 0.08
+                    step: 0.04
                     minstep: 0.02
                 fixed: True
-                value: 0.5
+                value: 0.54
                 LaTeX: "$q_{min}$"
             p: # intrinsic B/A
                 gpe_parspace_settings:
@@ -122,14 +122,14 @@ system_parameters:
 ###############################################################################
 
 orblib_settings:
-    nE: 3
+    nE: 6
     logrmin: -0.101275
     logrmax: 1.99123
     nI2: 4        # must be >= 4
-    nI3: 2
-    dithering: 1
-    #the following values should usually not be changed
-    orbital_periods: 200
+    nI3: 4
+    dithering: 2
+    # the following values should usually not be changed
+    orbital_periods: 30
     sampling: 50000
     starting_orbit: 1
     number_orbits: -1 #-1 --> all orbits
@@ -143,14 +143,13 @@ orblib_settings:
 
 weight_solver_settings:
     type: "LegacyWeightSolver"
-    setting1: True
-    setting2: False
-    regularisation: 0
+    nnls_solver: 1
+    CRcut: False
     number_GH: 4
     GH_sys_err: '0.0 0.0 0.0 0.0 0.3 0.3 0.6 0.6'
     lum_intr_rel_err: 0.01
     sb_proj_rel_err: 0.02
-    nnls_solver: 1
+    regularisation: 0
 
 parameter_space_settings:
     generator_type: "LegacyGridSearch"
@@ -164,17 +163,16 @@ parameter_space_settings:
     stopping_criteria:
         min_delta_chi2_abs : 0.5  # absolute "optimality tolerance"
         #min_delta_chi2_rel : 0.05 # relative "optimality tolerance"
-        n_max_mods : 5
-        n_max_iter : 5
+        n_max_mods : 10
+        n_max_iter : 3
 
 legacy_settings:
-    use_legacy_mode: True
     directory: "default"
 
 io_settings: # paths can be given with or without trailing slash
     input_directory: "NGC6278_input/"
     output_directory: "NGC6278_output/"
-    all_models_file: "all_models.ecsv"
+    all_models_file: "all_models_LegacyWS.ecsv"
 
 multiprocessing_settings:
     ncpus: 'all_available' # integer or 'all_available'

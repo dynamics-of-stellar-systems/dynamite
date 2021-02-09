@@ -21,12 +21,15 @@ legacy_fortran/partgen
 legacy_fortran/triaxmass
 legacy_fortran/triaxmassbin
 legacy_fortran/triaxnnls_CRcut
+legacy_fortran/triaxnnls_noCRcut
+legacy_fortran/.DS_Store
 .spyproject
 tests/.DS_Store
 tests/__pycache__
 tests/NGC6278_output/models/*
-tests/NGC6278_output/all_models.ecsv
+tests/NGC6278_output/all_models*
 tests/NGC6278_output/plots/*
+tests/test_validate_pqu_output
 docs/_build/
 docs/.DS_Store
 docs/tutorial_notebooks/.DS_Store
@@ -39,4 +42,4 @@ dist/*
 dynamite.egg-info/*
 list_of_created_files.txt
 ran1_nr
-tests/test_validate_pqu_output
+*.log

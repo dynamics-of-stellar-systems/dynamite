@@ -27,7 +27,7 @@ print('Located at:', dyn.__path__)
 
 # read configuration
 fname = 'test_validate_pqu_config.yaml'
-c = dyn.config_reader.Configuration(fname, silent=True)
+c = dyn.config_reader.Configuration(fname, reset_logging=True)
 
 # stars = c.system.get_component_from_name('stars')
 #

@@ -7,6 +7,7 @@ import numpy as np
 
 import os.path
 import sys
+import logging
 
 this_dir = os.path.dirname(__file__)
 if not this_dir in sys.path:
@@ -18,6 +19,7 @@ import mges as mge
 class System(object):
 
     def __init__(self, *args):
+        self.logger = logging.getLogger(f'{__name__}.{__class__.__name__}')
         self.n_cmp = 0
         self.cmp_list = []
         self.n_pot = 0
@@ -64,12 +66,17 @@ class System(object):
                     raise ValueError('System parameter cannot end with '
                                      f'"_component": {p.name}')
         if not(self.distMPc and self.name and self.position_angle):
-            raise ValueError('System needs distMPc, name, '
-                             'and position_angle attributes')
+            text = 'System needs distMPc, name, and position_angle attributes'
+            self.logger.error(text)
+            raise ValueError(text)
         if not self.cmp_list:
-            raise ValueError('System has no components')
+            text = 'System has no components'
+            self.logger.error(text)
+            raise ValueError(text)
         if len(self.parameters) != 1 and self.parameters[0].name != 'ml':
-            raise ValueError('System needs ml as its sole parameter')
+            text = 'System needs ml as its sole parameter'
+            self.logger.error(text)
+            raise ValueError(text)
         self.parameters[0].update(sformat = '6.2f')
 
     def validate_parset(self, par):
@@ -99,10 +106,18 @@ class System(object):
     def get_component_from_name(self, cmp_name):
         cmp_list_list = np.array([cmp0.name for cmp0 in self.cmp_list])
         idx = np.where(cmp_list_list == cmp_name)
+        self.logger.debug(f'Checking for 1 and only 1 component {cmp_name}...')
         error_msg = f"There should be 1 and only 1 component named {cmp_name}"
         assert len(idx[0]) == 1, error_msg
+        self.logger.debug('...check ok.')
         component = self.cmp_list[idx[0][0]]
         return component
+
+    def get_all_kinematic_data(self):
+        all_kinematics = []
+        for component in self.cmp_list:
+            all_kinematics += component.kinematic_data
+        return all_kinematics
 
 class Component(object):
 
@@ -114,6 +129,7 @@ class Component(object):
                  kinematic_data=[],              # a list of Kinematic objects
                  population_data=[],             # a list of Population objects
                  parameters=[]):                 # a list of Parameter objects
+        self.logger = logging.getLogger(f'{__name__}.{__class__.__name__}')
         if name == None:
             self.name = self.__class__.__name__
         else:
@@ -152,25 +168,32 @@ class Component(object):
         par = par_format.keys()
         errstr = f'Component {self.__class__.__name__} needs attribute '
         if self.visible is None:
-            raise ValueError(errstr + 'visible')
+            text = errstr + 'visible'
+            self.logger.error(text)
+            raise ValueError(text)
         if self.contributes_to_potential is None:
-            raise ValueError(errstr + 'contributes_to_potential')
+            text = errstr + 'contributes_to_potential'
+            self.logger.error(text)
+            raise ValueError(text)
         if not self.parameters:
-            raise ValueError(errstr + 'parameters')
+            text = errstr + 'parameters'
+            self.logger.error(text)
+            raise ValueError(text)
 
-        # if len(self.parameters) != len(par):
-        #     raise ValueError(f'{self.__class__.__name__} needs exactly '
-        #         f'{len(par)} paramater(s), not {len(self.parameters)}')
         pars = [p.name[:p.name.rindex('_'+self.name)] for p in self.parameters]
         if set(pars) != set(par):
-            raise ValueError(f'{self.__class__.__name__} needs parameters '
-                             f'{list(par)}, '
-                             f'not {[p.name for p in self.parameters]}')
+            text = f'{self.__class__.__name__} needs parameters ' + \
+                   f'{list(par)}, not {[p.name for p in self.parameters]}'
+            self.logger.error(text)
+            raise ValueError(text)
+
         self.set_format(par_format)
 
     def set_format(self, par_format=None):
         if par_format is None:
-            raise ValueError(f'{self.__class__.__name__}: no format string')
+            text = f'{self.__class__.__name__}: no format string'
+            self.logger.error(text)
+            raise ValueError(text)
         for p in self.parameters:
             p.update(sformat=par_format[p.name[:p.name.rindex('_'+self.name)]])
 
@@ -178,9 +201,9 @@ class Component(object):
         """
         Validates the component's parameter values. Kept separate from the
         validate method to facilitate easy calling from the parameter
-        generator class. This is a `placeholder` method which always returns
-        `True`. Specific implementations should be implemented for each
-        component subclass.
+        generator class. This is a `placeholder` method which returns
+        `True` if all parameters are non-negative. Specific implementations
+        should be implemented for each component subclass.
 
         Parameters
         ----------
@@ -194,7 +217,9 @@ class Component(object):
             True if the parameter set is valid, False otherwise
 
         """
-        isvalid = True
+        isvalid = np.all(np.sign(tuple(par.values())) >= 0)
+        if not isvalid:
+            self.logger.debug(f'Non-negative parset: {par}')
         return isvalid
 
     def __repr__(self):
@@ -209,12 +234,14 @@ class VisibleComponent(Component):
          # visible components have MGE surface density
         self.mge = mge
         super().__init__(visible=True, **kwds)
+        self.logger = logging.getLogger(f'{__name__}.{__class__.__name__}')
 
     def validate(self, **kwds):
         super().validate(**kwds)
         if not isinstance(self.mge, mge.MGE):
-            raise ValueError(f'{self.__class__.__name__}.mge must be '
-                             'mges.MGE object')
+            text = f'{self.__class__.__name__}.mge must be mges.MGE object'
+            self.logger.error(text)
+            raise ValueError(text)
 
 
 class AxisymmetricVisibleComponent(VisibleComponent):
@@ -231,6 +258,7 @@ class TriaxialVisibleComponent(VisibleComponent):
 
     def __init__(self, **kwds):
         super().__init__(symmetry='triax', **kwds)
+        self.logger = logging.getLogger(f'{__name__}.{__class__.__name__}')
         self.qobs = np.nan
 
     def validate(self):
@@ -290,17 +318,17 @@ class TriaxialVisibleComponent(VisibleComponent):
 
         # Check for possible triaxial deprojection (v. d. Bosch 2004,
         # triaxpotent.f90 and v. d. Bosch et al. 2008, MNRAS 385, 2, 647)
-        # DEBUG str = f'{q} <= {p} <= {1}, ' \
-        # DEBUG       f'{max((q/self.qobs,p))} <= {u} <= {min((p/self.qobs),1)}, ' \
-        # DEBUG       f'q\'={self.qobs}'
+        str = f'{q} <= {p} <= {1}, ' \
+              f'{max((q/self.qobs,p))} <= {u} <= {min((p/self.qobs),1)}, ' \
+              f'q\'={self.qobs}'
         # 0<=t<=1, t = (1-p2)/(1-q2) and p,q>0 is the same as 0<q<=p<=1 and q<1
         t = (1-p2)/(1-q2)
         if not (0 <= t <= 1) or \
            not (max((q/self.qobs,p)) <= u <= min((p/self.qobs),1)) :
             theta = phi = psi = np.nan
-            # DEBUG print('DEPROJ FAIL: '+str)
+            self.logger.debug(f'DEPROJ FAIL: {str}')
         else:
-            # DEBUG print('DEPROJ PASS: '+str)
+            self.logger.debug(f'DEPROJ PASS: {str}')
             w1 = (u2 - q2) * (o2 * u2 - q2) / ((1.0 - q2) * (p2 - q2))
             w2 = (u2 - p2) * (p2 - o2 * u2) * (1.0 - q2) / ((1.0 - u2) * (1.0 - o2 * u2) * (p2 - q2))
             w3 = (1.0 - o2 * u2) * (p2 - o2 * u2) * (u2 - q2) / ((1.0 - u2) * (u2 - p2) * (o2 * u2 - q2))
@@ -320,9 +348,7 @@ class TriaxialVisibleComponent(VisibleComponent):
             else:
                 psi=np.nan
 
-        # print("******************************")
-        # DEBUG print(f'theta={theta}, phi={phi}, psi={psi}')
-        # print("******************************")
+        self.logger.debug(f'theta={theta}, phi={phi}, psi={psi}')
         return theta,psi,phi
 
 
@@ -364,9 +390,6 @@ class Plummer(DarkComponent):
     def validate(self):
         par_format = {'mass':'6.3g', 'a':'7.3g'}
         super().validate(par_format)
-        # if len(self.parameters) != 2:
-        #     raise ValueError(f'{self.__class__.__name__} needs exactly 2 '
-        #                      f'paramaters, not {len(self.parameters)}')
 
 
 class NFW(DarkComponent):
@@ -378,9 +401,6 @@ class NFW(DarkComponent):
     def validate(self):
         par_format = {'dc':'6.3g', 'f':'6.3g'}
         super().validate(par_format)
-        # if len(self.parameters) != 2:
-        #     raise ValueError(f'{self.__class__.__name__} needs exactly 2 '
-        #                      f'paramaters, not {len(self.parameters)}')
 
 
 class Hernquist(DarkComponent):
@@ -392,9 +412,6 @@ class Hernquist(DarkComponent):
     def validate(self):
         par_format = {'rhoc':'6.3g', 'rc':'6.3g'}
         super().validate(par_format)
-        # if len(self.parameters) != 2:
-        #     raise ValueError(f'{self.__class__.__name__} needs exactly 2 '
-        #                      f'paramaters, not {len(self.parameters)}')
 
 
 class TriaxialCoredLogPotential(DarkComponent):
@@ -406,9 +423,6 @@ class TriaxialCoredLogPotential(DarkComponent):
     def validate(self):
         par_format = {'Vc':'6.3g', 'rho':'6.3g', 'p':'6.3g', 'q':'6.3g'}
         super().validate(par_format)
-        # if len(self.parameters) != 4:
-        #     raise ValueError(f'{self.__class__.__name__} needs exactly 4 '
-        #                      f'paramaters, not {len(self.parameters)}')
 
 
 class GeneralisedNFW(DarkComponent):
@@ -421,9 +435,6 @@ class GeneralisedNFW(DarkComponent):
         par_format = {'concentration':'6.3g', 'Mvir':'6.3g',
                       'inner_log_slope':'6.3g'}
         super().validate(par_format)
-        # if len(self.parameters) != 3:
-        #     raise ValueError(f'{self.__class__.__name__} needs exactly 3 '
-        #                      f'paramaters, not {len(self.parameters)}')
 
 
 

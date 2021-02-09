@@ -1,7 +1,5 @@
-#!/usr/bin/env python3
-# -*- coding: utf-8 -*-
-
 import numpy as np
+import logging
 
 class MyRand(object):
     '''
@@ -17,9 +15,11 @@ class MyRand(object):
     iy = None
 
     def __init__(self, seed=None):
+        self.logger = logging.getLogger(f'{__name__}.{__class__.__name__}')
         self.idum = self.__class__.idum if seed==None else seed
         self.iv = self.__class__.iv
         self.iy = self.__class__.iy
+        self.logger.debug(f'Random number seed: {self.idum}')
 
     def ran1(self):
         '''
@@ -68,7 +68,7 @@ class MyRand(object):
             self.idum=max(-self.idum,1)
             # do 11 j=NTAB+8,1,-1
             for j in range(NTAB+8,0,-1):
-                # print(f'\t1 ran1.idum={ran1.idum}')
+                # self.logger.debug(f'\t1 ran1.idum={ran1.idum}')
                 k = self.idum // IQ
                 self.idum = IA*(self.idum-k*IQ)-IR*k
                 if self.idum < 0:
@@ -76,12 +76,12 @@ class MyRand(object):
                 if j <= NTAB:
                     self.iv[j-1] = self.idum
             self.iy = self.iv[0]
-        # print(f'\t2 ran1.idum={ran1.idum}')
+        # self.logger.debug(f'\t2 ran1.idum={ran1.idum}')
         k = self.idum // IQ
         self.idum = IA*(self.idum-k*IQ)-IR*k
         if self.idum < 0:
             self.idum += IM
-        # print(f'\t3 ran1.iy={ran1.iy}')
+        # self.logger.debug(f'\t3 ran1.iy={ran1.iy}')
         j = 1 + self.iy // NDIV
         self.iy = self.iv[j-1]
         self.iv[j-1] = self.idum
