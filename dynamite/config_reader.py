@@ -293,8 +293,6 @@ class Configuration(object):
                 logger.info('legacy_settings...')
                 logger.debug(f'legacy_settings: {tuple(value.keys())}')
                 if value['directory'] == 'default':
-                    # this_dir is 'dynamite'
-                    # value['directory'] = this_dir+'/../legacy_fortran'
                     value['directory'] = legacy_dir
                 # remove trailing / from path if provided
                 if value['directory'][-1]=='/':
