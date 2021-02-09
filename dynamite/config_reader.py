@@ -241,6 +241,11 @@ class Configuration(object):
 
                     # add component to system
                     c.validate() # now also adds the right parameter sformat
+                    parset = {p.name[:p.name.rfind(f'_{c.name}')]:p.value \
+                              for p in c.parameters}
+                    if not c.validate_parset(parset):
+                        raise ValueError(f'{c.name}: invalid parameters '
+                                         f'{parset}')
                     self.system.add_component(c)
 
                 # once all components added, put all kinematic_data in a list
@@ -288,8 +293,6 @@ class Configuration(object):
                 logger.info('legacy_settings...')
                 logger.debug(f'legacy_settings: {tuple(value.keys())}')
                 if value['directory'] == 'default':
-                    # this_dir is 'dynamite'
-                    # value['directory'] = this_dir+'/../legacy_fortran'
                     value['directory'] = legacy_dir
                 # remove trailing / from path if provided
                 if value['directory'][-1]=='/':
@@ -336,6 +339,9 @@ class Configuration(object):
                 raise ValueError(text)
 
         self.system.validate() # now also adds the right parameter sformat
+        parset = {p.name:p.value for p in self.system.parameters}
+        if not self.system.validate_parset(parset):
+            raise ValueError(f'Invalid sysetm parameters {parset}')
         logger.info('System assembled')
         logger.debug(f'System: {self.system}')
         logger.debug(f'Settings: {self.settings}')

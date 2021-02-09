@@ -79,6 +79,7 @@ class ParameterSpace(list):
         for cmp in system.cmp_list:
             for par in cmp.parameters:
                 self.append(par)
+                self.system = system
         for par in system.parameters:
             self.append(par)
 
@@ -123,6 +124,32 @@ class ParameterSpace(list):
         # extract 0th - i.e. the only - row from the table
         parset = t[0]
         return parset
+
+    def validate_parset(self, parset):
+        """
+        Validates the values of each component's parameters by calling the
+        individual components' validate_parameter methods. Does the same for
+        system parameters.
+
+        Parameters
+        ----------
+        parset : list of Parameter objects
+
+        Returns
+        -------
+        bool
+            True if validation was successful, False otherwise
+
+        """
+        isvalid = True
+        for comp in self.system.cmp_list:
+            par = {p.name[:p.name.rfind(f'_{comp.name}')]:p.value \
+                   for p in parset if p.name.rfind(f'_{comp.name}')>=0}
+            isvalid = isvalid and comp.validate_parset(par)
+        par = {p.name:p.value for p in parset \
+               if p.name in [n.name for n in self.system.parameters]}
+        isvalid = isvalid and self.system.validate_parset(par)
+        return isvalid
 
 class ParameterGenerator(object):
 
@@ -183,9 +210,9 @@ class ParameterGenerator(object):
         (i) evaluates stopping criteria, and stop if necessary
         (ii) runs the specific_generate_method of the child class, which
         updates self.model_list with a list of propsal models
-        (iii) removes previously run models from self.model_list
+        (iii) removes previously run and/or invalid models from self.model_list
         (iv) converts parameters from raw_values to par_values
-        (v) adds new models to current_models.table
+        (v) adds new, valid models to current_models.table
         (vi) update and return the status dictionary
 
         Parameters
@@ -306,8 +333,8 @@ class ParameterGenerator(object):
 
     def _is_newmodel(self, model, eps=1e-6):
         """
-        Checks if model is a new model (i.e., its parameter set does not exist
-        in self.current_models).
+        Checks whether model has valid parameter values and it is a new model
+        (i.e., its parameter set does not exist in self.current_models).
 
         Parameters
         ----------
@@ -324,17 +351,18 @@ class ParameterGenerator(object):
         if any(map(lambda t: not isinstance(t, parspace.Parameter), model)):
             self.logger.error('Model arg. must be list of Parameter objects')
             raise ValueError('Model arg. must be list of Parameter objects')
-        raw_model_values = [p.value for p in model]
-        model_values = \
-            self.par_space.get_param_value_from_raw_value(raw_model_values)
-        if len(self.current_models.table) > 0:
-            isnew = True
-            for curmod in self.current_models.table[self.par_space.par_names]:
-                if np.allclose(list(curmod), model_values, rtol=eps):
-                    isnew = False
-                    break
+        if not self.par_space.validate_parset(model):
+            isnew = False
         else:
             isnew = True
+            raw_model_values = [p.value for p in model]
+            model_values = \
+                self.par_space.get_param_value_from_raw_value(raw_model_values)
+            if len(self.current_models.table) > 0:
+                for mod in self.current_models.table[self.par_space.par_names]:
+                    if np.allclose(list(mod), model_values, rtol=eps):
+                        isnew = False
+                        break
         return isnew
 
 

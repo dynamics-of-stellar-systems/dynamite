@@ -29,6 +29,7 @@ tests/__pycache__
 tests/NGC6278_output/models/*
 tests/NGC6278_output/all_models*
 tests/NGC6278_output/plots/*
+tests/test_validate_pqu_output
 docs/_build/
 docs/.DS_Store
 docs/tutorial_notebooks/.DS_Store
