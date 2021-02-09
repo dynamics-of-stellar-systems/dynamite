@@ -1,6 +1,6 @@
 from astropy.io import ascii
 from astropy.table import Table
-
+import logging
 
 class Data(object):
 
@@ -39,7 +39,7 @@ class Integrated(Data):
         super().__init__(**kwargs)
         if hasattr(self, 'data'):
             self.PSF = self.data.meta['PSF']
-        pass
+        self.logger = logging.getLogger(f'{__name__}.{__class__.__name__}')
 
     def add_psf_to_datafile(self,
                             sigma=[1.],
@@ -49,8 +49,9 @@ class Integrated(Data):
         assert type(sigma) is list
         assert isinstance(datafile, str)
         if hasattr(self, 'PSF'):
-            print('Warning: this dataset already has an associated PSF')
-            print('Possibly overwriting an existing PSF in the datafile')
+            self.logger.warning('Warning: this dataset already has an ' + \
+                                'associated PSF! Possibly overwriting an ' + \
+                                'existing PSF in the datafile')
         psf = {'sigma':sigma, 'weight':weight}
         meta = {'PSF':psf}
         old_table = ascii.read(datafile)

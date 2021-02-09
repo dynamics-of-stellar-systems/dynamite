@@ -2,6 +2,7 @@ import os
 import numpy as np
 from astropy import table
 import subprocess
+import logging
 from scipy import optimize
 import cvxopt
 
@@ -14,6 +15,7 @@ class WeightSolver(object):
         have a main method `solve`
 
         """
+        self.logger = logging.getLogger(f'{__name__}.{__class__.__name__}')
         pass
 
     def solve(self, orblib):
@@ -32,7 +34,7 @@ class WeightSolver(object):
         chi2_kin : float
             a chi2 value purely for kinematics
         """
-        print("Using WeightSolver : {add name of WeightSolver here}!")
+        self.logger.info("Using WeightSolver: {add name of WeightSolver here}")
         # ...
         # calculate orbit weights, and model chi2 values here
         # ...
@@ -52,6 +54,7 @@ class LegacyWeightSolver(WeightSolver):
                  legacy_directory=None,
                  ml=None,
                  CRcut=False):
+        self.logger = logging.getLogger(f'{__name__}.{__class__.__name__}')
         self.system = system
         self.mod_dir = mod_dir
         self.settings = settings
@@ -117,7 +120,7 @@ class LegacyWeightSolver(WeightSolver):
             sum of squared residuals for GH coefficients h_1 to h_n
 
         """
-        print("Using WeightSolver : LegacyWeightSolver")
+        self.logger.info("Using WeightSolver : LegacyWeightSolver")
         check1 = os.path.isfile(self.fname_nn_kinem)
         check2 = os.path.isfile(self.fname_nn_nnls)
         fname = self.mod_dir_with_ml + '/nn_orbmat.out'
@@ -126,14 +129,22 @@ class LegacyWeightSolver(WeightSolver):
             # set the current directory to the directory in which the models are computed
             cur_dir = os.getcwd()
             os.chdir(self.mod_dir)
-            print("Fit the orbit library to the kinematic data.")
             cmdstr = self.write_executable_for_weight_solver(self.ml)
+            with open(cmdstr) as f:
+                for line in f:
+                    i = line.find('>>')
+                    if i >= 0:
+                        logfile = line[i+3:-1]
+                        break
+            self.logger.info("Fitting orbit library to the kinematic " + \
+                             f"data: {logfile[:logfile.rindex('/')]}")
             p = subprocess.call('bash '+cmdstr, shell=True)
+            self.logger.debug('...done, NNLS problem solved. Logfile: ' + \
+                              f'{self.mod_dir+logfile}')
             #set the current directory to the dynamite directory
             os.chdir(cur_dir)
-            print("NNLS problem solved")
         else:
-            print("NNLS solution read from existing output")
+            self.logger.info("NNLS solution read from existing output")
         wts, chi2_tot, chi2_kin = self.get_weights_and_chi2_from_orbmat_file()
         return wts, chi2_tot, chi2_kin
 
@@ -334,6 +345,7 @@ class NNLS(WeightSolver):
                  directory_with_ml=None,
                  CRcut=False,
                  nnls_solver=None):
+        self.logger = logging.getLogger(f'{__name__}.{__class__.__name__}')
         self.system = system
         self.settings = settings
         self.direc_with_ml = directory_with_ml
@@ -475,12 +487,12 @@ class NNLS(WeightSolver):
         see the docstring for that method
 
         """
-        print("Using WeightSolver : NNLS")
+        self.logger.info("Using WeightSolver : NNLS")
         A, b = self.construct_nnls_matrix_and_rhs(orblib)
         weight_file = self.direc_with_ml + 'orbit_weights.txt'
         if os.path.isfile(weight_file):
             weights = np.genfromtxt(weight_file)
-            print("NNLS solution read from existing output")
+            self.logger.info("NNLS solution read from existing output")
         else:
             if self.nnls_solver=='scipy':
                 solution = optimize.nnls(A, b)
@@ -491,9 +503,11 @@ class NNLS(WeightSolver):
                 solver = CvxoptNonNegSolver(P, q)
                 weights = solver.beta
             else:
-                raise ValueError('Unknown nnls_solver')
+                text = 'Unknown nnls_solver'
+                self.logger.error(text)
+                raise ValueError(text)
             np.savetxt(weight_file, weights)
-            print("NNLS problem solved")
+            self.logger.info("NNLS problem solved")
         # calculate chi2
         chi2_vector = (np.dot(A, weights) - b)**2.
         chi2_tot = np.sum(chi2_vector)

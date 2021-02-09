@@ -3,6 +3,7 @@ import shutil #used to easily copy files
 import numpy as np
 from astropy import table
 from astropy.io import ascii
+import logging
 
 import weight_solvers as ws
 import orblib as dyn_orblib
@@ -15,17 +16,20 @@ class AllModels(object):
                  filename='all_models.ecsv',
                  settings=None,
                  parspace=None):
+
+        self.logger = logging.getLogger(f'{__name__}.{__class__.__name__}')
+
         self.system = system
         self.settings = settings
         self.set_filename(settings.io_settings['all_models_file'])
         self.parspace = parspace
         if from_file and os.path.isfile(filename):
-            print('Previous models have been found:')
-            print(f'Reading {filename} into AllModels.table')
+            self.logger.info('Previous models have been found: '
+                        f'Reading {filename} into {__class__.__name__}.table')
             self.read_completed_model_file()
         else:
-            print('No previous models have been found:')
-            print(f'Making an empty table in AllModels.table')
+            self.logger.info('No previous models have been found: '
+                        f'Making an empty table in {__class__.__name__}.table')
             self.make_empty_table()
 
     def set_filename(self, filename):
@@ -50,12 +54,13 @@ class AllModels(object):
         # self.table = table.Table(data,
         #                          names=names,
         #                          dtype=dtype)
-        # print(names, dtype)
+        # self.logger.debug(names, dtype)
         self.table = table.Table(names=names, dtype=dtype)
         return
 
     def read_completed_model_file(self):
         self.table = ascii.read(self.filename)
+        self.logger.debug(f'Models read from file {self.filename}')
         return
 
     def read_legacy_chi2_file(self, legacy_filename):
@@ -95,6 +100,7 @@ class AllModels(object):
                             max_rows=Nf,
                             skip_header=Nf + int(Nf / len_mtest) + 1 + mlast,
                             dtype=str)
+        self.logger.debug(f'Legacy chi2 file {legacy_filename} read')
         return Nf, npar, mpar.T, mtime.T, fls.T
 
     def convert_legacy_chi2_file(self, legacy_filename=None):
@@ -125,6 +131,8 @@ class AllModels(object):
         # which_iter will record which iteration of parameters a model came from
         mods['which_iter'] = 0  # was not recorded for schwpy so set to 0
         mods.write(self.filename, format='ascii.ecsv')
+        self.logger.debug(f'Legacy chi2 file {legacy_filename} converted ' + \
+                          f'to {self.filename}')
         return
 
     def get_parset_from_row(self, row_id):
@@ -141,13 +149,14 @@ class AllModels(object):
 
     def save(self):
         self.table.write(self.filename, format='ascii.ecsv', overwrite=True)
+        self.logger.debug(f'Model table written to file {self.filename}')
 
 
 class Model(object):
     '''
     A DYNAMITE model. The Model can be run by running the methods (i)
     get_orblib, (ii) get_weights, (iii) (in the future) do_orbit_colouring.
-    Ruuning each of these methods will adds a new attribute to the model, e.g.
+    Running each of these methods will adds a new attribute to the model, e.g.
     model.get_orblib(...) --> creates an attribute --> model.orblib
     model.get_weights(...) --> creates an attribute --> model.weight_solver
     '''
@@ -319,11 +328,6 @@ class LegacySchwarzschildModel(Model):
         self.kinchi2 = chi2_kin # GH coeeficients 1-Ngh
         self.weights = weights
         return weight_solver
-
-
-
-
-
 
 
 # end

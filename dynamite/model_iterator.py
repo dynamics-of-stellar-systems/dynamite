@@ -1,6 +1,7 @@
 import model
 import parameter_space
 import numpy as np
+import logging
 import pathos
 from pathos.multiprocessing import Pool
 
@@ -14,6 +15,8 @@ class ModelIterator(object):
                  do_dummy_run=None,
                  dummy_chi2_function=None,
                  ncpus=1):
+        self.logger = logging.getLogger(f'{__name__}.{__class__.__name__}')
+
         stopping_crit = settings.parameter_space_settings['stopping_criteria']
         n_max_iter = stopping_crit['n_max_iter']
         self.n_max_mods = stopping_crit['n_max_mods']
@@ -45,11 +48,11 @@ class ModelIterator(object):
                 status['n_max_mods_reached'] = True
                 status['stop'] = True
             if status['stop'] is True:
-                print(f'Stopping after iteration {total_iter_count}')
-                print(status)
-                print(f'Saving all_models table')
+                self.logger.info(f'Stopping after iteration {total_iter_count}')
+                self.logger.debug(status)
                 break
-            print(f'{par_generator_type}: "iteration {total_iter_count}"')
+            self.logger.info(f'{par_generator_type}: "iteration '
+                        f'{total_iter_count}"')
             status = model_inner_iterator.run_iteration(iter)
 
 
@@ -64,6 +67,7 @@ class ModelInnerIterator(object):
                  do_dummy_run=False,
                  dummy_chi2_function=None,
                  ncpus=1):
+        self.logger = logging.getLogger(f'{__name__}.{__class__.__name__}')
         self.system = system
         self.all_models = all_models
         self.settings = settings
@@ -97,7 +101,7 @@ class ModelInnerIterator(object):
 
     def create_and_run_model(self, input):
         i, row = input
-        print(f'... running model {i+1} out of {self.n_to_do}')
+        self.logger.info(f'... running model {i+1} out of {self.n_to_do}')
         # extract the parameter values
         parset0 = self.all_models.table[row]
         parset0 = parset0[self.parspace.par_names]
@@ -129,8 +133,4 @@ class ModelInnerIterator(object):
             self.all_models.table['kinchi2'][row] = kinchi2
             self.all_models.table['all_done'][row] = all_done
             self.all_models.table['time_modified'][row] = time
-
-
-
-
 # end

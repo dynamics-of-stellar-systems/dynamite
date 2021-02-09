@@ -39,10 +39,10 @@ def run_user_test(stat_mode=False):
     # read configuration
     # this file uses the old 'LegcayWeight' weight solver
     fname = 'reimplement_nnls_config1.yaml'
-    c1 = dyn.config_reader.Configuration(fname, silent=True)
+    c1 = dyn.config_reader.Configuration(fname, reset_logging=True)
     remove_existing_output(c1, remove_orblibs=True)
     # re-read the config file now that old output has been deleted
-    c1 = dyn.config_reader.Configuration(fname, silent=True)
+    c1 = dyn.config_reader.Configuration(fname)
 
     # run the models
     t = time.perf_counter()
@@ -58,10 +58,10 @@ def run_user_test(stat_mode=False):
     # read 2nd configuration file
     # this file uses the new 'NNLS' weight solver
     fname = 'reimplement_nnls_config2.yaml'
-    c2 = dyn.config_reader.Configuration(fname, silent=True)
+    c2 = dyn.config_reader.Configuration(fname)
     remove_existing_output(c2, remove_orblibs=False)
     # re-read the config file now that old output has been deleted
-    c2 = dyn.config_reader.Configuration(fname, silent=True)
+    c2 = dyn.config_reader.Configuration(fname)
 
     # "run" the models
     t = time.perf_counter()

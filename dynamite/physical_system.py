@@ -7,6 +7,7 @@ import numpy as np
 
 import os.path
 import sys
+import logging
 
 this_dir = os.path.dirname(__file__)
 if not this_dir in sys.path:
@@ -18,6 +19,7 @@ import mges as mge
 class System(object):
 
     def __init__(self, *args):
+        self.logger = logging.getLogger(f'{__name__}.{__class__.__name__}')
         self.n_cmp = 0
         self.cmp_list = []
         self.n_pot = 0
@@ -63,12 +65,17 @@ class System(object):
 
         """
         if not(self.distMPc and self.name and self.position_angle):
-            raise ValueError('System needs distMPc, name, '
-                             'and position_angle attributes')
+            text = 'System needs distMPc, name, and position_angle attributes'
+            self.logger.error(text)
+            raise ValueError(text)
         if not self.cmp_list:
-            raise ValueError('System has no components')
+            text = 'System has no components'
+            self.logger.error(text)
+            raise ValueError(text)
         if len(self.parameters) != 1 and self.parameters[0].name != 'ml':
-            raise ValueError('System needs ml as its sole parameter')
+            text = 'System needs ml as its sole parameter'
+            self.logger.error(text)
+            raise ValueError(text)
         self.parameters[0].update(sformat = '6.2f')
 
     def __repr__(self):
@@ -77,8 +84,10 @@ class System(object):
     def get_component_from_name(self, cmp_name):
         cmp_list_list = np.array([cmp0.name for cmp0 in self.cmp_list])
         idx = np.where(cmp_list_list == cmp_name)
+        self.logger.debug(f'Checking for 1 and only 1 component {cmp_name}...')
         error_msg = f"There should be 1 and only 1 component named {cmp_name}"
         assert len(idx[0]) == 1, error_msg
+        self.logger.debug('...check ok.')
         component = self.cmp_list[idx[0][0]]
         return component
 
@@ -98,6 +107,7 @@ class Component(object):
                  kinematic_data=[],              # a list of Kinematic objects
                  population_data=[],             # a list of Population objects
                  parameters=[]):                 # a list of Parameter objects
+        self.logger = logging.getLogger(f'{__name__}.{__class__.__name__}')
         if name == None:
             self.name = self.__class__.__name__
         else:
@@ -136,25 +146,35 @@ class Component(object):
         par = par_format.keys()
         errstr = f'Component {self.__class__.__name__} needs attribute '
         if self.visible is None:
-            raise ValueError(errstr + 'visible')
+            text = errstr + 'visible'
+            self.logger.error(text)
+            raise ValueError(text)
         if self.contributes_to_potential is None:
-            raise ValueError(errstr + 'contributes_to_potential')
+            text = errstr + 'contributes_to_potential'
+            self.logger.error(text)
+            raise ValueError(text)
         if not self.parameters:
-            raise ValueError(errstr + 'parameters')
+            text = errstr + 'parameters'
+            self.logger.error(text)
+            raise ValueError(text)
 
         # if len(self.parameters) != len(par):
         #     raise ValueError(f'{self.__class__.__name__} needs exactly '
         #         f'{len(par)} paramater(s), not {len(self.parameters)}')
         pars = [p.name[:p.name.rindex('_'+self.name)] for p in self.parameters]
         if set(pars) != set(par):
-            raise ValueError(f'{self.__class__.__name__} needs parameters '
-                             f'{list(par)}, '
-                             f'not {[p.name for p in self.parameters]}')
+            text = f'{self.__class__.__name__} needs parameters ' + \
+                   f'{list(par)}, not {[p.name for p in self.parameters]}'
+            self.logger.error(text)
+            raise ValueError(text)
+
         self.set_format(par_format)
 
     def set_format(self, par_format=None):
         if par_format is None:
-            raise ValueError(f'{self.__class__.__name__}: no format string')
+            text = f'{self.__class__.__name__}: no format string'
+            self.logger.error(text)
+            raise ValueError(text)
         for p in self.parameters:
             p.update(sformat=par_format[p.name[:p.name.rindex('_'+self.name)]])
 
@@ -170,12 +190,14 @@ class VisibleComponent(Component):
          # visible components have MGE surface density
         self.mge = mge
         super().__init__(visible=True, **kwds)
+        self.logger = logging.getLogger(f'{__name__}.{__class__.__name__}')
 
     def validate(self, **kwds):
         super().validate(**kwds)
         if not isinstance(self.mge, mge.MGE):
-            raise ValueError(f'{self.__class__.__name__}.mge must be '
-                             'mges.MGE object')
+            text = f'{self.__class__.__name__}.mge must be mges.MGE object'
+            self.logger.error(text)
+            raise ValueError(text)
 
 
 class AxisymmetricVisibleComponent(VisibleComponent):
@@ -192,6 +214,7 @@ class TriaxialVisibleComponent(VisibleComponent):
 
     def __init__(self, **kwds):
         super().__init__(symmetry='triax', **kwds)
+        self.logger = logging.getLogger(f'{__name__}.{__class__.__name__}')
 
     def validate(self):
         par_format = {'q':'6.3g', 'p':'6.4g', 'u':'7.5g'}
@@ -230,10 +253,7 @@ class TriaxialVisibleComponent(VisibleComponent):
         else:
             psi=np.nan
 
-        # print("******************************")
-        # print('theta, phi, psi')
-        # print(theta, phi, psi)
-        # print("******************************")
+        self.logger.debug('theta={theta}, phi={phi}, psi={psi}')
 
         return theta,psi,phi
 

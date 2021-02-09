@@ -175,6 +175,6 @@ io_settings: # paths can be given with or without trailing slash
     all_models_file: "all_models_LegacyWS.ecsv"
 
 multiprocessing_settings:
-    ncpus: 5 # integer or 'all_available'
+    ncpus: 'all_available' # integer or 'all_available'
 
 # end

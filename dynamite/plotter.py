@@ -2,6 +2,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from plotbin import sauron_colormap as pb_sauron_colormap
 from plotbin import display_pixels
+import logging
 
 # TODO: use Capellari's latest version of plotbin rather than (the locally
 # packaged up version which we've called plotbin4dyn). This will require
@@ -17,6 +18,7 @@ class Plotter(object):
                  settings=None,
                  parspace=None,
                  all_models=None):
+        self.logger = logging.getLogger(f'{__name__}.{__class__.__name__}')
         self.system = system
         self.settings = settings
         self.parspace = parspace
@@ -153,7 +155,7 @@ class Plotter(object):
         ny = np.int(lines[4][1])
         dx = sx / nx
 
-        # print("Pixel grid dimension is dx,nx,ny,", dx, nx, ny)
+        self.logger.debug(f"Pixel grid dimension is dx={dx},nx={nx},ny={ny}")
         grid = np.zeros((nx, ny), dtype=int)
 
         xr = np.arange(nx, dtype=float) * dx + minx + 0.5 * dx
@@ -165,7 +167,7 @@ class Plotter(object):
         yt = yi.T.flatten()
 
         radeg = 57.2958
-        #print('PA: ', angle_deg)
+        self.logger.debug(f'PA: {angle_deg}')
         xi = xt
         yi = yt
 

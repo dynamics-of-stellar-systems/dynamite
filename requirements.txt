@@ -4,5 +4,6 @@ numpy
 scipy
 matplotlib
 plotbin
+logging
 pathos
 cvxopt

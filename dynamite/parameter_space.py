@@ -11,6 +11,7 @@ import numpy as np
 import copy
 import parameter_space as parspace
 from astropy.table import Table
+import logging
 
 class Parameter(object):
 
@@ -25,6 +26,7 @@ class Parameter(object):
                  gpe_parspace_settings=None,
                  logarithmic=False,
                  ):
+        self.logger = logging.getLogger(f'{__name__}.{__class__.__name__}')
         self.name = name
         self.fixed = fixed
         self.LaTeX = LaTeX
@@ -38,15 +40,19 @@ class Parameter(object):
     def update(self, **kwargs):
         for k, v in kwargs.items():
             if k not in self.__class__.attributes:
-                raise ValueError(f'Invalid parameter key {k}. Allowed keys: '
-                                 f'{str(tuple(self.__class__.attributes))}')
+                text = (f'Invalid parameter key {k}. Allowed keys: '
+                        f'{str(tuple(self.__class__.attributes))}')
+                self.logger.error(text)
+                raise ValueError(text)
             setattr(self, k, v)
 
     def validate(self):
         if sorted(self.__class__.attributes) != sorted(self.__dict__.keys()):
-            raise ValueError(f'Parameter attributes can only be '
-                             f'{str(tuple(self.__class__.attributes))}, '
-                             f'not {str(tuple(self.__dict__.keys()))}')
+            text = (f'Parameter attributes can only be '
+                    f'{str(tuple(self.__class__.attributes))}, '
+                    f'not {str(tuple(self.__dict__.keys()))}')
+            self.logger.error(text)
+            raise ValueError(text)
 
     def __repr__(self):
         return (f'{self.__class__.__name__}({self.__dict__})')
@@ -69,6 +75,7 @@ class Parameter(object):
 class ParameterSpace(list):
 
     def __init__(self, system):
+        self.logger = logging.getLogger(f'{__name__}.{__class__.__name__}')
         for cmp in system.cmp_list:
             for par in cmp.parameters:
                 self.append(par)
@@ -100,8 +107,10 @@ class ParameterSpace(list):
     def get_parameter_from_name(self, name):
         name_array = np.array(self.par_names)
         idx = np.where(name_array == name)
+        self.logger.debug(f'Checking unique parameter name {name}...')
         error_msg = f"There should be 1 and only 1 parameter named {name}"
         assert len(idx[0]) == 1, error_msg
+        self.logger.debug('...check ok.')
         parameter = self[idx[0][0]]
         return parameter
 
@@ -121,14 +130,18 @@ class ParameterGenerator(object):
                  par_space=[],
                  parspace_settings=None,
                  name=None):
+        self.logger = logging.getLogger(f'{__name__}.{__class__.__name__}')
         self.par_space = par_space
         if not parspace_settings:
-            raise ValueError('ParameterGenerator needs parspace_settings')
+            text = 'ParameterGenerator needs parspace_settings'
+            self.logger.error(text)
+            raise ValueError(text)
         self.parspace_settings = parspace_settings
         which_chi2 = self.parspace_settings.get('which_chi2')
         if which_chi2 not in ['chi2', 'kinchi2']:
-          raise ValueError('Unknown or missing which_chi2 setting, '
-                           'use chi2 or kinchi2')
+          text = 'Unknown or missing which_chi2 setting, use chi2 or kinchi2'
+          self.logger.error(text)
+          raise ValueError(text)
         self.chi2 = 'chi2' if which_chi2 == 'chi2' else 'kinchi2'
         self.status = {}
         self.name = name
@@ -144,16 +157,22 @@ class ParameterGenerator(object):
                     self.lo.append([])
                     self.hi.append([])
         except:
-            raise ValueError('ParameterGenerator: non-fixed parameters '
-                             'need hi and lo settings')
+            text = 'ParameterGenerator: non-fixed parameters ' + \
+                   'need hi and lo settings'
+            self.logger.error(text)
+            raise ValueError(text)
         try:
             stop_crit = parspace_settings['stopping_criteria']
         except:
-            raise ValueError('ParameterGenerator: need stopping criteria')
-        if stop_crit.get('n_max_mods') is None and \
-           stop_crit.get('n_max_iter') is None:
-            raise ValueError('ParameterGenerator: need n_max_mods and '
-                             'n_max_iter stopping criteria settings')
+            text = 'ParameterGenerator: need stopping criteria'
+            self.logger.error(text)
+            raise ValueError(text)
+        if not stop_crit.get('n_max_mods') and \
+           not stop_crit.get('n_max_iter'):
+            text = 'ParameterGenerator: need n_max_mods and ' + \
+                   'n_max_iter stopping criteria settings'
+            self.logger.error(text)
+            raise ValueError(text)
 
     def generate(self,
                  current_models=None,
@@ -192,6 +211,7 @@ class ParameterGenerator(object):
         if current_models is None:
             errormsg = "current_models needs to be a valid " \
                        "schwarzschild.AllModels instance"
+            self.logger.error(errormsg)
             raise ValueError(errormsg)
         else:
             self.current_models = current_models
@@ -209,8 +229,8 @@ class ParameterGenerator(object):
                 if self._is_newmodel(m, eps=1e-10):
                     self.add_model(m, n_iter=this_iter)
                     newmodels += 1
-        print(f'{self.name} added {newmodels} new model(s) out of '
-              f'{len(self.model_list)}')
+        self.logger.info(f'{self.name} added {newmodels} new model(s) out of '
+                         f'{len(self.model_list)}')
         self.status['n_new_models'] = newmodels
         last_iter_check = True if newmodels == 0 else False
         self.status['last_iter_added_no_new_models'] = last_iter_check
@@ -242,6 +262,7 @@ class ParameterGenerator(object):
 
         """
         if not model:
+            self.logger.error('No or empty model')
             raise ValueError('No or empty model')
         raw_row = [p.value for p in model]
         row = self.par_space.get_param_value_from_raw_value(raw_row)
@@ -301,6 +322,7 @@ class ParameterGenerator(object):
 
         """
         if any(map(lambda t: not isinstance(t, parspace.Parameter), model)):
+            self.logger.error('Model arg. must be list of Parameter objects')
             raise ValueError('Model arg. must be list of Parameter objects')
         raw_model_values = [p.value for p in model]
         model_values = \
@@ -322,6 +344,7 @@ class LegacyGridSearch(ParameterGenerator):
         super().__init__(par_space=par_space,
                          parspace_settings=parspace_settings,
                          name='LegacyGridSearch')
+        self.logger = logging.getLogger(f'{__name__}.{__class__.__name__}')
         # We need a local parameter copy because we don't want to change the
         # minstep in the original par_space:
         self.new_parset = [copy.deepcopy(p) for p in self.par_space]
@@ -341,22 +364,27 @@ class LegacyGridSearch(ParameterGenerator):
                     self.step.append(None)
                     self.minstep.append(None)
         except:
-            raise ValueError('LegacyGridSearch: non-fixed parameters need '
-                             'step setting')
+            text = 'LegacyGridSearch: non-fixed parameters need step setting'
+            self.logger.error(text)
+            raise ValueError(text)
         try:
             self.thresh = \
             self.parspace_settings['generator_settings']['threshold_del_chi2']
         except:
-            raise ValueError('LegacyGridSearch: need generator_settings - '
-                'threshold_del_chi2 (absolute or scaled - see documentation)')
+            text = 'LegacyGridSearch: need generator_settings - ' + \
+                'threshold_del_chi2 (absolute or scaled - see documentation)'
+            self.logger.error(text)
+            raise ValueError(text)
         stop_crit = parspace_settings['stopping_criteria']
         self.min_delta_chi2_abs = stop_crit.get('min_delta_chi2_abs', False)
         self.min_delta_chi2_rel = stop_crit.get('min_delta_chi2_rel', False)
         if (not self.min_delta_chi2_abs and not self.min_delta_chi2_rel) \
            or \
            (self.min_delta_chi2_abs and self.min_delta_chi2_rel):
-            raise ValueError('LegacyGridSearch: specify exactly one of the '
-                             'options min_delta_chi2_abs, min_delta_chi2_rel')
+            text = 'LegacyGridSearch: specify exactly one of the ' + \
+                   'options min_delta_chi2_abs, min_delta_chi2_rel'
+            self.logger.error(text)
+            raise ValueError(text)
 
     def specific_generate_method(self, **kwargs):
         """
@@ -438,7 +466,7 @@ class LegacyGridSearch(ParameterGenerator):
             models1 = self.current_models.table[mask]
             # Don't use abs() so we stop on increasing chi2 values, too:
             delta_chi2 = np.min(models1[self.chi2])-np.min(models0[self.chi2])
-            if self.min_delta_chi2_rel is not None:
+            if self.min_delta_chi2_rel:
                 delta_chi2 /= np.min(models1[self.chi2])
                 delta_chi2 /= self.min_delta_chi2_rel
             else:
@@ -457,6 +485,7 @@ class GridWalk(ParameterGenerator):
         super().__init__(par_space=par_space,
                          parspace_settings=parspace_settings,
                          name='GridWalk')
+        self.logger = logging.getLogger(f'{__name__}.{__class__.__name__}')
         self.step = []
         self.minstep = []
         try:
@@ -471,16 +500,20 @@ class GridWalk(ParameterGenerator):
                     self.step.append([])
                     self.minstep.append([])
         except:
-            raise ValueError('GridWalk: non-fixed parameters need '
-                             'step setting')
+            text = 'GridWalk: non-fixed parameters need step setting'
+            self.logger.error(text)
+            raise ValueError(text)
+
         stop_crit = parspace_settings['stopping_criteria']
         self.min_delta_chi2_abs = stop_crit.get('min_delta_chi2_abs', False)
         self.min_delta_chi2_rel = stop_crit.get('min_delta_chi2_rel', False)
         if (not self.min_delta_chi2_abs and not self.min_delta_chi2_rel) \
            or \
            (self.min_delta_chi2_abs and self.min_delta_chi2_rel):
-            raise ValueError('GridWalk: specify exactly one of the '
-                             'options min_delta_chi2_abs, min_delta_chi2_rel')
+            text = 'GridWalk: specify exactly one of the ' + \
+                   'options min_delta_chi2_abs, min_delta_chi2_rel'
+            self.logger.error(text)
+            raise ValueError(text)
 
     def specific_generate_method(self, **kwargs):
         """
@@ -512,12 +545,12 @@ class GridWalk(ParameterGenerator):
             n_par = self.par_space.n_par
             center = list(self.current_models.table[center_idx])[:n_par]
             raw_center = self.par_space.get_raw_value_from_param_value(center)
-            # print(f'center: {center}')
+            self.logger.debug(f'center: {center}')
             # Build model_list by walking the grid
             self.model_list = []
             self.grid_walk(center=raw_center)
             # for m in self.model_list:
-            #     print(f'{[(p.name, p.value) for p in m]}')
+            #     self.logger.debug(f'{[(p.name, p.value) for p in m]}')
         return
 
     def grid_walk(self, center=None, par=None, eps=1e-6):
@@ -547,18 +580,22 @@ class GridWalk(ParameterGenerator):
         None. Sets self.model_list to the resulting models.
 
         """
-        if center == None:
-            raise ValueError('Need center')
+        if center is None:
+            text = 'Need center'
+            self.logger.error(text)
+            raise ValueError(text)
         if not par:
             par = self.par_space[0]
         paridx = self.par_space.index(par)
-        # print(f'Call with paridx={paridx}, n_par={self.par_space.n_par}')
+        self.logger.debug(f'Call with paridx={paridx}, '
+                          f'n_par={self.par_space.n_par}')
 
         if par.fixed:
             par_values = [par.value]
             if abs(center[paridx] - par.value) > eps:
-                raise ValueError('Something is wrong: fixed parameter value '
-                                 'not in center')
+                text='Something is wrong: fixed parameter value not in center'
+                self.logger.error(text)
+                raise ValueError(text)
         else:
             lo = self.lo[paridx]
             hi = self.hi[paridx]
@@ -595,21 +632,22 @@ class GridWalk(ParameterGenerator):
             if not self.model_list: # add first entry if model_list is empty
                 self.model_list = [[parcpy]]
                 models_prev = [[]]
-                # print(f'new model list, starting w/parameter {parcpy.name}')
+                self.logger.debug('new model list, starting w/parameter '
+                                  f'{parcpy.name}')
             elif parcpy.name in [p.name for p in self.model_list[0]]:
                 # in this case, create new (partial) model by copying last
                 # models and setting the new parameter value
                 for m in models_prev:
                     new_model = m + [parcpy]
                     self.model_list.append(new_model)
-                # print(f'{parcpy.name} is in '
-                #       f'{[p.name for p in self.model_list[0]]}, '
-                #       f'added {parcpy.name}={parcpy.value}')
+                self.logger.debug(f'{parcpy.name} is in '
+                      f'{[p.name for p in self.model_list[0]]}, '
+                      f'added {parcpy.name}={parcpy.value}')
             else: # new parameter: append it to existing (partial) models
                 models_prev = copy.deepcopy(self.model_list)
                 for m in self.model_list:
                     m.append(parcpy)
-                # print(f'new parameter {parcpy.name}={parcpy.value}')
+                self.logger.debug(f'new parameter {parcpy.name}={parcpy.value}')
 
         # call recursively until all paramaters are done:
         if paridx < self.par_space.n_par - 1:
@@ -635,11 +673,13 @@ class GridWalk(ParameterGenerator):
         min(max(mini, value), maxi)
 
         """
+        logger = logging.getLogger(f'{__name__}.{__class__.__name__}')
         if mini <= maxi:
             return min(max(mini, value), maxi)
         else:
-            raise ValueError('Clip error: minimum must be less than '
-                             'or equal to maximum')
+            text = 'Clip error: minimum must be less than or equal to maximum'
+            logger.error(text)
+            raise ValueError(text)
 
     def check_specific_stopping_critera(self):
         # stop if...
@@ -653,7 +693,7 @@ class GridWalk(ParameterGenerator):
             models1 = self.current_models.table[mask]
             # Don't use abs() so we stop on increasing chi2 values, too:
             delta_chi2 = np.min(models1[self.chi2])-np.min(models0[self.chi2])
-            if self.min_delta_chi2_rel is not None:
+            if self.min_delta_chi2_rel:
                 delta_chi2 /= np.min(models1[self.chi2])
                 delta_chi2 /= self.min_delta_chi2_rel
             else:

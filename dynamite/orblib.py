@@ -3,6 +3,7 @@ import numpy as np
 import subprocess
 import shutil
 from scipy.io import FortranFile
+import logging
 
 import sys
 this_dir = os.path.dirname(__file__)
@@ -52,6 +53,9 @@ class LegacyOrbitLibrary(OrbitLibrary):
                  legacy_directory=None,
                  input_directory=None,
                  parset=None):
+
+        self.logger = logging.getLogger(f'{__name__}.{__class__.__name__}')
+
         self.system = system
         self.mod_dir = mod_dir
         self.settings = settings
@@ -234,11 +238,12 @@ class LegacyOrbitLibrary(OrbitLibrary):
     def get_orbit_ics(self):
         cur_dir = os.getcwd()
         os.chdir(self.mod_dir)
-        print("Calculating the initial conditions for this potential")
         cmdstr = self.write_executable_for_ics()
+        self.logger.info('Calculating initial conditions')
         p = subprocess.call('bash '+cmdstr, shell=True)
+        self.logger.debug('...done. ' + \
+                          f'Logfile: {self.mod_dir}datfil/orbstart.log')
         os.chdir(cur_dir)
-        print("Orbit integration is finished.")
 
     def write_executable_for_ics(self):
         cmdstr = 'cmd_orb_start'
@@ -247,7 +252,7 @@ class LegacyOrbitLibrary(OrbitLibrary):
         txt_file.write('#!/bin/bash' + '\n')
         txt_file.write(
         #    'grep finished datfil/orbstart.dat || ' + self.legacy_directory +'/orbitstart < infil/orbstart.in >> datfil/orbstart.log' + '\n')
-             self.legacy_directory +'/orbitstart < infil/orbstart.in >> datfil/orbstart.log' + '\n')
+             self.legacy_directory +'/orbitstart < infil/orbstart.in 2>&1 >> datfil/orbstart.log' + '\n')
         txt_file.close()
         #returns the name of the executable
         return cmdstr
@@ -256,11 +261,17 @@ class LegacyOrbitLibrary(OrbitLibrary):
         # move to model directory
         cur_dir = os.getcwd()
         os.chdir(self.mod_dir)
-        print("Calculating the orbit library for the proposed potential.")
         cmdstr_tube, cmdstr_box = self.write_executable_for_integrate_orbits()
+        self.logger.info('Integrating orbit library tube orbits')
         p = subprocess.call('bash '+cmdstr_tube, shell=True)
+        self.logger.debug('...done. ' + \
+                          f'Logfiles: {self.mod_dir}datfil/orblib.log, ' + \
+                          f'{self.mod_dir}datfil/triaxmass.log, ' + \
+                          f'{self.mod_dir}datfil/triaxmassbin.log')
+        self.logger.info(f'Integrating orbit library box orbits')
         p = subprocess.call('bash '+cmdstr_box, shell=True)
-        print("Orbit integration is finished.")
+        self.logger.debug('...done. ' + \
+                          f'Logfile: {self.mod_dir}datfil/orblibbox.log')
         # move back to original directory
         os.chdir(cur_dir)
 
@@ -275,8 +286,8 @@ class LegacyOrbitLibrary(OrbitLibrary):
         txt_file.write( self.legacy_directory +'/orblib < infil/orblib.in >> datfil/orblib.log' + '\n')
         txt_file.write('touch datfil/mass_qgrid.dat datfil/mass_radmass.dat datfil/mass_aper.dat' + '\n')
         txt_file.write('rm datfil/mass_qgrid.dat datfil/mass_radmass.dat datfil/mass_aper.dat' + '\n')
-        txt_file.write( self.legacy_directory + '/triaxmass       < infil/triaxmass.in ' + '\n')
-        txt_file.write( self.legacy_directory + '/triaxmassbin    < infil/triaxmassbin.in ' + '\n')
+        txt_file.write( self.legacy_directory + '/triaxmass       < infil/triaxmass.in >> datfil/triaxmass.log' + '\n')
+        txt_file.write( self.legacy_directory + '/triaxmassbin    < infil/triaxmassbin.in >> datfil/triaxmassbin.log' + '\n')
         txt_file.write('# if the gzipped orbit library does not exist zip it' + '\n')
         txt_file.write('test -e datfil/orblib.dat.bz2 || bzip2 -k datfil/orblib.dat' + '\n')
         txt_file.write('rm datfil/orblib.dat' + '\n')
@@ -400,8 +411,10 @@ class LegacyOrbitLibrary(OrbitLibrary):
             the duplicated, flipped and interlaced orblib
 
         """
+        self.logger.debug('Checking for symmetric velocity array...')
         error_msg = 'velocity array must be symmetric'
         assert np.all(orblib.xedg == -orblib.xedg[::-1]), error_msg
+        self.logger.debug('...check ok.')
         losvd = orblib.y
         n_orbs, n_vel_bins, n_spatial_bins = losvd.shape
         reveresed_losvd = losvd[:, ::-1, :]
@@ -430,12 +443,16 @@ class LegacyOrbitLibrary(OrbitLibrary):
         # check orblibs are compatible
         n_orbs1, n_vel_bins1, n_spatial_bins1 = orblib1.y.shape
         n_orbs2, n_vel_bins2, n_spatial_bins2 = orblib2.y.shape
+        self.logger.debug('Checking number of velocity bins...')
         error_msg = 'orblibs have different number of velocity bins'
         assert n_vel_bins1==n_vel_bins2, error_msg
+        self.logger.debug('Checking velocity arrays...')
         error_msg = 'orblibs have different velocity arrays'
         assert np.array_equal(orblib1.x, orblib2.x), error_msg
+        self.logger.debug('Checking number of spatial bins...')
         error_msg = 'orblibs have different number of spatial bins'
         assert n_spatial_bins1==n_spatial_bins2, error_msg
+        self.logger.debug('...checks ok.')
         new_losvd = np.zeros((n_orbs1 + n_orbs2,
                               n_vel_bins1,
                               n_spatial_bins1))
