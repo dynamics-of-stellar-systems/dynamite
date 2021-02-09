@@ -142,7 +142,6 @@ class Model(object):
     def __init__(self,
                  system=None,
                  settings=None,
-                 executor=None,
                  parspace=None,
                  parset=None):
         """
@@ -154,9 +153,6 @@ class Model(object):
             Object holding other settings
         parspace : dyn.parameter_space.ParameterSpace
             A list of parameter objects for this model
-        executor : dyn.executor.Executor
-            Handles differences between execting models on your local machines
-            vs submission on clusters, HPC modes etc
         parset : row of an Astropy Table
             contains the values of the potential parameters for this model
 
@@ -170,7 +166,6 @@ class Model(object):
         self.settings = settings
         self.parset = parset
         self.parspace = parspace
-        self.executor = executor
 
     def get_model_directory(self):
         out_dir = self.settings.io_settings['output_directory']
@@ -227,8 +222,7 @@ class LegacySchwarzschildModel(Model):
                 system=self.system,
                 mod_dir=self.directory_noml,
                 settings=self.settings.orblib_settings,
-                legacy_directory=self.legacy_directory,
-                executor=self.executor)
+                legacy_directory=self.legacy_directory)
         self.orblib = orblib
         # check if orbit library was calculated already
         check1 = os.path.isfile(self.directory_noml+'datfil/orblib.dat.bz2')
@@ -252,15 +246,14 @@ class LegacySchwarzschildModel(Model):
 
     def get_weights(self):
         # prepare fortran input file for nnls
-        self.create_fortran_input_nnls(self.directory_noml)
+        self.create_fortran_input_nnls(self.directory_noml, self.parset['ml'])
         # create the weight solver object
         self.weight_solver = ws.LegacyWeightSolver(
                 system=self.system,
                 mod_dir=self.directory_noml,
                 settings=self.settings.weight_solver_settings,
                 legacy_directory=self.legacy_directory,
-                ml=self.parset['ml'],
-                executor=self.executor)
+                ml=self.parset['ml'])
         # TODO: extract other outputs e.g. orbital weights
         chi2, kinchi2 = self.weight_solver.solve()
         # store chi2 to the model
@@ -291,6 +284,7 @@ class LegacySchwarzschildModel(Model):
         dm_specs='1 2'
 
         theta,psi,phi = stars.triax_pqu2tpp(p,q,u)
+        # DEBUG print(f'XXXXXXX MODEL.PY XXXXX p={p}, q={q}, u={u} => theta={theta}, phi={phi}, psi={psi}')
 
         #header
         len_mge=len(stars.mge.data)
@@ -430,7 +424,7 @@ class LegacySchwarzschildModel(Model):
         triaxmassbin_file.write(text)
         triaxmassbin_file.close()
 
-    def create_fortran_input_nnls(self,path):
+    def create_fortran_input_nnls(self,path,ml):
 
         #for the ml the model is only scaled. We therefore need to know what is the ml that was used for the orbit library
         infile=path+'infil/parameters.in'
@@ -452,8 +446,8 @@ class LegacySchwarzschildModel(Model):
         str(self.settings.weight_solver_settings['lum_intr_rel_err']) + '                               [ relative error for intrinsic luminosity ]' +'\n' + \
         str(self.settings.weight_solver_settings['sb_proj_rel_err']) + '                               [ relative error for projected SB ]' + '\n' + \
         str(np.sqrt(self.parset['ml']/ml_orblib))  + '                                [ scale factor related to M/L, sqrt( (M/L)_k / (M/L)_ref ) ]' + '\n' + \
-        'datfil/orblib.dat' +'\n' + \
-        'datfil/orblibbox.dat' +'\n' + \
+        f'datfil/orblib_{ml}.dat' +'\n' + \
+        f'datfil/orblibbox_{ml}.dat' +'\n' + \
         str(self.settings.weight_solver_settings['nnls_solver']) + '                                  [ nnls solver ]'
 
         nn_file= open(path+'ml'+'{:01.2f}'.format(self.parset['ml'])+'/nn.in',"w")

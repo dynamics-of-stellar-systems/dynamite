@@ -191,9 +191,9 @@ class ParameterGenerator(object):
         (i) evaluates stopping criteria, and stop if necessary
         (ii) runs the specific_generate_method of the child class, which
         updates self.model_list with a list of propsal models
-        (iii) removes previously run models from self.model_list
+        (iii) removes previously run and/or invalid models from self.model_list
         (iv) converts parameters from raw_values to par_values
-        (v) adds new models to current_models.table
+        (v) adds new, valid models to current_models.table
         (vi) update and return the status dictionary
 
         Parameters
@@ -466,7 +466,7 @@ class LegacyGridSearch(ParameterGenerator):
             models1 = self.current_models.table[mask]
             # Don't use abs() so we stop on increasing chi2 values, too:
             delta_chi2 = np.min(models1[self.chi2])-np.min(models0[self.chi2])
-            if self.min_delta_chi2_rel is not None:
+            if self.min_delta_chi2_rel:
                 delta_chi2 /= np.min(models1[self.chi2])
                 delta_chi2 /= self.min_delta_chi2_rel
             else:
@@ -681,7 +681,7 @@ class GridWalk(ParameterGenerator):
             models1 = self.current_models.table[mask]
             # Don't use abs() so we stop on increasing chi2 values, too:
             delta_chi2 = np.min(models1[self.chi2])-np.min(models0[self.chi2])
-            if self.min_delta_chi2_rel is not None:
+            if self.min_delta_chi2_rel:
                 delta_chi2 /= np.min(models1[self.chi2])
                 delta_chi2 /= self.min_delta_chi2_rel
             else:

@@ -176,7 +176,7 @@ io_settings: # paths can be given with or without trailing slash
     output_directory: "NGC6278_output/"
     all_models_file: "all_models.ecsv"
 
-executor_settings:
-    type: "Local"
+multiprocessing_settings:
+    ncpus: 1 # integer or 'all_available'
 
 # end

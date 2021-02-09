@@ -39,3 +39,4 @@ dist/*
 dynamite.egg-info/*
 list_of_created_files.txt
 ran1_nr
+tests/test_validate_pqu_output

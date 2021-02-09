@@ -178,8 +178,8 @@ class Component(object):
         """
         Validates the component's parameter values. Kept separate from the
         validate method to facilitate easy calling from the parameter
-        generator class. This method does a rudimentary check for non-
-        negativity and is intended to be implemented separately for each
+        generator class. This is a `placeholder` method which always returns
+        `True`. Specific implementations should be implemented for each
         component subclass.
 
         Parameters
@@ -194,8 +194,8 @@ class Component(object):
             True if the parameter set is valid, False otherwise
 
         """
-        isvalid = np.all(np.sign(tuple(par.values())) >= 0)
-        return bool(isvalid)
+        isvalid = True
+        return isvalid
 
     def __repr__(self):
         return (f'\n{self.__class__.__name__}({self.__dict__}\n)')
@@ -274,40 +274,55 @@ class TriaxialVisibleComponent(VisibleComponent):
         """
         transfer (p, q, u) to the three viewing angles (theta, psi, phi)
         with known flatting self.qobs.
-        Taken from schw_basics
+        Taken from schw_basics, same as in vdB et al. 2008, MNRAS 385,2,647
         We should possibly revisit the expressions later
 
         """
+
+        # avoid legacy_fortran's u=1 (rather, phi=psi=90deg) problem
+        if u == 1:
+            u *= (1-np.finfo(float).epsneg)  # same value as for np.double
 
         p2 = np.double(p) ** 2
         q2 = np.double(q) ** 2
         u2 = np.double(u) ** 2
         o2 = np.double(self.qobs) ** 2
 
-        w1 = (u2 - q2) * (o2 * u2 - q2) / ((1.0 - q2) * (p2 - q2))
-        w2 = (u2 - p2) * (p2 - o2 * u2) * (1.0 - q2) / ((1.0 - u2) * (1.0 - o2 * u2) * (p2 - q2))
-        w3 = (1.0 - o2 * u2) * (p2 - o2 * u2) * (u2 - q2) / ((1.0 - u2) * (u2 - p2) * (o2 * u2 - q2))
-
-        if w1 >=0.0 :
-            theta = np.arccos(np.sqrt(w1)) * 180 /np.pi
+        # Check for possible triaxial deprojection (v. d. Bosch 2004,
+        # triaxpotent.f90 and v. d. Bosch et al. 2008, MNRAS 385, 2, 647)
+        # DEBUG str = f'{q} <= {p} <= {1}, ' \
+        # DEBUG       f'{max((q/self.qobs,p))} <= {u} <= {min((p/self.qobs),1)}, ' \
+        # DEBUG       f'q\'={self.qobs}'
+        # 0<=t<=1, t = (1-p2)/(1-q2) and p,q>0 is the same as 0<q<=p<=1 and q<1
+        t = (1-p2)/(1-q2)
+        if not (0 <= t <= 1) or \
+           not (max((q/self.qobs,p)) <= u <= min((p/self.qobs),1)) :
+            theta = phi = psi = np.nan
+            # DEBUG print('DEPROJ FAIL: '+str)
         else:
-            theta=np.nan
-
-        if w2 >=0.0 :
-            phi = np.arctan(np.sqrt(w2)) * 180 /np.pi
-        else:
-            phi=np.nan
-
-        if w3 >=0.0 :
-            psi = 180 - np.arctan(np.sqrt(w3)) * 180 /np.pi
-        else:
-            psi=np.nan
+            # DEBUG print('DEPROJ PASS: '+str)
+            w1 = (u2 - q2) * (o2 * u2 - q2) / ((1.0 - q2) * (p2 - q2))
+            w2 = (u2 - p2) * (p2 - o2 * u2) * (1.0 - q2) / ((1.0 - u2) * (1.0 - o2 * u2) * (p2 - q2))
+            w3 = (1.0 - o2 * u2) * (p2 - o2 * u2) * (u2 - q2) / ((1.0 - u2) * (u2 - p2) * (o2 * u2 - q2))
+    
+            if w1 >=0.0 :
+                theta = np.arccos(np.sqrt(w1)) * 180 /np.pi
+            else:
+                theta=np.nan
+    
+            if w2 >=0.0 :
+                phi = np.arctan(np.sqrt(w2)) * 180 /np.pi
+            else:
+                phi=np.nan
+    
+            if w3 >=0.0 :
+                psi = 180 - np.arctan(np.sqrt(w3)) * 180 /np.pi
+            else:
+                psi=np.nan
 
         # print("******************************")
-        # print('theta, phi, psi')
-        # print(theta, phi, psi)
+        # DEBUG print(f'theta={theta}, phi={phi}, psi={psi}')
         # print("******************************")
-
         return theta,psi,phi
 
 
