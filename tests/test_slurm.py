@@ -1,10 +1,10 @@
 #!/bin/env python3
-#SBATH --qos=p71474_0096
+#SBATCH --qos=p71474_0096
 #SBATCH --job-name=test_dynamite
 #SBATCH -N 1
-#SBATCH --mem-per-cpu=10
-#SBATCH --output=dynamite_output.log
-#SBATCH --error=dynamite_error.log
+#SBATCH --mem-per-cpu=50
+#SBATCH --output="dyn_%j.out"
+#SBATCH --error="dyn_%j.err"
 
 # new in config file - multiprocessing_settings: ncpus
 # set this either to an integer or to 'all_available'
