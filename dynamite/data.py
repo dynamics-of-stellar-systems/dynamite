@@ -45,16 +45,32 @@ class Integrated(Data):
                             sigma=[1.],
                             weight=[1.],
                             datafile='datafile.ecsv'):
+        """Write PSF into the datafile
+
+        Quantities are written as meta-data under 'PSF'. PSF represented by a
+        sequence of (Gaussian) sigma and weights.
+
+        Parameters
+        ----------
+        sigma : list
+            Gaussian std dev of PSF components
+        weight : list
+            weights of PSF components
+        datafile : string
+            Description of parameter `datafile`.
+
+        """
         assert type(sigma) is list
-        assert type(sigma) is list
+        assert type(weight) is list
         assert isinstance(datafile, str)
         if hasattr(self, 'PSF'):
             self.logger.warning('Warning: this dataset already has an ' + \
                                 'associated PSF! Possibly overwriting an ' + \
                                 'existing PSF in the datafile')
-        psf = {'sigma':sigma, 'weight':weight}
-        meta = {'PSF':psf}
         old_table = ascii.read(datafile)
+        meta = old_table.meta
+        psf = {'sigma':sigma, 'weight':weight}
+        meta.update({'PSF':psf})
         new_table = Table(old_table, meta=meta)
         new_table.write(datafile, format='ascii.ecsv', overwrite=True)
 

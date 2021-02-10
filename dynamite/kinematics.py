@@ -4,12 +4,8 @@ import numpy as np
 from scipy import special, stats
 from astropy import table
 import logging
-
-# TODO: move some of the kwargs from the init of 'Kinematics' to the init of
-# higher level data classes, e.g. all Integrated objects will need aperturefile,
-# binfile, maskfile, PSF.
-
-# QUESTION: what does values list do...? Why is it outside of any method?
+import os
+import h5py
 
 class Kinematics(data.Data):
     """
@@ -460,5 +456,169 @@ class Histogram(object):
         norm = self.get_normalisation()
         mean /= norm
         return mean
+
+
+class BayesLOSVD(Kinematics, data.Integrated):
+
+    def __init__(self, **kwargs):
+        # super goes left to right, i.e. first calls "Kinematics" __init__, then
+        # calls data.Integrated's __init__
+        super().__init__(**kwargs)
+        self.logger = logging.getLogger(f'{__name__}.{__class__.__name__}')
+        if hasattr(self, 'data'):
+            self.convert_losvd_columns_to_one_multidimenstional_column()
+
+    def convert_losvd_columns_to_one_multidimenstional_column(self):
+        nbins = self.data.meta['nbins']
+        nv = self.data.meta['nvbins']
+        losvd_mean = np.zeros((nbins,nv))
+        losvd_sigma = np.zeros((nbins,nv))
+        for j in range(nv):
+            losvd_mean[:,j] = self.data[f'losvd_{j}']
+            self.data.remove_column(f'losvd_{j}')
+            losvd_sigma[:,j] = self.data[f'dlosvd_{j}']
+            self.data.remove_column(f'dlosvd_{j}')
+        self.data['losvd'] = losvd_mean
+        self.data['dlosvd'] = losvd_sigma
+
+    def load_hdf5(self, filename):
+        """Load a *.hdf5 file containing results from BAYES-LOSVD
+
+        Borrowed from bayes_losvd_load_hdf5.py
+
+        Parameters
+        ----------
+        filename : string
+
+        Returns
+        -------
+        dict
+
+        """
+        self.logger.info("Loading "+filename+" data")
+        # Checking file exists
+        if not os.path.exists(filename):
+            self.logger.error("Cannot find file "+filename)
+        # Open file
+        self.logger.debug("# Opening file")
+        f = h5py.File(filename,'r')
+        # Defining output dictionary
+        struct = {}
+        # Filling up dictionary
+        self.logger.debug("# Loading input data:")
+        input_data = f['in']
+        for key,values in input_data.items():
+            self.logger.debug(' - '+key)
+            struct[key] = np.array(values)
+        if f.get("out") != None:
+            self.logger.debug("# Loading Stan results:")
+            output_data = f['out']
+            bins_list   = list(output_data.keys())
+            for idx in bins_list:
+                tmp = f['out/'+idx]
+                struct[int(idx)] = {}
+                for key,values in tmp.items():
+                    self.logger.debug(' - ['+idx+'] '+key)
+                    struct[int(idx)][key] = np.array(values)
+        self.logger.info("load_hdf5 is DONE")
+        return struct
+
+    def write_losvds_to_ecsv_format(self,
+                                    filename=None,
+                                    outfile='bayes_losvd_kins.ecsv'):
+        result = self.load_hdf5(filename)
+        dv = float(result['velscale'])
+        vcent = result['xvel']
+        nv = len(vcent)
+        completed_bins = [i for i in result.keys() if type(i) is int]
+        nbins = len(completed_bins)
+        losvd_mean = np.zeros((nbins,nv))
+        losvd_sigma = np.zeros((nbins,nv))
+        for i in completed_bins:
+            losvd_mean[i] = result[i]['losvd'][2]
+            losvd_sigma[i] = result[i]['losvd'][3] - result[i]['losvd'][1]
+        data = table.Table()
+        data['binID'] = completed_bins
+        for j in range(nv):
+            data[f'losvd_{j}'] = losvd_mean[:,j]
+            data[f'dlosvd_{j}'] = losvd_sigma[:,j]
+        # add meta-data
+        meta = {'dv':dv, 'vcent':list(vcent), 'nbins':nbins, 'nvbins':nv}
+        data = table.Table(data, meta=meta)
+        data.write(outfile, format='ascii.ecsv', overwrite=True)
+        return
+
+    def write_aperture_and_bin_files(self,
+                                     filename=None,
+                                     angle_deg=0.,
+                                     aperture_filename='aperture.dat',
+                                     bin_filename='bins.dat'):
+        """Write aperture.dat and 'bins.dat' files from BAYES-LOSVD output
+
+        Parameters
+        ----------
+        filename : string
+            filename *_results.hdf5 of BAYES-LOSVD output (all bins combined)
+        angle_deg : float
+            Angle in degrees measured counter clockwise from the galaxy major
+            axis to the X-axis of the input data
+        aperture_filename : string
+            name of aperture file
+        bin_filename : string
+            name of bins file
+
+        """
+        result = self.load_hdf5(filename)
+        # get x data
+        x = result['x']
+        ux = np.unique(x) # returns a sorted array
+        nx = len(ux)
+        dx = ux[1]-ux[0]
+        edg_x = np.concatenate((ux-dx/2., [ux[-1]+dx/2.]))
+        minx, maxx = np.min(edg_x), np.max(edg_x)
+        # get y data
+        y = result['y']
+        uy = np.unique(y) # returns a sorted array
+        ny = len(uy)
+        dy = uy[1]-uy[0]
+        edg_y = np.concatenate((uy-dy/2., [uy[-1]+dy/2.]))
+        miny, maxy = np.min(edg_y), np.max(edg_y)
+        # Create aperture.dat
+        aperture_file = open(aperture_filename, 'w')
+        aperture_file.write('#counter_rotation_boxed_aperturefile_version_2 \n')
+        string = '\t{0:<.6f}\t{1:<.6f} \n'.format(minx, miny)
+        aperture_file.write(string)
+        string = '\t{0:<.6f}\t{1:<.6f} \n'.format(maxx-minx, maxy-miny)
+        aperture_file.write(string)
+        string = '\t{0:<.6f} \n'.format(angle_deg)
+        aperture_file.write(string)
+        string = '\t{0}\t{1} \n'.format(int(nx), int(ny))
+        aperture_file.write(string)
+        string = ' aperture = -(hst_pa) + 90 \n'
+        aperture_file.write(string)
+        aperture_file.close()
+        # Write bins.dat file
+        ix = np.digitize(x, edg_x)
+        ix -= 1
+        iy = np.digitize(y, edg_y)
+        iy -= 1
+        grid = np.zeros((nx, ny), dtype=int)
+        grid[ix, iy] = result['binID']
+        comment_line = '#Counterrotaton_binning_version_1\n'
+        grid_size = nx*ny
+        first_line = '{0}\n'.format(grid_size)
+        flattened_grid = grid.T.flatten()
+        bins_file = open(bin_filename, 'w')
+        bins_file.write(comment_line)
+        bins_file.write(first_line)
+        for i in range(grid_size):
+            string = f'\t{flattened_grid[i]}'
+            bins_file.write(string)
+            # line-break every tenth line
+            if i%10==9:
+                bins_file.write('\n')
+        bins_file.write('\n')
+        bins_file.close()
+
 
 # end
