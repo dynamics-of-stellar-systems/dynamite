@@ -48,7 +48,7 @@ def run_orbit_losvd_test(make_comparison_losvd=False):
 
     # read configuration
     fname = 'user_test_config.yaml'
-    c = dyn.config_reader.Configuration(fname,silent=True,reset_logging=False)
+    c = dyn.config_reader.Configuration(fname,reset_logging=False)
 
     io_settings = c.settings.io_settings
     outdir = io_settings['output_directory']
@@ -67,7 +67,7 @@ def run_orbit_losvd_test(make_comparison_losvd=False):
 
     # re-read configuration now that old output has been deleted
     fname = 'user_test_config.yaml'
-    c = dyn.config_reader.Configuration(fname, silent=True)
+    c = dyn.config_reader.Configuration(fname)
 
     parset = c.parspace.get_parset()
     model = dyn.model.LegacySchwarzschildModel(
@@ -116,9 +116,9 @@ if __name__ == '__main__':
 
     # For an ultra-minimal logging configuration, not even the
     # logging.basicConfig call is necessary, but here we want to log on the
-    # INFO level.
-
+    # INFO level. Comment out the following line to see warnings only.
     logging.basicConfig(level=logging.INFO)
+
     run_orbit_losvd_test()
 
 # end

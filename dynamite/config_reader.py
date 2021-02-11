@@ -116,11 +116,11 @@ class Configuration(object):
         self.logger = logging.getLogger(f'{__name__}.{__class__.__name__}')
         logger = self.logger
         if reset_logging is True:
-            logger.debug('Dynamite: resetting logging configuration')
-            self.dynamite_logging()
-            logger.debug('Dynamite: logging set to Dynamite defaults')
+            logger.info('Resetting logging configuration')
+            DynamiteLogging()
+            logger.debug('Logging set to Dynamite defaults')
         else:
-            logger.debug("Dynamite: using the calling application's logging "
+            logger.debug("Dynamite uses the calling application's logging "
                          "settings")
         if silent is not None:
             self.logger.warning("'silent' option is deprecated and ignored")
@@ -485,39 +485,68 @@ class Configuration(object):
             raise ValueError(f'Only specify one of {chi2abs}, {chi2scaled}, '
                              'not both')
 
-    def dynamite_logging(self):
+
+class DynamiteLogging(object):
+    """
+    Dynamite logging setup. ONLY use if logging has not been configured
+    outside of Dynamite.
+    If no arguments are give, the logging setup is as follows:
+    (1) log to the console with logging level INFO, messages include the level,
+        timestamp, class name, and message text
+    (2) create a dynamite.log file with logging level DEBUG, messages include
+        the level, timestamp, class name, filename:method:line number, and
+        message text
+    """
+    def __init__(self, logfile='dynamite.log', console_level=logging.INFO,
+                                               logfile_level=logging.DEBUG,
+                                               console_formatter = None,
+                                               logfile_formatter = None):
         """
-        Dynamite default logging setup. ONLY use if logging has not been
-        configured outside of Dynamite.
-        (1) creates a dynamite.log file with logging level DEBUG
-        (2) more concise logging to the console with logging level INFO
-    
+        Initialize Dynamite logging.
+
+        Parameters
+        ----------
+        logfile : str, optional
+            Name of the logfile, logfile=None will not create a logfile.
+            The default is 'dynamite.log'.
+        console_level : int, optional
+            Logfile logging level. The default is logging.INFO.
+        logfile_level : int, optional
+            Console logging level. The default is logging.DEBUG.
+        console_formatter : str, optional
+            Format string for console logging. The default is set in the code.
+        logfile_formatter : str, optional
+            Format string for logfile logging. The default is set in the code.
+
         Returns
         -------
         None.
-    
+
         """
-        # create logger
-        logger = logging.getLogger()
-        logger.setLevel(logging.DEBUG)
-        # create file handler
-        fh = logging.FileHandler('dynamite.log', mode='w')
-        fh.setLevel(logging.DEBUG)
-        # create console handler
-        ch = logging.StreamHandler()
-        ch.setLevel(logging.INFO)
-        # create formatter and add it to the handlers
-        # formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
-        # formatter = logging.Formatter('[%(levelname)s] %(asctime)s.%(msecs)03d - %(name)s - %(message)s', "%Y-%m-%d %H:%M:%S")
-        # formatter = logging.Formatter('[%(levelname)s] %(asctime)s - %(filename)s %(funcName)s:%(lineno)d - %(message)s', "%H:%M:%S")
-        file_formatter = logging.Formatter( \
-            '[%(levelname)s] %(asctime)s - %(name)s - '
-            '%(filename)s:%(funcName)s:%(lineno)d - '
-            '%(message)s', "%b %d %H:%M:%S" )
-        console_formatter = logging.Formatter( \
-            '[%(levelname)s] %(asctime)s - %(name)s - %(message)s', "%H:%M:%S")
-        fh.setFormatter(file_formatter)
-        ch.setFormatter(console_formatter)
-        # add the handlers to the logger
-        logger.addHandler(fh)
-        logger.addHandler(ch)
+        logger = logging.getLogger()       # create logger
+        logger.setLevel(logging.DEBUG)     # set level that's lower that wanted
+
+        ch = logging.StreamHandler()       # create console logging handler
+        ch.setLevel(console_level)         # set console logging level
+        # create formatter
+        if console_formatter is None:
+            console_formatter = logging.Formatter( \
+                '[%(levelname)s] %(asctime)s - %(name)s - '
+                '%(message)s', "%H:%M:%S")
+        ch.setFormatter(console_formatter) # add the formatter to the handler
+        logger.addHandler(ch)              # add the handler to the logger
+
+        if logfile:
+            fh = logging.FileHandler(logfile, mode='w') # create handler
+            fh.setLevel(logfile_level)             # set file logging level
+            # create formatter
+            # formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+            # formatter = logging.Formatter('[%(levelname)s] %(asctime)s.%(msecs)03d - %(name)s - %(message)s', "%Y-%m-%d %H:%M:%S")
+            # formatter = logging.Formatter('[%(levelname)s] %(asctime)s - %(filename)s %(funcName)s:%(lineno)d - %(message)s', "%H:%M:%S")
+            if logfile_formatter is None:
+                logfile_formatter = logging.Formatter( \
+                    '[%(levelname)s] %(asctime)s - %(name)s - '
+                    '%(filename)s:%(funcName)s:%(lineno)d - '
+                    '%(message)s', "%b %d %H:%M:%S" )
+                fh.setFormatter(logfile_formatter) # add formatter to handler
+            logger.addHandler(fh)                  # add handler to the logger

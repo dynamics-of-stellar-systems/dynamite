@@ -27,7 +27,7 @@ print('Located at:', dyn.__path__)
 
 # read configuration
 fname = 'test_validate_pqu_config.yaml'
-c = dyn.config_reader.Configuration(fname, reset_logging=True)
+c = dyn.config_reader.Configuration(fname)
 io_settings = c.settings.io_settings
 outdir = io_settings['output_directory']
 if not os.path.isdir(outdir):
