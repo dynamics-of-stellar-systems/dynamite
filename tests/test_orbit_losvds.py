@@ -77,27 +77,28 @@ def run_orbit_losvd_test(make_comparison_losvd=False):
         parset=parset)
     model.setup_directories()
     model.get_model_directory()
-    model.get_orblib()
-    model.orblib.read_losvd_histograms()
+    orbit_library = model.get_orblib()
 
     fname = outdir + 'comparison_losvd.npz'
     if make_comparison_losvd:
-        np.savez(fname,
-                 xedg=model.orblib.losvd_histograms.xedg,
-                 y=model.orblib.losvd_histograms.y)
-    tmp = np.load(fname)
-    comparison_losvd = dyn.kinematics.Histogram(xedg=tmp['xedg'],
-                                                y=tmp['y'],
-                                                normalise=False)
+        # create comparison file
+        np.savez_compressed(fname,
+                            xedg=orbit_library.losvd_histograms.xedg,
+                            y=orbit_library.losvd_histograms.y)
 
-    # read orbits and plot them
-    if make_comparison_losvd is False:
+        logging.info(f'Losvd comparison file {fname} created')
+    else:
+        # read orbits and plot them
+        tmp = np.load(fname)
+        comparison_losvd = dyn.kinematics.Histogram(xedg=tmp['xedg'],
+                                                    y=tmp['y'],
+                                                    normalise=False)
         orb_idx = 15
         aperture_idx_list = [0, 2, 20, 30]
         ax = plot_losvds(comparison_losvd,
                          orb_idx,
                          aperture_idx_list)
-        ax = plot_losvds(model.orblib.losvd_histograms,
+        ax = plot_losvds(orbit_library.losvd_histograms,
                          orb_idx,
                          aperture_idx_list,
                          ls='--',
@@ -106,9 +107,9 @@ def run_orbit_losvd_test(make_comparison_losvd=False):
         fig = plt.gcf()
         fig.savefig(plotfile)
 
-    logging.info(f'Look at {plotfile}')
-    # we want to print to the console regardless of the logging level
-    print(f'Look at {plotfile}')
+        logging.info(f'Look at {plotfile}')
+        # we want to print to the console regardless of the logging level
+        print(f'Look at {plotfile}')
 
     return 0
 
