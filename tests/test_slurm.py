@@ -24,6 +24,7 @@ import matplotlib.pyplot as plt
 
 import os
 import shutil
+import logging
 
 import dynamite as dyn
 
@@ -85,6 +86,12 @@ def run_user_test(stat_mode=False):
     return
 
 if __name__ == '__main__':
+
+    # Example for directly setting up DynamiteLogging
+    dyn.config_reader.DynamiteLogging(logfile='test_slurm.log',
+                                      console_level=logging.ERROR,
+                                      logfile_level=logging.DEBUG)
+
     run_user_test()
 
 # end

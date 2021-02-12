@@ -154,11 +154,12 @@ class AllModels(object):
 
 class Model(object):
     '''
-    A DYNAMITE model. The Model can be run by running the methods (i)
-    get_orblib, (ii) get_weights, (iii) (in the future) do_orbit_colouring.
-    Running each of these methods will adds a new attribute to the model, e.g.
-    model.get_orblib(...) --> creates an attribute --> model.orblib
-    model.get_weights(...) --> creates an attribute --> model.weight_solver
+    A DYNAMITE model.
+
+    The model can be run by running the methods (i) get_orblib, (ii) get_weights
+    and (iii) (in the future) do_orbit_colouring. Running each of these methods
+    will return the appropriate object, e.g. model.get_orblib() --> returns an 
+    OrbitLibrary object model.get_weights(...) --> returns a WeightSolver object
     '''
     def __init__(self,
                  system=None,
@@ -229,19 +230,6 @@ class Model(object):
         # and also the model directories
         self.create_model_directory(self.directory_noml+'infil/')
         self.create_model_directory(self.directory_noml+'datfil/')
-
-    def get_orblib(self):
-        # make orbit libary object
-        orblib = dyn_orblib.LegacyOrbitLibrary(
-                system=self.system,
-                mod_dir=self.directory_noml,
-                settings=self.settings.orblib_settings,
-                legacy_directory=self.legacy_directory,
-                input_directory=self.settings.io_settings['input_directory'],
-                parset=self.parset)
-        orblib.get_orblib()
-        orblib.read_losvd_histograms()
-        return orblib
 
     def get_orblib(self):
         # make orbit libary object
