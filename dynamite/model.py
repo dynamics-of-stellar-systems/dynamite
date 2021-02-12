@@ -154,11 +154,12 @@ class AllModels(object):
 
 class Model(object):
     '''
-    A DYNAMITE model. The Model can be run by running the methods (i)
-    get_orblib, (ii) get_weights, (iii) (in the future) do_orbit_colouring.
-    Running each of these methods will return the appropriate object, e.g.
-    model.get_orblib() --> returns an OrbitLibrary object
-    model.get_weights(...) --> creates a WeightSolver object
+    A DYNAMITE model.
+
+    The model can be run by running the methods (i) get_orblib, (ii) get_weights
+    and (iii) (in the future) do_orbit_colouring. Running each of these methods
+    will return the appropriate object, e.g. model.get_orblib() --> returns an 
+    OrbitLibrary object model.get_weights(...) --> returns a WeightSolver object
     '''
     def __init__(self,
                  system=None,
