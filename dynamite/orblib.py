@@ -76,10 +76,10 @@ class LegacyOrbitLibrary(OrbitLibrary):
             kinematics.convert_to_old_format(old_filename)
             aperture_file = self.in_dir + kinematics.aperturefile
             shutil.copyfile(aperture_file,
-                            self.mod_dir+'infil/aperture.dat')
+                            self.mod_dir+'infil/'+ kinematics.aperturefile)
             binfile = self.in_dir + kinematics.binfile
             shutil.copyfile(binfile,
-                            self.mod_dir+'infil/bins.dat')
+                            self.mod_dir+'infil/'+ kinematics.binfile)
             # calculate orbit libary
             self.get_orbit_ics()
             self.get_orbit_library()
