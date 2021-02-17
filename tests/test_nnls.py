@@ -30,7 +30,8 @@ def run_user_test(stat_mode=False):
     print('Located at:', dyn.__path__)
 
     # read configuration
-    os.chdir(os.path.dirname(__file__))
+    if '__file__' in globals():
+        os.chdir(os.path.dirname(__file__))
     fname = 'user_test_config_ml.yaml'
     c = dyn.config_reader.Configuration(fname, silent=True, reset_logging=True)
 

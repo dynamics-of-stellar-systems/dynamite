@@ -142,15 +142,16 @@ orblib_settings:
     random_seed: 4242 # integer; any value <= 0 results in stochastic seed
 
 weight_solver_settings:
-    type: "LegacyWeightSolver"
-    setting1: True
-    setting2: False
+    # type: "LegacyWeightSolver"
+    # nnls_solver: 1
+    type: "NNLS"
+    nnls_solver: 'scipy'
+    CRcut: True
     regularisation: 0
     number_GH: 4
     GH_sys_err: '0.0 0.0 0.0 0.0 0.3 0.3 0.6 0.6'
     lum_intr_rel_err: 0.01
     sb_proj_rel_err: 0.02
-    nnls_solver: 1
 
 parameter_space_settings:
     generator_type: "LegacyGridSearch"
@@ -177,6 +178,6 @@ io_settings: # paths can be given with or without trailing slash
     all_models_file: "all_models.ecsv"
 
 multiprocessing_settings:
-    ncpus: 1 # integer or 'all_available'
+    ncpus: 'all_available' # integer or 'all_available'
 
 # end
