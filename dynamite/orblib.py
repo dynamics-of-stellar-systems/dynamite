@@ -3,6 +3,7 @@ import numpy as np
 import subprocess
 import shutil
 from scipy.io import FortranFile
+from astropy.table import Table, vstack
 import logging
 
 import sys
@@ -92,7 +93,7 @@ class LegacyOrbitLibrary(OrbitLibrary):
             if len(kinematics)>1:
                 kinematics_combined=kinematics[0]
         
-                #kinematics_combined.data=np.hstack((kinematics[0].data, kinematics[1].data))
+                kinematics_combined.data=vstack((kinematics[0].data, kinematics[1].data))
                 old_filename = self.mod_dir+'infil/kin_data_combined.dat'
                 kinematics_combined.convert_to_old_format(old_filename)
                             
