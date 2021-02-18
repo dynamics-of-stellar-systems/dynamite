@@ -86,7 +86,7 @@ class LegacyOrbitLibrary(OrbitLibrary):
 
     def create_fortran_input_orblib(self, path):
         #-------------------
-        #write parameters.in
+        #write parameters_pot.in
         #-------------------
         stars = self.system.get_component_from_name('stars')
         # used to derive the viewing angles
@@ -113,18 +113,18 @@ class LegacyOrbitLibrary(OrbitLibrary):
              dm_specs +'\n' + \
              str(self.parset['dc_dark_halo']) +' ' + str(self.parset['f_dark_halo'])
 
-        #parameters.in
-        np.savetxt(path+'parameters.in',stars.mge.data,header=str(len_mge),footer=text,comments='',fmt=['%10.2f','%10.5f','%10.5f','%10.2f'])
+        #parameters_pot.in
+        np.savetxt(path+'parameters_pot.in',stars.mge.data,header=str(len_mge),footer=text,comments='',fmt=['%10.2f','%10.5f','%10.5f','%10.2f'])
 
         #parmsb.in (assumed to be the same as paramters.in)
-        np.savetxt(path+'paramsb.in',stars.mge.data,header=str(len_mge),footer=text,comments='',fmt=['%10.2f','%10.5f','%10.5f','%10.2f'])
+        np.savetxt(path+'parameters_lum.in',stars.mge.data,header=str(len_mge),footer=text,comments='',fmt=['%10.2f','%10.5f','%10.5f','%10.2f'])
 
         #-------------------
         #write orbstart.in
         #-------------------
 
         text = f"{self.settings['random_seed']}\n"
-        text += 'infil/parameters.in' +'\n' + \
+        text += 'infil/parameters_pot.in' +'\n' + \
         'datfil/orbstart.dat' +'\n' + \
         'datfil/begin.dat' +'\n' + \
         'datfil/beginbox.dat'
@@ -147,7 +147,7 @@ class LegacyOrbitLibrary(OrbitLibrary):
         text0 = f"{self.settings['random_seed']}\n"
 
         text1='#counterrotation_setupfile_version_1' +'\n' + \
-            'infil/parameters.in' +'\n' + \
+            'infil/parameters_pot.in' +'\n' + \
             'datfil/begin.dat' +'\n' + \
             str(self.settings['orbital_periods']) + '                            [orbital periods to intergrate orbits]' +'\n' + \
             str(self.settings['sampling']) + '                          [points to sample for each orbit in the merid. plane]' +'\n' + \
@@ -179,10 +179,10 @@ class LegacyOrbitLibrary(OrbitLibrary):
         #write orblibbox.in
         #-------------------
 
-        #TODO:why not paramsb.in?
+        #TODO:why not parameters_lum.in?
         text0 = f"{self.settings['random_seed']}\n"
         text1='#counterrotation_setupfile_version_1' +'\n' + \
-            'infil/parameters.in' +'\n' + \
+            'infil/parameters_pot.in' +'\n' + \
             'datfil/beginbox.dat' +'\n' + \
             str(self.settings['orbital_periods']) + '                            [orbital periods to intergrate orbits]' +'\n' + \
             str(self.settings['sampling']) + '                          [points to sample for each orbit in the merid. plane]' +'\n' + \
@@ -210,7 +210,7 @@ class LegacyOrbitLibrary(OrbitLibrary):
         #write triaxmass.in
         #-------------------
 
-        text='infil/paramsb.in' +'\n' + \
+        text='infil/parameters_lum.in' +'\n' + \
         'datfil/orblib.dat' +'\n' + \
         'datfil/mass_radmass.dat' +'\n' + \
         'datfil/mass_qgrid.dat'
@@ -223,7 +223,7 @@ class LegacyOrbitLibrary(OrbitLibrary):
         #write triaxmassbin.in
         #-------------------
 
-        text='infil/paramsb.in' +'\n' + \
+        text='infil/parameters_lum.in' +'\n' + \
               str(int(np.max(n_psf))) + '                              [# of apertures]'  +'\n'  + \
               '"infil/' + stars.kinematic_data[0].aperturefile +'"' + '\n' + \
               str(len(stars.kinematic_data[0].PSF['sigma'])) + '                              [# of gaussians components]'  +'\n' + \
@@ -489,7 +489,7 @@ class LegacyOrbitLibrary(OrbitLibrary):
         self.projected_masses = np.sum(self.losvd_histograms.y, 1)
 
     def get_ml_of_original_orblib(self):
-        infile = self.mod_dir + 'infil/parameters.in'
+        infile = self.mod_dir + 'infil/parameters_pot.in'
         lines = [line.rstrip('\n').split() for line in open(infile)]
         ml_original = float((lines[-9])[0])
         return ml_original

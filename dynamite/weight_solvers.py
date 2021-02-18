@@ -72,7 +72,7 @@ class LegacyWeightSolver(WeightSolver):
     def create_fortran_input_nnls(self,path,ml):
 
         #for the ml the model is only scaled. We therefore need to know what is the ml that was used for the orbit library
-        infile=path+'infil/parameters.in'
+        infile=path+'infil/parameters_pot.in'
         lines = [line.rstrip('\n').split() for line in open(infile)]
         ml_orblib=float((lines[-9])[0])
 
@@ -80,7 +80,7 @@ class LegacyWeightSolver(WeightSolver):
         #write nn.in
         #-------------------
 
-        text='infil/parameters.in' +'\n' + \
+        text='infil/parameters_pot.in' +'\n' + \
         str(self.settings['regularisation'])   + '                                  [ regularization strength, 0 = no regularization ]' +'\n'  + \
         'ml'+ '{:01.2f}'.format(ml) + '/nn' +'\n' + \
         'datfil/mass_qgrid.dat' +'\n' + \
@@ -172,7 +172,7 @@ class LegacyWeightSolver(WeightSolver):
     def create_fortran_input_nnls(self,path,ml):
 
         # for the ml the model is only scaled. We therefore need to know what is the ml that was used for the orbit library
-        infile=path+'infil/parameters.in'
+        infile=path+'infil/parameters_pot.in'
         lines = [line.rstrip('\n').split() for line in open(infile)]
         ml_orblib=float((lines[-9])[0])
 
@@ -180,7 +180,7 @@ class LegacyWeightSolver(WeightSolver):
         #write nn.in
         #-------------------
 
-        text='infil/parameters.in' +'\n' + \
+        text='infil/parameters_pot.in' +'\n' + \
         str(self.settings['regularisation'])   + '                                  [ regularization strength, 0 = no regularization ]' +'\n'  + \
         'ml'+ '{:01.2f}'.format(ml) + '/nn' +'\n' + \
         'datfil/mass_qgrid.dat' +'\n' + \
