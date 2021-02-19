@@ -62,7 +62,7 @@ def run_user_test(stat_mode=False):
                 f"{c.settings.orblib_settings['nI2']}" \
                 f"{c.settings.orblib_settings['nI3']}"
     if stat_mode==False:
-        stat_file += "_10.dat"
+        stat_file += "_1.dat"
 
     # "run" the models
     t = time.perf_counter()
