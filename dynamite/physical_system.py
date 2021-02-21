@@ -113,6 +113,19 @@ class System(object):
         component = self.cmp_list[idx[0][0]]
         return component
 
+    def get_component_from_class(self, cmp_class):
+        self.logger.debug('Checking for 1 and only 1 component of class '
+                          f'{cmp_class}...')
+        components = filter(lambda c: isinstance(c,cmp_class), self.cmp_list)
+        component = next(components, False)
+        if component is False or next(components, False) is not False:
+            error_msg = 'Actually... there should be 1 and only 1 ' \
+                        f'component of class {cmp_class}'
+            self.logger.error(error_msg)
+            raise ValueError(error_msg)
+        self.logger.debug('...check ok.')
+        return component
+
     def get_all_kinematic_data(self):
         all_kinematics = []
         for component in self.cmp_list:
