@@ -3,6 +3,7 @@ import matplotlib.pyplot as plt
 from plotbin import sauron_colormap as pb_sauron_colormap
 from plotbin import display_pixels
 import logging
+import physical_system as physys
 
 # TODO: use Capellari's latest version of plotbin rather than (the locally
 # packaged up version which we've called plotbin4dyn). This will require
@@ -138,7 +139,8 @@ class Plotter(object):
         # Read aperture.dat
         # The angle that is saved in this file is measured counter clock-wise
         # from the galaxy major axis to the X-axis of the input data.
-        stars = self.system.get_component_from_name('stars')
+        stars = \
+          self.system.get_component_from_class(physys.TriaxialVisibleComponent)
         aperture_fname = stars.kinematic_data[0].aperturefile
         aperture_fname = self.input_directory + aperture_fname
 
@@ -172,7 +174,6 @@ class Plotter(object):
         yi = yt
 
         # read bins.dat
-        stars = self.system.get_component_from_name('stars')
         bin_fname = stars.kinematic_data[0].binfile
         bin_fname = self.input_directory + bin_fname
         lines_bins = [line.rstrip('\n').split() for line in open(bin_fname)]

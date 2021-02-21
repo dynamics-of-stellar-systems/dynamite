@@ -71,7 +71,8 @@ class LegacyOrbitLibrary(OrbitLibrary):
         if not check1 or not check2:
             # prepare the fortran input files for orblib
             self.create_fortran_input_orblib(self.mod_dir+'infil/')
-            stars = self.system.get_component_from_name('stars')
+            stars = self.system.get_component_from_class( \
+                                            physys.TriaxialVisibleComponent)
             kinematics = stars.kinematic_data[0]
             old_filename = self.mod_dir+'infil/kin_data.dat'
             kinematics.convert_to_old_format(old_filename)
