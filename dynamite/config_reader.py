@@ -241,7 +241,7 @@ class Configuration(object):
 
                     # add component to system
                     c.validate() # now also adds the right parameter sformat
-                    parset = {p.name[:p.name.rfind(f'-{c.name}')]:p.value \
+                    parset = {c.get_parname(p.name):p.value \
                               for p in c.parameters}
                     if not c.validate_parset(parset):
                         raise ValueError(f'{c.name}: invalid parameters '

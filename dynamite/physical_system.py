@@ -62,9 +62,9 @@ class System(object):
             raise ValueError('No duplicate component names allowed')
         if self.parameters is not None:
             for p in self.parameters:
-                if any([p.name.endswith('-'+c.name) for c in self.cmp_list]):
+                if any([p.name.endswith(c.name) for c in self.cmp_list]):
                     raise ValueError('System parameter cannot end with '
-                                     f'"-component": {p.name}')
+                                     f'"component": {p.name}')
         if not(self.distMPc and self.name and self.position_angle):
             text = 'System needs distMPc, name, and position_angle attributes'
             self.logger.error(text)
@@ -180,7 +180,7 @@ class Component(object):
             self.logger.error(text)
             raise ValueError(text)
 
-        pars = [p.name[:p.name.rindex('-'+self.name)] for p in self.parameters]
+        pars = [self.get_parname(p.name) for p in self.parameters]
         if set(pars) != set(par):
             text = f'{self.__class__.__name__} needs parameters ' + \
                    f'{list(par)}, not {[p.name for p in self.parameters]}'
@@ -195,14 +195,14 @@ class Component(object):
             self.logger.error(text)
             raise ValueError(text)
         for p in self.parameters:
-            p.update(sformat=par_format[p.name[:p.name.rindex('-'+self.name)]])
+            p.update(sformat=par_format[self.get_parname(p.name)])
 
     def validate_parset(self, par):
         """
         Validates the component's parameter values. Kept separate from the
         validate method to facilitate easy calling from the parameter
         generator class. This is a `placeholder` method which returns
-        `True` if all parameters are non-negative. Specific implementations
+        `True` if all parameters are non-negative. Specific validation
         should be implemented for each component subclass.
 
         Parameters
@@ -221,6 +221,29 @@ class Component(object):
         if not isvalid:
             self.logger.debug(f'Non-negative parset: {par}')
         return isvalid
+
+    def get_parname(self, par):
+        """
+        Strips the component name suffix from the parameter name.
+
+        Parameters
+        ----------
+        par : str
+            The full parameter name "parameter-component".
+
+        Returns
+        -------
+        pure_parname : str
+            The parameter name without the component name suffix.
+
+        """
+        try:
+            pure_parname = par[:par.rindex(f'-{self.name}')]
+        except:
+            self.logger.error(f'Component name {self.name} not found in '
+                              f'parameter string {par}')
+            raise
+        return pure_parname
 
     def __repr__(self):
         return (f'\n{self.__class__.__name__}({self.__dict__}\n)')
