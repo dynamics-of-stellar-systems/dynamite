@@ -184,6 +184,7 @@ class Model(object):
         when methods are run.
 
         """
+        self.logger = logging.getLogger(f'{__name__}.{__class__.__name__}')
         self.system = system
         self.settings = settings
         self.parset = parset
@@ -193,8 +194,9 @@ class Model(object):
         # directory of the input kinematics
         self.in_dir = self.settings.io_settings['input_directory']
         self.directory = self.get_model_directory()
-        # TODO: replace following with use string.split() or /../
-        self.directory_noml=self.directory[:-7]
+        self.logger.debug(f'Model directory: {self.directory}')
+        self.directory_noml=self.directory[:self.directory[:-1].rindex('/')+1]
+        self.logger.debug(f'Model directory up to ml: {self.directory_noml}')
 
     def get_model_directory(self):
         out_dir = self.settings.io_settings['output_directory']
@@ -205,15 +207,16 @@ class Model(object):
             pname0 = par0.name
             psfmt0  = par0.sformat
             if pname0 != 'ml':
-                out_dir += pname0
-                out_dir += format(pval0, psfmt0)
+                out_dir += f'{pname0}'
+                out_dir += format(pval0, psfmt0)+'_'
+        out_dir = out_dir[:-1]
         # add ml to directory name
         out_dir += '/'
         for par0, pval0 in zip(self.parspace, self.parset):
             pname0 = par0.name
             psfmt0  = par0.sformat
             if par0.name == 'ml':
-                out_dir += pname0
+                out_dir += f'{pname0}'
                 out_dir += format(pval0, psfmt0)
         out_dir += '/'
         # remove all whitespace
@@ -223,6 +226,9 @@ class Model(object):
     def create_model_directory(self, path):
         if not os.path.exists(path):
             os.makedirs(path)
+            self.logger.debug(f'Created directory {path}')
+        else:
+            self.logger.debug(f'Using existing directory {path}')
 
     def setup_directories(self):
         # create self.directory if it doesn't exist

@@ -200,7 +200,7 @@ class Configuration(object):
                     logger.debug('Has parameters '
                                  f'{tuple(data_comp["parameters"].keys())}')
                     for par, data_par in data_comp['parameters'].items():
-                        p = par + '_' + comp
+                        p = f'{par}-{comp}'
                         the_parameter = parspace.Parameter(name=p,**data_par)
                         par_list.append(the_parameter)
                     c.parameters = par_list
@@ -211,7 +211,7 @@ class Configuration(object):
                     # shall we include a check here (e.g., only
                     # VisibleComponent has kinematics?)
                         logger.debug('Has kinematics '
-                                    f'{tuple(data_comp["kinematics"].keys())}')
+                                    f'{list(data_comp["kinematics"].keys())}')
                         for kin, data_kin in data_comp['kinematics'].items():
                             path=self.settings.io_settings['input_directory']
                             kinematics_set = getattr(kinem,data_kin['type'])\
@@ -241,7 +241,7 @@ class Configuration(object):
 
                     # add component to system
                     c.validate() # now also adds the right parameter sformat
-                    parset = {p.name[:p.name.rfind(f'_{c.name}')]:p.value \
+                    parset = {p.name[:p.name.rfind(f'-{c.name}')]:p.value \
                               for p in c.parameters}
                     if not c.validate_parset(parset):
                         raise ValueError(f'{c.name}: invalid parameters '

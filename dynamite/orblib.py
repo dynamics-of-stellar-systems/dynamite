@@ -90,9 +90,9 @@ class LegacyOrbitLibrary(OrbitLibrary):
         #-------------------
         stars = self.system.get_component_from_name('stars')
         # used to derive the viewing angles
-        q=self.parset['q_stars']
-        p=self.parset['p_stars']
-        u=self.parset['u_stars']
+        q=self.parset['q-stars']
+        p=self.parset['p-stars']
+        u=self.parset['u-stars']
         # the minimal flattening from stellar mge
         # qobs=np.amin(stars.mge.data['q'])
         # TODO: which dark matter profile
@@ -104,14 +104,14 @@ class LegacyOrbitLibrary(OrbitLibrary):
         text=str(self.system.distMPc)+'\n'+ \
              '{:06.9f}'.format(theta)+' '+ '{:06.9f}'.format(phi)+' '+ '{:06.9f}'.format(psi) + '\n' + \
              str(self.parset['ml'])+'\n' + \
-             str(self.parset['mass_black_hole'])+'\n' + \
-             str(self.parset['a_black_hole'])+'\n' + \
+             str(self.parset['mass-black_hole'])+'\n' + \
+             str(self.parset['a-black_hole'])+'\n' + \
              str(self.settings['nE']) +' ' +str(self.settings['logrmin']) +' ' +str(self.settings['logrmax'])+ '\n' + \
              str(self.settings['nI2']) +'\n' + \
              str(self.settings['nI3']) +'\n' + \
              str(self.settings['dithering']) +'\n' + \
              dm_specs +'\n' + \
-             str(self.parset['dc_dark_halo']) +' ' + str(self.parset['f_dark_halo'])
+             str(self.parset['dc-dark_halo']) +' ' + str(self.parset['f-dark_halo'])
 
         #parameters_pot.in
         np.savetxt(path+'parameters_pot.in',stars.mge.data,header=str(len_mge),footer=text,comments='',fmt=['%10.2f','%10.5f','%10.5f','%10.2f'])

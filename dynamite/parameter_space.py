@@ -143,8 +143,8 @@ class ParameterSpace(list):
         """
         isvalid = True
         for comp in self.system.cmp_list:
-            par = {p.name[:p.name.rfind(f'_{comp.name}')]:p.value \
-                   for p in parset if p.name.rfind(f'_{comp.name}')>=0}
+            par = {p.name[:p.name.rfind(f'-{comp.name}')]:p.value \
+                   for p in parset if p.name.rfind(f'-{comp.name}')>=0}
             isvalid = isvalid and comp.validate_parset(par)
         par = {p.name:p.value for p in parset \
                if p.name in [n.name for n in self.system.parameters]}

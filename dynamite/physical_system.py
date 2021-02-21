@@ -62,9 +62,9 @@ class System(object):
             raise ValueError('No duplicate component names allowed')
         if self.parameters is not None:
             for p in self.parameters:
-                if any([p.name.endswith('_'+c.name) for c in self.cmp_list]):
+                if any([p.name.endswith('-'+c.name) for c in self.cmp_list]):
                     raise ValueError('System parameter cannot end with '
-                                     f'"_component": {p.name}')
+                                     f'"-component": {p.name}')
         if not(self.distMPc and self.name and self.position_angle):
             text = 'System needs distMPc, name, and position_angle attributes'
             self.logger.error(text)
@@ -180,7 +180,7 @@ class Component(object):
             self.logger.error(text)
             raise ValueError(text)
 
-        pars = [p.name[:p.name.rindex('_'+self.name)] for p in self.parameters]
+        pars = [p.name[:p.name.rindex('-'+self.name)] for p in self.parameters]
         if set(pars) != set(par):
             text = f'{self.__class__.__name__} needs parameters ' + \
                    f'{list(par)}, not {[p.name for p in self.parameters]}'
@@ -195,7 +195,7 @@ class Component(object):
             self.logger.error(text)
             raise ValueError(text)
         for p in self.parameters:
-            p.update(sformat=par_format[p.name[:p.name.rindex('_'+self.name)]])
+            p.update(sformat=par_format[p.name[:p.name.rindex('-'+self.name)]])
 
     def validate_parset(self, par):
         """
