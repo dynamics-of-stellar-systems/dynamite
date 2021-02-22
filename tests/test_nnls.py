@@ -20,7 +20,7 @@ import matplotlib.pyplot as plt
 from astropy import table
 import dynamite as dyn
 
-def run_user_test(stat_mode=False):
+def run_user_test(make_comp=False):
 
     logger = logging.getLogger()
     logger.info(f'Using DYNAMITE version: {dyn.__version__}')
@@ -30,7 +30,8 @@ def run_user_test(stat_mode=False):
     print('Located at:', dyn.__path__)
 
     # read configuration
-    os.chdir(os.path.dirname(__file__))
+    if '__file__' in globals():
+        os.chdir(os.path.dirname(__file__))
     fname = 'user_test_config_ml.yaml'
     c = dyn.config_reader.Configuration(fname, silent=True, reset_logging=True)
 
@@ -56,12 +57,10 @@ def run_user_test(stat_mode=False):
     fname = 'user_test_config_ml.yaml'
     c = dyn.config_reader.Configuration(fname, silent=True)
 
-    stat_file = outdir + "chi2_compare_ml_" \
-                f"{c.settings.orblib_settings['nE']}" \
-                f"{c.settings.orblib_settings['nI2']}" \
-                f"{c.settings.orblib_settings['nI3']}"
-    if stat_mode==False:
-        stat_file += "_10.dat"
+    compare_file = outdir + "chi2_compare_ml_" \
+                            f"{c.settings.orblib_settings['nE']}" \
+                            f"{c.settings.orblib_settings['nI2']}" \
+                            f"{c.settings.orblib_settings['nI3']}.dat"
 
     # "run" the models
     t = time.perf_counter()
@@ -76,10 +75,10 @@ def run_user_test(stat_mode=False):
     print(f'Computation time: {delt} seconds = {delt/60} minutes')
 
     # print all model results
-#    c.all_models.table.pprint_all()
+#    c.all_models.table.pprint_all() # This only works in astropy 3.2 or later
     c.all_models.table.pprint(max_lines=-1, max_width=-1)
 
-    if stat_mode==False:
+    if make_comp==False:
         # plot the models
         plt.figure()
         plt.scatter(c.all_models.table['which_iter'],
@@ -96,21 +95,18 @@ def run_user_test(stat_mode=False):
         plt.ylabel('ml')
         plt.savefig(plotfile_ml)
 
-        # compare to chi2 in chi2_compare.dat
-        chi2_compare = table.Table.read(stat_file, format='ascii')
-        radius = (np.max(chi2_compare['chi2_average']) - \
-                 np.min(chi2_compare['chi2_average'])) / 10
+        # compare to chi2 in compare_file
+        chi2_compare = table.Table.read(compare_file, format='ascii')
+        radius = (np.max(chi2_compare['chi2']) - \
+                 np.min(chi2_compare['chi2'])) / 10
         logger.debug(f'Radius={radius}')
         # print(f'Radius={radius}')
         plt.figure()
         plt.scatter(chi2_compare['model_id'],
-                    chi2_compare['chi2_average'],
+                    chi2_compare['chi2'],
                     s=400,
                     facecolors='none',
                     edgecolors='black')
-        # plt.vlines(chi2_compare['model_id'],
-        #            chi2_compare['chi2_min'],
-        #            chi2_compare['chi2_max'])
         plt.plot([i for i in range(len(c.all_models.table))],
                   c.all_models.table['chi2'],
                   'rx')
@@ -125,43 +121,27 @@ def run_user_test(stat_mode=False):
         chi2stat = ''
         for s in chi2_compare.pformat(max_lines=-1, max_width=-1):
             chi2stat += '\n'+s
-        logger.info(f'chi2 statistics for comparison: {chi2stat}')
+        logger.info(f'chi2 comparison data: {chi2stat}')
         # print to console anyway...
         print(f'Look at {plotfile_ml} and {plotfile_chi2}')
-        print('chi2 statistics for comparison:\n')
+        print('chi2 comparison data:\n')
         chi2_compare.pprint(max_lines=-1, max_width=-1)
 
     return c.all_models.table, \
-        stat_file, \
+        compare_file, \
         c.settings.parameter_space_settings['stopping_criteria']['n_max_mods']
 
-def create_stats(n_chi2=10):
-    chi2_all = []
+def create_comparison_data():
 
-    # run user_test n_chi2 times
-    for i in range(n_chi2):
-        model_results, output_file, n_max = run_user_test(stat_mode=True)
-        chi2_all.append([])
-        chi2_values = list(model_results['chi2'])
-        for j in range(len(chi2_values)):
-            chi2_all[i].append(chi2_values[j])
-        # if j<n_max:
-        #     chi2_all[i].append(float("NaN"))
-
-    chi2_all = np.array(chi2_all).T
-
+    model_results, output_file, n_max = run_user_test(make_comp=True)
+    chi2_values = list(model_results['chi2'])
+    for i in range(len(chi2_values),n_max): # just in case...
+        chi2_values.append(float("NaN"))
     t = table.Table()
-    t['model_id'] = [i for i in range(len(chi2_all))]
-    t['chi2_min'] = np.nanmin(chi2_all, axis=1)
-    t['chi2_max'] = np.nanmax(chi2_all, axis=1)
-    t['chi2_average'] = np.nanmean(chi2_all, axis=1)
-    t['chi2_sdev'] = np.nanstd(chi2_all, axis=1)
-
+    t['model_id'] = [i for i in range(len(chi2_values))]
+    t['chi2']     = chi2_values
     print(t)
-
-    np.savetxt(output_file+f'_raw_{n_chi2}.dat', chi2_all)
-
-    t.write(output_file+f'_{n_chi2}.dat', format='ascii')
+    t.write(output_file, format='ascii', overwrite=True)
 
 if __name__ == '__main__':
     run_user_test()
