@@ -5,12 +5,6 @@ from plotbin import display_pixels
 import logging
 import physical_system as physys
 
-# TODO: use Capellari's latest version of plotbin rather than (the locally
-# packaged up version which we've called plotbin4dyn). This will require
-# re-writing something in plot_kinematic_maps
-# UPDATE: changed plot_kinematic_maps to work with Cappellari's latest version of plotbin.
-# Galaxy image was rotated and then plotted, now it is rotated while it's plotted.
-# This also solve the white pixels bug in the kinematic maps.
 
 class Plotter(object):
 
@@ -42,7 +36,7 @@ class Plotter(object):
         if not orbit_plot: orbit_plot=0
         if not mass_plot: mass_plot=0
         '''
-        # <-- dont need to implement "which plot to make" switches yet, just indeividual plotting methods
+        # <-- dont need to implement "which plot to make" switches yet, just individual plotting methods
 
         '''
         figdir = w_dir + object + '/figure_nn'+rootname[0]+'/'
@@ -105,13 +99,32 @@ class Plotter(object):
         #
         pass
 
-    def plot_kinematic_maps(self, model):
+    def plot_kinematic_maps(self, model, kin_set=None):
         """
         Show kinematic map of the best-fitting model, with v, sigma, h3, h4
         Taken from schw_kin.py.
+        Note: kin_set should be the index of the data set,
+        e.g. kin_set=0 , kin_set=1
         """
         kinem_fname = model.get_model_directory() + 'nn_kinem.out'
         body_kinem = np.genfromtxt(kinem_fname, skip_header=1)
+        
+        stars = \
+          self.system.get_component_from_class(physys.TriaxialVisibleComponent)
+        
+        if kin_set==0:
+            n_bins=stars.kinematic_data[0].n_apertures
+            body_kinem=body_kinem[0:n_bins,:]
+
+        elif kin_set==1:
+            n_bins1=stars.kinematic_data[0].n_apertures
+            n_bins2=stars.kinematic_data[1].n_apertures
+            body_kinem=body_kinem[n_bins1:n_bins1+n_bins2,:]
+
+        else:
+            text = f'kin_set must be 0 or 1, not {kin_set}'
+            self.logger.error(text)
+            raise ValueError(text)
 
         if self.settings.weight_solver_settings['number_GH'] == 2:
             id, fluxm, flux, velm, vel, dvel, sigm, sig, dsig = body_kinem.T
@@ -139,9 +152,8 @@ class Plotter(object):
         # Read aperture.dat
         # The angle that is saved in this file is measured counter clock-wise
         # from the galaxy major axis to the X-axis of the input data.
-        stars = \
-          self.system.get_component_from_class(physys.TriaxialVisibleComponent)
-        aperture_fname = stars.kinematic_data[0].aperturefile
+
+        aperture_fname = stars.kinematic_data[kin_set].aperturefile
         aperture_fname = self.input_directory + aperture_fname
 
         lines = [line.rstrip('\n').split() for line in open(aperture_fname)]
@@ -174,7 +186,8 @@ class Plotter(object):
         yi = yt
 
         # read bins.dat
-        bin_fname = stars.kinematic_data[0].binfile
+
+        bin_fname = stars.kinematic_data[kin_set].binfile
         bin_fname = self.input_directory + bin_fname
         lines_bins = [line.rstrip('\n').split() for line in open(bin_fname)]
         i = 0;
