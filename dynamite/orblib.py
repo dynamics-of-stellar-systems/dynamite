@@ -109,14 +109,14 @@ class LegacyOrbitLibrary(OrbitLibrary):
         text=str(self.system.distMPc)+'\n'+ \
              '{:06.9f}'.format(theta)+' '+ '{:06.9f}'.format(phi)+' '+ '{:06.9f}'.format(psi) + '\n' + \
              str(self.parset['ml'])+'\n' + \
-             str(self.parset[f'mass-{bh.name}'])+'\n' + \
+             str(self.parset[f'm-{bh.name}'])+'\n' + \
              str(self.parset[f'a-{bh.name}'])+'\n' + \
              str(self.settings['nE']) +' ' +str(self.settings['logrmin']) +' ' +str(self.settings['logrmax'])+ '\n' + \
              str(self.settings['nI2']) +'\n' + \
              str(self.settings['nI3']) +'\n' + \
              str(self.settings['dithering']) +'\n' + \
              dm_specs +'\n' + \
-             str(self.parset[f'dc-{dh.name}']) +' ' + str(self.parset[f'f-{dh.name}'])
+             str(self.parset[f'c-{dh.name}']) +' ' + str(self.parset[f'f-{dh.name}'])
 
         #parameters_pot.in
         np.savetxt(path+'parameters_pot.in',stars.mge.data,header=str(len_mge),footer=text,comments='',fmt=['%10.2f','%10.5f','%10.5f','%10.2f'])

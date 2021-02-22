@@ -196,7 +196,8 @@ class Component(object):
         pars = [self.get_parname(p.name) for p in self.parameters]
         if set(pars) != set(par):
             text = f'{self.__class__.__name__} needs parameters ' + \
-                   f'{list(par)}, not {[p.name for p in self.parameters]}'
+                   f'{list(par)}, not ' + \
+                   f'{[self.get_parname(p.name) for p in self.parameters]}'
             self.logger.error(text)
             raise ValueError(text)
 
@@ -424,7 +425,7 @@ class Plummer(DarkComponent):
         return rho
 
     def validate(self):
-        par_format = {'mass':'6.3g', 'a':'7.3g'}
+        par_format = {'m':'6.3g', 'a':'7.3g'}
         super().validate(par_format)
 
 
@@ -435,7 +436,7 @@ class NFW(DarkComponent):
         super().__init__(symmetry='spherical', **kwds)
 
     def validate(self):
-        par_format = {'dc':'6.3g', 'f':'6.3g'}
+        par_format = {'c':'6.3g', 'f':'6.3g'}
         super().validate(par_format)
 
 
