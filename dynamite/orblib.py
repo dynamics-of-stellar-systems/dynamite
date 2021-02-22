@@ -10,6 +10,7 @@ import sys
 this_dir = os.path.dirname(__file__)
 if not this_dir in sys.path:
     sys.path.append(this_dir)
+import physical_system as physys
 import kinematics as dyn_kin
 
 class OrbitLibrary(object):
@@ -71,8 +72,8 @@ class LegacyOrbitLibrary(OrbitLibrary):
         if not check1 or not check2:
             # prepare the fortran input files for orblib
             self.create_fortran_input_orblib(self.mod_dir+'infil/')
-
-            stars = self.system.get_component_from_name('stars')
+            stars = self.system.get_component_from_class( \
+                                            physys.TriaxialVisibleComponent)
             kinematics = stars.kinematic_data
             #create the kinematic input files for each kinematic dataset
             for i in np.arange(len(kinematics)):
@@ -105,11 +106,14 @@ class LegacyOrbitLibrary(OrbitLibrary):
         #---------------------------------------------
         #write parameters_pot.in and parameters_lum.in
         #---------------------------------------------
-        stars = self.system.get_component_from_name('stars')
+        stars = \
+          self.system.get_component_from_class(physys.TriaxialVisibleComponent)
+        bh = self.system.get_component_from_class(physys.Plummer)
+        dh = self.system.get_component_from_class(physys.NFW)
         # used to derive the viewing angles
-        q=self.parset['q_stars']
-        p=self.parset['p_stars']
-        u=self.parset['u_stars']
+        q=self.parset[f'q-{stars.name}']
+        p=self.parset[f'p-{stars.name}']
+        u=self.parset[f'u-{stars.name}']
         # the minimal flattening from stellar mge
         # qobs=np.amin(stars.mge.data['q'])
         # TODO: which dark matter profile
@@ -121,14 +125,14 @@ class LegacyOrbitLibrary(OrbitLibrary):
         text=str(self.system.distMPc)+'\n'+ \
              '{:06.9f}'.format(theta)+' '+ '{:06.9f}'.format(phi)+' '+ '{:06.9f}'.format(psi) + '\n' + \
              str(self.parset['ml'])+'\n' + \
-             str(self.parset['mass_black_hole'])+'\n' + \
-             str(self.parset['a_black_hole'])+'\n' + \
+             str(self.parset[f'm-{bh.name}'])+'\n' + \
+             str(self.parset[f'a-{bh.name}'])+'\n' + \
              str(self.settings['nE']) +' ' +str(self.settings['logrmin']) +' ' +str(self.settings['logrmax'])+ '\n' + \
              str(self.settings['nI2']) +'\n' + \
              str(self.settings['nI3']) +'\n' + \
              str(self.settings['dithering']) +'\n' + \
              dm_specs +'\n' + \
-             str(self.parset['dc_dark_halo']) +' ' + str(self.parset['f_dark_halo'])
+             str(self.parset[f'c-{dh.name}']) +' ' + str(self.parset[f'f-{dh.name}'])
 
         #parameters_pot.in
         np.savetxt(path+'parameters_pot.in',stars.mge.data,header=str(len_mge),footer=text,comments='',fmt=['%10.2f','%10.5f','%10.5f','%10.2f'])

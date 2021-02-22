@@ -200,7 +200,7 @@ class Configuration(object):
                     logger.debug('Has parameters '
                                  f'{tuple(data_comp["parameters"].keys())}')
                     for par, data_par in data_comp['parameters'].items():
-                        p = par + '_' + comp
+                        p = f'{par}-{comp}'
                         the_parameter = parspace.Parameter(name=p,**data_par)
                         par_list.append(the_parameter)
                     c.parameters = par_list
@@ -211,7 +211,7 @@ class Configuration(object):
                     # shall we include a check here (e.g., only
                     # VisibleComponent has kinematics?)
                         logger.debug('Has kinematics '
-                                    f'{tuple(data_comp["kinematics"].keys())}')
+                                    f'{list(data_comp["kinematics"].keys())}')
                         for kin, data_kin in data_comp['kinematics'].items():
                             path=self.settings.io_settings['input_directory']
                             kinematics_set = getattr(kinem,data_kin['type'])\
@@ -241,7 +241,7 @@ class Configuration(object):
 
                     # add component to system
                     c.validate() # now also adds the right parameter sformat
-                    parset = {p.name[:p.name.rfind(f'_{c.name}')]:p.value \
+                    parset = {c.get_parname(p.name):p.value \
                               for p in c.parameters}
                     if not c.validate_parset(parset):
                         raise ValueError(f'{c.name}: invalid parameters '
@@ -341,7 +341,7 @@ class Configuration(object):
         self.system.validate() # now also adds the right parameter sformat
         parset = {p.name:p.value for p in self.system.parameters}
         if not self.system.validate_parset(parset):
-            raise ValueError(f'Invalid sysetm parameters {parset}')
+            raise ValueError(f'Invalid system parameters {parset}')
         logger.info('System assembled')
         logger.debug(f'System: {self.system}')
         logger.debug(f'Settings: {self.settings}')
@@ -366,8 +366,8 @@ class Configuration(object):
     def set_threshold_del_chi2(self, generator_settings):
         """
         Sets threshold_del_chi2 depending on scaled or unscaled input. Works
-        with the legacy setup only ('stars' component with one set of
-        kinematics).
+        with the legacy setup only (stars component of class
+        TriaxialVisibleComponent with one set of kinematics).
 
         Parameters
         ----------
@@ -391,7 +391,8 @@ class Configuration(object):
     def get_2n_obs(self):
         """
         Returns 2*n_obs = number_GH * number_spatial_bins. Works with the
-        legacy setup only ('stars' component with one set of kinematics).
+        legacy setup only (stars component of class TriaxialVisibleComponent
+        with one set of kinematics).
 
         Returns
         -------
@@ -399,7 +400,8 @@ class Configuration(object):
 
         """
         number_GH = self.settings.weight_solver_settings['number_GH']
-        stars = self.system.get_component_from_name('stars')
+        stars = \
+          self.system.get_component_from_class(physys.TriaxialVisibleComponent)
         two_n_obs = 2 * number_GH * len(stars.kinematic_data[0].data)
         return two_n_obs
 

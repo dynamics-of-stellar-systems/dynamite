@@ -3,6 +3,7 @@ import matplotlib.pyplot as plt
 from plotbin import sauron_colormap as pb_sauron_colormap
 from plotbin import display_pixels
 import logging
+import physical_system as physys
 
 
 class Plotter(object):
@@ -108,16 +109,22 @@ class Plotter(object):
         kinem_fname = model.get_model_directory() + 'nn_kinem.out'
         body_kinem = np.genfromtxt(kinem_fname, skip_header=1)
         
-        stars=model.system.get_component_from_name('stars')
+        stars = \
+          self.system.get_component_from_class(physys.TriaxialVisibleComponent)
         
         if kin_set==0:
             n_bins=stars.kinematic_data[0].n_apertures
             body_kinem=body_kinem[0:n_bins,:]
 
-        if kin_set==1:
+        elif kin_set==1:
             n_bins1=stars.kinematic_data[0].n_apertures
             n_bins2=stars.kinematic_data[1].n_apertures
             body_kinem=body_kinem[n_bins1:n_bins1+n_bins2,:]
+
+        else:
+            text = f'kin_set must be 0 or 1, not {kin_set}'
+            self.logger.error(text)
+            raise ValueError(text)
 
         if self.settings.weight_solver_settings['number_GH'] == 2:
             id, fluxm, flux, velm, vel, dvel, sigm, sig, dsig = body_kinem.T

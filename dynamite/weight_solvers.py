@@ -5,6 +5,7 @@ import subprocess
 import logging
 from scipy import optimize
 import cvxopt
+import physical_system as physys
 
 class WeightSolver(object):
 
@@ -79,7 +80,8 @@ class LegacyWeightSolver(WeightSolver):
         #-------------------
         #write nn.in
         #-------------------
-        n_kin = len(self.system.get_component_from_name('stars').kinematic_data)
+        n_kin = len(self.system.get_component_from_class( \
+                    physys.TriaxialVisibleComponent).kinematic_data)
 
         if n_kin==1:
             kin_data_file='kin_data.dat'

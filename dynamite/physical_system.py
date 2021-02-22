@@ -60,11 +60,11 @@ class System(object):
         """
         if len(self.cmp_list) != len(set(self.cmp_list)):
             raise ValueError('No duplicate component names allowed')
-        if self.parameters is not None:
-            for p in self.parameters:
-                if any([p.name.endswith('_'+c.name) for c in self.cmp_list]):
-                    raise ValueError('System parameter cannot end with '
-                                     f'"_component": {p.name}')
+        # if self.parameters is not None: # Restriction should not be needed...
+        #     for p in self.parameters:
+        #         if any([p.name.endswith(c.name) for c in self.cmp_list]):
+        #             raise ValueError('System parameter cannot end with '
+        #                              f'"component": {p.name}')
         if not(self.distMPc and self.name and self.position_angle):
             text = 'System needs distMPc, name, and position_angle attributes'
             self.logger.error(text)
@@ -73,6 +73,9 @@ class System(object):
             text = 'System has no components'
             self.logger.error(text)
             raise ValueError(text)
+        if any(['_' in c.name for c in self.cmp_list]):
+            self.logger.warning('System components should not contain '
+                'underscores - model directory names may get confusing')
         if len(self.parameters) != 1 and self.parameters[0].name != 'ml':
             text = 'System needs ml as its sole parameter'
             self.logger.error(text)
@@ -111,6 +114,19 @@ class System(object):
         assert len(idx[0]) == 1, error_msg
         self.logger.debug('...check ok.')
         component = self.cmp_list[idx[0][0]]
+        return component
+
+    def get_component_from_class(self, cmp_class):
+        self.logger.debug('Checking for 1 and only 1 component of class '
+                          f'{cmp_class}...')
+        components = filter(lambda c: isinstance(c,cmp_class), self.cmp_list)
+        component = next(components, False)
+        if component is False or next(components, False) is not False:
+            error_msg = 'Actually... there should be 1 and only 1 ' \
+                        f'component of class {cmp_class}'
+            self.logger.error(error_msg)
+            raise ValueError(error_msg)
+        self.logger.debug('...check ok.')
         return component
 
     def get_all_kinematic_data(self):
@@ -180,10 +196,11 @@ class Component(object):
             self.logger.error(text)
             raise ValueError(text)
 
-        pars = [p.name[:p.name.rindex('_'+self.name)] for p in self.parameters]
+        pars = [self.get_parname(p.name) for p in self.parameters]
         if set(pars) != set(par):
             text = f'{self.__class__.__name__} needs parameters ' + \
-                   f'{list(par)}, not {[p.name for p in self.parameters]}'
+                   f'{list(par)}, not ' + \
+                   f'{[self.get_parname(p.name) for p in self.parameters]}'
             self.logger.error(text)
             raise ValueError(text)
 
@@ -195,14 +212,14 @@ class Component(object):
             self.logger.error(text)
             raise ValueError(text)
         for p in self.parameters:
-            p.update(sformat=par_format[p.name[:p.name.rindex('_'+self.name)]])
+            p.update(sformat=par_format[self.get_parname(p.name)])
 
     def validate_parset(self, par):
         """
         Validates the component's parameter values. Kept separate from the
         validate method to facilitate easy calling from the parameter
         generator class. This is a `placeholder` method which returns
-        `True` if all parameters are non-negative. Specific implementations
+        `True` if all parameters are non-negative. Specific validation
         should be implemented for each component subclass.
 
         Parameters
@@ -221,6 +238,29 @@ class Component(object):
         if not isvalid:
             self.logger.debug(f'Non-negative parset: {par}')
         return isvalid
+
+    def get_parname(self, par):
+        """
+        Strips the component name suffix from the parameter name.
+
+        Parameters
+        ----------
+        par : str
+            The full parameter name "parameter-component".
+
+        Returns
+        -------
+        pure_parname : str
+            The parameter name without the component name suffix.
+
+        """
+        try:
+            pure_parname = par[:par.rindex(f'-{self.name}')]
+        except:
+            self.logger.error(f'Component name {self.name} not found in '
+                              f'parameter string {par}')
+            raise
+        return pure_parname
 
     def __repr__(self):
         return (f'\n{self.__class__.__name__}({self.__dict__}\n)')
@@ -388,7 +428,7 @@ class Plummer(DarkComponent):
         return rho
 
     def validate(self):
-        par_format = {'mass':'6.3g', 'a':'7.3g'}
+        par_format = {'m':'6.3g', 'a':'7.3g'}
         super().validate(par_format)
 
 
@@ -399,7 +439,7 @@ class NFW(DarkComponent):
         super().__init__(symmetry='spherical', **kwds)
 
     def validate(self):
-        par_format = {'dc':'6.3g', 'f':'6.3g'}
+        par_format = {'c':'6.3g', 'f':'6.3g'}
         super().validate(par_format)
 
 
