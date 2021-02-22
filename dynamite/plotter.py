@@ -102,24 +102,22 @@ class Plotter(object):
         """
         Show kinematic map of the best-fitting model, with v, sigma, h3, h4
         Taken from schw_kin.py.
-        Note: kin_set should be the number of the data set, e.g. kin_set=1 , kin_set=2
+        Note: kin_set should be the index of the data set,
+        e.g. kin_set=0 , kin_set=1
         """
         kinem_fname = model.get_model_directory() + 'nn_kinem.out'
         body_kinem = np.genfromtxt(kinem_fname, skip_header=1)
         
         stars=model.system.get_component_from_name('stars')
         
-        set=0
-        
-        if kin_set==1:
+        if kin_set==0:
             n_bins=stars.kinematic_data[0].n_apertures
             body_kinem=body_kinem[0:n_bins,:]
 
-        if kin_set==2:
+        if kin_set==1:
             n_bins1=stars.kinematic_data[0].n_apertures
             n_bins2=stars.kinematic_data[1].n_apertures
             body_kinem=body_kinem[n_bins1:n_bins1+n_bins2,:]
-            set=1
 
         if self.settings.weight_solver_settings['number_GH'] == 2:
             id, fluxm, flux, velm, vel, dvel, sigm, sig, dsig = body_kinem.T
@@ -148,7 +146,7 @@ class Plotter(object):
         # The angle that is saved in this file is measured counter clock-wise
         # from the galaxy major axis to the X-axis of the input data.
 
-        aperture_fname = stars.kinematic_data[set].aperturefile
+        aperture_fname = stars.kinematic_data[kin_set].aperturefile
         aperture_fname = self.input_directory + aperture_fname
 
         lines = [line.rstrip('\n').split() for line in open(aperture_fname)]
@@ -182,7 +180,7 @@ class Plotter(object):
 
         # read bins.dat
 
-        bin_fname = stars.kinematic_data[set].binfile
+        bin_fname = stars.kinematic_data[kin_set].binfile
         bin_fname = self.input_directory + bin_fname
         lines_bins = [line.rstrip('\n').split() for line in open(bin_fname)]
         i = 0;

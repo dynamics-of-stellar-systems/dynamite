@@ -10,7 +10,6 @@ import dynamite as dyn
 import os
 import shutil
 
-
 print('DYNAMITE')
 print('    version', dyn.__version__)
 print('    installed at ', dyn.__path__)
@@ -40,14 +39,11 @@ print(parset)
 nkin = c.system.n_kin
 print(f'{nkin} kinematics data sets in system')
 
-model = dyn.model.LegacySchwarzschildModel(
+model = dyn.model.Model(
     system=c.system,
     settings=c.settings,
     parspace=c.parspace,
     parset=parset)
-
-
-
 
 model.setup_directories()
 
@@ -56,7 +52,6 @@ orblib=model.get_orblib()
 model.get_weights(orblib=orblib)
 
 print(model.chi2)
-
 
 plotter = dyn.plotter.Plotter(system=c.system,
                               settings=c.settings,
@@ -67,6 +62,6 @@ for kinset in range(nkin):
     plotfile = f'{plotdir}kin_map{kinset}.png'
     if os.path.isfile(plotfile):
         os.remove(plotfile)
-    figure = plotter.plot_kinematic_maps(model,kin_set=kinset+1)
+    figure = plotter.plot_kinematic_maps(model,kin_set=kinset)
     figure.savefig(plotfile)
     print(f'Look at {plotfile}')
