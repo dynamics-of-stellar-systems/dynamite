@@ -15,9 +15,9 @@ system_attributes:
 
 system_components:
 
-    black_hole:
+    bh: # black_hole
         parameters:
-            mass: # log(BHmass)
+            m: # log(BHmass)
                 par_generator_settings:
                     lo: 1.0
                     hi: 10.0
@@ -35,9 +35,9 @@ system_components:
         include: True
         contributes_to_potential: True
 
-    dark_halo:
+    dh: # dark_halo
         parameters:
-            dc: # NFW Darkmatter concentration
+            c: # NFW Darkmatter concentration
                 par_generator_settings:
                     lo: 2.0
                     hi: 20.0

@@ -12,6 +12,7 @@ import time
 import numpy as np
 import matplotlib.pyplot as plt
 import dynamite as dyn
+import physical_system as physys
 
 def remove_existing_output(config, remove_orblibs=False):
     # delete mode directory if it exits
@@ -101,7 +102,8 @@ def run_user_test(stat_mode=False):
     ax[0].set_ylabel('weight')
     # plot chi2 grid using LegacyWeightSolver
     c1amt = c1.all_models.table
-    ax[1].scatter(c1amt['f_dark_halo'],
+    dark_halo = c1.system.get_component_from_class(physys.NFW).name
+    ax[1].scatter(c1amt[f'f-{dark_halo}'],
                   c1amt['ml'],
                   s=40,
                   c=c1amt['kinchi2'])
@@ -111,7 +113,7 @@ def run_user_test(stat_mode=False):
     ax[1].set_ylabel('ML')
     # plot chi2 grid using new solver
     c2amt = c2.all_models.table
-    ax[2].scatter(c2amt['f_dark_halo'],
+    ax[2].scatter(c2amt[f'f-{dark_halo}'],
                   c2amt['ml'],
                   s=40,
                   c=c2amt['kinchi2'])
