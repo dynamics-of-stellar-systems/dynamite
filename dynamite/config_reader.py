@@ -341,7 +341,7 @@ class Configuration(object):
         self.system.validate() # now also adds the right parameter sformat
         parset = {p.name:p.value for p in self.system.parameters}
         if not self.system.validate_parset(parset):
-            raise ValueError(f'Invalid sysetm parameters {parset}')
+            raise ValueError(f'Invalid system parameters {parset}')
         logger.info('System assembled')
         logger.debug(f'System: {self.system}')
         logger.debug(f'Settings: {self.settings}')

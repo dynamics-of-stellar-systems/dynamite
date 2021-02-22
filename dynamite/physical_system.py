@@ -60,11 +60,11 @@ class System(object):
         """
         if len(self.cmp_list) != len(set(self.cmp_list)):
             raise ValueError('No duplicate component names allowed')
-        if self.parameters is not None:
-            for p in self.parameters:
-                if any([p.name.endswith(c.name) for c in self.cmp_list]):
-                    raise ValueError('System parameter cannot end with '
-                                     f'"component": {p.name}')
+        # if self.parameters is not None: # Restriction should not be needed...
+        #     for p in self.parameters:
+        #         if any([p.name.endswith(c.name) for c in self.cmp_list]):
+        #             raise ValueError('System parameter cannot end with '
+        #                              f'"component": {p.name}')
         if not(self.distMPc and self.name and self.position_angle):
             text = 'System needs distMPc, name, and position_angle attributes'
             self.logger.error(text)
@@ -73,6 +73,9 @@ class System(object):
             text = 'System has no components'
             self.logger.error(text)
             raise ValueError(text)
+        if any(['_' in c.name for c in self.cmp_list]):
+            self.logger.warning('System components should not contain '
+                'underscores - model directory names may get confusing')
         if len(self.parameters) != 1 and self.parameters[0].name != 'ml':
             text = 'System needs ml as its sole parameter'
             self.logger.error(text)
