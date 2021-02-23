@@ -7,6 +7,7 @@ Created on Mon Feb 15 08:54:48 2021
 """
 
 import dynamite as dyn
+import physical_system as physys
 import os
 import shutil
 
@@ -58,8 +59,9 @@ plotter = dyn.plotter.Plotter(system=c.system,
                               parspace=c.parspace,
                               all_models=c.all_models)
 
+stars = c.system.get_component_from_class(physys.TriaxialVisibleComponent)
 for kinset in range(nkin):
-    plotfile = f'{plotdir}kin_map{kinset}.png'
+    plotfile = f'{plotdir}kin_map_{stars.kinematic_data[kinset].name}.png'
     if os.path.isfile(plotfile):
         os.remove(plotfile)
     figure = plotter.plot_kinematic_maps(model,kin_set=kinset)
