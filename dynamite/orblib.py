@@ -191,16 +191,21 @@ class LegacyOrbitLibrary(OrbitLibrary):
 
 
         for i in np.arange(n_psf):
-            apertures+='"infil/' + stars.kinematic_data[i].aperturefile +'"' +'\n'  + \
-            str(i+1)+'                              [use psf '+str(i+1)+'] ' +'\n'
+            apertures+='"infil/' + stars.kinematic_data[i].aperturefile +'"\n' + \
+            str(i+1) + ' '*30 + \
+            f'[use psf {i+1} {stars.kinematic_data[i].name}] \n'
         for i in np.arange(n_psf):
-            apertures+= self.settings['hist_vel'] + '  ' + self.settings['hist_sigma'] + '  ' + self.settings['hist_bins'] +'             [histogram]' +'\n'
+            # apertures+= self.settings['hist_vel'] + '  ' + self.settings['hist_sigma'] + '  ' + self.settings['hist_bins'] +'             [histogram]' +'\n'
+            apertures+= stars.kinematic_data[i].hist_vel + '  ' + \
+                        stars.kinematic_data[i].hist_sigma + '  ' + \
+                        stars.kinematic_data[i].hist_bins + \
+                        f'             [histogram {stars.kinematic_data[i].name}]\n'
 
         for i in np.arange(n_psf):
-            apertures+='1                              [use binning for aperture '+ str(1+i)+'] ' +'\n'
+            apertures+=f'1                              [use binning for aperture {1+i}]\n'
 
         for i in np.arange(n_psf):
-              apertures+='"infil/' + stars.kinematic_data[i].binfile +'"          [binning for aperture '+str(i+1)+']' +'\n'
+              apertures+='"infil/' + stars.kinematic_data[i].binfile + f'"          [binning for aperture {i+1}]\n'
 
         text2 = 'datfil/orblib.dat'
 

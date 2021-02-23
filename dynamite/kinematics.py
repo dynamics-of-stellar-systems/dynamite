@@ -15,10 +15,16 @@ class Kinematics(data.Data):
     def __init__(self,
                  weight=None,
                  type=None,
+                 hist_vel=None,
+                 hist_sigma=None,
+                 hist_bins=None,
                  **kwargs
                  ):
         self.weight = weight
         self.type = type
+        self.hist_vel = hist_vel
+        self.hist_sigma = hist_sigma
+        self.hist_bins = hist_bins
         self.__class__.values = list(self.__dict__.keys())
         super().__init__(**kwargs)
         self.logger = logging.getLogger(f'{__name__}.{__class__.__name__}')
