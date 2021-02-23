@@ -431,8 +431,8 @@ class NNLS(WeightSolver):
             cut[naperture_cut<1,:] = False
             # to cut an orbit, replace it's h1 by 3.0/dvhist(i)
             idx_cut = np.where(cut)
-            # v_range = float(orblib.settings['hist_vel'])
-            v_range = self.system.cmp_list[2].kinematic_data[0].hist_vel
+            # v_range = float(orblib.settings['hist_width'])
+            v_range = self.system.cmp_list[2].kinematic_data[0].hist_width
             n_bins = orblib.losvd_histograms.x.size
             dvhist = v_range/n_bins
             orb_gh[idx_cut[0], idx_cut[1], 0] = 3./dvhist

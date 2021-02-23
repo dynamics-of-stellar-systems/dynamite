@@ -195,9 +195,9 @@ class LegacyOrbitLibrary(OrbitLibrary):
             str(i+1) + ' '*30 + \
             f'[use psf {i+1} {stars.kinematic_data[i].name}] \n'
         for i in np.arange(n_psf):
-            # apertures+= self.settings['hist_vel'] + '  ' + self.settings['hist_sigma'] + '  ' + self.settings['hist_bins'] +'             [histogram]' +'\n'
-            apertures+= stars.kinematic_data[i].hist_vel + '  ' + \
-                        stars.kinematic_data[i].hist_sigma + '  ' + \
+            # apertures+= self.settings['hist_width'] + '  ' + self.settings['hist_center'] + '  ' + self.settings['hist_bins'] +'             [histogram]' +'\n'
+            apertures+= stars.kinematic_data[i].hist_width + '  ' + \
+                        stars.kinematic_data[i].hist_center + '  ' + \
                         stars.kinematic_data[i].hist_bins + \
                         f'             [histogram {stars.kinematic_data[i].name}]\n'
 

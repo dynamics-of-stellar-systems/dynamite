@@ -100,8 +100,8 @@ system_components:
             kinset1:
                 weight: 1.0 # weight of kinematics data specified by name
                 type: GaussHermite # specifies which object class to create
-                hist_vel: '2719.8215332031'
-                hist_sigma: '0.0000'
+                hist_width: '2719.8215332031'
+                hist_center: '0.0000'
                 hist_bins: '203'
                 datafile: "gauss_hermite_kins.ecsv"  # both discr. & integrated
                 aperturefile: "aperture.dat" # integrated only
