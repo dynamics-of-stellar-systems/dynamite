@@ -117,11 +117,12 @@ class GaussHermite(Kinematics, data.Integrated):
     def convert_to_old_format(self, filename_old_format):
         nbins = len(self.data)
         # extract n_gh from list of column names
-        colnames = self.data.colnames
-        idx = ['h' in x and 'd' not in x for x in colnames]
-        idx = np.where(idx)[0]
-        n_gh = [int(colnames[idx0][1]) for idx0 in idx]
-        n_gh = np.max(n_gh)
+        # colnames = self.data.colnames
+        # idx = ['h' in x and 'd' not in x for x in colnames]
+        # idx = np.where(idx)[0]
+        # n_gh = [int(colnames[idx0][1]) for idx0 in idx]
+        # n_gh = np.max(n_gh)
+        n_gh = self.get_highest_order_gh_coefficient()
         # write comment string
         comment = '{0} {1}'.format(nbins, n_gh)
         idx = np.arange(nbins)+1

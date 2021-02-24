@@ -1,10 +1,10 @@
 import os
-import numpy as np
 import subprocess
 import shutil
+import logging
+import numpy as np
 from scipy.io import FortranFile
 from astropy.table import Table, vstack
-import logging
 
 import sys
 this_dir = os.path.dirname(__file__)
@@ -92,9 +92,22 @@ class LegacyOrbitLibrary(OrbitLibrary):
 
             #combined kinematics for legacy dynamite
             if len(kinematics)>1:
+                gh_order = kinematics[0].get_highest_order_gh_coefficient()
+                if not all(kin.get_highest_order_gh_coefficient() == gh_order \
+                           for kin in kinematics[1:]):
+                    text = 'Multiple kinematics: all need to have the same ' \
+                           'number of gh coefficients'
+                    self.logger.error(text)
+                    raise ValueError(text)
+                if not all(isinstance(kin,dyn_kin.GaussHermite) \
+                           for kin in kinematics):
+                    text = 'Multiple kinematics: all must be GaussHermite'
+                    self.logger.error(text)
+                    raise ValueError(text)
                 kinematics_combined=kinematics[0]
-
-                kinematics_combined.data=vstack((kinematics[0].data, kinematics[1].data))
+                # kinematics_combined.data=vstack((kinematics[0].data, kinematics[1].data))
+                kinematics_combined.data = \
+                    vstack([kin.data for kin in kinematics])
                 old_filename = self.mod_dir+'infil/kin_data_combined.dat'
                 kinematics_combined.convert_to_old_format(old_filename)
 
@@ -200,7 +213,7 @@ class LegacyOrbitLibrary(OrbitLibrary):
             apertures+='1                              [use binning for aperture '+ str(1+i)+'] ' +'\n'
 
         for i in np.arange(n_psf):
-              apertures+='"infil/' + stars.kinematic_data[i].binfile +'"          [binning for aperture '+str(i+1)+']' +'\n'
+            apertures+='"infil/' + stars.kinematic_data[i].binfile +'"          [binning for aperture '+str(i+1)+']' +'\n'
 
         text2 = 'datfil/orblib.dat'
 
@@ -258,14 +271,15 @@ class LegacyOrbitLibrary(OrbitLibrary):
               str(int(np.max(n_psf))) + '                              [# of apertures]'  +'\n'
         apertures=''
         for i in np.arange(n_psf):
-            psf_weight=(stars.kinematic_data[i].PSF['weight'])[k]
-            psf_sigma=(stars.kinematic_data[i].PSF['sigma'])[k]
-            
-            apertures+= \
-              '"infil/' + stars.kinematic_data[i].aperturefile +'"' + '\n' + \
-              str(len(stars.kinematic_data[i].PSF['sigma'])) + '                              [# of gaussians components]'  +'\n' + \
-              str(psf_weight) + '   ' + str(psf_sigma) + '                     [weight sigma]' +  '\n'  + \
-              '"infil/' + stars.kinematic_data[i].binfile +'"' +'\n'
+            for k in np.arange(n_psf_comp):
+                psf_weight=(stars.kinematic_data[i].PSF['weight'])[k]
+                psf_sigma=(stars.kinematic_data[i].PSF['sigma'])[k]
+    
+                apertures+= \
+                  '"infil/' + stars.kinematic_data[i].aperturefile +'"' + '\n' + \
+                  str(len(stars.kinematic_data[i].PSF['sigma'])) + '                              [# of gaussians components]'  +'\n' + \
+                  str(psf_weight) + '   ' + str(psf_sigma) + '                     [weight sigma]' +  '\n'  + \
+                  '"infil/' + stars.kinematic_data[i].binfile +'"' +'\n'
 
         text2='"datfil/mass_aper.dat"'
 
@@ -308,7 +322,7 @@ class LegacyOrbitLibrary(OrbitLibrary):
                           f'Logfiles: {self.mod_dir}datfil/orblib.log, ' + \
                           f'{self.mod_dir}datfil/triaxmass.log, ' + \
                           f'{self.mod_dir}datfil/triaxmassbin.log')
-        self.logger.info(f'Integrating orbit library box orbits')
+        self.logger.info('Integrating orbit library box orbits')
         p = subprocess.call('bash '+cmdstr_box, shell=True)
         self.logger.debug('...done. ' + \
                           f'Logfile: {self.mod_dir}datfil/orblibbox.log')
@@ -419,7 +433,7 @@ class LegacyOrbitLibrary(OrbitLibrary):
             density_3D[j] = quad_light[:,:,:,0]
             for k in range(nconstr):
                 ivmin, ivmax = orblibf.read_ints(np.int32)
-                if (ivmin <= ivmax):
+                if ivmin <= ivmax:
                     tmp = orblibf.read_reals(float)
                     velhist[j, ivmin+nvhist:ivmax+nvhist+1, k] = tmp
         orblibf.close()
