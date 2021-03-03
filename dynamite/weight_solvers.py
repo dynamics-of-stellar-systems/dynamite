@@ -241,7 +241,9 @@ class LegacyWeightSolver(WeightSolver):
         A, b, weights = self.read_nnls_orbmat_rhs_and_solution()
         chi2_vector = (np.dot(A, weights) - b)**2.
         chi2_tot = np.sum(chi2_vector)
-        mge = self.system.cmp_list[2].mge
+        stars = \
+          self.system.get_component_from_class(physys.TriaxialVisibleComponent)
+        mge = stars.mge_lum
         intrinsic_masses = mge.get_intrinsic_masses_from_file(self.mod_dir)
         projected_masses = mge.get_projected_masses_from_file(self.mod_dir)
         n_intrinsic = np.product(intrinsic_masses.shape)
@@ -341,7 +343,9 @@ class NNLS(WeightSolver):
         self.ennumerate_constraints()
 
     def get_observed_constraints(self):
-        mge = self.system.cmp_list[2].mge
+        stars = \
+          self.system.get_component_from_class(physys.TriaxialVisibleComponent)
+        mge = stars.mge_lum
         # intrinsic mass
         intrinsic_masses = mge.get_intrinsic_masses_from_file(self.direc_no_ml)
         self.intrinsic_masses = intrinsic_masses
@@ -355,7 +359,8 @@ class NNLS(WeightSolver):
         self.total_mass_error = np.min([self.intrinsic_mass_error/10.,
                                         np.abs(1. - self.total_mass)])
         # get observed gh values and errors
-        kinematics = self.system.cmp_list[2].kinematic_data[0]
+        # kinematics = self.system.cmp_list[2].kinematic_data[0]
+        kinematics = stars.kinematic_data[0]
         tmp = kinematics.get_observed_values_and_uncertainties()
         obs_gh, obs_gh_err = tmp
         # ... and scale both by projected masses
@@ -406,7 +411,10 @@ class NNLS(WeightSolver):
         idx = slice(1+self.n_intrinsic+self.n_apertures, None)
         con[idx] = np.ravel(self.obs_gh.T)
         econ[idx] = np.ravel(self.obs_gh_err.T)
-        kinematics = self.system.cmp_list[2].kinematic_data[0]
+        # kinematics = self.system.cmp_list[2].kinematic_data[0]
+        stars = \
+          self.system.get_component_from_class(physys.TriaxialVisibleComponent)
+        kinematics = stars.kinematic_data[0]
         # to mimic `triaxnnnls_CRcut.f90`
         # Set the first and last point in the velocity histograms to zero
         orblib.losvd_histograms.y[:,0,:] = 0.
@@ -432,7 +440,8 @@ class NNLS(WeightSolver):
             # to cut an orbit, replace it's h1 by 3.0/dvhist(i)
             idx_cut = np.where(cut)
             # v_range = float(orblib.settings['hist_width'])
-            v_range = self.system.cmp_list[2].kinematic_data[0].hist_width
+            # v_range = self.system.cmp_list[2].kinematic_data[0].hist_width
+            v_range = stars.kinematic_data[0].hist_width
             n_bins = orblib.losvd_histograms.x.size
             dvhist = v_range/n_bins
             orb_gh[idx_cut[0], idx_cut[1], 0] = 3./dvhist

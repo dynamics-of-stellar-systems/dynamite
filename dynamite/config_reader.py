@@ -234,10 +234,14 @@ class Configuration(object):
                             pop_list.append(populations_set)
                         c.population_data = pop_list
 
-                    if 'mge_file' in data_comp:
+                    if 'mge_pot' in data_comp:
                         path = self.settings.io_settings['input_directory']
-                        c.mge = mge.MGE(input_directory=path,
-                                        datafile=data_comp['mge_file'])
+                        c.mge_pot = mge.MGE(input_directory=path,
+                                        datafile=data_comp['mge_pot'])
+                    if 'mge_lum' in data_comp:
+                        path = self.settings.io_settings['input_directory']
+                        c.mge_lum = mge.MGE(input_directory=path,
+                                        datafile=data_comp['mge_lum'])
 
                     # add component to system
                     c.validate() # now also adds the right parameter sformat
