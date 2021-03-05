@@ -26,7 +26,7 @@ class AllModels(object):
         if from_file and os.path.isfile(self.filename):
             self.logger.info('Previous models have been found: '
                         f'Reading {self.filename} into '
-                        '{__class__.__name__}.table')
+                        f'{__class__.__name__}.table')
             self.read_completed_model_file()
         else:
             self.logger.info(f'No previous models (file {self.filename}) '
