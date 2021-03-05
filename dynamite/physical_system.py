@@ -324,7 +324,7 @@ class TriaxialVisibleComponent(VisibleComponent):
         """
         par_format = {'q':'6.3g', 'p':'6.4g', 'u':'7.5g'}
         super().validate(par_format=par_format)
-        self.qobs = np.amin((self.mge_pot.data['q'],self.mge_lum.data['q']))
+        self.qobs = np.amin(self.mge_pot.data['q'])
         if self.qobs is np.nan:
             raise ValueError(f'{self.__class__.__name__}.qobs is np.nan')
 
