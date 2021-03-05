@@ -75,8 +75,9 @@ class GaussHermite(Kinematics, data.Integrated):
         # calls data.Integrated's __init__
         super().__init__(**kwargs)
         self.logger = logging.getLogger(f'{__name__}.{__class__.__name__}')
-        self.max_gh_order = self.get_highest_order_gh_coefficient()
-        self.n_apertures = len(self.data)
+        if hasattr(self, 'data'):
+            self.max_gh_order = self.get_highest_order_gh_coefficient()
+            self.n_apertures = len(self.data)
 
     def get_highest_order_gh_coefficient(self, max_gh_check=20):
         colnames = self.data.colnames
