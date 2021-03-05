@@ -1,12 +1,12 @@
+import logging
 import numpy as np
 import matplotlib.pyplot as plt
 from plotbin import sauron_colormap as pb_sauron_colormap
 from plotbin import display_pixels
-import logging
 import physical_system as physys
 
 
-class Plotter(object):
+class Plotter():
 
     def __init__(self,
                  system=None,
@@ -36,7 +36,8 @@ class Plotter(object):
         if not orbit_plot: orbit_plot=0
         if not mass_plot: mass_plot=0
         '''
-        # <-- dont need to implement "which plot to make" switches yet, just individual plotting methods
+        # <-- dont need to implement "which plot to make" switches yet,
+        #     just individual plotting methods
 
         '''
         figdir = w_dir + object + '/figure_nn'+rootname[0]+'/'
@@ -92,7 +93,6 @@ class Plotter(object):
         par = par[:, s0]
         chi2 = chi2[s0]
         '''
-        pass
 
     def make_chi2_plot(self):
         # ...
@@ -108,35 +108,47 @@ class Plotter(object):
         """
         kinem_fname = model.get_model_directory() + 'nn_kinem.out'
         body_kinem = np.genfromtxt(kinem_fname, skip_header=1)
-        
+
         stars = \
           self.system.get_component_from_class(physys.TriaxialVisibleComponent)
-        
-        if kin_set==0:
-            n_bins=stars.kinematic_data[0].n_apertures
-            body_kinem=body_kinem[0:n_bins,:]
-
-        elif kin_set==1:
-            n_bins1=stars.kinematic_data[0].n_apertures
-            n_bins2=stars.kinematic_data[1].n_apertures
-            body_kinem=body_kinem[n_bins1:n_bins1+n_bins2,:]
-
-        else:
-            text = f'kin_set must be 0 or 1, not {kin_set}'
+        n_kin = len(stars.kinematic_data)
+        if kin_set >= n_kin:
+            text = f'kin_set must be < {n_kin}, but it is {kin_set}'
             self.logger.error(text)
             raise ValueError(text)
 
+        first_bin = sum(k.n_apertures for k in stars.kinematic_data[:kin_set])
+        n_bins = stars.kinematic_data[kin_set].n_apertures
+        body_kinem = body_kinem[first_bin:first_bin+n_bins]
+        self.logger.debug(f'kin_set={kin_set}, plotting bins '
+                          f'{first_bin} through {first_bin+n_bins-1}')
+        # if kin_set==0:
+        #     n_bins=stars.kinematic_data[0].n_apertures
+        #     body_kinem=body_kinem[0:n_bins,:]
+        #     self.logger.info(f'first_bin=0, last_bin={n_bins}')
+
+        # elif kin_set==1:
+        #     n_bins1=stars.kinematic_data[0].n_apertures
+        #     n_bins2=stars.kinematic_data[1].n_apertures
+        #     body_kinem=body_kinem[n_bins1:n_bins1+n_bins2,:]
+        #     self.logger.info(f'first_bin={n_bins1}, last_bin={n_bins1+n_bins2}')
+
+        # else:
+        #     text = f'kin_set must be 0 or 1, not {kin_set}'
+        #     self.logger.error(text)
+        #     raise ValueError(text)
+
         if self.settings.weight_solver_settings['number_GH'] == 2:
-            id, fluxm, flux, velm, vel, dvel, sigm, sig, dsig = body_kinem.T
-            
-            #to not need to change the plotting routine below, higher moments are set to 0 
+            id_num, fluxm, flux, velm, vel, dvel, sigm, sig, dsig = body_kinem.T
+
+            #to not need to change the plotting routine below, higher moments are set to 0
             h3m, h3, dh3, h4m, h4, dh4 = vel*0, vel*0, vel*0+0.4, vel*0, vel*0, vel*0+0.4
-        
+
         if self.settings.weight_solver_settings['number_GH'] == 4:
-            id, fluxm, flux, velm, vel, dvel, sigm, sig, dsig, h3m, h3, dh3, h4m, h4, dh4 = body_kinem.T
+            id_num, fluxm, flux, velm, vel, dvel, sigm, sig, dsig, h3m, h3, dh3, h4m, h4, dh4 = body_kinem.T
 
         if self.settings.weight_solver_settings['number_GH'] == 6:
-            id, fluxm, flux, velm, vel, dvel, sigm, sig, dsig, h3m, h3, dh3, h4m, h4, dh4, h5m, h5, dh5, h6m, h6, dh6 = body_kinem.T
+            id_num, fluxm, flux, velm, vel, dvel, sigm, sig, dsig, h3m, h3, dh3, h4m, h4, dh4, h5m, h5, dh5, h6m, h6, dh6 = body_kinem.T
 
             #still ToDO: Add the kinematic map plots for h5 and h6
 
@@ -144,9 +156,9 @@ class Plotter(object):
         vmax = max(np.hstack((velm, vel)))
         smax = max(np.hstack((sigm, sig)))
         smin = min(sig)
-        h3max = max(np.hstack((h3m, h3)));
+        h3max = max(np.hstack((h3m, h3)))
         h3min = min(np.hstack((h3m, h3)))
-        h4max = max(np.hstack((h4m, h4)));
+        h4max = max(np.hstack((h4m, h4)))
         h4min = min(np.hstack((h4m, h4)))
 
         # Read aperture.dat
@@ -158,14 +170,14 @@ class Plotter(object):
 
         lines = [line.rstrip('\n').split() for line in open(aperture_fname)]
         strhead = lines[0]
-        minx = np.float(lines[1][0]);
+        minx = np.float(lines[1][0])
         miny = np.float(lines[1][1])
-        sx = np.float(lines[2][0]);
+        sx = np.float(lines[2][0])
         sy = np.float(lines[2][1])
-        maxx = sx + minx;
+        maxx = sx + minx
         sy = sy + miny
         angle_deg = np.float(lines[3][0])  # - 90.0 + 180
-        nx = np.int(lines[4][0]);
+        nx = np.int(lines[4][0])
         ny = np.int(lines[4][1])
         dx = sx / nx
 
@@ -175,9 +187,9 @@ class Plotter(object):
         xr = np.arange(nx, dtype=float) * dx + minx + 0.5 * dx
         yc = np.arange(ny, dtype=float) * dx + miny + 0.5 * dx
 
-        xi = np.outer(xr, (yc * 0 + 1));
+        xi = np.outer(xr, (yc * 0 + 1))
         xt = xi.T.flatten()
-        yi = np.outer((xr * 0 + 1), yc);
+        yi = np.outer((xr * 0 + 1), yc)
         yt = yi.T.flatten()
 
         radeg = 57.2958
@@ -190,9 +202,9 @@ class Plotter(object):
         bin_fname = stars.kinematic_data[kin_set].binfile
         bin_fname = self.input_directory + bin_fname
         lines_bins = [line.rstrip('\n').split() for line in open(bin_fname)]
-        i = 0;
-        str_head = [];
-        i_var = [];
+        i = 0
+        str_head = []
+        i_var = []
         grid = []
         while i < len(lines_bins):
             for x in lines_bins[i]:
@@ -224,7 +236,7 @@ class Plotter(object):
         maxfm = max(np.array(list(map(np.log10, fluxm[grid[s]] / max(fluxm)))))
 
         # The galaxy has NOT already rotated with PA to make major axis aligned with x
-        
+
         # filename3 = figdir + object + '_kin4.pdf'
 
         fig = plt.figure(figsize=(27, 12))
