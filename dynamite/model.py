@@ -1,5 +1,5 @@
 import os
-import shutil #used to easily copy files
+# import shutil #used to easily copy files
 import numpy as np
 from astropy import table
 from astropy.io import ascii
@@ -23,12 +23,14 @@ class AllModels(object):
         self.settings = settings
         self.set_filename(settings.io_settings['all_models_file'])
         self.parspace = parspace
-        if from_file and os.path.isfile(filename):
+        if from_file and os.path.isfile(self.filename):
             self.logger.info('Previous models have been found: '
-                        f'Reading {filename} into {__class__.__name__}.table')
+                        f'Reading {self.filename} into '
+                        '{__class__.__name__}.table')
             self.read_completed_model_file()
         else:
-            self.logger.info('No previous models have been found: '
+            self.logger.info(f'No previous models (file {self.filename}) '
+                        'have been found: '
                         f'Making an empty table in {__class__.__name__}.table')
             self.make_empty_table()
 

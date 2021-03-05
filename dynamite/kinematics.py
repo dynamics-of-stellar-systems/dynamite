@@ -15,10 +15,16 @@ class Kinematics(data.Data):
     def __init__(self,
                  weight=None,
                  type=None,
+                 hist_width=None,
+                 hist_center=None,
+                 hist_bins=None,
                  **kwargs
                  ):
         self.weight = weight
         self.type = type
+        self.hist_width = hist_width
+        self.hist_center = hist_center
+        self.hist_bins = hist_bins
         self.__class__.values = list(self.__dict__.keys())
         super().__init__(**kwargs)
         self.logger = logging.getLogger(f'{__name__}.{__class__.__name__}')
@@ -69,8 +75,9 @@ class GaussHermite(Kinematics, data.Integrated):
         # calls data.Integrated's __init__
         super().__init__(**kwargs)
         self.logger = logging.getLogger(f'{__name__}.{__class__.__name__}')
-        self.max_gh_order = self.get_highest_order_gh_coefficient()
-        self.n_apertures = len(self.data)
+        if hasattr(self, 'data'):
+            self.max_gh_order = self.get_highest_order_gh_coefficient()
+            self.n_apertures = len(self.data)
 
     def get_highest_order_gh_coefficient(self, max_gh_check=20):
         colnames = self.data.colnames

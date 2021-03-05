@@ -102,6 +102,9 @@ system_components:
             set1:
                 weight: 1.0 # weight of kinematics data specified by name
                 type: GaussHermite # specifies which object class to create
+                hist_width: '2719.8215332031'
+                hist_center: '0.0000'
+                hist_bins: '203'
                 datafile: "gauss_hermite_kins.ecsv"  # both discr. & integrated
                 aperturefile: "aperture.dat" # integrated only
                 binfile: "bins.dat"          # integrated only
@@ -136,9 +139,6 @@ orblib_settings:
     starting_orbit: 1
     number_orbits: -1 #-1 --> all orbits
     accuracy: '1.0d-5'
-    hist_vel: '2719.8215332031'
-    hist_sigma: '0.0000'  #check what this is
-    hist_bins: '203'
     # the following is intended for development & debugging and should be
     # set to 0 for productive use
     random_seed: 4242 # integer; any value <= 0 results in stochastic seed
