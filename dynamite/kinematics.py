@@ -28,6 +28,13 @@ class Kinematics(data.Data):
         self.__class__.values = list(self.__dict__.keys())
         super().__init__(**kwargs)
         self.logger = logging.getLogger(f'{__name__}.{__class__.__name__}')
+        if self.weight==None or self.type==None or self.hist_width==None or \
+                self.hist_center==None or self.hist_bins==None:
+            text = 'Kinematics need (weight, type, hist_width, hist_center, '\
+                   f'hist_bins), but has ({self.weight}, {self.type}, ' \
+                   f'{self.hist_width}, {self.hist_center}, {self.hist_bins})'
+            self.logger.error(text)
+            raise ValueError(text)
 
     def update(self, **kwargs):
         """

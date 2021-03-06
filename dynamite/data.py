@@ -15,6 +15,9 @@ class Data(object):
             self.input_directory = input_directory if input_directory else ''
             if datafile is not None:
                 self.data = ascii.read(self.input_directory+self.datafile)
+            self.logger = logging.getLogger(f'{__name__}.{__class__.__name__}')
+            self.logger.debug(f'Data {self.name} read from '
+                              f'{self.input_directory+self.datafile}')
 
 
 class Discrete(Data):
