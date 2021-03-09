@@ -45,3 +45,5 @@ ran1_nr
 *.log
 tests/FCC047_2kin
 Tests/GAMA30890
+rantest
+rantest.f90-e
