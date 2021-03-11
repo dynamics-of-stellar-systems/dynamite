@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
-import os
+import os, sys, subprocess
 import shutil
 import numpy as np
-import time
+#import time
 
 # Set matplotlib backend to 'Agg' (compatible when X11 is not running
 # e.g., on a cluster). Note that the backend can only be set BEFORE
@@ -13,9 +13,17 @@ import matplotlib
 matplotlib.use('Agg')
 
 import matplotlib.pyplot as plt
-from astropy import table
+#from astropy import table
 import logging
 import dynamite as dyn
+
+def version_p():
+    return sys.version.split()[0]
+
+def version_f():
+    v = subprocess.run("gfortran --version", capture_output=True, shell=True, \
+        check=True).stdout.decode('utf-8').split(sep='\n')[0].split()[-1]
+    return v
 
 def plot_losvds(losvd_histogram,
                 orb_idx,
@@ -34,7 +42,8 @@ def plot_losvds(losvd_histogram,
                  ls=ls,
                  color=color,
                  label=f'aperture {aperture_idx}')
-    plt.gca().set_title(f'LOSVD of orbit {orb_idx}')
+    plt.gca().set_title(f'LOSVD of orbit {orb_idx} \n'
+                        f'Python {version_p()}, gfortran {version_f()}')
     plt.gca().set_xlabel('v [km/s]')
     plt.gca().set_yscale('log')
     plt.gca().legend()
@@ -61,7 +70,7 @@ def run_orbit_losvd_test(make_comparison_losvd=False):
     plotdir = outdir + 'plots/'
     if not os.path.isdir(plotdir):
         os.mkdir(plotdir)
-    plotfile = plotdir + 'orbit_losvds.png'
+    plotfile = plotdir + f'orbit_losvds-{version_p()}-{version_f()}.png'
     if os.path.isfile(plotfile):
         os.remove(plotfile)
 
