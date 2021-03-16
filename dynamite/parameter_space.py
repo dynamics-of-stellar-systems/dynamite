@@ -365,6 +365,34 @@ class ParameterGenerator(object):
                         break
         return isnew
 
+    def clip(self, value, mini, maxi):
+        """
+        Clips value to the interval [mini, maxi]. Similar to the numpy.clip()
+        method. If mini==maxi, that value is returned.
+
+        Parameters
+        ----------
+        value : numeric value
+        mini : numeric value
+        maxi : numeric value
+
+        Raises
+        ------
+        ValueError if mini > maxi
+
+        Returns
+        -------
+        min(max(mini, value), maxi)
+
+        """
+        logger = logging.getLogger(f'{__name__}.{__class__.__name__}')
+        if mini <= maxi:
+            return np.clip(value, mini, maxi)
+        else:
+            text = 'Clip error: minimum must be less than or equal to maximum'
+            logger.error(text)
+            raise ValueError(text)
+
 
 class LegacyGridSearch(ParameterGenerator):
 
@@ -681,33 +709,204 @@ class GridWalk(ParameterGenerator):
         if paridx < self.par_space.n_par - 1:
             self.grid_walk(center=center, par=self.par_space[paridx+1])
 
-    def clip(self, value, mini, maxi):
+    def check_specific_stopping_critera(self):
+        # stop if...
+        # (i) if iter>1, last iteration did not improve chi2 by min_delta_chi2
+        self.status['min_delta_chi2_reached'] = False
+        last_iter = np.max(self.current_models.table['which_iter'])
+        if last_iter > 0:
+            mask = self.current_models.table['which_iter'] == last_iter
+            models0 = self.current_models.table[mask]
+            mask = self.current_models.table['which_iter'] == last_iter-1
+            models1 = self.current_models.table[mask]
+            # Don't use abs() so we stop on increasing chi2 values, too:
+            delta_chi2 = np.min(models1[self.chi2])-np.min(models0[self.chi2])
+            if self.min_delta_chi2_rel:
+                delta_chi2 /= np.min(models1[self.chi2])
+                delta_chi2 /= self.min_delta_chi2_rel
+            else:
+                delta_chi2 /= self.min_delta_chi2_abs
+            if delta_chi2 <= 1:
+                self.status['min_delta_chi2_reached'] = True
+        # (ii) if step_size < min_step_size for all params
+        #       => dealt with by grid_walk (doesn't create such models)
+
+
+class FullGrid(ParameterGenerator):
+
+    def __init__(self,
+                 par_space=[],
+                 parspace_settings=None):
+        super().__init__(par_space=par_space,
+                         parspace_settings=parspace_settings,
+                         name='GridWalk')
+        self.logger = logging.getLogger(f'{__name__}.{__class__.__name__}')
+        self.step = []
+        self.minstep = []
+        try:
+            for par in self.par_space:
+                settings = par.par_generator_settings
+                if par.fixed is False:
+                    self.step.append(settings['step'])
+                    # use 'minstep' value if present, otherwise use 'step'
+                    self.minstep.append(settings['minstep'] \
+                        if 'minstep' in settings else self.step)
+                else:
+                    self.step.append([])
+                    self.minstep.append([])
+        except:
+            text = 'GridWalk: non-fixed parameters need step setting'
+            self.logger.error(text)
+            raise ValueError(text)
+
+        stop_crit = parspace_settings['stopping_criteria']
+        self.min_delta_chi2_abs = stop_crit.get('min_delta_chi2_abs', False)
+        self.min_delta_chi2_rel = stop_crit.get('min_delta_chi2_rel', False)
+        if (not self.min_delta_chi2_abs and not self.min_delta_chi2_rel) \
+           or \
+           (self.min_delta_chi2_abs and self.min_delta_chi2_rel):
+            text = 'GridWalk: specify exactly one of the ' + \
+                   'options min_delta_chi2_abs, min_delta_chi2_rel'
+            self.logger.error(text)
+            raise ValueError(text)
+
+    def specific_generate_method(self, **kwargs):
         """
-        Clips value to the interval [mini, maxi]. Similar to the numpy.clip()
-        method. If mini==maxi, that value is returned.
+        Generates list of new models self.model_list. Each element of
+        self.model_list is a list of Parameter objects. The center of the
+        grid walk is the parameter set with the smallest chi2 value. Note
+        that the parameter space setting 'which_chi2' determines whether chi2
+        or kinchi2 is used.
 
         Parameters
         ----------
-        value : numeric value
-        mini : numeric value
-        maxi : numeric value
+        None.
 
         Raises
         ------
-        ValueError if mini > maxi
+        None.
 
         Returns
         -------
-        min(max(mini, value), maxi)
+        None. self.model_list is the list of new models.
+        """
+        if len(self.current_models.table) == 0:
+            # The 'zeroth iteration' results in only one model
+            # (all parameters at their .value level)
+            self.model_list = [[p for p in self.par_space]]
+        else: # Subsequent iterations...
+            # center criterion: min(chi2)
+            center_idx = np.argmin(self.current_models.table[self.chi2])
+            n_par = self.par_space.n_par
+            center = list(self.current_models.table[center_idx])[:n_par]
+            raw_center = self.par_space.get_raw_value_from_param_value(center)
+            self.logger.debug(f'center: {center}')
+            # Build model_list by walking the grid
+            self.model_list = []
+            self.grid(center=raw_center)
+            # for m in self.model_list:
+            #     self.logger.debug(f'{[(p.name, p.value) for p in m]}')
+        return
+
+    def grid(self, center=None, par=None, eps=1e-6):
+        """
+        Spans the whole parameter grid defined by
+        self.par_space.par_generator_settings attributes.
+        IN GENERAL THIS WILL RESULT IN A LARGE NUMBER OF MODELS ADDED TO
+        self.model_list! PRIMARILY THIS IS INTENDED FOR TESTING AND DEBUGGING.
+        Clips parameter values to lo/hi attributes. If clipping violates the
+        minstep attribute, the resulting model(s) will not be created. If the
+        minstep attribute is missing, the step attribute will be used instead.
+        Explicitly set minstep=0 to allow arbitrarily small steps (not
+        recommended).
+
+        Parameters
+        ----------
+        center : List of center coordinates. Must be in the same sequence as
+                 the parameters in self.par_space. Mandatory argument.
+        par : Internal use only. Gives the parameter to start with. Set
+              automatically in the recursive process. The default is None.
+        eps : Used for numerical comparison (relative tolerance), default 1e-6
+
+        Raises
+        ------
+        ValueError if center is not specified or fixed parameters != center.
+
+        Returns
+        -------
+        None. Sets self.model_list to the resulting models.
 
         """
-        logger = logging.getLogger(f'{__name__}.{__class__.__name__}')
-        if mini <= maxi:
-            return min(max(mini, value), maxi)
-        else:
-            text = 'Clip error: minimum must be less than or equal to maximum'
-            logger.error(text)
+        if center is None:
+            text = 'Need center'
+            self.logger.error(text)
             raise ValueError(text)
+        if not par:
+            par = self.par_space[0]
+        paridx = self.par_space.index(par)
+        self.logger.debug(f'Call with paridx={paridx}, '
+                          f'n_par={self.par_space.n_par}')
+
+        if par.fixed:
+            par_values = [par.value]
+            if abs(center[paridx] - par.value) > eps:
+                text='Something is wrong: fixed parameter value not in center'
+                self.logger.error(text)
+                raise ValueError(text)
+        else:
+            lo = self.lo[paridx]
+            hi = self.hi[paridx]
+            step = self.step[paridx]
+            minstep = self.minstep[paridx]
+            # up to 3 *distinct* par_values (clipped lo, mid, hi values)
+            par_values = []
+            par_val = center[paridx]
+            # add the center
+            par_values.append(self.clip(par_val, lo, hi))
+            # start with lo...
+            while par_val >= lo:
+                new_val = self.clip(par_val-step, lo, hi)
+                if abs(par_val-new_val) >= max(minstep,eps):
+                    par_values.append(new_val)
+                else:
+                    break
+                par_val = new_val
+            # now hi...
+            par_val = center[paridx]
+            while par_val <= hi:
+                new_val = self.clip(par_val+step, lo, hi)
+                if abs(par_val-new_val) >= max(minstep,eps):
+                    par_values.append(new_val)
+                else:
+                    break
+                par_val = new_val
+
+        for value in par_values:
+            parcpy = copy.deepcopy(par)
+            parcpy.value = value
+            if not self.model_list: # add first entry if model_list is empty
+                self.model_list = [[parcpy]]
+                models_prev = [[]]
+                self.logger.debug('new model list, starting w/parameter '
+                                  f'{parcpy.name}')
+            elif parcpy.name in [p.name for p in self.model_list[0]]:
+                # in this case, create new (partial) model by copying last
+                # models and setting the new parameter value
+                for m in models_prev:
+                    new_model = m + [parcpy]
+                    self.model_list.append(new_model)
+                self.logger.debug(f'{parcpy.name} is in '
+                      f'{[p.name for p in self.model_list[0]]}, '
+                      f'added {parcpy.name}={parcpy.value}')
+            else: # new parameter: append it to existing (partial) models
+                models_prev = copy.deepcopy(self.model_list)
+                for m in self.model_list:
+                    m.append(parcpy)
+                self.logger.debug(f'new parameter {parcpy.name}={parcpy.value}')
+
+        # call recursively until all paramaters are done:
+        if paridx < self.par_space.n_par - 1:
+            self.grid(center=center, par=self.par_space[paridx+1])
 
     def check_specific_stopping_critera(self):
         # stop if...
