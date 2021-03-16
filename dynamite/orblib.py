@@ -133,7 +133,7 @@ class LegacyOrbitLibrary(OrbitLibrary):
         dm_specs='1 2'
         theta, psi, phi = stars.triax_pqu2tpp(p,q,u)
         # header
-        len_mge=len(stars.mge.data)
+        len_mge=len(stars.mge_pot.data) # must be the same as for mge_lum
         # footer (#double check the order of theta, phi, psi) and dm properties
         text=str(self.system.distMPc)+'\n'+ \
              '{:06.9f}'.format(theta)+' '+ '{:06.9f}'.format(phi)+' '+ '{:06.9f}'.format(psi) + '\n' + \
@@ -148,10 +148,10 @@ class LegacyOrbitLibrary(OrbitLibrary):
              str(self.parset[f'c-{dh.name}']) +' ' + str(self.parset[f'f-{dh.name}'])
 
         #parameters_pot.in
-        np.savetxt(path+'parameters_pot.in',stars.mge.data,header=str(len_mge),footer=text,comments='',fmt=['%10.2f','%10.5f','%10.5f','%10.2f'])
+        np.savetxt(path+'parameters_pot.in',stars.mge_pot.data,header=str(len_mge),footer=text,comments='',fmt=['%10.2f','%10.5f','%10.5f','%10.2f'])
 
-        #parameters_lum.in (assumed to be the same as parameters_pot.in)
-        np.savetxt(path+'parameters_lum.in',stars.mge.data,header=str(len_mge),footer=text,comments='',fmt=['%10.2f','%10.5f','%10.5f','%10.2f'])
+        #parameters_lum.in
+        np.savetxt(path+'parameters_lum.in',stars.mge_lum.data,header=str(len_mge),footer=text,comments='',fmt=['%10.2f','%10.5f','%10.5f','%10.2f'])
 
         #-------------------
         #write orbstart.in

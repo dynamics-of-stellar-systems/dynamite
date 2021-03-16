@@ -269,17 +269,28 @@ class Component(object):
 class VisibleComponent(Component):
 
     def __init__(self,
-                 mge=None,
+                 mge_pot=None,
+                 mge_lum=None,
                  **kwds):
          # visible components have MGE surface density
-        self.mge = mge
+        self.mge_pot = mge_pot
+        self.mge_lum = mge_lum
         super().__init__(visible=True, **kwds)
         self.logger = logging.getLogger(f'{__name__}.{__class__.__name__}')
 
     def validate(self, **kwds):
         super().validate(**kwds)
-        if not isinstance(self.mge, mge.MGE):
-            text = f'{self.__class__.__name__}.mge must be mges.MGE object'
+        if not (isinstance(self.mge_pot, mge.MGE) and \
+                isinstance(self.mge_lum, mge.MGE)):
+            text = f'{self.__class__.__name__}.mge_pot and ' \
+                   f'{self.__class__.__name__}.mge_lum ' \
+                    'must be mges.MGE objects'
+            self.logger.error(text)
+            raise ValueError(text)
+        if len(self.mge_pot.data) != len(self.mge_lum.data):
+            text = f'{self.__class__.__name__}.mge_pot and ' \
+                   f'{self.__class__.__name__}.mge_lum ' \
+                    'must be of equal length'
             self.logger.error(text)
             raise ValueError(text)
 
@@ -313,7 +324,7 @@ class TriaxialVisibleComponent(VisibleComponent):
         """
         par_format = {'q':'6.3g', 'p':'6.4g', 'u':'7.5g'}
         super().validate(par_format=par_format)
-        self.qobs = np.amin(self.mge.data['q'])
+        self.qobs = np.amin(self.mge_pot.data['q'])
         if self.qobs is np.nan:
             raise ValueError(f'{self.__class__.__name__}.qobs is np.nan')
 
