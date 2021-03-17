@@ -1,8 +1,12 @@
 import logging
+import subprocess
+import sys
 import numpy as np
 import matplotlib.pyplot as plt
 from plotbin import sauron_colormap as pb_sauron_colormap
+import dynamite as dyn
 from plotbin import display_pixels
+# from loess.loess_2d import loess_2d
 import physical_system as physys
 
 
@@ -94,10 +98,78 @@ class Plotter():
         chi2 = chi2[s0]
         '''
 
-    def make_chi2_plot(self):
-        # ...
-        #
-        pass
+    def make_chi2_plot(self,parset):
+
+        # parset should be provided that it is clear what values the
+        # remaining parameters are marginalized over
+
+        val1=self.all_models.table['m-bh']
+        val2=self.all_models.table['ml']
+        val3=self.all_models.table['chi2'] - np.min(self.all_models.table['chi2'])
+
+        mass = self.parspace.get_parameter_from_name('m-bh')
+        ml = self.parspace.get_parameter_from_name('ml')       
+
+        #print(ml.LaTeX)
+
+        mbh=np.unique(val1)
+        ml=np.unique(val2)
+
+        mbh_array0,ml_array=np.meshgrid(mbh,ml)
+        chi2_array=mbh_array0*0
+        mbh_array=mbh_array0*0
+
+        #not needed at the moment.. maybe later
+        #model_dir=self.settings.io_settings['output_directory']+'models/'
+
+        for j in range(len(mbh)):
+        #for j in range(2):
+            
+            for k in range(len(ml)):
+            #for k in range(2):
+
+                #change the parameter setting to the parameters of the grid
+                parset['ml'] = ml_array[k,j]
+                parset['m-bh'] = mbh_array0[k,j]
+
+                # TBD: I need to set up a model in order to re-create the
+                # model directory. Can that be changed? To be discussed in 
+                # dynamite meeting. Idea: add model directory to all_models
+                # table?
+                model = dyn.model.LegacySchwarzschildModel(
+                            system=self.system,
+                            settings=self.settings,
+                            parspace=self.parspace,
+                            parset=parset)
+                # param_fname=str(model.get_model_directory())+'nn.in'
+                param_fname = model.get_model_directory() + 'nn.in'
+
+                # extract the ml scale factor from nnls input file. Needs
+                # to be changed for non-legacy version. 
+                scale_factor=np.genfromtxt(param_fname, skip_header=10,max_rows=1,usecols=0)                
+
+                #each black hole input mass needs to be multiplied with the scale factor.
+                mbh_array[k,j]=mbh_array0[k,j]*scale_factor**2
+
+                chi2_array[k,j]=val3[((val1==mbh_array0[k,j]) & (val2==ml_array[k,j]))]
+
+        fig = plt.figure(figsize=(6, 4))
+        ax=plt.subplot(1,1,1)
+
+        levels2=np.array([2.3, 6.17, 11.8,11.8*2,11.8*4,11.8*8,11.8*16,11.8*32,11.8*64,11.8**128])
+        #levels2=np.array([10**1,10**1.5,10**2,10**2.5,10**3,10**3.5,10**4])
+        
+        plt.plot(mbh_array,ml_array,marker='o',color='black',linestyle='', markersize=6)
+        CS=plt.contour(mbh_array,ml_array,chi2_array,levels=levels2,colors='k')
+        plt.contour(mbh_array,ml_array,chi2_array,levels=np.array([11.8*4]),colors='red')
+        ax.set_xscale("log")
+        plt.gca().set_xlabel(mass.LaTeX)
+        plt.gca().set_ylabel('M/L')
+        plt.tight_layout()
+        plt.show()
+        
+        return fig
+
 
     def plot_kinematic_maps(self, model, kin_set=None):
         """
@@ -239,12 +311,18 @@ class Plotter():
 
         # filename3 = figdir + object + '_kin4.pdf'
 
-        fig = plt.figure(figsize=(27, 12))
+        # fig = plt.figure(figsize=(27, 12))
+        fig = plt.figure(figsize=(27, 15))
+        fig.suptitle(f'Python {self.version_p()}, '
+            f'gfortran {self.version_f()}, Thomas\' Mac, '
+            f'Random seed: {self.settings.orblib_settings["random_seed"]}',
+            size=24)
         plt.subplots_adjust(hspace=0.7,
                             wspace=0.01,
                             left=0.01,
                             bottom=0.05,
                             top=0.99,
+                            # top=0.80,
                             right=0.99)
         sauron_colormap = plt.get_cmap('sauron')
         sauron_r_colormap = plt.get_cmap('sauron_r')
@@ -350,6 +428,14 @@ class Plotter():
         fig.text(0.05, 0.53, 'Model', **kwtext)
         fig.text(0.05, 0.2, 'Residual', **kwtext)
         return fig
+
+    def version_p(self):
+        return sys.version.split()[0]
+    
+    def version_f(self):
+        v = subprocess.run("gfortran --version", capture_output=True, shell=True, \
+            check=True).stdout.decode('utf-8').split(sep='\n')[0].split()[-1]
+        return v
 
 
 

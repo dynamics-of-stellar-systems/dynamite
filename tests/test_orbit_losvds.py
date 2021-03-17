@@ -30,7 +30,9 @@ def plot_losvds(losvd_histogram,
                 aperture_idx_list,
                 ls='-',
                 color='k',
-                ax=None):
+                ax=None,
+                title=False,
+                seed=None):
     if ax is None:
         fig, ax = plt.subplots(1, 1)
     v = losvd_histogram.x
@@ -42,8 +44,10 @@ def plot_losvds(losvd_histogram,
                  ls=ls,
                  color=color,
                  label=f'aperture {aperture_idx}')
-    plt.gca().set_title(f'LOSVD of orbit {orb_idx} \n'
-                        f'Python {version_p()}, gfortran {version_f()}')
+    if title:
+        plt.gca().set_title(f'LOSVD of orbit {orb_idx}\n'
+                            f'Python {version_p()}, gfortran {version_f()}\n'
+                            f'Random seed: {seed}')
     plt.gca().set_xlabel('v [km/s]')
     plt.gca().set_yscale('log')
     plt.gca().legend()
@@ -79,7 +83,8 @@ def run_orbit_losvd_test(make_comparison_losvd=False):
     c = dyn.config_reader.Configuration(fname)
 
     parset = c.parspace.get_parset()
-    model = dyn.model.LegacySchwarzschildModel(
+    # model = dyn.model.LegacySchwarzschildModel(
+    model = dyn.model.Model(
         system=c.system,
         settings=c.settings,
         parspace=c.parspace,
@@ -112,7 +117,9 @@ def run_orbit_losvd_test(make_comparison_losvd=False):
                          aperture_idx_list,
                          ls='--',
                          color='r',
-                         ax=ax)
+                         ax=ax,
+                         title=True,
+                         seed=c.settings.orblib_settings['random_seed'])
         fig = plt.gcf()
         fig.savefig(plotfile)
 
