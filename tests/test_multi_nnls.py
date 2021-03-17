@@ -145,6 +145,43 @@ def run_user_test(make_comp=False):
                 figure.savefig(plotfile)
                 print(f'Look at {plotfile}')
 
+    # for one model, re-calculate solution with the new weight solver
+    print('Recalculating orbit weights with scipy NNLS solver')
+
+    fig, ax = plt.subplots(1, 3, sharey=True, figsize=(12,4))
+    for i in [0,1,2]:
+        mod0 = c.all_models.get_model_from_row(i)
+        parset0 = c.all_models.get_parset_from_row(i)
+        orblib0 = dyn.orblib.LegacyOrbitLibrary(system=c.system,
+                                                mod_dir=mod0.directory_noml,
+                                                settings=c.settings,
+                                                parset=parset0)
+        orblib0.read_losvd_histograms()
+        weight_solver = mod0.get_weights()
+        orbmat, rhs, weights_old = weight_solver.read_nnls_orbmat_rhs_and_solution()
+        weight_solver_new = dyn.weight_solvers.NNLS(
+                system=c.system,
+                settings=c.settings.weight_solver_settings,
+                directory_with_ml=mod0.directory,
+                CRcut=True,
+                nnls_solver='scipy')
+        solution_new = weight_solver_new.solve(orblib0)
+        weights_new = solution_new[0]
+        ax[i].plot(weights_old, label='Legacy')
+        ax[i].plot(weights_new, '--', label='NNLS scipy')
+        ax[i].legend()
+        ax[i].set_xlabel('orbit')
+        ax[i].set_title(f'Model {i}')
+    ax[0].set_ylabel('weight')
+    fig.subplots_adjust(wspace=0)
+    fig.tight_layout()
+    plotfile = f'{plotdir}multikin_wsolver_compare.png'
+    if os.path.isfile(plotfile):
+        os.remove(plotfile)
+    fig.savefig(plotfile)
+    logger.info(f'Look at {plotfile}')
+    print(f'Look at {plotfile}')
+
     return c.all_models.table, \
         compare_file, \
         c.settings.parameter_space_settings['stopping_criteria']['n_max_mods']
