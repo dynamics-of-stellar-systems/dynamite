@@ -4,7 +4,7 @@ import shutil
 import logging
 import numpy as np
 from scipy.io import FortranFile
-from astropy.table import Table, vstack
+from astropy import table
 
 import sys
 this_dir = os.path.dirname(__file__)
@@ -104,12 +104,12 @@ class LegacyOrbitLibrary(OrbitLibrary):
                     text = 'Multiple kinematics: all must be GaussHermite'
                     self.logger.error(text)
                     raise ValueError(text)
-                kinematics_combined=kinematics[0]
-                # kinematics_combined.data=vstack((kinematics[0].data, kinematics[1].data))
-                kinematics_combined.data = \
-                    vstack([kin.data for kin in kinematics])
+                # make a dummy 'kins_combined' object ...
+                kins_combined = kinematics[0]
+                # ...replace data attribute with stacked table of all kinematics
+                kins_combined.data = table.vstack([k.data for k in kinematics])
                 old_filename = self.mod_dir+'infil/kin_data_combined.dat'
-                kinematics_combined.convert_to_old_format(old_filename)
+                kins_combined.convert_to_old_format(old_filename)
 
             # calculate orbit libary
             self.get_orbit_ics()
