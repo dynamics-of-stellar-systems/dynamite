@@ -415,9 +415,37 @@ class LegacyOrbitLibrary(OrbitLibrary):
         quad_lph = orblibf.read_reals(float)
         # from histogram_setup_write, lines 1917-1926:
         tmp = orblibf.read_record(np.int32, np.int32, float)
-        nconstr = tmp[0][0]
-        nvhist = tmp[1][0]
-        dvhist = tmp[2][0]
+        nconstr = tmp[0][0] # = total number of apertures for ALL kinematics
+        nvhist = tmp[1][0] # = (nvbins-1)/2 for histo of FIRST kinematic set
+        dvhist = tmp[2][0] # = delta_v in histogram for FIRST kinematic set
+        # these nvhist and dvhist are for the first kinematic set only
+        # however, orbit are stored N times where N = number of kinematic sets
+        # histogram settings for other N-1 sets may be different from the first
+        # these aren't stored in orblib.dat so must read from kinematics objects
+        stars = self.system.get_component_from_class(
+            physys.TriaxialVisibleComponent
+            )
+        n_kins = len(stars.kinematic_data)
+        hist_widths = [k.hist_width for k in stars.kinematic_data]
+        hist_centers = [k.hist_center for k in stars.kinematic_data]
+        hist_bins = [k.hist_bins for k in stars.kinematic_data]
+        self.logger.debug('Checking number of velocity bins...')
+        error_msg = 'must have odd number of velocity bins for all kinematics'
+        assert np.all(np.array(hist_bins) % 1==0), error_msg
+        self.logger.debug('...checks ok.')
+        n_apertures = [len(k.data) for k in stars.kinematic_data]
+        # get index linking  kinematic set to aperture
+        # kin_idx_per_ap[i] = N <--> aperture i is from kinematic set N
+        kin_idx_per_ap = [np.zeros(n_apertures[i], dtype=int)+i
+                          for i in range(n_kins)]
+        kin_idx_per_ap = np.concatenate(kin_idx_per_ap, dtype=int)
+        # below we loop i_ap from 1-n_total_apertures but will need the index of
+        # i_ap for the relevant kinematic set: we use `idx_ap_reset` to do this
+        cum_n_apertures = np.cumsum(n_apertures)
+        idx_ap_reset = np.concatenate(([0], cum_n_apertures[:-1]))
+        # set up a list of arrays to hold the results
+        tmp = zip(hist_bins,n_apertures)
+        velhist0 = [np.zeros((norb, nv, na)) for (nv,na) in tmp]
         # Next read the histograms themselves.
         orbtypes = np.zeros((norb, ndith**3), dtype=int)
         nbins_vhist = 2*nvhist + 1
@@ -437,20 +465,47 @@ class LegacyOrbitLibrary(OrbitLibrary):
             # in the bin indexed by (ir,it,ip).
             # We need to extract 3D density for use in weight solving.
             density_3D[j] = quad_light[:,:,:,0]
-            for k in range(nconstr):
+            # for k in range(nconstr):
+            #     ivmin, ivmax = orblibf.read_ints(np.int32)
+            #     if ivmin <= ivmax:
+            #         tmp = orblibf.read_reals(float)
+            #         velhist[j, ivmin+nvhist:ivmax+nvhist+1, k] = tmp
+            for i_ap in range(nconstr):
+                kin_idx = kin_idx_per_ap[i_ap]
+                i_ap0 = i_ap - idx_ap_reset[kin_idx]
                 ivmin, ivmax = orblibf.read_ints(np.int32)
                 if ivmin <= ivmax:
+                    nv0 = (hist_bins[kin_idx]-1)/2
+                    # ^--- this is an integer since hist_bins is odd
+                    nv0 = int(nv0)
                     tmp = orblibf.read_reals(float)
-                    velhist[j, ivmin+nvhist:ivmax+nvhist+1, k] = tmp
+                    velhist0[kin_idx][j, ivmin+nv0:ivmax+nv0+1, i_ap0] = tmp
         orblibf.close()
         os.chdir(cur_dir)
-        vedg_pos = np.arange(1, nbins_vhist+1, 2) * dvhist/2.
-        vedg_neg = -vedg_pos[::-1]
-        vedg = np.concatenate((vedg_neg, vedg_pos))
-        velhist = dyn_kin.Histogram(xedg=vedg,
-                                    y=velhist,
+        # vedg_pos = np.arange(1, nbins_vhist+1, 2) * dvhist/2.
+        # vedg_neg = -vedg_pos[::-1]
+        # vedg = np.concatenate((vedg_neg, vedg_pos))
+        # velhist = dyn_kin.Histogram(xedg=vedg,
+        #                             y=velhist,
+        #                             normalise=False)
+        velhists = []
+        for i in range(n_kins):
+            center0 = hist_centers[i]
+            width0 = hist_widths[i]
+            bins0 = hist_bins[i]
+            idx_center = (bins0-1)/2 # this is an integer since hist_bins is odd
+            idx_center = int(idx_center)
+            dvhist0 = width0/bins0
+            vedg = np.arange(bins0+1) * dvhist0
+            v = (vedg[1:] + vedg[:-1])/2.
+            v_cent = v[idx_center]
+            delta_v = center0 - v_cent
+            vedg -= v_cent
+            vvv = dyn_kin.Histogram(xedg=vedg,
+                                    y=velhist0[i],
                                     normalise=False)
-        return velhist, density_3D
+            velhists += [vvv]
+        return velhists, density_3D
 
     def duplicate_flip_and_interlace_orblib(self, orblib):
         """ Take an orbit library, create a duplicate library with the velocity
@@ -473,7 +528,7 @@ class LegacyOrbitLibrary(OrbitLibrary):
         """
         self.logger.debug('Checking for symmetric velocity array...')
         error_msg = 'velocity array must be symmetric'
-        assert np.all(orblib.xedg == -orblib.xedg[::-1]), error_msg
+        assert np.allclose(orblib.xedg, -orblib.xedg[::-1]), error_msg
         self.logger.debug('...check ok.')
         losvd = orblib.y
         n_orbs, n_vel_bins, n_spatial_bins = losvd.shape
@@ -532,21 +587,32 @@ class LegacyOrbitLibrary(OrbitLibrary):
         # TODO: check if this ordering is compatible with weights read in by
         # LegacyWeightSolver.read_weights
         tube_orblib, tube_density_3D = self.read_orbit_base('orblib')
-        tube_orblib = self.duplicate_flip_and_interlace_orblib(tube_orblib)
-        # duplicate and interlace tube_density_3D array
+        # tube orbits are mirrored/flipped and used twice
+        tmp = []
+        for tube_orblib0 in tube_orblib:
+            tmp += [self.duplicate_flip_and_interlace_orblib(tube_orblib0)]
+        tube_orblib = tmp
         tube_density_3D = np.repeat(tube_density_3D, 2, axis=0)
+        # read box orbits
         box_orblib, box_density_3D = self.read_orbit_base('orblibbox')
-        orblib = self.combine_orblibs(tube_orblib, box_orblib)
-        # combine the two density_3D arrays
+        # combine orblibs
+        orblib = []
+        for (t0, b0) in zip(tube_orblib, box_orblib):
+            orblib0 = self.combine_orblibs(t0, b0)
+            orblib += [orblib0]
+        # combine density_3D arrays
         density_3D = np.vstack((tube_density_3D, box_density_3D))
-        self.losvd_histograms = orblib
         ml_current = self.parset['ml']
         ml_original = self.get_ml_of_original_orblib()
         scale_factor = np.sqrt(ml_current/ml_original)
-        self.losvd_histograms.scale_x_values(scale_factor)
+        nkins = len(orblib)
+        for i in range(nkins):
+            orblib[i].scale_x_values(scale_factor)
+        self.losvd_histograms = orblib
         self.intrinsic_masses = density_3D
-        self.n_orbs = self.losvd_histograms.y.shape[0]
-        self.projected_masses = np.sum(self.losvd_histograms.y, 1)
+        self.n_orbs = self.losvd_histograms[0].y.shape[0]
+        proj_mass = [np.sum(self.losvd_histograms[i].y, 1) for i in range(nkins)]
+        self.projected_masses = proj_mass
 
     def get_ml_of_original_orblib(self):
         infile = self.mod_dir + 'infil/parameters_pot.in'
