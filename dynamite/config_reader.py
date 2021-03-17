@@ -221,6 +221,13 @@ class Configuration(object):
                             kin_list.append(kinematics_set)
                         c.kinematic_data = kin_list
 
+                    # cast all histogram values to the correct type
+                    for k in c.kinematic_data:
+                        k.hist_width = float(k.hist_width)
+                        k.hist_center = float(k.hist_center)
+                        k.hist_bins = int(k.hist_bins)
+
+
                     # read populations
 
                     if 'populations' in data_comp:
@@ -515,7 +522,21 @@ class Configuration(object):
                 self.logger.error(err_msg)
                 raise ValueError(err_msg)
 
-
+        # check all velocity histograms have center 0 and odd number of bins
+        # required as we re-use tube orbits by flipping the velocity axis
+        # only valid if the velocity axis is symmetric
+        stars = self.system.get_component_from_class(
+            physys.TriaxialVisibleComponent
+            )
+        hist_centers = [k.hist_center for k in stars.kinematic_data]
+        hist_bins = [k.hist_bins for k in stars.kinematic_data]
+        check_centers = all([x == 0. for x in hist_centers])
+        check_bins = all([x%1==0 for x in hist_bins])
+        check_all = (check_centers and check_bins)
+        if check_all is False:
+            err_msg = 'all hist_centers must=0 and hist_bins must be odd'
+            self.logger.error(err_msg)
+            raise ValueError(err_msg)
 
 class DynamiteLogging(object):
     """
