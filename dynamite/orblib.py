@@ -209,9 +209,9 @@ class LegacyOrbitLibrary(OrbitLibrary):
             f'[use psf {i+1} {stars.kinematic_data[i].name}] \n'
         for i in np.arange(n_psf):
             # apertures+= self.settings['hist_width'] + '  ' + self.settings['hist_center'] + '  ' + self.settings['hist_bins'] +'             [histogram]' +'\n'
-            apertures+= stars.kinematic_data[i].hist_width + '  ' + \
-                        stars.kinematic_data[i].hist_center + '  ' + \
-                        stars.kinematic_data[i].hist_bins + \
+            apertures+= str(stars.kinematic_data[i].hist_width) + '  ' + \
+                        str(stars.kinematic_data[i].hist_center) + '  ' + \
+                        str(stars.kinematic_data[i].hist_bins) + \
                         f'             [histogram {stars.kinematic_data[i].name}]\n'
 
         for i in np.arange(n_psf):
@@ -280,7 +280,7 @@ class LegacyOrbitLibrary(OrbitLibrary):
             for k in np.arange(n_psf_comp):
                 psf_weight=(stars.kinematic_data[i].PSF['weight'])[k]
                 psf_sigma=(stars.kinematic_data[i].PSF['sigma'])[k]
-    
+
                 apertures+= \
                   '"infil/' + stars.kinematic_data[i].aperturefile +'"' + '\n' + \
                   str(len(stars.kinematic_data[i].PSF['sigma'])) + '                              [# of gaussians components]'  +'\n' + \
