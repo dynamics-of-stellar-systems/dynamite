@@ -136,11 +136,12 @@ class Plotter():
                 # model directory. Can that be changed? To be discussed in 
                 # dynamite meeting. Idea: add model directory to all_models
                 # table?
-                model = dyn.model.LegacySchwarzschildModel(
-                            system=self.system,
-                            settings=self.settings,
-                            parspace=self.parspace,
-                            parset=parset)
+                # model = dyn.model.LegacySchwarzschildModel(
+                #             system=self.system,
+                #             settings=self.settings,
+                #             parspace=self.parspace,
+                #             parset=parset)
+                model = self.all_models.get_model_from_parset(parset)
                 # param_fname=str(model.get_model_directory())+'nn.in'
                 param_fname = model.get_model_directory() + 'nn.in'
 

@@ -141,13 +141,26 @@ class AllModels(object):
         parset = self.table[row_id][self.parspace.par_names]
         return parset
 
+    def get_model_from_parset(self, parset):
+        if parset not in [row[self.parspace.par_names] for row in self.table]:
+            text = f'parset not in all_models table. parset={parset}, ' \
+                   f'all_models table: {self.table}'
+            self.logging.error(text)
+            raise ValueError(text)
+        mod = Model(system=self.system,
+                    settings=self.settings,
+                    parspace=self.parspace,
+                    parset=parset)
+        return mod
+
     def get_model_from_row(self, row_id):
         parset0 = self.get_parset_from_row(row_id)
-        mod0 = Model(system=self.system,
-                     settings=self.settings,
-                     parspace=self.parspace,
-                     parset=parset0)
-        return mod0
+        mod = self.get_model_from_parset(parset0)
+        # mod0 = Model(system=self.system,
+        #              settings=self.settings,
+        #              parspace=self.parspace,
+        #              parset=parset0)
+        return mod
 
     def save(self):
         self.table.write(self.filename, format='ascii.ecsv', overwrite=True)
