@@ -33,7 +33,7 @@ def run_user_test(make_comp=False):
     # read configuration
     if '__file__' in globals():
         os.chdir(os.path.dirname(__file__))
-    fname = 'user_test_config_multi_ml.yaml'
+    fname = 'user_test_config_multi_ml_FCC.yaml'
     c = dyn.config_reader.Configuration(fname, silent=True, reset_logging=True)
 
     io_settings = c.settings.io_settings
