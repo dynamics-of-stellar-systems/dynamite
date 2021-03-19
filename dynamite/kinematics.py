@@ -375,7 +375,7 @@ class GaussHermite(Kinematics, data.Integrated):
         h *= 2 * np.pi**0.5 # pre-factor in eqn 7
         return h
 
-    def transform_orblib_to_observables(self, orblib, max_gh_order=None):
+    def transform_orblib_to_observables(self, losvd_histograms, max_gh_order=None):
         if max_gh_order is None:
             max_gh_order = self.max_gh_order
         v_mu = self.data['v']
@@ -383,13 +383,13 @@ class GaussHermite(Kinematics, data.Integrated):
         orblib_gh_coefs = self.get_gh_expansion_coefficients(
             v_mu=v_mu,
             v_sig=v_sig,
-            vel_hist=orblib.losvd_histograms,
+            vel_hist=losvd_histograms,
             max_order=max_gh_order)
         # in triaxnnls, GH coefficients are divided by velocity spacing of the
         # histogram. This is equivalent to normalising LOSVDs as probability
         # densities before calculating the GH coefficients. For now, do as was
         # done previously:
-        dv = orblib.losvd_histograms.dx
+        dv = losvd_histograms.dx
         assert np.allclose(dv, dv[0]), 'LOSVD velocity spacing must be uniform'
         orblib_gh_coefs /= dv[0]
         # remove h0 as this is not fit

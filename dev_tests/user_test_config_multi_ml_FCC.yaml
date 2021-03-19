@@ -9,22 +9,17 @@
 ###############################################################################
 
 system_attributes:
-    distMPc: 39.96
-    name: "NGC6278"
+    distMPc: 18.3
+    name: "FCC047"
     position_angle: 97.69
 
 system_components:
 
     bh: # black_hole
         parameters:
-            m: # log(BHmass)
-                par_generator_settings:
-                    lo: 1.0
-                    hi: 10.0
-                    step: 1.
-                    minstep: 0.
+            m:
                 fixed: True
-                value: 5.0
+                value: 6.5
                 logarithmic: True
                 LaTeX: "$M_{BH}$"
             a: # scale length
@@ -38,25 +33,24 @@ system_components:
     dh: # dark_halo
         parameters:
             c: # NFW Darkmatter concentration
-                par_generator_settings:
-                    lo: 2.0
-                    hi: 4.0
-                    step: 1.0
-                    minstep: 0.1
-                logarithmic: True
                 fixed: True
-                value: 3.0
-                LaTeX: "$log(C)$"
-            f: # NFW Darkmatter fraction
+                value: 10  #10.0
+                LaTeX: "$c_{NFW}$"
                 par_generator_settings:
-                    lo: 0.0
+                    lo: 1.0
                     hi: 2.0
-                    step: 0.5
-                    minstep: 0.1
-                logarithmic: True
+                    step: 0.1
+                    minstep: 0.05
+            f: # NFW Darkmatter fraction
                 fixed: True
-                value: 1.0
+                value: 1.25893
                 LaTeX: "$log(M_{200}/M_{star})$"
+                logarithmic: False
+                par_generator_settings:
+                    lo: 0.
+                    hi: 3.
+                    step: 0.05
+                    minstep: 0.01
         type: NFW
         include: True
         contributes_to_potential: True
@@ -64,80 +58,53 @@ system_components:
     stars:
         parameters:
             q: # intrinsic flattening (C/A)
-                par_generator_settings:
-                    lo: 0.05
-                    hi: 0.99
-                    step: 0.04
-                    minstep: 0.02
                 fixed: True
-                value: 0.54
+                value: 0.2 #0.49
                 LaTeX: "$q_{min}$"
             p: # intrinsic B/A
-                gpe_parspace_settings:
-                    kernel: "to be defined"
-                par_generator_settings:
-                    lo: 0.99
-                    hi: 0.999
-                    step: 0.02
-                    minstep: 0.01
                 fixed: True
-                value: 0.99
+                value: 0.7
                 LaTeX: "$p_{min}$"
             u: # sigma_obs / sigma_intrinsic
-                par_generator_settings:
-                    lo: 0.95
-                    hi: 1.0
-                    step: 0.01
-                    minstep: 0.01
                 fixed: True
                 value: 0.9999
                 LaTeX: "$u_{min}$"
         type: "TriaxialVisibleComponent" # class name
-        mge_pot: "mge.ecsv"
-        mge_lum: "mge.ecsv"
+        mge_pot: "mge4.ecsv"
+        mge_lum: "mge4.ecsv"
         include: True
         contributes_to_potential: True
         kinematics: # optional, only specified for components with kinematics
-            original:
+            MUSE: # PLEASE NOTE: DATA NOT PROVIDED WITH DYNAMITE
                 weight: 1.0 # weight of kinematics data specified by name
                 type: GaussHermite # specifies which object class to create
-                datafile: "gauss_hermite_kins.ecsv"  # both discr. & integrated
-                aperturefile: "aperture.dat" # integrated only
-                binfile: "bins.dat"          # integrated only
+                hist_width: 10000 #add to kinem #hist_width
+                hist_center: 0.0  #add to kinem      #hist_center
+                hist_bins: 501    #add to kinem + auto/manual   #bins
+                datafile: "gauss_hermite_kins_MUSE.ecsv"  # both discr. & integrated
+                aperturefile: "aperture_MUSE.dat" # integrated only
+                binfile: "bins_MUSE.dat"          # integrated only
                 maskfile: maskfile.dat       # made-up filename
-                hist_width: 2800.0
-                hist_center: 0.0
-                hist_bins: 201
-            duplicate:
+            SINFONI: # PLEASE NOTE: DATA NOT PROVIDED WITH DYNAMITE
                 weight: 1.0 # weight of kinematics data specified by name
                 type: GaussHermite # specifies which object class to create
-                datafile: "gauss_hermite_kins.ecsv"  # both discr. & integrated
-                aperturefile: "aperture.dat" # integrated only
-                binfile: "bins.dat"          # integrated only
+                hist_width: 10000 #add to kinem #hist_width
+                hist_center: 0.0  #add to kinem      #hist_center 
+                hist_bins: 501    #add to kinem + auto/manual   #bins
+                datafile: "gauss_hermite_kins_SINFONI.ecsv"  # both discr. & integrated
+                aperturefile: "aperture_SINFONI.dat" # integrated only
+                binfile: "bins_SINFONI.dat"          # integrated only
                 maskfile: maskfile.dat       # made-up filename
-                hist_width: 2800.0
-                hist_center: 0.0
-                hist_bins: 201
-            triplicate:
-                weight: 1.0 # weight of kinematics data specified by name
-                type: GaussHermite # specifies which object class to create
-                datafile: "gauss_hermite_kins.ecsv"  # both discr. & integrated
-                aperturefile: "aperture.dat" # integrated only
-                binfile: "bins.dat"          # integrated only
-                maskfile: maskfile.dat       # made-up filename
-                hist_width: 2800.0
-                hist_center: 0.0
-                hist_bins: 201
 
 system_parameters:
     ml: # M/L
         par_generator_settings:
-            lo: 1.
-            hi: 9.
-            step: 4.0
+            lo: 0.8
+            hi: 7.5
+            step: 1.0
             minstep: 0.5
         fixed: False
-        value: 5.
+        value: 5.5
         LaTeX: "$Y_{r}$"
 
 ###############################################################################
@@ -145,13 +112,13 @@ system_parameters:
 # Define other settings e.g. for the orbit library and weight solver
 ###############################################################################
 
-orblib_settings:
-    nE: 6
-    logrmin: -0.101275
-    logrmax: 1.99123
-    nI2: 5        # must be >= 4
-    nI3: 4
-    dithering: 1
+orblib_settings: # don't put in physical system -> config object
+    nE: 6 #21  #5 21
+    logrmin: -2.0
+    logrmax: 2.2
+    nI2: 5 #8        # must be >= 4 8
+    nI3: 4 #7 #7
+    dithering: 1 #3  #1  3
     #the following values should usually not be changed
     orbital_periods: 200
     sampling: 50000
@@ -167,7 +134,7 @@ weight_solver_settings:
     nnls_solver: 1
     # type: "NNLS"
     # nnls_solver: 'scipy'
-    CRcut: True
+    CRcut: False
     regularisation: 0
     number_GH: 4
     GH_sys_err: '0.0 0.0 0.0 0.0 0.3 0.3 0.6 0.6'
@@ -194,8 +161,8 @@ legacy_settings:
     directory: "default"
 
 io_settings: # paths can be given with or without trailing slash
-    input_directory: "NGC6278_input/"
-    output_directory: "NGC6278_output/"
+    input_directory: "FCC047_2kin/FCC047_input/"
+    output_directory: "FCC047_2kin/FCC047_output/"
     all_models_file: "all_models.ecsv"
 
 multiprocessing_settings:

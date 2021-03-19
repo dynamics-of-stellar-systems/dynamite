@@ -124,12 +124,12 @@ class Configuration(object):
                          "settings")
         if silent is not None:
             self.logger.warning("'silent' option is deprecated and ignored")
-        
+
         legacy_dir = \
             os.path.realpath(os.path.dirname(__file__)+'/../legacy_fortran')
             # os.path.dirname(os.path.realpath(__file__))+'/../'legacy_fortran'
         self.logger.debug(f'Legacy Fortran folder: {legacy_dir}')
-        
+
         try:
             with open(filename, 'r') as f:
                 # self.params = yaml.safe_load(f)
@@ -220,6 +220,13 @@ class Configuration(object):
                                                  **data_kin)
                             kin_list.append(kinematics_set)
                         c.kinematic_data = kin_list
+
+                    # cast all histogram values to the correct type
+                    for k in c.kinematic_data:
+                        k.hist_width = float(k.hist_width)
+                        k.hist_center = float(k.hist_center)
+                        k.hist_bins = int(k.hist_bins)
+
 
                     # read populations
 
@@ -491,6 +498,45 @@ class Configuration(object):
             raise ValueError(f'Only specify one of {chi2abs}, {chi2scaled}, '
                              'not both')
 
+        ws_type = self.settings.weight_solver_settings['type']
+        if ws_type == 'LegacyWeightSolver':
+            # check that all velocity histograms are identical
+            # this is not required by orblib_f.f90, but this IS assumed by the
+            # NNLS routine in triaxnnl_*.f90  - see 2144-2145 of orblib_f.f90, :
+            # "Velocity-bins are not the same. The standard NNLS will not"
+            # " Understand the ouput correctly."
+            # Therefore this check is based on WeightSolver type.
+            stars = self.system.get_component_from_class(
+                physys.TriaxialVisibleComponent
+                )
+            hist_widths = [k.hist_width for k in stars.kinematic_data]
+            hist_centers = [k.hist_center for k in stars.kinematic_data]
+            hist_bins = [k.hist_bins for k in stars.kinematic_data]
+            check_widths = all([x == hist_widths[0] for x in hist_widths])
+            check_centers = all([x == hist_centers[0] for x in hist_centers])
+            check_bins = all([x == hist_bins[0] for x in hist_bins])
+            check_all = (check_widths and check_centers and check_bins)
+            if check_all is False:
+                err_msg = 'If LegacyWeightSolver used, then all kinematics must'
+                err_msg+= ' share the same hist_width, hist_center and hist_bins'
+                self.logger.error(err_msg)
+                raise ValueError(err_msg)
+
+        # check all velocity histograms have center 0 and odd number of bins
+        # required as we re-use tube orbits by flipping the velocity axis
+        # only valid if the velocity axis is symmetric
+        stars = self.system.get_component_from_class(
+            physys.TriaxialVisibleComponent
+            )
+        hist_centers = [k.hist_center for k in stars.kinematic_data]
+        hist_bins = [k.hist_bins for k in stars.kinematic_data]
+        check_centers = all([x == 0. for x in hist_centers])
+        check_bins = all([x%1==0 for x in hist_bins])
+        check_all = (check_centers and check_bins)
+        if check_all is False:
+            err_msg = 'all hist_centers must=0 and hist_bins must be odd'
+            self.logger.error(err_msg)
+            raise ValueError(err_msg)
 
 class DynamiteLogging(object):
     """
