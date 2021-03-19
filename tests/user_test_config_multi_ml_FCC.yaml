@@ -78,9 +78,9 @@ system_components:
             MUSE: # PLEASE NOTE: DATA NOT PROVIDED WITH DYNAMITE
                 weight: 1.0 # weight of kinematics data specified by name
                 type: GaussHermite # specifies which object class to create
-                hist_width: '10000' #add to kinem #hist_width
-                hist_center: '0.0000'  #add to kinem      #hist_center 
-                hist_bins: '501'  #add to kinem + auto/manual   #bins
+                hist_width: 10000 #add to kinem #hist_width
+                hist_center: 0.0  #add to kinem      #hist_center
+                hist_bins: 501    #add to kinem + auto/manual   #bins
                 datafile: "gauss_hermite_kins_MUSE.ecsv"  # both discr. & integrated
                 aperturefile: "aperture_MUSE.dat" # integrated only
                 binfile: "bins_MUSE.dat"          # integrated only
@@ -88,9 +88,9 @@ system_components:
             SINFONI: # PLEASE NOTE: DATA NOT PROVIDED WITH DYNAMITE
                 weight: 1.0 # weight of kinematics data specified by name
                 type: GaussHermite # specifies which object class to create
-                hist_width: '10000' #add to kinem #hist_width
-                hist_center: '0.0000'  #add to kinem      #hist_center 
-                hist_bins: '501'  #add to kinem + auto/manual   #bins
+                hist_width: 10000 #add to kinem #hist_width
+                hist_center: 0.0  #add to kinem      #hist_center 
+                hist_bins: 501    #add to kinem + auto/manual   #bins
                 datafile: "gauss_hermite_kins_SINFONI.ecsv"  # both discr. & integrated
                 aperturefile: "aperture_SINFONI.dat" # integrated only
                 binfile: "bins_SINFONI.dat"          # integrated only
@@ -134,7 +134,7 @@ weight_solver_settings:
     nnls_solver: 1
     # type: "NNLS"
     # nnls_solver: 'scipy'
-    CRcut: True
+    CRcut: False
     regularisation: 0
     number_GH: 4
     GH_sys_err: '0.0 0.0 0.0 0.0 0.3 0.3 0.6 0.6'
