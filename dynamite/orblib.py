@@ -134,166 +134,159 @@ class LegacyOrbitLibrary(OrbitLibrary):
         theta, psi, phi = stars.triax_pqu2tpp(p,q,u)
         # header
         len_mge=len(stars.mge_pot.data) # must be the same as for mge_lum
-        # footer (#double check the order of theta, phi, psi) and dm properties
-        text=str(self.system.distMPc)+'\n'+ \
-             '{:06.9f}'.format(theta)+' '+ '{:06.9f}'.format(phi)+' '+ '{:06.9f}'.format(psi) + '\n' + \
-             str(self.parset['ml'])+'\n' + \
-             str(self.parset[f'm-{bh.name}'])+'\n' + \
-             str(self.parset[f'a-{bh.name}'])+'\n' + \
-             str(self.settings['nE']) +' ' +str(self.settings['logrmin']) +' ' +str(self.settings['logrmax'])+ '\n' + \
-             str(self.settings['nI2']) +'\n' + \
-             str(self.settings['nI3']) +'\n' + \
-             str(self.settings['dithering']) +'\n' + \
-             dm_specs +'\n' + \
-             str(self.parset[f'c-{dh.name}']) +' ' + str(self.parset[f'f-{dh.name}'])
-
-        #parameters_pot.in
-        np.savetxt(path+'parameters_pot.in',stars.mge_pot.data,header=str(len_mge),footer=text,comments='',fmt=['%10.2f','%10.5f','%10.5f','%10.2f'])
-
-        #parameters_lum.in
-        np.savetxt(path+'parameters_lum.in',stars.mge_lum.data,header=str(len_mge),footer=text,comments='',fmt=['%10.2f','%10.5f','%10.5f','%10.2f'])
-
+        settngs = self.settings
+        text = f'{self.system.distMPc}\n'
+        text += f'{theta:06.9f} {phi:06.9f} {psi:06.9f}\n'
+        text += f"{self.parset['ml']}\n"
+        text += f"{self.parset[f'm-{bh.name}']}\n"
+        text += f"{self.parset[f'a-{bh.name}']}\n"
+        text += f"{settngs['nE']} {settngs['logrmin']} {settngs['logrmax']}\n"
+        text += f"{settngs['nI2']}\n"
+        text += f"{settngs['nI3']}\n"
+        text += f"{settngs['dithering']}\n"
+        text += f"{dm_specs}\n"
+        text += f"{self.parset[f'c-{dh.name}']} {self.parset[f'f-{dh.name}']}"
+        # parameters_pot.in
+        np.savetxt(path + 'parameters_pot.in',
+                   stars.mge_pot.data,
+                   header=str(len_mge),
+                   footer=text,
+                   comments='',
+                   fmt=['%10.2f','%10.5f','%10.5f','%10.2f'])
+        # parameters_lum.in
+        np.savetxt(path + 'parameters_lum.in',
+                   stars.mge_lum.data,
+                   header=str(len_mge),
+                   footer=text,
+                   comments='',
+                   fmt=['%10.2f','%10.5f','%10.5f','%10.2f'])
         #-------------------
         #write orbstart.in
         #-------------------
-
         text = f"{self.settings['random_seed']}\n"
         text += 'infil/parameters_pot.in' +'\n' + \
         'datfil/orbstart.dat' +'\n' + \
         'datfil/begin.dat' +'\n' + \
         'datfil/beginbox.dat'
-
         orbstart_file= open(path+'orbstart.in',"w")
         orbstart_file.write(text)
         orbstart_file.close()
-
-        #-------------------
-        #write orblib.in
-        #-------------------
-
-        n_psf=len(stars.kinematic_data)
-
-        text0 = f"{self.settings['random_seed']}\n"
-
-        text1='#counterrotation_setupfile_version_1' +'\n' + \
-            'infil/parameters_pot.in' +'\n' + \
-            'datfil/begin.dat' +'\n' + \
-            str(self.settings['orbital_periods']) + '                            [orbital periods to intergrate orbits]' +'\n' + \
-            str(self.settings['sampling']) + '                          [points to sample for each orbit in the merid. plane]' +'\n' + \
-            str(self.settings['starting_orbit']) + '                              [starting orbit]' +'\n' + \
-            str(self.settings['number_orbits']) + '                             [orbits  to intergrate; -1 --> all orbits]' +'\n' + \
-            str(self.settings['accuracy']) + '                         [accuracy]' +'\n' + \
-            str(n_psf) + '                              [number of psfs of the kinematic data]' +'\n'
-
-        psf=''
-
-        for i in np.arange(n_psf):
-            psf= psf+str(len(stars.kinematic_data[i].PSF['sigma'])) + '                              [# of gaussians components for psf '+str(i+1)+']'  +'\n'
-
-        #loop over psf for each kinematic set. A psf can be described by multiple Gaussians
-
-        for i in np.arange(n_psf):
-            n_psf_comp=len((stars.kinematic_data[i].PSF['weight']))
-            for k in np.arange(n_psf_comp):
-                psf_weight=(stars.kinematic_data[i].PSF['weight'])[k]
-                psf_sigma=(stars.kinematic_data[i].PSF['sigma'])[k]
-                psf=psf+(str(psf_weight) + '   ' + str(psf_sigma) + '                     [weight, sigma]' +  '\n')
-
-
-        apertures=str(n_psf) + '                              [# of apertures]' +'\n'
-
-
-        for i in np.arange(n_psf):
-            apertures+='"infil/' + stars.kinematic_data[i].aperturefile +'"\n' + \
-            str(i+1) + ' '*30 + \
-            f'[use psf {i+1} {stars.kinematic_data[i].name}] \n'
-        for i in np.arange(n_psf):
-            # apertures+= self.settings['hist_width'] + '  ' + self.settings['hist_center'] + '  ' + self.settings['hist_bins'] +'             [histogram]' +'\n'
-            apertures+= str(stars.kinematic_data[i].hist_width) + '  ' + \
-                        str(stars.kinematic_data[i].hist_center) + '  ' + \
-                        str(stars.kinematic_data[i].hist_bins) + \
-                        f'             [histogram {stars.kinematic_data[i].name}]\n'
-
-        for i in np.arange(n_psf):
-            apertures+=f'1                              [use binning for aperture {1+i}]\n'
-
-        for i in np.arange(n_psf):
-            apertures+='"infil/' + stars.kinematic_data[i].binfile +'"          [binning for aperture '+str(i+1)+']' +'\n'
-
-
-        text2 = 'datfil/orblib.dat'
-
-        orblib_file= open(path+'orblib.in',"w")
-        orblib_file.write(text0)
-        orblib_file.write(text1)
-        orblib_file.write(psf)
-        orblib_file.write(apertures)
-        orblib_file.write(text2)
-        orblib_file.close()
-
-        #-------------------
-        #write orblibbox.in
-        #-------------------
-
-        text0 = f"{self.settings['random_seed']}\n"
-        text1='#counterrotation_setupfile_version_1' +'\n' + \
-            'infil/parameters_pot.in' +'\n' + \
-            'datfil/beginbox.dat' +'\n' + \
-            str(self.settings['orbital_periods']) + '                            [orbital periods to intergrate orbits]' +'\n' + \
-            str(self.settings['sampling']) + '                          [points to sample for each orbit in the merid. plane]' +'\n' + \
-            str(self.settings['starting_orbit']) + '                              [starting orbit]' +'\n' + \
-            str(self.settings['number_orbits']) + '                             [orbits  to intergrate; -1 --> all orbits]' +'\n' + \
-            str(self.settings['accuracy']) + '                         [accuracy]' +'\n' + \
-            str(len(stars.kinematic_data)) + '                              [number of psfs of the kinematic cubes]' +'\n'
-
-        text2='datfil/orblibbox.dat'
-
-        orblibbox_file= open(path+'orblibbox.in',"w")
-        orblibbox_file.write(text0)
-        orblibbox_file.write(text1)
-        orblibbox_file.write(psf) #this is the same as for orblib.in
-        orblibbox_file.write(apertures)
-        orblibbox_file.write(text2)
-        orblibbox_file.close()
-
+        #---------------------------------
+        #write orblib.in and orblibbox.in
+        #---------------------------------
+        def write_orblib_dot_in(box=False):
+            tab = '\t\t\t\t\t\t\t\t'
+            if box:
+                f = open(path +'orblibbox.in', 'w')
+            else:
+                f = open(path +'orblib.in', 'w')
+            f.write(f"{self.settings['random_seed']}\n")
+            f.write('#counterrotation_setupfile_version_1\n')
+            f.write('infil/parameters_pot.in\n')
+            if box:
+                f.write(f'datfil/beginbox.dat\n')
+            else:
+                f.write(f'datfil/begin.dat\n')
+            label = '[number of orbital periods to integrate]'
+            line = f"{self.settings['orbital_periods']}\t\t{label}\n"
+            f.write(line)
+            label = '[points to sample for each orbit in the merid. plane]'
+            line = f"{self.settings['sampling']}{tab}{label}\n"
+            f.write(line)
+            label = '[starting orbit]'
+            line = f"{self.settings['starting_orbit']}{tab}{label}\n"
+            f.write(line)
+            label = '[orbits  to intergrate; -1 --> all orbits]'
+            line = f"{self.settings['number_orbits']}{tab}{label}\n"
+            f.write(line)
+            label = '[accuracy]'
+            line = f"{self.settings['accuracy']}{tab}{label}\n"
+            f.write(line)
+            n_psf = len(stars.kinematic_data)
+            label = '[number of psfs of the kinematic data]'
+            line = f"{n_psf}{tab}{label}\n"
+            f.write(line)
+            for i in range(n_psf):
+                psf_i = stars.kinematic_data[i].PSF
+                n_gauss_psf_i = len(psf_i['sigma'])
+                label = f'[# of gaussians in psf {i+1}]'
+                line = f"{n_gauss_psf_i}{tab}{label}\n"
+                f.write(line)
+            for i in range(n_psf):
+                psf_i = stars.kinematic_data[i].PSF
+                for j in range(n_gauss_psf_i):
+                    weight_ij, sigma_ij = psf_i['weight'][j], psf_i['sigma'][j]
+                    label = f'[weight, sigma of comp {j+1} of psf {i+1}]'
+                    line = f"{weight_ij} {sigma_ij}{tab}{label}\n"
+                    f.write(line)
+            # every kinematic-set has a psf and aperture, so n_psf = n_aperture
+            n_aperture = n_psf
+            label = '[# of apertures]'
+            line = f'{n_aperture}{tab}{label}\n'
+            f.write(line)
+            for i in np.arange(n_aperture):
+                kin_i = stars.kinematic_data[i]
+                # aperturefile cant have a label since fortran reads whole line
+                f.write(f'"infil/{kin_i.aperturefile}"\n')
+                label = f'[use psf {i+1} for {kin_i.name}]'
+                line = f'{i+1}{tab}{label}\n'
+                f.write(line)
+            for i in np.arange(n_aperture):
+                kin_i = stars.kinematic_data[i]
+                label = f'[vhist width, center and nbins for {kin_i.name}]'
+                w, c, b = kin_i.hist_width, kin_i.hist_center, kin_i.hist_bins
+                line = f'{w} {c} {b}{tab}{label}\n'
+                f.write(line)
+            for i in np.arange(n_aperture):
+                label = f'[use binning for aperture {1+i}? 0/1 = yes/no]'
+                line = f'1{tab}{label}\n'
+                f.write(line)
+            for i in np.arange(n_aperture):
+                kin_i = stars.kinematic_data[i]
+                label = f'[binfile for aperture {1+i}]'
+                line = f'"infil/{kin_i.binfile}"{tab}{label}\n'
+                f.write(line)
+            if box:
+                f.write(f'datfil/orblibbox.dat\n')
+            else:
+                f.write(f'datfil/orblib.dat\n')
+            f.close()
+        write_orblib_dot_in(box=False)
+        write_orblib_dot_in(box=True)
         #-------------------
         #write triaxmass.in
         #-------------------
-
         text='infil/parameters_lum.in' +'\n' + \
         'datfil/orblib.dat' +'\n' + \
         'datfil/mass_radmass.dat' +'\n' + \
         'datfil/mass_qgrid.dat'
-
         triaxmass_file= open(path+'triaxmass.in',"w")
         triaxmass_file.write(text)
         triaxmass_file.close()
-
-        #-------------------
+        #-----------------------
         #write triaxmassbin.in
-        #-------------------
-
-        text='infil/parameters_lum.in' +'\n' + \
-              str(int(np.max(n_psf))) + '                              [# of apertures]'  +'\n'
-        apertures=''
-        for i in np.arange(n_psf):
-            for k in np.arange(n_psf_comp):
-                psf_weight=(stars.kinematic_data[i].PSF['weight'])[k]
-                psf_sigma=(stars.kinematic_data[i].PSF['sigma'])[k]
-
-                apertures+= \
-                  '"infil/' + stars.kinematic_data[i].aperturefile +'"' + '\n' + \
-                  str(len(stars.kinematic_data[i].PSF['sigma'])) + '                              [# of gaussians components]'  +'\n' + \
-                  str(psf_weight) + '   ' + str(psf_sigma) + '                     [weight sigma]' +  '\n'  + \
-                  '"infil/' + stars.kinematic_data[i].binfile +'"' +'\n'
-
-        text2='"datfil/mass_aper.dat"'
-
-        triaxmassbin_file= open(path+'triaxmassbin.in',"w")
-        triaxmassbin_file.write(text)
-        triaxmassbin_file.write(apertures)
-        triaxmassbin_file.write(text2)
-        triaxmassbin_file.close()
+        #-----------------------
+        tab = '\t\t\t\t\t\t\t\t'
+        n_psf = len(stars.kinematic_data)
+        f = open(path + 'triaxmassbin.in', 'w')
+        f.write('infil/parameters_lum.in\n')
+        f.write(f'{n_psf}{tab}[# of apertures]\n')
+        for i in range(n_psf):
+            kin_i = stars.kinematic_data[i]
+            f.write(f'"infil/{kin_i.aperturefile}"\n')
+            psf_i = kin_i.PSF
+            n_gauss_psf_i = len(psf_i['sigma'])
+            label = f'[# of gaussians in psf {i+1}]'
+            line = f"{n_gauss_psf_i}{tab}{label}\n"
+            f.write(line)
+            for j in range(n_gauss_psf_i):
+                weight_ij, sigma_ij = psf_i['weight'][j], psf_i['sigma'][j]
+                label = f'[weight, sigma of comp {j+1} of psf {i+1}]'
+                line = f"{weight_ij} {sigma_ij}{tab}{label}\n"
+                f.write(line)
+            f.write(f'"infil/{kin_i.binfile}"\n')
+        f.write('"datfil/mass_aper.dat"')
+        f.close()
 
     def get_orbit_ics(self):
         cur_dir = os.getcwd()
@@ -310,11 +303,10 @@ class LegacyOrbitLibrary(OrbitLibrary):
         #create the fortran executable
         txt_file = open(cmdstr, "w")
         txt_file.write('#!/bin/bash' + '\n')
-        txt_file.write(
-        #    'grep finished datfil/orbstart.dat || ' + self.legacy_directory +'/orbitstart < infil/orbstart.in >> datfil/orbstart.log' + '\n')
-             self.legacy_directory +'/orbitstart < infil/orbstart.in 2>&1 >> datfil/orbstart.log' + '\n')
+        tmp = '/orbitstart < infil/orbstart.in 2>&1 >> datfil/orbstart.log\n'
+        txt_file.write(f'{self.legacy_directory}{tmp}')
         txt_file.close()
-        #returns the name of the executable
+        # the name of the executable must be returned to use in subprocess.call
         return cmdstr
 
     def get_orbit_library(self):
@@ -336,11 +328,10 @@ class LegacyOrbitLibrary(OrbitLibrary):
         os.chdir(cur_dir)
 
     def write_executable_for_integrate_orbits(self):
-        #tubeorbits
+        # tubeorbits
         cmdstr_tube = 'cmd_tube_orbs'
         txt_file = open(cmdstr_tube, "w")
         txt_file.write('#!/bin/bash' + '\n')
-        #txt_file.write('grep Writing datfil/orblib.dat.tmp && rm -f datfil/orblib.dat.tmp datfil/orblib.dat' + '\n')
         txt_file.write('touch datfil/orblib.dat.tmp datfil/orblib.dat' + '\n')
         txt_file.write('rm -f datfil/orblib.dat.tmp datfil/orblib.dat' + '\n')
         txt_file.write( self.legacy_directory +'/orblib < infil/orblib.in >> datfil/orblib.log' + '\n')
@@ -352,12 +343,10 @@ class LegacyOrbitLibrary(OrbitLibrary):
         txt_file.write('test -e datfil/orblib.dat.bz2 || bzip2 -k datfil/orblib.dat' + '\n')
         txt_file.write('rm datfil/orblib.dat' + '\n')
         txt_file.close()
-        #boxorbits
+        # boxorbits
         cmdstr_box = 'cmd_box_orbs'
         txt_file = open(cmdstr_box, "w")
         txt_file.write('#!/bin/bash' + '\n')
-        #txt_file.write(
-        #    'grep Writing datfil/orblibbox.dat.tmp && rm -f datfil/orblibbox.dat.tmp datfil/orblibbox.dat' + '\n')
         txt_file.write('touch datfil/orblibbox.dat.tmp datfil/orblibbox.dat' + '\n')
         txt_file.write('rm -f datfil/orblibbox.dat.tmp datfil/orblibbox.dat' + '\n')
         txt_file.write(self.legacy_directory + '/orblib < infil/orblibbox.in >> datfil/orblibbox.log' + '\n')
@@ -365,7 +354,7 @@ class LegacyOrbitLibrary(OrbitLibrary):
         txt_file.write('test -e datfil/orblibbox.dat.bz2 || bzip2 -k datfil/orblibbox.dat' + '\n')
         txt_file.write('rm datfil/orblibbox.dat' + '\n')
         txt_file.close()
-        #returns the name of the executables
+        # returns the name of the executables
         return cmdstr_tube, cmdstr_box
 
     def read_ics(self):
@@ -465,11 +454,6 @@ class LegacyOrbitLibrary(OrbitLibrary):
             # in the bin indexed by (ir,it,ip).
             # We need to extract 3D density for use in weight solving.
             density_3D[j] = quad_light[:,:,:,0]
-            # for k in range(nconstr):
-            #     ivmin, ivmax = orblibf.read_ints(np.int32)
-            #     if ivmin <= ivmax:
-            #         tmp = orblibf.read_reals(float)
-            #         velhist[j, ivmin+nvhist:ivmax+nvhist+1, k] = tmp
             for i_ap in range(nconstr):
                 kin_idx = kin_idx_per_ap[i_ap]
                 i_ap0 = i_ap - idx_ap_reset[kin_idx]
@@ -482,12 +466,6 @@ class LegacyOrbitLibrary(OrbitLibrary):
                     velhist0[kin_idx][j, ivmin+nv0:ivmax+nv0+1, i_ap0] = tmp
         orblibf.close()
         os.chdir(cur_dir)
-        # vedg_pos = np.arange(1, nbins_vhist+1, 2) * dvhist/2.
-        # vedg_neg = -vedg_pos[::-1]
-        # vedg = np.concatenate((vedg_neg, vedg_pos))
-        # velhist = dyn_kin.Histogram(xedg=vedg,
-        #                             y=velhist,
-        #                             normalise=False)
         velhists = []
         for i in range(n_kins):
             center0 = hist_centers[i]
@@ -611,7 +589,7 @@ class LegacyOrbitLibrary(OrbitLibrary):
         self.losvd_histograms = orblib
         self.intrinsic_masses = density_3D
         self.n_orbs = self.losvd_histograms[0].y.shape[0]
-        proj_mass = [np.sum(self.losvd_histograms[i].y, 1) for i in range(nkins)]
+        proj_mass = [np.sum(self.losvd_histograms[i].y,1) for i in range(nkins)]
         self.projected_masses = proj_mass
 
     def get_ml_of_original_orblib(self):
