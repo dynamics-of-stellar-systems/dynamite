@@ -331,28 +331,36 @@ class LegacyOrbitLibrary(OrbitLibrary):
         # tubeorbits
         cmdstr_tube = 'cmd_tube_orbs'
         txt_file = open(cmdstr_tube, "w")
-        txt_file.write('#!/bin/bash' + '\n')
-        txt_file.write('touch datfil/orblib.dat.tmp datfil/orblib.dat' + '\n')
-        txt_file.write('rm -f datfil/orblib.dat.tmp datfil/orblib.dat' + '\n')
-        txt_file.write( self.legacy_directory +'/orblib < infil/orblib.in >> datfil/orblib.log' + '\n')
-        txt_file.write('touch datfil/mass_qgrid.dat datfil/mass_radmass.dat datfil/mass_aper.dat' + '\n')
-        txt_file.write('rm datfil/mass_qgrid.dat datfil/mass_radmass.dat datfil/mass_aper.dat' + '\n')
-        txt_file.write( self.legacy_directory + '/triaxmass       < infil/triaxmass.in >> datfil/triaxmass.log' + '\n')
-        txt_file.write( self.legacy_directory + '/triaxmassbin    < infil/triaxmassbin.in >> datfil/triaxmassbin.log' + '\n')
-        txt_file.write('# if the gzipped orbit library does not exist zip it' + '\n')
-        txt_file.write('test -e datfil/orblib.dat.bz2 || bzip2 -k datfil/orblib.dat' + '\n')
-        txt_file.write('rm datfil/orblib.dat' + '\n')
+        txt_file.write('#!/bin/bash\n')
+        txt_file.write('touch datfil/orblib.dat.tmp datfil/orblib.dat\n')
+        txt_file.write('rm -f datfil/orblib.dat.tmp datfil/orblib.dat\n')
+        txt_file.write(f'{self.legacy_directory}/orblib < infil/orblib.in '
+                       '>> datfil/orblib.log\n')
+        txt_file.write('touch datfil/mass_qgrid.dat datfil/mass_radmass.dat '
+                       'datfil/mass_aper.dat\n')
+        txt_file.write('rm datfil/mass_qgrid.dat datfil/mass_radmass.dat '
+                       'datfil/mass_aper.dat\n')
+        txt_file.write(f'{self.legacy_directory}/triaxmass       '
+                       '< infil/triaxmass.in >> datfil/triaxmass.log\n')
+        txt_file.write(f'{self.legacy_directory}/triaxmassbin    '
+                       '< infil/triaxmassbin.in >> datfil/triaxmassbin.log\n')
+        txt_file.write('# if the gzipped orbit library does not exist zip it\n')
+        txt_file.write('test -e datfil/orblib.dat.bz2 '
+                       '|| bzip2 -k datfil/orblib.dat\n')
+        txt_file.write('rm datfil/orblib.dat\n')
         txt_file.close()
         # boxorbits
         cmdstr_box = 'cmd_box_orbs'
         txt_file = open(cmdstr_box, "w")
-        txt_file.write('#!/bin/bash' + '\n')
-        txt_file.write('touch datfil/orblibbox.dat.tmp datfil/orblibbox.dat' + '\n')
-        txt_file.write('rm -f datfil/orblibbox.dat.tmp datfil/orblibbox.dat' + '\n')
-        txt_file.write(self.legacy_directory + '/orblib < infil/orblibbox.in >> datfil/orblibbox.log' + '\n')
-        txt_file.write('# if the gzipped orbit library does not exist zip it' + '\n')
-        txt_file.write('test -e datfil/orblibbox.dat.bz2 || bzip2 -k datfil/orblibbox.dat' + '\n')
-        txt_file.write('rm datfil/orblibbox.dat' + '\n')
+        txt_file.write('#!/bin/bash\n')
+        txt_file.write('touch datfil/orblibbox.dat.tmp datfil/orblibbox.dat\n')
+        txt_file.write('rm -f datfil/orblibbox.dat.tmp datfil/orblibbox.dat\n')
+        txt_file.write(f'{self.legacy_directory}/orblib '
+                       '< infil/orblibbox.in >> datfil/orblibbox.log\n')
+        txt_file.write('# if the gzipped orbit library does not exist zip it\n')
+        txt_file.write('test -e datfil/orblibbox.dat.bz2 '
+                       '|| bzip2 -k datfil/orblibbox.dat\n')
+        txt_file.write('rm datfil/orblibbox.dat\n')
         txt_file.close()
         # returns the name of the executables
         return cmdstr_tube, cmdstr_box
