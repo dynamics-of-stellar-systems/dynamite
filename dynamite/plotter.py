@@ -99,7 +99,7 @@ class Plotter():
         #
         pass
 
-    def plot_kinematic_maps(self, model, kin_set=None):
+    def plot_kinematic_maps(self, model, kin_set=None, cbar_lims='combined'):
         """
         Show kinematic map of the best-fitting model, with v, sigma, h3, h4
         Taken from schw_kin.py.
@@ -152,14 +152,35 @@ class Plotter():
 
             #still ToDO: Add the kinematic map plots for h5 and h6
 
+        if kin_set >= n_kin:
+            text = f'kin_set must be < {n_kin}, but it is {kin_set}'
+            self.logger.error(text)
+            raise ValueError(text)
 
-        vmax = max(np.hstack((velm, vel)))
-        smax = max(np.hstack((sigm, sig)))
-        smin = min(sig)
-        h3max = max(np.hstack((h3m, h3)))
-        h3min = min(np.hstack((h3m, h3)))
-        h4max = max(np.hstack((h4m, h4)))
-        h4min = min(np.hstack((h4m, h4)))
+        text = '`cbar_lims` must be one of `model`, `data` or `combined`'
+        assert cbar_lims in ['model', 'data', 'combined'], text
+        self.logger.error(text)
+        if cbar_lims=='model':
+            vmax = np.max(np.abs(velm))
+            smax, smin = np.max(sigm), np.min(sigm)
+            h3max, h3min = np.max(h3m), np.min(h3m)
+            h4max, h4min = np.max(h4m), np.min(h4m)
+        elif cbar_lims=='data':
+            vmax = np.max(np.abs(vel))
+            smax, smin = np.max(sig), np.min(sig)
+            h3max, h3min = np.max(h3), np.min(h3)
+            h4max, h4min = np.max(h4), np.min(h4)
+        elif cbar_lims=='combined':
+            tmp = np.hstack((velm, vel))
+            vmax = np.max(np.abs(tmp))
+            tmp = np.hstack((sigm, vel))
+            smax, smin = np.max(tmp), np.min(tmp)
+            tmp = np.hstack((h3m, h3))
+            h3max, h3min = np.max(tmp), np.min(tmp)
+            tmp = np.hstack((h4m, h4))
+            h4max, h4min = np.max(tmp), np.min(tmp)
+        else:
+            self.logger.error('unknown choice of `cbar_lims`')
 
         # Read aperture.dat
         # The angle that is saved in this file is measured counter clock-wise
