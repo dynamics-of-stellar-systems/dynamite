@@ -435,7 +435,8 @@ class LegacyOrbitLibrary(OrbitLibrary):
         # kin_idx_per_ap[i] = N <--> aperture i is from kinematic set N
         kin_idx_per_ap = [np.zeros(n_apertures[i], dtype=int)+i
                           for i in range(n_kins)]
-        kin_idx_per_ap = np.concatenate(kin_idx_per_ap, dtype=int)
+        kin_idx_per_ap = np.concatenate(kin_idx_per_ap)
+        kin_idx_per_ap = np.array(kin_idx_per_ap, dtype=int)
         # below we loop i_ap from 1-n_total_apertures but will need the index of
         # i_ap for the relevant kinematic set: we use `idx_ap_reset` to do this
         cum_n_apertures = np.cumsum(n_apertures)
