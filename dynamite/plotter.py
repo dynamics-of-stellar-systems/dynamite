@@ -158,8 +158,10 @@ class Plotter():
             raise ValueError(text)
 
         text = '`cbar_lims` must be one of `model`, `data` or `combined`'
-        assert cbar_lims in ['model', 'data', 'combined'], text
-        self.logger.error(text)
+        # assert cbar_lims in ['model', 'data', 'combined'], text
+        if not cbar_lims in ['model', 'data', 'combined']:
+            self.logger.error(text)
+            raise AssertionError(text)
         if cbar_lims=='model':
             vmax = np.max(np.abs(velm))
             smax, smin = np.max(sigm), np.min(sigm)
@@ -173,7 +175,7 @@ class Plotter():
         elif cbar_lims=='combined':
             tmp = np.hstack((velm, vel))
             vmax = np.max(np.abs(tmp))
-            tmp = np.hstack((sigm, vel))
+            tmp = np.hstack((sigm, sig))
             smax, smin = np.max(tmp), np.min(tmp)
             tmp = np.hstack((h3m, h3))
             h3max, h3min = np.max(tmp), np.min(tmp)
