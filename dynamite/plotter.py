@@ -98,79 +98,118 @@ class Plotter():
         chi2 = chi2[s0]
         '''
 
-    def make_chi2_plot(self,parset):
+    def make_chi2_plot(self):
+        print('====== plot the chi2 grids ======')
+    
+        #Note: it could be a nice feature to exclude the first 50, 100 (specified by the user) or so models in case the values were really off there or
+        #alternatively based on too big Delta chi2
+        #TODO: after each iteration create chi2 plot
+        pars=self.parspace
+        val=self.all_models.table
 
-        # parset should be provided that it is clear what values the
-        # remaining parameters are marginalized over
 
-        val1=self.all_models.table['m-bh']
-        val2=self.all_models.table['ml']
-        val3=self.all_models.table['chi2'] - np.min(self.all_models.table['chi2'])
-
-        mass = self.parspace.get_parameter_from_name('m-bh')
-        ml = self.parspace.get_parameter_from_name('ml')       
-
-        #print(ml.LaTeX)
-
-        mbh=np.unique(val1)
-        ml=np.unique(val2)
-
-        mbh_array0,ml_array=np.meshgrid(mbh,ml)
-        chi2_array=mbh_array0*0
-        mbh_array=mbh_array0*0
-
-        #not needed at the moment.. maybe later
-        #model_dir=self.settings.io_settings['output_directory']+'models/'
-
-        for j in range(len(mbh)):
-        #for j in range(2):
-            
-            for k in range(len(ml)):
-            #for k in range(2):
-
-                #change the parameter setting to the parameters of the grid
-                parset['ml'] = ml_array[k,j]
-                parset['m-bh'] = mbh_array0[k,j]
-
-                # TBD: I need to set up a model in order to re-create the
-                # model directory. Can that be changed? To be discussed in 
-                # dynamite meeting. Idea: add model directory to all_models
-                # table?
-                # model = dyn.model.LegacySchwarzschildModel(
-                #             system=self.system,
-                #             settings=self.settings,
-                #             parspace=self.parspace,
-                #             parset=parset)
-                model = self.all_models.get_model_from_parset(parset)
-                # param_fname=str(model.get_model_directory())+'nn.in'
-                param_fname = model.get_model_directory() + 'nn.in'
-
-                # extract the ml scale factor from nnls input file. Needs
-                # to be changed for non-legacy version. 
-                scale_factor=np.genfromtxt(param_fname, skip_header=10,max_rows=1,usecols=0)                
-
-                #each black hole input mass needs to be multiplied with the scale factor.
-                mbh_array[k,j]=mbh_array0[k,j]*scale_factor**2
-
-                chi2_array[k,j]=val3[((val1==mbh_array0[k,j]) & (val2==ml_array[k,j]))]
-
-        fig = plt.figure(figsize=(6, 4))
-        ax=plt.subplot(1,1,1)
-
-        levels2=np.array([2.3, 6.17, 11.8,11.8*2,11.8*4,11.8*8,11.8*16,11.8*32,11.8*64,11.8**128])
-        #levels2=np.array([10**1,10**1.5,10**2,10**2.5,10**3,10**3.5,10**4])
+        #only use models that are finished
+        val=val[val['all_done']==True]
         
-        plt.plot(mbh_array,ml_array,marker='o',color='black',linestyle='', markersize=6)
-        CS=plt.contour(mbh_array,ml_array,chi2_array,levels=levels2,colors='k')
-        plt.contour(mbh_array,ml_array,chi2_array,levels=np.array([11.8*4]),colors='red')
-        ax.set_xscale("log")
-        plt.gca().set_xlabel(mass.LaTeX)
-        plt.gca().set_ylabel('M/L')
-        plt.tight_layout()
-        plt.show()
         
+        #because of the large parameter range dh properties and black hole are plotted in log
+        val['c-dh']=np.log10(val['c-dh'])
+        val['f-dh']=np.log10(val['f-dh'])
+        val['m-bh']=np.log10(val['m-bh'])
+        #TBD: add black hole scaling
+        #TBD: check the definition of chi2
+        
+        #get number and names of parameters that are not fixed
+        nofix_sel=[]
+        nofix_name=[]
+        nofix_latex=[]
+        
+        for i in np.arange(len(pars)):
+            if pars[i].fixed==False:
+
+                pars[i].name
+                nofix_sel.append(i)
+                if pars[i].name == 'ml':
+                    nofix_name=np.insert(nofix_name,0,'ml')         #Note: in the old version ml was in the first column, remove hard-coding
+                    nofix_latex=np.insert(nofix_latex,0,'$Y_{r}$')
+                else:
+                    nofix_name.append(pars[i].name)
+                    nofix_latex.append(pars[i].LaTeX)
+
+        nnofix=len(nofix_sel)
+
+        
+        
+        nf=len(val)
+        
+        nGH=4 #self.weight_solver_settings['number_GH']
+        #stars = self.system.get_component_from_class( \
+        #                                    physys.TriaxialVisibleComponent)
+        #kinematics = stars.kinematic_data.data
+        #print(len(kinematics))
+        Nobs=353
+
+        print(nGH,Nobs)
+        #this is from previous code
+        ## 1 sigma confidence level
+        #chlim = np.sqrt(2 * Nobs * nGH)
+        ##read the chi2 and for some reason normalization, see schw_schwmodplot
+        chi2pmin=np.min(val['chi2'])
+        #chi2 = self.all_models.table['chi2']* 1.0/ chi2pmin
+
+
+        #sabine's code
+        chlim = np.sqrt(2 * Nobs * nGH)
+
+        chi2=val['chi2']
+        chi2-=chi2pmin
+
+
+        #start of the plotting
+        colormap = plt.get_cmap('Spectral')
+
+        fig = plt.figure(figsize=(12, 27))
+
+        #loop over each parameter pair
+        for i in range(0, nnofix - 1):
+            for j in range(nnofix-1, i, -1):
+
+                xtit = ''
+                ytit = ''
+
+                if i==0 : ytit = nofix_latex[j]
+                xtit = nofix_latex[i]
+
+                pltnum = (nnofix-1-j) * (nnofix-1) + i+1
+                ax = fig.add_subplot(nnofix-1, nnofix-1, pltnum)
+
+                ax.plot(val[nofix_name[i]],val[nofix_name[j]], 'D', color='black', markersize=1.0)
+                ax.set_xlabel(xtit, fontsize=12)
+                ax.set_ylabel(ytit, fontsize=12)
+
+                #color Delta chi2
+                for k in range(nf - 1, -1, -1):
+                    #NOTE: I have re-written this part as the old routine did not work properly for me. Would be good to double-check
+                    if chi2[k]/chlim<=3: #only significant chi2 values
+
+                        color = colormap(chi2[k]/chlim * 240) #colours the significant chi2
+                        markersize = 5-(chi2[k]/chlim) #smaller chi2 become bigger :)
+                        ax.plot((val[nofix_name[i]])[k], (val[nofix_name[j]])[k], 'o', markersize=markersize, color=color)
+
+                    if chi2[k]==0:
+                        ax.plot((val[nofix_name[i]])[k], (val[nofix_name[j]])[k], 'x', markersize=8, color='black')
+
+        #Note: not so nice is that the red best-fit points are sometimes overplotted with other models. Can probably be improved
+
+        ## add the colorbar with the inverse sauron colormap
+        axcb = fig.add_axes([0.55, 0.35, 0.2, 0.02])
+        cb = mpl.colorbar.ColorbarBase(axcb, cmap=plt.get_cmap('Spectral'), norm=mpl.colors.Normalize(vmin=0., vmax=3),orientation='horizontal')
         return fig
 
+    def make_contour_plot(self):
+        # first version written by sabine, will add in the weekend
+        #
+        pass
 
     def plot_kinematic_maps(self, model, kin_set=None, cbar_lims='combined'):
         """
@@ -335,18 +374,12 @@ class Plotter():
 
         # filename3 = figdir + object + '_kin4.pdf'
 
-        # fig = plt.figure(figsize=(27, 12))
-        fig = plt.figure(figsize=(27, 15))
-        fig.suptitle(f'Python {self.version_p()}, '
-            f'gfortran {self.version_f()}, Thomas\' Mac, '
-            f'Random seed: {self.settings.orblib_settings["random_seed"]}',
-            size=24)
+        fig = plt.figure(figsize=(27, 12))
         plt.subplots_adjust(hspace=0.7,
                             wspace=0.01,
                             left=0.01,
                             bottom=0.05,
                             top=0.99,
-                            # top=0.80,
                             right=0.99)
         sauron_colormap = plt.get_cmap('sauron')
         sauron_r_colormap = plt.get_cmap('sauron_r')
