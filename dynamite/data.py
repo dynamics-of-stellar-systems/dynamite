@@ -17,7 +17,7 @@ class Data(object):
                 self.data = ascii.read(self.input_directory+self.datafile)
             self.logger = logging.getLogger(f'{__name__}.{__class__.__name__}')
             self.logger.debug(f'Data {self.name} read from '
-                              f'{self.input_directory+self.datafile}')
+                              f'{self.input_directory}{self.datafile}')
 
 
 class Discrete(Data):

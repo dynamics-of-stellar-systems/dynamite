@@ -221,12 +221,17 @@ class Configuration(object):
                             kin_list.append(kinematics_set)
                         c.kinematic_data = kin_list
 
-                    # cast all histogram values to the correct type
-                    for k in c.kinematic_data:
-                        k.hist_width = float(k.hist_width)
-                        k.hist_center = float(k.hist_center)
-                        k.hist_bins = int(k.hist_bins)
-
+                    # cast hist. values to correct numeric type unless `default`
+                    for i, k in enumerate(c.kinematic_data):
+                        if (k.hist_width=='default') is False:
+                            logger.debug(f'hist_width = {k.hist_width}')
+                            k.hist_width = float(k.hist_width)
+                        if (k.hist_center=='default') is False:
+                            logger.debug(f'hist_center = {k.hist_center}')
+                            k.hist_center = float(k.hist_center)
+                        if (k.hist_bins=='default') is False:
+                            logger.debug(f'hist_bins = {k.hist_bins}')
+                            k.hist_bins = int(k.hist_bins)
 
                     # read populations
 
@@ -500,11 +505,11 @@ class Configuration(object):
 
         ws_type = self.settings.weight_solver_settings['type']
         if ws_type == 'LegacyWeightSolver':
-            # check that all velocity histograms are identical
-            # this is not required by orblib_f.f90, but this IS assumed by the
-            # NNLS routine in triaxnnl_*.f90  - see 2144-2145 of orblib_f.f90, :
-            # "Velocity-bins are not the same. The standard NNLS will not"
-            # " Understand the ouput correctly."
+            # check velocity histograms settings if LegacyWeightSolver is used.
+            # (i) check all velocity histograms have center 0, (ii) force them
+            # all to have equal widths and (odd) number of bins
+            # these requirements are not needed by orblib_f.f90, but are assumed
+            # by the NNLS routine triaxnnl_*.f90 (see 2144-2145 of orblib_f.f90)
             # Therefore this check is based on WeightSolver type.
             stars = self.system.get_component_from_class(
                 physys.TriaxialVisibleComponent
@@ -512,31 +517,30 @@ class Configuration(object):
             hist_widths = [k.hist_width for k in stars.kinematic_data]
             hist_centers = [k.hist_center for k in stars.kinematic_data]
             hist_bins = [k.hist_bins for k in stars.kinematic_data]
-            check_widths = all([x == hist_widths[0] for x in hist_widths])
-            check_centers = all([x == hist_centers[0] for x in hist_centers])
-            check_bins = all([x == hist_bins[0] for x in hist_bins])
-            check_all = (check_widths and check_centers and check_bins)
-            if check_all is False:
-                err_msg = 'If LegacyWeightSolver used, then all kinematics must'
-                err_msg+= ' share the same hist_width, hist_center and hist_bins'
-                self.logger.error(err_msg)
-                raise ValueError(err_msg)
-
-        # check all velocity histograms have center 0 and odd number of bins
-        # required as we re-use tube orbits by flipping the velocity axis
-        # only valid if the velocity axis is symmetric
-        stars = self.system.get_component_from_class(
-            physys.TriaxialVisibleComponent
-            )
-        hist_centers = [k.hist_center for k in stars.kinematic_data]
-        hist_bins = [k.hist_bins for k in stars.kinematic_data]
-        check_centers = all([x == 0. for x in hist_centers])
-        check_bins = all([x%1==0 for x in hist_bins])
-        check_all = (check_centers and check_bins)
-        if check_all is False:
-            err_msg = 'all hist_centers must=0 and hist_bins must be odd'
-            self.logger.error(err_msg)
-            raise ValueError(err_msg)
+            self.logger.debug('checking all values of hist_center == 0...')
+            assert all([x==0 for x in hist_centers]), 'all hist_center values must be 0'
+            self.logger.debug('... check passed')
+            equal_widths = all([x == hist_widths[0] for x in hist_widths])
+            if equal_widths is False:
+                max_width = max(hist_widths)
+                msg = 'Value of `hist_width` must be the same for all kinematic'
+                msg += f' data - defaulting to widest provided i.e. {max_width}'
+                self.logger.info(msg)
+                for k in stars.kinematic_data:
+                    k.hist_width = max_width
+            equal_bins = all([x == hist_bins[0] for x in hist_bins])
+            if equal_bins is False:
+                max_bins = max(hist_bins)
+                msg = 'Value of `hist_bins` must be the same for all kinematic'
+                msg += f' data - defaulting to largest provided i.e. {max_bins}'
+                self.logger.info(msg)
+                if max_bins%2 == 0:
+                    msg = 'Value of `hist_bins` must be odd: '
+                    msg += f'replacing {max_bins} with {max_bins+1}'
+                    self.logger.info(msg)
+                    max_bins += 1
+                for k in stars.kinematic_data:
+                    k.hist_bins = max_bins
 
 class DynamiteLogging(object):
     """

@@ -15,18 +15,28 @@ class Kinematics(data.Data):
     def __init__(self,
                  weight=None,
                  type=None,
-                 hist_width=None,
-                 hist_center=None,
-                 hist_bins=None,
+                 hist_width='default',
+                 hist_center='default',
+                 hist_bins='default',
                  **kwargs
                  ):
+        super().__init__(**kwargs)
         self.weight = weight
         self.type = type
-        self.hist_width = hist_width
-        self.hist_center = hist_center
-        self.hist_bins = hist_bins
+        # set histogram settings
+        if hist_width=='default':
+            self.set_default_hist_width()
+        else:
+            self.hist_width = hist_width
+        if hist_center=='default':
+            self.set_default_hist_center()
+        else:
+            self.hist_center = hist_center
+        if hist_bins=='default':
+            self.set_default_hist_bins()
+        else:
+            self.hist_bins = hist_bins
         self.__class__.values = list(self.__dict__.keys())
-        super().__init__(**kwargs)
         self.logger = logging.getLogger(f'{__name__}.{__class__.__name__}')
         if self.weight==None or self.type==None or self.hist_width==None or \
                 self.hist_center==None or self.hist_bins==None:
@@ -415,6 +425,43 @@ class GaussHermite(Kinematics, data.Integrated):
             uncertainties[:,i-1] = self.data[f'dh{i}']
         return observed_values, uncertainties
 
+    def set_default_hist_width(self, n_sig=3.):
+        """Sets default histogram width to 2 * max(|v| + n_sig*sig)
+
+        Parameters
+        ----------
+        n_sig : float
+            number of sigma above mean velocity to extend the velocity histogram
+
+        """
+        v, sig = self.data['v'], self.data['sigma']
+        max_abs_v_plus_3sig = np.max(np.abs(v) + n_sig*sig)
+        hist_width = 2.*max_abs_v_plus_3sig
+        self.hist_width = hist_width
+
+    def set_default_hist_center(self):
+        """Sets default histogram center to 0.
+
+        """
+        self.hist_center = 0.
+
+    def set_default_hist_bins(self, f_sig=0.1):
+        """Sets default nbins so they are roughly f_sig*min(sig)
+
+        Parameters
+        ----------
+        f_sig : float
+            fraction of minimum sigma to (approximately) set histogram bin width
+
+        """
+        sig = self.data['sigma']
+        dv_approx = f_sig * np.min(sig)
+        hist_bins = np.ceil(self.hist_width/dv_approx)
+        hist_bins = int(hist_bins)
+        # hist_bins must be odd
+        if hist_bins%2==0:
+            hist_bins += 1
+        self.hist_bins = hist_bins
 
 class Histogram(object):
     """Class to hold histograms
@@ -478,7 +525,7 @@ class BayesLOSVD(Kinematics, data.Integrated):
     def __init__(self, **kwargs):
         # super goes left to right, i.e. first calls "Kinematics" __init__, then
         # calls data.Integrated's __init__
-        super().__init__(**kwargs)
+        super().__init__(type='BayesLOSVD', **kwargs)
         self.logger = logging.getLogger(f'{__name__}.{__class__.__name__}')
         if hasattr(self, 'data'):
             self.convert_losvd_columns_to_one_multidimenstional_column()
@@ -634,6 +681,22 @@ class BayesLOSVD(Kinematics, data.Integrated):
                 bins_file.write('\n')
         bins_file.write('\n')
         bins_file.close()
+
+    def set_default_hist_width(self):
+        self.hist_width = self.data.meta['nvbins']*self.data.meta['dv']
+
+    def set_default_hist_center(self):
+        self.hist_center = np.mean(self.data.meta['vcent'])
+
+    def set_default_hist_bins(self):
+        self.hist_bins = self.data.meta['nvbins']
+
+
+
+
+
+
+
 
 
 # end
