@@ -408,7 +408,7 @@ class Configuration(object):
         """
         Returns 2*n_obs = number_GH * number_spatial_bins. Works with the
         legacy setup only (stars component of class TriaxialVisibleComponent
-        with one set of kinematics).
+        with one or more sets of kinematics).
 
         Returns
         -------
@@ -418,7 +418,8 @@ class Configuration(object):
         number_GH = self.settings.weight_solver_settings['number_GH']
         stars = \
           self.system.get_component_from_class(physys.TriaxialVisibleComponent)
-        two_n_obs = 2 * number_GH * len(stars.kinematic_data[0].data)
+        kin_len = sum([len(kin.data) for kin in stars.kinematic_data])
+        two_n_obs = 2 * number_GH * kin_len
         return two_n_obs
 
     def validate(self):
