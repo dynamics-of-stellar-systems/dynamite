@@ -124,12 +124,12 @@ class Configuration(object):
                          "settings")
         if silent is not None:
             self.logger.warning("'silent' option is deprecated and ignored")
-        
+
         legacy_dir = \
             os.path.realpath(os.path.dirname(__file__)+'/../legacy_fortran')
             # os.path.dirname(os.path.realpath(__file__))+'/../'legacy_fortran'
         self.logger.debug(f'Legacy Fortran folder: {legacy_dir}')
-        
+
         try:
             with open(filename, 'r') as f:
                 # self.params = yaml.safe_load(f)
@@ -220,6 +220,18 @@ class Configuration(object):
                                                  **data_kin)
                             kin_list.append(kinematics_set)
                         c.kinematic_data = kin_list
+
+                    # cast hist. values to correct numeric type unless `default`
+                    for i, k in enumerate(c.kinematic_data):
+                        if (k.hist_width=='default') is False:
+                            logger.debug(f'hist_width = {k.hist_width}')
+                            k.hist_width = float(k.hist_width)
+                        if (k.hist_center=='default') is False:
+                            logger.debug(f'hist_center = {k.hist_center}')
+                            k.hist_center = float(k.hist_center)
+                        if (k.hist_bins=='default') is False:
+                            logger.debug(f'hist_bins = {k.hist_bins}')
+                            k.hist_bins = int(k.hist_bins)
 
                     # read populations
 
@@ -396,7 +408,7 @@ class Configuration(object):
         """
         Returns 2*n_obs = number_GH * number_spatial_bins. Works with the
         legacy setup only (stars component of class TriaxialVisibleComponent
-        with one set of kinematics).
+        with one or more sets of kinematics).
 
         Returns
         -------
@@ -406,7 +418,8 @@ class Configuration(object):
         number_GH = self.settings.weight_solver_settings['number_GH']
         stars = \
           self.system.get_component_from_class(physys.TriaxialVisibleComponent)
-        two_n_obs = 2 * number_GH * len(stars.kinematic_data[0].data)
+        kin_len = sum([len(kin.data) for kin in stars.kinematic_data])
+        two_n_obs = 2 * number_GH * kin_len
         return two_n_obs
 
     def validate(self):
@@ -492,6 +505,44 @@ class Configuration(object):
             raise ValueError(f'Only specify one of {chi2abs}, {chi2scaled}, '
                              'not both')
 
+        ws_type = self.settings.weight_solver_settings['type']
+        if ws_type == 'LegacyWeightSolver':
+            # check velocity histograms settings if LegacyWeightSolver is used.
+            # (i) check all velocity histograms have center 0, (ii) force them
+            # all to have equal widths and (odd) number of bins
+            # these requirements are not needed by orblib_f.f90, but are assumed
+            # by the NNLS routine triaxnnl_*.f90 (see 2144-2145 of orblib_f.f90)
+            # Therefore this check is based on WeightSolver type.
+            stars = self.system.get_component_from_class(
+                physys.TriaxialVisibleComponent
+                )
+            hist_widths = [k.hist_width for k in stars.kinematic_data]
+            hist_centers = [k.hist_center for k in stars.kinematic_data]
+            hist_bins = [k.hist_bins for k in stars.kinematic_data]
+            self.logger.debug('checking all values of hist_center == 0...')
+            assert all([x==0 for x in hist_centers]), 'all hist_center values must be 0'
+            self.logger.debug('... check passed')
+            equal_widths = all([x == hist_widths[0] for x in hist_widths])
+            if equal_widths is False:
+                max_width = max(hist_widths)
+                msg = 'Value of `hist_width` must be the same for all kinematic'
+                msg += f' data - defaulting to widest provided i.e. {max_width}'
+                self.logger.info(msg)
+                for k in stars.kinematic_data:
+                    k.hist_width = max_width
+            equal_bins = all([x == hist_bins[0] for x in hist_bins])
+            if equal_bins is False:
+                max_bins = max(hist_bins)
+                msg = 'Value of `hist_bins` must be the same for all kinematic'
+                msg += f' data - defaulting to largest provided i.e. {max_bins}'
+                self.logger.info(msg)
+                if max_bins%2 == 0:
+                    msg = 'Value of `hist_bins` must be odd: '
+                    msg += f'replacing {max_bins} with {max_bins+1}'
+                    self.logger.info(msg)
+                    max_bins += 1
+                for k in stars.kinematic_data:
+                    k.hist_bins = max_bins
 
 class DynamiteLogging(object):
     """
