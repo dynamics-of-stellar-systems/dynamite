@@ -2,6 +2,7 @@ import logging
 import subprocess
 import sys
 import numpy as np
+import matplotlib as mpl
 import matplotlib.pyplot as plt
 from plotbin import sauron_colormap as pb_sauron_colormap
 import dynamite as dyn
@@ -168,7 +169,7 @@ class Plotter():
         #start of the plotting
         colormap = plt.get_cmap('Spectral')
 
-        fig = plt.figure(figsize=(12, 27))
+        fig = plt.figure(figsize=(14, 14))
 
         #loop over each parameter pair
         for i in range(0, nnofix - 1):
