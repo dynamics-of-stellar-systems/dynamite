@@ -1,6 +1,7 @@
 import os
 import numpy as np
 from astropy import table
+from astropy.io import ascii
 import subprocess
 import logging
 from scipy import optimize
@@ -493,12 +494,15 @@ class NNLS(WeightSolver):
 
         """
         self.logger.info("Using WeightSolver : NNLS")
-        A, b = self.construct_nnls_matrix_and_rhs(orblib)
-        weight_file = self.direc_with_ml + 'orbit_weights.txt'
+        weight_file = f'{self.direc_with_ml}orbit_weights.ecsv'
         if os.path.isfile(weight_file):
-            weights = np.genfromtxt(weight_file)
             self.logger.info("NNLS solution read from existing output")
+            result = ascii.read(weight_file, format='ecsv')
+            weights = result['weights']
+            chi2_tot = result.meta['chi2_tot']
+            chi2_kin = result.meta['chi2_kin']
         else:
+            A, b = self.construct_nnls_matrix_and_rhs(orblib)
             if self.nnls_solver=='scipy':
                 solution = optimize.nnls(A, b)
                 weights = solution[0]
@@ -513,10 +517,17 @@ class NNLS(WeightSolver):
                 raise ValueError(text)
             np.savetxt(weight_file, weights)
             self.logger.info("NNLS problem solved")
-        # calculate chi2
-        chi2_vector = (np.dot(A, weights) - b)**2.
-        chi2_tot = np.sum(chi2_vector)
-        chi2_kin = np.sum(chi2_vector[1+self.n_intrinsic+self.n_apertures:])
+            # calculate chi2s
+            chi2_vector = (np.dot(A, weights) - b)**2.
+            chi2_tot = np.sum(chi2_vector)
+            chi2_kin = np.sum(chi2_vector[1+self.n_intrinsic+self.n_apertures:])
+            # save the output
+            results = table.Table()
+            results['weights'] = weights
+            # add chi2 to meta data
+            meta = {'chi2_tot':chi2_tot, 'chi2_kin':chi2_kin}
+            results = table.Table(results, meta=meta)
+            results.write(weight_file, format='ascii.ecsv', overwrite=True)
         return weights, chi2_tot, chi2_kin
 
 
