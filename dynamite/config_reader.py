@@ -383,7 +383,7 @@ class Configuration(object):
         """
         Sets threshold_del_chi2 depending on scaled or unscaled input. Works
         with the legacy setup only (stars component of class
-        TriaxialVisibleComponent with one set of kinematics).
+        TriaxialVisibleComponent with one or more sets of kinematics).
 
         Parameters
         ----------
