@@ -212,13 +212,22 @@ class Plotter():
         #
         pass
 
-    def plot_kinematic_maps(self, model, kin_set=None, cbar_lims='combined'):
+    def plot_kinematic_maps(self, model=None, kin_set=0, cbar_lims='combined'):
         """
-        Show kinematic map of the best-fitting model, with v, sigma, h3, h4
+        Show kinematic map of a model with v, sigma, h3, h4.
+        If model=None, select best fitting model so far.
         Taken from schw_kin.py.
         Note: kin_set should be the index of the data set,
-        e.g. kin_set=0 , kin_set=1
+        e.g. kin_set=0 , kin_set=1. Default is kin_set=0.
         """
+        if model is None:
+            which_chi2 = self.settings.parameter_space_settings['which_chi2']
+            models_done = np.where(self.all_models.table['all_done'])
+            min_chi2 = min(m[which_chi2]
+                           for m in self.all_models.table[models_done])
+            self.all_models.table.add_index(which_chi2)
+            model_id = self.all_models.table.loc_indices[min_chi2]
+            model = self.all_models.get_model_from_row(model_id)
         kinem_fname = model.get_model_directory() + 'nn_kinem.out'
         body_kinem = np.genfromtxt(kinem_fname, skip_header=1)
 
@@ -239,13 +248,11 @@ class Plotter():
         #     n_bins=stars.kinematic_data[0].n_apertures
         #     body_kinem=body_kinem[0:n_bins,:]
         #     self.logger.info(f'first_bin=0, last_bin={n_bins}')
-
         # elif kin_set==1:
         #     n_bins1=stars.kinematic_data[0].n_apertures
         #     n_bins2=stars.kinematic_data[1].n_apertures
         #     body_kinem=body_kinem[n_bins1:n_bins1+n_bins2,:]
         #     self.logger.info(f'first_bin={n_bins1}, last_bin={n_bins1+n_bins2}')
-
         # else:
         #     text = f'kin_set must be 0 or 1, not {kin_set}'
         #     self.logger.error(text)
@@ -264,11 +271,6 @@ class Plotter():
             id_num, fluxm, flux, velm, vel, dvel, sigm, sig, dsig, h3m, h3, dh3, h4m, h4, dh4, h5m, h5, dh5, h6m, h6, dh6 = body_kinem.T
 
             #still ToDO: Add the kinematic map plots for h5 and h6
-
-        if kin_set >= n_kin:
-            text = f'kin_set must be < {n_kin}, but it is {kin_set}'
-            self.logger.error(text)
-            raise ValueError(text)
 
         text = '`cbar_lims` must be one of `model`, `data` or `combined`'
         # assert cbar_lims in ['model', 'data', 'combined'], text
