@@ -733,13 +733,17 @@ class GridWalk(ParameterGenerator):
 
 
 class FullGrid(ParameterGenerator):
+    """
+    This parameter generator is EXPERIMENTAL and not intended for
+    production use (also see the docstring of the grid(...) method below)!
+    """
 
     def __init__(self,
                  par_space=[],
                  parspace_settings=None):
         super().__init__(par_space=par_space,
                          parspace_settings=parspace_settings,
-                         name='GridWalk')
+                         name='FullGrid')
         self.logger = logging.getLogger(f'{__name__}.{__class__.__name__}')
         self.step = []
         self.minstep = []
@@ -755,7 +759,7 @@ class FullGrid(ParameterGenerator):
                     self.step.append([])
                     self.minstep.append([])
         except:
-            text = 'GridWalk: non-fixed parameters need step setting'
+            text = 'FullGrid: non-fixed parameters need step setting'
             self.logger.error(text)
             raise ValueError(text)
 
@@ -765,7 +769,7 @@ class FullGrid(ParameterGenerator):
         if (not self.min_delta_chi2_abs and not self.min_delta_chi2_rel) \
            or \
            (self.min_delta_chi2_abs and self.min_delta_chi2_rel):
-            text = 'GridWalk: specify exactly one of the ' + \
+            text = 'FullGrid: specify exactly one of the ' + \
                    'options min_delta_chi2_abs, min_delta_chi2_rel'
             self.logger.error(text)
             raise ValueError(text)
