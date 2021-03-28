@@ -99,35 +99,42 @@ class Plotter():
         chi2 = chi2[s0]
         '''
 
-    def make_chi2_plot(self):
+    def make_chi2_plot(self, which_chi2=None):
         """
         This implementation is still EXPERIMENTAL. Don't use unless you
-        know ehat you are doing...
+        know what you are doing...
         """
-    
+
+        if which_chi2==None:
+            which_chi2 = self.settings.parameter_space_settings['which_chi2']
+        if which_chi2 != 'chi2' and which_chi2 != 'kinchi2':
+            text = 'which_chi2 needs to be chi2 or kinchi2, ' \
+                   f'but it is {which_chi2}'
+            self.logger.error(text)
+            raise ValueError(text)
+        self.logger.info(f'Making chi2 plot scaled according to {which_chi2}')
+
         #Note: it could be a nice feature to exclude the first 50, 100 (specified by the user) or so models in case the values were really off there or
         #alternatively based on too big Delta chi2
         #TODO: after each iteration create chi2 plot
         pars=self.parspace
         val=self.all_models.table
 
-
         #only use models that are finished
         val=val[val['all_done']==True]
-        
-        
+
         #because of the large parameter range dh properties and black hole are plotted in log
         val['c-dh']=np.log10(val['c-dh'])
         val['f-dh']=np.log10(val['f-dh'])
         val['m-bh']=np.log10(val['m-bh'])
         #TBD: add black hole scaling
         #TBD: check the definition of chi2
-        
+
         #get number and names of parameters that are not fixed
         nofix_sel=[]
         nofix_name=[]
         nofix_latex=[]
-        
+
         for i in np.arange(len(pars)):
             if pars[i].fixed==False:
 
@@ -142,10 +149,8 @@ class Plotter():
 
         nnofix=len(nofix_sel)
 
-        
-        
         nf=len(val)
-        
+
         nGH=4 #self.weight_solver_settings['number_GH']
         #stars = self.system.get_component_from_class( \
         #                                    physys.TriaxialVisibleComponent)
@@ -153,21 +158,19 @@ class Plotter():
         #print(len(kinematics))
         Nobs=353
 
-        print(nGH,Nobs)
+        self.logger.info(f'nGH={nGH}, Nobs={Nobs}')
         #this is from previous code
         ## 1 sigma confidence level
         #chlim = np.sqrt(2 * Nobs * nGH)
         ##read the chi2 and for some reason normalization, see schw_schwmodplot
-        chi2pmin=np.min(val['chi2'])
+        chi2pmin=np.min(val[which_chi2])
         #chi2 = self.all_models.table['chi2']* 1.0/ chi2pmin
-
 
         #sabine's code
         chlim = np.sqrt(2 * Nobs * nGH)
 
-        chi2=val['chi2']
+        chi2=val[which_chi2]
         chi2-=chi2pmin
-
 
         #start of the plotting
         colormap = plt.get_cmap('Spectral')
@@ -241,6 +244,7 @@ class Plotter():
             text = f'kin_set must be < {n_kin}, but it is {kin_set}'
             self.logger.error(text)
             raise ValueError(text)
+        self.logger.info(f'Plotting kinematic maps for kin_set={kin_set}')
 
         first_bin = sum(k.n_apertures for k in stars.kinematic_data[:kin_set])
         n_bins = stars.kinematic_data[kin_set].n_apertures

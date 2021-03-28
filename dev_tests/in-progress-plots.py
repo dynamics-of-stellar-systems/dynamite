@@ -20,11 +20,9 @@ import dynamite as dyn
 import plotter
 
 logger = logging.getLogger()
+logging.basicConfig(level=logging.INFO)
 logger.info(f'Using DYNAMITE version: {dyn.__version__}')
 logger.info(f'Located at: {dyn.__path__}')
-# print to console anyway...
-print('Using DYNAMITE version:', dyn.__version__)
-print('Located at:', dyn.__path__)
 
 # read configuration
 # if '__file__' in globals():
@@ -47,7 +45,6 @@ for f in [plotfile_chi2, plotfile_triangle, plotfile_kinmap]:
 c.all_models.table.pprint(max_lines=-1, max_width=-1)
 text = f'Number of models in all_models table: {len(c.all_models.table)}'
 logger.info(text)
-print(text)
 which_chi2 = c.settings.parameter_space_settings['which_chi2']
 models_done = np.where(c.all_models.table['all_done'])
 min_chi2 = min(m[which_chi2] for m in c.all_models.table[models_done])
@@ -57,7 +54,6 @@ model = c.all_models.get_model_from_row(model_id)
 text = f'Optimal model parset so far: {model_id}, which_chi2={which_chi2}\n' \
        f'{model.parset}\n{c.all_models.table[model_id]}'
 logger.info(text)
-print(text)
 
 plt.figure()
 plt.plot([i for i in range(len(c.all_models.table))],
