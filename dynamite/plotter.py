@@ -100,7 +100,10 @@ class Plotter():
         '''
 
     def make_chi2_plot(self):
-        print('====== plot the chi2 grids ======')
+        """
+        This implementation is still EXPERIMENTAL. Don't use unless you
+        know ehat you are doing...
+        """
     
         #Note: it could be a nice feature to exclude the first 50, 100 (specified by the user) or so models in case the values were really off there or
         #alternatively based on too big Delta chi2
