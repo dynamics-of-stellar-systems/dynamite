@@ -109,6 +109,8 @@ class Configuration(object):
         """
         Reads configuration file and instantiates objects.
         Does some rudimentary checks for consistency.
+        Builds the output directory tree if it does not exist already
+        (does not delete existing data).
 
         Parameters
         ----------
@@ -174,6 +176,7 @@ class Configuration(object):
             raise
         self.settings.add('io_settings', self.params['io_settings'])
         logger.debug('io_settings assigned to Settings object')
+        self.make_output_directory_tree()
 
         for key, value in self.params.items(): # walk through file contents...
 
