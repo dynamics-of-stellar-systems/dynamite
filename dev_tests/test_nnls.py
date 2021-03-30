@@ -57,11 +57,11 @@ def run_user_test(make_comp=False):
     fname = 'user_test_config_ml.yaml'
     c = dyn.config_reader.Configuration(fname, silent=True)
 
-    compare_file = outdir + "chi2_compare_ml_" \
-                            f"{c.settings.orblib_settings['nE']}" \
-                            f"{c.settings.orblib_settings['nI2']}" \
-                            f"{c.settings.orblib_settings['nI3']}.dat"
-
+    compare_file = os.path.dirname(__file__) \
+                    + "/data/chi2_compare_ml_" \
+                      f"{c.settings.orblib_settings['nE']}" \
+                      f"{c.settings.orblib_settings['nI2']}" \
+                      f"{c.settings.orblib_settings['nI3']}.dat"
     # "run" the models
     t = time.perf_counter()
     smi = dyn.model_iterator.ModelIterator(

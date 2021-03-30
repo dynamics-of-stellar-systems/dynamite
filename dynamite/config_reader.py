@@ -1,9 +1,11 @@
-import os.path
+import os
 import sys
+import shutil
+import glob
 import math
+import logging
 
 import yaml
-import logging
 import physical_system as physys
 import parameter_space as parspace
 import kinematics as kinem
@@ -19,6 +21,10 @@ class Settings(object):
         self.logger = logging.getLogger(f'{__name__}.{__class__.__name__}')
         self.orblib_settings = {}
         self.parameter_space_settings = {}
+        self.legacy_settings = {}
+        self.io_settings = {}
+        self.weight_solver_settings = {}
+        self.multiprocessing_settings = {}
 
     def add(self, kind, values):
         if kind == 'orblib_settings':
@@ -28,7 +34,15 @@ class Settings(object):
         elif kind == 'legacy_settings':
             self.legacy_settings = values
         elif kind == 'io_settings':
+            try:
+                out_dir = values['output_directory']
+            except KeyError:
+                text = 'Output directory not set in config file.'
+                self.logger.error(text)
+                raise KeyError(text)
             self.io_settings = values
+            self.io_settings['model_directory'] = out_dir + 'models/'
+            self.io_settings['plot_directory'] = out_dir + 'plots/'
         elif kind == 'weight_solver_settings':
             self.weight_solver_settings = values
         elif kind == 'multiprocessing_settings':
@@ -45,7 +59,7 @@ class Settings(object):
 
     def validate(self):
         if not(self.orblib_settings and self.parameter_space_settings and
-               self.output_settings and self.weight_solver_settings
+               self.io_settings and self.weight_solver_settings
                and self.multiprocessing_settings):
             text = """Config needs orblib_settings
                              and parameter_space_settings
@@ -54,9 +68,10 @@ class Settings(object):
                              and multiprocessing_settings"""
             self.logger.error(text)
             raise ValueError(text)
+        self.logger.debug('Settings validated.')
 
     def __repr__(self):
-        return (f'{self.__class__.__name__}({self.__dict__})')
+        return f'{self.__class__.__name__}({self.__dict__})'
 
 class UniqueKeyLoader(yaml.SafeLoader):
     """
@@ -148,16 +163,16 @@ class Configuration(object):
         logger.info('io_settings...')
         logger.debug(f'Read: {self.params["io_settings"]}')
 
-        self.settings.add('io_settings', self.params['io_settings'])
         try:
             for io in ['input', 'output']:
-                d = self.settings.io_settings[io+'_directory']
+                d = self.params['io_settings'][io+'_directory']
                 if len(d) > 0 and d[-1] != '/': # len(d)=0: allow no path, too
-                    self.settings.io_settings[io+'_directory'] += '/'
+                    self.params['io_settings'][io+'_directory'] += '/'
         except:
             logger.error('io_settings: check input_directory '
                          'and output_directory')
             raise
+        self.settings.add('io_settings', self.params['io_settings'])
         logger.debug('io_settings assigned to Settings object')
 
         for key, value in self.params.items(): # walk through file contents...
@@ -168,8 +183,8 @@ class Configuration(object):
                 logger.info('model_components...')
                 for comp, data_comp in value.items():
                     if not data_comp['include']:
-                            logger.info(f'{comp}... ignored')
-                            continue
+                        logger.info(f'{comp}... ignored')
+                        continue
 
                     # instantiate the component
 
@@ -422,6 +437,173 @@ class Configuration(object):
         two_n_obs = 2 * number_GH * kin_len
         return two_n_obs
 
+    def remove_existing_orblibs(self):
+        """
+        Removes existing orblibs (entire model output tree).
+
+        Returns
+        -------
+        None.
+
+        """
+        model_dir = self.settings.io_settings['model_directory']
+        if os.path.isdir(model_dir):
+            shutil.rmtree(model_dir)
+            self.logger.info(f'Model output tree {model_dir} removed.')
+        else:
+            self.logger.warning(f'No model output at {model_dir} to remove.')
+
+    def remove_existing_orbital_weights(self):
+        """
+        Removes existing orbital weights.
+
+        Raises
+        ------
+        Exception if directories cannot be removed.
+
+        Returns
+        -------
+        None.
+
+        """
+        ml_pattern = self.settings.io_settings['model_directory'] + '*/ml*'
+        ml_folders = glob.glob(ml_pattern)
+        for folder in ml_folders:
+            shutil.rmtree(folder)
+            self.logger.debug(f'Directory {folder} removed.')
+        self.logger.info(f'Orbital weights {ml_pattern} removed.')
+
+    def remove_existing_plots(self, remove_folder=False):
+        """
+        Removes existing plots from the plots directory. Optionally, the
+        plot directory tree can be removed recursively.
+
+        Parameters
+        ----------
+        remove_folder : BOOL, optional
+            True if the plot directory shall be removed, too. If False,
+            only regular files in the plot directory are deleted (subfolders
+            will remain untouched in that case). The default is False.
+
+        Raises
+        ------
+        Exception if files/directories cannot be removed.
+
+        Returns
+        -------
+        None.
+
+        """
+        plot_dir = self.settings.io_settings['plot_directory']
+        if os.path.isdir(plot_dir):
+            if remove_folder:
+                shutil.rmtree(plot_dir)
+                self.logger.info(f'Plot directory {plot_dir} deleted.')
+            else:
+                plot_files = glob.glob(plot_dir + '*')
+                for f in plot_files:
+                    if os.path.isfile(f):
+                        os.remove(f)
+                self.logger.info(f'Removed files in {plot_dir}.')
+        else:
+            self.logger.warning(f'Directory {plot_dir} not found, cannot '
+                                'remove plots.')
+
+    def remove_existing_all_models_file(self):
+        """
+        Deletes the all models file if it exists and resets
+        self.all_models to an empty AllModels object.
+
+        Raises
+        ------
+        Exception if all models file cannot be removed.
+
+        Returns
+        -------
+        None.
+
+        """
+        all_models_file = self.settings.io_settings['all_models_file']
+        if os.path.isfile(all_models_file):
+            os.remove(all_models_file)
+            self.logger.info(f'Deleted existing {all_models_file}.')
+        self.all_models = model.AllModels(parspace=self.parspace,
+                                          settings=self.settings,
+                                          system=self.system)
+        self.logger.info('Instantiated empty AllModels object')
+        self.logger.debug(f'AllModels:\n{self.all_models.table}')
+
+    def remove_all_existing_output(self, wipe_all=False, create_tree=True):
+        """
+        Removes all existing DYNAMITE output. The options determine whether
+        non-DYNAMITE output shall survive in the output folders.
+        Also resets self.all_models to an empty AllModels object.
+
+        Parameters
+        ----------
+        wipe_all : BOOL, optional
+            If True, the complete output directory tree will be removed.
+            Set to False to keep (a) user files & directories in the output
+            folder and (b) user directories in the plots folder.
+            The default is False.
+        create_tree : BOOL, optional
+            Recreates an empty output directory tree if True, does not
+            recreate directories when False. The default is True.
+
+        Raises
+        ------
+        Exception if wipe_all==True and the output directory tree cannot
+        be deleted.
+
+        Returns
+        -------
+        None.
+
+        """
+        if wipe_all:
+            out_dir = self.settings.io_settings['output_directory']
+            if os.path.isdir(out_dir):
+                shutil.rmtree(out_dir)
+            else:
+                self.logger.warning(f'No output directory {out_dir} to '
+                                    'remove.')
+            self.logger.info(f'Output directory tree {out_dir} removed.')
+        else:
+            self.remove_existing_orblibs()
+            self.remove_existing_plots(remove_folder=False)
+        # Execute in any case to create empty AllModels object:
+        self.remove_existing_all_models_file()
+        if create_tree:
+            self.make_output_directory_tree()
+
+    def make_output_directory_tree(self):
+        """
+        Create output directory tree. Existing directories will not be touched.
+
+        Returns
+        -------
+        None.
+
+        """
+        out_dir = self.settings.io_settings['output_directory']
+        model_dir = self.settings.io_settings['model_directory']
+        plot_dir = self.settings.io_settings['plot_directory']
+        if not os.path.isdir(out_dir):
+            os.mkdir(out_dir)
+            self.logger.debug(f'Output directory {out_dir} created.')
+        else:
+            self.logger.debug(f'Using existing output directory {out_dir}.')
+        if not os.path.isdir(model_dir):
+            os.mkdir(model_dir)
+            self.logger.debug(f'Model directory {model_dir} created.')
+        else:
+            self.logger.debug(f'Using existing model directory {model_dir}.')
+        if not os.path.isdir(plot_dir):
+            os.mkdir(plot_dir)
+            self.logger.debug(f'Plots directory {plot_dir} created.')
+        else:
+            self.logger.debug(f'Using existing plots directory {plot_dir}.')
+
     def validate(self):
         """
         Validates the system and settings. This method is still VERY
@@ -448,7 +630,7 @@ class Configuration(object):
                and not isinstance(i, physys.Plummer)) > 1:
             self.logger.error('System must have zero or one DM Halo object')
             raise ValueError('System must have zero or one DM Halo object')
-        if not ( 1 < len(self.system.cmp_list) < 4):
+        if not 1 < len(self.system.cmp_list) < 4:
             self.logger.error('System needs to comprise exactly one Plummer, '
                               'one VisibleComponent, and zero or one DM Halo '
                               'object(s)')
@@ -542,6 +724,7 @@ class Configuration(object):
                     max_bins += 1
                 for k in stars.kinematic_data:
                     k.hist_bins = max_bins
+        self.settings.validate()
 
 class DynamiteLogging(object):
     """
