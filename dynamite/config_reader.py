@@ -6,6 +6,7 @@ import math
 import logging
 
 import yaml
+import dynamite as dyn
 import physical_system as physys
 import parameter_space as parspace
 import kinematics as kinem
@@ -141,6 +142,10 @@ class Configuration(object):
                          "settings")
         if silent is not None:
             self.logger.warning("'silent' option is deprecated and ignored")
+
+        self.logger.debug(f'This is Python {sys.version.split()[0]}')
+        self.logger.debug(f'Using DYNAMITE version {dyn.__version__} '
+                          f'located at {dyn.__path__}')
 
         legacy_dir = \
             os.path.realpath(os.path.dirname(__file__)+'/../legacy_fortran')
@@ -397,6 +402,8 @@ class Configuration(object):
         logger.info('Instantiated AllModels object')
         logger.debug(f'AllModels:\n{self.all_models.table}')
 
+        self.backup_config_file(filename)
+
     def set_threshold_del_chi2(self, generator_settings):
         """
         Sets threshold_del_chi2 depending on scaled or unscaled input. Works
@@ -606,6 +613,33 @@ class Configuration(object):
             self.logger.debug(f'Plots directory {plot_dir} created.')
         else:
             self.logger.debug(f'Using existing plots directory {plot_dir}.')
+
+    def backup_config_file(self, filename):
+        """
+        Copy the config file to the output directory. A running index of
+        the format _xxx will be appended to the base file name to keep
+        track of earlier config files (config_000.yaml, config_001.yaml,
+        config_002.yaml, etc.).
+
+        Parameters
+        ----------
+        filename : STR
+            The name of the config file.
+
+        Returns
+        -------
+        None.
+
+        """
+        out_dir = self.settings.io_settings['output_directory']
+        f_root, f_ext = os.path.splitext(filename)
+        conf_files = glob.iglob(f'{out_dir}{f_root}_[0-9][0-9][0-9]{f_ext}')
+        conf_roots = [os.path.splitext(i)[0] for i in conf_files]
+        indices = [int(i[i.rindex('_')+1:]) for i in conf_roots]
+        new_idx = max(indices) + 1 if len(indices)> 0 else 0
+        dest_file = out_dir + f_root + f'_{new_idx:03d}' + f_ext
+        shutil.copy2(filename, dest_file)
+        self.logger.info(f'Config file backup: {dest_file}')
 
     def validate(self):
         """
