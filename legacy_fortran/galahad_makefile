@@ -32,7 +32,7 @@ MVMODS = $(MV) -f $(OBJ)/*.mod $(MOD)/ || true
  
 #  Compiler options
  
-#FORTRAN = /opt/sw/spack-0.12.1/opt/spack/linux-centos7-x86_64/gcc-4.8.5/gcc-9.1.0-mj7s6dgfnhgi2n42fyxgmitnuslcyol3/bin/gfortran
+#FORTRAN = 
 BASIC = -c -fno-second-underscore -fPIC
 MBASIC = -fno-second-underscore -fPIC
 MODULES =  -I$(MOD) -I$(CUTESTMOD)
@@ -40,6 +40,8 @@ OPTIMIZATION = -O
 NOOPTIMIZATION = -O0
 DEBUG = 
 OPENMP = -fopenmp
+SOMP = -fopenmp
+MOMP = -lgomp
 F77 = -ffixed-form
 F90 = 
 F95 = 
@@ -70,7 +72,7 @@ CXXONDEF  =
 CXXDEBUG  = 
  
 CUDA       = 
-CUDACOMP   = /home/edward/src/gcc-10.1.0/bin/gfortran -fno-use-linker-plugin
+CUDACOMP   = gfortran
 CUDAARCH   = 
 CUDACODE   = 
 CUDABASIC  = 
@@ -83,14 +85,33 @@ MA97BUG =
  
 #  Libraries
  
+PLPLOT = 
+ 
+#  -- BLAS and LAPACK
+ 
 BLAS = -lgalahad_blas
 LAPACK = -lgalahad_lapack
+ 
+#  -- HSL and SPRAL
+ 
 HSL = -lgalahad_hsl
 SPRAL = -lgalahad_spral
+ 
+#  -- Metis
+ 
 METIS = -lgalahad_metis
+ 
+#  -- Pardiso
+ 
 PARDISO = -lgalahad_pardiso
+ 
+#  -- MKL Pardiso
+ 
+MKL_PARDISO = -lgalahad_mkl_pardiso
+ 
+#  -- WSMP
+ 
 WSMP = -lgalahad_wsmp
-PLPLOT = 
  
 #  proper or dummy SSIDS package?
  
