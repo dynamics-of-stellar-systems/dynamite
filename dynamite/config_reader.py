@@ -478,10 +478,13 @@ class Configuration(object):
         """
         ml_pattern = self.settings.io_settings['model_directory'] + '*/ml*'
         ml_folders = glob.glob(ml_pattern)
-        for folder in ml_folders:
-            shutil.rmtree(folder)
-            self.logger.debug(f'Directory {folder} removed.')
-        self.logger.info(f'Orbital weights {ml_pattern} removed.')
+        if len(ml_folders) > 0:
+            for folder in ml_folders:
+                shutil.rmtree(folder)
+                self.logger.debug(f'Directory {folder} removed.')
+            self.logger.info(f'Orbital weights {ml_pattern} removed.')
+        else:
+            self.logger.info(f'No orbital weights {ml_pattern} to remove.')
 
     def remove_existing_plots(self, remove_folder=False):
         """
@@ -533,7 +536,8 @@ class Configuration(object):
         None.
 
         """
-        all_models_file = self.settings.io_settings['all_models_file']
+        all_models_file = self.settings.io_settings['output_directory'] \
+                          + self.settings.io_settings['all_models_file']
         if os.path.isfile(all_models_file):
             os.remove(all_models_file)
             self.logger.info(f'Deleted existing {all_models_file}.')
