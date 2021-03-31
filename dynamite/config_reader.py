@@ -638,7 +638,7 @@ class Configuration(object):
         indices = [int(i[i.rindex('_')+1:]) for i in conf_roots]
         new_idx = max(indices) + 1 if len(indices)> 0 else 0
         dest_file = out_dir + f_root + f'_{new_idx:03d}' + f_ext
-        shutil.copy2(filename, dest_file)
+        shutil.copy(filename, dest_file)
         self.logger.info(f'Config file backup: {dest_file}')
 
     def validate(self):
