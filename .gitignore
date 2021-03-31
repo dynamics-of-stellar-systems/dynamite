@@ -26,9 +26,7 @@ legacy_fortran/.DS_Store
 .spyproject
 dev_tests/.DS_Store
 dev_tests/__pycache__
-dev_tests/NGC6278_output/models/*
-dev_tests/NGC6278_output/all_models*
-dev_tests/NGC6278_output/plots/*
+dev_tests/NGC6278_output/*
 dev_tests/FCC047_2kin
 dev_tests/GAMA30890
 dev_tests/test_validate_pqu_output

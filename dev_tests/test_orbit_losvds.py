@@ -1,8 +1,10 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
-import os, sys, subprocess
-import shutil
+import os
+import sys
+import subprocess
+import logging
 import numpy as np
 #import time
 
@@ -14,7 +16,6 @@ matplotlib.use('Agg')
 
 import matplotlib.pyplot as plt
 #from astropy import table
-import logging
 import dynamite as dyn
 
 def version_p():
@@ -59,27 +60,16 @@ def run_orbit_losvd_test(make_comparison_losvd=False):
     fname = 'user_test_config.yaml'
     c = dyn.config_reader.Configuration(fname,reset_logging=False)
 
-    io_settings = c.settings.io_settings
-    outdir = io_settings['output_directory']
-    # delete previous output if available
-    models_folder = outdir + 'models/'
-    models_file = outdir + io_settings['all_models_file']
-    shutil.rmtree(models_folder, ignore_errors=True)
-    if os.path.isfile(models_file):
-        os.remove(models_file)
-    plotdir = outdir + 'plots/'
-    if not os.path.isdir(plotdir):
-        os.mkdir(plotdir)
+    c.remove_existing_orblibs()
+    c.remove_existing_all_models_file()
+
+    plotdir = c.settings.io_settings['plot_directory']
     plotfile = plotdir + f'orbit_losvds-{version_p()}-{version_f()}.png'
     if os.path.isfile(plotfile):
         os.remove(plotfile)
 
-    # re-read configuration now that old output has been deleted
-    fname = 'user_test_config.yaml'
-    c = dyn.config_reader.Configuration(fname)
-
     parset = c.parspace.get_parset()
-    model = dyn.model.LegacySchwarzschildModel(
+    model = dyn.model.Model(
         system=c.system,
         settings=c.settings,
         parspace=c.parspace,

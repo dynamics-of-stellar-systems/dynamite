@@ -140,20 +140,21 @@ class Configuration(object):
         else:
             logger.debug("Dynamite uses the calling application's logging "
                          "settings")
-        if silent is not None:
-            self.logger.warning("'silent' option is deprecated and ignored")
-
         self.logger.debug(f'This is Python {sys.version.split()[0]}')
         self.logger.debug(f'Using DYNAMITE version {dyn.__version__} '
                           f'located at {dyn.__path__}')
+
+        if silent is not None:
+            self.logger.warning("'silent' option is deprecated and ignored")
 
         legacy_dir = \
             os.path.realpath(os.path.dirname(__file__)+'/../legacy_fortran')
             # os.path.dirname(os.path.realpath(__file__))+'/../'legacy_fortran'
         self.logger.debug(f'Legacy Fortran folder: {legacy_dir}')
 
+        self.config_file = filename
         try:
-            with open(filename, 'r') as f:
+            with open(self.config_file, 'r') as f:
                 # self.params = yaml.safe_load(f)
                 config_text = f.read()
         except:
@@ -402,7 +403,7 @@ class Configuration(object):
         logger.info('Instantiated AllModels object')
         logger.debug(f'AllModels:\n{self.all_models.table}')
 
-        self.backup_config_file(filename)
+        self.backup_config_file()
 
     def set_threshold_del_chi2(self, generator_settings):
         """
@@ -561,8 +562,9 @@ class Configuration(object):
             folder and (b) user directories in the plots folder.
             The default is False.
         create_tree : BOOL, optional
-            Recreates an empty output directory tree if True, does not
-            recreate directories when False. The default is True.
+            If True, recreates an empty output directory tree with a
+            backup of the config file. Does not recreate directories
+            if False. The default is True.
 
         Raises
         ------
@@ -589,6 +591,7 @@ class Configuration(object):
         self.remove_existing_all_models_file()
         if create_tree:
             self.make_output_directory_tree()
+            self.backup_config_file()
 
     def make_output_directory_tree(self):
         """
@@ -618,17 +621,12 @@ class Configuration(object):
         else:
             self.logger.debug(f'Using existing plots directory {plot_dir}.')
 
-    def backup_config_file(self, filename):
+    def backup_config_file(self):
         """
         Copy the config file to the output directory. A running index of
         the format _xxx will be appended to the base file name to keep
         track of earlier config files (config_000.yaml, config_001.yaml,
         config_002.yaml, etc.).
-
-        Parameters
-        ----------
-        filename : STR
-            The name of the config file.
 
         Returns
         -------
@@ -636,13 +634,13 @@ class Configuration(object):
 
         """
         out_dir = self.settings.io_settings['output_directory']
-        f_root, f_ext = os.path.splitext(filename)
+        f_root, f_ext = os.path.splitext(os.path.basename(self.config_file))
         conf_files = glob.iglob(f'{out_dir}{f_root}_[0-9][0-9][0-9]{f_ext}')
         conf_roots = [os.path.splitext(i)[0] for i in conf_files]
         indices = [int(i[i.rindex('_')+1:]) for i in conf_roots]
         new_idx = max(indices) + 1 if len(indices)> 0 else 0
         dest_file = out_dir + f_root + f'_{new_idx:03d}' + f_ext
-        shutil.copy(filename, dest_file)
+        shutil.copy(self.config_file, dest_file)
         self.logger.info(f'Config file backup: {dest_file}')
 
     def validate(self):

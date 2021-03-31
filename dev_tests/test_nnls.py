@@ -5,10 +5,8 @@
 # we assume that this script is located and run in the folder dynamite/tests
 
 import os
-import shutil
 import logging
 import time
-import numpy as np
 
 # Set matplotlib backend to 'Agg' (compatible when X11 is not running
 # e.g., on a cluster). Note that the backend can only be set BEFORE
@@ -33,29 +31,19 @@ def run_user_test(make_comp=False):
     if '__file__' in globals():
         os.chdir(os.path.dirname(__file__))
     fname = 'user_test_config_ml.yaml'
-    c = dyn.config_reader.Configuration(fname, silent=True, reset_logging=True)
+    c = dyn.config_reader.Configuration(fname, reset_logging=True)
 
-    io_settings = c.settings.io_settings
-    outdir = io_settings['output_directory']
     # delete previous output if available
-    models_folder = outdir + 'models/'
-    models_file = outdir + io_settings['all_models_file']
-    shutil.rmtree(models_folder, ignore_errors=True)
-    if os.path.isfile(models_file):
-        os.remove(models_file)
-    plotdir = outdir + 'plots/'
-    if not os.path.isdir(plotdir):
-        os.mkdir(plotdir)
+    c.remove_existing_orblibs()
+    c.remove_existing_all_models_file()
+
+    plotdir = c.settings.io_settings['plot_directory']
     plotfile_ml = plotdir + 'ml_vs_iter_chi2.png'
     if os.path.isfile(plotfile_ml):
         os.remove(plotfile_ml)
     plotfile_chi2 = plotdir + 'chi2_vs_model_id.png'
     if os.path.isfile(plotfile_chi2):
         os.remove(plotfile_chi2)
-
-    # re-read configuration now that old output has been deleted
-    fname = 'user_test_config_ml.yaml'
-    c = dyn.config_reader.Configuration(fname, silent=True)
 
     compare_file = os.path.dirname(__file__) \
                     + "/data/chi2_compare_ml_" \
@@ -78,7 +66,7 @@ def run_user_test(make_comp=False):
 #    c.all_models.table.pprint_all() # This only works in astropy 3.2 or later
     c.all_models.table.pprint(max_lines=-1, max_width=-1)
 
-    if make_comp==False:
+    if make_comp is False:
         # plot the models
         plt.figure()
         plt.scatter(c.all_models.table['which_iter'],
@@ -97,17 +85,13 @@ def run_user_test(make_comp=False):
 
         # compare to chi2 in compare_file
         chi2_compare = table.Table.read(compare_file, format='ascii')
-        radius = (np.max(chi2_compare['chi2']) - \
-                 np.min(chi2_compare['chi2'])) / 10
-        logger.debug(f'Radius={radius}')
-        # print(f'Radius={radius}')
         plt.figure()
         plt.scatter(chi2_compare['model_id'],
                     chi2_compare['chi2'],
                     s=400,
                     facecolors='none',
                     edgecolors='black')
-        plt.plot([i for i in range(len(c.all_models.table))],
+        plt.plot(range(len(c.all_models.table)),
                   c.all_models.table['chi2'],
                   'rx')
         plt.gca().set_title('calculated chi2 (red) vs should-be range '
@@ -138,7 +122,7 @@ def create_comparison_data():
     for i in range(len(chi2_values),n_max): # just in case...
         chi2_values.append(float("NaN"))
     t = table.Table()
-    t['model_id'] = [i for i in range(len(chi2_values))]
+    t['model_id'] = range(len(chi2_values))
     t['chi2']     = chi2_values
     print(t)
     t.write(output_file, format='ascii', overwrite=True)
