@@ -296,19 +296,6 @@ class LegacySchwarzschildModel(Model):
         self.create_model_directory(self.directory_noml+'infil/')
         self.create_model_directory(self.directory_noml+'datfil/')
 
-    def get_orblib(self):
-        # make orbit libary object
-        orblib = dyn_orblib.LegacyOrbitLibrary(
-                system=self.system,
-                mod_dir=self.directory_noml,
-                settings=self.settings.orblib_settings,
-                legacy_directory=self.legacy_directory,
-                input_directory=self.settings.io_settings['input_directory'],
-                parset=self.parset)
-        orblib.get_orblib()
-        orblib.read_losvd_histograms()
-        return orblib
-
     def get_weights(self, orblib):
         # create the weight solver object
         weight_solver = ws.LegacyWeightSolver(
