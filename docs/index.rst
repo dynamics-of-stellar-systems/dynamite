@@ -20,9 +20,11 @@ To get started with DYNAMITE,
 
 1. Get the code from our `GitHub page <https://github.com/dynamics-of-stellar-systems/dynamite>`_
 2. Install. The `installation page <https://www.univie.ac.at/dynamics/dynamite_docs/installation.html>`_ has the full instructions. An overview is:
+
   a. Install Galahad: do ``./install_Galahad`` in the directory ``legacy_fortran/galahad-2.3/``
   b. Compile the Fortran programs: do ``make all`` in the directory ``legacy_fortran/``
   c. Install DYNAMITE Python package: ``python setup.py install`` in the main directory
+
 3. Here is an example of how you can run a Schwarzschild model in DYNAMITE
 
 .. code-block:: python
