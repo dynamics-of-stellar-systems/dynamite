@@ -13,6 +13,8 @@
 # to submit this on cluster with slurm run ``sbatch test_slurm.py``
 
 import time
+import os
+import logging
 
 # Set matplotlib backend to 'Agg' (compatible when X11 is not running
 # e.g., on a cluster). Note that the backend can only be set BEFORE
@@ -22,13 +24,9 @@ matplotlib.use('Agg')
 
 import matplotlib.pyplot as plt
 
-import os
-import shutil
-import logging
-
 import dynamite as dyn
 
-def run_user_test(stat_mode=False):
+def run_user_test():
 
     print('Using DYNAMITE version:', dyn.__version__)
     print('Located at:', dyn.__path__)
@@ -37,24 +35,14 @@ def run_user_test(stat_mode=False):
     fname = 'test_slurm_config.yaml'
     c = dyn.config_reader.Configuration(fname, silent=True)
 
-    io_settings = c.settings.io_settings
-    outdir = io_settings['output_directory']
     # delete previous output if available
-    models_folder = outdir + 'models/'
-    models_file = outdir + io_settings['all_models_file']
-    shutil.rmtree(models_folder, ignore_errors=True)
-    if os.path.isfile(models_file):
-        os.remove(models_file)
-    plotdir = outdir + 'plots/'
-    if not os.path.isdir(plotdir):
-        os.mkdir(plotdir)
+    c.remove_existing_orblibs()
+    c.remove_existing_all_models_file()
+
+    plotdir = c.settings.io_settings['plot_directory']
     plotfile = plotdir + 'slurm_model_timings.png'
     if os.path.isfile(plotfile):
         os.remove(plotfile)
-
-    # re-read configuration now that old output has been deleted
-    fname = 'test_slurm_config.yaml'
-    c = dyn.config_reader.Configuration(fname, silent=True)
 
     # "run" the models
     t = time.perf_counter()
@@ -82,8 +70,6 @@ def run_user_test(stat_mode=False):
     # print all model results
     print(f'Look at {plotfile}')
     c.all_models.table.pprint(max_lines=-1, max_width=-1)
-
-    return
 
 if __name__ == '__main__':
 
