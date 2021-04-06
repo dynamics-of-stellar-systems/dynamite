@@ -49,8 +49,8 @@ class ModelIterator(object):
             previous_iter = 0
         status = {}
         status['stop'] = False
-        for iter in range(n_max_iter):
-            total_iter_count = previous_iter + iter
+        for iteration in range(n_max_iter):
+            total_iter_count = previous_iter + iteration
             n_models_done = np.sum(self.all_models.table['all_done'])
             if n_models_done>=self.n_max_mods:
                 status['n_max_mods_reached'] = True
@@ -61,8 +61,8 @@ class ModelIterator(object):
                 break
             self.logger.info(f'{par_generator_type}: "iteration '
                         f'{total_iter_count}"')
-            status = model_inner_iterator.run_iteration(iter)
-            self.make_in_progress_plots(settings, iter)
+            status = model_inner_iterator.run_iteration()
+            self.make_in_progress_plots(settings, iteration)
 
     def make_in_progress_plots(self, settings, iteration=None,
                                chi2_progress=None,
@@ -163,7 +163,6 @@ class ModelIterator(object):
 class ModelInnerIterator(object):
 
     def __init__(self,
-                 iter=0,
                  system=None,
                  all_models=None,
                  settings=None,
@@ -184,7 +183,7 @@ class ModelInnerIterator(object):
         self.dummy_chi2_function = dummy_chi2_function
         self.ncpus = ncpus
 
-    def run_iteration(self, iter):
+    def run_iteration(self):
         self.par_generator.generate(current_models=self.all_models)
         self.all_models.save() # save all_models table once parameters are added
         # generate parameter sets for this iteration
