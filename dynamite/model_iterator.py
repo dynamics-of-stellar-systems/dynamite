@@ -1,5 +1,7 @@
 import model
 import parameter_space
+import plotter
+import os
 import numpy as np
 import logging
 import pathos
@@ -27,6 +29,12 @@ class ModelIterator(object):
         kwargs = {'parspace_settings':settings.parameter_space_settings}
         par_generator = getattr(parameter_space, par_generator_type)(parspace,
                                                                      **kwargs)
+
+        self.the_plotter = plotter.Plotter(system = system,
+                                           settings = settings,
+                                           parspace = parspace,
+                                           all_models = all_models)
+
         model_inner_iterator = ModelInnerIterator(
             system=system,
             all_models=self.all_models,
@@ -54,6 +62,102 @@ class ModelIterator(object):
             self.logger.info(f'{par_generator_type}: "iteration '
                         f'{total_iter_count}"')
             status = model_inner_iterator.run_iteration(iter)
+            self.make_in_progress_plots(settings, iter)
+
+    def make_in_progress_plots(self, settings, iteration=None,
+                               chi2_progress=None,
+                               chi2_plot=None,
+                               kin_map=None):
+        """
+        Creates three plots: (kin)chi2 vs. model id, (kin)chi2 and non-fixed
+        parameters ("chi2 plot"), kinematic map of best fit model so-far.
+        The parameter space settings in the config file determine whether
+        chi2 or kinchi2 is used. Will choose file names automatically and
+        append the iteration counter to avoid duplicate file names.
+
+        Parameters
+        ----------
+        settings : Settings object
+            Needed for plot directory and which_chi2 setting.
+        iteration : int, optional
+            Iteration counter; mandatory for automatic file names.
+            The default is None.
+        chi2_progress : str, optional
+            File name of the (kin)chi2 vs. model id plot. If None, the
+            file name will be created automatically. The default is None.
+        chi2_plot : str, optional
+            File name of the "chi2 plot". If None, the
+            file name will be created automatically. The default is None.
+        kin_map : str, optional
+            File name of the kinematic map. If None, the
+            file name will be created automatically. The default is None.
+
+        Raises
+        ------
+        ValueError
+            Will be raised if at least one of the file names is None
+            and iteration is not an integer.
+
+        Returns
+        -------
+        None.
+
+        """
+        if (chi2_progress is None or chi2_plot is None or kin_map is None) \
+            and type(iteration) is not int:
+                text = 'iteration must be an integer when automatic file ' + \
+                       'names are used.'
+                self.logger.error(text)
+                raise ValueError(text)
+        plot_dir = settings.io_settings['output_directory'] + '/plots/'
+        which_chi2 = settings.parameter_space_settings['which_chi2']
+        if chi2_progress is None:
+            chi2_progress = f'{which_chi2}_progress_plot_{iteration}'
+        chi2_progress = plot_dir + chi2_progress
+        if chi2_plot is None:
+            chi2_plot = f'{which_chi2}_plot_{iteration}'
+        chi2_plot = plot_dir + chi2_plot
+        if kin_map is None:
+            kin_map = f'kinematics_map_{iteration}'
+        kin_map = plot_dir + kin_map
+        self.delete_if_exists([chi2_progress, chi2_plot, kin_map])
+
+        self.the_plotter.make_chi2_vs_model_id_plot().savefig(chi2_progress)
+        self.the_plotter.make_chi2_plot().savefig(chi2_plot)
+        self.the_plotter.plot_kinematic_maps(cbar_lims='data').savefig(kin_map)
+
+    def delete_if_exists(self, files):
+        """
+        Given a file name or a list or tuple of file names, this method
+        will check if the file(s) exist and if so, remove it/them.
+
+        Parameters
+        ----------
+        files : str or list or tuple
+            File name including the path or list or tuple of file names.
+
+        Raises
+        ------
+        ValueError
+            Will be raised if files is neither a string nor a list nor
+            a tuple.
+
+        Returns
+        -------
+        None.
+
+        """
+        if type(files) == list or type(files) == tuple:
+            for f in files:
+                if os.path.isfile(f):
+                    os.remove(f)
+        elif type(files) == str:
+            if os.path.isfile(f):
+                os.remove(f)
+        else:
+            text = 'files must be of type str, list, or tuple.'
+            self.logger.error(text)
+            raise ValueError(text)
 
 
 class ModelInnerIterator(object):

@@ -55,21 +55,24 @@ text = f'Optimal model parset so far: {model_id}, which_chi2={which_chi2}\n' \
        f'{model.parset}\n{c.all_models.table[model_id]}'
 logger.info(text)
 
-plt.figure()
-plt.plot([i for i in range(len(c.all_models.table))],
-         c.all_models.table[which_chi2],
-         'rx')
-plt.gca().set_title(f'calculated {which_chi2} (red) vs model id')
-plt.xlabel('model_id')
-plt.xticks(range(len(c.all_models.table)))
-plt.ylabel(f'{which_chi2}')
-plt.savefig(plotfile_chi2)
+# plt.figure()
+# plt.plot([i for i in range(len(c.all_models.table))],
+#          c.all_models.table[which_chi2],
+#          'rx')
+# plt.gca().set_title(f'calculated {which_chi2} (red) vs model id')
+# plt.xlabel('model_id')
+# plt.xticks(range(len(c.all_models.table)))
+# plt.ylabel(f'{which_chi2}')
+# plt.savefig(plotfile_chi2)
 
 theplotter = plotter.Plotter(system=c.system,
                              settings=c.settings,
                              parspace=c.parspace,
                              all_models=c.all_models
                             )
+chi2_vs_model_id = theplotter.make_chi2_vs_model_id_plot()
+chi2_vs_model_id.savefig(plotfile_chi2)
+
 chi2_plot = theplotter.make_chi2_plot()
 chi2_plot.savefig(plotfile_triangle)
 

@@ -3,6 +3,7 @@ import subprocess
 import sys
 import numpy as np
 import matplotlib as mpl
+from matplotlib.ticker import MaxNLocator
 import matplotlib.pyplot as plt
 from plotbin import sauron_colormap as pb_sauron_colormap
 import dynamite as dyn
@@ -99,6 +100,48 @@ class Plotter():
         chi2 = chi2[s0]
         '''
 
+    def make_chi2_vs_model_id_plot(self, which_chi2=None):
+        """
+        Generates a (kin)chi2 vs. model id plot.
+
+        Parameters
+        ----------
+        which_chi2 : STR, optional
+            Determines whether chi2 or kinchi2 is used. If None, the setting
+            in the configuration file's parameter settings is used. 
+            Must be None, 'chi2', or 'kinchi2'. The default is None.
+
+        Raises
+        ------
+        ValueError
+            If which_chi2 is not one of None, 'chi2', or 'kinchi2'.
+
+        Returns
+        -------
+        fig : matplotlib.pyplot.figure
+            Figure instance.
+
+        """
+        if which_chi2==None:
+            which_chi2 = self.settings.parameter_space_settings['which_chi2']
+        if which_chi2 != 'chi2' and which_chi2 != 'kinchi2':
+            text = 'which_chi2 needs to be chi2 or kinchi2, ' \
+                   f'but it is {which_chi2}'
+            self.logger.error(text)
+            raise ValueError(text)
+        n_models = len(self.all_models.table)
+        fig = plt.figure()
+        plt.plot([i for i in range(n_models)],
+                  self.all_models.table[which_chi2],
+                  'rx')
+        plt.gca().set_title(f'{which_chi2} vs. model id')
+        plt.xlabel('model id')
+        plt.ylabel(which_chi2)
+        fig.gca().xaxis.set_major_locator(MaxNLocator(integer=True))
+        self.logger.info(f'{which_chi2} vs. model id plot created '
+                         f'({n_models} models).')
+        return fig
+
     def make_chi2_plot(self, which_chi2=None):
         """
         This implementation is still EXPERIMENTAL. Don't use unless you
@@ -141,8 +184,10 @@ class Plotter():
                 pars[i].name
                 nofix_sel.append(i)
                 if pars[i].name == 'ml':
-                    nofix_name=np.insert(nofix_name,0,'ml')         #Note: in the old version ml was in the first column, remove hard-coding
-                    nofix_latex=np.insert(nofix_latex,0,'$Y_{r}$')
+                    # nofix_name=np.insert(nofix_name,0,'ml')         #Note: in the old version ml was in the first column, remove hard-coding
+                    # nofix_latex=np.insert(nofix_latex,0,'$Y_{r}$')
+                    nofix_name.insert(0, 'ml')
+                    nofix_latex.insert(0, '$Y_{r}$')
                 else:
                     nofix_name.append(pars[i].name)
                     nofix_latex.append(pars[i].LaTeX)
