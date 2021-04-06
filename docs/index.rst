@@ -33,7 +33,7 @@ To get started with DYNAMITE,
 
    c = dyn.config_reader.Configuration('my_config.yaml') # read configuration
    parset = c.parspace.get_parset() # extract a parameter set from configuration
-   model = dyn.model.LegacySchwarzschildModel(
+   model = dyn.model.Model(
      system=c.system,
      settings=c.settings,
      parspace=c.parspace,
