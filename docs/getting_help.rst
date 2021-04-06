@@ -4,4 +4,4 @@
 Getting Help
 ************
 
-If you have any issues and would like to get in touch with the code developers for them to help you out, please write a message `here < >`_.
+If you have any issues, please write a message to our `GitHub issues page <https://github.com/dynamics-of-stellar-systems/dynamite_release/issues>`_

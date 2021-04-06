@@ -9,10 +9,9 @@
 # If extensions (or modules to document with autodoc) are in another directory,
 # add these directories to sys.path here. If the directory is relative to the
 # documentation root, use os.path.abspath to make it absolute, like shown here.
-#
-# import os
-# import sys
-# sys.path.insert(0, os.path.abspath('.'))
+import os
+import sys
+sys.path.insert(0, os.path.abspath('../dynamite/'))
 
 
 # -- Project information -----------------------------------------------------
@@ -35,7 +34,7 @@ extensions = ['sphinx.ext.mathjax',
               'sphinx.ext.doctest',
               'sphinx.ext.inheritance_diagram',
               'nbsphinx',
-              'IPython.sphinxext.ipython_console_highlighting'
+              'IPython.sphinxext.ipython_console_highlighting',
 ]
 
 # Add any paths that contain templates here, relative to this directory.
@@ -55,8 +54,9 @@ exclude_patterns = ['_build', 'Thumbs.db', '.DS_Store']
 # The theme to use for HTML and HTML Help pages.  See the documentation for
 # a list of builtin themes.
 #
-'''
+
 # Uncomment to use alabaster theme
+'''
 import alabaster
 html_theme_path = [alabaster.get_path()]
 extensions = ['alabaster']
@@ -68,9 +68,9 @@ html_theme = 'classic'
 # Add any paths that contain custom static files (such as style sheets) here,
 # relative to this directory. They are copied after the builtin static files,
 # so a file named "default.css" will overwrite the builtin "default.css".
-html_static_path = ['_static']
+html_static_path = []
 
-html_logo = 'DynamiteLogo.png'
+html_logo = 'DynLogoWithERC.png'
 
 html_sidebars = { '**': ['globaltoc.html', 'relations.html', 'sourcelink.html', 'searchbox.html'] }
 

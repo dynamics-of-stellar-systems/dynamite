@@ -370,9 +370,8 @@ class LegacyOrbitLibrary(OrbitLibrary):
         pass
 
     def read_orbit_base(self, fileroot):
-        """Read a zipped Fortran orbit library from the file
-            datfil/{fileroot}.dat.bz2'
-        relative to the model directory.
+        """
+        Read an orbit library from file datfil/{fileroot}.dat.bz2'
 
         Parameters
         ----------
