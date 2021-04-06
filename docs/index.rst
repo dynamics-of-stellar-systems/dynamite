@@ -11,7 +11,7 @@ Welcome to DYNAMITE's documentation!
 How to cite
 ================
 
-This is how to cite our code!
+If you use DYNAMITE, please cite our `ASCL entry <http://www.ascl.net/code/v/2684>`_ using the following `BibTex citation <https://ui.adsabs.harvard.edu/abs/2020ascl.soft11007J/exportcitation>`_
 
 Getting Started
 ================
@@ -37,7 +37,6 @@ To get started with DYNAMITE,
      system=c.system,
      settings=c.settings,
      parspace=c.parspace,
-     executor=c.executor,
      parset=parset)          # make a Schwarzschild model
    model.setup_directories() # make directory tree
    model.get_orblib()        # make an orbit library
@@ -80,11 +79,13 @@ classes in more detail.
    classes/overview
    classes/configuration
    classes/physical_system
+   classes/orblib
+   classes/weight_solver
    classes/data
+   classes/kinematics
    classes/model
    classes/model_iterator
    classes/parameter_space
-   classes/executor
    classes/plotting
 
 More Information

@@ -6,9 +6,7 @@ Data
 
 Describe the Data class.
 
-.. toctree::
-   :maxdepth: 2
-   :caption: Data:
+Inheritance Diagram
+===================
 
-   kinematics
-   populations
+.. inheritance-diagram:: data kinematics populations

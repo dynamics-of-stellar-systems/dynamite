@@ -21,7 +21,7 @@ import dynamite as dyn
 
 c = dyn.config_reader.Configuration('my_config.yaml') # read configuration
 parset = c.parspace.get_parset() # extract a parameter set from configuration
-model = dyn.model.LegacySchwarzschildModel(
+model = dyn.model.LegacyModel(
   system=c.system,
   settings=c.settings,
   parspace=c.parspace,

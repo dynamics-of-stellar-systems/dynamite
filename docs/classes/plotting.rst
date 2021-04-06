@@ -4,4 +4,9 @@
 Plotting
 ********
 
-Describe the Plotting class.
+We plot!
+
+Inheritance Diagram
+===================
+
+.. inheritance-diagram:: plotter
