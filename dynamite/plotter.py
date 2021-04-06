@@ -218,7 +218,7 @@ class Plotter():
         #
         pass
 
-    def plot_kinematic_maps(self, model=None, kin_set=0, cbar_lims='combined'):
+    def plot_kinematic_maps(self, model=None, kin_set=0, cbar_lims='data'):
         """
         Show kinematic map of a model with v, sigma, h3, h4.
         If model=None, select best fitting model so far.
