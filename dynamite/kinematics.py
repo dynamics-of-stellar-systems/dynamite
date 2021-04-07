@@ -729,15 +729,45 @@ class BayesLOSVD(Kinematics, data.Integrated):
         binID_dynamite = srt_binid_dynamite[index]
         return binID_dynamite
 
-    def set_default_hist_width(self):
-        self.hist_width = self.data.meta['nvbins']*self.data.meta['dv']
+    def set_default_hist_width(self, scale=2.):
+        """Set orbit histogram width as scaled multiple of data histogram width
+
+        Sets the result to attribute `self.hist_width`
+
+        Parameters
+        ----------
+        scale : float
+            scale factor
+
+        """
+        vmin = self.data.meta['vcent'][0] - self.data.meta['dv']/2.
+        vmax = self.data.meta['vcent'][-1] + self.data.meta['dv']/2.
+        max_vabs = np.max(np.abs([vmin, vmax]))
+        self.hist_width = 2. * scale * max_vabs
 
     def set_default_hist_center(self):
-        self.hist_center = np.mean(self.data.meta['vcent'])
+        """Sets orbit histogram center (i.e. `self.hist_center`) to 0.
+        """
+        self.hist_center = 0.
 
     def set_default_hist_bins(self, oversampling_factor=10):
-        data_nbins = self.data.meta['nvbins']
-        orblib_nbins = oversampling_factor * data_nbins
+        """Set orbit histogram nbins by scaling down the data velocity spacing
+
+        Sets the result to attribute `self.hist_bins`
+
+        Parameters
+        ----------
+        oversampling_factor : float
+            scale factor to divide the data velocity spacing
+
+        """
+        data_dv = self.data.meta['dv']
+        orblib_dv = self.data.meta['dv']/oversampling_factor
+        orblib_nbins = self.hist_width/orblib_dv
+        orblib_nbins = int(np.ceil(orblib_nbins))
+        # make nbins odd so histogrammed centered on 0 (allows orbit flipping)
+        if orblib_nbins % 2 == 0:
+            orblib_nbins += 1
         self.hist_bins = orblib_nbins
 
     def get_observed_values_and_uncertainties(self):
