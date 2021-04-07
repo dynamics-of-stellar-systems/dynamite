@@ -9,7 +9,7 @@ import h5py
 
 class Kinematics(data.Data):
     """
-    Kinematics class holding attributes and methods pertaining to kinematics data
+    Kinematics class holding attributes and methods pertaining to kinematic data
     """
     values = []
     def __init__(self,
@@ -23,7 +23,6 @@ class Kinematics(data.Data):
         super().__init__(**kwargs)
         self.weight = weight
         self.type = type
-        # set histogram settings
         if hist_width=='default':
             self.set_default_hist_width()
         else:
@@ -525,10 +524,11 @@ class BayesLOSVD(Kinematics, data.Integrated):
     def __init__(self, **kwargs):
         # super goes left to right, i.e. first calls "Kinematics" __init__, then
         # calls data.Integrated's __init__
-        super().__init__(type='BayesLOSVD', **kwargs)
+        super().__init__(**kwargs)
         self.logger = logging.getLogger(f'{__name__}.{__class__.__name__}')
         if hasattr(self, 'data'):
             self.convert_losvd_columns_to_one_multidimenstional_column()
+            self.set_mean_v_and_sig_v_per_aperture()
 
     def convert_losvd_columns_to_one_multidimenstional_column(self):
         nbins = self.data.meta['nbins']
@@ -593,14 +593,23 @@ class BayesLOSVD(Kinematics, data.Integrated):
         vcent = result['xvel']
         nv = len(vcent)
         completed_bins = [i for i in result.keys() if type(i) is int]
+        completed_bins = np.sort(completed_bins)
         nbins = len(completed_bins)
         losvd_mean = np.zeros((nbins,nv))
         losvd_sigma = np.zeros((nbins,nv))
-        for i in completed_bins:
-            losvd_mean[i] = result[i]['losvd'][2]
-            losvd_sigma[i] = result[i]['losvd'][3] - result[i]['losvd'][1]
+        # completed_bins may have gaps i.e. some bins may not be completed, so
+        # to fill arrays use a counter `i` - do not use completed_bins as index
+        i = 0
+        for bin in completed_bins:
+            losvd_mean[i] = result[bin]['losvd'][2]
+            losvd_sigma[i] = result[bin]['losvd'][3] - result[bin]['losvd'][1]
+            i += 1
         data = table.Table()
-        data['binID'] = completed_bins
+        data['binID_BayesLOSVD'] = completed_bins
+        # BayesLOSVD bin indexing starts at 0 and some bins may not be completed
+        # orblib_f.f90 assumes bins start at 1 and that no bins are skipped
+        # so introduce a new binID which we'll use in DYNAMAMITE
+        data['binID_dynamite'] = np.arange(nbins)+1
         for j in range(nv):
             data[f'losvd_{j}'] = losvd_mean[:,j]
             data[f'dlosvd_{j}'] = losvd_sigma[:,j]
@@ -664,8 +673,10 @@ class BayesLOSVD(Kinematics, data.Integrated):
         ix -= 1
         iy = np.digitize(y, edg_y)
         iy -= 1
-        grid = np.zeros((nx, ny), dtype=int)
-        grid[ix, iy] = result['binID']
+        grid = np.zeros((nx, ny), dtype=int) - 1
+        binID_BayesLOSVD = result['binID']
+        binID_dyn = self.map_binID_blosvd_to_binID_dynamite(binID_BayesLOSVD)
+        grid[ix, iy] = binID_dyn
         comment_line = '#Counterrotaton_binning_version_1\n'
         grid_size = nx*ny
         first_line = '{0}\n'.format(grid_size)
@@ -681,6 +692,42 @@ class BayesLOSVD(Kinematics, data.Integrated):
                 bins_file.write('\n')
         bins_file.write('\n')
         bins_file.close()
+        x_pix = 0.5 * (edg_x[:-1] + edg_x[1:])
+        y_pix = 0.5 * (edg_y[:-1] + edg_y[1:])
+        xx_pix, yy_pix = np.meshgrid(x_pix, y_pix, indexing='ij')
+        self.xx = xx_pix[grid>0]
+        self.dx = dx
+        self.yy = yy_pix[grid>0]
+        self.dy = dy
+        self.binID_dynamite = grid[grid>0]
+        grid = np.zeros((nx, ny), dtype=int) - 1
+        grid[ix, iy] = binID_BayesLOSVD
+        self.binID_BayesLOSVD = grid[grid>-1]
+
+    def map_binID_blosvd_to_binID_dynamite(self, binID_blosvd):
+        """Map an input array of BayesLOSVD binIDs to DYNMAITE binIDs.
+
+        Assumes that the table `self.data` has colums `binID_BayesLOSVD` and
+        `binID_dynamite` which define the mapping. Execution taken from
+        https://stackoverflow.com/q/13572448/11231128
+
+        Parameters
+        ----------
+        binID_blosvd : array
+            array of BayesLOSVD binIDs
+
+        Returns
+        -------
+        type
+            corresponding array of DYNMAITE binIDs
+
+        """
+        idx_srt_binid_blosvd = np.argsort(self.data['binID_BayesLOSVD'])
+        srt_binid_blosvd = self.data['binID_BayesLOSVD'][idx_srt_binid_blosvd]
+        srt_binid_dynamite = self.data['binID_dynamite'][idx_srt_binid_blosvd]
+        index = np.digitize(binID_blosvd, srt_binid_blosvd, right=True)
+        binID_dynamite = srt_binid_dynamite[index]
+        return binID_dynamite
 
     def set_default_hist_width(self):
         self.hist_width = self.data.meta['nvbins']*self.data.meta['dv']
@@ -688,10 +735,26 @@ class BayesLOSVD(Kinematics, data.Integrated):
     def set_default_hist_center(self):
         self.hist_center = np.mean(self.data.meta['vcent'])
 
-    def set_default_hist_bins(self):
-        self.hist_bins = self.data.meta['nvbins']
+    def set_default_hist_bins(self, oversampling_factor=10):
+        data_nbins = self.data.meta['nvbins']
+        orblib_nbins = oversampling_factor * data_nbins
+        self.hist_bins = orblib_nbins
 
+    def get_observed_values_and_uncertainties(self):
+        observed_values = self.data['losvd']
+        uncertainties = self.data['dlosvd']
+        return observed_values, uncertainties
 
+    def set_mean_v_and_sig_v_per_aperture(self):
+        # the marginalised LOSVDs saved by BAYES-losvd do not sum to 1 -
+        # we must account for this when calculating moments
+        losvd = (self.data['losvd'].T/np.sum(self.data['losvd'], 1)).T
+        v_array = self.data.meta['vcent']
+        mu_v = np.sum(v_array * losvd, 1)
+        var_v = np.sum((v_array - mu_v[:,np.newaxis])**2 * losvd, 1).T
+        sig_v = var_v**0.5
+        self.data['v'] = mu_v
+        self.data['sigma'] = sig_v
 
 
 
