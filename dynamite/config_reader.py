@@ -441,11 +441,17 @@ class Configuration(object):
         two_n_obs : 2*n_obs, int
 
         """
-        number_GH = self.settings.weight_solver_settings['number_GH']
         stars = \
           self.system.get_component_from_class(physys.TriaxialVisibleComponent)
-        kin_len = sum([len(kin.data) for kin in stars.kinematic_data])
-        two_n_obs = 2 * number_GH * kin_len
+        n_obs = 0.
+        for k in stars.kinematic_data:
+            if k.type == 'GaussHermite':
+                number_GH = self.settings.weight_solver_settings['number_GH']
+                n_obs += number_GH * len(k.data)
+            if k.type == 'BayesLOSVD':
+                nvbins = k.data.meta['nvbins']
+                n_obs += nvbins * len(k.data)
+        two_n_obs = 2 * n_obs
         return two_n_obs
 
     def remove_existing_orblibs(self):
@@ -695,16 +701,31 @@ class Configuration(object):
             if issubclass(type(c), physys.VisibleComponent): # Check vis. comp.
                 if c.kinematic_data:
                     for kin_data in c.kinematic_data:
-                        if kin_data.type != 'GaussHermite':
-                            self.logger.error('VisibleComponent kinematics '
-                                              'need GaussHermite type')
-                            raise ValueError('VisibleComponent kinematics '
-                                             'need GaussHermite type')
+                        check_gh = (kin_data.type == 'GaussHermite')
+                        check_bl = (kin_data.type == 'BayesLOSVD')
+                        if (not check_gh) and (not check_bl):
+                            self.logger.error('VisibleComponent kinematics type'
+                                              'must be GaussHermite or '
+                                              'BayesLOSVD')
+                            raise ValueError('VisibleComponent kinematics type'
+                                             'must be GaussHermite or '
+                                             'BayesLOSVD')
+                        if check_bl:
+                            # check weight solver type
+                            ws_type = self.settings.weight_solver_settings['type']
+                            if ws_type == 'LegacyWeightSolver':
+                                self.logger.error("LegacyWeightSolver can't be "
+                                                  "used with BayesLOSVD - use "
+                                                  "weight-solver type NNLS")
+                                raise ValueError("LegacyWeightSolver can't be "
+                                                  "used with BayesLOSVD - use "
+                                                  "weight-solver type NNLS")
+
                 else:
-                    self.logger.error('VisibleComponent must have kinematics '
-                                      'of type GaussHermite')
-                    raise ValueError('VisibleComponent must have kinematics '
-                                     'of type GaussHermite')
+                    self.logger.error('VisibleComponent must have kinematics: '
+                                      'either GaussHermite or BayesLOSVD')
+                    raise ValueError('VisibleComponent must have kinematics: '
+                                     'either GaussHermite or BayesLOSVD')
                 if c.symmetry != 'triax':
                     self.logger.error('Legacy mode: VisibleComponent must be '
                                       'triaxial')
