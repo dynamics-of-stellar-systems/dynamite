@@ -69,11 +69,45 @@ class LegacyWeightSolver(WeightSolver):
             CRcut = settings['CRcut']
         self.CRcut = CRcut
         # prepare fortran input file for nnls
+        self.copy_kinematic_data()
         self.create_fortran_input_nnls(self.mod_dir, ml)
+
+    def copy_kinematic_data(self):
+        stars = self.system.get_component_from_class( \
+                                        physys.TriaxialVisibleComponent)
+        kinematics = stars.kinematic_data
+        # convert kinematics to old format to input to fortran
+        for i in np.arange(len(kinematics)):
+            if len(kinematics)==1:
+                old_filename = self.mod_dir+'infil/kin_data.dat'
+            else:
+                old_filename = self.mod_dir+'infil/kin_data_'+str(i)+'.dat'
+            kinematics[i].convert_to_old_format(old_filename)
+        # combine all kinematics into one file
+        if len(kinematics)>1:
+            gh_order = kinematics[0].get_highest_order_gh_coefficient()
+            if not all(kin.get_highest_order_gh_coefficient() == gh_order \
+                       for kin in kinematics[1:]):
+                text = 'Multiple kinematics: all need to have the same ' \
+                       'number of gh coefficients'
+                self.logger.error(text)
+                raise ValueError(text)
+            if not all(isinstance(kin,dyn_kin.GaussHermite) \
+                       for kin in kinematics):
+                text = 'Multiple kinematics: all must be GaussHermite'
+                self.logger.error(text)
+                raise ValueError(text)
+            # make a dummy 'kins_combined' object ...
+            kins_combined = kinematics[0]
+            # ...replace data attribute with stacked table of all kinematics
+            kins_combined.data = table.vstack([k.data for k in kinematics])
+            old_filename = self.mod_dir+'infil/kin_data_combined.dat'
+            kins_combined.convert_to_old_format(old_filename)
 
     def create_fortran_input_nnls(self,path,ml):
 
-        #for the ml the model is only scaled. We therefore need to know what is the ml that was used for the orbit library
+        # when varying ml the LOSVD is scaled - no new orbits are calculated
+        # Therefore we need to know the ml that was used for the orbit library
         infile=path+'infil/parameters_pot.in'
         lines = [line.rstrip('\n').split() for line in open(infile)]
         ml_orblib=float((lines[-9])[0])

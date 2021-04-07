@@ -75,14 +75,18 @@ class LegacyOrbitLibrary(OrbitLibrary):
             stars = self.system.get_component_from_class( \
                                             physys.TriaxialVisibleComponent)
             kinematics = stars.kinematic_data
-            #create the kinematic input files for each kinematic dataset
+            # create the kinematic input files for each kinematic dataset
             for i in np.arange(len(kinematics)):
-                if len(kinematics)==1:
-                    old_filename = self.mod_dir+'infil/kin_data.dat'
-                else:
-                    old_filename = self.mod_dir+'infil/kin_data_'+str(i)+'.dat'
-                kinematics[i].convert_to_old_format(old_filename)
-
+                # # convert kinematics to old format to input to fortran
+                # # only needed if LegacyWeightSolver is used
+                # ws_type = self.settings.weight_solver_settings['type']
+                # if ws_type == 'LegacyWeightSolver':
+                #     if len(kinematics)==1:
+                #         old_filename = self.mod_dir+'infil/kin_data.dat'
+                #     else:
+                #         old_filename = self.mod_dir+'infil/kin_data_'+str(i)+'.dat'
+                #     kinematics[i].convert_to_old_format(old_filename)
+                # copy aperture and bins file across
                 aperture_file = self.in_dir + kinematics[i].aperturefile
                 shutil.copyfile(aperture_file,
                             self.mod_dir+'infil/'+ kinematics[i].aperturefile)
@@ -90,26 +94,29 @@ class LegacyOrbitLibrary(OrbitLibrary):
                 shutil.copyfile(binfile,
                             self.mod_dir+'infil/'+ kinematics[i].binfile)
 
-            #combined kinematics for legacy dynamite
-            if len(kinematics)>1:
-                gh_order = kinematics[0].get_highest_order_gh_coefficient()
-                if not all(kin.get_highest_order_gh_coefficient() == gh_order \
-                           for kin in kinematics[1:]):
-                    text = 'Multiple kinematics: all need to have the same ' \
-                           'number of gh coefficients'
-                    self.logger.error(text)
-                    raise ValueError(text)
-                if not all(isinstance(kin,dyn_kin.GaussHermite) \
-                           for kin in kinematics):
-                    text = 'Multiple kinematics: all must be GaussHermite'
-                    self.logger.error(text)
-                    raise ValueError(text)
-                # make a dummy 'kins_combined' object ...
-                kins_combined = kinematics[0]
-                # ...replace data attribute with stacked table of all kinematics
-                kins_combined.data = table.vstack([k.data for k in kinematics])
-                old_filename = self.mod_dir+'infil/kin_data_combined.dat'
-                kins_combined.convert_to_old_format(old_filename)
+            # # combine all kinematics into one file
+            # # only needed if LegacyWeightSolver is used
+            # ws_type = self.settings.weight_solver_settings['type']
+            # if ws_type == 'LegacyWeightSolver':
+            #     if len(kinematics)>1:
+            #         gh_order = kinematics[0].get_highest_order_gh_coefficient()
+            #         if not all(kin.get_highest_order_gh_coefficient() == gh_order \
+            #                    for kin in kinematics[1:]):
+            #             text = 'Multiple kinematics: all need to have the same ' \
+            #                    'number of gh coefficients'
+            #             self.logger.error(text)
+            #             raise ValueError(text)
+            #         if not all(isinstance(kin,dyn_kin.GaussHermite) \
+            #                    for kin in kinematics):
+            #             text = 'Multiple kinematics: all must be GaussHermite'
+            #             self.logger.error(text)
+            #             raise ValueError(text)
+            #         # make a dummy 'kins_combined' object ...
+            #         kins_combined = kinematics[0]
+            #         # ...replace data attribute with stacked table of all kinematics
+            #         kins_combined.data = table.vstack([k.data for k in kinematics])
+            #         old_filename = self.mod_dir+'infil/kin_data_combined.dat'
+            #         kins_combined.convert_to_old_format(old_filename)
 
             # calculate orbit libary
             self.get_orbit_ics()
