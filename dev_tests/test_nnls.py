@@ -28,10 +28,9 @@ def run_user_test(make_comp=False):
     print('Located at:', dyn.__path__)
 
     # read configuration
-    # if '__file__' in globals():
-    #     os.chdir(os.path.dirname(__file__))
-    # fname = 'user_test_config_ml.yaml'
-    fname = 'GAMA30890_config.yaml'
+    if '__file__' in globals():
+        os.chdir(os.path.dirname(__file__))
+    fname = 'user_test_config_ml.yaml'
     c = dyn.config_reader.Configuration(fname, reset_logging=True)
 
     # delete previous output if available
