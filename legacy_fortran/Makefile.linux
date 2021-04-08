@@ -280,10 +280,11 @@ OBJECTS5_out = nnls95.o iniparam_f.o numeric_kinds_f.o gausherm.o triaxnnls_CRcu
 
 
 triaxnnls_CRcut : $(OBJECTS5_out)
-	$(link) triaxnnls_CRcut $(OBJECTS5_out)   -I$(GALAHADDIR)/modules/$(GALAHADTYPE)  -L$(GALAHADDIR)/objects/$(GALAHADTYPE)  -lgalahad  -lgalahad_hsl -lgalahad_metis -lgalahad_lapack -lgalahad_blas -lgalahad_pardiso -lgalahad_wsmp -lgalahad_spral -lgomp
+	$(link) triaxnnls_CRcut $(OBJECTS5_out)   -I$(GALAHADDIR)/modules/$(GALAHADTYPE)  -L$(GALAHADDIR)/objects/$(GALAHADTYPE)  -lgalahad  -lgalahad_hsl -lgalahad_metis -lgalahad_lapack -lgalahad_blas -lgalahad_mkl_pardiso -lgalahad_pardiso -lgalahad_wsmp -lgalahad_spral -lgomp
 
 triaxnnls_CRcut.o : triaxnnls_CRcut.f90 numeric_kinds_f.o iniparam_f.o
 	$(fortran90) triaxnnls_CRcut.f90  -I$(GALAHADDIR)/modules/$(GALAHADTYPE)  -L$(GALAHADDIR)/objects/$(GALAHADTYPE)
+
 
 ##############################################################
 #
@@ -321,7 +322,7 @@ triaxgasnnls.o : triaxgasnnls.f90 numeric_kinds_f.o iniparam_f.o
 OBJECTS7 = nnls95.o iniparam_f.o numeric_kinds_f.o gausherm.o triaxnnls_noCRcut.o
 
 triaxnnls_noCRcut : $(OBJECTS7)
-	$(link) triaxnnls_noCRcut $(OBJECTS7)   -I$(GALAHADDIR)/modules/$(GALAHADTYPE)  -L$(GALAHADDIR)/objects/$(GALAHADTYPE)  -lgalahad  -lgalahad_hsl -lgalahad_metis -lgalahad_lapack -lgalahad_blas -lgalahad_pardiso -lgalahad_wsmp -lgalahad_spral -lgomp
+	$(link) triaxnnls_noCRcut $(OBJECTS7)   -I$(GALAHADDIR)/modules/$(GALAHADTYPE)  -L$(GALAHADDIR)/objects/$(GALAHADTYPE)  -lgalahad  -lgalahad_hsl -lgalahad_metis -lgalahad_lapack -lgalahad_blas -lgalahad_mkl_pardiso -lgalahad_pardiso -lgalahad_wsmp -lgalahad_spral -lgomp
 
 triaxnnls_noCRcut.o : triaxnnls_noCRcut.f90 numeric_kinds_f.o iniparam_f.o
 	$(fortran90) triaxnnls_noCRcut.f90  -I$(GALAHADDIR)/modules/$(GALAHADTYPE)  -L$(GALAHADDIR)/objects/$(GALAHADTYPE)

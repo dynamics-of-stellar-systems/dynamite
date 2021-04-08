@@ -11,7 +11,7 @@ Welcome to DYNAMITE's documentation!
 How to cite
 ================
 
-This is how to cite our code!
+If you use DYNAMITE, please cite our `ASCL entry <http://www.ascl.net/code/v/2684>`_ using the following `BibTex citation <https://ui.adsabs.harvard.edu/abs/2020ascl.soft11007J/exportcitation>`_
 
 Getting Started
 ================
@@ -20,9 +20,11 @@ To get started with DYNAMITE,
 
 1. Get the code from our `GitHub page <https://github.com/dynamics-of-stellar-systems/dynamite>`_
 2. Install. The `installation page <https://www.univie.ac.at/dynamics/dynamite_docs/installation.html>`_ has the full instructions. An overview is:
+
   a. Install Galahad: do ``./install_Galahad`` in the directory ``legacy_fortran/galahad-2.3/``
   b. Compile the Fortran programs: do ``make all`` in the directory ``legacy_fortran/``
   c. Install DYNAMITE Python package: ``python setup.py install`` in the main directory
+
 3. Here is an example of how you can run a Schwarzschild model in DYNAMITE
 
 .. code-block:: python
@@ -31,11 +33,10 @@ To get started with DYNAMITE,
 
    c = dyn.config_reader.Configuration('my_config.yaml') # read configuration
    parset = c.parspace.get_parset() # extract a parameter set from configuration
-   model = dyn.model.LegacySchwarzschildModel(
+   model = dyn.model.Model(
      system=c.system,
      settings=c.settings,
      parspace=c.parspace,
-     executor=c.executor,
      parset=parset)          # make a Schwarzschild model
    model.setup_directories() # make directory tree
    model.get_orblib()        # make an orbit library
@@ -78,11 +79,13 @@ classes in more detail.
    classes/overview
    classes/configuration
    classes/physical_system
+   classes/orblib
+   classes/weight_solver
    classes/data
+   classes/kinematics
    classes/model
    classes/model_iterator
    classes/parameter_space
-   classes/executor
    classes/plotting
 
 More Information

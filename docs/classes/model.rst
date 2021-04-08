@@ -4,12 +4,21 @@
 Model
 ************
 
-Describe the model class.
+.. automodule:: model
 
-.. toctree::
-   :maxdepth: 2
-   :caption: Hello:
+The `Model` class
+==================
 
-   orblib
-   weight_solver
-   orbit_colouring
+.. autoclass:: Model
+  :members:
+
+The `AllModels` class
+=====================
+
+.. autoclass:: AllModels
+  :members:
+
+Inheritance Diagram
+===================
+
+.. inheritance-diagram:: model

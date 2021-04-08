@@ -173,7 +173,7 @@ class Model(object):
 
     The model can be run by running the methods (i) get_orblib, (ii) get_weights
     and (iii) (in the future) do_orbit_colouring. Running each of these methods
-    will return the appropriate object, e.g. model.get_orblib() --> returns an 
+    will return the appropriate object, e.g. model.get_orblib() --> returns an
     OrbitLibrary object model.get_weights(...) --> returns a WeightSolver object
     '''
     def __init__(self,
@@ -288,55 +288,6 @@ class Model(object):
         self.weights = weights
         return weight_solver
 
-
-class LegacySchwarzschildModel(Model):
-
-    def __init__(self,
-                 **kwargs):
-        super().__init__(**kwargs)
-        # directory of the Schwarzschild fortran files
-        self.legacy_directory = self.settings.legacy_settings['directory']
-        # directory of the input kinematics
-        self.in_dir = self.settings.io_settings['input_directory']
-        self.directory = self.get_model_directory()
-        # TODO: replace following with use string.split() or /../
-        self.directory_noml=self.directory[:-7]
-
-    def setup_directories(self):
-        # create self.directory if it doesn't exist
-        self.create_model_directory(self.directory)
-        # and also the model directories
-        self.create_model_directory(self.directory_noml+'infil/')
-        self.create_model_directory(self.directory_noml+'datfil/')
-
-    def get_orblib(self):
-        # make orbit libary object
-        orblib = dyn_orblib.LegacyOrbitLibrary(
-                system=self.system,
-                mod_dir=self.directory_noml,
-                settings=self.settings.orblib_settings,
-                legacy_directory=self.legacy_directory,
-                input_directory=self.settings.io_settings['input_directory'],
-                parset=self.parset)
-        orblib.get_orblib()
-        orblib.read_losvd_histograms()
-        return orblib
-
-    def get_weights(self, orblib):
-        # create the weight solver object
-        weight_solver = ws.LegacyWeightSolver(
-                system=self.system,
-                mod_dir=self.directory_noml,
-                settings=self.settings.weight_solver_settings,
-                legacy_directory=self.legacy_directory,
-                ml=self.parset['ml'])
-        # TODO: extract other outputs e.g. orbital weights
-        weights, chi2_tot, chi2_kin = weight_solver.solve(orblib)
-        # store chi2 to the model
-        self.chi2 = chi2_tot # instrinsic/projected mass + GH coeeficients 1-Ngh
-        self.kinchi2 = chi2_kin # GH coeeficients 1-Ngh
-        self.weights = weights
-        return weight_solver
 
 
 # end

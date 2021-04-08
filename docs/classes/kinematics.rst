@@ -6,8 +6,17 @@ Kinematics
 
 Describe the Kinematics class.
 
-.. toctree::
-   :maxdepth: 2
-   :caption: Kinematics:
+Gauss Hermite Kinematics
+========================
 
-   gauss_hermite_kinematics
+Some text.
+
+BayesLOSVD Kinematics
+=====================
+
+Some text.
+
+Inheritance Diagram
+===================
+
+.. inheritance-diagram:: kinematics

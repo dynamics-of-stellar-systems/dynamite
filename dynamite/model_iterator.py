@@ -122,7 +122,7 @@ class ModelIterator(object):
                 text = 'iteration must be None or an integer.'
                 self.logger.error(text)
                 raise ValueError(text)
-        plot_dir = settings.io_settings['output_directory'] + '/plots/'
+        plot_dir = settings.io_settings['plot_directory']
         which_chi2 = settings.parameter_space_settings['which_chi2']
 
         # (kin)chi2 vs. model id plot

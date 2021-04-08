@@ -6,10 +6,9 @@ Created on Mon Feb 15 08:54:48 2021
 @author: sabine
 """
 
+import os
 import dynamite as dyn
 import physical_system as physys
-import os
-import shutil
 
 print('DYNAMITE')
 print('    version', dyn.__version__)
@@ -18,18 +17,9 @@ print('    installed at ', dyn.__path__)
 fname = 'FCC047_2kin/FCC047_config.yaml'
 
 c = dyn.config_reader.Configuration(fname, reset_logging=True)
-
-io_settings = c.settings.io_settings
-outdir = io_settings['output_directory']
-# delete previous output if available
-models_folder = outdir + 'models/'
-models_file = outdir + io_settings['all_models_file']
-shutil.rmtree(models_folder, ignore_errors=True)
-if os.path.isfile(models_file):
-    os.remove(models_file)
-plotdir = outdir + 'plots/'
-if not os.path.isdir(plotdir):
-    os.mkdir(plotdir)
+c.remove_existing_orblibs()
+c.remove_existing_all_models_file()
+plotdir = c.settings.io_settings['plot_directory']
 
 print(type(c.system))
 print(type(c.settings))
