@@ -27,7 +27,8 @@ logger.info(f'Located at: {dyn.__path__}')
 # read configuration
 # if '__file__' in globals():
 #     os.chdir(os.path.dirname(__file__))
-fname = 'GAMA30890_config.yaml'
+# fname = 'GAMA30890_config.yaml'
+fname = 'FCC047_2kin/FCC047_config.yaml'
 c = dyn.config_reader.Configuration(fname, reset_logging=False)
 
 io_settings = c.settings.io_settings
@@ -76,8 +77,10 @@ chi2_vs_model_id.savefig(plotfile_chi2)
 chi2_plot = theplotter.make_chi2_plot()
 chi2_plot.savefig(plotfile_triangle)
 
-kinmap = theplotter.plot_kinematic_maps(cbar_lims='data')
-kinmap.savefig(plotfile_kinmap)
+kinmap = theplotter.plot_kinematic_maps(kin_set='all', cbar_lims='data')
+for f, k in kinmap:
+    name, ext = os.path.splitext(plotfile_kinmap)
+    f.savefig(f'{name}-{k}{ext}')
 
 text = f'Look at {plotfile_chi2}, {plotfile_triangle}, and {plotfile_kinmap}'
 logger.info(text)

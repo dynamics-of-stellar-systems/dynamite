@@ -270,26 +270,42 @@ class Plotter():
         Taken from schw_kin.py.
         Note: kin_set should be the index of the data set,
         e.g. kin_set=0 , kin_set=1. Default is kin_set=0.
+        If kin_set=='all', kinematic maps for all kinematics are plotted
+        and a list of (fig,kin_set_name) is returned where fig are figure
+        objects and kin_set_name are the names of the kinematics sets.
         """
+        stars = \
+          self.system.get_component_from_class(physys.TriaxialVisibleComponent)
+        n_kin = len(stars.kinematic_data)
+        #########################################
+        if kin_set == 'all':
+            self.logger.info(f'Plotting kinematic maps for {n_kin} kin_sets.')
+            figures = []
+            for i in range(n_kin):
+                fig = self.plot_kinematic_maps(model=model,
+                                               kin_set=i,
+                                               cbar_lims=cbar_lims)
+                figures.append((fig, stars.kinematic_data[i].name))
+            return figures # returns a list of (fig,kin_name) tuples
+        #########################################
+        if kin_set >= n_kin:
+            text = f'kin_set must be < {n_kin}, but it is {kin_set}'
+            self.logger.error(text)
+            raise ValueError(text)
+        self.logger.info(f'Plotting kinematic maps for kin_set no {kin_set}: '
+                         f'{stars.kinematic_data[kin_set].name}')
+
         if model is None:
             which_chi2 = self.settings.parameter_space_settings['which_chi2']
             models_done = np.where(self.all_models.table['all_done'])
             min_chi2 = min(m[which_chi2]
                            for m in self.all_models.table[models_done])
-            self.all_models.table.add_index(which_chi2)
-            model_id = self.all_models.table.loc_indices[min_chi2]
+            t = self.all_models.table.copy(copy_data=True) # deep copy!
+            t.add_index(which_chi2)
+            model_id = t.loc_indices[min_chi2]
             model = self.all_models.get_model_from_row(model_id)
         kinem_fname = model.get_model_directory() + 'nn_kinem.out'
         body_kinem = np.genfromtxt(kinem_fname, skip_header=1)
-
-        stars = \
-          self.system.get_component_from_class(physys.TriaxialVisibleComponent)
-        n_kin = len(stars.kinematic_data)
-        if kin_set >= n_kin:
-            text = f'kin_set must be < {n_kin}, but it is {kin_set}'
-            self.logger.error(text)
-            raise ValueError(text)
-        self.logger.info(f'Plotting kinematic maps for kin_set={kin_set}')
 
         first_bin = sum(k.n_apertures for k in stars.kinematic_data[:kin_set])
         n_bins = stars.kinematic_data[kin_set].n_apertures

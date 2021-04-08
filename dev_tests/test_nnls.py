@@ -54,7 +54,7 @@ def run_user_test(make_comp=False):
         os.remove(plotfile_chi2)
 
     # re-read configuration now that old output has been deleted
-    fname = 'user_test_config_ml.yaml'
+    # fname = 'user_test_config_ml.yaml'
     c = dyn.config_reader.Configuration(fname, silent=True)
 
     compare_file = outdir + "chi2_compare_ml_" \

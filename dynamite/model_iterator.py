@@ -16,7 +16,8 @@ class ModelIterator(object):
                  model_kwargs={},
                  do_dummy_run=None,
                  dummy_chi2_function=None,
-                 ncpus=1):
+                 ncpus=1,
+                 plots=True):
         self.logger = logging.getLogger(f'{__name__}.{__class__.__name__}')
 
         stopping_crit = settings.parameter_space_settings['stopping_criteria']
@@ -62,7 +63,8 @@ class ModelIterator(object):
             self.logger.info(f'{par_generator_type}: "iteration '
                         f'{total_iter_count}"')
             status = model_inner_iterator.run_iteration()
-            self.make_in_progress_plots(settings, iteration)
+            if plots:
+                self.make_in_progress_plots(settings, iteration)
 
     def make_in_progress_plots(self, settings, iteration=None,
                                chi2_progress=None,
@@ -80,17 +82,30 @@ class ModelIterator(object):
         settings : Settings object
             Needed for plot directory and which_chi2 setting.
         iteration : int, optional
-            Iteration counter; mandatory for automatic file names.
+            Iteration counter; if defined, it will be included in all
+            file names just before the file extension.
             The default is None.
         chi2_progress : str, optional
-            File name of the (kin)chi2 vs. model id plot. If None, the
-            file name will be created automatically. The default is None.
+            File name of the (kin)chi2 vs. model id plot. Can include
+            an extension (default is .png). If a path
+            is included, it will be relative to the plot directory.
+            If None, the file name will be created automatically.
+            The default is None.
         chi2_plot : str, optional
-            File name of the "chi2 plot". If None, the
-            file name will be created automatically. The default is None.
+            File name of the "chi2 plot". Can include an extension
+            (default is .png). If a path
+            is included, it will be relative to the plot directory.
+            If None, the file name will be created automatically.
+            The default is None.
         kin_map : str, optional
-            File name of the kinematic map. If None, the
-            file name will be created automatically. The default is None.
+            Template file name kin_base.kin_ext of the kinematic maps.
+            Can include an extension kin_ext (.png will be assumed if
+            extension is missing).
+            For each kinematics data set named kin_name, the kinematic
+            map will be saved as f'{kin_base}_{kin_name}{kin_ext}'.
+            If a path is included, it will be relative to the plot directory.
+            If None, the file names will be created automatically.
+            The default is None.
 
         Raises
         ------
@@ -103,28 +118,49 @@ class ModelIterator(object):
         None.
 
         """
-        if (chi2_progress is None or chi2_plot is None or kin_map is None) \
-            and type(iteration) is not int:
-                text = 'iteration must be an integer when automatic file ' + \
-                       'names are used.'
+        if type(iteration) is not int and iteration is not None:
+                text = 'iteration must be None or an integer.'
                 self.logger.error(text)
                 raise ValueError(text)
         plot_dir = settings.io_settings['output_directory'] + '/plots/'
         which_chi2 = settings.parameter_space_settings['which_chi2']
-        if chi2_progress is None:
-            chi2_progress = f'{which_chi2}_progress_plot_{iteration}'
-        chi2_progress = plot_dir + chi2_progress
-        if chi2_plot is None:
-            chi2_plot = f'{which_chi2}_plot_{iteration}'
-        chi2_plot = plot_dir + chi2_plot
-        if kin_map is None:
-            kin_map = f'kinematics_map_{iteration}'
-        kin_map = plot_dir + kin_map
-        self.delete_if_exists([chi2_progress, chi2_plot, kin_map])
 
+        # (kin)chi2 vs. model id plot
+        chi2_progress = self._build_plot_filename(chi2_progress,
+                                                 f'{which_chi2}_progress_plot',
+                                                 iteration)
+        chi2_progress = plot_dir + chi2_progress
+        self.delete_if_exists(chi2_progress)
         self.the_plotter.make_chi2_vs_model_id_plot().savefig(chi2_progress)
+
+        # model parameters plot
+        chi2_plot = self._build_plot_filename(chi2_plot,
+                                             f'{which_chi2}_plot',
+                                             iteration)
+        chi2_plot = plot_dir + chi2_plot
+        self.delete_if_exists(chi2_plot)
         self.the_plotter.make_chi2_plot().savefig(chi2_plot)
-        self.the_plotter.plot_kinematic_maps(cbar_lims='data').savefig(kin_map)
+
+        # kinematic maps
+        fig_list = self.the_plotter.plot_kinematic_maps(kin_set='all',
+                                                        cbar_lims='data')
+        for fig, kin_name in fig_list:
+            fig_file = None if kin_map is None else f'{kin_map}_{kin_name}'
+            fig_file = self._build_plot_filename(fig_file,
+                                                 f'kinematics_map_{kin_name}',
+                                                 iteration)
+            fig_file = plot_dir + fig_file
+            self.delete_if_exists(fig_file)
+            fig.savefig(fig_file)
+
+    def _build_plot_filename(self, f_name, default, iteration):
+        f, ext = (default, '') if f_name is None else os.path.splitext(f_name)
+        if ext == '':
+            ext = '.png'
+        if iteration is not None: # add iteration to base file name
+            f += f'_{iteration}'
+        f += ext # add file extension
+        return f
 
     def delete_if_exists(self, files):
         """
@@ -152,8 +188,8 @@ class ModelIterator(object):
                 if os.path.isfile(f):
                     os.remove(f)
         elif type(files) == str:
-            if os.path.isfile(f):
-                os.remove(f)
+            if os.path.isfile(files):
+                os.remove(files)
         else:
             text = 'files must be of type str, list, or tuple.'
             self.logger.error(text)
