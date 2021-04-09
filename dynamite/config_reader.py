@@ -725,11 +725,12 @@ class Configuration(object):
                                      f'or GeneralisedNFW, not {type(c)}')
 
         gen_type = self.settings.parameter_space_settings["generator_type"]
-        if gen_type != 'GridWalk' and gen_type != 'LegacyGridSearch':
-            self.logger.error('Legacy mode: parameter space generator_type '
-                              'must be GridWalk or LegacyGridSearch')
-            raise ValueError('Legacy mode: parameter space generator_type '
-                             'must be GridWalk or LegacyGridSearch')
+        allowed_types = ['GridWalk', 'LegacyGridSearch', 'FullGrid']
+        if gen_type not in allowed_types:
+            text = f'Legacy mode: parameter space generator_type ' \
+                   f'must be in {allowed_types}'
+            self.logger.error(text)
+            raise ValueError(text)
         chi2abs = self.__class__.thresh_chi2_abs
         chi2scaled = self.__class__.thresh_chi2_scaled
         gen_set=self.settings.parameter_space_settings.get('generator_settings')

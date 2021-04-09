@@ -66,7 +66,7 @@ def run_user_test(make_comp=False):
 #    c.all_models.table.pprint_all() # This only works in astropy 3.2 or later
     c.all_models.table.pprint(max_lines=-1, max_width=-1)
 
-    if make_comp is False:
+    if not make_comp:
         # plot the models
         plt.figure()
         plt.scatter(c.all_models.table['which_iter'],

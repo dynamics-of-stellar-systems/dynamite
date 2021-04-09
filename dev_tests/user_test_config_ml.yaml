@@ -156,7 +156,8 @@ weight_solver_settings:
 
 parameter_space_settings:
     generator_type: "LegacyGridSearch"
-    #generator_type: "GridWalk"
+    # generator_type: "GridWalk"
+    # generator_type: "FullGrid"
     which_chi2: "chi2"
     generator_settings:
         specificsetting: 25
