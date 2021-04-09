@@ -527,10 +527,10 @@ class BayesLOSVD(Kinematics, data.Integrated):
         super().__init__(**kwargs)
         self.logger = logging.getLogger(f'{__name__}.{__class__.__name__}')
         if hasattr(self, 'data'):
-            self.convert_losvd_columns_to_one_multidimenstional_column()
+            self.convert_losvd_columns_to_one_multidimensional_column()
             self.set_mean_v_and_sig_v_per_aperture()
 
-    def convert_losvd_columns_to_one_multidimenstional_column(self):
+    def convert_losvd_columns_to_one_multidimensional_column(self):
         nbins = self.data.meta['nbins']
         nv = self.data.meta['nvbins']
         losvd_mean = np.zeros((nbins,nv))
@@ -542,6 +542,25 @@ class BayesLOSVD(Kinematics, data.Integrated):
             self.data.remove_column(f'dlosvd_{j}')
         self.data['losvd'] = losvd_mean
         self.data['dlosvd'] = losvd_sigma
+
+    def convert_multidimensional_losvd_columns_to_univariate(self):
+        nbins = self.data.meta['nbins']
+        nv = self.data.meta['nvbins']
+        losvd_mean = self.data['losvd']
+        losvd_sigma = self.data['losvd']
+        for j in range(nv):
+            self.data[f'losvd_{j}'] = losvd_mean[:,j]
+            self.data[f'dlosvd_{j}'] = losvd_sigma[:,j]
+        self.data.remove_column('losvd')
+        self.data.remove_column('dlosvd')
+
+    def save_data_table(self, outfile=None):
+        if outfile is None:
+            outfile = self.datafile
+            if hasattr(self, 'input_directory'):
+                outfile = self.input_directory + outfile
+        self.convert_multidimensional_losvd_columns_to_univariate()
+        self.data.write(outfile, format='ascii.ecsv', overwrite=True)
 
     def load_hdf5(self, filename):
         """Load a *.hdf5 file containing results from BAYES-LOSVD
@@ -649,8 +668,8 @@ class BayesLOSVD(Kinematics, data.Integrated):
 
             Given image co-ordinates x, gives (i) the likely pixel spacing dx
             assuming x are from a regular grid, and dx is the minimum spacing
-            between sorted x, (ii) the minimum of the range, (iii) the number of
-            pixels, (iii) pixel edges
+            between sorted x, (ii) the minimum x in the range, (iii) the number
+            of pixels, (iii) the pixel edges
 
             ** this will fail if there are no adjacent values in x **
 
@@ -683,6 +702,12 @@ class BayesLOSVD(Kinematics, data.Integrated):
         # get bin IDs
         binID_bl = result['binID'][idx]
         binID_dyn = self.map_binID_blosvd_to_binID_dynamite(binID_bl)
+        # get bin centers and add to the data table
+        xbin = result['xbin'] - x_center
+        ybin = result['ybin'] - y_center
+        self.data['xbin'] = xbin[self.data['binID_BayesLOSVD']]
+        self.data['ybin'] = ybin[self.data['binID_BayesLOSVD']]
+        self.save_data_table()
         # get pixel sizes
         min_x, x_rng, x_edg, x_cnt, dx, nx = get_pixel_info(x)
         min_y, y_rng, y_edg, y_cnt, dy, ny = get_pixel_info(y)
@@ -722,12 +747,6 @@ class BayesLOSVD(Kinematics, data.Integrated):
                 bins_file.write('\n')
         bins_file.write('\n')
         bins_file.close()
-        xx_pix, yy_pix = np.meshgrid(x_cnt, y_cnt, indexing='ij')
-        self.xx = xx_pix[grid>0]
-        self.dx = dx
-        self.yy = yy_pix[grid>0]
-        self.dy = dy
-        self.binID_dynamite = grid[grid>0]
 
     def map_binID_blosvd_to_binID_dynamite(self, binID_blosvd):
         """Map an input array of BayesLOSVD binIDs to DYNMAITE binIDs.

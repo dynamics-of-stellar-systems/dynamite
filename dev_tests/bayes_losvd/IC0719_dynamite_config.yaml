@@ -123,10 +123,10 @@ system_parameters:
 
 orblib_settings:
     nE: 8
-    logrmin: -0.5
-    logrmax: 2.5
-    nI2: 5        # must be >= 4
-    nI3: 4
+    logrmin: -0.75  # log arcsec
+    logrmax: 2.00  # log arcsec
+    nI2: 6        # must be >= 4
+    nI3: 5
     dithering: 1
     #the following values should usually not be changed
     orbital_periods: 200
