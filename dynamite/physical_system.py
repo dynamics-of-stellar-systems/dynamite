@@ -236,7 +236,7 @@ class Component(object):
         """
         isvalid = np.all(np.sign(tuple(par.values())) >= 0)
         if not isvalid:
-            self.logger.debug(f'Non-negative parset: {par}')
+            self.logger.debug(f'Not a non-negative parset: {par}')
         return isvalid
 
     def get_parname(self, par):

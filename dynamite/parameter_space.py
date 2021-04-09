@@ -116,6 +116,16 @@ class ParameterSpace(list):
         return parameter
 
     def get_parset(self):
+        """
+        Returns a parset (row of an Astropy Table) corresponding to the
+        parameter values in the ParameterSpace object.
+
+        Returns
+        -------
+        parset : row of an Astropy Table
+            Contains the values of the individual parameters.
+
+        """
         t = Table()
         for par in self:
             raw_value = par.value
@@ -125,31 +135,67 @@ class ParameterSpace(list):
         parset = t[0]
         return parset
 
-    def validate_parset(self, parset):
+    def validate_parspace(self):
         """
         Validates the values of each component's parameters by calling the
-        individual components' validate_parameter methods. Does the same for
+        individual components' validate_parset methods. Does the same for
         system parameters.
 
-        Parameters
-        ----------
-        parset : list of Parameter objects
+        Raises
+        ------
+        ValueError
+            If checks fail due to various reasons.
 
         Returns
         -------
-        bool
-            True if validation was successful, False otherwise
+        None.
 
         """
-        isvalid = True
         for comp in self.system.cmp_list:
-            par = {comp.get_parname(p.name):p.value for p in parset \
+            par = {comp.get_parname(p.name):p.value for p in self \
                    if p.name.rfind(f'{comp.name}')>=0}
-            isvalid = isvalid and comp.validate_parset(par)
-        par = {p.name:p.value for p in parset \
+            if not comp.validate_parset(par):
+                text = f'Parameters {par} of component {comp.name} failed ' \
+                       'to validate.'
+                self.logger.error(text)
+                raise ValueError(text)
+        par = {p.name:p.value for p in self \
                if p.name in [n.name for n in self.system.parameters]}
-        isvalid = isvalid and self.system.validate_parset(par)
-        return isvalid
+        if not self.system.validate_parset(par):
+            text = f'System parameters {par} failed to validate.'
+            self.logger.error(text)
+            raise ValueError(text)
+        # Now, check for violoating allowed parameter ranges
+        for p in self:
+            if type(p.par_generator_settings) is dict:
+                try:
+                    lo = p.par_generator_settings['lo']
+                except:
+                    text = f"Parameter {p.name}={p.value}: cannot check " \
+                           "lower bound due to missing 'lo' setting."
+                    self.logger.warning(text)
+                else:
+                    if not (lo <= p.value):
+                        text = f'Parameter {p.name}={p.value} out of ' \
+                               f'bounds: violates {lo}<={p.value}.'
+                        self.logger.error(text)
+                        raise ValueError(text)
+                try:
+                    hi = p.par_generator_settings['hi']
+                except:
+                    text = f"Parameter {p.name}={p.value}: cannot check " \
+                           "upper bound due to missing 'hi' setting."
+                    self.logger.warning(text)
+                else:
+                    if not (p.value <= hi):
+                        text = f'Parameter {p.name}={p.value} out of ' \
+                               f'bounds: violates {p.value}<={hi}.'
+                        self.logger.error(text)
+                        raise ValueError(text)
+            else:
+                self.logger.warning(f"Parameter {p.name}={p.value}: cannot " \
+                    "check bounds due to missing 'lo' and 'hi' settings.")
+
 
 class ParameterGenerator(object):
 
