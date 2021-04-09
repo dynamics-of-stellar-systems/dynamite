@@ -123,8 +123,8 @@ system_parameters:
 
 orblib_settings:
     nE: 8
-    logrmin: -0.75  # log arcsec
-    logrmax: 2.00  # log arcsec
+    logrmin: -0.5  # log arcsec
+    logrmax: 2.75  # log arcsec
     nI2: 6        # must be >= 4
     nI3: 5
     dithering: 1

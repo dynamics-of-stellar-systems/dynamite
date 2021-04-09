@@ -508,6 +508,7 @@ class Histogram(object):
         self.y = tmp
 
     def scale_x_values(self, scale_factor):
+        self.xedg *= scale_factor
         self.x *= scale_factor
         self.dx *= scale_factor
 
@@ -518,6 +519,16 @@ class Histogram(object):
         mean /= norm
         return mean
 
+    def get_sigma(self):
+        na = np.newaxis
+        mean = self.get_mean()
+        v_minus_mu = self.x[na,:,na]-mean[:,na,:]
+        var = np.sum(v_minus_mu**2. * self.y * self.dx[na,:,na],
+                     axis=1)
+        norm = self.get_normalisation()
+        var /= norm
+        sigma = var**0.5
+        return sigma
 
 class BayesLOSVD(Kinematics, data.Integrated):
 
@@ -623,6 +634,12 @@ class BayesLOSVD(Kinematics, data.Integrated):
             losvd_mean[i] = result[bin]['losvd'][2]
             losvd_sigma[i] = result[bin]['losvd'][3] - result[bin]['losvd'][1]
             i += 1
+        # BAYES-LOSVD returns the velocity array (and losvds) in descening order
+        # let's flip them to make it easier to work with later
+        vcent = vcent[::-1]
+        losvd_mean = losvd_mean[:,::-1]
+        losvd_sigma = losvd_sigma[:,::-1]
+        # put them in a table
         data = table.Table()
         data['binID_BayesLOSVD'] = completed_bins
         # BayesLOSVD bin indexing starts at 0 and some bins may be missing, but:
@@ -837,6 +854,33 @@ class BayesLOSVD(Kinematics, data.Integrated):
         self.data['v'] = mu_v
         self.data['sigma'] = sig_v
 
+    def transform_orblib_to_observables(self, losvd_histograms):
+        v_cent, dv = np.array(self.data.meta['vcent']), self.data.meta['dv']
+        v_edg = np.concatenate(((v_cent-dv/2.), [v_cent[-1]+dv/2.]))
+        dx = losvd_histograms.dx[0]
+        assert np.allclose(losvd_histograms.dx, dx), 'vbins must be uniform'
+        # construct matrix to re-bin orbits to the data velocity spacing
+        # j_
+        na = np.newaxis
+        # the boudaries of the i'th data vbin:
+        v_i = v_edg[:-1,na]
+        v_ip1 = v_edg[1:,na]
+        # the boudaries of the j'th orblib vbin:
+        x_j = losvd_histograms.xedg[na,:-1]
+        x_jp1 = losvd_histograms.xedg[na,1:]
+        # the fraction of the j'th orblib vbin in the i'th data vbin:
+        f1 = (x_jp1 - v_i)/dx
+        f2 = (v_ip1 - x_j)/dx
+        f1[f1>1] = 1
+        f1[f1<0] = 0
+        f2[f2>1] = 1
+        f2[f2<0] = 0
+        f = np.minimum(f1, f2)
+        # TODO:  check if the following is faster if we use sparseness of f
+        # sparse matrix multiplication won't work with einsum, but may be faster
+        rebined_orbit_vel_hist = np.einsum('ijk,lj->ilk', losvd_histograms.y, f,
+                                           optimize=True)
+        return rebined_orbit_vel_hist
 
 
 
