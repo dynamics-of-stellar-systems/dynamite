@@ -606,9 +606,10 @@ class BayesLOSVD(Kinematics, data.Integrated):
             i += 1
         data = table.Table()
         data['binID_BayesLOSVD'] = completed_bins
-        # BayesLOSVD bin indexing starts at 0 and some bins may not be completed
-        # orblib_f.f90 assumes bins start at 1 and that no bins are skipped
-        # so introduce a new binID which we'll use in DYNAMAMITE
+        # BayesLOSVD bin indexing starts at 0 and some bins may be missing, but:
+        # 1) orblib_f.f90 assumes bins start at 1
+        # 2) LegacyOrbitLibrary.read_orbit_base assumes that no bins are missing
+        # so let's introduce a binID_dynamite which satisfies these requirements
         data['binID_dynamite'] = np.arange(nbins)+1
         for j in range(nv):
             data[f'losvd_{j}'] = losvd_mean[:,j]
@@ -622,6 +623,7 @@ class BayesLOSVD(Kinematics, data.Integrated):
     def write_aperture_and_bin_files(self,
                                      filename=None,
                                      angle_deg=0.,
+                                     center='max_flux',
                                      aperture_filename='aperture.dat',
                                      bin_filename='bins.dat'):
         """Write aperture.dat and 'bins.dat' files from BAYES-LOSVD output
@@ -633,49 +635,77 @@ class BayesLOSVD(Kinematics, data.Integrated):
         angle_deg : float
             Angle in degrees measured counter clockwise from the galaxy major
             axis to the X-axis of the input data
+        center : tuple or string
+            either pair of floats (x0,y0) defining center in pixel co-ordinates
+            or string 'max_flux'
         aperture_filename : string
             name of aperture file
         bin_filename : string
             name of bins file
 
         """
+        def get_pixel_info(x):
+            """Get pixel information for aperture.dat given 1D image co-ords
+
+            Given image co-ordinates x, gives (i) the likely pixel spacing dx
+            assuming x are from a regular grid, and dx is the minimum spacing
+            between sorted x, (ii) the minimum of the range, (iii) the number of
+            pixels, (iii) pixel edges
+
+            ** this will fail if there are no adjacent values in x **
+
+            """
+            ux = np.unique(x) # this is sorted
+            dx = ux[1:] - ux[:-1]
+            dx = np.min(dx)
+            min_x, max_x = ux[0], ux[-1]
+            nx = np.round((max_x - min_x)/dx) + 1
+            x_cnt = min_x + np.arange(nx) * dx
+            x_edg = np.concatenate((x_cnt-dx/2., [x_cnt[-1]+dx/2.]))
+            x_rng = x_edg[-1] - x_edg[0]
+            min_x_rng = x_edg[0]
+            return min_x_rng, x_rng, x_edg, x_cnt, dx, int(nx)
         result = self.load_hdf5(filename)
-        # get x data
-        x = result['x']
-        ux = np.unique(x) # returns a sorted array
-        nx = len(ux)
-        dx = ux[1]-ux[0]
-        edg_x = np.concatenate((ux-dx/2., [ux[-1]+dx/2.]))
-        minx, maxx = np.min(edg_x), np.max(edg_x)
-        # get y data
-        y = result['y']
-        uy = np.unique(y) # returns a sorted array
-        ny = len(uy)
-        dy = uy[1]-uy[0]
-        edg_y = np.concatenate((uy-dy/2., [uy[-1]+dy/2.]))
-        miny, maxy = np.min(edg_y), np.max(edg_y)
+        # find bins which appear in the data table
+        idx = np.isin(result['binID'], self.data['binID_BayesLOSVD'])
+        x = result['x'][idx]
+        y = result['y'][idx]
+        # center the object
+        if center is 'max_flux':
+            pixel_flux = result['flux'][idx]
+            idx_max_flux = np.argmax(pixel_flux)
+            x_center = x[idx_max_flux]
+            y_center = y[idx_max_flux]
+        else:
+            x_center, y_center = center
+        x -= x_center
+        y -= y_center
+        # get bin IDs
+        binID_bl = result['binID'][idx]
+        binID_dyn = self.map_binID_blosvd_to_binID_dynamite(binID_bl)
+        # get pixel sizes
+        min_x, x_rng, x_edg, x_cnt, dx, nx = get_pixel_info(x)
+        min_y, y_rng, y_edg, y_cnt, dy, ny = get_pixel_info(y)
         # Create aperture.dat
         aperture_file = open(aperture_filename, 'w')
         aperture_file.write('#counter_rotation_boxed_aperturefile_version_2 \n')
-        string = '\t{0:<.6f}\t{1:<.6f} \n'.format(minx, miny)
+        string = '\t{0:<.6f}\t{1:<.6f} \n'.format(min_x, min_y)
         aperture_file.write(string)
-        string = '\t{0:<.6f}\t{1:<.6f} \n'.format(maxx-minx, maxy-miny)
+        string = '\t{0:<.6f}\t{1:<.6f} \n'.format(x_rng, y_rng)
         aperture_file.write(string)
         string = '\t{0:<.6f} \n'.format(angle_deg)
         aperture_file.write(string)
-        string = '\t{0}\t{1} \n'.format(int(nx), int(ny))
+        string = '\t{0}\t{1} \n'.format(nx, ny)
         aperture_file.write(string)
         string = ' aperture = -(hst_pa) + 90 \n'
         aperture_file.write(string)
         aperture_file.close()
         # Write bins.dat file
-        ix = np.digitize(x, edg_x)
+        ix = np.digitize(x, x_edg)
         ix -= 1
-        iy = np.digitize(y, edg_y)
+        iy = np.digitize(y, y_edg)
         iy -= 1
-        grid = np.zeros((nx, ny), dtype=int) - 1
-        binID_BayesLOSVD = result['binID']
-        binID_dyn = self.map_binID_blosvd_to_binID_dynamite(binID_BayesLOSVD)
+        grid = np.zeros((nx, ny), dtype=int)
         grid[ix, iy] = binID_dyn
         comment_line = '#Counterrotaton_binning_version_1\n'
         grid_size = nx*ny
@@ -692,24 +722,19 @@ class BayesLOSVD(Kinematics, data.Integrated):
                 bins_file.write('\n')
         bins_file.write('\n')
         bins_file.close()
-        x_pix = 0.5 * (edg_x[:-1] + edg_x[1:])
-        y_pix = 0.5 * (edg_y[:-1] + edg_y[1:])
-        xx_pix, yy_pix = np.meshgrid(x_pix, y_pix, indexing='ij')
+        xx_pix, yy_pix = np.meshgrid(x_cnt, y_cnt, indexing='ij')
         self.xx = xx_pix[grid>0]
         self.dx = dx
         self.yy = yy_pix[grid>0]
         self.dy = dy
         self.binID_dynamite = grid[grid>0]
-        grid = np.zeros((nx, ny), dtype=int) - 1
-        grid[ix, iy] = binID_BayesLOSVD
-        self.binID_BayesLOSVD = grid[grid>-1]
 
     def map_binID_blosvd_to_binID_dynamite(self, binID_blosvd):
         """Map an input array of BayesLOSVD binIDs to DYNMAITE binIDs.
 
         Assumes that the table `self.data` has colums `binID_BayesLOSVD` and
-        `binID_dynamite` which define the mapping. Execution taken from
-        https://stackoverflow.com/q/13572448/11231128
+        `binID_dynamite` which define the mapping. Any binID_blosvd with no
+        corresponding binID_dynamite are given binID_dynamite=0.
 
         Parameters
         ----------
@@ -722,11 +747,18 @@ class BayesLOSVD(Kinematics, data.Integrated):
             corresponding array of DYNMAITE binIDs
 
         """
+        # first find binID_blosvd's which have no corresponding binID_dynamite
+        idx_missing = np.isin(binID_blosvd, self.data['binID_BayesLOSVD'])
+        idx_missing = np.where(idx_missing==False)
+        # do the mapping - the method to do this is taken from
+        # https://stackoverflow.com/q/13572448/11231128
         idx_srt_binid_blosvd = np.argsort(self.data['binID_BayesLOSVD'])
         srt_binid_blosvd = self.data['binID_BayesLOSVD'][idx_srt_binid_blosvd]
         srt_binid_dynamite = self.data['binID_dynamite'][idx_srt_binid_blosvd]
         index = np.digitize(binID_blosvd, srt_binid_blosvd, right=True)
         binID_dynamite = srt_binid_dynamite[index]
+        # for missing entries, replace with 0
+        binID_dynamite[idx_missing] = 0
         return binID_dynamite
 
     def set_default_hist_width(self, scale=2.):

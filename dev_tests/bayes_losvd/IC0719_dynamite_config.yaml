@@ -11,7 +11,7 @@
 system_attributes:
     distMPc: 28.6
     name: "IC0719"
-    position_angle: 53.
+    position_angle: 37. # -53.+90.
 
 system_components:
 
@@ -98,7 +98,7 @@ system_components:
         include: True
         contributes_to_potential: True
         kinematics:
-            MUSE_calcium_triplet:
+            MUSE_CaT:
                 weight: 1.0
                 type: BayesLOSVD
                 datafile: "bayes_losvd_kins.ecsv"
@@ -122,9 +122,9 @@ system_parameters:
 ###############################################################################
 
 orblib_settings:
-    nE: 6
-    logrmin: -0.101275
-    logrmax: 1.99123
+    nE: 8
+    logrmin: -0.5
+    logrmax: 2.5
     nI2: 5        # must be >= 4
     nI3: 4
     dithering: 1

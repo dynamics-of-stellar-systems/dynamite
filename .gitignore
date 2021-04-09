@@ -31,6 +31,7 @@ dev_tests/FCC047_2kin
 dev_tests/GAMA30890
 dev_tests/test_validate_pqu_output
 dev_tests/bayes_losvd/IC0719_input/*
+dev_tests/bayes_losvd/IC0719_output/*
 dev_tests/bayes_losvd/.ipynb_checkpoints/*
 docs/_build/
 docs/.DS_Store
