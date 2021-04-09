@@ -13,7 +13,6 @@ class AllModels(object):
     def __init__(self,
                  system=None,
                  from_file=True,
-                 filename='all_models.ecsv',
                  settings=None,
                  parspace=None):
 

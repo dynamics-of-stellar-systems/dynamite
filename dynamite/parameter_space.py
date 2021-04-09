@@ -135,6 +135,32 @@ class ParameterSpace(list):
         parset = t[0]
         return parset
 
+    def validate_parset(self, parset):
+        """
+        Validates the values of each component's parameters by calling the
+        individual components' validate_parameter methods. Does the same for
+        system parameters. Used by the parameter generators.
+
+        Parameters
+        ----------
+        parset : list of Parameter objects
+
+        Returns
+        -------
+        bool
+            True if validation was successful, False otherwise
+
+        """
+        isvalid = True
+        for comp in self.system.cmp_list:
+            par = {comp.get_parname(p.name):p.value for p in parset \
+                   if p.name.rfind(f'{comp.name}')>=0}
+            isvalid = isvalid and comp.validate_parset(par)
+        par = {p.name:p.value for p in parset \
+               if p.name in [n.name for n in self.system.parameters]}
+        isvalid = isvalid and self.system.validate_parset(par)
+        return isvalid
+
     def validate_parspace(self):
         """
         Validates the values of each component's parameters by calling the
@@ -173,7 +199,7 @@ class ParameterSpace(list):
                 except:
                     text = f"Parameter {p.name}={p.value}: cannot check " \
                            "lower bound due to missing 'lo' setting."
-                    self.logger.warning(text)
+                    self.logger.info(text)
                 else:
                     if not (lo <= p.value):
                         text = f'Parameter {p.name}={p.value} out of ' \
@@ -185,7 +211,7 @@ class ParameterSpace(list):
                 except:
                     text = f"Parameter {p.name}={p.value}: cannot check " \
                            "upper bound due to missing 'hi' setting."
-                    self.logger.warning(text)
+                    self.logger.info(text)
                 else:
                     if not (p.value <= hi):
                         text = f'Parameter {p.name}={p.value} out of ' \
@@ -193,7 +219,7 @@ class ParameterSpace(list):
                         self.logger.error(text)
                         raise ValueError(text)
             else:
-                self.logger.warning(f"Parameter {p.name}={p.value}: cannot " \
+                self.logger.info(f"Parameter {p.name}={p.value}: cannot " \
                     "check bounds due to missing 'lo' and 'hi' settings.")
 
 
