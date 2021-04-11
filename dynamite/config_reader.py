@@ -4,6 +4,7 @@ import shutil
 import glob
 import math
 import logging
+import importlib
 
 import yaml
 import dynamite as dyn
@@ -131,15 +132,15 @@ class Configuration(object):
         None.
 
         """
-        self.logger = logging.getLogger(f'{__name__}.{__class__.__name__}')
-        logger = self.logger
         if reset_logging is True:
-            logger.info('Resetting logging configuration')
             DynamiteLogging()
-            logger.debug('Logging set to Dynamite defaults')
+            self.logger = logging.getLogger(f'{__name__}.{__class__.__name__}')
+            self.logger.debug('Logging reset to Dynamite defaults')
         else:
-            logger.debug("Dynamite uses the calling application's logging "
-                         "settings")
+            self.logger = logging.getLogger(f'{__name__}.{__class__.__name__}')
+            self.logger.debug("Dynamite uses the calling application's "
+                              "logging settings")
+        logger = self.logger
         self.logger.debug(f'This is Python {sys.version.split()[0]}')
         self.logger.debug(f'Using DYNAMITE version {dyn.__version__} '
                           f'located at {dyn.__path__}')
@@ -783,7 +784,7 @@ class Configuration(object):
 class DynamiteLogging(object):
     """
     Dynamite logging setup. ONLY use if logging has not been configured
-    outside of Dynamite.
+    outside of Dynamite. Resets all logging.
     If no arguments are give, the logging setup is as follows:
     (1) log to the console with logging level INFO, messages include the level,
         timestamp, class name, and message text
@@ -817,10 +818,11 @@ class DynamiteLogging(object):
         None.
 
         """
+        logging.shutdown()
+        importlib.reload(logging)
         logger = logging.getLogger()       # create logger
-        logger.setLevel(logging.DEBUG)     # set level that's lower that wanted
-
-        ch = logging.StreamHandler()       # create console logging handler
+        logger.setLevel(logging.DEBUG)     # set level that's lower than wanted
+        ch = logging.StreamHandler(stream=sys.stderr) # create console handler
         ch.setLevel(console_level)         # set console logging level
         # create formatter
         if console_formatter is None:
@@ -831,7 +833,7 @@ class DynamiteLogging(object):
         logger.addHandler(ch)              # add the handler to the logger
 
         if logfile:
-            fh = logging.FileHandler(logfile, mode='w') # create handler
+            fh = logging.FileHandler(logfile, mode='w') # create file handler
             fh.setLevel(logfile_level)             # set file logging level
             # create formatter
             # formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
