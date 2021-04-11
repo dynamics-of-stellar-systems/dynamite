@@ -38,10 +38,10 @@ class Settings(object):
         elif kind == 'io_settings':
             try:
                 out_dir = values['output_directory']
-            except KeyError:
+            except KeyError as e:
                 text = 'Output directory not set in config file.'
                 self.logger.error(text)
-                raise KeyError(text)
+                raise Exception(text) from e
             self.io_settings = values
             self.io_settings['model_directory'] = out_dir + 'models/'
             self.io_settings['plot_directory'] = out_dir + 'plots/'
@@ -179,7 +179,7 @@ class Configuration(object):
                     self.params['io_settings'][io+'_directory'] += '/'
         except:
             logger.error('io_settings: check input_directory '
-                         'and output_directory')
+                         'and output_directory in config file')
             raise
         self.settings.add('io_settings', self.params['io_settings'])
         logger.debug('io_settings assigned to Settings object')
