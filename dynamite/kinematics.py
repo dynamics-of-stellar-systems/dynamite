@@ -558,7 +558,7 @@ class BayesLOSVD(Kinematics, data.Integrated):
         nbins = self.data.meta['nbins']
         nv = self.data.meta['nvbins']
         losvd_mean = self.data['losvd']
-        losvd_sigma = self.data['losvd']
+        losvd_sigma = self.data['dlosvd']
         for j in range(nv):
             self.data[f'losvd_{j}'] = losvd_mean[:,j]
             self.data[f'dlosvd_{j}'] = losvd_sigma[:,j]
@@ -631,7 +631,9 @@ class BayesLOSVD(Kinematics, data.Integrated):
         # to fill arrays use a counter `i` - do not use completed_bins as index
         i = 0
         for bin in completed_bins:
+            # get median LOSVD
             losvd_mean[i] = result[bin]['losvd'][2]
+            # get 68% BCI
             losvd_sigma[i] = result[bin]['losvd'][3] - result[bin]['losvd'][1]
             i += 1
         # BAYES-LOSVD returns the velocity array (and losvds) in descening order
