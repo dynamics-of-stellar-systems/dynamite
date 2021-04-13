@@ -7,6 +7,7 @@ import logging
 from scipy import optimize
 import cvxopt
 import physical_system as physys
+import kinematics as dyn_kin
 
 class WeightSolver(object):
 
@@ -374,10 +375,9 @@ class NNLS(WeightSolver):
         if 'CRcut' in settings.keys():
             CRcut = settings['CRcut']
         self.CRcut = CRcut
-        self.get_observed_constraints()
-        self.ennumerate_constraints()
+        self.get_observed_mass_constraints()
 
-    def get_observed_constraints(self):
+    def get_observed_mass_constraints(self):
         stars = \
           self.system.get_component_from_class(physys.TriaxialVisibleComponent)
         mge = stars.mge_lum
@@ -393,40 +393,20 @@ class NNLS(WeightSolver):
         self.total_mass = np.sum(intrinsic_masses)
         self.total_mass_error = np.min([self.intrinsic_mass_error/10.,
                                         np.abs(1. - self.total_mass)])
-        # get observed gh values and errors
-        obs_gh_list = []
-        obs_gh_err_list = []
-        for kinematics in stars.kinematic_data:
-            tmp = kinematics.get_observed_values_and_uncertainties()
-            obs_gh, obs_gh_err = tmp
-            obs_gh_list += [obs_gh]
-            obs_gh_err_list += [obs_gh_err]
-        obs_gh = np.vstack(obs_gh_list)
-        obs_gh_err = np.vstack(obs_gh_err_list)
-        # ... and scale both by projected masses
-        obs_gh = (obs_gh.T * self.projected_masses).T
-        obs_gh_err = (obs_gh_err.T * self.projected_masses).T
-        self.obs_gh = obs_gh
-        self.obs_gh_err = obs_gh_err
-
-    def ennumerate_constraints(self):
-        # enumerate constriants
+        # enumerate the mass constriants
         n_intrinsic = np.product(self.intrinsic_masses.shape)
         n_apertures = len(self.projected_masses)
-        # NOTE: n_apertures = total number of apertures for ALL kinematic sets
-        n_gh = self.settings['number_GH']
-        # constraints = tot mass, intrinsic masses, projected masses, kinematics
-        n_total_constraints = 1 + n_intrinsic + n_apertures + n_gh * n_apertures
         self.n_intrinsic = n_intrinsic
         self.n_apertures = n_apertures
-        self.n_gh = n_gh
-        self.n_total_constraints = n_total_constraints
+        # mass constraints = total mass (1) + intrinsic mass + aperture mass
+        self.n_mass_constraints = 1 + n_intrinsic + n_apertures
 
     def construct_nnls_matrix_and_rhs(self, orblib):
-        # vectors of observed constraints, errors, and orbit properties
-        con = np.zeros(self.n_total_constraints)
-        econ = np.zeros(self.n_total_constraints)
-        orbmat = np.zeros((self.n_total_constraints, orblib.n_orbs))
+        # construct vector of observed constraits (con), errors (econ) and
+        # matrix or orbit proprtites (orbmat)
+        con = np.zeros(self.n_mass_constraints)
+        econ = np.zeros(self.n_mass_constraints)
+        orbmat = np.zeros((self.n_mass_constraints, orblib.n_orbs))
         # total mass
         con[0] = self.total_mass
         econ[0] = self.total_mass_error
@@ -448,60 +428,69 @@ class NNLS(WeightSolver):
         con[idx] = self.projected_masses
         econ[idx] = np.abs(self.projected_masses * self.projected_mass_error)
         orbmat[idx,:] = np.hstack(orblib.projected_masses).T
-        # kinematics
-        idx = slice(1+self.n_intrinsic+self.n_apertures, None)
-        con[idx] = np.ravel(self.obs_gh.T)
-        econ[idx] = np.ravel(self.obs_gh_err.T)
-        # convert orblib to GH coefficients given the observed vals of (v,sigma)
-        # to mimic `triaxnnnls_CRcut.f90`
-        # Set the first and last point in the velocity histograms to zero
-        nkins = len(orblib.losvd_histograms)
-        for i in range(nkins):
-            orblib.losvd_histograms[i].y[:,0,:] = 0.
-            orblib.losvd_histograms[i].y[:,-1,:] = 0.
-        stars = \
-          self.system.get_component_from_class(physys.TriaxialVisibleComponent)
-        orb_gh_list = []
+        # add kinematics to con, econ, orbmat
+        triax_component = physys.TriaxialVisibleComponent
+        stars = self.system.get_component_from_class(triax_component)
         kins_and_orb_losvds = zip(stars.kinematic_data, orblib.losvd_histograms)
-        for (kin, orb_losvd) in kins_and_orb_losvds:
-            orb_gh_list += [kin.transform_orblib_to_observables(orb_losvd)]
-        orb_gh = np.hstack(orb_gh_list)
-        # apply 'CRcut' - cutting orbits where |V - V_obs|> 3sigma_obs
-        # see Zhu+2018 MNRAS 2018 473 3000 for details
-        if self.CRcut:
-            orb_mu_v_list = []
-            for orb_losvd in orblib.losvd_histograms:
-                orb_mu_v_list += [orb_losvd.get_mean()]
-            orb_mu_v = np.hstack(orb_mu_v_list)
-            all_kin_data = table.vstack([k.data for k in stars.kinematic_data])
-            obs_mu_v = all_kin_data['v']
-            obs_sig_v = all_kin_data['sigma']
-            delta_v = np.abs(orb_mu_v - obs_mu_v)
-            condition1 = (np.abs(obs_mu_v)/obs_sig_v > 1.5)
-            condition2 = (delta_v/obs_sig_v > 3.0)
-            condition3 = (obs_mu_v*orb_mu_v < 0)
-            idx_cut = np.where(condition1 & condition2 & condition3)
-            cut = np.zeros_like(orb_mu_v, dtype=bool)
-            cut[idx_cut] = True
-            naperture_cut = np.sum(cut, 1)
-            # orbit 'j' is "bad" in naperture_cut[j] apertures
-            # if an orbit is bad in 0 or 1 apertures, then we ignore this
-            cut[naperture_cut<1,:] = False
-            # to cut an orbit, replace it's h1 by 3.0/dvhist(i)
-            idx_cut = np.where(cut)
-            dvhist = [k.hist_width/k.hist_bins for k in stars.kinematic_data]
-            dvhist = np.max(dvhist)
-            # NOTE:  this should in theory be replaced by individual dvhists for
-            # each kinematic data set. However, arguably not worth doing, if we
-            orb_gh[idx_cut[0], idx_cut[1], 0] = 3./dvhist
-        orb_gh = np.swapaxes(orb_gh, 1, 2)
-        orb_gh = np.reshape(orb_gh, (orblib.n_orbs,-1))
-        idx_start = 1 + self.n_intrinsic + self.n_apertures
-        orbmat[idx_start:,:] = orb_gh.T
+        idx_ap_start = 0
+        for (kins, orb_losvd) in kins_and_orb_losvds:
+            # pick out the projected masses for this kinematic set
+            n_ap = len(kins.data)
+            idx_ap_end = idx_ap_start + n_ap
+            prj_mass_i = self.projected_masses[idx_ap_start:idx_ap_end]
+            idx_ap_start += n_ap
+            # scale observed kinematics and errors by projected masses
+            tmp = kins.get_observed_values_and_uncertainties(self.settings)
+            obs_kins, obs_kins_err = tmp
+            obs_kins = (obs_kins.T * prj_mass_i).T
+            obs_kins_err = (obs_kins_err.T * prj_mass_i).T
+            # set the first and last point in the velocity histograms to zero
+            # to mimic what is done in `triaxnnnls_CRcut.f90`
+            orb_losvd.y[:,0,:] = 0.
+            orb_losvd.y[:,-1,:] = 0.
+            # transform orblib to same parameterisation as observed kinematics
+            orb_kins = kins.transform_orblib_to_observables(orb_losvd,
+                                                            self.settings)
+            if self.CRcut:
+                # note: this only has an effect if type(kins) is GaussHermite
+                orb_kins = self.apply_CR_cut(kins, orb_losvd, orb_kins)
+            # append constraints/errors/orbits to con/econ/orbmat
+            obs_kins = np.ravel(obs_kins)
+            con = np.concatenate((con, obs_kins))
+            obs_kins_err = np.ravel(obs_kins_err)
+            econ = np.concatenate((econ, obs_kins_err))
+            orb_kins = np.reshape(orb_kins, (orblib.n_orbs, -1))
+            orbmat = np.vstack((orbmat, orb_kins.T))
         # divide constraint vector and matrix by errors
         rhs = con/econ
         orbmat = (orbmat.T/econ).T
         return orbmat, rhs
+
+    def apply_CR_cut(self, kins, orb_losvd, orb_gh):
+        # apply 'CRcut' - cutting orbits where |V - V_obs|> 3sigma_obs
+        # see Zhu+2018 MNRAS 2018 473 3000 for details
+        if type(kins) is not dyn_kin.GaussHermite:
+            return orb_gh
+        orb_mu_v = orb_losvd.get_mean()
+        obs_mu_v = kins.data['v']
+        obs_sig_v = kins.data['sigma']
+        delta_v = np.abs(orb_mu_v - obs_mu_v)
+        condition1 = (np.abs(obs_mu_v)/obs_sig_v > 1.5)
+        condition2 = (delta_v/obs_sig_v > 3.0)
+        condition3 = (obs_mu_v*orb_mu_v < 0)
+        idx_cut = np.where(condition1 & condition2 & condition3)
+        cut = np.zeros_like(orb_mu_v, dtype=bool)
+        cut[idx_cut] = True
+        naperture_cut = np.sum(cut, 1)
+        # orbit 'j' is "bad" in naperture_cut[j] apertures
+        # if an orbit is bad in 0 or 1 apertures, then we ignore this
+        cut[naperture_cut<1,:] = False
+        # to cut an orbit, replace it's h1 by 3.0/dvhist(i)
+        idx_cut = np.where(cut)
+        dvhist = kins.hist_width/kins.hist_bins
+        dvhist = np.max(dvhist)
+        orb_gh[idx_cut[0], idx_cut[1], 0] = 3./dvhist
+        return orb_gh
 
     def solve(self, orblib):
         """Solve for orbit weights
@@ -554,7 +543,7 @@ class NNLS(WeightSolver):
             # calculate chi2s
             chi2_vector = (np.dot(A, weights) - b)**2.
             chi2_tot = np.sum(chi2_vector)
-            chi2_kin = np.sum(chi2_vector[1+self.n_intrinsic+self.n_apertures:])
+            chi2_kin = np.sum(chi2_vector[self.n_mass_constraints:])
             # save the output
             results = table.Table()
             results['weights'] = weights

@@ -384,9 +384,10 @@ class GaussHermite(Kinematics, data.Integrated):
         h *= 2 * np.pi**0.5 # pre-factor in eqn 7
         return h
 
-    def transform_orblib_to_observables(self, losvd_histograms, max_gh_order=None):
-        if max_gh_order is None:
-            max_gh_order = self.max_gh_order
+    def transform_orblib_to_observables(self,
+                                        losvd_histograms,
+                                        weight_solver_settings):
+        max_gh_order = weight_solver_settings['number_GH']
         v_mu = self.data['v']
         v_sig = self.data['sigma']
         orblib_gh_coefs = self.get_gh_expansion_coefficients(
@@ -405,9 +406,8 @@ class GaussHermite(Kinematics, data.Integrated):
         orblib_gh_coefs = orblib_gh_coefs[:,:,1:]
         return orblib_gh_coefs
 
-    def get_observed_values_and_uncertainties(self, max_gh_order=None):
-        if max_gh_order is None:
-            max_gh_order = self.max_gh_order
+    def get_observed_values_and_uncertainties(self, weight_solver_settings):
+        max_gh_order = weight_solver_settings['number_GH']
         # construct observed values
         observed_values = np.zeros((self.n_apertures, max_gh_order))
         # h1, h2 = 0, 0
@@ -422,6 +422,14 @@ class GaussHermite(Kinematics, data.Integrated):
         # uncertainties h3, h4, etc... are taken from data table
         for i in range(3, self.max_gh_order+1):
             uncertainties[:,i-1] = self.data[f'dh{i}']
+        # add the systematic uncertainties
+        systematics = weight_solver_settings['GH_sys_err']
+        if type(systematics) is str:
+            systematics = systematics.split(' ')
+            systematics = [float(x) for x in systematics]
+        systematics = np.array(systematics)
+        systematics = systematics[0:max_gh_order]
+        uncertainties = (uncertainties**2. + systematics**2.)**0.5
         return observed_values, uncertainties
 
     def set_default_hist_width(self, n_sig=3.):
@@ -840,11 +848,6 @@ class BayesLOSVD(Kinematics, data.Integrated):
             orblib_nbins += 1
         self.hist_bins = orblib_nbins
 
-    def get_observed_values_and_uncertainties(self):
-        observed_values = self.data['losvd']
-        uncertainties = self.data['dlosvd']
-        return observed_values, uncertainties
-
     def set_mean_v_and_sig_v_per_aperture(self):
         # the marginalised LOSVDs saved by BAYES-losvd do not sum to 1 -
         # we must account for this when calculating moments
@@ -856,13 +859,12 @@ class BayesLOSVD(Kinematics, data.Integrated):
         self.data['v'] = mu_v
         self.data['sigma'] = sig_v
 
-    def transform_orblib_to_observables(self, losvd_histograms):
+    def rebin_orblib_to_observations(self, losvd_histograms):
         v_cent, dv = np.array(self.data.meta['vcent']), self.data.meta['dv']
         v_edg = np.concatenate(((v_cent-dv/2.), [v_cent[-1]+dv/2.]))
         dx = losvd_histograms.dx[0]
         assert np.allclose(losvd_histograms.dx, dx), 'vbins must be uniform'
         # construct matrix to re-bin orbits to the data velocity spacing
-        # j_
         na = np.newaxis
         # the boudaries of the i'th data vbin:
         v_i = v_edg[:-1,na]
@@ -870,7 +872,7 @@ class BayesLOSVD(Kinematics, data.Integrated):
         # the boudaries of the j'th orblib vbin:
         x_j = losvd_histograms.xedg[na,:-1]
         x_jp1 = losvd_histograms.xedg[na,1:]
-        # the fraction of the j'th orblib vbin in the i'th data vbin:
+        # f = the fraction of the j'th orblib vbin in the i'th data vbin:
         f1 = (x_jp1 - v_i)/dx
         f2 = (v_ip1 - x_j)/dx
         f1[f1>1] = 1
@@ -880,13 +882,25 @@ class BayesLOSVD(Kinematics, data.Integrated):
         f = np.minimum(f1, f2)
         # TODO:  check if the following is faster if we use sparseness of f
         # sparse matrix multiplication won't work with einsum, but may be faster
-        rebined_orbit_vel_hist = np.einsum('ijk,lj->ilk', losvd_histograms.y, f,
+        rebined_orbit_vel_hist = np.einsum('ijk,lj->ilk',
+                                           losvd_histograms.y,
+                                           f,
                                            optimize=True)
         return rebined_orbit_vel_hist
 
+    def transform_orblib_to_observables(self,
+                                        losvd_histograms,
+                                        weight_solver_settings):
+        losvd_histograms = self.rebin_orblib_to_observations(losvd_histograms)
+        # losvd_histograms has shape (n_orbs, n_vbins, n_aperture)
+        # weight solver expects (n_orbs, n_aperture, n_vbins)
+        losvd_histograms = np.swapaxes(losvd_histograms, 1, 2)
+        return losvd_histograms
 
-
-
-
+    def get_observed_values_and_uncertainties(self, weight_solver_settings):
+        # weight solver expects arrays of shape (n_aperture, n_vbins)
+        observed_values = self.data['losvd'] # shape = (n_aperture, n_vbins)
+        uncertainties = self.data['dlosvd'] # shape = (n_aperture, n_vbins)
+        return observed_values, uncertainties
 
 # end
