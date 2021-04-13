@@ -523,25 +523,42 @@ class Configuration(object):
             self.logger.warning(f'Directory {plot_dir} not found, cannot '
                                 'remove plots.')
 
-    def remove_existing_all_models_file(self):
+    def remove_existing_all_models_file(self, wipe_other_files=False):
         """
-        Deletes the all models file if it exists and resets
-        self.all_models to an empty AllModels object.
+        Deletes the all models file if it exists and optionally removes
+        all other regular files in the output directory. Additionally
+        resets self.all_models to an empty AllModels object.
+
+        Parameters
+        ----------
+        wipe_other_files : bool, optional
+            If True, all regular files in the output directory will be
+            deleted and a new backup of the config file will be created.
+            If False, only the all models file will be removed.
+            The default is False.
 
         Raises
         ------
-        Exception if all models file cannot be removed.
+        Exception if file(s) cannot be removed.
 
         Returns
         -------
         None.
 
         """
-        all_models_file = self.settings.io_settings['output_directory'] \
-                          + self.settings.io_settings['all_models_file']
-        if os.path.isfile(all_models_file):
-            os.remove(all_models_file)
-            self.logger.info(f'Deleted existing {all_models_file}.')
+        if wipe_other_files:
+            output_dir = self.settings.io_settings['output_directory']
+            for f in glob.glob(f'{output_dir}*'):
+                if os.path.isfile(f):
+                    os.remove(f)
+            self.backup_config_file()
+            self.logger.info(f'Removed files in {output_dir}.')
+        else:
+            all_models_file = self.settings.io_settings['output_directory'] \
+                              + self.settings.io_settings['all_models_file']
+            if os.path.isfile(all_models_file):
+                os.remove(all_models_file)
+                self.logger.info(f'Deleted existing {all_models_file}.')
         self.all_models = model.AllModels(parspace=self.parspace,
                                           settings=self.settings,
                                           system=self.system)

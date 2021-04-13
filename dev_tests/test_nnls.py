@@ -35,7 +35,7 @@ def run_user_test(make_comp=False):
 
     # delete previous output if available
     c.remove_existing_orblibs()
-    c.remove_existing_all_models_file()
+    c.remove_existing_all_models_file(wipe_other_files=False)
 
     plotdir = c.settings.io_settings['plot_directory']
     plotfile_ml = plotdir + 'ml_vs_iter_chi2.png'
