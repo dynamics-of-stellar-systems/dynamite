@@ -38,7 +38,7 @@ system_components:
                 LaTeX: "$c_{NFW}$"
                 par_generator_settings:
                     lo: 1.0
-                    hi: 2.0
+                    hi: 10.0
                     step: 0.1
                     minstep: 0.05
             f: # NFW Darkmatter fraction
