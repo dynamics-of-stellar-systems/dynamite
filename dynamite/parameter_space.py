@@ -199,9 +199,9 @@ class ParameterSpace(list):
                 except:
                     text = f"Parameter {p.name}={p.value}: cannot check " \
                            "lower bound due to missing 'lo' setting."
-                    self.logger.info(text)
+                    self.logger.debug(text)
                 else:
-                    if not (lo <= p.value):
+                    if lo > p.value:
                         text = f'Parameter {p.name}={p.value} out of ' \
                                f'bounds: violates {lo}<={p.value}.'
                         self.logger.error(text)
@@ -211,15 +211,15 @@ class ParameterSpace(list):
                 except:
                     text = f"Parameter {p.name}={p.value}: cannot check " \
                            "upper bound due to missing 'hi' setting."
-                    self.logger.info(text)
+                    self.logger.debug(text)
                 else:
-                    if not (p.value <= hi):
+                    if p.value > hi:
                         text = f'Parameter {p.name}={p.value} out of ' \
                                f'bounds: violates {p.value}<={hi}.'
                         self.logger.error(text)
                         raise ValueError(text)
             else:
-                self.logger.info(f"Parameter {p.name}={p.value}: cannot " \
+                self.logger.debug(f"Parameter {p.name}={p.value}: cannot " \
                     "check bounds due to missing 'lo' and 'hi' settings.")
 
 
@@ -238,9 +238,9 @@ class ParameterGenerator(object):
         self.parspace_settings = parspace_settings
         which_chi2 = self.parspace_settings.get('which_chi2')
         if which_chi2 not in ['chi2', 'kinchi2']:
-          text = 'Unknown or missing which_chi2 setting, use chi2 or kinchi2'
-          self.logger.error(text)
-          raise ValueError(text)
+            text = 'Unknown or missing which_chi2 setting, use chi2 or kinchi2'
+            self.logger.error(text)
+            raise ValueError(text)
         self.chi2 = 'chi2' if which_chi2 == 'chi2' else 'kinchi2'
         self.status = {}
         self.name = name
