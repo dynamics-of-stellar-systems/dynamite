@@ -108,7 +108,7 @@ class Plotter():
         ----------
         which_chi2 : STR, optional
             Determines whether chi2 or kinchi2 is used. If None, the setting
-            in the configuration file's parameter settings is used. 
+            in the configuration file's parameter settings is used.
             Must be None, 'chi2', or 'kinchi2'. The default is None.
 
         Raises
@@ -304,6 +304,22 @@ class Plotter():
             t.add_index(which_chi2)
             model_id = t.loc_indices[min_chi2]
             model = self.all_models.get_model_from_row(model_id)
+
+        # currently this only works for GaussHermite's and LegacyWeightSolver
+        kin_type = type(stars.kinematic_data[kin_set])
+        if kin_type is not dyn.kinematics.GaussHermite:
+            self.logger.info(f'kinematic maps cannot be plot for {kin_type} - '
+                             'only GaussHermite')
+            fig = plt.figure(figsize=(27, 12))
+            return fig
+        weight_solver = model.get_weights()
+        ws_type = type(weight_solver)
+        if ws_type is not dyn.weight_solver.LegacyWeightSolver:
+            self.logger.info('kinematic maps cannot be plot for weight solver '
+                             f'{ws_type} - only LegacyWeightSolver')
+            fig = plt.figure(figsize=(27, 12))
+            return fig
+
         kinem_fname = model.get_model_directory() + 'nn_kinem.out'
         body_kinem = np.genfromtxt(kinem_fname, skip_header=1)
 
@@ -559,7 +575,7 @@ class Plotter():
 
     def version_p(self):
         return sys.version.split()[0]
-    
+
     def version_f(self):
         v = subprocess.run("gfortran --version", capture_output=True, shell=True, \
             check=True).stdout.decode('utf-8').split(sep='\n')[0].split()[-1]
