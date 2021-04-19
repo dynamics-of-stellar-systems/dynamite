@@ -7,6 +7,8 @@ from matplotlib.ticker import MaxNLocator
 import matplotlib.pyplot as plt
 from plotbin import sauron_colormap as pb_sauron_colormap
 import dynamite as dyn
+import kinematics
+import weight_solvers
 from plotbin import display_pixels
 # from loess.loess_2d import loess_2d
 import physical_system as physys
@@ -307,14 +309,14 @@ class Plotter():
 
         # currently this only works for GaussHermite's and LegacyWeightSolver
         kin_type = type(stars.kinematic_data[kin_set])
-        if kin_type is not dyn.kinematics.GaussHermite:
+        if kin_type is not kinematics.GaussHermite:
             self.logger.info(f'kinematic maps cannot be plot for {kin_type} - '
                              'only GaussHermite')
             fig = plt.figure(figsize=(27, 12))
             return fig
         weight_solver = model.get_weights()
         ws_type = type(weight_solver)
-        if ws_type is not dyn.weight_solver.LegacyWeightSolver:
+        if ws_type is not weight_solvers.LegacyWeightSolver:
             self.logger.info('kinematic maps cannot be plot for weight solver '
                              f'{ws_type} - only LegacyWeightSolver')
             fig = plt.figure(figsize=(27, 12))
