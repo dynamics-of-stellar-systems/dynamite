@@ -35,7 +35,7 @@ def run_user_test(make_comp=False):
 
     # delete previous output if available
     c.remove_existing_orblibs()
-    c.remove_existing_all_models_file()
+    c.remove_existing_all_models_file(wipe_other_files=False)
 
     plotdir = c.settings.io_settings['plot_directory']
     plotfile_ml = plotdir + 'ml_vs_iter_chi2.png'
@@ -66,7 +66,7 @@ def run_user_test(make_comp=False):
 #    c.all_models.table.pprint_all() # This only works in astropy 3.2 or later
     c.all_models.table.pprint(max_lines=-1, max_width=-1)
 
-    if make_comp is False:
+    if not make_comp:
         # plot the models
         plt.figure()
         plt.scatter(c.all_models.table['which_iter'],

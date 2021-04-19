@@ -1,10 +1,11 @@
 import os
 import subprocess
 import shutil
+# import copy
 import logging
 import numpy as np
 from scipy.io import FortranFile
-from astropy import table
+# from astropy import table
 
 import sys
 this_dir = os.path.dirname(__file__)
@@ -112,7 +113,7 @@ class LegacyOrbitLibrary(OrbitLibrary):
             #             self.logger.error(text)
             #             raise ValueError(text)
             #         # make a dummy 'kins_combined' object ...
-            #         kins_combined = kinematics[0]
+            #         kins_combined = copy.deepcopy(kinematics[0])
             #         # ...replace data attribute with stacked table of all kinematics
             #         kins_combined.data = table.vstack([k.data for k in kinematics])
             #         old_filename = self.mod_dir+'infil/kin_data_combined.dat'

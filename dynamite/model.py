@@ -1,5 +1,5 @@
 import os
-# import shutil #used to easily copy files
+import copy
 import numpy as np
 from astropy import table
 from astropy.io import ascii
@@ -13,7 +13,6 @@ class AllModels(object):
     def __init__(self,
                  system=None,
                  from_file=True,
-                 filename='all_models.ecsv',
                  settings=None,
                  parspace=None):
 
@@ -141,13 +140,26 @@ class AllModels(object):
         parset = self.table[row_id][self.parspace.par_names]
         return parset
 
+    def get_model_from_parset(self, parset):
+        if parset not in [row[self.parspace.par_names] for row in self.table]:
+            text = f'parset not in all_models table. parset={parset}, ' \
+                   f'all_models table: {self.table}'
+            self.logging.error(text)
+            raise ValueError(text)
+        mod = Model(system=self.system,
+                    settings=self.settings,
+                    parspace=self.parspace,
+                    parset=parset)
+        return mod
+
     def get_model_from_row(self, row_id):
         parset0 = self.get_parset_from_row(row_id)
-        mod0 = Model(system=self.system,
-                     settings=self.settings,
-                     parspace=self.parspace,
-                     parset=parset0)
-        return mod0
+        mod = self.get_model_from_parset(parset0)
+        # mod0 = Model(system=self.system,
+        #              settings=self.settings,
+        #              parspace=self.parspace,
+        #              parset=parset0)
+        return mod
 
     def save(self):
         self.table.write(self.filename, format='ascii.ecsv', overwrite=True)
@@ -187,6 +199,7 @@ class Model(object):
 
         """
         self.logger = logging.getLogger(f'{__name__}.{__class__.__name__}')
+        self.check_parset(parspace, parset)
         self.system = system
         self.settings = settings
         self.parset = parset
@@ -275,6 +288,49 @@ class Model(object):
         self.weights = weights
         return weight_solver
 
+    def check_parset(self, parspace, parset):
+        """
+        Given parameter values in parset, the validate_parspace method of
+        the parameter space is executed. If a parameter exists in parspace
+        but not in parset, a warning will be issued and the parameter
+        will remain unchanged. If parset tries to set the value of
+        a parameter not existing in parspace, an exception will be raised.
+        Validating relies on exceptions raised by validate_parspace.
 
+        Parameters
+        ----------
+        parspace : dyn.parameter_space.ParameterSpace
+            A list of parameter objects.
+        parset : row of an Astropy Table
+            Contains parameter values to be checked against the settings in
+            parspace.
+
+        Raises
+        ------
+        ValueError
+            If at least one parameter in parset is unknown to parspace.
+
+        Returns
+        -------
+        None.
+
+        """
+        parspace_copy = copy.deepcopy(parspace)
+        parspace_par_names = [p.name for p in parspace_copy]
+        unknown_pars = [p for p in parset.colnames
+                          if p not in parspace_par_names]
+        if len(unknown_pars) > 0:
+            text = f"Parset parameters {unknown_pars} don't exist in parset."
+            self.logger.error(text)
+            raise ValueError(text)
+        for par_idx, par_name in enumerate(parspace_par_names):
+            if par_name not in parset.colnames:
+                self.logger.warning(f'Parspace parameter {par_name} '
+                                    'unchanged (not in parset).')
+            else:
+                par = parspace_copy[par_idx]
+                par.value = par.get_raw_value_from_par_value(parset[par_name])
+        parspace_copy.validate_parspace()
+        self.logger.debug('parset validated against parspace.')
 
 # end
