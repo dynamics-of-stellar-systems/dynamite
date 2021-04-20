@@ -717,7 +717,7 @@ class BayesLOSVD(Kinematics, data.Integrated):
         x = result['x'][idx]
         y = result['y'][idx]
         # center the object
-        if center is 'max_flux':
+        if center == 'max_flux':
             pixel_flux = result['flux'][idx]
             idx_max_flux = np.argmax(pixel_flux)
             x_center = x[idx_max_flux]
