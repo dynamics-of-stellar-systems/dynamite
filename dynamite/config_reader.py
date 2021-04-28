@@ -472,7 +472,7 @@ class Configuration(object):
 
     def remove_existing_orbital_weights(self):
         """
-        Removes existing orbital weights.
+        Removes existing orbital weights ('ml' directories).
 
         Raises
         ------

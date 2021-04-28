@@ -6,7 +6,6 @@ import sys
 import subprocess
 import logging
 import numpy as np
-#import time
 
 # Set matplotlib backend to 'Agg' (compatible when X11 is not running
 # e.g., on a cluster). Note that the backend can only be set BEFORE
