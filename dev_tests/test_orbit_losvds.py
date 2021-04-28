@@ -81,7 +81,9 @@ def run_orbit_losvd_test(make_comparison_losvd=False):
     model.get_model_directory()
     orbit_library = model.get_orblib()
 
-    fname = os.path.dirname(__file__) + '/data/comparison_losvd.npz'
+    file_dir = os.path.dirname(__file__)
+    fname = file_dir if file_dir else '.'
+    fname += '/data/comparison_losvd.npz'
     if make_comparison_losvd:
         # create comparison file
         np.savez_compressed(fname,

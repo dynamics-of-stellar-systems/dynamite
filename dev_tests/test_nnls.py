@@ -47,11 +47,12 @@ def run_user_test(make_comp=False):
     if os.path.isfile(plotfile_chi2):
         os.remove(plotfile_chi2)
 
-    compare_file = os.path.dirname(__file__) \
-                    + "/data/chi2_compare_ml_" \
-                      f"{c.settings.orblib_settings['nE']}" \
-                      f"{c.settings.orblib_settings['nI2']}" \
-                      f"{c.settings.orblib_settings['nI3']}.dat"
+    compare_file = file_dir if file_dir else '.'
+    compare_file += "/data/chi2_compare_ml_" \
+                    f"{c.settings.orblib_settings['nE']}" \
+                    f"{c.settings.orblib_settings['nI2']}" \
+                    f"{c.settings.orblib_settings['nI3']}.dat"
+    logger.debug(f'Comparing results to {compare_file}.')
     # "run" the models
     t = time.perf_counter()
     smi = dyn.model_iterator.ModelIterator(
