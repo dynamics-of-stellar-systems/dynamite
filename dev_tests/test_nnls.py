@@ -29,7 +29,9 @@ def run_user_test(make_comp=False):
 
     # read configuration
     if '__file__' in globals():
-        os.chdir(os.path.dirname(__file__))
+        file_dir = os.path.dirname(__file__)
+        if file_dir:
+            os.chdir(file_dir)
     fname = 'user_test_config_ml.yaml'
     c = dyn.config_reader.Configuration(fname, reset_logging=True)
 
