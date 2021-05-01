@@ -7,8 +7,9 @@ import subprocess
 import logging
 from scipy import optimize
 import cvxopt
-import physical_system as physys
-import kinematics as dyn_kin
+
+from dynamite import physical_system as physys
+from dynamite import kinematics as dyn_kin
 
 class WeightSolver(object):
 

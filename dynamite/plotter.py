@@ -6,13 +6,12 @@ import matplotlib as mpl
 from matplotlib.ticker import MaxNLocator
 import matplotlib.pyplot as plt
 from plotbin import sauron_colormap as pb_sauron_colormap
-import dynamite as dyn
-import kinematics
-import weight_solvers
 from plotbin import display_pixels
 # from loess.loess_2d import loess_2d
-import physical_system as physys
 
+from dynamite import kinematics
+from dynamite import weight_solvers
+from dynamite import physical_system as physys
 
 class Plotter():
 

@@ -2,19 +2,9 @@
 # e.g. the stellar light, dark matter, black hole, globular clusters
 
 import numpy as np
-
-# some tricks to add the current path to sys.path (so the imports below work)
-
-import os.path
-import sys
 import logging
 
-this_dir = os.path.dirname(__file__)
-if not this_dir in sys.path:
-    sys.path.append(this_dir)
-
-import mges as mge
-
+from dynamite import mges as mge
 
 class System(object):
 

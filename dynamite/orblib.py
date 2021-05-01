@@ -1,18 +1,12 @@
 import os
 import subprocess
 import shutil
-# import copy
 import logging
 import numpy as np
 from scipy.io import FortranFile
-# from astropy import table
 
-import sys
-this_dir = os.path.dirname(__file__)
-if not this_dir in sys.path:
-    sys.path.append(this_dir)
-import physical_system as physys
-import kinematics as dyn_kin
+from dynamite import physical_system as physys
+from dynamite import kinematics as dyn_kin
 
 class OrbitLibrary(object):
 

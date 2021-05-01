@@ -1,13 +1,10 @@
-import os
+#!/usr/bin/env python3
 import sys
 import subprocess
 import logging
 import numpy as np
-ran_dir = os.path.dirname(__file__)+'/../dynamite'
-if not ran_dir in sys.path:
-    sys.path.append(ran_dir)
-import myrand
-from config_reader import DynamiteLogging
+import dynamite.myrand as myrand
+from dynamite.config_reader import DynamiteLogging
 
 SEED = -4242
 
