@@ -132,6 +132,7 @@ class ModelIterator(object):
         chi2_progress = plot_dir + chi2_progress
         self.delete_if_exists(chi2_progress)
         self.the_plotter.make_chi2_vs_model_id_plot().savefig(chi2_progress)
+        self.logger.info(f'Plot {chi2_progress} created.')
 
         # model parameters plot
         chi2_plot = self._build_plot_filename(chi2_plot,
@@ -140,6 +141,7 @@ class ModelIterator(object):
         chi2_plot = plot_dir + chi2_plot
         self.delete_if_exists(chi2_plot)
         self.the_plotter.make_chi2_plot().savefig(chi2_plot)
+        self.logger.info(f'Plot {chi2_plot} created.')
 
         # kinematic maps
         fig_list = self.the_plotter.plot_kinematic_maps(kin_set='all',
@@ -152,6 +154,8 @@ class ModelIterator(object):
             fig_file = plot_dir + fig_file
             self.delete_if_exists(fig_file)
             fig.savefig(fig_file)
+            self.logger.info(f'Plot {fig_file} created.')
+
 
     def _build_plot_filename(self, f_name, default, iteration):
         f, ext = (default, '') if f_name is None else os.path.splitext(f_name)

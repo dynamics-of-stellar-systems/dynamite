@@ -442,11 +442,17 @@ class Configuration(object):
         two_n_obs : 2*n_obs, int
 
         """
-        number_GH = self.settings.weight_solver_settings['number_GH']
         stars = \
           self.system.get_component_from_class(physys.TriaxialVisibleComponent)
-        kin_len = sum([len(kin.data) for kin in stars.kinematic_data])
-        two_n_obs = 2 * number_GH * kin_len
+        n_obs = 0.
+        for k in stars.kinematic_data:
+            if k.type == 'GaussHermite':
+                number_GH = self.settings.weight_solver_settings['number_GH']
+                n_obs += number_GH * len(k.data)
+            if k.type == 'BayesLOSVD':
+                nvbins = k.data.meta['nvbins']
+                n_obs += nvbins * len(k.data)
+        two_n_obs = 2 * n_obs
         return two_n_obs
 
     def remove_existing_orblibs(self):
@@ -524,25 +530,42 @@ class Configuration(object):
             self.logger.warning(f'Directory {plot_dir} not found, cannot '
                                 'remove plots.')
 
-    def remove_existing_all_models_file(self):
+    def remove_existing_all_models_file(self, wipe_other_files=False):
         """
-        Deletes the all models file if it exists and resets
-        self.all_models to an empty AllModels object.
+        Deletes the all models file if it exists and optionally removes
+        all other regular files in the output directory. Additionally
+        resets self.all_models to an empty AllModels object.
+
+        Parameters
+        ----------
+        wipe_other_files : bool, optional
+            If True, all regular files in the output directory will be
+            deleted and a new backup of the config file will be created.
+            If False, only the all models file will be removed.
+            The default is False.
 
         Raises
         ------
-        Exception if all models file cannot be removed.
+        Exception if file(s) cannot be removed.
 
         Returns
         -------
         None.
 
         """
-        all_models_file = self.settings.io_settings['output_directory'] \
-                          + self.settings.io_settings['all_models_file']
-        if os.path.isfile(all_models_file):
-            os.remove(all_models_file)
-            self.logger.info(f'Deleted existing {all_models_file}.')
+        if wipe_other_files:
+            output_dir = self.settings.io_settings['output_directory']
+            for f in glob.glob(f'{output_dir}*'):
+                if os.path.isfile(f):
+                    os.remove(f)
+            self.backup_config_file()
+            self.logger.info(f'Removed files in {output_dir}.')
+        else:
+            all_models_file = self.settings.io_settings['output_directory'] \
+                              + self.settings.io_settings['all_models_file']
+            if os.path.isfile(all_models_file):
+                os.remove(all_models_file)
+                self.logger.info(f'Deleted existing {all_models_file}.')
         self.all_models = model.AllModels(parspace=self.parspace,
                                           settings=self.settings,
                                           system=self.system)
@@ -696,16 +719,31 @@ class Configuration(object):
             if issubclass(type(c), physys.VisibleComponent): # Check vis. comp.
                 if c.kinematic_data:
                     for kin_data in c.kinematic_data:
-                        if kin_data.type != 'GaussHermite':
-                            self.logger.error('VisibleComponent kinematics '
-                                              'need GaussHermite type')
-                            raise ValueError('VisibleComponent kinematics '
-                                             'need GaussHermite type')
+                        check_gh = (kin_data.type == 'GaussHermite')
+                        check_bl = (kin_data.type == 'BayesLOSVD')
+                        if (not check_gh) and (not check_bl):
+                            self.logger.error('VisibleComponent kinematics type'
+                                              'must be GaussHermite or '
+                                              'BayesLOSVD')
+                            raise ValueError('VisibleComponent kinematics type'
+                                             'must be GaussHermite or '
+                                             'BayesLOSVD')
+                        if check_bl:
+                            # check weight solver type
+                            ws_type = self.settings.weight_solver_settings['type']
+                            if ws_type == 'LegacyWeightSolver':
+                                self.logger.error("LegacyWeightSolver can't be "
+                                                  "used with BayesLOSVD - use "
+                                                  "weight-solver type NNLS")
+                                raise ValueError("LegacyWeightSolver can't be "
+                                                  "used with BayesLOSVD - use "
+                                                  "weight-solver type NNLS")
+
                 else:
-                    self.logger.error('VisibleComponent must have kinematics '
-                                      'of type GaussHermite')
-                    raise ValueError('VisibleComponent must have kinematics '
-                                     'of type GaussHermite')
+                    self.logger.error('VisibleComponent must have kinematics: '
+                                      'either GaussHermite or BayesLOSVD')
+                    raise ValueError('VisibleComponent must have kinematics: '
+                                     'either GaussHermite or BayesLOSVD')
                 if c.symmetry != 'triax':
                     self.logger.error('Legacy mode: VisibleComponent must be '
                                       'triaxial')
