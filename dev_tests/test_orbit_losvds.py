@@ -5,6 +5,7 @@ import os
 import sys
 import subprocess
 import logging
+import importlib
 import numpy as np
 #import time
 
@@ -122,7 +123,12 @@ if __name__ == '__main__':
 
     # For an ultra-minimal logging configuration, not even the
     # logging.basicConfig call is necessary, but here we want to log on the
-    # INFO level. Comment out the following line to see warnings only.
+    # INFO level and delete all other logging settings.
+    # Comment out the following 3 lines to see warnings only or - if
+    # logging was already configured in your kernel - use the existing
+    # logging settings.
+    logging.shutdown()
+    importlib.reload(logging)
     logging.basicConfig(level=logging.INFO)
 
     run_orbit_losvd_test()
