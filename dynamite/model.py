@@ -5,8 +5,8 @@ from astropy import table
 from astropy.io import ascii
 import logging
 
-import weight_solvers as ws
-import orblib as dyn_orblib
+from dynamite import weight_solvers as ws
+from dynamite import orblib as dyn_orblib
 
 class AllModels(object):
 

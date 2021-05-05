@@ -5,15 +5,15 @@ import glob
 import math
 import logging
 import importlib
-
 import yaml
+
 import dynamite as dyn
-import physical_system as physys
-import parameter_space as parspace
-import kinematics as kinem
-import populations as popul
-import mges as mge
-import model
+from dynamite import physical_system as physys
+from dynamite import parameter_space as parspace
+from dynamite import kinematics as kinem
+from dynamite import populations as popul
+from dynamite import mges as mge
+from dynamite import model
 
 class Settings(object):
     """
@@ -151,7 +151,7 @@ class Configuration(object):
         legacy_dir = \
             os.path.realpath(os.path.dirname(__file__)+'/../legacy_fortran')
             # os.path.dirname(os.path.realpath(__file__))+'/../'legacy_fortran'
-        self.logger.debug(f'Legacy Fortran folder: {legacy_dir}')
+        self.logger.debug(f'Default legacy Fortran directory: {legacy_dir}.')
 
         self.config_file = filename
         try:
@@ -339,6 +339,8 @@ class Configuration(object):
                 if value['directory'][-1]=='/':
                     value['directory'] = value['directory'][:-1]
                 self.settings.add('legacy_settings', value)
+                self.logger.debug("Legacy directory set to "
+                                  f"{value['directory']}.")
 
             # add output settings to Settings object
 

@@ -1,11 +1,11 @@
-import data
-
 import numpy as np
 from scipy import special, stats
 from astropy import table
 import logging
 import os
 import h5py
+
+from dynamite import data
 
 class Kinematics(data.Data):
     """

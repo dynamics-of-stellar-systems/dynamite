@@ -1,17 +1,8 @@
-# some tricks to add the current path to sys.path (so the imports below work)
-
-import os.path
-import sys
-
-this_dir = os.path.dirname(__file__)
-if not this_dir in sys.path:
-    sys.path.append(this_dir)
-
 import numpy as np
 import copy
-import parameter_space as parspace
-from astropy.table import Table
 import logging
+from astropy.table import Table
+from dynamite import parameter_space as parspace
 
 class Parameter(object):
 

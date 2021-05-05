@@ -1,11 +1,11 @@
-import model
-import parameter_space
-import plotter
 import os
 import numpy as np
 import logging
-import pathos
 from pathos.multiprocessing import Pool
+
+from dynamite import model
+from dynamite import parameter_space
+from dynamite import plotter
 
 class ModelIterator(object):
 

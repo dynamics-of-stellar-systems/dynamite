@@ -1,16 +1,13 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
-# first, make sure the paths are set up
-# we assume that this script is located and run in the folder dynamite/tests
-
 import os
 
 import time
 import numpy as np
 import matplotlib.pyplot as plt
 import dynamite as dyn
-import physical_system as physys
+from dynamite import physical_system as physys
 
 def remove_existing_output(config, remove_orblibs=False):
     # delete model directory if it exits
