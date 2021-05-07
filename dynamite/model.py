@@ -209,9 +209,10 @@ class Model(object):
         # directory of the input kinematics
         self.in_dir = self.settings.io_settings['input_directory']
         self.directory = self.get_model_directory()
-        self.logger.debug(f'Model directory: {self.directory}')
+        self.logger.debug(f'Model directory string: {self.directory}')
         self.directory_noml=self.directory[:self.directory[:-1].rindex('/')+1]
-        self.logger.debug(f'Model directory up to ml: {self.directory_noml}')
+        self.logger.debug('Model directory string up to ml: '
+                          f'{self.directory_noml}')
 
     def get_model_directory(self):
         out_dir = self.settings.io_settings['output_directory']
