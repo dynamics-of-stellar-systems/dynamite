@@ -2,15 +2,21 @@ import logging
 import subprocess
 import sys
 import numpy as np
+import os
+import scipy.integrate
+from scipy.special import erf
+from scipy.interpolate import UnivariateSpline
+from copy import deepcopy
 import matplotlib as mpl
 from matplotlib.ticker import MaxNLocator
 import matplotlib.pyplot as plt
-from plotbin import sauron_colormap as pb_sauron_colormap
+#from plotbin import sauron_colormap as pb_sauron_colormap
 import dynamite as dyn
 from plotbin import display_pixels
 # from loess.loess_2d import loess_2d
 import physical_system as physys
-
+from astropy.table import Table
+#import cmasher as cmr 
 
 class Plotter():
 
@@ -25,8 +31,11 @@ class Plotter():
         self.parspace = parspace
         self.all_models = all_models
         self.input_directory = settings.io_settings['input_directory']
-        pb_sauron_colormap.register_sauron_colormap()
-
+        self.plotdir = settings.io_settings['plot_directory']
+        #pb_sauron_colormap.register_sauron_colormap()
+        #Alice: I commented out all the "sauron" instances,
+        #       so we can try the matplotlib or cmasher color maps.
+        
         # parspace is a list
         # par0 = parspace[0]
         # par0.fixed is True/False ...
@@ -108,7 +117,7 @@ class Plotter():
         ----------
         which_chi2 : STR, optional
             Determines whether chi2 or kinchi2 is used. If None, the setting
-            in the configuration file's parameter settings is used. 
+            in the configuration file's parameter settings is used.
             Must be None, 'chi2', or 'kinchi2'. The default is None.
 
         Raises
@@ -157,9 +166,10 @@ class Plotter():
             raise ValueError(text)
         self.logger.info(f'Making chi2 plot scaled according to {which_chi2}')
 
-        #Note: it could be a nice feature to exclude the first 50, 100 (specified by the user) or so models in case the values were really off there or
-        #alternatively based on too big Delta chi2
-        #TODO: after each iteration create chi2 plot
+        #Note: it could be a nice feature to exclude the first 50, 100 
+        # (specified by the user) or so models in case the values were really
+        # off there or alternatively based on too big Delta chi2
+        # DO THIS! ALICE
         pars=self.parspace
         val=self.all_models.table
 
@@ -170,7 +180,7 @@ class Plotter():
         val['c-dh']=np.log10(val['c-dh'])
         val['f-dh']=np.log10(val['f-dh'])
         val['m-bh']=np.log10(val['m-bh'])
-        #TBD: add black hole scaling
+        #TBD: add black hole scaling (multiply with ML - ALICE)
         #TBD: check the definition of chi2
 
         #get number and names of parameters that are not fixed
@@ -196,12 +206,13 @@ class Plotter():
 
         nf=len(val)
 
-        nGH=4 #self.weight_solver_settings['number_GH']
-        #stars = self.system.get_component_from_class( \
-        #                                    physys.TriaxialVisibleComponent)
-        #kinematics = stars.kinematic_data.data
-        #print(len(kinematics))
-        Nobs=353
+        #nGH=4
+        #Nobs=353
+        nGH = self.settings.weight_solver_settings['number_GH']
+        stars = \
+            self.system.get_component_from_class(physys.TriaxialVisibleComponent)
+        Nobs = sum([len(kin.data) for kin in stars.kinematic_data])
+        #Alice: please check that this definition for Nobs is indeed correct! 
 
         self.logger.info(f'nGH={nGH}, Nobs={Nobs}')
         #this is from previous code
@@ -245,6 +256,7 @@ class Plotter():
                     if chi2[k]/chlim<=3: #only significant chi2 values
 
                         color = colormap(chi2[k]/chlim * 240) #colours the significant chi2
+                        # ALICE - check 240 if it's ok, or 80 maybe? or value from 0 to 1, check and fix?
                         markersize = 5-(chi2[k]/chlim) #smaller chi2 become bigger :)
                         ax.plot((val[nofix_name[i]])[k], (val[nofix_name[j]])[k], 'o', markersize=markersize, color=color)
 
@@ -355,6 +367,8 @@ class Plotter():
             smax, smin = np.max(sig), np.min(sig)
             h3max, h3min = np.max(h3), np.min(h3)
             h4max, h4min = np.max(h4), np.min(h4)
+            if h4max == h4min:
+                h4max, h4min = np.max(h4m), np.min(h4m)
         elif cbar_lims=='combined':
             tmp = np.hstack((velm, vel))
             vmax = np.max(np.abs(tmp))
@@ -375,12 +389,10 @@ class Plotter():
         aperture_fname = self.input_directory + aperture_fname
 
         lines = [line.rstrip('\n').split() for line in open(aperture_fname)]
-        strhead = lines[0]
         minx = np.float(lines[1][0])
         miny = np.float(lines[1][1])
         sx = np.float(lines[2][0])
         sy = np.float(lines[2][1])
-        maxx = sx + minx
         sy = sy + miny
         angle_deg = np.float(lines[3][0])  # - 90.0 + 180
         nx = np.int(lines[4][0])
@@ -398,7 +410,6 @@ class Plotter():
         yi = np.outer((xr * 0 + 1), yc)
         yt = yi.T.flatten()
 
-        radeg = 57.2958
         self.logger.debug(f'PA: {angle_deg}')
         xi = xt
         yi = yt
@@ -452,14 +463,15 @@ class Plotter():
                             bottom=0.05,
                             top=0.99,
                             right=0.99)
-        sauron_colormap = plt.get_cmap('sauron')
-        sauron_r_colormap = plt.get_cmap('sauron_r')
+        #sauron_colormap = plt.get_cmap('sauron')
+        #sauron_r_colormap = plt.get_cmap('sauron_r')
+        #colormapname = plt.get_cmap('cmr.ember')
 
         kw_display_pixels = dict(pixelsize=dx,
                                  angle=angle_deg,
                                  colorbar=True,
-                                 nticks=7,
-                                 cmap='sauron')
+                                 nticks=7)#,
+        #                         cmap='cmr.ember')
         x, y = xi[s], yi[s]
 
         ### PLOT THE REAL DATA
@@ -550,19 +562,1340 @@ class Plotter():
                                           vmin=-1, vmax=1,
                                           label=r'$\delta_{h_4}$',
                                           **kw_display_pixels)
-        fig.subplots_adjust(left=0.07, wspace=0.3, hspace=0.01)
+        # fig.subplots_adjust(left=0.07, wspace=0.3, hspace=0.01)
+        fig.subplots_adjust(left=0.04, wspace=0.3, hspace=0.01,
+                            right=0.96)
         kwtext = dict(size=20, ha='center', va='center', rotation=90.)
-        fig.text(0.05, 0.9, 'Data', **kwtext)
-        fig.text(0.05, 0.53, 'Model', **kwtext)
-        fig.text(0.05, 0.2, 'Residual', **kwtext)
+        fig.text(0.015, 0.83, 'Data', **kwtext)
+        fig.text(0.015, 0.53, 'Model', **kwtext)
+        fig.text(0.015, 0.2, 'Residual', **kwtext)
         return fig
+
+#############################################################################
+######## Routines from schw_mass.py, necessary for mass_plot ################
+#############################################################################
+
+    def intg2_trimge_intrmass(self, phi, theta, Fxyparm):
+        """!@brief Function description.
+
+        @details Function description.
+
+        @param[in] input ...
+        @param[out] output ...
+
+        """
+
+        rr = Fxyparm[4,0]
+        den_pot_pc = Fxyparm[0,:]
+        sig_pot_pc = Fxyparm[1,:]
+        q_pot = Fxyparm[2,:]
+        p_pot = Fxyparm[3,:]
+
+        sth = np.sin(theta)
+        cth = np.cos(theta)
+        sphi = np.sin(phi)
+        Qjth = (1 - sth**2) * (1 - sphi)**2 + \
+               (1 - sth**2)*(sphi/p_pot)**2 + (sth/q_pot)**2
+        arg = (rr/sig_pot_pc) * np.sqrt(Qjth/np.float(2.0))
+
+        intg = np.sqrt(np.pi/np.float(2.0))*erf(arg) - \
+               np.sqrt(np.float(2.0))*arg*np.exp(-1.*arg**2)
+        res = (np.sum(den_pot_pc*sig_pot_pc**3*intg/Qjth**np.float(1.5),
+               dtype=np.float))*cth
+
+        return res
+
+# --------------------------------------------
+
+    def PQ_Limits_l(self, x):
+        """!@brief Function description.
+
+        @details Function description.
+
+        @param[in] input ...
+        @param[out] output ...
+
+        """
+        return np.float(0.0)
+
+# --------------------------------------------
+
+    def PQ_Limits_h(self, x):
+        """!@brief Function description.
+
+        @details Function description.
+
+        @param[in] input ...
+        @param[out] output ...
+
+        """
+        return np.float(np.pi/np.float(2.0))
+
+#############################################################################
+
+    def NFW_getpar(self, mstars=None, cc=None, dmfrac=None):
+        """
+        Computes density scale, radial scale and total mass in
+        the NFW profile used in the model.
+        Input parameters: NFW dark matter concentration and fraction,
+        and stellar mass
+        """
+
+        grav_const_km = 6.67428e-11*1.98892e30/1e9
+        parsec_km = 1.4959787068e8*(648.000e3/np.pi)
+        rho_crit = (3.*((7.3000e-5)/parsec_km)**2)/(8.*np.pi*grav_const_km)
+
+        rhoc = (200./3.)*rho_crit*cc**3/(np.log(1.+cc) - cc/(1.+cc))
+        rc = (3./(800.*np.pi*rho_crit*cc**3)*dmfrac*mstars)**(1./3.)
+        darkmass = (800./3.)*np.pi*rho_crit*(rc*cc)**3
+
+        return rhoc, rc, darkmass
+
+#############################################################################
+
+    def NFW_enclosemass(self, rho=None, Rs=None, R=None):
+        """
+        Computes cumulative mass of the NWF dark matter halo
+        Input parameters: density scale  and radial scale, and
+        array of radial positions where to compute the mass.                           
+        """
+
+        M = 4. * np.pi * rho * Rs**3 * (np.log((Rs + R)/Rs) - R/(Rs + R))
+
+        return M
+
+#############################################################################
+
+    def trimge_intrmass(self, r_pc=None, surf_pot_pc=None, 
+                        sigobs_pot_pc=None, qobs_pot=None, 
+                        psi_off=None, incl=None):
+        """!@brief Function description.
+
+        @details Function description.
+
+        @param[in] input ...
+        @param[out] output ...
+
+        """
+        theta = incl[0]
+        phi = incl[1]
+        psi = incl[2]
+
+        pintr, qintr = self.triax_tpp2pqu(theta=theta, phi=phi, psi=psi,
+                                          qobs=qobs_pot, psi_off=psi_off, 
+                                          res=1)[:2]
+        p_pot = np.copy(pintr)
+        q_pot = np.copy(qintr)
+        sig_pot_pc = np.copy(sigobs_pot_pc)
+        dens_pot_pc = surf_pot_pc*qobs_pot/(np.sqrt(2.*np.pi)* 
+                        sig_pot_pc*q_pot*p_pot)
+
+        nr = len(r_pc)
+        res=np.zeros(nr)
+        ng=len(q_pot)
+
+        for i in range(nr):
+            Ri=r_pc[i]
+
+            Fxyparm=np.vstack((dens_pot_pc, sig_pot_pc,q_pot.T,
+                               p_pot.T, np.zeros(ng) + Ri))
+            mi2=scipy.integrate.dblquad(self.intg2_trimge_intrmass, 
+                                        0.0, np.pi/2.0, 
+                                        self.PQ_Limits_l ,self.PQ_Limits_h,
+                                        args=[Fxyparm],epsrel=1.00)[0]
+            res[i] = mi2*8
+
+        return res
+
+#############################################################################
+
+    def triax_tpp2pqu(self, theta=None, phi=None, psi=None, qobs=None,
+                      psi_off=None, res=None):
+        """!@brief Function description.
+
+        @details This routine is slow and sloppy, but correct. 
+        Written by RvdB. Moved to own file on 03/FEB/06.
+
+        @param[in] input ...
+        """
+        res = 1
+        theta_view = theta * (np.pi/180.0)
+        phi_view = phi * (np.pi/180.0)
+        psi_obs = (psi+psi_off) * (np.pi /180.0)
+
+        secth = 1.0/np.cos(theta_view)
+        cotph = 1.0/np.tan(  phi_view)
+
+        if abs(np.cos(theta_view)) < 1.0e-6 : res=0
+        if abs(np.tan(phi_view  )) < 1.0e-6 : res=0
+
+        delp = 1.0 - qobs**2
+
+        nom1minq2 = delp*(2.0*np.cos(2.0*psi_obs) + np.sin(2.0*psi_obs)*
+                    (secth*cotph - np.cos(theta_view) * np.tan(phi_view)))
+        nomp2minq2 = delp*(2.0*np.cos(2.0*psi_obs) + np.sin(2.0*psi_obs)*
+                     (np.cos(theta_view)*cotph - secth*np.tan(phi_view)))
+        denom = 2.0*np.sin(theta_view)**2*(delp*np.cos(psi_obs)*
+                (np.cos(psi_obs) + secth*cotph*np.sin(psi_obs)) - 1.0)
+
+        if np.max(np.abs(denom)) < 1.0e-6: res=0
+
+        # These are temporary values of the squared intrinsic axial
+        # ratios p^2 and q^2
+        qintr = (1.0 - nom1minq2 /denom)
+        pintr = (qintr + nomp2minq2/denom)
+
+        # Quick check to see if we are not going to take the sqrt of
+        # a negative number.
+        if ((np.min(qintr) < 1.0e-6) | (np.min(pintr) <= 1.0e-6)): res = 0
+
+        # intrinsic axial ratios p and q
+        qintr = np.sqrt(qintr)
+        pintr = np.sqrt(pintr)
+
+        # triaxiality parameter T = (1-p^2)/(1-q^2)
+        triaxpar = (1.0-pintr**2)/(1.0-qintr**2)
+        if (np.max(triaxpar) > 1.0) : res=0
+        if (np.min(triaxpar) < 0.0): res=0
+
+        if (np.max(qintr - pintr) > 0): res=0
+        if (np.min(qintr) <= 0.0) : res=0
+
+        if (res == 1):
+            pintr2 = pintr
+            qintr2 = qintr
+            uintr2 = 1./(np.sqrt(qobs/np.sqrt((pintr*np.cos(theta_view))**2 +
+                     (qintr*np.sin(theta_view))**2*
+                     ((pintr*np.cos(phi_view))**2 + np.sin(phi_view)**2))))
+
+        return  pintr2, qintr2, uintr2
+
+#############################################################################
+
+    def mass_plot(self, which_chi2=None, Rmax_arcs=None):
+        # schw_mass.py
+        # Chi^2 < chilev =>
+        #   normalized chi^2: chi^2/chi2pmin < chlim: sqrt(2*Nobs * NGH)
+
+        # getallnfw_out= getallnfw(w_dir=w_dir, object=object,
+        #        rootname=rootname, chilev=chlim * chi2pmin,
+        #        massdir=figdir, Rmax_arcs=Rmax_arcs)
+        # Alice: getallnfw_out copied from schw_mass.py in this function!
+
+        val = deepcopy(self.all_models.table)
+        val.sort(which_chi2)
+        chi2pmin = val[which_chi2][0]
+        
+        nGH = self.settings.weight_solver_settings['number_GH']
+        stars = \
+            self.system.get_component_from_class(physys.TriaxialVisibleComponent)
+        Nobs = sum([len(kin.data) for kin in stars.kinematic_data]) 
+        #Alice: please check that this definition for Nobs is indeed correct! 
+        chlim = np.sqrt(2 * Nobs * nGH)
+
+        chi2 = val[which_chi2]
+        chi2 -= chi2pmin
+        chilev = chlim * chi2pmin
+
+        # pars, chilim, freeroot = schwparinfo(w_dir=w_dir, rootname=rootname, FIRSTITER=0, object=object)
+        # obj = object
+        # Nf, npar, mpar, mtime, files = read_chi2_file(w_dir+object+'/griddata/'+str(rootname[0])+'_chi2.cat')
+        ## Select the models within 1-sigma confidence level.
+        ## chi2 = mpar[npar, :]  # chi^2 from direct model fitting h1. h2, h3..
+        # chi2=mpar[npar+1,:]    # Chi^2 directly comparing v, sigma maps from data and model, we use this one as default.
+
+        s = np.ravel(np.argsort(chi2))
+        chi2=chi2[s]
+
+        # select the models within 1 sigma confidence level
+        s=np.ravel(np.where(chi2 <=  np.min(chi2)+chilev))
+        n=len(s)
+        if n < 3:
+            s = np.arange(3, dtype=np.int)
+            n = len(s)
+
+        chi2=chi2[s]
+
+        print('Selecting ',n,' models')
+
+        ## Calulate mass profiles
+        nm = 200
+        R = np.logspace(np.log10(0.01),np.log10(Rmax_arcs*1.2),num = nm) 
+
+        ## Setup stellar mass profile calculation
+        mgepar = stars.mge_pot.data
+        mgeI = mgepar['I']
+        mgesigma = mgepar['sigma']
+        mgeq = mgepar['q']
+        mgePAtwist = mgepar['PA_twist']
+
+        distance = self.all_models.system.distMPc
+        arctpc = distance*np.pi/0.648
+        sigobs_pc = mgesigma*arctpc
+        r_pc = R*arctpc
+        parsec_km = 1.4959787068e8*(648.e3/np.pi)
+        psi_off = mgePAtwist
+
+        mass = np.zeros((nm,n,3))
+        bhm = np.zeros(n)
+        mlstellar = np.zeros(n)
+        incl_a = np.zeros(n)
+        phi_a = np.zeros(n)
+        psi_a = np.zeros(n)
+
+        plotdir = self.plotdir #+ 'mass/'
+        #if not os.path.isdir(massdir):
+        #    os.mkdir(massdir)
+        #    self.logger.debug(f'Output directory {massdir} created.')
+
+        for i in range(n):
+            p = val['p-stars'][i]
+            q = val['q-stars'][i]
+            u = val['u-stars'][i]
+            th_view,psi_view,ph_view = \
+                physys.TriaxialVisibleComponent.triax_pqu2tpp(stars,p,q,u) 
+            #Alice: please check that the angles are correctly identified:
+            #        - the DYNAMITE function triax_pqu2tpp returns theta,psi,phi
+            #        - in schwpy, these angles were taken from triaxnfw_massd, which
+            #          returns incl_view = [th_view, ph_view, psi_view]
+            #       in the following I am using the order provided in schwpy, but I am
+            #       not sure if this is correct or if the names of the angles are different
+            #       in the two codes! 
+            incl_view = [th_view, ph_view, psi_view]
+            
+            ml = val['ml'][i]
+            surf_pc = mgeI * ml
+            Mstarstot = 2 * np.pi * np.sum(surf_pc * mgeq * sigobs_pc ** 2)
+            mstars = self.trimge_intrmass(r_pc=r_pc, surf_pot_pc=surf_pc,
+                                sigobs_pot_pc=sigobs_pc, qobs_pot=mgeq,
+                                psi_off=psi_off, incl=incl_view)
+
+            dmconc = val['c-dh'][i]
+            dmR = val['f-dh'][i]
+            rhoc, rc = self.NFW_getpar(mstars=Mstarstot, cc=dmconc,
+                                        dmfrac=dmR)[:2]
+            mdm = self.NFW_enclosemass(rho=rhoc, Rs=rc, R=r_pc*parsec_km) 
+            #Alice: some checks still needed (should mdm be the above * mlcor?)
+            
+            mbh = val['m-bh'][i]
+
+            mass[:,i,0] = mstars
+            mass[:,i,1] = mdm
+            nm_mbh = np.empty(nm); nm_mbh.fill(mbh)
+            mass[:,i,2] = nm_mbh.flatten()
+            bhm[i] = mbh
+            mlstellar[i] = ml
+            incl_a[i] = incl_view[0]
+            phi_a[i] = incl_view[1]
+            psi_a[i] = incl_view[2]
+
+            np.isfinite(1)
+        
+        arctpc = distance *np.pi / 0.648
+        mm = np.sum(mass, axis=2)
+        maxmass = (int(np.max(mm/10**10.)) + 1.)*10**10.
+
+        '''
+        snn = np.ravel(np.where((np.isfinite(phi_a)) & (np.isfinite(psi_a))))
+        mmmin = np.min(mm, axis=1)
+        mmmax = np.max(mm, axis=1)
+        m0min = np.min(mass[:,:,0], axis = 1)
+        m0max = np.max(mass[:,:,0], axis = 1)
+        m1min = np.min(mass[:,:,1], axis = 1)
+        m1max = np.max(mass[:,:,1], axis = 1)
+
+        with open(plotdir + 'cumulative_mass.dat', 'w') as outfile:
+            outfile.write(str(distance) + '   # distance\n')
+            outfile.write(str(np.average(mlstellar))+'  '+
+                          str(np.sqrt(np.var(mlstellar, ddof=1))) +
+                          '   # stellar m/l, error\n')
+            outfile.write(str(np.average(incl_a[snn]))+' '+
+                          str(np.average(phi_a[snn]))+'  '+
+                          str(np.average(psi_a[snn]))+'  # incl\n')
+            outfile.write(str(np.sqrt(np.var(incl_a[snn], ddof=1)))+'  '+
+                          str(np.sqrt(np.var(phi_a[snn], ddof=1)))+'  '+
+                          str(np.sqrt(np.var(psi_a[snn], ddof=1)))+
+                          ' # incl error\n')
+            # mtot, mstellar, mdm
+            for i in range(nm):
+                outfile.write(("%7.3f" % R[i])+ '  '+("%10.4e" % mm[i,0])+ '  '+
+                              ("%10.4e" % mmmin[i]) + '  '+
+                              ("%10.4e" % mmmax[i]) + '  '+
+                              ("%10.4e" % mass[i,0,0]) + '  '+
+                              ("%10.4e" % m0min[i]) + '  '+
+                              ("%10.4e" % m0max[i]) + '  '+
+                              ("%10.4e" % mass[i,0,1]) + '  '+
+                              ("%10.4e" % m1min[i]) + '  '+
+                              ("%10.4e" % m1max[i])+ '\n')
+        '''
+
+        ## plot in linear scale
+        xrange = np.array([0.1, Rmax_arcs])
+        yrange = np.array([1.0e6,maxmass])
+        filename1 = plotdir + 'enclosedmassm_linear.pdf'
+        fig = plt.figure(figsize=(5,5))
+        #ftit = fig.suptitle(object.upper() + '_enclosedmassm_linear', fontsize=10,fontweight='bold')
+        ax = fig.add_subplot(1, 1, 1)
+        ax.set_xlim(xrange)
+        ax.set_ylim(yrange)
+        ax.set_xlabel(r'$R$ [arcsec]', fontsize=9)
+        ax.set_ylabel(r'Enclosed Mass [M$_{\odot}$]', fontsize=9)
+        ax.tick_params(labelsize=8)
+
+        ax2 = ax.twiny()
+        ax2.set_xlim(xrange * arctpc / 1000.0)
+        ax2.set_xlabel(r'$r$ [kpc]', fontsize=9)
+        ax2.tick_params(labelsize=8)
+
+        ax.plot(R,mm[:,0], '-', color='k', linewidth=2.0,
+                label='Total')
+        ax.plot(R,np.min(mm,axis=1), '--', color='k', linewidth=1.2)
+        ax.plot(R,np.max(mm,axis=1), '--', color='k', linewidth=1.2)
+
+        ax.plot(R,mass[:,0,0], '-', color='r', linewidth=2.0,
+                label='Mass-follows-Light')
+        ax.plot(R,np.min(mass[:,:,0],axis=1), '--', color='r', linewidth=0.8)
+        ax.plot(R,np.max(mass[:,:,0],axis=1), '--', color='r', linewidth=0.8)
+
+        ax.plot(R,mass[:,0,1], '-', color='b', linewidth=2.0,
+                label='Dark Matter')
+        ax.plot(R,np.min(mass[:,:,1],axis=1), '--', color='b', linewidth=0.8)
+        ax.plot(R,np.max(mass[:,:,1],axis=1), '--', color='b', linewidth=0.8)
+
+        ax.legend(loc='upper left', fontsize=8)
+        plt.tight_layout()
+        plt.savefig(filename1)
+        plt.close()
+
+        self.logger.info(f'Plot enclosedmassm_linear.pdf saved in {plotdir}')
+
+        filename1 = plotdir + 'enclosedmassm_linear_fill.pdf'
+        fig = plt.figure(figsize=(5,5))
+        #ftit = fig.suptitle(object.upper() + '_enclosedmassm_linear', fontsize=10,fontweight='bold')
+        ax = fig.add_subplot(1, 1, 1)
+        ax.set_xlim(xrange)
+        ax.set_ylim(yrange)
+        ax.set_xlabel(r'$R$ [arcsec]', fontsize=9)
+        ax.set_ylabel(r'Enclosed Mass [M$_{\odot}$]', fontsize=9)
+        ax.tick_params(labelsize=8)
+
+        ax2 = ax.twiny()
+        ax2.set_xlim(xrange * arctpc / 1000.0)
+        ax2.set_xlabel(r'$r$ [kpc]', fontsize=9)
+        ax2.tick_params(labelsize=8)
+
+        ax.plot(R,mm[:,0], '-', color='k', linewidth=2.0,
+                label='Total')
+        ax.fill_between(R, np.min(mm,axis=1), 
+                        np.max(mm,axis=1),facecolor='k',alpha=0.1)
+
+        ax.plot(R,mass[:,0,0], '-', color='r', linewidth=2.0,
+                label='Mass-follows-Light')
+        ax.fill_between(R, np.min(mass[:,:,0],axis=1), 
+                        np.max(mass[:,:,0],axis=1),facecolor='r',alpha=0.1)
+
+        ax.plot(R,mass[:,0,1], '-', color='b', linewidth=2.0,
+                label='Dark Matter')
+        ax.fill_between(R, np.min(mass[:,:,1],axis=1), 
+                        np.max(mass[:,:,1],axis=1),facecolor='b',alpha=0.1)
+
+        ax.legend(loc='upper left', fontsize=8)
+        plt.tight_layout()
+        plt.savefig(filename1)
+        plt.close()
+
+        self.logger.info(f'Plot enclosedmassm_linear_fill.pdf saved in {plotdir}')
+
+        return fig
+
+
+#############################################################################
+######## Routines from schw_orbit.py, necessary for orbit_plot ##############
+#############################################################################
+
+    def readorbclass(self, file=None, nrow=None, ncol=None):
+        """
+        read in 'datfil/orblib.dat_orbclass.out'
+        which stores the information of all the orbits stored in the orbit library
+        
+        norb = nE * nI2 * nI3 * ndithing^3 
+        for each orbit, the time averaged values are stored:
+
+        lx, ly ,lz, r = sum(sqrt( average(r^2) )), Vrms^2 = average(vx^2 + vy^2 + vz^2 + 2vx*vy + 2vxvz + 2vxvy)
+        
+        The file was stored by the fortran code orblib_f.f90 integrator_find_orbtype
+        """
+
+        data=[]
+        lines = [line.rstrip('\n').split() for line in open(file)]
+        i = 0
+        while i < len(lines):
+            for x in lines[i]:
+                data.append(np.double(x))
+            i += 1
+        data=np.array(data)
+        data=data.reshape((int(5),int(ncol),int(nrow)), order='F')
+        return data
+
+#############################################################################
+
+    def readorbout(self, filename=None):
+        """
+        read in 'mlxxx/nn_orb.out' of one model
+
+        """
+
+        nrow=data=np.genfromtxt(filename,max_rows=1)
+        nrow=int(nrow)
+        data=np.genfromtxt(filename, skip_header=1,max_rows=nrow)
+        n=np.array(data[:,0],dtype=int)
+        ener=np.array(data[:,1],dtype=int)
+        i2=np.array(data[:,2],dtype=int)
+        i3=np.array(data[:,3],dtype=int)
+        regul=np.array(data[:,4],dtype=np.float)
+        orbtype=np.array(data[:,5],dtype=np.float)
+        orbw=np.array(data[:,6],dtype=np.float)
+        lcut=np.array(data[:,7],dtype=np.float)
+        ntot=int(nrow)
+        return n, ener,i2, i3, regul, orbtype,orbw,lcut,ntot
+    
+#############################################################################
+
+    def plotdensity(self, object=None, f1=None, f2=None, weight=None, 
+                    xnbin=None, ynbin=None,distance=None, plotdir=None):
+        """
+        """
+
+        xbinned = [np.min(f1), np.max(f1)]
+        # ybinned = [np.min(f2), np.max(f2)]
+        ybinned = [-1.00000, 1.0000]
+        nbins = np.array([xnbin, ynbin])
+        range_bin=[[np.min(f1),np.max(f1)],[np.min(f2),np.max(f2)]]
+        R = np.zeros((xnbin, ynbin))
+
+        for i in range(int(0), len(f1[0, :])):
+            # RIL, xedges, yedges = np.histogram2d(f1[:,i], f2[:,i], bins=nbins, range=range_bin)
+            RIL = np.histogram2d(f1[:,i], f2[:,i], bins=nbins, 
+                                 range=range_bin)[0]
+            R += weight[i]*RIL
+
+        R = R/np.sum(R)
+        minmaxdens = [np.min(R), np.max(R)]
+    
+        ### plot the orbit distribution on lambda_z vs. r ###
+
+        filename5 = plotdir + 'orbit_linear_only.pdf'
+        imgxrange = xbinned
+        imgyrange = ybinned
+        extent = [imgxrange[0], imgxrange[1], imgyrange[0], imgyrange[1]]
+        
+        fig = plt.figure(figsize=(6,5))
+        
+        ax = fig.add_subplot(1, 1, 1)
+        cax = ax.imshow(R.T, cmap='binary', interpolation='spline16', 
+                        extent=extent, origin='lower', vmax=minmaxdens[1],
+                        vmin=minmaxdens[0], aspect='auto')
+
+        ax.set_yticks([-1,-0.5,0,0.5,1])
+        ax.set_xlabel(r'$r$ [arcsec]', fontsize=9)
+        ax.set_ylabel(r'Circularity $\lambda_{z}$', fontsize=9)
+
+        fig.colorbar(cax, orientation='vertical', pad=0.1)
+        
+        ax.plot(imgxrange, np.array([1,1])*0.80, '--', color='black',
+                 linewidth=1)
+        ax.plot(imgxrange, np.array([1,1])*0.25, '--', color='black',
+                 linewidth=1)
+        ax.plot(imgxrange, np.array([1,1])*(-0.25), '--', color='black',
+                 linewidth=1)
+        plt.tight_layout()
+        plt.savefig(filename5)
+        plt.close()
+
+        self.logger.info(f'Plot orbit_linear_only.pdf saved in {plotdir}')
+        return 1
+
+#############################################################################
+
+    def triaxreadparameters(self, w_dir=None):
+        """
+        read in all the parameters in parameters.in
+
+        """
+
+        filename = w_dir + 'infil/parameters_pot.in' 
+        # Alice: here I have modified parameters.in in parameters_pot.in
+        #        please check if this is indeed ok!
+
+        header = np.genfromtxt(filename, max_rows=1)
+        #nmge = int(header[0])  # MGE gaussians
+        nmge = int(header)  # MGE gaussians
+        mgepar = np.genfromtxt(filename, max_rows=nmge, skip_header=1)
+        mgepar = mgepar.T  # MGE parameters
+
+        distance = np.genfromtxt(filename, max_rows=1, skip_header=nmge + 1)
+        distance = np.double(distance)  # distance [Mpc]
+
+        view_ang = np.genfromtxt(filename, max_rows=1, skip_header=nmge + 2)
+        th_view = np.double(view_ang[0])
+        ph_view = np.double(view_ang[1])
+        psi_view = np.double(view_ang[2])
+
+        ml = np.genfromtxt(filename, max_rows=1, skip_header=nmge + 3)
+        ml = np.double(ml)  # M/L [M_sun/L-sun]
+
+        bhmass = np.genfromtxt(filename, max_rows=1, skip_header=nmge + 4)
+        bhmass = np.double(bhmass)  # BH mass [M_sun]
+
+        softlen = np.genfromtxt(filename, max_rows=1, skip_header=nmge + 5)
+        softlen = np.double(softlen)  # softening length
+
+        nrell = np.genfromtxt(filename, max_rows=1, skip_header=nmge + 6)
+        nre = np.double(nrell[0])
+        lrmin = np.double(nrell[1])
+        lrmax = np.double(nrell[2])  # E, minmax log(r) [arcsec]
+
+        nrth = np.genfromtxt(filename, max_rows=1, skip_header=nmge + 7)
+        nrth = np.int(nrth)  # theta [# I2]
+
+        nrrad = np.genfromtxt(filename, max_rows=1, skip_header=nmge + 8)
+        nrrad = np.int(nrrad)  # phi [# I3]
+
+        ndither = np.genfromtxt(filename, max_rows=1, skip_header=nmge + 9)
+        ndither = np.int(ndither)  # dithering dimension
+
+        vv1 = np.genfromtxt(filename, max_rows=1, skip_header=nmge + 10)
+        vv1_1 = np.int(vv1[0])
+        vv1_2 = np.int(vv1[1])
+
+        dmm = np.genfromtxt(filename, max_rows=1, skip_header=nmge + 11)
+        dm1 = np.double(dmm[0])
+        dm2 = np.double(dmm[1])
+
+        conversion_factor = distance*1.0e6*1.49598e8
+        grav_const_km = 6.67428e-11*1.98892e30/1e9
+        parsec_km = 1.4959787068e8*(648.000e3/np.pi)
+        rho_crit = (3.0*((7.3000e-5)/parsec_km)**2)/(8.0*np.pi*grav_const_km)
+
+        return mgepar, distance, th_view, ph_view, psi_view, ml, \
+            bhmass,softlen, nre, lrmin, lrmax, nrth, nrrad, \
+            ndither, vv1_1, vv1_2,dm1, dm2, conversion_factor, \
+            grav_const_km, parsec_km, rho_crit
+
+#############################################################################
+
+    def orbit_plot(self, model=None, Rmax_arcs=None):
+        # schw_orbit.py
+        # triaxplotphasennstr(w_dir=w_dir, object=object, rootname=rootname[0],
+        #        diri_o=bparam_str, ml_str = ml_str,
+        #        figdir=figdir+str(i),Rmax_arcs=Rmax_arcs)
+        ###def triaxplotphasennstr(w_dir=None, object=None, rootname=None, 
+        #       diri_o=None, ml_str = None, figdir=None, Rmax_arcs=None ):
+        """!@brief Function description.
+
+        @details Function description.
+
+        @param[in] input ...
+        @param[out] output ...
+
+        """
+
+        if model is None:
+            which_chi2 = \
+                self.settings.parameter_space_settings['which_chi2']
+            models_done = np.where(self.all_models.table['all_done'])
+            min_chi2 = min(m[which_chi2]
+                           for m in self.all_models.table[models_done])
+            t = self.all_models.table.copy(copy_data=True) # deep copy!
+            t.add_index(which_chi2)
+            model_id = t.loc_indices[min_chi2]
+            model = self.all_models.get_model_from_row(model_id)
+        
+        mdir = model.get_model_directory() 
+        mdir_noml = mdir[:mdir[:-1].rindex('/')+1]
+        
+        file4 = mdir + 'nn_orb.out'
+        file2 = mdir_noml + 'datfil/orblib.dat_orbclass.out'
+        file3 = mdir_noml + 'datfil/orblibbox.dat_orbclass.out'
+        file3_test = os.path.isfile(file3)
+        if not file3_test: file3= '%s' % file2
+
+        xrange=[0.0,Rmax_arcs]
+
+        triaxreadparameters = self.triaxreadparameters(w_dir=mdir_noml)
+        distance = triaxreadparameters[1]
+        nre = triaxreadparameters[8]
+        nrth, nrrad, ndither = triaxreadparameters[11:14]
+        conversion_factor = triaxreadparameters[18]
+
+        '''
+        mgepar, distance, th_view, ph_view, psi_view, ml, bhmass,\
+        softlen,nre, lrmin, lrmax, nrth, nrrad, ndither, vv1_1, \
+        vv1_2,dm1,dm2,conversion_factor,grav_const_km,parsec_km, \
+        rho_crit = self.triaxreadparameters(w_dir=mdir_noml)
+        '''
+
+        norb = int(nre*nrth*nrrad)
+        orbclass1 = self.readorbclass(file=file2, nrow=norb, ncol=ndither**3)
+        orbclass2 = self.readorbclass(file=file3, nrow=norb, ncol=ndither**3)
+
+        # norbout, ener, i2, i3, regul, orbtype, orbw, lcut, ntot = self.readorbout(filename=file4)
+        orbw = self.readorbout(filename=file4)[6]
+
+        orbclass=np.dstack((orbclass1,orbclass1,orbclass2))
+        orbclass1a=np.copy(orbclass1)
+        orbclass1a[0:3,:,:] *= -1     # the reverse rotating orbits of orbclass
+
+        for i in range(int(0), norb):
+            orbclass[:,:,i*2]=orbclass1[:, :, i]
+            orbclass[:,:,i*2 + 1]=orbclass1a[:, :, i]
+
+        ## define circularity of each orbit [nditcher^3, norb]    
+        lz = (orbclass[2,:,:]/orbclass[3,:,:]/np.sqrt(orbclass[4,:,:]))   # lambda_z = lz/(r * Vrms)
+        # lx = (orbclass[0,:,:]/orbclass[3,:,:]/np.sqrt(orbclass[4,:,:]))   # lambda_x = lx/(r * Vrms)
+        # l= (np.sqrt(np.sum(orbclass[0:3,:,:]**2, axis=0))/orbclass[3,:,:]/np.sqrt(orbclass[4,:,:]))
+        r = (orbclass[3,:,:]/conversion_factor)   # from km to kpc
+
+        # average values for the orbits in the same bundle (ndither^3).
+        # Only include the orbits within Rmax_arcs
+        rm=np.sum(orbclass[3,:,:] / conversion_factor, axis=0)/ndither**3
+        s=np.ravel(np.where((rm > xrange[0]) & (rm < xrange[1])))
+
+        # flip the sign of lz to confirm total(lz) > 0
+        t=np.ravel(np.argsort(rm))
+        yy=np.max(np.ravel(np.where(np.cumsum(orbw[t]) <= 0.5)))
+        k = t[0:yy]
+        if np.sum(np.sum(lz[:,k], axis=0)/(ndither**3)*orbw[k]) < 0: 
+            lz *= -1.
+
+        # Make the figure    
+        nxbin = 7  #7
+        nybin = 21 #21
+        # Alice: maybe we could change these so that they are not always 
+        #        fixed to the same value?
+        self.plotdensity(object=object, f1=r[:,s], f2=lz[:,s], 
+                weight=orbw[s], xnbin=nxbin, ynbin=nybin,
+                distance=distance, plotdir = self.plotdir)
+
+        # compute total angular momentum
+        #angular= np.abs(np.sum((lzm[t[0:y+1]])*orbw[t[0:y+1]])/np.sum(orbw[t[0:y+1]]))
+        #lzm = np.sum((lz), axis=0)/ndither **3
+        #angular2= np.abs(np.sum((lzm[t[0:y+1]])*orbw[t[0:y+1]])/np.sum(orbw[t[0:y+1]]))
+
+        pass
+
+#############################################################################
+######## Routines from schw_anisotropy.py, necessary for beta_plot ##########
+#############################################################################
+
+    def N_car2sph(self, x, y, z, eps=None):
+        """!@brief orthogonal velocity conversion matrix: N=[N_ji] (i=row,j=column)
+
+        @details orthogonal velocity conversion matrix: N=[N_ji] (i=row,j=column)
+
+        @param[in] input ...
+        @param[out] output ...
+
+        """
+        if not eps: eps=1.0e-10
+        R = np.sqrt(x**2 + y**2)
+        rr = np.sqrt(x**2 + y**2 + z**2)
+        res = np.zeros((3,3),dtype=np.float)
+        if (R > eps and rr > eps):
+            res[0,0] = x/rr
+            res[0,1] = (x*z)/(R*rr)
+            res[0,2] = -y/R
+            res[1,0] = y/rr
+            res[1,1] = (y*z)/(R*rr)
+            res[1,2] = x/R
+            res[2,0] = z/rr
+            res[2,1] = -R/rr
+            res[2,2] = 0.0
+        return res
+
+#############################################################################
+    
+    def car2sph_mu12(self, x, y, z, mu1car, mu2car, eps=None):
+        """!@brief conversion from Cartesian to spherical intrinsic moments
+        of first and second order (in first octant with x>0, y>0, and z>0)
+
+        @details conversion from Cartesian to spherical intrinsic moments
+        of first and second order (in first octant with x>0, y>0, and z>0).
+        on input ...
+        x,y,z  = vector of n (Cartesian) coordinates
+        mu1car = (n x 3)-array with first Cartesian moments
+        mu2car = (n x 3 x 3)-array with second Cartesian moments
+        on output
+        mu1sph = (n x 3)-array with first spherical moments
+        mu2sph = (n x 3 x 3)-array with second spherical moments
+                      | mu_x |                    | <mu_xx> <mu_xy> <mu_xz> |
+        mu1car[i,*] = | mu_y |,   mu2car[i,*,*] = | <mu_yx> <mu_yy> <mu_yz> |
+                      | mu_z |                    | <mu_zx> <mu_zy> <mu_zz> |
+        idem for spherical but with (x,y,z) -> (r,theta,phi)
+
+        @param[in] input ...
+        @param[out] output ...
+
+        """
+        if not eps: eps=1.0e-10
+        nn=len(x)
+        # print(nn)
+        mu1sph=np.zeros((nn,3), dtype=np.float)
+        mu2sph=np.zeros((nn,3,3), dtype=np.float)
+        for i in range(nn):
+            # conversion matrix N = N[k,j], where j=row, k=column
+            N = self.N_car2sph(x[i], y[i], z[i], eps=eps)
+            # first moment
+            mu1sph[i, :] = np.matmul(mu1car[i,:],N)
+            # second moment
+            for j in range(3):           # rows
+                for k in range(3):        # columns
+                    mu2sph[i,k,j]= np.sum(np.outer(N[:,k],N[:,j])* \
+                                   np.reshape(mu2car[i,:,:],(3,3),order='F'))
+        return mu1sph, mu2sph
+
+#############################################################################
+    
+    def N_car2cyl(self, x, y, z, eps=None):
+        """!@brief orthogonal velocity conversion matrix: N=[N_ji] (i=row,j=column)
+
+        @details orthogonal velocity conversion matrix: N=[N_ji] (i=row,j=column)
+        <v>=N<u>, with <v> spherical and <u> Cartesian
+        from http://en.wikipedia.org/wiki/List_of_canonical_coordinate_transformations
+
+        @param[in] input ...
+        @param[out] output ...
+
+        """
+        if not eps: eps=1.0e-10
+        R2 = x**2 + y**2
+        R=np.sqrt(R2)
+        res = np.zeros((3,3),dtype=np.float)
+        if (R > eps and R2 > eps):
+            res[0,0] = x/R
+            res[0,1] = -y/R
+            res[0,2] = 0.0
+            res[1,0] = y/R
+            res[1,1] = x/R
+            res[1,2] = 0.0
+            res[2,0] = 0.0
+            res[2,1] = 0.0
+            res[2,2] = 1.0
+        return res
+
+#############################################################################
+    
+    def car2cyl_mu12(self, x, y, z, mu1car, mu2car, eps=None):
+        """!@brief conversion from Cartesian to cylindrical intrinsic moments of first
+        and second order (in first octant with x>0, y>0, and z>0)
+
+        @details conversion from Cartesian to cylindrical intrinsic moments
+        of first and second order (in first octant with x>0, y>0, and z>0)
+
+        @param[in] input ...
+        @param[out] output ...
+
+        """
+        if not eps: eps=1.0e-10
+        nn=len(x)
+        # print(nn)
+        mu1sph=np.zeros((nn,3), dtype=np.float)
+        mu2sph=np.zeros((nn,3,3), dtype=np.float)
+        for i in range(nn):
+            # conversion matrix N = N[k,j], where j=row, k=column
+            N = self.N_car2cyl(x[i], y[i], z[i], eps=eps)
+            # first moment
+            mu1sph[i,:] = np.matmul(mu1car[i,:],N)
+            # second moment
+            for j in range(3):           # rows
+                for k in range(3):        # columns
+                    mu2sph[i,k,j]= np.sum(np.outer(N[:,k],N[:,j])* \
+                                   np.reshape(mu2car[i,:,:],(3,3),order='F'))
+        return mu1sph, mu2sph
+
+#############################################################################
+
+    def anisotropy_single(self, file=None):
+        """!@brief Function description.
+
+        @details Function description.
+
+        @param[in] input ...
+        @param[out] output ...
+
+        """
+
+        # intrinsic moments
+        #"iph,ith,ir,ma,mm,me,x,y,z (in arcsec),vx,vy,vz,xv2,vy2 ,vz2,vxvy,vyvz,vzvx,OL,OS,OB"
+        # 0   1   2  3  4  5  6 7 8             9  10 11 12  13  14  15   16   17   18,19,20
+
+        filename_moments = file
+        mom_par1 = np.genfromtxt(filename_moments, max_rows=1, skip_header=1)
+        nmom, nph, nth, nrr = mom_par1.T
+        nmom = int(nmom)
+        nph = int(nph)
+        nth = int(nth)
+        nrr = int(nrr)
+        if nmom != 16: sys.exit('made for 16 moments')
+
+        ntot = nph*nth*nrr
+        phf = np.genfromtxt(filename_moments, max_rows=1, skip_header=3)
+        phf = phf.T
+        thf = np.genfromtxt(filename_moments, max_rows=1, skip_header=5)
+        thf = thf.T
+        rrf = np.genfromtxt(filename_moments, max_rows=1, skip_header=7)
+        rrf = rrf.T
+        data = np.genfromtxt(filename_moments, max_rows=ntot, skip_header=10)
+
+        x = data[:,6]
+        y = data[:,7]
+        z = data[:,8]
+        r = np.sqrt(x**2 + y**2 + z**2)
+        Bigr = np.sqrt(x**2 + y**2)
+
+        v1car = data[:,9:12]           #; <v_t> t=x,y,z [(km/s)]
+        dum = data[:,[12,15,17,15,13,16,17,16,14]]
+        v2car = np.reshape(dum[:,:], (ntot,3,3), order='F')  # < v_s * v_t > s, t = x, y, z[(km / s) ^ 2]
+        # v1sph, v2sph = self.car2sph_mu12(x, y, z, v1car, v2car)  # (v_r, v_phi, v_theta)
+        v2sph = self.car2sph_mu12(x, y, z, v1car, v2car)[1]  # (v_r, v_phi, v_theta)
+        orot = 1 - (0.5*(v2sph[:,1,1] + v2sph[:,2,2]))/(v2sph[:,0,0])    
+        rr = np.sum(np.sum(np.reshape(r,(nrr,nth,nph),order='F'), 
+                    axis=2), axis=1)/(nth*nph)
+        TM = np.sum(np.sum(np.reshape(data[:,4],(nrr,nth,nph),order='F'),
+                    axis=2), axis=1)
+        orotR = np.sum(np.sum(np.reshape(orot*data[:,4],(nrr,nth,nph),
+                    order='F'), axis=2), axis=1)/TM
+
+        v1cyl, v2cyl = self.car2cyl_mu12(x, y, z, v1car, v2car)        # (v_R, v_phi, v_z)
+        vrr = v2cyl[:,0,0]
+        vpp = v2cyl[:,1,1]
+        vzz = v2cyl[:,2,2]
+        vp = v1cyl[:,1]
+        nbins = 14
+        Bint = 2**(np.arange(nbins+1, dtype=np.float)/2.5) - 1.0
+        Rad = np.zeros(nbins, dtype=np.float)
+        vrr_r = np.zeros(nbins, dtype=np.float)
+        vpp_r = np.zeros(nbins, dtype=np.float)
+        vzz_r = np.zeros(nbins, dtype=np.float)
+        vp_r = np.zeros(nbins, dtype=np.float)
+        d = data[:,4]
+        ### Bin along bigR        
+        for i in range(nbins):
+            ss=np.ravel(np.where((Bigr > Bint[i]) & \
+                        (Bigr < Bint[i+1]) & (np.abs(z) < 5.0)))  
+                        # restrict to the disk plane with |z| < 5 arcsec
+            nss=len(ss)
+            if nss > 0:
+                Rad[i] = np.average(Bigr[ss])
+                vrr_r[i] = np.sum(vrr[ss]*d[ss])/np.sum(d[ss])
+                vpp_r[i] = np.sum(vpp[ss]*d[ss])/np.sum(d[ss])
+                vzz_r[i] = np.sum(vzz[ss]*d[ss])/np.sum(d[ss])
+                vp_r[i] = np.sum(vp[ss]*d[ss])/np.sum(d[ss])
+
+        return rr, orotR, Rad, vzz_r, vrr_r, vpp_r, vp_r
+
+#############################################################################
+
+    def beta_plot(self, which_chi2=None, Rmax_arcs=None):
+        # schw_anisotropy.py
+        # plot_betaz_var
+        # plot_vanisotropy_var
+
+        val = deepcopy(self.all_models.table)
+        arg = np.argsort(np.array(val[which_chi2]))
+        val.sort(which_chi2)
+        chi2pmin = val[which_chi2][0]
+        
+        nGH = self.settings.weight_solver_settings['number_GH']
+        stars = \
+            self.system.get_component_from_class(physys.TriaxialVisibleComponent)
+        Nobs = sum([len(kin.data) for kin in stars.kinematic_data])
+        #Alice: please check that this definition for Nobs is indeed correct! 
+        chlim = np.sqrt(2*Nobs*nGH)
+
+        chi2 = val[which_chi2]
+        chi2 -= chi2pmin
+        chilev = chlim * chi2pmin
+
+        s = np.ravel(np.argsort(chi2))
+        chi2=chi2[s]
+
+        # select the models within 1 sigma confidence level
+        s=np.ravel(np.where(chi2 <=  np.min(chi2)+chilev))
+        n=len(s)
+        if n < 3:
+            s = np.arange(3, dtype=np.int)
+            n = len(s)
+
+        chi2=chi2[s]
+
+        RRn = np.zeros((100,n), dtype=np.float)
+        orotn = np.zeros((100,n), dtype=np.float)
+        RRnz = np.zeros((100,n), dtype=np.float)
+        orotnz = np.zeros((100,n), dtype=np.float)
+        Vz2 = np.zeros((100,n), dtype=np.float)
+        VR2 = np.zeros((100,n), dtype=np.float)
+        Vp2= np.zeros((100,n), dtype=np.float)
+        Vp = np.zeros((100,n), dtype=np.float)
+        
+        for i in range(n):
+            model_id = arg[i]
+            model = self.all_models.get_model_from_row(model_id)        
+            mdir = model.get_model_directory() 
+
+            filei = mdir + 'nn_intrinsic_moments.out'
+
+            rr, orotR, Rad, vzz_r, vrr_r, vpp_r, \
+                vp_r = self.anisotropy_single(file=filei)
+            nrr = len(rr)
+            RRn[0:nrr,i] = rr
+            orotn[0:nrr,i] = orotR
+
+            nrad = len(Rad)
+            RRnz[0:nrad,i] = Rad
+            ratio = np.zeros(nrad)
+            ratio[np.where(Rad>0)] = \
+                vzz_r[np.where(Rad>0)]/vrr_r[np.where(Rad>0)]
+            orotnz[0:nrad,i] = 1. - ratio # vzz_r/vrr_r
+            Vz2[0:nrad,i] = vzz_r
+            VR2[0:nrad,i] = vrr_r
+            Vp2[0:nrad,i] = vpp_r
+            Vp[0:nrad,i] = vp_r
+        
+        plotdir = self.plotdir
+        filename1 = plotdir + 'anisotropy_var.pdf'
+        filename2 = plotdir + 'betaz_var.pdf'
+
+        RRn_m = np.zeros(nrr, dtype=np.float)
+        RRn_e = np.zeros(nrr, dtype=np.float)
+        orot_m2 = np.zeros(nrr, dtype=np.float)
+        orot_e2 = np.zeros(nrr, dtype=np.float)
+        for j in range(0, nrr):
+            RRn_m[j] = np.average(RRn[j,:])
+            RRn_e[j] = np.sqrt(np.var(RRn[j,:], ddof=1))
+            orot_m2[j] = np.average(orotn[j,:])
+            orot_e2[j] = np.sqrt(np.var(orotn[j,:], ddof=1))
+
+        radialrange=np.array([np.min(rr),Rmax_arcs])
+        yrange=np.array([-1,1])
+        '''
+        fig = plt.figure(figsize=(5,5))
+        ax = fig.add_subplot(1,1,1)
+        ax.set_xlim(radialrange)
+        ax.set_ylim(yrange)
+        ax.set_yticks([-1.0,-0.5,0,0.5,1])
+        ax.plot(RRn_m,orot_m2, '-', color='black', linewidth=3)
+        ax.plot(RRn_m,orot_m2+orot_e2, '--', color='black', linewidth=0.8)
+        ax.plot(RRn_m,orot_m2-orot_e2, '--', color='black', linewidth=0.8)
+        ax.set_xlabel(r'$r$ [arcsec]', fontsize=9)
+        ax.set_ylabel(r'$\beta_{\rm r} = 1 - \sigma_{\rm t}^2/\sigma_{\rm r}^2$',
+                         fontsize=9)
+        ax.tick_params(labelsize=8)
+        ax.plot(radialrange, [0,0], '--', color='black', linewidth=1)
+        plt.tight_layout()
+        plt.savefig(filename1)
+        plt.close()
+        '''
+        fig = plt.figure(figsize=(5,5))
+        ax = fig.add_subplot(1,1,1)
+        ax.set_xlim(radialrange)
+        yrange=np.array([min(-1,min(orot_m2-orot_e2)),1])
+        ax.set_ylim(yrange)
+        if yrange[1]-yrange[0]<=4:
+            yticks = np.linspace(int(yrange[0])*1.,
+                        int(yrange[1])*1.,int((yrange[1]-yrange[0])/0.5)+1)
+        else: 
+            yticks = np.linspace(int(yrange[0])*1.,
+                        int(yrange[1])*1.,int((yrange[1]-yrange[0]))+1)
+        ax.set_yticks(yticks)
+        ax.plot(RRn_m,orot_m2, '-', color='black', linewidth=3.0)
+        ax.fill_between(RRn_m, orot_m2-orot_e2, 
+                        orot_m2+orot_e2,facecolor='gray',alpha=0.3)
+        ax.set_xlabel(r'$r$ [arcsec]', fontsize=9)
+        ax.set_ylabel(r'$\beta_{\rm r} = 1 - \sigma_{\rm t}^2/\sigma_{\rm r}^2$', 
+                         fontsize=9)
+        ax.tick_params(labelsize=8)
+        ax.plot(radialrange, [0,0], '--', color='black', linewidth=1.0)
+        plt.tight_layout()
+        plt.savefig(filename1)
+        plt.close()
+
+        self.logger.info(f'Figure anisotropy_var.pdf saved in {plotdir}')
+
+        '''
+        fig = plt.figure(figsize=(5,5))
+        ax = fig.add_subplot(1,1,1)
+        ax.set_xlim([0,Rmax_arcs])
+        ax.set_ylim([0,1])
+        ax.set_xlabel(r'$R$ [arcsec]', fontsize=9)
+        ax.set_ylabel(r'$\beta_{\rm z} = 1 - \sigma_{\rm z}^2/\sigma_{\rm R}^2$',
+                         fontsize=9)
+        ax.tick_params(labelsize=8)
+        RRn_m = np.zeros(nrad, dtype=np.float)
+        RRn_e = np.zeros(nrad, dtype=np.float)
+        orot_m2 = np.zeros(nrad, dtype=np.float)
+        orot_e2 = np.zeros(nrad, dtype=np.float)
+        for j in range(0, nrad):
+            kk = np.where(orotn[j,:] > 0.0)
+            if len(kk[0])>0:
+                RRn_m[j] = np.average(RRn[j,kk])
+                RRn_e[j] = np.sqrt(np.var(RRn[j,kk], ddof=1))
+                orot_m2[j] = np.average(orotn[j,kk])
+                orot_e2[j] = np.sqrt(np.var(orotn[j,kk], ddof=1))
+            else: 
+                orot_m2[j] = -1.
+        cc = orot_m2 > 0
+        ax.plot(RRn_m[cc], orot_m2[cc], '-', color='black', linewidth =3)
+        ax.plot(RRn_m[cc], orot_m2[cc]+orot_e2[cc], '--', color='black',
+                     linewidth =0.8)
+        ax.plot(RRn_m[cc], orot_m2[cc]-orot_e2[cc], '--', color='black',
+                     linewidth =0.8)
+        plt.tight_layout()
+        plt.savefig(filename2)
+        plt.close()
+        '''
+
+        fig = plt.figure(figsize=(5,5))
+        ax = fig.add_subplot(1,1,1)
+        ax.set_xlim([0,Rmax_arcs])
+        ax.set_ylim([0,1])
+        ax.set_xlabel(r'$R$ [arcsec]', fontsize=9)
+        ax.set_ylabel(r'$\beta_{\rm z} = 1 - \sigma_{\rm z}^2/\sigma_{\rm R}^2$',
+                         fontsize=9)
+        ax.tick_params(labelsize=8)
+        RRn_m = np.zeros(nrad, dtype=np.float)
+        RRn_e = np.zeros(nrad, dtype=np.float)
+        orot_m2 = np.zeros(nrad, dtype=np.float)
+        orot_e2 = np.zeros(nrad, dtype=np.float)
+        for j in range(0, nrad):
+            kk = np.where(orotn[j,:] > 0.0)
+            if len(kk[0])>0:
+                RRn_m[j] = np.average(RRn[j,kk])
+                RRn_e[j] = np.sqrt(np.var(RRn[j,kk], ddof=1))
+                orot_m2[j] = np.average(orotn[j,kk])
+                orot_e2[j] = np.sqrt(np.var(orotn[j,kk], ddof=1))
+            else: 
+                orot_m2[j] = -1.
+        cc = orot_m2 > 0
+        Rmaxcc = (int(max(RRn_m[cc])/5) + 1)*5
+        ax.set_xlim([0,Rmaxcc])
+        ax.plot(RRn_m[cc], orot_m2[cc], '-', color='black', linewidth =3)
+        ax.fill_between(RRn_m[cc], orot_m2[cc]-orot_e2[cc], 
+                        orot_m2[cc]+orot_e2[cc],facecolor='gray',alpha=0.3)
+        plt.tight_layout()
+        plt.savefig(filename2)
+        plt.close()
+
+        self.logger.info(f'Figure betaz_var.pdf saved in {plotdir}')
+
+        return 1
+
+
+#############################################################################
+######## Routines from schw_qpu.py, necessary for qpu_plot ##################
+#############################################################################
+
+    def enlargeVector(self, old_vec=None, new_length=None):
+        old_indices = np.arange(0, len(old_vec))
+        new_indices = np.linspace(0, len(old_vec)-1, new_length)
+        spl = UnivariateSpline(old_indices, old_vec, k=1, s=0)
+        new_vec = spl(new_indices)
+        return new_vec
+
+#############################################################################
+
+    def pqintr_mge_v2(self, Rpc=None, surf_pc=None, sigma_pc=None, 
+                        qobs=None, psi_off=None, incl=None):
+
+        theta = incl[0]
+        phi = incl[1]
+        psi = incl[2]
+
+        r = np.arange(101, dtype=np.float)/100.0*max(Rpc)*1.02
+        n = len(r)
+
+        pintr, qintr, uintr = self.triax_tpp2pqu(theta=theta, phi=phi, 
+                                                 psi=psi, qobs=qobs, 
+                                                 psi_off=psi_off, res=1)
+        sigintr_pc = sigma_pc/uintr
+        sb3 = surf_pc*(2*np.pi*sigma_pc**2*qobs)/ \
+              ((sigintr_pc*np.sqrt(2*np.pi))**3*pintr*qintr)
+        Sz = np.zeros(n, dtype=np.float)
+        Sy = np.zeros(n, dtype=np.float)
+        Sx = np.zeros(n, dtype=np.float)
+
+        for i in range(n):
+            Sz[i] = np.sum(sb3*np.exp(-(r[i]**2/qintr**2)/(2*sigintr_pc**2))) # SB at z direction
+            Sy[i] = np.sum(sb3*np.exp(-(r[i]**2/pintr**2)/(2*sigintr_pc**2))) # SB at y direction
+            Sx[i] = np.sum(sb3*np.exp(-(r[i]**2)/(2*sigintr_pc**2))) # SB at x direction
+
+        #### check and replace the enlargeVector function in basic file
+        Sya = self.enlargeVector(old_vec=Sy, new_length=n*int(100))
+        Sza = self.enlargeVector(old_vec=Sz, new_length=n*int(100))
+        Sxa = self.enlargeVector(old_vec=Sx, new_length=n*int(100))
+        ra = self.enlargeVector(old_vec=r, new_length=n*int(100))
+
+        pr = np.zeros_like(Rpc)
+        qr = np.zeros_like(Rpc)
+        for i in range(len(Rpc)):
+            k1 = np.digitize(Rpc[i], ra, right=True)
+            if ra[k1]>0:
+                pr[i] = ra[np.digitize(Sxa[k1], Sya, right=True)]/ra[k1]
+                qr[i] = ra[np.digitize(Sxa[k1], Sza, right=True)]/ra[k1]
+            else:
+                pr[i] = -1.
+                qr[i] = -1.
+        return pr, qr
+
+#############################################################################
+
+    def qpu_plot(self, which_chi2=None, Rmax_arcs=None):
+        # schw_qpu.py
+        # plot_qpu_out=plot_qpu(w_dir=w_dir, object=object, rootname=rootname,
+        #        chilev=chlim *chi2pmin, qpu_dir=figdir, Rmax_arcs=Rmax_arcs)
+        ###def plot_qpu(w_dir = None, object = None,rootname=None ,chilev = None,  qpu_dir=None, Rmax_arcs=None):
+        #pars, chilim, freeroot = schwparinfo(w_dir=w_dir, rootname=rootname, FIRSTITER=0, object=object)
+        #Nf, npar, mpar, mtime, files = read_chi2_file(w_dir + object + '/griddata/' + str(rootname[0]) + '_chi2.cat')
+        #chi2 = mpar[npar, :]     # chi^2 directly from fitting h1, h2, h3...
+        #chi2 = mpar[npar + 1, :]   # chi^2 kin, calculated from direct comparison between kinematic maps, v, sigma....
+
+        val = deepcopy(self.all_models.table)
+        arg = np.argsort(np.array(val[which_chi2]))
+        val.sort(which_chi2)
+        chi2pmin = val[which_chi2][0]
+        
+        nGH = self.settings.weight_solver_settings['number_GH']
+        stars = \
+            self.system.get_component_from_class(physys.TriaxialVisibleComponent)
+        Nobs = sum([len(kin.data) for kin in stars.kinematic_data])
+        #Alice: please check that this definition for Nobs is indeed correct! 
+        chlim = np.sqrt(2*Nobs*nGH)
+
+        chi2 = val[which_chi2]
+        chi2 -= chi2pmin
+        chilev = chlim * chi2pmin
+
+        s = np.ravel(np.argsort(chi2))
+        chi2=chi2[s]
+
+        # select the models within 1 sigma confidence level
+        s=np.ravel(np.where(chi2 <=  np.min(chi2)+chilev))
+        n=len(s)
+        if n < 3:
+            s = np.arange(3, dtype=np.int)
+            n = len(s)
+        if n > 100:
+            s = np.arange(100, dtype=np.int)
+            n = len(s)
+
+        chi2=chi2[s]
+        
+        q_all = np.zeros((101,n), dtype=np.float)
+        p_all = np.zeros((101,n), dtype=np.float)
+        Rarc = np.arange(101, dtype=np.float)/100.0*Rmax_arcs
+
+        for i in range(0, n):
+            model_id = arg[i]
+            model = self.all_models.get_model_from_row(model_id)        
+            mdir = model.get_model_directory() 
+            mdir_noml = mdir[:mdir[:-1].rindex('/')+1]
+
+            '''
+            mgepar, distance, th_view, ph_view, psi_view, ml, \
+            bhmass, softlen, nre, lrmin, lrmax, nrth, nrrad, ndither, \
+            vv1_1, vv1_2, dm1, dm2, conversion_factor, grav_const_km, \
+            parsec_km, rho_crit = self.triaxreadparameters(w_dir=mdir_noml)
+            '''
+
+            mgepar, distance, th_view, ph_view, \
+            psi_view = self.triaxreadparameters(w_dir=mdir_noml)[:5]
+
+            arctpc = distance*np.pi/0.648
+            Rpc = Rarc*arctpc
+            surf_pc = mgepar[0,:]
+            sigobs_pc = mgepar[1,:]*arctpc
+            qobs = mgepar[2,:]
+            p_k, q_k = self.pqintr_mge_v2(Rpc=Rpc, surf_pc=surf_pc, \
+                                    sigma_pc=sigobs_pc, qobs=qobs, \
+                                    psi_off=mgepar[3,:], \
+                                    incl=[th_view, ph_view, psi_view])
+            p_all[:,i] = p_k
+            q_all[:,i] = q_k
+
+        T_all = np.zeros_like(p_all)
+        cond = (p_all>=0)
+        T_all[~cond] = -1.
+        T_all[cond] = (1. - p_all[cond]**2.)/(1. - q_all[cond]**2.)
+
+        T_m = np.zeros_like(Rpc)
+        T_var = np.zeros_like(Rpc)
+        p_m = np.zeros_like(Rpc)
+        p_var = np.zeros_like(Rpc)
+        q_m = np.zeros_like(Rpc)
+        q_var = np.zeros_like(Rpc)
+
+        for i in range(101):
+            cc = T_all[i,:] > 0.
+            if sum(cc)>0:
+                p_m[i] = np.average(p_all[i,cc])
+                p_var[i] = np.sqrt(np.var(p_all[i,cc],ddof=1))
+                q_m[i] = np.average(q_all[i,cc])
+                q_var[i] = np.sqrt(np.var(q_all[i,cc],ddof=1))
+                T_m[i] = np.average(T_all[i,cc])
+                T_var[i] = np.sqrt(np.var(T_all[i,cc],ddof=1))
+            else: 
+                p_m[i] = -1.
+
+        cc = (p_m >= 0)
+
+        plotdir = self.plotdir
+        filename1 = plotdir + 'triaxial_qpt.pdf'
+        fig = plt.figure(figsize=(5,5))
+        ax = fig.add_subplot(1,1,1)
+        ax.set_xlim(np.array([0,Rmax_arcs]))
+        ax.set_ylim(np.array([0.0,1.1]))
+        #ax.plot(Rpc[cc]/arctpc, q_m[cc], 'x', color='black', markersize=1)
+        ax.set_xlabel(r'$r$ [arcsec]', fontsize=9)
+        ax.set_ylabel(r'$p$ | $q$ | $T = (1-p^2)/(1-q^2)$', fontsize=9)
+        ax.tick_params(labelsize=8)
+
+        ax.plot(Rpc[cc]/arctpc, p_m[cc], '-', color='blue', 
+                linewidth=3.0, label=r'$p$')
+        ax.plot(Rpc[cc]/arctpc, p_m[cc]-p_var[cc], '--', 
+                color='blue', linewidth=0.8)
+        ax.plot(Rpc[cc]/arctpc, p_m[cc]+p_var[cc], '--', 
+                color='blue', linewidth=0.8)
+
+        ax.plot(Rpc[cc]/arctpc, q_m[cc], '-', color='black', 
+                linewidth=3.0, label=r'$q$')
+        ax.plot(Rpc[cc]/arctpc, q_m[cc]-q_var[cc], '--', 
+                color='black', linewidth=0.8)
+        ax.plot(Rpc[cc]/arctpc, q_m[cc]+q_var[cc], '--', 
+                color='black', linewidth=0.8)
+
+        ax.plot(Rpc[cc]/arctpc, T_m[cc], '-', color='red', 
+                linewidth=3.0, label=r'$T$')
+        ax.plot(Rpc[cc]/arctpc, T_m[cc]-T_var[cc], '--', 
+                color='red', linewidth=0.8)
+        ax.plot(Rpc[cc]/arctpc, T_m[cc]+T_var[cc], '--', 
+                color='red', linewidth=0.8)
+
+        ax.legend(loc='upper right', fontsize=8)
+        plt.tight_layout()
+        plt.savefig(filename1)
+        plt.close()
+
+        self.logger.info(f'Plot triaxial_qpt.pdf saved in {plotdir}')
+
+        return 1
 
     def version_p(self):
         return sys.version.split()[0]
-    
+
     def version_f(self):
-        v = subprocess.run("gfortran --version", capture_output=True, shell=True, \
-            check=True).stdout.decode('utf-8').split(sep='\n')[0].split()[-1]
+        v = subprocess.run("gfortran --version", capture_output=True, \
+            shell=True, check=True).stdout.decode('utf-8'). \
+            split(sep='\n')[0].split()[-1]
         return v
 
 
