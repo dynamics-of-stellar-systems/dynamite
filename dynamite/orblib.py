@@ -316,7 +316,7 @@ class LegacyOrbitLibrary(OrbitLibrary):
         #create the fortran executable
         txt_file = open(cmdstr, "w")
         txt_file.write('#!/bin/bash' + '\n')
-        tmp = '/orbitstart < infil/orbstart.in 2>&1 >> datfil/orbstart.log\n'
+        tmp = '/orbitstart < infil/orbstart.in >> datfil/orbstart.log\n'
         txt_file.write(f'{self.legacy_directory}{tmp}')
         txt_file.close()
         # the name of the executable must be returned to use in subprocess.call
@@ -337,7 +337,7 @@ class LegacyOrbitLibrary(OrbitLibrary):
                     f'{self.mod_dir}datfil/triaxmass.log, ' \
                     f'{self.mod_dir}datfil/triaxmassbin.log'
         if p.returncode == 0:
-            self.logger.debug(f'...done -  {cmdstr_tube} exit code '
+            self.logger.debug(f'...done - {cmdstr_tube} exit code '
                               f'{p.returncode}. {log_files}')
         else:
             text = f'{cmdstr_tube} exit code {p.returncode}. ' \
@@ -352,7 +352,7 @@ class LegacyOrbitLibrary(OrbitLibrary):
                            shell=True)
         log_file = f'Logfile: {self.mod_dir}datfil/orblibbox.log'
         if p.returncode == 0:
-            self.logger.debug(f'...done -  {cmdstr_box} exit code '
+            self.logger.debug(f'...done - {cmdstr_box} exit code '
                               f'{p.returncode}. {log_file}')
         else:
             text = f'{cmdstr_box} exit code {p.returncode}. ' \
