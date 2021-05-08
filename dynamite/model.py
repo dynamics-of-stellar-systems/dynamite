@@ -204,7 +204,7 @@ class Model(object):
         self.settings = settings
         self.parset = parset
         self.parspace = parspace
-        # directory of the Schwarzschild fortran files
+        # directory of the legacy fortran files
         self.legacy_directory = self.settings.legacy_settings['directory']
         # directory of the input kinematics
         self.in_dir = self.settings.io_settings['input_directory']

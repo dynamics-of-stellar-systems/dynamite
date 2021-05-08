@@ -80,7 +80,7 @@ system_components:
                     hi: 0.999
                     step: 0.02
                     minstep: 0.001 #0.01
-                fixed: False
+                fixed: False #True
                 value: 0.99
                 LaTeX: "$p_{min}$"
             u: # sigma_obs / sigma_intrinsic
@@ -113,7 +113,7 @@ system_parameters:
     ml: # M/L
         par_generator_settings:
             lo: 1.
-            hi: 5. #9.
+            hi: 9.
             step: 4.0
             minstep: 0.5
         fixed: False
@@ -155,9 +155,9 @@ weight_solver_settings:
     sb_proj_rel_err: 0.02
 
 parameter_space_settings:
-    # generator_type: "LegacyGridSearch"
+    generator_type: "LegacyGridSearch"
     # generator_type: "GridWalk"
-    generator_type: "FullGrid"
+    # generator_type: "FullGrid"
     which_chi2: "chi2"
     generator_settings:
         specificsetting: 25
@@ -167,7 +167,7 @@ parameter_space_settings:
     stopping_criteria:
         min_delta_chi2_abs : 0.5  # absolute "optimality tolerance"
         #min_delta_chi2_rel : 0.05 # relative "optimality tolerance"
-        n_max_mods : 30
+        n_max_mods : 30 #3
         n_max_iter : 10
 
 legacy_settings:

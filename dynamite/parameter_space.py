@@ -280,7 +280,7 @@ class ParameterGenerator(object):
 
         Parameters
         ----------
-        current_models : schwarzschild.AllModels
+        current_models : dynamite.AllModels
         kw_specific_generate_method : dict
             keyword arguments passed to the specific_generate_method of the
             child class
@@ -300,7 +300,7 @@ class ParameterGenerator(object):
         """
         if current_models is None:
             errormsg = "current_models needs to be a valid " \
-                       "schwarzschild.AllModels instance"
+                       "dynamite.AllModels instance"
             self.logger.error(errormsg)
             raise ValueError(errormsg)
         else:
