@@ -297,7 +297,7 @@ class ModelInnerIterator(object):
         Returns
         -------
         is_new : bool
-            True if no earlier row contains the orbir library, False otherwise.
+            True if no earlier row contains the orbit library, False otherwise.
 
         """
         all_data = self.all_models.table[self.orblib_parameters]
