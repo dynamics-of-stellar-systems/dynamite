@@ -263,8 +263,8 @@ class ModelInnerIterator(object):
             n_orblib = len(rows_to_do_orblib)
             # rows_to_do_ml are the rows that need weight_solver only
             rows_to_do_ml=[i for i in rows_to_do if i not in rows_to_do_orblib]
-            input_list_orblib = [i for i in enumerate(rows_to_do_orblib)]
-            input_list_ml=[i for i in enumerate(rows_to_do_ml, start=n_orblib)]
+            input_list_orblib = [i+(True,) for i in enumerate(rows_to_do_orblib)]
+            input_list_ml=[i+(False,) for i in enumerate(rows_to_do_ml, start=n_orblib)]
             self.logger.debug(f'input_list_orblib: {input_list_orblib}, '
                               f'input_list_ml: {input_list_ml}.')
             # input_list = []
@@ -301,18 +301,19 @@ class ModelInnerIterator(object):
 
         """
         all_data = self.all_models.table[self.orblib_parameters]
-        row_data = tuple(all_data[row_idx])
+        row_data = all_data[row_idx]
         previous_data = all_data[:row_idx]
-        if any(np.allclose(row_data, tuple(r)) for r in previous_data):
-            self.logger.debug(f'Orblib exists above in table: {row_data}.')
+        if any(np.allclose(tuple(row_data), tuple(r)) for r in previous_data):
+            self.logger.debug('Orblib exists above in table: '
+                              f'{dict(row_data)}.')
             is_new = False
         else:
-            self.logger.debug(f'New orblib: {row_data}.')
+            self.logger.debug(f'New orblib: {dict(row_data)}.')
             is_new = True
         return is_new
 
     def create_and_run_model(self, input):
-        i, row = input
+        i, row, new_orblib = input
         self.logger.info(f'... running model {i+1} out of {self.n_to_do}')
         # extract the parameter values
         parset0 = self.all_models.table[row]
@@ -322,16 +323,49 @@ class ModelInnerIterator(object):
                            settings=self.settings,
                            parspace=self.parspace,
                            parset=parset0)
+        orb_done = False
+        wts_done = False
         if self.do_dummy_run:
             mod0.chi2 = self.dummy_chi2_function(parset0)
             mod0.kinchi2 = 0.
         else:
+            # If new orblib: check for duplicate directory conflict
+            if new_orblib:
+                orblib_dir = mod0.get_model_directory()
+                orblib_dir = orblib_dir[:orblib_dir.rindex('/', 0, -1)]
+                orblib_dir = orblib_dir[orblib_dir.rindex('/')+1:]
+                self.logger.debug(f'orblib_dir: {orblib_dir}')
+                model_dir = \
+                    self.settings.io_settings['output_directory'] + 'models/'
+                if os.path.isdir(model_dir):
+                    _, orblib_dirs, _ = next(os.walk(model_dir))
+                    self.logger.debug(f'orblib_dirs: {orblib_dirs}')
+                    if orblib_dir in orblib_dirs:
+                        t = 'Cannot create orbit library directory ' \
+                            f'{model_dir}{orblib_dir} because it already ' \
+                            'exists. Caused by model with parameter set ' \
+                            f'{dict(parset0)}. ' \
+                            'Hint: check the parameter values, their ' \
+                            'stepsize, and the parameter string formats in ' \
+                            'the Component classes in physical_system.py.'
+                        self.logger.error(t)
+                        raise RuntimeError(t)
+                        # mod0.chi2 = float('nan')
+                        # mod0.kinchi2 = float('nan')
+                        # all_done = orb_done and wts_done
+                        # time = np.datetime64('now', 'ms')
+                        # output = (orb_done, wts_done, mod0.chi2,
+                        #           mod0.kinchi2, all_done, time)
+                        # return output
+                else:
+                    self.logger.debug('...is a new orblib directory.')
+            # Carry on, there is no orblib directory conflict...
             mod0.setup_directories()
             orblib = mod0.get_orblib()
             orb_done = True
             weight_solver = mod0.get_weights(orblib)
             wts_done = True
-        all_done = True
+        all_done = orb_done and wts_done
         time = np.datetime64('now', 'ms')
         output = orb_done, wts_done, mod0.chi2, mod0.kinchi2, all_done, time
         return output

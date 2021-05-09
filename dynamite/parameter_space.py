@@ -272,7 +272,7 @@ class ParameterGenerator(object):
         the following:
         (i) evaluates stopping criteria, and stop if necessary
         (ii) runs the specific_generate_method of the child class, which
-        updates self.model_list with a list of propsal models
+        updates self.model_list with a list of proposal models
         (iii) removes previously run and/or invalid models from self.model_list
         (iv) converts parameters from raw_values to par_values
         (v) adds new, valid models to current_models.table
@@ -884,8 +884,8 @@ class FullGrid(ParameterGenerator):
         Clips parameter values to lo/hi attributes. If clipping violates the
         minstep attribute, the resulting model(s) will not be created. If the
         minstep attribute is missing, the step attribute will be used instead.
-        Explicitly set minstep=0 to allow arbitrarily small steps (not
-        recommended).
+        Explicitly set minstep=0 to allow arbitrarily small steps down to eps
+        (not recommended).
 
         Parameters
         ----------
