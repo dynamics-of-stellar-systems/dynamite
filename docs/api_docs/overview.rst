@@ -1,4 +1,4 @@
-.. _overview:
+.. _api_overview:
 
 ************
 Overview

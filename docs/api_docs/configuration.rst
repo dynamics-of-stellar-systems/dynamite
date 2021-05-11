@@ -1,4 +1,4 @@
-.. _configuration:
+.. _api_configuration:
 
 *************
 Configuration
