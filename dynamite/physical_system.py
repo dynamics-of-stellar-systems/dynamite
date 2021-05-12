@@ -291,7 +291,8 @@ class AxisymmetricVisibleComponent(VisibleComponent):
         super().__init__(symmetry='axisymm', **kwds)
 
     def validate(self):
-        par_format = {'par1':'6.3g', 'par2':'6.4g'}
+        # par_format = {'par1':'6.3g', 'par2':'6.4g'}
+        par_format = {'par1':'g', 'par2':'g'}
         super().validate(par_format)
 
 
@@ -312,7 +313,8 @@ class TriaxialVisibleComponent(VisibleComponent):
         None.
 
         """
-        par_format = {'q':'6.3g', 'p':'6.4g', 'u':'7.5g'}
+        # par_format = {'q':'6.3g', 'p':'6.4g', 'u':'7.5g'}
+        par_format = {'q':'g', 'p':'g', 'u':'g'}
         super().validate(par_format=par_format)
         self.qobs = np.amin(self.mge_pot.data['q'])
         if self.qobs is np.nan:
@@ -429,7 +431,8 @@ class Plummer(DarkComponent):
         return rho
 
     def validate(self):
-        par_format = {'m':'6.3g', 'a':'7.3g'}
+        # par_format = {'m':'6.3g', 'a':'7.3g'}
+        par_format = {'m':'g', 'a':'g'}
         super().validate(par_format)
 
 
@@ -440,7 +443,8 @@ class NFW(DarkComponent):
         super().__init__(symmetry='spherical', **kwds)
 
     def validate(self):
-        par_format = {'c':'6.3g', 'f':'6.3g'}
+        # par_format = {'c':'6.3g', 'f':'6.3g'}
+        par_format = {'c':'g', 'f':'g'}
         super().validate(par_format)
 
 
@@ -451,7 +455,8 @@ class Hernquist(DarkComponent):
         super().__init__(symmetry='spherical', **kwds)
 
     def validate(self):
-        par_format = {'rhoc':'6.3g', 'rc':'6.3g'}
+        # par_format = {'rhoc':'6.3g', 'rc':'6.3g'}
+        par_format = {'rhoc':'g', 'rc':'g'}
         super().validate(par_format)
 
 
@@ -462,7 +467,8 @@ class TriaxialCoredLogPotential(DarkComponent):
         super().__init__(symmetry='triaxial', **kwds)
 
     def validate(self):
-        par_format = {'Vc':'6.3g', 'rho':'6.3g', 'p':'6.3g', 'q':'6.3g'}
+        # par_format = {'Vc':'6.3g', 'rho':'6.3g', 'p':'6.3g', 'q':'6.3g'}
+        par_format = {'Vc':'g', 'rho':'g', 'p':'g', 'q':'g'}
         super().validate(par_format)
 
 
@@ -473,8 +479,9 @@ class GeneralisedNFW(DarkComponent):
         super().__init__(symmetry='triaxial', **kwds)
 
     def validate(self):
-        par_format = {'concentration':'6.3g', 'Mvir':'6.3g',
-                      'inner_log_slope':'6.3g'}
+        # par_format = {'concentration':'6.3g', 'Mvir':'6.3g',
+        #               'inner_log_slope':'6.3g'}
+        par_format = {'concentration':'g', 'Mvir':'g', 'inner_log_slope':'g'}
         super().validate(par_format)
 
 

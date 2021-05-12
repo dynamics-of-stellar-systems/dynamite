@@ -295,9 +295,20 @@ class LegacyOrbitLibrary(OrbitLibrary):
         os.chdir(self.mod_dir)
         cmdstr = self.write_executable_for_ics()
         self.logger.info('Calculating initial conditions')
-        p = subprocess.call('bash '+cmdstr, shell=True)
-        self.logger.debug('...done. ' + \
-                          f'Logfile: {self.mod_dir}datfil/orbstart.log')
+        # p = subprocess.call('bash '+cmdstr, shell=True)
+        p = subprocess.run('bash '+cmdstr,
+                           stdout=subprocess.PIPE,
+                           stderr=subprocess.STDOUT,
+                           shell=True)
+        log_file = f'Logfile: {self.mod_dir}datfil/orbstart.log'
+        if p.returncode == 0:
+            self.logger.debug(f'...done - {cmdstr} exit code {p.returncode}. '
+                              f'{log_file}')
+        else:
+            text = f'{cmdstr} exit code {p.returncode}. ' \
+                   f'Message: {p.stdout}. {log_file}'
+            self.logger.error(text)
+            raise RuntimeError(text)
         os.chdir(cur_dir)
 
     def write_executable_for_ics(self):
@@ -305,7 +316,7 @@ class LegacyOrbitLibrary(OrbitLibrary):
         #create the fortran executable
         txt_file = open(cmdstr, "w")
         txt_file.write('#!/bin/bash' + '\n')
-        tmp = '/orbitstart < infil/orbstart.in 2>&1 >> datfil/orbstart.log\n'
+        tmp = '/orbitstart < infil/orbstart.in >> datfil/orbstart.log\n'
         txt_file.write(f'{self.legacy_directory}{tmp}')
         txt_file.close()
         # the name of the executable must be returned to use in subprocess.call
@@ -317,15 +328,37 @@ class LegacyOrbitLibrary(OrbitLibrary):
         os.chdir(self.mod_dir)
         cmdstr_tube, cmdstr_box = self.write_executable_for_integrate_orbits()
         self.logger.info('Integrating orbit library tube orbits')
-        p = subprocess.call('bash '+cmdstr_tube, shell=True)
-        self.logger.debug('...done. ' + \
-                          f'Logfiles: {self.mod_dir}datfil/orblib.log, ' + \
-                          f'{self.mod_dir}datfil/triaxmass.log, ' + \
-                          f'{self.mod_dir}datfil/triaxmassbin.log')
+        # p = subprocess.call('bash '+cmdstr_tube, shell=True)
+        p = subprocess.run('bash '+cmdstr_tube,
+                           stdout=subprocess.PIPE,
+                           stderr=subprocess.STDOUT,
+                           shell=True)
+        log_files = f'Logfiles: {self.mod_dir}datfil/orblib.log, ' \
+                    f'{self.mod_dir}datfil/triaxmass.log, ' \
+                    f'{self.mod_dir}datfil/triaxmassbin.log'
+        if p.returncode == 0:
+            self.logger.debug(f'...done - {cmdstr_tube} exit code '
+                              f'{p.returncode}. {log_files}')
+        else:
+            text = f'{cmdstr_tube} exit code {p.returncode}. ' \
+                   f'Message: {p.stdout}. {log_files}'
+            self.logger.error(text)
+            raise RuntimeError(text)
         self.logger.info('Integrating orbit library box orbits')
-        p = subprocess.call('bash '+cmdstr_box, shell=True)
-        self.logger.debug('...done. ' + \
-                          f'Logfile: {self.mod_dir}datfil/orblibbox.log')
+        # p = subprocess.call('bash '+cmdstr_box, shell=True)
+        p = subprocess.run('bash '+cmdstr_box,
+                           stdout=subprocess.PIPE,
+                           stderr=subprocess.STDOUT,
+                           shell=True)
+        log_file = f'Logfile: {self.mod_dir}datfil/orblibbox.log'
+        if p.returncode == 0:
+            self.logger.debug(f'...done - {cmdstr_box} exit code '
+                              f'{p.returncode}. {log_file}')
+        else:
+            text = f'{cmdstr_box} exit code {p.returncode}. ' \
+                   f'Message: {p.stdout}. {log_file}'
+            self.logger.error(text)
+            raise RuntimeError(text)
         # move back to original directory
         os.chdir(cur_dir)
 
