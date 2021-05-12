@@ -12,7 +12,6 @@ class Populations(object):
                  datafile=None,
                  aperturefile=None,
                  binfile=None,
-                 maskfile=None,
                  PSF=None,
                  ):
         self.logger = logging.getLogger(f'{__name__}.{__class__.__name__}')
@@ -22,7 +21,6 @@ class Populations(object):
         self.datafile = datafile
         self.aperturefile = aperturefile
         self.binfile = binfile
-        self.maskfile = maskfile
         self.PSF = PSF
         self.__class__.values = list(self.__dict__.keys())
 
