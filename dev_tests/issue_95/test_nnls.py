@@ -29,15 +29,14 @@ def run_user_test(make_comp=False):
 
     # read configuration
     if '__file__' in globals():
-        file_dir = os.path.dirname(__file__)
-        if file_dir:
-            os.chdir(file_dir)
+        os.chdir(os.path.dirname(__file__))
     fname = 'user_test_config_ml.yaml'
     c = dyn.config_reader.Configuration(fname, reset_logging=True)
 
     # delete previous output if available
-    c.remove_existing_orblibs()
-    c.remove_existing_all_models_file(wipe_other_files=False)
+    c.remove_all_existing_output(wipe_all=True)
+    # c.remove_existing_orblibs()
+    # c.remove_existing_all_models_file(wipe_other_files=False)
     # c.backup_config_file(reset=True)
     # c.remove_existing_plots()
 
@@ -49,12 +48,11 @@ def run_user_test(make_comp=False):
     if os.path.isfile(plotfile_chi2):
         os.remove(plotfile_chi2)
 
-    compare_file = file_dir if file_dir else '.'
-    compare_file += "/data/chi2_compare_ml_" \
-                    f"{c.settings.orblib_settings['nE']}" \
-                    f"{c.settings.orblib_settings['nI2']}" \
-                    f"{c.settings.orblib_settings['nI3']}.dat"
-    logger.debug(f'Comparing results to {compare_file}.')
+    compare_file = os.path.dirname(__file__) \
+                    + "/data/chi2_compare_ml_" \
+                      f"{c.settings.orblib_settings['nE']}" \
+                      f"{c.settings.orblib_settings['nI2']}" \
+                      f"{c.settings.orblib_settings['nI3']}.dat"
     # "run" the models
     t = time.perf_counter()
     smi = dyn.model_iterator.ModelIterator(

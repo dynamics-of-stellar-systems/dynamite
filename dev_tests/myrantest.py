@@ -1,9 +1,10 @@
+#!/usr/bin/env python3
 import sys
 import subprocess
 import logging
 import numpy as np
-from dynamite import myrand
-from config_reader import DynamiteLogging
+import dynamite.myrand as myrand
+from dynamite.config_reader import DynamiteLogging
 
 SEED = -4242
 

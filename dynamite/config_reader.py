@@ -4,15 +4,16 @@ import shutil
 import glob
 import math
 import logging
-
+import importlib
 import yaml
+
 import dynamite as dyn
-import physical_system as physys
-import parameter_space as parspace
-import kinematics as kinem
-import populations as popul
-import mges as mge
-import model
+from dynamite import physical_system as physys
+from dynamite import parameter_space as parspace
+from dynamite import kinematics as kinem
+from dynamite import populations as popul
+from dynamite import mges as mge
+from dynamite import model
 
 class Settings(object):
     """
@@ -37,10 +38,10 @@ class Settings(object):
         elif kind == 'io_settings':
             try:
                 out_dir = values['output_directory']
-            except KeyError:
+            except KeyError as e:
                 text = 'Output directory not set in config file.'
                 self.logger.error(text)
-                raise KeyError(text)
+                raise Exception(text) from e
             self.io_settings = values
             self.io_settings['model_directory'] = out_dir + 'models/'
             self.io_settings['plot_directory'] = out_dir + 'plots/'
@@ -131,15 +132,15 @@ class Configuration(object):
         None.
 
         """
-        self.logger = logging.getLogger(f'{__name__}.{__class__.__name__}')
-        logger = self.logger
         if reset_logging is True:
-            logger.info('Resetting logging configuration')
             DynamiteLogging()
-            logger.debug('Logging set to Dynamite defaults')
+            self.logger = logging.getLogger(f'{__name__}.{__class__.__name__}')
+            self.logger.debug('Logging reset to Dynamite defaults')
         else:
-            logger.debug("Dynamite uses the calling application's logging "
-                         "settings")
+            self.logger = logging.getLogger(f'{__name__}.{__class__.__name__}')
+            self.logger.debug("Dynamite uses the calling application's "
+                              "logging settings")
+        logger = self.logger
         self.logger.debug(f'This is Python {sys.version.split()[0]}')
         self.logger.debug(f'Using DYNAMITE version {dyn.__version__} '
                           f'located at {dyn.__path__}')
@@ -150,7 +151,7 @@ class Configuration(object):
         legacy_dir = \
             os.path.realpath(os.path.dirname(__file__)+'/../legacy_fortran')
             # os.path.dirname(os.path.realpath(__file__))+'/../'legacy_fortran'
-        self.logger.debug(f'Legacy Fortran folder: {legacy_dir}')
+        self.logger.debug(f'Default legacy Fortran directory: {legacy_dir}.')
 
         self.config_file = filename
         try:
@@ -178,7 +179,7 @@ class Configuration(object):
                     self.params['io_settings'][io+'_directory'] += '/'
         except:
             logger.error('io_settings: check input_directory '
-                         'and output_directory')
+                         'and output_directory in config file')
             raise
         self.settings.add('io_settings', self.params['io_settings'])
         logger.debug('io_settings assigned to Settings object')
@@ -338,6 +339,8 @@ class Configuration(object):
                 if value['directory'][-1]=='/':
                     value['directory'] = value['directory'][:-1]
                 self.settings.add('legacy_settings', value)
+                self.logger.debug("Legacy directory set to "
+                                  f"{value['directory']}.")
 
             # add output settings to Settings object
 
@@ -821,7 +824,7 @@ class Configuration(object):
 class DynamiteLogging(object):
     """
     Dynamite logging setup. ONLY use if logging has not been configured
-    outside of Dynamite.
+    outside of Dynamite. Resets all logging.
     If no arguments are give, the logging setup is as follows:
     (1) log to the console with logging level INFO, messages include the level,
         timestamp, class name, and message text
@@ -855,10 +858,11 @@ class DynamiteLogging(object):
         None.
 
         """
+        logging.shutdown()
+        importlib.reload(logging)
         logger = logging.getLogger()       # create logger
-        logger.setLevel(logging.DEBUG)     # set level that's lower that wanted
-
-        ch = logging.StreamHandler()       # create console logging handler
+        logger.setLevel(logging.DEBUG)     # set level that's lower than wanted
+        ch = logging.StreamHandler(stream=sys.stderr) # create console handler
         ch.setLevel(console_level)         # set console logging level
         # create formatter
         if console_formatter is None:
@@ -869,7 +873,7 @@ class DynamiteLogging(object):
         logger.addHandler(ch)              # add the handler to the logger
 
         if logfile:
-            fh = logging.FileHandler(logfile, mode='w') # create handler
+            fh = logging.FileHandler(logfile, mode='w') # create file handler
             fh.setLevel(logfile_level)             # set file logging level
             # create formatter
             # formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')

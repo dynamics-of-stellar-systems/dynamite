@@ -7,8 +7,9 @@ import subprocess
 import logging
 from scipy import optimize
 import cvxopt
-import physical_system as physys
-import kinematics as dyn_kin
+
+from dynamite import physical_system as physys
+from dynamite import kinematics as dyn_kin
 
 class WeightSolver(object):
 
@@ -180,13 +181,25 @@ class LegacyWeightSolver(WeightSolver):
                 for line in f:
                     i = line.find('>>')
                     if i >= 0:
-                        logfile = line[i+3:-1]
+                        j = line.find('.log')
+                        logfile = line[i+3:j+4]
                         break
             self.logger.info("Fitting orbit library to the kinematic " + \
                              f"data: {logfile[:logfile.rindex('/')]}")
-            p = subprocess.call('bash '+cmdstr, shell=True)
-            self.logger.debug('...done, NNLS problem solved. Logfile: ' + \
-                              f'{self.mod_dir+logfile}')
+            # p = subprocess.call('bash '+cmdstr, shell=True)
+            p = subprocess.run('bash '+cmdstr,
+                               stdout=subprocess.PIPE,
+                               stderr=subprocess.STDOUT,
+                               shell=True)
+            log_file = f'Logfile: {self.mod_dir+logfile}'
+            if p.returncode == 0:
+                self.logger.debug(f'...done, NNLS problem solved -  {cmdstr} '
+                                  f'exit code {p.returncode}. {log_file}')
+            else:
+                text = f'{cmdstr} exit code {p.returncode}. ' \
+                       f'Message: {p.stdout}. {log_file}'
+                self.logger.error(text)
+                raise RuntimeError(text)
             #set the current directory to the dynamite directory
             os.chdir(cur_dir)
         else:
@@ -205,11 +218,13 @@ class LegacyWeightSolver(WeightSolver):
         if self.CRcut is True:
             txt_file.write('test -e ' + str(nn) + '_kinem.out || ' +
                            self.legacy_directory +
-                           f'/triaxnnls_CRcut < {nn}.in >> {nn}ls.log' + '\n')
+                           f'/triaxnnls_CRcut < {nn}.in >> {nn}ls.log '
+                           '|| exit 1\n')
         else:
             txt_file.write('test -e ' + str(nn) + '_kinem.out || ' +
                            self.legacy_directory +
-                           f'/triaxnnls_noCRcut < {nn}.in >> {nn}ls.log' + '\n')
+                           f'/triaxnnls_noCRcut < {nn}.in >> {nn}ls.log '
+                           '|| exit 1\n')
         txt_file.write(f'rm datfil/orblib_{ml}.dat' + '\n')
         txt_file.write(f'rm datfil/orblibbox_{ml}.dat' + '\n')
         txt_file.close()
