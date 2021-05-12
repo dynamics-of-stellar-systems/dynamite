@@ -15,7 +15,7 @@ def run_random_number_test(ran_seed=SEED, n_ran=10, make_comp=False):
     rtol = 0.
     atol = 1e-16
 
-    fname = f"randata{ran_seed}.txt"
+    fname = f"data/randata{ran_seed}.txt"
     if not make_comp:
         ran_saved = np.loadtxt(fname)
         n_ran = len(ran_saved)
@@ -59,11 +59,12 @@ def run_random_number_test(ran_seed=SEED, n_ran=10, make_comp=False):
         np.savetxt(fname, ran_P)
         logger.info(f"{n_ran} random numbers saved in file {fname}")
 
-    logger.debug(f"Python version: {sys.version}")
-    logger.debug("Fortran version:")
+    version_P = sys.version.split(sep='\n')[0]
+    logger.debug(f"Python version: {version_P}")
     info_F = subprocess.run("gfortran --version", capture_output=True, \
                             shell=True, check=True)
-    logger.debug(info_F.stdout.decode('utf-8'))
+    version_F = info_F.stdout.decode('utf-8').split(sep='\n')[0]
+    logger.debug(f"Fortran version: {version_F}")
 
 if __name__ == '__main__':
     logger = logging.getLogger()
