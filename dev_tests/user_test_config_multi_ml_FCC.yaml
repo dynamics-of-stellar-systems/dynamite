@@ -84,7 +84,6 @@ system_components:
                 datafile: "gauss_hermite_kins_MUSE.ecsv"  # both discr. & integrated
                 aperturefile: "aperture_MUSE.dat" # integrated only
                 binfile: "bins_MUSE.dat"          # integrated only
-                maskfile: maskfile.dat       # made-up filename
             SINFONI: # PLEASE NOTE: DATA NOT PROVIDED WITH DYNAMITE
                 weight: 1.0 # weight of kinematics data specified by name
                 type: GaussHermite # specifies which object class to create
@@ -94,7 +93,6 @@ system_components:
                 datafile: "gauss_hermite_kins_SINFONI.ecsv"  # both discr. & integrated
                 aperturefile: "aperture_SINFONI.dat" # integrated only
                 binfile: "bins_SINFONI.dat"          # integrated only
-                maskfile: maskfile.dat       # made-up filename
 
 system_parameters:
     ml: # M/L
@@ -146,7 +144,6 @@ parameter_space_settings:
     #generator_type: "GridWalk"
     which_chi2: "chi2"
     generator_settings:
-        specificsetting: 25
         # For LegacyGridSearch, specify ONE of the following two settings
         #threshold_del_chi2_abs: 0.5  # absolute change in chi2 threshold
         threshold_del_chi2_as_frac_of_sqrt2nobs: 0.1
