@@ -60,13 +60,6 @@ Comments are allowed, and begin with a ``#``. Values can be any type of variable
   legacy_settings:          # where to find the `legacy` fortran programs
       directory: "default"  # "default" or an absolute path to alternative location
 
-You can read the configuration file into a configuration object ``c`` as follows
-
-.. code-block:: python
-
-  import dynamite as dyn
-  c = dyn.config_reader.Configuration('config_file.yaml') # read the configuration fie
-
 The following sections go through each section of the configuration file and enumerate all the options available for that section,
 
 1. `system_attributes`_
@@ -79,7 +72,8 @@ The following sections go through each section of the configuration file and enu
 8. `multiprocessing_settings`_
 9. `legacy_settings`_
 
-Examples of completed configuration files for different scenarios can be found in the `tutorials <https://github.com/dynamics-of-stellar-systems/dynamite_release/tree/master/docs/tutorial_notebooks>`_. You may like to use these as templates for your own models.
+Examples of completed configuration files for different scenarios can be found in the tutorials [ADD LINK]. You may like to use these as templates for your own models.
+More information about API documentation [ADD LINK].
 
 ``system_attributes``
 =====================
@@ -90,8 +84,6 @@ This section requires three entries::
       distMPc: ...        # distance in MPc
       name:  ...          # name for your galaxy
       position_angle:     # in degrees
-
-which can be accessed in the configuration object as ``c.system.distMPc`` etc.
 
 ``system_components``
 =====================
