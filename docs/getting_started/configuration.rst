@@ -166,10 +166,10 @@ The ``TriaxialVisibleComponent`` represents the galaxy's stars, and therefore ha
             - ``datafile``: string, filename for the kinematics ECSV data file
             - ``aperturefile``: string, filename of the aperture file for this kinematic set
             - ``binfile``: string, filename of the bin file for this kinematic set
-            - ``maskfile``: string, filename of the bin file for this mask file set [CHECK - DO WE USE THIS...? IF NOT, OMIT?]
-            - ``hist_width``: *optional*, the width of the velocity histogram for storing orbits. The default option is slightly wider than range of observed kinematics.
-            - ``hist_center``: *optional*, the center of the velocity histogram for storing orbits. The default option = 0. This should not be changed.
-            - ``hist_bins``: *optional*, the number of bins in the velocity histogram for storing orbits. The default option is
+            - ``hist_width``: *optional*, float or 'default', the width (i.e. min. to max. value) of the velocity histogram for storing orbits. The default option is slightly wider than range of observed kinematics.
+            - ``hist_center``: *optional*, float or 'default', the center of the velocity histogram for storing orbits. The default option = 0. This should not be changed.
+            - ``hist_bins``: *optional*, int or 'default', the number of bins in the velocity histogram for storing orbits. The default option gives about 10 times better velocity sampling than the data.
+
 
 ``accessing the components``
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -193,7 +193,7 @@ Specifying ``ml`` in the configuration file follows the same pattern as other pa
             - ``step``: initial step size for parameter search
             - ``minstep``: minimum allowed stepsize for this parameter
         - ``logarithmic``: Boolean, whether logarithmic steps should be used for parameter search. If true, then (``value``, ``lo``, ``hi``) must all have log units
-        - ``LaTeX``: LaTeX string for this parameter to be used for plots
+        - ``LaTeX``: LaTeX format string for this parameter to be used for plots, e.g. in axis labels
 
 
 ``orblib_settings``

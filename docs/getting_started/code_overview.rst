@@ -13,7 +13,7 @@ This page gives a descriptive overview of everything you will need to run orbit-
 5. `Plotting`_
 6. `Multiprocessing + Slurm Submission`_
 7. `Managing output`_
-8. `Logging`_
+8. `Logging output`_
 
 The tutorial XXXXX [ADD A LINK] shows an example of running DYNAMITE from start to finish - this would also be a great place to start getting acquainted with the code.
 
@@ -95,8 +95,8 @@ Configuration File
 
 All settings for running DYNAMITE can be controlled from a single configuration file. This includes:
 
-- specifing the components of the gravitational potential
-- specifing the potential parameter values and ranges
+- specifying the components of the gravitational potential
+- specifying the potential parameter values and ranges
 - specify the type kinematic data, e.g Gauss Hermite vs BayesLOSVD histograms
 - settings for orbit library, e.g. number of orbits
 - the location of the input and output files
@@ -207,7 +207,7 @@ where ``c`` has the following utility functions,
 
 which you can add to your main script, with caution! The different options may be useful if you want to delete some but not all previous output, e.g. to re-calculate weights but keep old orbit libraries. The API documentation [ADD A LINK] has more information on the different options.
 
-Logging
+Logging output
 ===================
 
 Logging is handled by the Python `logging <https://docs.python.org/3/library/logging.html>`_ module.
