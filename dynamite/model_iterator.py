@@ -6,6 +6,7 @@ import numpy as np
 import logging
 import pathos
 from pathos.multiprocessing import Pool
+import matplotlib.pyplot as plt
 
 class ModelIterator(object):
 
@@ -87,19 +88,19 @@ class ModelIterator(object):
             The default is None.
         chi2_progress : str, optional
             File name of the (kin)chi2 vs. model id plot. Can include
-            an extension (default is .pdf). If a path
+            an extension (default is .png). If a path
             is included, it will be relative to the plot directory.
             If None, the file name will be created automatically.
             The default is None.
         chi2_plot : str, optional
             File name of the "chi2 plot". Can include an extension
-            (default is .pdf). If a path
+            (default is .png). If a path
             is included, it will be relative to the plot directory.
             If None, the file name will be created automatically.
             The default is None.
         kin_map : str, optional
             Template file name kin_base.kin_ext of the kinematic maps.
-            Can include an extension kin_ext (.pdf will be assumed if
+            Can include an extension kin_ext (.png will be assumed if
             extension is missing).
             For each kinematics data set named kin_name, the kinematic
             map will be saved as f'{kin_base}_{kin_name}{kin_ext}'.
@@ -152,11 +153,12 @@ class ModelIterator(object):
             fig_file = plot_dir + fig_file
             self.delete_if_exists(fig_file)
             fig.savefig(fig_file)
+            plt.close(fig)
 
     def _build_plot_filename(self, f_name, default, iteration):
         f, ext = (default, '') if f_name is None else os.path.splitext(f_name)
         if ext == '':
-            ext = '.pdf'
+            ext = '.png'
         if iteration is not None: # add iteration to base file name
             f += f'_{iteration}'
         f += ext # add file extension

@@ -10,7 +10,7 @@ from copy import deepcopy
 import matplotlib as mpl
 from matplotlib.ticker import MaxNLocator
 import matplotlib.pyplot as plt
-#from plotbin import sauron_colormap as pb_sauron_colormap
+from plotbin import sauron_colormap as pb_sauron_colormap
 import dynamite as dyn
 from plotbin import display_pixels
 # from loess.loess_2d import loess_2d
@@ -32,7 +32,7 @@ class Plotter():
         self.all_models = all_models
         self.input_directory = settings.io_settings['input_directory']
         self.plotdir = settings.io_settings['plot_directory']
-        #pb_sauron_colormap.register_sauron_colormap()
+        pb_sauron_colormap.register_sauron_colormap()
         #Alice: I commented out all the "sauron" instances,
         #       so we can try the matplotlib or cmasher color maps.
         
@@ -151,11 +151,14 @@ class Plotter():
                          f'({n_models} models).')
         return fig
 
-    def make_chi2_plot(self, which_chi2=None):
+    def make_chi2_plot(self, which_chi2=None,figtype=None):
         """
         This implementation is still EXPERIMENTAL. Don't use unless you
         know what you are doing...
         """
+
+        if figtype == None:
+            figtype = '.png'
 
         if which_chi2==None:
             which_chi2 = self.settings.parameter_space_settings['which_chi2']
@@ -226,11 +229,19 @@ class Plotter():
         chlim = np.sqrt(2 * Nobs * nGH)
 
         chi2=val[which_chi2]
-        chi2-=chi2pmin
+        chi2t = chi2 - chi2pmin
+        chi2 = chi2t[np.argsort(-chi2t)]
 
         #start of the plotting
-        colormap = plt.get_cmap('Spectral')
+        ##colormap = plt.get_cmap('Spectral')
 
+        plotdir = self.plotdir
+        figname = plotdir + which_chi2 + '_plot' + figtype
+
+        colormap_orig = mpl.cm.viridis
+        colormap = mpl.cm.get_cmap('viridis_r')
+
+        '''
         fig = plt.figure(figsize=(14, 14))
 
         #loop over each parameter pair
@@ -244,30 +255,72 @@ class Plotter():
                 xtit = nofix_latex[i]
 
                 pltnum = (nnofix-1-j) * (nnofix-1) + i+1
-                ax = fig.add_subplot(nnofix-1, nnofix-1, pltnum)
+                ax = fig.add_subplot(nnofix-1, nnofix-1, pltnum,sharex='col')
 
-                ax.plot(val[nofix_name[i]],val[nofix_name[j]], 'D', color='black', markersize=1.0)
-                ax.set_xlabel(xtit, fontsize=12)
-                ax.set_ylabel(ytit, fontsize=12)
+                ax.plot(val[nofix_name[i]],val[nofix_name[j]], 'D', color='black', markersize=2)
+                if j==i+1:
+                    ax.set_xlabel(xtit, fontsize=12)
+                if i==0:
+                    ax.set_ylabel(ytit, fontsize=12)
 
                 #color Delta chi2
                 for k in range(nf - 1, -1, -1):
                     #NOTE: I have re-written this part as the old routine did not work properly for me. Would be good to double-check
                     if chi2[k]/chlim<=3: #only significant chi2 values
 
-                        color = colormap(chi2[k]/chlim * 240) #colours the significant chi2
+                        color = colormap(chi2[k]/chlim) # * 240) #colours the significant chi2
                         # ALICE - check 240 if it's ok, or 80 maybe? or value from 0 to 1, check and fix?
-                        markersize = 5-(chi2[k]/chlim) #smaller chi2 become bigger :)
+                        markersize = 7-(chi2[k]/(3*chlim)) #smaller chi2 become bigger :)
                         ax.plot((val[nofix_name[i]])[k], (val[nofix_name[j]])[k], 'o', markersize=markersize, color=color)
 
                     if chi2[k]==0:
-                        ax.plot((val[nofix_name[i]])[k], (val[nofix_name[j]])[k], 'x', markersize=8, color='black')
+                        ax.plot((val[nofix_name[i]])[k], (val[nofix_name[j]])[k], 'x', markersize=10, color='k')
 
         #Note: not so nice is that the red best-fit points are sometimes overplotted with other models. Can probably be improved
 
         ## add the colorbar with the inverse sauron colormap
-        axcb = fig.add_axes([0.55, 0.35, 0.2, 0.02])
-        cb = mpl.colorbar.ColorbarBase(axcb, cmap=plt.get_cmap('Spectral'), norm=mpl.colors.Normalize(vmin=0., vmax=3),orientation='horizontal')
+        axcb = fig.add_axes([0.7, 0.1, 0.2, 0.02])
+        cb = mpl.colorbar.ColorbarBase(axcb, cmap=plt.get_cmap('viridis_r'), norm=mpl.colors.Normalize(vmin=0., vmax=3),orientation='horizontal')
+        '''
+        fig = plt.figure(figsize=(10, 10))
+        for i in range(0, nnofix - 1):
+            for j in range(nnofix-1, i, -1):
+
+                xtit = ''
+                ytit = ''
+
+                if i==0 : ytit = nofix_latex[j]
+                xtit = nofix_latex[i]
+
+                pltnum = (nnofix-1-j) * (nnofix-1) + i+1
+                plt.subplot(nnofix-1, nnofix-1, pltnum)
+
+                plt.plot(val[nofix_name[i]],val[nofix_name[j]], 'D', color='black', markersize=2)
+                if j==i+1:
+                    plt.xlabel(xtit, fontsize=12)
+                else:
+                    plt.xticks([])
+                if i==0:
+                    plt.ylabel(ytit, fontsize=12)
+                else:
+                    plt.yticks([])
+                for k in range(nf - 1, -1, -1):
+                    if chi2[k]/chlim<=3: #only significant chi2 values
+
+                        color = colormap(chi2[k]/chlim) # * 240) #colours the significant chi2
+                        markersize = 7-(chi2[k]/(3*chlim)) #smaller chi2 become bigger :)
+                        plt.plot((val[nofix_name[i]])[k], (val[nofix_name[j]])[k], 'o', markersize=markersize, color=color)
+
+                    if chi2[k]==0:
+                        plt.plot((val[nofix_name[i]])[k], (val[nofix_name[j]])[k], 'x', markersize=10, color='k')
+        plt.subplots_adjust(hspace=0)
+        plt.subplots_adjust(wspace=0)
+        axcb = fig.add_axes([0.75, 0.07, 0.2, 0.02])
+        cb = mpl.colorbar.ColorbarBase(axcb, cmap=plt.get_cmap('viridis_r'), norm=mpl.colors.Normalize(vmin=0., vmax=3),orientation='horizontal')
+        plt.subplots_adjust(top=0.99, right=0.99, bottom=0.07, left=0.1)
+        fig.savefig(figname)
+        self.logger.info(f'Plot {figname} saved in {plotdir}')
+
         return fig
 
     def make_contour_plot(self):
@@ -275,7 +328,8 @@ class Plotter():
         #
         pass
 
-    def plot_kinematic_maps(self, model=None, kin_set=0, cbar_lims='data'):
+    def plot_kinematic_maps(self, model=None, kin_set=0, 
+                            cbar_lims='data', figtype=None):
         """
         Show kinematic map of a model with v, sigma, h3, h4.
         If model=None, select best fitting model so far.
@@ -286,6 +340,12 @@ class Plotter():
         and a list of (fig,kin_set_name) is returned where fig are figure
         objects and kin_set_name are the names of the kinematics sets.
         """
+
+        if figtype == None:
+            figtype = '.png'
+        
+        plotdir = self.plotdir
+
         stars = \
           self.system.get_component_from_class(physys.TriaxialVisibleComponent)
         n_kin = len(stars.kinematic_data)
@@ -454,7 +514,7 @@ class Plotter():
 
         # The galaxy has NOT already rotated with PA to make major axis aligned with x
 
-        # filename3 = figdir + object + '_kin4.pdf'
+        figname = plotdir + 'kinmap_set' + str(kin_set) + figtype
 
         fig = plt.figure(figsize=(27, 12))
         plt.subplots_adjust(hspace=0.7,
@@ -463,15 +523,16 @@ class Plotter():
                             bottom=0.05,
                             top=0.99,
                             right=0.99)
-        #sauron_colormap = plt.get_cmap('sauron')
-        #sauron_r_colormap = plt.get_cmap('sauron_r')
+        sauron_colormap = plt.get_cmap('sauron')
+        sauron_r_colormap = plt.get_cmap('sauron_r')
         #colormapname = plt.get_cmap('cmr.ember')
 
         kw_display_pixels = dict(pixelsize=dx,
                                  angle=angle_deg,
                                  colorbar=True,
-                                 nticks=7)#,
-        #                         cmap='cmr.ember')
+                                 nticks=7,
+                                 cmap='sauron')
+                                 #cmap='cmr.ember')
         x, y = xi[s], yi[s]
 
         ### PLOT THE REAL DATA
@@ -531,6 +592,12 @@ class Plotter():
                                           **kw_display_pixels)
 
 
+        kw_display_pixels = dict(pixelsize=dx,
+                                 angle=angle_deg,
+                                 colorbar=True,
+                                 nticks=7,
+                                 cmap='bwr')
+
         ### PLOT THE ERROR NORMALISED RESIDUALS
         plt.subplot(3, 5, 11)
         c = (fluxm[grid[s]] - flux[grid[s]]) / flux[grid[s]]
@@ -569,6 +636,9 @@ class Plotter():
         fig.text(0.015, 0.83, 'Data', **kwtext)
         fig.text(0.015, 0.53, 'Model', **kwtext)
         fig.text(0.015, 0.2, 'Residual', **kwtext)
+
+        fig.savefig(figname)
+
         return fig
 
 #############################################################################
@@ -772,7 +842,7 @@ class Plotter():
 
 #############################################################################
 
-    def mass_plot(self, which_chi2=None, Rmax_arcs=None):
+    def mass_plot(self, which_chi2=None, Rmax_arcs=None,figtype=None):
         # schw_mass.py
         # Chi^2 < chilev =>
         #   normalized chi^2: chi^2/chi2pmin < chlim: sqrt(2*Nobs * NGH)
@@ -781,6 +851,9 @@ class Plotter():
         #        rootname=rootname, chilev=chlim * chi2pmin,
         #        massdir=figdir, Rmax_arcs=Rmax_arcs)
         # Alice: getallnfw_out copied from schw_mass.py in this function!
+
+        if figtype == None:
+            figtype = '.png'
 
         val = deepcopy(self.all_models.table)
         val.sort(which_chi2)
@@ -932,44 +1005,45 @@ class Plotter():
         ## plot in linear scale
         xrange = np.array([0.1, Rmax_arcs])
         yrange = np.array([1.0e6,maxmass])
+        '''
         filename1 = plotdir + 'enclosedmassm_linear.pdf'
-        fig = plt.figure(figsize=(5,5))
+        fig1 = plt.figure(figsize=(5,5))
         #ftit = fig.suptitle(object.upper() + '_enclosedmassm_linear', fontsize=10,fontweight='bold')
-        ax = fig.add_subplot(1, 1, 1)
-        ax.set_xlim(xrange)
-        ax.set_ylim(yrange)
-        ax.set_xlabel(r'$R$ [arcsec]', fontsize=9)
-        ax.set_ylabel(r'Enclosed Mass [M$_{\odot}$]', fontsize=9)
-        ax.tick_params(labelsize=8)
+        ax1 = fig1.add_subplot(1, 1, 1)
+        ax1.set_xlim(xrange)
+        ax1.set_ylim(yrange)
+        ax1.set_xlabel(r'$R$ [arcsec]', fontsize=9)
+        ax1.set_ylabel(r'Enclosed Mass [M$_{\odot}$]', fontsize=9)
+        ax1.tick_params(labelsize=8)
 
         ax2 = ax.twiny()
         ax2.set_xlim(xrange * arctpc / 1000.0)
         ax2.set_xlabel(r'$r$ [kpc]', fontsize=9)
         ax2.tick_params(labelsize=8)
 
-        ax.plot(R,mm[:,0], '-', color='k', linewidth=2.0,
+        ax1.plot(R,mm[:,0], '-', color='k', linewidth=2.0,
                 label='Total')
-        ax.plot(R,np.min(mm,axis=1), '--', color='k', linewidth=1.2)
-        ax.plot(R,np.max(mm,axis=1), '--', color='k', linewidth=1.2)
+        ax1.plot(R,np.min(mm,axis=1), '--', color='k', linewidth=1.2)
+        ax1.plot(R,np.max(mm,axis=1), '--', color='k', linewidth=1.2)
 
-        ax.plot(R,mass[:,0,0], '-', color='r', linewidth=2.0,
+        ax1.plot(R,mass[:,0,0], '-', color='r', linewidth=2.0,
                 label='Mass-follows-Light')
-        ax.plot(R,np.min(mass[:,:,0],axis=1), '--', color='r', linewidth=0.8)
-        ax.plot(R,np.max(mass[:,:,0],axis=1), '--', color='r', linewidth=0.8)
+        ax1.plot(R,np.min(mass[:,:,0],axis=1), '--', color='r', linewidth=0.8)
+        ax1.plot(R,np.max(mass[:,:,0],axis=1), '--', color='r', linewidth=0.8)
 
-        ax.plot(R,mass[:,0,1], '-', color='b', linewidth=2.0,
+        ax1.plot(R,mass[:,0,1], '-', color='b', linewidth=2.0,
                 label='Dark Matter')
-        ax.plot(R,np.min(mass[:,:,1],axis=1), '--', color='b', linewidth=0.8)
-        ax.plot(R,np.max(mass[:,:,1],axis=1), '--', color='b', linewidth=0.8)
+        ax1.plot(R,np.min(mass[:,:,1],axis=1), '--', color='b', linewidth=0.8)
+        ax1.plot(R,np.max(mass[:,:,1],axis=1), '--', color='b', linewidth=0.8)
 
-        ax.legend(loc='upper left', fontsize=8)
+        ax1.legend(loc='upper left', fontsize=8)
         plt.tight_layout()
         plt.savefig(filename1)
-        plt.close()
 
         self.logger.info(f'Plot enclosedmassm_linear.pdf saved in {plotdir}')
+        '''
 
-        filename1 = plotdir + 'enclosedmassm_linear_fill.pdf'
+        filename1 = plotdir + 'enclosedmassm_linear' + figtype
         fig = plt.figure(figsize=(5,5))
         #ftit = fig.suptitle(object.upper() + '_enclosedmassm_linear', fontsize=10,fontweight='bold')
         ax = fig.add_subplot(1, 1, 1)
@@ -1002,9 +1076,8 @@ class Plotter():
         ax.legend(loc='upper left', fontsize=8)
         plt.tight_layout()
         plt.savefig(filename1)
-        plt.close()
 
-        self.logger.info(f'Plot enclosedmassm_linear_fill.pdf saved in {plotdir}')
+        self.logger.info(f'Plot {filename1} saved in {plotdir}')
 
         return fig
 
@@ -1062,7 +1135,8 @@ class Plotter():
 #############################################################################
 
     def plotdensity(self, object=None, f1=None, f2=None, weight=None, 
-                    xnbin=None, ynbin=None,distance=None, plotdir=None):
+                    xnbin=None, ynbin=None,distance=None, plotdir=None,
+                    figtype=None):
         """
         """
 
@@ -1084,7 +1158,7 @@ class Plotter():
     
         ### plot the orbit distribution on lambda_z vs. r ###
 
-        filename5 = plotdir + 'orbit_linear_only.pdf'
+        filename5 = plotdir + 'orbit_linear_only' + figtype
         imgxrange = xbinned
         imgyrange = ybinned
         extent = [imgxrange[0], imgxrange[1], imgyrange[0], imgyrange[1]]
@@ -1110,10 +1184,9 @@ class Plotter():
                  linewidth=1)
         plt.tight_layout()
         plt.savefig(filename5)
-        plt.close()
 
-        self.logger.info(f'Plot orbit_linear_only.pdf saved in {plotdir}')
-        return 1
+        self.logger.info(f'Plot {filename5} saved in {plotdir}')
+        return fig
 
 #############################################################################
 
@@ -1184,7 +1257,7 @@ class Plotter():
 
 #############################################################################
 
-    def orbit_plot(self, model=None, Rmax_arcs=None):
+    def orbit_plot(self, model=None, Rmax_arcs=None,figtype =None):
         # schw_orbit.py
         # triaxplotphasennstr(w_dir=w_dir, object=object, rootname=rootname[0],
         #        diri_o=bparam_str, ml_str = ml_str,
@@ -1199,6 +1272,8 @@ class Plotter():
         @param[out] output ...
 
         """
+        if figtype == None: 
+            figtype = '.png'
 
         if model is None:
             which_chi2 = \
@@ -1273,16 +1348,16 @@ class Plotter():
         nybin = 21 #21
         # Alice: maybe we could change these so that they are not always 
         #        fixed to the same value?
-        self.plotdensity(object=object, f1=r[:,s], f2=lz[:,s], 
+        fig = self.plotdensity(object=object, f1=r[:,s], f2=lz[:,s], 
                 weight=orbw[s], xnbin=nxbin, ynbin=nybin,
-                distance=distance, plotdir = self.plotdir)
+                distance=distance, plotdir = self.plotdir,figtype=figtype)
 
         # compute total angular momentum
         #angular= np.abs(np.sum((lzm[t[0:y+1]])*orbw[t[0:y+1]])/np.sum(orbw[t[0:y+1]]))
         #lzm = np.sum((lz), axis=0)/ndither **3
         #angular2= np.abs(np.sum((lzm[t[0:y+1]])*orbw[t[0:y+1]])/np.sum(orbw[t[0:y+1]]))
 
-        pass
+        return fig
 
 #############################################################################
 ######## Routines from schw_anisotropy.py, necessary for beta_plot ##########
@@ -1496,10 +1571,13 @@ class Plotter():
 
 #############################################################################
 
-    def beta_plot(self, which_chi2=None, Rmax_arcs=None):
+    def beta_plot(self, which_chi2=None, Rmax_arcs=None,figtype =None):
         # schw_anisotropy.py
         # plot_betaz_var
         # plot_vanisotropy_var
+
+        if figtype == None: 
+            figtype = '.png'
 
         val = deepcopy(self.all_models.table)
         arg = np.argsort(np.array(val[which_chi2]))
@@ -1563,8 +1641,8 @@ class Plotter():
             Vp[0:nrad,i] = vp_r
         
         plotdir = self.plotdir
-        filename1 = plotdir + 'anisotropy_var.pdf'
-        filename2 = plotdir + 'betaz_var.pdf'
+        filename1 = plotdir + 'anisotropy_var' + figtype
+        filename2 = plotdir + 'betaz_var' + figtype
 
         RRn_m = np.zeros(nrr, dtype=np.float)
         RRn_e = np.zeros(nrr, dtype=np.float)
@@ -1578,85 +1656,34 @@ class Plotter():
 
         radialrange=np.array([np.min(rr),Rmax_arcs])
         yrange=np.array([-1,1])
-        '''
-        fig = plt.figure(figsize=(5,5))
-        ax = fig.add_subplot(1,1,1)
-        ax.set_xlim(radialrange)
-        ax.set_ylim(yrange)
-        ax.set_yticks([-1.0,-0.5,0,0.5,1])
-        ax.plot(RRn_m,orot_m2, '-', color='black', linewidth=3)
-        ax.plot(RRn_m,orot_m2+orot_e2, '--', color='black', linewidth=0.8)
-        ax.plot(RRn_m,orot_m2-orot_e2, '--', color='black', linewidth=0.8)
-        ax.set_xlabel(r'$r$ [arcsec]', fontsize=9)
-        ax.set_ylabel(r'$\beta_{\rm r} = 1 - \sigma_{\rm t}^2/\sigma_{\rm r}^2$',
-                         fontsize=9)
-        ax.tick_params(labelsize=8)
-        ax.plot(radialrange, [0,0], '--', color='black', linewidth=1)
-        plt.tight_layout()
-        plt.savefig(filename1)
-        plt.close()
-        '''
-        fig = plt.figure(figsize=(5,5))
-        ax = fig.add_subplot(1,1,1)
-        ax.set_xlim(radialrange)
+
+        fig1 = plt.figure(figsize=(5,5))
+        ax1 = fig1.add_subplot(1,1,1)
+        ax1.set_xlim(radialrange)
         yrange=np.array([min(-1,min(orot_m2-orot_e2)),1])
-        ax.set_ylim(yrange)
+        ax1.set_ylim(yrange)
         if yrange[1]-yrange[0]<=4:
             yticks = np.linspace(int(yrange[0])*1.,
                         int(yrange[1])*1.,int((yrange[1]-yrange[0])/0.5)+1)
         else: 
             yticks = np.linspace(int(yrange[0])*1.,
                         int(yrange[1])*1.,int((yrange[1]-yrange[0]))+1)
-        ax.set_yticks(yticks)
-        ax.plot(RRn_m,orot_m2, '-', color='black', linewidth=3.0)
-        ax.fill_between(RRn_m, orot_m2-orot_e2, 
+        ax1.set_yticks(yticks)
+        ax1.plot(RRn_m,orot_m2, '-', color='black', linewidth=3.0)
+        ax1.fill_between(RRn_m, orot_m2-orot_e2, 
                         orot_m2+orot_e2,facecolor='gray',alpha=0.3)
-        ax.set_xlabel(r'$r$ [arcsec]', fontsize=9)
-        ax.set_ylabel(r'$\beta_{\rm r} = 1 - \sigma_{\rm t}^2/\sigma_{\rm r}^2$', 
+        ax1.set_xlabel(r'$r$ [arcsec]', fontsize=9)
+        ax1.set_ylabel(r'$\beta_{\rm r} = 1 - \sigma_{\rm t}^2/\sigma_{\rm r}^2$', 
                          fontsize=9)
-        ax.tick_params(labelsize=8)
-        ax.plot(radialrange, [0,0], '--', color='black', linewidth=1.0)
+        ax1.tick_params(labelsize=8)
+        ax1.plot(radialrange, [0,0], '--', color='black', linewidth=1.0)
         plt.tight_layout()
         plt.savefig(filename1)
-        plt.close()
 
-        self.logger.info(f'Figure anisotropy_var.pdf saved in {plotdir}')
+        self.logger.info(f'Figure {filename1} saved in {plotdir}')
 
-        '''
-        fig = plt.figure(figsize=(5,5))
-        ax = fig.add_subplot(1,1,1)
-        ax.set_xlim([0,Rmax_arcs])
-        ax.set_ylim([0,1])
-        ax.set_xlabel(r'$R$ [arcsec]', fontsize=9)
-        ax.set_ylabel(r'$\beta_{\rm z} = 1 - \sigma_{\rm z}^2/\sigma_{\rm R}^2$',
-                         fontsize=9)
-        ax.tick_params(labelsize=8)
-        RRn_m = np.zeros(nrad, dtype=np.float)
-        RRn_e = np.zeros(nrad, dtype=np.float)
-        orot_m2 = np.zeros(nrad, dtype=np.float)
-        orot_e2 = np.zeros(nrad, dtype=np.float)
-        for j in range(0, nrad):
-            kk = np.where(orotn[j,:] > 0.0)
-            if len(kk[0])>0:
-                RRn_m[j] = np.average(RRn[j,kk])
-                RRn_e[j] = np.sqrt(np.var(RRn[j,kk], ddof=1))
-                orot_m2[j] = np.average(orotn[j,kk])
-                orot_e2[j] = np.sqrt(np.var(orotn[j,kk], ddof=1))
-            else: 
-                orot_m2[j] = -1.
-        cc = orot_m2 > 0
-        ax.plot(RRn_m[cc], orot_m2[cc], '-', color='black', linewidth =3)
-        ax.plot(RRn_m[cc], orot_m2[cc]+orot_e2[cc], '--', color='black',
-                     linewidth =0.8)
-        ax.plot(RRn_m[cc], orot_m2[cc]-orot_e2[cc], '--', color='black',
-                     linewidth =0.8)
-        plt.tight_layout()
-        plt.savefig(filename2)
-        plt.close()
-        '''
-
-        fig = plt.figure(figsize=(5,5))
-        ax = fig.add_subplot(1,1,1)
+        fig2 = plt.figure(figsize=(5,5))
+        ax = fig2.add_subplot(1,1,1)
         ax.set_xlim([0,Rmax_arcs])
         ax.set_ylim([0,1])
         ax.set_xlabel(r'$R$ [arcsec]', fontsize=9)
@@ -1684,11 +1711,10 @@ class Plotter():
                         orot_m2[cc]+orot_e2[cc],facecolor='gray',alpha=0.3)
         plt.tight_layout()
         plt.savefig(filename2)
-        plt.close()
 
-        self.logger.info(f'Figure betaz_var.pdf saved in {plotdir}')
+        self.logger.info(f'Figure {filename2} saved in {plotdir}')
 
-        return 1
+        return fig1, fig2
 
 
 #############################################################################
@@ -1749,7 +1775,7 @@ class Plotter():
 
 #############################################################################
 
-    def qpu_plot(self, which_chi2=None, Rmax_arcs=None):
+    def qpu_plot(self, which_chi2=None, Rmax_arcs=None,figtype =None):
         # schw_qpu.py
         # plot_qpu_out=plot_qpu(w_dir=w_dir, object=object, rootname=rootname,
         #        chilev=chlim *chi2pmin, qpu_dir=figdir, Rmax_arcs=Rmax_arcs)
@@ -1758,6 +1784,9 @@ class Plotter():
         #Nf, npar, mpar, mtime, files = read_chi2_file(w_dir + object + '/griddata/' + str(rootname[0]) + '_chi2.cat')
         #chi2 = mpar[npar, :]     # chi^2 directly from fitting h1, h2, h3...
         #chi2 = mpar[npar + 1, :]   # chi^2 kin, calculated from direct comparison between kinematic maps, v, sigma....
+
+        if figtype == None: 
+            figtype = '.png'
 
         val = deepcopy(self.all_models.table)
         arg = np.argsort(np.array(val[which_chi2]))
@@ -1849,7 +1878,7 @@ class Plotter():
         cc = (p_m >= 0)
 
         plotdir = self.plotdir
-        filename1 = plotdir + 'triaxial_qpt.pdf'
+        filename1 = plotdir + 'triaxial_qpt' + figtype
         fig = plt.figure(figsize=(5,5))
         ax = fig.add_subplot(1,1,1)
         ax.set_xlim(np.array([0,Rmax_arcs]))
@@ -1883,11 +1912,10 @@ class Plotter():
         ax.legend(loc='upper right', fontsize=8)
         plt.tight_layout()
         plt.savefig(filename1)
-        plt.close()
 
-        self.logger.info(f'Plot triaxial_qpt.pdf saved in {plotdir}')
+        self.logger.info(f'Plot {filename1} saved in {plotdir}')
 
-        return 1
+        return fig
 
     def version_p(self):
         return sys.version.split()[0]
