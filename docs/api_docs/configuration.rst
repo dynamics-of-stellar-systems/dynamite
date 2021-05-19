@@ -4,73 +4,59 @@
 Configuration
 *************
 
-Describe the configuration file and configuration object.
-
-You can read the configuration file into a configuration object ``c`` as follows
+All configuration settings are stored in the configuration object ``c``, which is structrued very similarly to structure of the YAML configuration file,
 
 .. code-block:: python
 
   import dynamite as dyn
+
   c = dyn.config_reader.Configuration('config_file.yaml') # read the configuration fie
 
-``system_attributes``
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  ######################################################
+  # config. options relating to the physical system
+  ######################################################
 
-which can be accessed in the configuration object as ``c.system.distMPc`` etc.
+  # system_attributes accessed via:
+  c.system.distMPc # etc
 
-``system_components``
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  # system_components stores in the list:
+  c.system.cmp_list
+  c.system.cmp_list[0]    # the 0'th component,
+  c.system.cmp_list[1]    # the 1'st component, etc...
 
-The components are stored in the configuration object ``c`` as a list ``c.system.cmp_list``, with one entry for each of the components.
+  # component parameters are stored in the list:
+  c.system.cmp_list[0].parameters
 
-``system_parameters``
-=====================
+  # system_parameters are stored in:
+  c.system.parameters
 
-.. code-block:: python
+  # all parameters (component and system) are stored together in the list:
+  c.parspace
 
-  cmp_0 =  c.system.cmp_list[0]
-  cmp_0.pars
+  ######################################################
+  # config. options relating to other settings
+  ######################################################
 
+   # orblib_settings stored in the dictionary:
+   c.settings.orblib_settings
 
-``orblib_settings``
-=====================
+   # weight_solver_settings stored in the dictionary:
+   c.settings.weight_solver_settings
 
-.. code-block:: python
+   # multiprocessing_settings stored in the dictionary:
+   c.settings.multiprocessing_settings
 
-  c.settings.orblib_settings
+   # io_settings stored in the dictionary:
+   c.settings.io_settings
 
-``weight_solver_settings``
-==========================
+   # legacy_settings stored in the dictionary:
+   c.settings.legacy_settings
 
-.. code-block:: python
+API
+===================
 
-  c.settings.weight_solver_settings
-
-
-``parameter_space_settings``
-============================
-
-.. code-block:: python
-
-  c.settings.parameter_space_settings
-
-
-``io_settings``
-=====================
-
-Hello!
-
-``multiprocessing_settings``
-============================
-
-Hello!
-
-
-``legacy_settings``
-=====================
-
-Hello!
-
+ .. automodule:: config_reader
+  :members:
 
 Inheritance Diagram
 ===================

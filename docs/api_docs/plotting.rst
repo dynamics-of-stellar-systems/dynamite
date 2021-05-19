@@ -4,7 +4,7 @@
 Plotting
 ********
 
-We plot!
+Classes related to plotting.
 
 Inheritance Diagram
 ===================

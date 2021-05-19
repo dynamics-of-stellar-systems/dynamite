@@ -4,18 +4,12 @@
 Model
 ************
 
-.. automodule:: model
+Classes related to models, and collections of models (``AllModels``).
 
-The `Model` class
-==================
+API
+===================
 
-.. autoclass:: Model
-  :members:
-
-The `AllModels` class
-=====================
-
-.. autoclass:: AllModels
+ .. automodule:: model
   :members:
 
 Inheritance Diagram

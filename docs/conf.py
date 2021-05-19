@@ -34,7 +34,15 @@ extensions = ['sphinx.ext.mathjax',
               'sphinx.ext.doctest',
               'sphinx.ext.inheritance_diagram',
               'nbsphinx',
-              'IPython.sphinxext.ipython_console_highlighting']
+              'numpydoc',
+              'IPython.sphinxext.ipython_console_highlighting',
+              'autodocsumm']
+
+numpydoc_show_class_members = False
+
+autodoc_default_options = {
+    'autosummary': True,
+}
 
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ['_templates']

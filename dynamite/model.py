@@ -9,15 +9,26 @@ import weight_solvers as ws
 import orblib as dyn_orblib
 
 class AllModels(object):
+    """All models which have been run so far
 
+    The main attribute ``self.table`` is an Astropy table holding all models run
+    so far.
+
+    Parameters
+    ----------
+    system : a ``dyn.physical_system.System`` object
+    from_file : bool
+        whether to create this ojbect from a saved `all_models.ecsv` file
+    settings : a ``dyn.config_reader.Settings`` object
+    parspace : a ``dyn.parameter_space.parspace`` object
+
+    """
     def __init__(self,
                  system=None,
                  from_file=True,
                  settings=None,
                  parspace=None):
-
         self.logger = logging.getLogger(f'{__name__}.{__class__.__name__}')
-
         self.system = system
         self.settings = settings
         self.set_filename(settings.io_settings['all_models_file'])
@@ -34,11 +45,32 @@ class AllModels(object):
             self.make_empty_table()
 
     def set_filename(self, filename):
+        """Set the name (including path) for this model
+
+        Parameters
+        ----------
+        filename : string
+            name for this model
+
+        Returns
+        -------
+        None
+            sets ``self.filename``
+
+        """
         outdir = self.settings.io_settings['output_directory']
         filename = f'{outdir}{filename}'
         self.filename = filename
 
     def make_empty_table(self):
+        """Make an empty Astropy table
+
+        Returns
+        -------
+        None
+            sets ``self.table``
+
+        """
         names = self.parspace.par_names.copy()
         dtype = [np.float64 for n in names]
         # add the columns from legacy version
@@ -50,24 +82,34 @@ class AllModels(object):
         # which_iter will record which iteration of parameters a model came from
         names += ['which_iter']
         dtype += [int]
-        # ncols = len(names)
-        # data = np.zeros((0, ncols))
-        # self.table = table.Table(data,
-        #                          names=names,
-        #                          dtype=dtype)
-        # self.logger.debug(names, dtype)
+        # instantiate table
         self.table = table.Table(names=names, dtype=dtype)
         return
 
     def read_completed_model_file(self):
+        """read table from file ``self.self.filename``
+
+        Returns
+        -------
+        None
+            sets ``self.table``
+
+        """
         self.table = ascii.read(self.filename)
         self.logger.debug(f'Models read from file {self.filename}')
         return
 
     def read_legacy_chi2_file(self, legacy_filename):
         """
-        Taken from schw_basics.py
-        reads in Chi2 of all the models finished, ./griddata/_chi2.cat
+        Read the `legacy` AKA schwpy format of chi2 files
+
+        Taken from schw_basics.py, reads in legacy files named similar to
+        griddata/_chi2.cat
+
+        Parameters
+        -----------
+        legacy_filename: string
+            the legacy_filename (probably griddata/_chi2.cat)
         """
         ### read the header
         head1 = np.genfromtxt(legacy_filename, max_rows=1)
@@ -105,6 +147,16 @@ class AllModels(object):
         return Nf, npar, mpar.T, mtime.T, fls.T
 
     def convert_legacy_chi2_file(self, legacy_filename=None):
+        """
+        Convert `legacy` format of chi2 files
+
+        `legacy` AKA schwpy format were likely called ```griddata/_chi2.cat``.
+
+        Parameters
+        -----------
+        legacy_filename: string
+            the legacy_filename (probably griddata/_chi2.cat)
+        """
         # TODO: (maybe...?)
         # make more general if legacy parameters have different names
         Nf, npar, mpar, mtime, fls = self.read_legacy_chi2_file(legacy_filename)
@@ -137,10 +189,35 @@ class AllModels(object):
         return
 
     def get_parset_from_row(self, row_id):
+        """Get a parset set given a table row
+
+        Parameters
+        ----------
+        row_id : int
+            which row
+
+        Returns
+        -------
+        list
+            a list of ``dyn.parspace.Parameter`` objects
+
+        """
         parset = self.table[row_id][self.parspace.par_names]
         return parset
 
     def get_model_from_parset(self, parset):
+        """Get the ``Model`` from a parset
+
+        Parameters
+        ----------
+        parset : list
+            a list of ``dyn.parspace.Parameter`` objects
+
+        Returns
+        -------
+        a ``dyn.model.Model`` object
+
+        """
         if parset not in [row[self.parspace.par_names] for row in self.table]:
             text = f'parset not in all_models table. parset={parset}, ' \
                    f'all_models table: {self.table}'
@@ -153,51 +230,55 @@ class AllModels(object):
         return mod
 
     def get_model_from_row(self, row_id):
+        """Get a ``Model`` given a table row
+
+        Parameters
+        ----------
+        row_id : int
+            which row
+
+        Returns
+        -------
+        a ``dyn.model.Model`` object
+
+        """
         parset0 = self.get_parset_from_row(row_id)
         mod = self.get_model_from_parset(parset0)
-        # mod0 = Model(system=self.system,
-        #              settings=self.settings,
-        #              parspace=self.parspace,
-        #              parset=parset0)
         return mod
 
     def save(self):
+        """Save the all_models table
+
+        """
         self.table.write(self.filename, format='ascii.ecsv', overwrite=True)
         self.logger.debug(f'Model table written to file {self.filename}')
 
 
 class Model(object):
-    '''
-    A DYNAMITE model.
+    """A DYNAMITE model.
 
     The model can be run by running the methods (i) get_orblib, (ii) get_weights
     and (iii) (in the future) do_orbit_colouring. Running each of these methods
     will return the appropriate object, e.g. model.get_orblib() --> returns an
     OrbitLibrary object model.get_weights(...) --> returns a WeightSolver object
-    '''
+
+    Parameters
+    ----------
+    system : dyn.physical_system.System
+        Object holding information about the physical system being modelled.
+    settings : dyn.config_reader.Settings
+        Object holding other settings
+    parspace : dyn.parameter_space.ParameterSpace
+        A list of parameter objects for this model
+    parset : row of an Astropy Table
+        contains the values of the potential parameters for this model
+
+    """
     def __init__(self,
                  system=None,
                  settings=None,
                  parspace=None,
                  parset=None):
-        """
-        Parameters
-        ----------
-        system : dyn.physical_system.System
-            Object holding information about the physical system being modelled.
-        settings : dyn.config_reader.Settings
-            Object holding other settings
-        parspace : dyn.parameter_space.ParameterSpace
-            A list of parameter objects for this model
-        parset : row of an Astropy Table
-            contains the values of the potential parameters for this model
-
-        Returns
-        -------
-        Nothing returned. Attributes holidng outputs are are added to the object
-        when methods are run.
-
-        """
         self.logger = logging.getLogger(f'{__name__}.{__class__.__name__}')
         self.check_parset(parspace, parset)
         self.system = system
@@ -214,6 +295,13 @@ class Model(object):
         self.logger.debug(f'Model directory up to ml: {self.directory_noml}')
 
     def get_model_directory(self):
+        """get the name of this model's output directory
+
+        Returns
+        -------
+        string
+
+        """
         out_dir = self.settings.io_settings['output_directory']
         #out_dir += self.system.name
         out_dir += 'models/'
@@ -239,6 +327,13 @@ class Model(object):
         return out_dir
 
     def create_model_directory(self, path):
+        """make a directory if it does not yet exist
+
+        Parameters
+        ----------
+        path : string
+            directory path to make
+        """
         if not os.path.exists(path):
             os.makedirs(path)
             self.logger.debug(f'Created directory {path}')
@@ -246,6 +341,8 @@ class Model(object):
             self.logger.debug(f'Using existing directory {path}')
 
     def setup_directories(self):
+        """setup directories
+        """
         # create self.directory if it doesn't exist
         self.create_model_directory(self.directory)
         # and also the model directories
@@ -253,7 +350,13 @@ class Model(object):
         self.create_model_directory(self.directory_noml+'datfil/')
 
     def get_orblib(self):
-        # make orbit libary object
+        """Make the orbit library
+
+        Returns
+        -------
+        a ``dyn.orblib.OrbitLibrary`` object
+
+        """
         orblib = dyn_orblib.LegacyOrbitLibrary(
                 system=self.system,
                 mod_dir=self.directory_noml,
@@ -266,7 +369,17 @@ class Model(object):
         return orblib
 
     def get_weights(self, orblib=None):
-        # create the weight solver object
+        """Get the orbital weights
+
+        Parameters
+        ----------
+        orblib : a ``dyn.orblib.OrbitLibrary`` object
+
+        Returns
+        -------
+        a ``dyn.weight_solver.WeightSolver`` object
+
+        """
         ws_type = self.settings.weight_solver_settings['type']
         if ws_type=='LegacyWeightSolver':
             weight_solver = ws.LegacyWeightSolver(
@@ -290,6 +403,8 @@ class Model(object):
 
     def check_parset(self, parspace, parset):
         """
+        Validate a parset
+
         Given parameter values in parset, the validate_parspace method of
         the parameter space is executed. If a parameter exists in parspace
         but not in parset, a warning will be issued and the parameter
@@ -299,7 +414,7 @@ class Model(object):
 
         Parameters
         ----------
-        parspace : dyn.parameter_space.ParameterSpace
+        parspace : ``dyn.parameter_space.ParameterSpace``
             A list of parameter objects.
         parset : row of an Astropy Table
             Contains parameter values to be checked against the settings in

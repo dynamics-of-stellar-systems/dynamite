@@ -4,19 +4,15 @@
 Kinematics
 **********
 
-Describe the Kinematics class.
+Classes for kinematic data.
 
-Gauss Hermite Kinematics
-========================
+API
+======================================
 
-Some text.
-
-BayesLOSVD Kinematics
-=====================
-
-Some text.
+.. automodule:: kinematics
+  :members:
 
 Inheritance Diagram
-===================
+======================================
 
 .. inheritance-diagram:: kinematics

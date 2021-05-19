@@ -73,7 +73,9 @@ Each page is an ipython notebook which you can either view in the browser, or do
 API Documentation
 =================
 
-The following pages describe specific classes and methods defined in DYNAMITE.
+These pages contain DYNAMITE's API documentation, i.e. the classes and method definitions and descriptions.
+This may be useful for code developers, or anyone who intends to modify the code for their own personal use.
+The `API overview <api_docs/overview>`__ may be a useful starting point.
 
 .. toctree::
    :maxdepth: 1
@@ -81,14 +83,15 @@ The following pages describe specific classes and methods defined in DYNAMITE.
 
    api_docs/overview
    api_docs/configuration
+   api_docs/data
+   api_docs/mges
+   api_docs/kinematics
    api_docs/physical_system
+   api_docs/parameter_space
+   api_docs/model
    api_docs/orblib
    api_docs/weight_solver
-   api_docs/data
-   api_docs/kinematics
-   api_docs/model
    api_docs/model_iterator
-   api_docs/parameter_space
    api_docs/plotting
 
 More Information

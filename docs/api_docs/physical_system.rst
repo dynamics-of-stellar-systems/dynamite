@@ -4,7 +4,13 @@
 Physical System
 ****************
 
-Describe the Physical System class.
+Classes related to the physical ``System`` being modelled, which consists of ``Components``.
+
+API
+===================
+
+ .. automodule:: physical_system
+  :members:
 
 Inheritance Diagram
 ===================

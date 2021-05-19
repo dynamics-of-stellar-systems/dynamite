@@ -8,7 +8,32 @@ import pathos
 from pathos.multiprocessing import Pool
 
 class ModelIterator(object):
+    """Iterator for models
 
+    Creating this ``ModelIterator`` object will (i) generate parameters sets,
+    (ii) run models for those parameters, (iii) check stopping criteria, and
+    iterate this procedure till a stopping criterion is met. This is implemented
+    by created a ``ModelInnerIterator`` object whose ``run_iteration`` method is
+    called a number of times.
+
+    Parameters
+    ----------
+    system : a ``dyn.physical_system.System`` object
+    all_models : a ``dyn.model.AllModels`` object
+    settings : a ``dyn.config_reader.Settings`` object
+    model_kwargs : dict
+        other kewyord argument required for this model
+    do_dummy_run : Bool
+        whether this is a dummy run - if so, dummy_chi2_funciton is executed
+        instead of the model (for testing!)
+    dummy_chi2_function : function
+        a function of model parameters to be executed instead of the real model
+    ncpus : int
+        number of cpus for multiprocessing
+    plots : bool
+        whether or not to make plots
+
+    """
     def __init__(self,
                  system=None,
                  all_models=None,
@@ -19,7 +44,6 @@ class ModelIterator(object):
                  ncpus=1,
                  plots=True):
         self.logger = logging.getLogger(f'{__name__}.{__class__.__name__}')
-
         stopping_crit = settings.parameter_space_settings['stopping_criteria']
         n_max_iter = stopping_crit['n_max_iter']
         self.n_max_mods = stopping_crit['n_max_mods']
@@ -30,7 +54,6 @@ class ModelIterator(object):
         kwargs = {'parspace_settings':settings.parameter_space_settings}
         par_generator = getattr(parameter_space, par_generator_type)(parspace,
                                                                      **kwargs)
-
         self.the_plotter = plotter.Plotter(system = system,
                                            settings = settings,
                                            parspace = parspace,
@@ -71,7 +94,9 @@ class ModelIterator(object):
                                chi2_plot=None,
                                kin_map=None):
         """
-        Creates three plots: (kin)chi2 vs. model id, (kin)chi2 and non-fixed
+        Create progress plots
+
+        Makes three plots: (kin)chi2 vs. model id, (kin)chi2 and non-fixed
         parameters ("chi2 plot"), kinematic map of best fit model so-far.
         The parameter space settings in the config file determine whether
         chi2 or kinchi2 is used. Will choose file names automatically and
@@ -168,6 +193,8 @@ class ModelIterator(object):
 
     def delete_if_exists(self, files):
         """
+        delete_if_exists
+
         Given a file name or a list or tuple of file names, this method
         will check if the file(s) exist and if so, remove it/them.
 
@@ -201,7 +228,26 @@ class ModelIterator(object):
 
 
 class ModelInnerIterator(object):
+    """Class to run all models in a single iteration.
 
+    Uses ``pathos.multiprocessing.Pool`` to execute the models
+
+    Parameters
+    ----------
+    system : a DYNMAITE system object
+    all_models : a DYNMAITE all_models object
+    settings : a DYNMAITE settings object
+    model_kwargs : type
+        Description of parameter `model_kwargs`.
+    do_dummy_run : Bool
+        whether this is a dummy run - if so, dummy_chi2_funciton is executed
+        instead of the model (for testing!)
+    dummy_chi2_function : function
+        a function of model parameters to be executed instead of the real model
+    ncpus : int
+        number of cpus for multiprocessing
+
+    """
     def __init__(self,
                  system=None,
                  all_models=None,
@@ -224,6 +270,14 @@ class ModelInnerIterator(object):
         self.ncpus = ncpus
 
     def run_iteration(self):
+        """run the iteration using Pool.map
+
+        Returns
+        -------
+        A ``dynamite.par_generator.status`` object returning the status of the
+        iteration
+
+        """
         self.par_generator.generate(current_models=self.all_models)
         self.all_models.save() # save all_models table once parameters are added
         # generate parameter sets for this iteration
@@ -243,6 +297,20 @@ class ModelInnerIterator(object):
         return self.par_generator.status
 
     def create_and_run_model(self, input):
+        """main method to create and run a model
+
+        Parameters
+        ----------
+        input : tuple
+            (i, row) where i is the index of a model in this iteration, and row
+            is the row index of the all_models table for this model
+
+        Returns
+        -------
+        tuple
+            all the output for this model, bundles up in a tuple
+
+        """
         i, row = input
         self.logger.info(f'... running model {i+1} out of {self.n_to_do}')
         # extract the parameter values
@@ -268,6 +336,20 @@ class ModelInnerIterator(object):
         return output
 
     def write_output_to_all_models_table(self, rows_to_do, output):
+        """write_output_to_all_models_table
+
+        Parameters
+        ----------
+        rows_to_do : list of ints
+            which rows of all models table to fill with output
+        output : list
+            output returned by Pool.map
+
+        Returns
+        -------
+        Fills output into the all_models table
+
+        """
         for i, row in enumerate(rows_to_do):
             orb_done, wts_done, chi2, kinchi2, all_done, time = output[i]
             self.all_models.table['orblib_done'][row] = orb_done

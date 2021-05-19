@@ -4,7 +4,13 @@
 Weight Solver
 **************
 
-Describe the WeightSolver class.
+Classes related to solving for orbital weights. ``WeightSolver`` is a generic parent class, specific implementations are sub-classes of this.
+
+API
+===================
+
+ .. automodule:: weight_solvers
+  :members:
 
 Inheritance Diagram
 ===================
