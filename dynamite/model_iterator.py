@@ -305,10 +305,10 @@ class ModelInnerIterator(object):
         previous_data = all_data[:row_idx]
         if any(np.allclose(tuple(row_data), tuple(r)) for r in previous_data):
             self.logger.debug('Orblib exists above in table: '
-                              f'{dict(row_data)}.')
+                              f'{row_data}.')
             is_new = False
         else:
-            self.logger.debug(f'New orblib: {dict(row_data)}.')
+            self.logger.debug(f'New orblib: {row_data}.')
             is_new = True
         return is_new
 
@@ -344,7 +344,7 @@ class ModelInnerIterator(object):
                         t = 'Cannot create orbit library directory ' \
                             f'{model_dir}{orblib_dir} because it already ' \
                             'exists. Caused by model with parameter set ' \
-                            f'{dict(parset0)}. ' \
+                            f'{parset0}. ' \
                             'Hint: check the parameter values, their ' \
                             'stepsize, and the parameter string formats in ' \
                             'the Component classes in physical_system.py.'
