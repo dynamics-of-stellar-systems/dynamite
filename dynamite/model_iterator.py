@@ -342,27 +342,27 @@ class ModelInnerIterator(object):
         for row in rows_orblib:
             n=np.sum(self.all_models.table[:row]['which_iter']==iteration)
             orblib_dir = f'model_{iteration:03d}_{n:03d}'
-            self.all_models.table[row]['folder_name'] = orblib_dir
+            self.all_models.table[row]['directory'] = orblib_dir
         # existing orblib directories
         orblib_data = self.all_models.table[self.orblib_parameters]
         for row in rows_ml:
             row_data = orblib_data[row]
             for idx, orblib in enumerate(orblib_data[:row]):
                 if np.allclose(tuple(row_data), tuple(orblib)):
-                    orblib_dir = self.all_models.table[idx]['folder_name']
+                    orblib_dir = self.all_models.table[idx]['directory']
                     orblib_dir = orblib_dir[:orblib_dir[:-1].rindex('/')]
                     break
             else:
                 text = f'Unexpected: cannot find orblib {dict(row_data)}.'
                 self.logger.error(text)
                 raise ValueError(text)
-            self.all_models.table[row]['folder_name'] = orblib_dir
+            self.all_models.table[row]['directory'] = orblib_dir
         # ml directories
         for row in rows_orblib+rows_ml:
             ml_dir = f"/ml{self.all_models.table['ml'][row]:01.2f}/"
-            self.all_models.table[row]['folder_name'] += ml_dir
+            self.all_models.table[row]['directory'] += ml_dir
             self.logger.debug(f"New model directory "
-                f"{self.all_models.table[row]['folder_name']} assigned.")
+                f"{self.all_models.table[row]['directory']} assigned.")
 
     def create_and_run_model(self, input):
         i, row, new_orblib = input
@@ -370,7 +370,7 @@ class ModelInnerIterator(object):
         # extract the parameter values
         parset0 = self.all_models.table[row]
         parset0 = parset0[self.parspace.par_names]
-        directory = self.all_models.table['folder_name'][row]
+        directory = self.all_models.table['directory'][row]
         # create and run the model
         mod0 = model.Model(system=self.system,
                            settings=self.settings,

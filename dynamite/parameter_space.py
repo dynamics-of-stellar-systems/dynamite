@@ -334,8 +334,6 @@ class ParameterGenerator(object):
         The datetime64 column is populated with the current timestamp
         numpy.datetime64('now', 'ms').
         The 'which_iter' column is populated with the argument value n_iter.
-        The 'folder_name' column is populated with a unique model directory
-        name.
 
         Parameters
         ----------
@@ -368,8 +366,6 @@ class ParameterGenerator(object):
             elif self.current_models.table.columns[i].name == 'which_iter':
                 # iteration
                 val = n_iter
-            # elif self.current_models.table.columns[i].name == 'folder_name':
-            #     val = 'Test'
             else:
                 # empty entry for all other columns
                 dtype = self.current_models.table.columns[i].dtype

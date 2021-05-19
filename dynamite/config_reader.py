@@ -487,26 +487,27 @@ class Configuration(object):
 
         """
         ml_pattern = self.settings.io_settings['model_directory'] + '*/ml*'
-        ml_folders = glob.glob(ml_pattern)
-        if len(ml_folders) > 0:
-            for folder in ml_folders:
-                shutil.rmtree(folder)
-                self.logger.debug(f'Directory {folder} removed.')
+        ml_directories = glob.glob(ml_pattern)
+        if len(ml_directories) > 0:
+            for directory in ml_directories:
+                shutil.rmtree(directory)
+                self.logger.debug(f'Directory {directory} removed.')
             self.logger.info(f'Orbital weights {ml_pattern} removed.')
         else:
             self.logger.info(f'No orbital weights {ml_pattern} to remove.')
 
-    def remove_existing_plots(self, remove_folder=False):
+    def remove_existing_plots(self, remove_directory=False):
         """
         Removes existing plots from the plots directory. Optionally, the
         plot directory tree can be removed recursively.
 
         Parameters
         ----------
-        remove_folder : BOOL, optional
+        remove_directory : BOOL, optional
             True if the plot directory shall be removed, too. If False,
-            only regular files in the plot directory are deleted (subfolders
-            will remain untouched in that case). The default is False.
+            only regular files in the plot directory are deleted
+            (subdirectories will remain untouched in that case).
+            The default is False.
 
         Raises
         ------
@@ -519,7 +520,7 @@ class Configuration(object):
         """
         plot_dir = self.settings.io_settings['plot_directory']
         if os.path.isdir(plot_dir):
-            if remove_folder:
+            if remove_directory:
                 shutil.rmtree(plot_dir)
                 self.logger.info(f'Plot directory {plot_dir} deleted.')
             else:
@@ -577,7 +578,7 @@ class Configuration(object):
     def remove_all_existing_output(self, wipe_all=False, create_tree=True):
         """
         Removes all existing DYNAMITE output. The options determine whether
-        non-DYNAMITE output shall survive in the output folders.
+        non-DYNAMITE output shall survive in the output directories.
         Also resets self.all_models to an empty AllModels object.
 
         Parameters
@@ -585,7 +586,7 @@ class Configuration(object):
         wipe_all : BOOL, optional
             If True, the complete output directory tree will be removed.
             Set to False to keep (a) user files & directories in the output
-            folder and (b) user directories in the plots folder.
+            directory and (b) user directories in the plots directory.
             The default is False.
         create_tree : BOOL, optional
             If True, recreates an empty output directory tree with a
@@ -612,7 +613,7 @@ class Configuration(object):
             self.logger.info(f'Output directory tree {out_dir} removed.')
         else:
             self.remove_existing_orblibs()
-            self.remove_existing_plots(remove_folder=False)
+            self.remove_existing_plots(remove_directory=False)
         # Execute in any case to create empty AllModels object:
         self.remove_existing_all_models_file()
         if create_tree:

@@ -50,8 +50,8 @@ class AllModels(object):
         # which_iter will record which iteration of parameters a model came from
         names.append('which_iter')
         dtype.append(int)
-        # folder_name will be the model folder name in the models/ directory
-        names.append('folder_name')
+        # directory will be the model directory name in the models/ directory
+        names.append('directory')
         dtype.append(np.object)
         # ncols = len(names)
         # data = np.zeros((0, ncols))
@@ -171,7 +171,7 @@ class AllModels(object):
                       settings=self.settings,
                       parspace=self.parspace,
                       parset=parset0,
-                      directory=self.table['folder_name'][row_id])
+                      directory=self.table['directory'][row_id])
         return mod0
 
     def save(self):
@@ -247,7 +247,7 @@ class Model(object):
             raise
         for idx, parset in enumerate(all_models[self.parspace.par_names]):
             if np.allclose(tuple(parset),tuple(self.parset)):
-                directory += 'models/' + all_models['folder_name'][idx]
+                directory += 'models/' + all_models['directory'][idx]
                 break
         else:
             text = f'Cannot set model directory: parset {self.parset} ' \
