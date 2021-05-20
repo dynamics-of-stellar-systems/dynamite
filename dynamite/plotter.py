@@ -33,8 +33,6 @@ class Plotter():
         self.input_directory = settings.io_settings['input_directory']
         self.plotdir = settings.io_settings['plot_directory']
         pb_sauron_colormap.register_sauron_colormap()
-        #Alice: I commented out all the "sauron" instances,
-        #       so we can try the matplotlib or cmasher color maps.
         
         # parspace is a list
         # par0 = parspace[0]
@@ -151,10 +149,40 @@ class Plotter():
                          f'({n_models} models).')
         return fig
 
-    def make_chi2_plot(self, which_chi2=None,figtype=None):
+    def make_chi2_plot(self, which_chi2=None, nexcl=0, figtype=None):
         """
-        This implementation is still EXPERIMENTAL. Don't use unless you
-        know what you are doing...
+        Generates a chisquare plot. 
+        The models generated are shown on a grid of parameter space.
+        The best-fit model is marked with a black cross. 
+        The coloured circles represent models within 3 sigma 
+        confidence level (light colours and larger circles 
+        indicate smaller values of the chisquare). The small 
+        black dots indicate the models outside this confidence region.
+
+        Parameters
+        ----------
+        which_chi2 : STR, optional
+            Determines whether chi2 or kinchi2 is used. If None, the setting
+            in the configuration file's parameter settings is used.
+            Must be None, 'chi2', or 'kinchi2'. The default is None.
+        nexcl : integer, optional
+            Determines how many models (in the initial burn-in phase of 
+            the fit) to exclude from the plot. Must be an integer number.
+            Default is 0 (all models are shown).
+        figtype : STR, optional
+            Determines the file extension to use when saving the figure.
+            If None, the default setting is used ('.png'). 
+
+        Raises
+        ------
+        ValueError
+            If which_chi2 is not one of None, 'chi2', or 'kinchi2'.
+
+        Returns
+        -------
+        fig : matplotlib.pyplot.figure
+            Figure instance.
+
         """
 
         if figtype == None:
@@ -169,12 +197,13 @@ class Plotter():
             raise ValueError(text)
         self.logger.info(f'Making chi2 plot scaled according to {which_chi2}')
 
-        #Note: it could be a nice feature to exclude the first 50, 100 
-        # (specified by the user) or so models in case the values were really
-        # off there or alternatively based on too big Delta chi2
-        # DO THIS! ALICE
         pars=self.parspace
         val=self.all_models.table
+
+        # exclude the first 50, 100 (specified by the user) 
+        # models in case the values were really off there 
+        # (or alternatively based on too big Delta chi2)
+        val = val[nexcl:]
 
         #only use models that are finished
         val=val[val['all_done']==True]
@@ -269,7 +298,6 @@ class Plotter():
                     if chi2[k]/chlim<=3: #only significant chi2 values
 
                         color = colormap(chi2[k]/chlim) # * 240) #colours the significant chi2
-                        # ALICE - check 240 if it's ok, or 80 maybe? or value from 0 to 1, check and fix?
                         markersize = 7-(chi2[k]/(3*chlim)) #smaller chi2 become bigger :)
                         ax.plot((val[nofix_name[i]])[k], (val[nofix_name[j]])[k], 'o', markersize=markersize, color=color)
 
@@ -331,15 +359,51 @@ class Plotter():
     def plot_kinematic_maps(self, model=None, kin_set=0, 
                             cbar_lims='data', figtype=None):
         """
-        Show kinematic map of a model with v, sigma, h3, h4.
-        If model=None, select best fitting model so far.
-        Taken from schw_kin.py.
-        Note: kin_set should be the index of the data set,
-        e.g. kin_set=0 , kin_set=1. Default is kin_set=0.
-        If kin_set=='all', kinematic maps for all kinematics are plotted
-        and a list of (fig,kin_set_name) is returned where fig are figure
-        objects and kin_set_name are the names of the kinematics sets.
+        Generates a kinematic map of a model with v, sigma, h3, h4...
+        Maps of the surface brightness, mean line-of-sight velocity, 
+        velocity dispersion, and higher order Gauss–Hermite moments 
+        are shown. The first row are data, the second row the best-fit 
+        model, and the third row the residuals.
+
+        Parameters
+        ----------
+        model : model, optional
+            Determines which model is used for the plot.
+            If model = None, the model corresponding to the minimum 
+            chisquare (so far) is used; the setting in the configuration 
+            file's parameter settings is used to determine which chisquare 
+            to consider. The default is None. 
+        kin_set : integer or 'all'
+            Determines which kinematic set to use for the plot.
+            The value of this parameter should be the index of the data 
+            set (e.g. kin_set=0 , kin_set=1). The default is kin_set=0.
+            If kin_set='all', several kinematic maps are produced, one 
+            for each kinematic dataset. A list of (fig,kin_set_name) is 
+            returned where fig are figure objects and kin_set_name are 
+            the names of the kinematics sets.
+        cbar_lims : STR
+            Determines which set of values is used to determine the 
+            limiting values defining the colorbar used in the plots.
+            Accepted values: 'model', 'data', 'combined'.
+            The default is 'data'.
+        figtype : STR, optional
+            Determines the file extension to use when saving the figure.
+            If None, the default setting is used ('.png'). 
+
+        Raises
+        ------
+        ValueError
+            If kin_set is not smaller than the number of kinematic sets.
+        ValueError
+            If cbar_lims is not one of 'model', 'data', or 'combined'.
+
+        Returns
+        -------
+        fig : matplotlib.pyplot.figure
+            Figure instance.
+
         """
+        # Taken from schw_kin.py.
 
         if figtype == None:
             figtype = '.png'
@@ -646,14 +710,6 @@ class Plotter():
 #############################################################################
 
     def intg2_trimge_intrmass(self, phi, theta, Fxyparm):
-        """!@brief Function description.
-
-        @details Function description.
-
-        @param[in] input ...
-        @param[out] output ...
-
-        """
 
         rr = Fxyparm[4,0]
         den_pot_pc = Fxyparm[0,:]
@@ -678,39 +734,24 @@ class Plotter():
 # --------------------------------------------
 
     def PQ_Limits_l(self, x):
-        """!@brief Function description.
 
-        @details Function description.
-
-        @param[in] input ...
-        @param[out] output ...
-
-        """
         return np.float(0.0)
 
 # --------------------------------------------
 
     def PQ_Limits_h(self, x):
-        """!@brief Function description.
 
-        @details Function description.
-
-        @param[in] input ...
-        @param[out] output ...
-
-        """
         return np.float(np.pi/np.float(2.0))
 
 #############################################################################
 
     def NFW_getpar(self, mstars=None, cc=None, dmfrac=None):
-        """
-        Computes density scale, radial scale and total mass in
-        the NFW profile used in the model.
-        Input parameters: NFW dark matter concentration and fraction,
-        and stellar mass
-        """
-
+        
+        #Computes density scale, radial scale and total mass in
+        #the NFW profile used in the model.
+        #Input parameters: NFW dark matter concentration and fraction,
+        #and stellar mass
+    
         grav_const_km = 6.67428e-11*1.98892e30/1e9
         parsec_km = 1.4959787068e8*(648.000e3/np.pi)
         rho_crit = (3.*((7.3000e-5)/parsec_km)**2)/(8.*np.pi*grav_const_km)
@@ -724,12 +765,11 @@ class Plotter():
 #############################################################################
 
     def NFW_enclosemass(self, rho=None, Rs=None, R=None):
-        """
-        Computes cumulative mass of the NWF dark matter halo
-        Input parameters: density scale  and radial scale, and
-        array of radial positions where to compute the mass.                           
-        """
 
+        #Computes cumulative mass of the NWF dark matter halo
+        #Input parameters: density scale  and radial scale, and
+        #array of radial positions where to compute the mass.                           
+    
         M = 4. * np.pi * rho * Rs**3 * (np.log((Rs + R)/Rs) - R/(Rs + R))
 
         return M
@@ -739,14 +779,7 @@ class Plotter():
     def trimge_intrmass(self, r_pc=None, surf_pot_pc=None, 
                         sigobs_pot_pc=None, qobs_pot=None, 
                         psi_off=None, incl=None):
-        """!@brief Function description.
-
-        @details Function description.
-
-        @param[in] input ...
-        @param[out] output ...
-
-        """
+        
         theta = incl[0]
         phi = incl[1]
         psi = incl[2]
@@ -781,13 +814,7 @@ class Plotter():
 
     def triax_tpp2pqu(self, theta=None, phi=None, psi=None, qobs=None,
                       psi_off=None, res=None):
-        """!@brief Function description.
-
-        @details This routine is slow and sloppy, but correct. 
-        Written by RvdB. Moved to own file on 03/FEB/06.
-
-        @param[in] input ...
-        """
+        
         res = 1
         theta_view = theta * (np.pi/180.0)
         phi_view = phi * (np.pi/180.0)
@@ -842,18 +869,67 @@ class Plotter():
 
 #############################################################################
 
-    def mass_plot(self, which_chi2=None, Rmax_arcs=None,figtype=None):
+    def mass_plot(self, which_chi2=None, Rmax_arcs=None, figtype=None):
+        """
+        Generates cumulative mass plot.
+        The enclosed mass profiles are shown for the mass-follows-light
+        component (red), for the dark matter (blue), and for the sum 
+        of the two (black). The solid lines correspond to the best-fit 
+        model, the shaded areas represent 1 sigma uncertainties. 
+        The mass (in solar units) is plotted here as a function of 
+        the distancefrom the galactic centre, both in arcsec 
+        (bottom axis) and in pc (top axis).
+
+        Parameters
+        ----------
+        which_chi2 : STR, optional
+            Determines whether chi2 or kinchi2 is used. If None, the setting
+            in the configuration file's parameter settings is used.
+            Must be None, 'chi2', or 'kinchi2'. The default is None.
+        Rmax_arcs : numerical value
+            Determines the upper range of the x-axis. Default value is None.
+        figtype : STR, optional
+            Determines the file extension to use when saving the figure.
+            If None, the default setting is used ('.png'). 
+
+        Raises
+        ------
+        ValueError
+            If which_chi2 is not one of None, 'chi2', or 'kinchi2'.
+        ValueError
+            If Rmax_arcs is not set to a numerical value.
+
+        Returns
+        -------
+        fig : matplotlib.pyplot.figure
+            Figure instance.
+
+        """
+
         # schw_mass.py
         # Chi^2 < chilev =>
         #   normalized chi^2: chi^2/chi2pmin < chlim: sqrt(2*Nobs * NGH)
-
         # getallnfw_out= getallnfw(w_dir=w_dir, object=object,
         #        rootname=rootname, chilev=chlim * chi2pmin,
         #        massdir=figdir, Rmax_arcs=Rmax_arcs)
-        # Alice: getallnfw_out copied from schw_mass.py in this function!
+        # getallnfw_out copied from schw_mass.py in this function!
 
         if figtype == None:
             figtype = '.png'
+
+        if which_chi2==None:
+            which_chi2 = self.settings.parameter_space_settings['which_chi2']
+        if which_chi2 != 'chi2' and which_chi2 != 'kinchi2':
+            text = 'which_chi2 needs to be chi2 or kinchi2, ' \
+                   f'but it is {which_chi2}'
+            self.logger.error(text)
+            raise ValueError(text)
+        self.logger.info(f'Making chi2 plot scaled according to {which_chi2}')
+
+        if Rmax_arcs==None:
+            text = f'Rmax_arcs must be a number, but it is {Rmax_arcs}'
+            self.logger.error(text)
+            raise ValueError(text)
 
         val = deepcopy(self.all_models.table)
         val.sort(which_chi2)
@@ -1005,43 +1081,6 @@ class Plotter():
         ## plot in linear scale
         xrange = np.array([0.1, Rmax_arcs])
         yrange = np.array([1.0e6,maxmass])
-        '''
-        filename1 = plotdir + 'enclosedmassm_linear.pdf'
-        fig1 = plt.figure(figsize=(5,5))
-        #ftit = fig.suptitle(object.upper() + '_enclosedmassm_linear', fontsize=10,fontweight='bold')
-        ax1 = fig1.add_subplot(1, 1, 1)
-        ax1.set_xlim(xrange)
-        ax1.set_ylim(yrange)
-        ax1.set_xlabel(r'$R$ [arcsec]', fontsize=9)
-        ax1.set_ylabel(r'Enclosed Mass [M$_{\odot}$]', fontsize=9)
-        ax1.tick_params(labelsize=8)
-
-        ax2 = ax.twiny()
-        ax2.set_xlim(xrange * arctpc / 1000.0)
-        ax2.set_xlabel(r'$r$ [kpc]', fontsize=9)
-        ax2.tick_params(labelsize=8)
-
-        ax1.plot(R,mm[:,0], '-', color='k', linewidth=2.0,
-                label='Total')
-        ax1.plot(R,np.min(mm,axis=1), '--', color='k', linewidth=1.2)
-        ax1.plot(R,np.max(mm,axis=1), '--', color='k', linewidth=1.2)
-
-        ax1.plot(R,mass[:,0,0], '-', color='r', linewidth=2.0,
-                label='Mass-follows-Light')
-        ax1.plot(R,np.min(mass[:,:,0],axis=1), '--', color='r', linewidth=0.8)
-        ax1.plot(R,np.max(mass[:,:,0],axis=1), '--', color='r', linewidth=0.8)
-
-        ax1.plot(R,mass[:,0,1], '-', color='b', linewidth=2.0,
-                label='Dark Matter')
-        ax1.plot(R,np.min(mass[:,:,1],axis=1), '--', color='b', linewidth=0.8)
-        ax1.plot(R,np.max(mass[:,:,1],axis=1), '--', color='b', linewidth=0.8)
-
-        ax1.legend(loc='upper left', fontsize=8)
-        plt.tight_layout()
-        plt.savefig(filename1)
-
-        self.logger.info(f'Plot enclosedmassm_linear.pdf saved in {plotdir}')
-        '''
 
         filename1 = plotdir + 'enclosedmassm_linear' + figtype
         fig = plt.figure(figsize=(5,5))
@@ -1087,17 +1126,16 @@ class Plotter():
 #############################################################################
 
     def readorbclass(self, file=None, nrow=None, ncol=None):
-        """
-        read in 'datfil/orblib.dat_orbclass.out'
-        which stores the information of all the orbits stored in the orbit library
         
-        norb = nE * nI2 * nI3 * ndithing^3 
-        for each orbit, the time averaged values are stored:
+        #read in 'datfil/orblib.dat_orbclass.out'
+        #which stores the information of all the orbits stored in the orbit library
+        
+        #norb = nE * nI2 * nI3 * ndithing^3 
+        #for each orbit, the time averaged values are stored:
 
-        lx, ly ,lz, r = sum(sqrt( average(r^2) )), Vrms^2 = average(vx^2 + vy^2 + vz^2 + 2vx*vy + 2vxvz + 2vxvy)
+        #lx, ly ,lz, r = sum(sqrt( average(r^2) )), Vrms^2 = average(vx^2 + vy^2 + vz^2 + 2vx*vy + 2vxvz + 2vxvy)
         
-        The file was stored by the fortran code orblib_f.f90 integrator_find_orbtype
-        """
+        #The file was stored by the fortran code orblib_f.f90 integrator_find_orbtype
 
         data=[]
         lines = [line.rstrip('\n').split() for line in open(file)]
@@ -1113,10 +1151,8 @@ class Plotter():
 #############################################################################
 
     def readorbout(self, filename=None):
-        """
-        read in 'mlxxx/nn_orb.out' of one model
-
-        """
+        
+        #read in 'mlxxx/nn_orb.out' of one model
 
         nrow=data=np.genfromtxt(filename,max_rows=1)
         nrow=int(nrow)
@@ -1134,67 +1170,9 @@ class Plotter():
     
 #############################################################################
 
-    def plotdensity(self, object=None, f1=None, f2=None, weight=None, 
-                    xnbin=None, ynbin=None,distance=None, plotdir=None,
-                    figtype=None):
-        """
-        """
-
-        xbinned = [np.min(f1), np.max(f1)]
-        # ybinned = [np.min(f2), np.max(f2)]
-        ybinned = [-1.00000, 1.0000]
-        nbins = np.array([xnbin, ynbin])
-        range_bin=[[np.min(f1),np.max(f1)],[np.min(f2),np.max(f2)]]
-        R = np.zeros((xnbin, ynbin))
-
-        for i in range(int(0), len(f1[0, :])):
-            # RIL, xedges, yedges = np.histogram2d(f1[:,i], f2[:,i], bins=nbins, range=range_bin)
-            RIL = np.histogram2d(f1[:,i], f2[:,i], bins=nbins, 
-                                 range=range_bin)[0]
-            R += weight[i]*RIL
-
-        R = R/np.sum(R)
-        minmaxdens = [np.min(R), np.max(R)]
-    
-        ### plot the orbit distribution on lambda_z vs. r ###
-
-        filename5 = plotdir + 'orbit_linear_only' + figtype
-        imgxrange = xbinned
-        imgyrange = ybinned
-        extent = [imgxrange[0], imgxrange[1], imgyrange[0], imgyrange[1]]
-        
-        fig = plt.figure(figsize=(6,5))
-        
-        ax = fig.add_subplot(1, 1, 1)
-        cax = ax.imshow(R.T, cmap='binary', interpolation='spline16', 
-                        extent=extent, origin='lower', vmax=minmaxdens[1],
-                        vmin=minmaxdens[0], aspect='auto')
-
-        ax.set_yticks([-1,-0.5,0,0.5,1])
-        ax.set_xlabel(r'$r$ [arcsec]', fontsize=9)
-        ax.set_ylabel(r'Circularity $\lambda_{z}$', fontsize=9)
-
-        fig.colorbar(cax, orientation='vertical', pad=0.1)
-        
-        ax.plot(imgxrange, np.array([1,1])*0.80, '--', color='black',
-                 linewidth=1)
-        ax.plot(imgxrange, np.array([1,1])*0.25, '--', color='black',
-                 linewidth=1)
-        ax.plot(imgxrange, np.array([1,1])*(-0.25), '--', color='black',
-                 linewidth=1)
-        plt.tight_layout()
-        plt.savefig(filename5)
-
-        self.logger.info(f'Plot {filename5} saved in {plotdir}')
-        return fig
-
-#############################################################################
-
     def triaxreadparameters(self, w_dir=None):
-        """
-        read in all the parameters in parameters.in
 
-        """
+        #read in all the parameters in parameters.in
 
         filename = w_dir + 'infil/parameters_pot.in' 
         # Alice: here I have modified parameters.in in parameters_pot.in
@@ -1257,23 +1235,54 @@ class Plotter():
 
 #############################################################################
 
-    def orbit_plot(self, model=None, Rmax_arcs=None,figtype =None):
+    def orbit_plot(self, model=None, Rmax_arcs=None, figtype =None):
+        """
+        Generates an orbit plot fpr the selected model.
+        This plot shows the stellar orbit distribution, described 
+        as probability density of orbits; circularity (lambda_z) is 
+        represented here as a function of the distance from the 
+        galactic centre r (in arcsec).
+
+        Parameters
+        ----------
+        model : model, optional
+            Determines which model is used for the plot.
+            If model = None, the model corresponding to the minimum 
+            chisquare (so far) is used; the setting in the configuration 
+            file's parameter settings is used to determine which chisquare 
+            to consider. The default is None. 
+        Rmax_arcs : numerical value
+            Determines the upper range of the x-axis.
+        figtype : STR, optional
+            Determines the file extension to use when saving the figure.
+            If None, the default setting is used ('.png'). 
+
+        Raises
+        ------
+        ValueError
+            If Rmax_arcs is not set to a numerical value.
+
+        Returns
+        -------
+        fig : matplotlib.pyplot.figure
+            Figure instance.
+
+        """
+
         # schw_orbit.py
         # triaxplotphasennstr(w_dir=w_dir, object=object, rootname=rootname[0],
         #        diri_o=bparam_str, ml_str = ml_str,
         #        figdir=figdir+str(i),Rmax_arcs=Rmax_arcs)
         ###def triaxplotphasennstr(w_dir=None, object=None, rootname=None, 
         #       diri_o=None, ml_str = None, figdir=None, Rmax_arcs=None ):
-        """!@brief Function description.
 
-        @details Function description.
-
-        @param[in] input ...
-        @param[out] output ...
-
-        """
         if figtype == None: 
             figtype = '.png'
+
+        if Rmax_arcs==None:
+            text = f'Rmax_arcs must be a number, but it is {Rmax_arcs}'
+            self.logger.error(text)
+            raise ValueError(text)
 
         if model is None:
             which_chi2 = \
@@ -1298,17 +1307,15 @@ class Plotter():
         xrange=[0.0,Rmax_arcs]
 
         triaxreadparameters = self.triaxreadparameters(w_dir=mdir_noml)
-        distance = triaxreadparameters[1]
+        #distance = triaxreadparameters[1]
         nre = triaxreadparameters[8]
         nrth, nrrad, ndither = triaxreadparameters[11:14]
         conversion_factor = triaxreadparameters[18]
 
-        '''
-        mgepar, distance, th_view, ph_view, psi_view, ml, bhmass,\
-        softlen,nre, lrmin, lrmax, nrth, nrrad, ndither, vv1_1, \
-        vv1_2,dm1,dm2,conversion_factor,grav_const_km,parsec_km, \
-        rho_crit = self.triaxreadparameters(w_dir=mdir_noml)
-        '''
+        #mgepar, distance, th_view, ph_view, psi_view, ml, bhmass,\
+        #softlen,nre, lrmin, lrmax, nrth, nrrad, ndither, vv1_1, \
+        #vv1_2,dm1,dm2,conversion_factor,grav_const_km,parsec_km, \
+        #rho_crit = self.triaxreadparameters(w_dir=mdir_noml)
 
         norb = int(nre*nrth*nrrad)
         orbclass1 = self.readorbclass(file=file2, nrow=norb, ncol=ndither**3)
@@ -1348,9 +1355,60 @@ class Plotter():
         nybin = 21 #21
         # Alice: maybe we could change these so that they are not always 
         #        fixed to the same value?
-        fig = self.plotdensity(object=object, f1=r[:,s], f2=lz[:,s], 
-                weight=orbw[s], xnbin=nxbin, ynbin=nybin,
-                distance=distance, plotdir = self.plotdir,figtype=figtype)
+
+        f1=r[:,s]
+        f2=lz[:,s]
+        xnbin=nxbin
+        ynbin=nybin
+        xbinned = [np.min(f1), np.max(f1)]
+        # ybinned = [np.min(f2), np.max(f2)]
+        ybinned = [-1.00000, 1.0000]
+        nbins = np.array([xnbin, ynbin])
+        range_bin=[[np.min(f1),np.max(f1)],[np.min(f2),np.max(f2)]]
+        R = np.zeros((xnbin, ynbin))
+
+        weight=orbw[s]
+
+        for i in range(int(0), len(f1[0, :])):
+            # RIL, xedges, yedges = np.histogram2d(f1[:,i], f2[:,i], bins=nbins, range=range_bin)
+            RIL = np.histogram2d(f1[:,i], f2[:,i], bins=nbins, 
+                                 range=range_bin)[0]
+            R += weight[i]*RIL
+
+        R = R/np.sum(R)
+        minmaxdens = [np.min(R), np.max(R)]
+    
+        ### plot the orbit distribution on lambda_z vs. r ###
+
+        plotdir = self.plotdir
+        filename5 = plotdir + 'orbit_linear_only' + figtype
+        imgxrange = xbinned
+        imgyrange = ybinned
+        extent = [imgxrange[0], imgxrange[1], imgyrange[0], imgyrange[1]]
+        
+        fig = plt.figure(figsize=(6,5))
+        
+        ax = fig.add_subplot(1, 1, 1)
+        cax = ax.imshow(R.T, cmap='binary', interpolation='spline16', 
+                        extent=extent, origin='lower', vmax=minmaxdens[1],
+                        vmin=minmaxdens[0], aspect='auto')
+
+        ax.set_yticks([-1,-0.5,0,0.5,1])
+        ax.set_xlabel(r'$r$ [arcsec]', fontsize=9)
+        ax.set_ylabel(r'Circularity $\lambda_{z}$', fontsize=9)
+
+        fig.colorbar(cax, orientation='vertical', pad=0.1)
+        
+        ax.plot(imgxrange, np.array([1,1])*0.80, '--', color='black',
+                 linewidth=1)
+        ax.plot(imgxrange, np.array([1,1])*0.25, '--', color='black',
+                 linewidth=1)
+        ax.plot(imgxrange, np.array([1,1])*(-0.25), '--', color='black',
+                 linewidth=1)
+        plt.tight_layout()
+        plt.savefig(filename5)
+
+        self.logger.info(f'Plot {filename5} saved in {plotdir}')
 
         # compute total angular momentum
         #angular= np.abs(np.sum((lzm[t[0:y+1]])*orbw[t[0:y+1]])/np.sum(orbw[t[0:y+1]]))
@@ -1364,14 +1422,7 @@ class Plotter():
 #############################################################################
 
     def N_car2sph(self, x, y, z, eps=None):
-        """!@brief orthogonal velocity conversion matrix: N=[N_ji] (i=row,j=column)
 
-        @details orthogonal velocity conversion matrix: N=[N_ji] (i=row,j=column)
-
-        @param[in] input ...
-        @param[out] output ...
-
-        """
         if not eps: eps=1.0e-10
         R = np.sqrt(x**2 + y**2)
         rr = np.sqrt(x**2 + y**2 + z**2)
@@ -1391,27 +1442,24 @@ class Plotter():
 #############################################################################
     
     def car2sph_mu12(self, x, y, z, mu1car, mu2car, eps=None):
-        """!@brief conversion from Cartesian to spherical intrinsic moments
-        of first and second order (in first octant with x>0, y>0, and z>0)
 
-        @details conversion from Cartesian to spherical intrinsic moments
-        of first and second order (in first octant with x>0, y>0, and z>0).
-        on input ...
-        x,y,z  = vector of n (Cartesian) coordinates
-        mu1car = (n x 3)-array with first Cartesian moments
-        mu2car = (n x 3 x 3)-array with second Cartesian moments
-        on output
-        mu1sph = (n x 3)-array with first spherical moments
-        mu2sph = (n x 3 x 3)-array with second spherical moments
-                      | mu_x |                    | <mu_xx> <mu_xy> <mu_xz> |
-        mu1car[i,*] = | mu_y |,   mu2car[i,*,*] = | <mu_yx> <mu_yy> <mu_yz> |
-                      | mu_z |                    | <mu_zx> <mu_zy> <mu_zz> |
-        idem for spherical but with (x,y,z) -> (r,theta,phi)
+        #Conversion from Cartesian to spherical intrinsic moments
+        #of first and second order (in first octant with x>0, y>0, and z>0)
 
-        @param[in] input ...
-        @param[out] output ...
+        #Conversion from Cartesian to spherical intrinsic moments
+        #of first and second order (in first octant with x>0, y>0, and z>0).
+        #on input ...
+        #x,y,z  = vector of n (Cartesian) coordinates
+        #mu1car = (n x 3)-array with first Cartesian moments
+        #mu2car = (n x 3 x 3)-array with second Cartesian moments
+        #on output
+        #mu1sph = (n x 3)-array with first spherical moments
+        #mu2sph = (n x 3 x 3)-array with second spherical moments
+        #              | mu_x |                    | <mu_xx> <mu_xy> <mu_xz> |
+        #mu1car[i,*] = | mu_y |,   mu2car[i,*,*] = | <mu_yx> <mu_yy> <mu_yz> |
+        #              | mu_z |                    | <mu_zx> <mu_zy> <mu_zz> |
+        #idem for spherical but with (x,y,z) -> (r,theta,phi)
 
-        """
         if not eps: eps=1.0e-10
         nn=len(x)
         # print(nn)
@@ -1432,16 +1480,12 @@ class Plotter():
 #############################################################################
     
     def N_car2cyl(self, x, y, z, eps=None):
-        """!@brief orthogonal velocity conversion matrix: N=[N_ji] (i=row,j=column)
 
-        @details orthogonal velocity conversion matrix: N=[N_ji] (i=row,j=column)
-        <v>=N<u>, with <v> spherical and <u> Cartesian
-        from http://en.wikipedia.org/wiki/List_of_canonical_coordinate_transformations
+        #Orthogonal velocity conversion matrix: N=[N_ji] (i=row,j=column)
+        #Orthogonal velocity conversion matrix: N=[N_ji] (i=row,j=column)
+        #<v>=N<u>, with <v> spherical and <u> Cartesian
+        #from http://en.wikipedia.org/wiki/List_of_canonical_coordinate_transformations
 
-        @param[in] input ...
-        @param[out] output ...
-
-        """
         if not eps: eps=1.0e-10
         R2 = x**2 + y**2
         R=np.sqrt(R2)
@@ -1461,16 +1505,13 @@ class Plotter():
 #############################################################################
     
     def car2cyl_mu12(self, x, y, z, mu1car, mu2car, eps=None):
-        """!@brief conversion from Cartesian to cylindrical intrinsic moments of first
-        and second order (in first octant with x>0, y>0, and z>0)
 
-        @details conversion from Cartesian to cylindrical intrinsic moments
-        of first and second order (in first octant with x>0, y>0, and z>0)
+        #Conversion from Cartesian to cylindrical intrinsic moments of first
+        #and second order (in first octant with x>0, y>0, and z>0)
 
-        @param[in] input ...
-        @param[out] output ...
+        #Conversion from Cartesian to cylindrical intrinsic moments
+        #of first and second order (in first octant with x>0, y>0, and z>0)
 
-        """
         if not eps: eps=1.0e-10
         nn=len(x)
         # print(nn)
@@ -1491,14 +1532,6 @@ class Plotter():
 #############################################################################
 
     def anisotropy_single(self, file=None):
-        """!@brief Function description.
-
-        @details Function description.
-
-        @param[in] input ...
-        @param[out] output ...
-
-        """
 
         # intrinsic moments
         #"iph,ith,ir,ma,mm,me,x,y,z (in arcsec),vx,vy,vz,xv2,vy2 ,vz2,vxvy,vyvz,vzvx,OL,OS,OB"
@@ -1571,13 +1604,66 @@ class Plotter():
 
 #############################################################################
 
-    def beta_plot(self, which_chi2=None, Rmax_arcs=None,figtype =None):
+    def beta_plot(self, which_chi2=None, Rmax_arcs=None, figtype =None):
+        """
+        Generates anisotropy plots.
+        The two plots show the intrinsic and projected anisotropy 
+        (beta_r and beta_z, respectively) as a function of the 
+        distance from the galactic centre (in arcsec).
+         * beta_r = 1 - (sigma_t/sigma_r)^2
+         * beta_z = 1 - (sigma_z/sigma_R)^2
+        Solid lines and shaded areas represent the mean and standard 
+        deviation of the anisotropy of models having parameters in a
+        confidence region around the minimum chisquare.
+
+        Parameters
+        ----------
+        which_chi2 : STR, optional
+            Determines whether chi2 or kinchi2 is used. If None, the setting
+            in the configuration file's parameter settings is used.
+            Must be None, 'chi2', or 'kinchi2'. The default is None.
+        Rmax_arcs : numerical value
+            Determines the upper range of the x-axis.
+        figtype : STR, optional
+            Determines the file extension to use when saving the figure.
+            If None, the default setting is used ('.png'). 
+
+        Raises
+        ------
+        ValueError
+            If which_chi2 is not one of None, 'chi2', or 'kinchi2'.
+        ValueError
+            If Rmax_arcs is not set to a numerical value.
+
+        Returns
+        -------
+        fig1 : matplotlib.pyplot.figure
+            Figure instance.
+        fig2 : matplotlib.pyplot.figure
+            Figure instance.
+
+        """
+
         # schw_anisotropy.py
         # plot_betaz_var
         # plot_vanisotropy_var
 
         if figtype == None: 
             figtype = '.png'
+
+        if which_chi2==None:
+            which_chi2 = self.settings.parameter_space_settings['which_chi2']
+        if which_chi2 != 'chi2' and which_chi2 != 'kinchi2':
+            text = 'which_chi2 needs to be chi2 or kinchi2, ' \
+                   f'but it is {which_chi2}'
+            self.logger.error(text)
+            raise ValueError(text)
+        self.logger.info(f'Making chi2 plot scaled according to {which_chi2}')
+
+        if Rmax_arcs==None:
+            text = f'Rmax_arcs must be a number, but it is {Rmax_arcs}'
+            self.logger.error(text)
+            raise ValueError(text)
 
         val = deepcopy(self.all_models.table)
         arg = np.argsort(np.array(val[which_chi2]))
@@ -1776,6 +1862,38 @@ class Plotter():
 #############################################################################
 
     def qpu_plot(self, which_chi2=None, Rmax_arcs=None,figtype =None):
+        """
+        Generates triaxiality plot.
+        The intrinsic flattenings q (C/A) and p (B/A) are shown here, 
+        with the blue and black lines respectively, as a function of 
+        the distance from the galactic centre (in arcsec).
+        The value of T = (1-p^2)/(1-q^2) is also shown (red line).
+
+        Parameters
+        ----------
+        which_chi2 : STR, optional
+            Determines whether chi2 or kinchi2 is used. If None, the setting
+            in the configuration file's parameter settings is used.
+            Must be None, 'chi2', or 'kinchi2'. The default is None.
+        Rmax_arcs : numerical value
+            Determines the upper range of the x-axis.
+        figtype : STR, optional
+            Determines the file extension to use when saving the figure.
+            If None, the default setting is used ('.png'). 
+
+        Raises
+        ------
+        ValueError
+            If which_chi2 is not one of None, 'chi2', or 'kinchi2'.
+        ValueError
+            If Rmax_arcs is not set to a numerical value.
+
+        Returns
+        -------
+        fig : matplotlib.pyplot.figure
+            Figure instance.
+
+        """
         # schw_qpu.py
         # plot_qpu_out=plot_qpu(w_dir=w_dir, object=object, rootname=rootname,
         #        chilev=chlim *chi2pmin, qpu_dir=figdir, Rmax_arcs=Rmax_arcs)
@@ -1787,6 +1905,20 @@ class Plotter():
 
         if figtype == None: 
             figtype = '.png'
+
+        if which_chi2==None:
+            which_chi2 = self.settings.parameter_space_settings['which_chi2']
+        if which_chi2 != 'chi2' and which_chi2 != 'kinchi2':
+            text = 'which_chi2 needs to be chi2 or kinchi2, ' \
+                   f'but it is {which_chi2}'
+            self.logger.error(text)
+            raise ValueError(text)
+        self.logger.info(f'Making chi2 plot scaled according to {which_chi2}')
+
+        if Rmax_arcs==None:
+            text = f'Rmax_arcs must be a number, but it is {Rmax_arcs}'
+            self.logger.error(text)
+            raise ValueError(text)
 
         val = deepcopy(self.all_models.table)
         arg = np.argsort(np.array(val[which_chi2]))
