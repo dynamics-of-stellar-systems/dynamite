@@ -383,37 +383,6 @@ class ModelInnerIterator(object):
             mod0.chi2 = self.dummy_chi2_function(parset0)
             mod0.kinchi2 = 0.
         else:
-            # # If new orblib: check for duplicate directory conflict
-            # if new_orblib:
-            #     orblib_dir = mod0.get_model_directory()
-            #     orblib_dir = orblib_dir[:orblib_dir.rindex('/', 0, -1)]
-            #     orblib_dir = orblib_dir[orblib_dir.rindex('/')+1:]
-            #     self.logger.debug(f'orblib_dir: {orblib_dir}')
-            #     model_dir = \
-            #         self.settings.io_settings['output_directory'] + 'models/'
-            #     if os.path.isdir(model_dir):
-            #         _, orblib_dirs, _ = next(os.walk(model_dir))
-            #         self.logger.debug(f'orblib_dirs: {orblib_dirs}')
-            #         if orblib_dir in orblib_dirs:
-            #             t = 'Cannot create orbit library directory ' \
-            #                 f'{model_dir}{orblib_dir} because it already ' \
-            #                 'exists. Caused by model with parameter set ' \
-            #                 f'{dict(parset0)}. ' \
-            #                 'Hint: check the parameter values, their ' \
-            #                 'stepsize, and the parameter string formats in ' \
-            #                 'the Component classes in physical_system.py.'
-            #             self.logger.error(t)
-            #             raise RuntimeError(t)
-            #             # mod0.chi2 = float('nan')
-            #             # mod0.kinchi2 = float('nan')
-            #             # all_done = orb_done and wts_done
-            #             # time = np.datetime64('now', 'ms')
-            #             # output = (orb_done, wts_done, mod0.chi2,
-            #             #           mod0.kinchi2, all_done, time)
-            #             # return output
-            #     else:
-            #         self.logger.debug('...is a new orblib directory.')
-            # # Carry on, there is no orblib directory conflict...
             mod0.setup_directories()
             orblib = mod0.get_orblib()
             orb_done = True

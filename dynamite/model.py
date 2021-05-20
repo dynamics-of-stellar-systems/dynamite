@@ -53,12 +53,6 @@ class AllModels(object):
         # directory will be the model directory name in the models/ directory
         names.append('directory')
         dtype.append(np.object)
-        # ncols = len(names)
-        # data = np.zeros((0, ncols))
-        # self.table = table.Table(data,
-        #                          names=names,
-        #                          dtype=dtype)
-        # self.logger.debug(names, dtype)
         self.table = table.Table(names=names, dtype=dtype)
         return
 
@@ -165,14 +159,13 @@ class AllModels(object):
         return mod
 
     def get_model_from_row(self, row_id):
-        parset0 = self.get_parset_from_row(row_id)
-        # mod = self.get_model_from_parset(parset0)
-        mod0 = Model(system=self.system,
+        parset = self.get_parset_from_row(row_id)
+        mod = Model(system=self.system,
                       settings=self.settings,
                       parspace=self.parspace,
-                      parset=parset0,
+                      parset=parset,
                       directory=self.table['directory'][row_id])
-        return mod0
+        return mod
 
     def save(self):
         self.table.write(self.filename, format='ascii.ecsv', overwrite=True)
@@ -256,30 +249,6 @@ class Model(object):
             raise ValueError(text)
         self.logger.debug(f'...model directory {directory} read from file.')
         return directory
-
-        # out_dir = self.settings.io_settings['output_directory']
-        # #out_dir += self.system.name
-        # out_dir += 'models/'
-        # # add all parameters to directory name except ml
-        # for par0, pval0 in zip(self.parspace, self.parset):
-        #     pname0 = par0.name
-        #     psfmt0  = par0.sformat
-        #     if pname0 != 'ml':
-        #         out_dir += f'{pname0}'
-        #         out_dir += format(pval0, psfmt0)+'_'
-        # out_dir = out_dir[:-1]
-        # # add ml to directory name
-        # out_dir += '/'
-        # for par0, pval0 in zip(self.parspace, self.parset):
-        #     pname0 = par0.name
-        #     psfmt0  = par0.sformat
-        #     if par0.name == 'ml':
-        #         out_dir += f'{pname0}'
-        #         out_dir += format(pval0, psfmt0)
-        # out_dir += '/'
-        # # remove all whitespace
-        # out_dir = out_dir.replace(" ", "")
-        # return out_dir
 
     def create_model_directory(self, path):
         if not os.path.exists(path):
