@@ -310,7 +310,7 @@ class ModelInnerIterator(object):
 
     def assign_model_directories(self, rows_orblib=None, rows_ml=None):
         """
-        Assigns model directoreis in all_models.table.
+        Assigns model directories in all_models.table.
 
         Models indexed by rows_orblib:
         The model directories follow the pattern model_xxx_yyy/mlz.zz where
