@@ -263,25 +263,17 @@ class ModelInnerIterator(object):
             n_orblib = len(rows_to_do_orblib)
             # rows_to_do_ml are the rows that need weight_solver only
             rows_to_do_ml=[i for i in rows_to_do if i not in rows_to_do_orblib]
-            input_list_orblib=[i+(True,) for i in enumerate(rows_to_do_orblib)]
-            input_list_ml=[i+(False,) for i in enumerate(rows_to_do_ml, \
-                                                         start=n_orblib)]
+            input_list_orblib = [i for i in enumerate(rows_to_do_orblib)]
+            input_list_ml=[i for i in enumerate(rows_to_do_ml, start=n_orblib)]
             self.logger.debug(f'input_list_orblib: {input_list_orblib}, '
                               f'input_list_ml: {input_list_ml}.')
-            # input_list = []
-            # for i, row in enumerate(rows_to_do):
-            #     input_list += [(i, row)]
-            # self.logger.debug(f'input_list: {input_list}')
-
             self.assign_model_directories(rows_to_do_orblib, rows_to_do_ml)
 
             with Pool(self.ncpus) as p:
-                # output = p.map(self.create_and_run_model, input_list)
                 output_orblib = \
                     p.map(self.create_and_run_model, input_list_orblib)
                 output_ml = p.map(self.create_and_run_model, input_list_ml)
             # save the output
-            # self.write_output_to_all_models_table(rows_to_do, output)
             self.write_output_to_all_models_table(rows_to_do_orblib,
                                                   output_orblib)
             self.write_output_to_all_models_table(rows_to_do_ml, output_ml)
@@ -364,33 +356,25 @@ class ModelInnerIterator(object):
             self.logger.debug(f"New model directory "
                 f"{self.all_models.table[row]['directory']} assigned.")
 
-    def create_and_run_model(self, input):
-        i, row, new_orblib = input
+    def create_and_run_model(self, which_model):
+        i, row = which_model
         self.logger.info(f'... running model {i+1} out of {self.n_to_do}')
-        # extract the parameter values
-        parset0 = self.all_models.table[row]
-        parset0 = parset0[self.parspace.par_names]
-        directory = self.all_models.table['directory'][row]
-        # create and run the model
-        mod0 = model.Model(system=self.system,
-                           settings=self.settings,
-                           parspace=self.parspace,
-                           parset=parset0,
-                           directory=directory)
+        mod = self.all_models.get_model_from_row(row)
         orb_done = False
         wts_done = False
         if self.do_dummy_run:
-            mod0.chi2 = self.dummy_chi2_function(parset0)
-            mod0.kinchi2 = 0.
+            parset = self.all_models.get_parset_from_row(row)
+            mod.chi2 = self.dummy_chi2_function(parset)
+            mod.kinchi2 = 0.
         else:
-            mod0.setup_directories()
-            orblib = mod0.get_orblib()
+            mod.setup_directories()
+            orblib = mod.get_orblib()
             orb_done = True
-            weight_solver = mod0.get_weights(orblib)
+            weight_solver = mod.get_weights(orblib)
             wts_done = True
         all_done = orb_done and wts_done
         time = np.datetime64('now', 'ms')
-        output = orb_done, wts_done, mod0.chi2, mod0.kinchi2, all_done, time
+        output = orb_done, wts_done, mod.chi2, mod.kinchi2, all_done, time
         return output
 
     def write_output_to_all_models_table(self, rows_to_do, output):
