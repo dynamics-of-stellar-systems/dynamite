@@ -310,19 +310,32 @@ class ModelInnerIterator(object):
 
     def assign_model_directories(self, rows_orblib=None, rows_ml=None):
         """
-        
+        Assigns model directoreis in all_models.table.
+
+        Models indexed by rows_orblib:
+        The model directories follow the pattern model_xxx_yyy/mlz.zz where
+        xxx is the iteration number, yyy a consecutive number of that
+        iteration's orbit library, and z.zz is the value of the models'
+        ml parameter in the 01.2f format.
+
+        Models indexed by rows_ml:
+        These models re-use an existing orbit library. Hence, their directory
+        strings re-use an existing model_xxx_yyy part and get augmented with
+        the appropriate /mlz.zz. 
 
         Parameters
         ----------
-        rows_orblib : TYPE, optional
-            DESCRIPTION. The default is None.
-        rows_ml : TYPE, optional
-            DESCRIPTION. The default is None.
+        rows_orblib : list, optional
+            Indices of models with new orbit libraries. The default is None.
+        rows_ml : list, optional
+            Indices of models with existing orbit libraries.
+            The default is None.
 
         Raises
         ------
         ValueError
-            DESCRIPTION.
+            If the orbit library of a model in rows_ml cannot be found in
+            all_models.table.
 
         Returns
         -------
