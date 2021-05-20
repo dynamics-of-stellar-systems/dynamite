@@ -13,9 +13,9 @@ import matplotlib.pyplot as plt
 from plotbin import sauron_colormap as pb_sauron_colormap
 import dynamite as dyn
 from plotbin import display_pixels
-# from loess.loess_2d import loess_2d
 import physical_system as physys
 from astropy.table import Table
+# from loess.loess_2d import loess_2d
 #import cmasher as cmr 
 
 class Plotter():
@@ -34,82 +34,10 @@ class Plotter():
         self.plotdir = settings.io_settings['plot_directory']
         pb_sauron_colormap.register_sauron_colormap()
         
-        # parspace is a list
-        # par0 = parspace[0]
-        # par0.fixed is True/False ...
-
-        # self.settings.io_settings has the main output directory
-        # for individual models, you can create a model.SchwarzschildModel object
-        # and use its get_model_directory method
-
-        # code below copied from schw_schwmodplot.py
-        '''
-        if not rootname: rootname = ['']
-        if not kin_plot: kin_plot=0
-        if not orbit_plot: orbit_plot=0
-        if not mass_plot: mass_plot=0
-        '''
-        # <-- dont need to implement "which plot to make" switches yet,
-        #     just individual plotting methods
-
-        '''
-        figdir = w_dir + object + '/figure_nn'+rootname[0]+'/'
-        if not os.path.isdir(figdir): file_mkdir(figdir)
-
-        pars, chilim, freeroot = schwparinfo(w_dir=w_dir, rootname=rootname, FIRSTITER=0, object=object)
-
-        a = read_file_element(w_dir + object + '/infil/kin_data.dat', [1], [1])
-        Nobs = long(a[0])
-
-        b = read_file_element(w_dir + object + '/infil/nn'+ str(rootname[0]) +'.in', [6], [1])
-        nGH = long(b[0])
-
-        fchiname1 = w_dir + object + '/griddata/' + str(rootname[0]) + '_chi2.cat'
-        '''
-
-
-        '''
-        Nf, npar, mpar, mtime, fls = read_chi2_file(fchiname1)
-
-        chi2 = mpar[npar, :]         # the direct chi^2 from modelling fitting h1, h2, h3, h4..
-        chikin = mpar[npar + 1, :]   # comparision between final modle and data, v, sigma, h3, h4
-
-        chi2 = chikin                # in the following, we only use chikin
-
-        # 1 sigma confidence level
-        chlim = math.sqrt(2 * Nobs * nGH)
-        '''
-        # chlim can be found in e.g.
-        # self.settings.parameter_space_settings.generator_settings['threshold_del_chi2']
-
-        '''
-        #### Normalize the chi2 anf chikin, the minimum chi2 per freedom should be ~ 1
-
-        chi2pmin = (min(chi2)/ (nGH*Nobs))
-        chi2 = chi2 * 1.0/ chi2pmin
-
-        par = np.zeros((npar, Nf), dtype=float)
-        par[0, :] = mpar[npar - 1, :]
-        par[1:npar, :] = mpar[0:npar - 1, :]
-
-        fix = np.ravel(np.where(pars.fixed == 1))
-        nofix = np.ravel(np.where(pars.fixed == 0))
-        nnofix = len(nofix)
-
-        ml = par[0, :]
-        qmin = par[1, :]
-
-        s0 = np.ravel(np.where((chi2 > 0) & (chikin > 0)))
-        ns0 = len(s0)
-        nf = np.copy(ns0)
-
-        par = par[:, s0]
-        chi2 = chi2[s0]
-        '''
 
     def make_chi2_vs_model_id_plot(self, which_chi2=None):
         """
-        Generates a (kin)chi2 vs. model id plot.
+        Generates a (kin)chi2 vs. model id plot
 
         Parameters
         ----------
@@ -149,9 +77,10 @@ class Plotter():
                          f'({n_models} models).')
         return fig
 
-    def make_chi2_plot(self, which_chi2=None, nexcl=0, figtype=None):
+    def make_chi2_plot(self, which_chi2=None, n_excl=0, figtype=None):
         """
-        Generates a chisquare plot. 
+        Generates a chisquare plot
+
         The models generated are shown on a grid of parameter space.
         The best-fit model is marked with a black cross. 
         The coloured circles represent models within 3 sigma 
@@ -168,7 +97,7 @@ class Plotter():
         nexcl : integer, optional
             Determines how many models (in the initial burn-in phase of 
             the fit) to exclude from the plot. Must be an integer number.
-            Default is 0 (all models are shown).
+            Default is 0 (all models are shown). Use this with caution!
         figtype : STR, optional
             Determines the file extension to use when saving the figure.
             If None, the default setting is used ('.png'). 
@@ -197,23 +126,30 @@ class Plotter():
             raise ValueError(text)
         self.logger.info(f'Making chi2 plot scaled according to {which_chi2}')
 
-        pars=self.parspace
-        val=self.all_models.table
+        pars = self.parspace
+        val = deepcopy(self.all_models.table)
 
         # exclude the first 50, 100 (specified by the user) 
         # models in case the values were really off there 
         # (or alternatively based on too big Delta chi2)
-        val = val[nexcl:]
+        val = val[n_excl:]
 
         #only use models that are finished
         val=val[val['all_done']==True]
 
+        # add black hole scaling
+        scale_factor = np.zeros(len(val))
+        for i in range(len(val)):
+            chi2val = val[which_chi2][i]
+            model_id = np.where(self.all_models.table[which_chi2]==chi2val)[0][0]
+            model = self.all_models.get_model_from_row(model_id)
+            param_fname = model.get_model_directory() + 'nn.in'
+            scale_factor[i] = np.genfromtxt(param_fname, skip_header=10,max_rows=1,usecols=0)
+
         #because of the large parameter range dh properties and black hole are plotted in log
         val['c-dh']=np.log10(val['c-dh'])
         val['f-dh']=np.log10(val['f-dh'])
-        val['m-bh']=np.log10(val['m-bh'])
-        #TBD: add black hole scaling (multiply with ML - ALICE)
-        #TBD: check the definition of chi2
+        val['m-bh']=np.log10(val['m-bh']*scale_factor**2)
 
         #get number and names of parameters that are not fixed
         nofix_sel=[]
@@ -226,8 +162,6 @@ class Plotter():
                 pars[i].name
                 nofix_sel.append(i)
                 if pars[i].name == 'ml':
-                    # nofix_name=np.insert(nofix_name,0,'ml')         #Note: in the old version ml was in the first column, remove hard-coding
-                    # nofix_latex=np.insert(nofix_latex,0,'$Y_{r}$')
                     nofix_name.insert(0, 'ml')
                     nofix_latex.insert(0, '$Y_{r}$')
                 else:
@@ -238,31 +172,22 @@ class Plotter():
 
         nf=len(val)
 
-        #nGH=4
-        #Nobs=353
         nGH = self.settings.weight_solver_settings['number_GH']
         stars = \
             self.system.get_component_from_class(physys.TriaxialVisibleComponent)
         Nobs = sum([len(kin.data) for kin in stars.kinematic_data])
-        #Alice: please check that this definition for Nobs is indeed correct! 
 
         self.logger.info(f'nGH={nGH}, Nobs={Nobs}')
-        #this is from previous code
+
         ## 1 sigma confidence level
         #chlim = np.sqrt(2 * Nobs * nGH)
-        ##read the chi2 and for some reason normalization, see schw_schwmodplot
         chi2pmin=np.min(val[which_chi2])
-        #chi2 = self.all_models.table['chi2']* 1.0/ chi2pmin
-
-        #sabine's code
         chlim = np.sqrt(2 * Nobs * nGH)
-
         chi2=val[which_chi2]
         chi2t = chi2 - chi2pmin
         chi2 = chi2t[np.argsort(-chi2t)]
 
         #start of the plotting
-        ##colormap = plt.get_cmap('Spectral')
 
         plotdir = self.plotdir
         figname = plotdir + which_chi2 + '_plot' + figtype
@@ -270,46 +195,6 @@ class Plotter():
         colormap_orig = mpl.cm.viridis
         colormap = mpl.cm.get_cmap('viridis_r')
 
-        '''
-        fig = plt.figure(figsize=(14, 14))
-
-        #loop over each parameter pair
-        for i in range(0, nnofix - 1):
-            for j in range(nnofix-1, i, -1):
-
-                xtit = ''
-                ytit = ''
-
-                if i==0 : ytit = nofix_latex[j]
-                xtit = nofix_latex[i]
-
-                pltnum = (nnofix-1-j) * (nnofix-1) + i+1
-                ax = fig.add_subplot(nnofix-1, nnofix-1, pltnum,sharex='col')
-
-                ax.plot(val[nofix_name[i]],val[nofix_name[j]], 'D', color='black', markersize=2)
-                if j==i+1:
-                    ax.set_xlabel(xtit, fontsize=12)
-                if i==0:
-                    ax.set_ylabel(ytit, fontsize=12)
-
-                #color Delta chi2
-                for k in range(nf - 1, -1, -1):
-                    #NOTE: I have re-written this part as the old routine did not work properly for me. Would be good to double-check
-                    if chi2[k]/chlim<=3: #only significant chi2 values
-
-                        color = colormap(chi2[k]/chlim) # * 240) #colours the significant chi2
-                        markersize = 7-(chi2[k]/(3*chlim)) #smaller chi2 become bigger :)
-                        ax.plot((val[nofix_name[i]])[k], (val[nofix_name[j]])[k], 'o', markersize=markersize, color=color)
-
-                    if chi2[k]==0:
-                        ax.plot((val[nofix_name[i]])[k], (val[nofix_name[j]])[k], 'x', markersize=10, color='k')
-
-        #Note: not so nice is that the red best-fit points are sometimes overplotted with other models. Can probably be improved
-
-        ## add the colorbar with the inverse sauron colormap
-        axcb = fig.add_axes([0.7, 0.1, 0.2, 0.02])
-        cb = mpl.colorbar.ColorbarBase(axcb, cmap=plt.get_cmap('viridis_r'), norm=mpl.colors.Normalize(vmin=0., vmax=3),orientation='horizontal')
-        '''
         fig = plt.figure(figsize=(10, 10))
         for i in range(0, nnofix - 1):
             for j in range(nnofix-1, i, -1):
@@ -323,7 +208,8 @@ class Plotter():
                 pltnum = (nnofix-1-j) * (nnofix-1) + i+1
                 plt.subplot(nnofix-1, nnofix-1, pltnum)
 
-                plt.plot(val[nofix_name[i]],val[nofix_name[j]], 'D', color='black', markersize=2)
+                plt.plot(val[nofix_name[i]],val[nofix_name[j]], 'D', 
+                         color='black', markersize=2)
                 if j==i+1:
                     plt.xlabel(xtit, fontsize=12)
                 else:
@@ -335,16 +221,28 @@ class Plotter():
                 for k in range(nf - 1, -1, -1):
                     if chi2[k]/chlim<=3: #only significant chi2 values
 
-                        color = colormap(chi2[k]/chlim) # * 240) #colours the significant chi2
-                        markersize = 7-(chi2[k]/(3*chlim)) #smaller chi2 become bigger :)
-                        plt.plot((val[nofix_name[i]])[k], (val[nofix_name[j]])[k], 'o', markersize=markersize, color=color)
+                        color = colormap(chi2[k]/chlim) 
+                        # * 240) #colours the significant chi2
+                        
+                        markersize = 7-(chi2[k]/(3*chlim)) 
+                        #smaller chi2 become bigger :)
+                        
+                        plt.plot((val[nofix_name[i]])[k], 
+                                 (val[nofix_name[j]])[k], 'o', 
+                                 markersize=markersize, color=color)
 
                     if chi2[k]==0:
-                        plt.plot((val[nofix_name[i]])[k], (val[nofix_name[j]])[k], 'x', markersize=10, color='k')
+                        plt.plot((val[nofix_name[i]])[k], 
+                                 (val[nofix_name[j]])[k], 'x', 
+                                 markersize=10, color='k')
+
         plt.subplots_adjust(hspace=0)
         plt.subplots_adjust(wspace=0)
         axcb = fig.add_axes([0.75, 0.07, 0.2, 0.02])
-        cb = mpl.colorbar.ColorbarBase(axcb, cmap=plt.get_cmap('viridis_r'), norm=mpl.colors.Normalize(vmin=0., vmax=3),orientation='horizontal')
+        cb = mpl.colorbar.ColorbarBase(axcb, 
+                    cmap=plt.get_cmap('viridis_r'), 
+                    norm=mpl.colors.Normalize(vmin=0., vmax=3),
+                    orientation='horizontal')
         plt.subplots_adjust(top=0.99, right=0.99, bottom=0.07, left=0.1)
         fig.savefig(figname)
         self.logger.info(f'Plot {figname} saved in {plotdir}')
@@ -360,6 +258,7 @@ class Plotter():
                             cbar_lims='data', figtype=None):
         """
         Generates a kinematic map of a model with v, sigma, h3, h4...
+
         Maps of the surface brightness, mean line-of-sight velocity, 
         velocity dispersion, and higher order Gauss–Hermite moments 
         are shown. The first row are data, the second row the best-fit 
@@ -477,7 +376,6 @@ class Plotter():
             #still ToDO: Add the kinematic map plots for h5 and h6
 
         text = '`cbar_lims` must be one of `model`, `data` or `combined`'
-        # assert cbar_lims in ['model', 'data', 'combined'], text
         if not cbar_lims in ['model', 'data', 'combined']:
             self.logger.error(text)
             raise AssertionError(text)
@@ -518,7 +416,7 @@ class Plotter():
         sx = np.float(lines[2][0])
         sy = np.float(lines[2][1])
         sy = sy + miny
-        angle_deg = np.float(lines[3][0])  # - 90.0 + 180
+        angle_deg = np.float(lines[3][0]) 
         nx = np.int(lines[4][0])
         ny = np.int(lines[4][1])
         dx = sx / nx
@@ -600,59 +498,54 @@ class Plotter():
         x, y = xi[s], yi[s]
 
         ### PLOT THE REAL DATA
-        plt.subplot(3, 5, 1)
+        ax1 = plt.subplot(3, 5, 1)
         c = np.array(list(map(np.log10, flux[grid[s]] / max(flux))))
         display_pixels.display_pixels(x, y, c,
                                           vmin=minf, vmax=maxf,
-                                          label='log10(SB)',
                                           **kw_display_pixels)
-        plt.subplot(3, 5, 2)
+        ax1.set_title('surface brightness (log)',fontsize=20, pad=20)
+        ax2 = plt.subplot(3, 5, 2)
         display_pixels.display_pixels(x, y, vel[grid[s]],
                                           vmin=-1.0 * vmax, vmax=vmax,
-                                          label='Velocity',
                                           **kw_display_pixels)
-        plt.subplot(3, 5, 3)
+        ax2.set_title('velocity',fontsize=20, pad=20)
+        ax3 = plt.subplot(3, 5, 3)
         display_pixels.display_pixels(x, y, sig[grid[s]],
                                           vmin=smin, vmax=smax,
-                                          label='Sigma',
                                           **kw_display_pixels)
-        plt.subplot(3, 5, 4)
+        ax3.set_title('velocity dispersion',fontsize=20, pad=20)
+        ax4 = plt.subplot(3, 5, 4)
         display_pixels.display_pixels(x, y, h3[grid[s]],
                                           vmin=h3min, vmax=h3max,
-                                          label=r'$h_{3}$',
                                           **kw_display_pixels)
-        plt.subplot(3, 5, 5)
+        ax4.set_title(r'$h_{3}$ moment',fontsize=20, pad=20)
+        ax5 = plt.subplot(3, 5, 5)
         display_pixels.display_pixels(x, y, h4[grid[s]],
                                           vmin=h4min, vmax=h4max,
-                                          label=r'$h_{4}$',
                                           **kw_display_pixels)
-
+        ax5.set_title(r'$h_{4}$ moment',fontsize=20, pad=20)
+        
         ### PLOT THE MODEL DATA
         plt.subplot(3, 5, 6)
         c = np.array(list(map(np.log10, fluxm[grid[s]] / max(fluxm))))
         display_pixels.display_pixels(x, y, c,
                                           vmin=minfm, vmax=maxfm,
-                                          label='log10(SB) (model)',
                                           **kw_display_pixels)
         plt.subplot(3, 5, 7)
         display_pixels.display_pixels(x, y, velm[grid[s]],
                                           vmin=-1.0 * vmax, vmax=vmax,
-                                          label='Velocity (model)',
                                           **kw_display_pixels)
         plt.subplot(3, 5, 8)
         display_pixels.display_pixels(x, y, sigm[grid[s]],
                                           vmin=smin, vmax=smax,
-                                          label='Sigma (model)',
                                           **kw_display_pixels)
         plt.subplot(3, 5, 9)
         display_pixels.display_pixels(x, y, h3m[grid[s]],
                                           vmin=h3min, vmax=h3max,
-                                          label=r'$h_{3}$'+' (model)',
                                           **kw_display_pixels)
         plt.subplot(3, 5, 10)
         display_pixels.display_pixels(x, y, h4m[grid[s]],
                                           vmin=h4min, vmax=h4max,
-                                          label=r'$h_{4}$'+' (model)',
                                           **kw_display_pixels)
 
 
@@ -667,39 +560,33 @@ class Plotter():
         c = (fluxm[grid[s]] - flux[grid[s]]) / flux[grid[s]]
         display_pixels.display_pixels(x, y, c,
                                           vmin=-0.05, vmax=0.05,
-                                          label=r'$\delta_{flux}$',
                                           **kw_display_pixels)
         plt.subplot(3, 5, 12)
         c = (velm[grid[s]] - vel[grid[s]]) / dvel[grid[s]]
         display_pixels.display_pixels(x, y, c,
                                           vmin=-10, vmax=10,
-                                          label=r'$\delta_{vel}$',
                                           **kw_display_pixels)
         plt.subplot(3, 5, 13)
         c = (sigm[grid[s]] - sig[grid[s]]) / dsig[grid[s]]
         display_pixels.display_pixels(x, y, c,
                                           vmin=-10, vmax=10,
-                                          label=r'$\delta_{sigma}$',
                                           **kw_display_pixels)
         plt.subplot(3, 5, 14)
         c = (h3m[grid[s]] - h3[grid[s]]) / dh3[grid[s]]
         display_pixels.display_pixels(x, y, c,
                                           vmin=-1, vmax=1,
-                                          label=r'$\delta_{h_3}$',
                                           **kw_display_pixels)
         plt.subplot(3, 5, 15)
         c = (h4m[grid[s]] - h4[grid[s]]) / dh4[grid[s]]
         display_pixels.display_pixels(x, y, c,
                                           vmin=-1, vmax=1,
-                                          label=r'$\delta_{h_4}$',
                                           **kw_display_pixels)
-        # fig.subplots_adjust(left=0.07, wspace=0.3, hspace=0.01)
-        fig.subplots_adjust(left=0.04, wspace=0.3, hspace=0.01,
-                            right=0.96)
+        fig.subplots_adjust(left=0.04, wspace=0.3, 
+                            hspace=0.01, right=0.97)
         kwtext = dict(size=20, ha='center', va='center', rotation=90.)
-        fig.text(0.015, 0.83, 'Data', **kwtext)
-        fig.text(0.015, 0.53, 'Model', **kwtext)
-        fig.text(0.015, 0.2, 'Residual', **kwtext)
+        fig.text(0.015, 0.83, 'data', **kwtext)
+        fig.text(0.015, 0.53, 'model', **kwtext)
+        fig.text(0.015, 0.2, 'residual', **kwtext)
 
         fig.savefig(figname)
 
@@ -871,7 +758,8 @@ class Plotter():
 
     def mass_plot(self, which_chi2=None, Rmax_arcs=None, figtype=None):
         """
-        Generates cumulative mass plot.
+        Generates cumulative mass plot
+
         The enclosed mass profiles are shown for the mass-follows-light
         component (red), for the dark matter (blue), and for the sum 
         of the two (black). The solid lines correspond to the best-fit 
@@ -909,9 +797,6 @@ class Plotter():
         # schw_mass.py
         # Chi^2 < chilev =>
         #   normalized chi^2: chi^2/chi2pmin < chlim: sqrt(2*Nobs * NGH)
-        # getallnfw_out= getallnfw(w_dir=w_dir, object=object,
-        #        rootname=rootname, chilev=chlim * chi2pmin,
-        #        massdir=figdir, Rmax_arcs=Rmax_arcs)
         # getallnfw_out copied from schw_mass.py in this function!
 
         if figtype == None:
@@ -939,19 +824,12 @@ class Plotter():
         stars = \
             self.system.get_component_from_class(physys.TriaxialVisibleComponent)
         Nobs = sum([len(kin.data) for kin in stars.kinematic_data]) 
-        #Alice: please check that this definition for Nobs is indeed correct! 
+
         chlim = np.sqrt(2 * Nobs * nGH)
 
         chi2 = val[which_chi2]
         chi2 -= chi2pmin
         chilev = chlim * chi2pmin
-
-        # pars, chilim, freeroot = schwparinfo(w_dir=w_dir, rootname=rootname, FIRSTITER=0, object=object)
-        # obj = object
-        # Nf, npar, mpar, mtime, files = read_chi2_file(w_dir+object+'/griddata/'+str(rootname[0])+'_chi2.cat')
-        ## Select the models within 1-sigma confidence level.
-        ## chi2 = mpar[npar, :]  # chi^2 from direct model fitting h1. h2, h3..
-        # chi2=mpar[npar+1,:]    # Chi^2 directly comparing v, sigma maps from data and model, we use this one as default.
 
         s = np.ravel(np.argsort(chi2))
         chi2=chi2[s]
@@ -992,10 +870,7 @@ class Plotter():
         phi_a = np.zeros(n)
         psi_a = np.zeros(n)
 
-        plotdir = self.plotdir #+ 'mass/'
-        #if not os.path.isdir(massdir):
-        #    os.mkdir(massdir)
-        #    self.logger.debug(f'Output directory {massdir} created.')
+        plotdir = self.plotdir 
 
         for i in range(n):
             p = val['p-stars'][i]
@@ -1003,13 +878,6 @@ class Plotter():
             u = val['u-stars'][i]
             th_view,psi_view,ph_view = \
                 physys.TriaxialVisibleComponent.triax_pqu2tpp(stars,p,q,u) 
-            #Alice: please check that the angles are correctly identified:
-            #        - the DYNAMITE function triax_pqu2tpp returns theta,psi,phi
-            #        - in schwpy, these angles were taken from triaxnfw_massd, which
-            #          returns incl_view = [th_view, ph_view, psi_view]
-            #       in the following I am using the order provided in schwpy, but I am
-            #       not sure if this is correct or if the names of the angles are different
-            #       in the two codes! 
             incl_view = [th_view, ph_view, psi_view]
             
             ml = val['ml'][i]
@@ -1024,7 +892,6 @@ class Plotter():
             rhoc, rc = self.NFW_getpar(mstars=Mstarstot, cc=dmconc,
                                         dmfrac=dmR)[:2]
             mdm = self.NFW_enclosemass(rho=rhoc, Rs=rc, R=r_pc*parsec_km) 
-            #Alice: some checks still needed (should mdm be the above * mlcor?)
             
             mbh = val['m-bh'][i]
 
@@ -1175,8 +1042,6 @@ class Plotter():
         #read in all the parameters in parameters.in
 
         filename = w_dir + 'infil/parameters_pot.in' 
-        # Alice: here I have modified parameters.in in parameters_pot.in
-        #        please check if this is indeed ok!
 
         header = np.genfromtxt(filename, max_rows=1)
         #nmge = int(header[0])  # MGE gaussians
@@ -1237,7 +1102,8 @@ class Plotter():
 
     def orbit_plot(self, model=None, Rmax_arcs=None, figtype =None):
         """
-        Generates an orbit plot fpr the selected model.
+        Generates an orbit plot for the selected model
+
         This plot shows the stellar orbit distribution, described 
         as probability density of orbits; circularity (lambda_z) is 
         represented here as a function of the distance from the 
@@ -1270,11 +1136,6 @@ class Plotter():
         """
 
         # schw_orbit.py
-        # triaxplotphasennstr(w_dir=w_dir, object=object, rootname=rootname[0],
-        #        diri_o=bparam_str, ml_str = ml_str,
-        #        figdir=figdir+str(i),Rmax_arcs=Rmax_arcs)
-        ###def triaxplotphasennstr(w_dir=None, object=None, rootname=None, 
-        #       diri_o=None, ml_str = None, figdir=None, Rmax_arcs=None ):
 
         if figtype == None: 
             figtype = '.png'
@@ -1351,10 +1212,8 @@ class Plotter():
             lz *= -1.
 
         # Make the figure    
-        nxbin = 7  #7
-        nybin = 21 #21
-        # Alice: maybe we could change these so that they are not always 
-        #        fixed to the same value?
+        nxbin = 7  
+        nybin = 21 
 
         f1=r[:,s]
         f2=lz[:,s]
@@ -1606,7 +1465,8 @@ class Plotter():
 
     def beta_plot(self, which_chi2=None, Rmax_arcs=None, figtype =None):
         """
-        Generates anisotropy plots.
+        Generates anisotropy plots
+
         The two plots show the intrinsic and projected anisotropy 
         (beta_r and beta_z, respectively) as a function of the 
         distance from the galactic centre (in arcsec).
@@ -1645,8 +1505,6 @@ class Plotter():
         """
 
         # schw_anisotropy.py
-        # plot_betaz_var
-        # plot_vanisotropy_var
 
         if figtype == None: 
             figtype = '.png'
@@ -1674,7 +1532,7 @@ class Plotter():
         stars = \
             self.system.get_component_from_class(physys.TriaxialVisibleComponent)
         Nobs = sum([len(kin.data) for kin in stars.kinematic_data])
-        #Alice: please check that this definition for Nobs is indeed correct! 
+
         chlim = np.sqrt(2*Nobs*nGH)
 
         chi2 = val[which_chi2]
@@ -1863,7 +1721,8 @@ class Plotter():
 
     def qpu_plot(self, which_chi2=None, Rmax_arcs=None,figtype =None):
         """
-        Generates triaxiality plot.
+        Generates triaxiality plot
+
         The intrinsic flattenings q (C/A) and p (B/A) are shown here, 
         with the blue and black lines respectively, as a function of 
         the distance from the galactic centre (in arcsec).
@@ -1894,14 +1753,8 @@ class Plotter():
             Figure instance.
 
         """
+
         # schw_qpu.py
-        # plot_qpu_out=plot_qpu(w_dir=w_dir, object=object, rootname=rootname,
-        #        chilev=chlim *chi2pmin, qpu_dir=figdir, Rmax_arcs=Rmax_arcs)
-        ###def plot_qpu(w_dir = None, object = None,rootname=None ,chilev = None,  qpu_dir=None, Rmax_arcs=None):
-        #pars, chilim, freeroot = schwparinfo(w_dir=w_dir, rootname=rootname, FIRSTITER=0, object=object)
-        #Nf, npar, mpar, mtime, files = read_chi2_file(w_dir + object + '/griddata/' + str(rootname[0]) + '_chi2.cat')
-        #chi2 = mpar[npar, :]     # chi^2 directly from fitting h1, h2, h3...
-        #chi2 = mpar[npar + 1, :]   # chi^2 kin, calculated from direct comparison between kinematic maps, v, sigma....
 
         if figtype == None: 
             figtype = '.png'
@@ -1929,7 +1782,7 @@ class Plotter():
         stars = \
             self.system.get_component_from_class(physys.TriaxialVisibleComponent)
         Nobs = sum([len(kin.data) for kin in stars.kinematic_data])
-        #Alice: please check that this definition for Nobs is indeed correct! 
+
         chlim = np.sqrt(2*Nobs*nGH)
 
         chi2 = val[which_chi2]
@@ -1961,13 +1814,11 @@ class Plotter():
             mdir = model.get_model_directory() 
             mdir_noml = mdir[:mdir[:-1].rindex('/')+1]
 
-            '''
-            mgepar, distance, th_view, ph_view, psi_view, ml, \
-            bhmass, softlen, nre, lrmin, lrmax, nrth, nrrad, ndither, \
-            vv1_1, vv1_2, dm1, dm2, conversion_factor, grav_const_km, \
-            parsec_km, rho_crit = self.triaxreadparameters(w_dir=mdir_noml)
-            '''
-
+            #mgepar, distance, th_view, ph_view, psi_view, ml, \
+            #bhmass, softlen, nre, lrmin, lrmax, nrth, nrrad, ndither, \
+            #vv1_1, vv1_2, dm1, dm2, conversion_factor, grav_const_km, \
+            #parsec_km, rho_crit = self.triaxreadparameters(w_dir=mdir_noml)
+            
             mgepar, distance, th_view, ph_view, \
             psi_view = self.triaxreadparameters(w_dir=mdir_noml)[:5]
 
@@ -2059,17 +1910,3 @@ class Plotter():
         return v
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-    # etc...
