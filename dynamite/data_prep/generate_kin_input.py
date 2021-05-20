@@ -9,8 +9,65 @@ from astropy.io import fits
 import numpy as np
 import matplotlib.pyplot as plt
 import plotbin.display_pixels as dp
+import plotbin.display_bins_generators as dbg
+import vorbin.voronoi_2d_binning as vb
 import pafit.fit_kinematic_pa as pa
 from astropy import table
+
+def read_kinematics_user(file):
+    #This function can be filled by the user
+    return None
+
+
+def read_atlas3d(file):
+    #adapted from http://www-astro.physics.ox.ac.uk/atlas3d/
+    #read original cube
+    
+    hdu = fits.open(file[0])
+    spectrum = hdu[0].data
+    table = hdu[2].data
+    hdr = hdu[2].header
+    
+    #print(hdr)
+
+    x = table["A"] # Coordinates of the original spaxels in arcsec 
+    y = table["D"]
+    flux = np.mean(spectrum, 1)  #surface brightness
+    
+    
+    hdu = fits.open(file[1])
+    table = hdu[1].data 
+    kin_hdr=hdu[1].header
+
+    xgen = table['XS'] # Voronoi generators
+    ygen = table['YS']
+    vel = table['VPXF']
+    sig=table['SPXF']
+    h3=table['H3PXF']
+    h4=table['H4PXF']
+    dvel = table['EVPXF']
+    dsig=table['ESPXF']
+    dh3=table['EH3PXF']
+    dh4=table['EH4PXF']
+    
+    
+    #perform Voronoi tesselation starting from the nodes values, adapted from axisymm Schwarzschild code
+    npixels=len(x)
+    binNum=np.zeros((npixels), dtype=int)  
+    
+    for j, (xj, yj) in enumerate(zip(x, y)):
+        binNum[j] = np.argmin(((xj - xgen)**2 + (yj - ygen)**2))
+
+
+    return binNum,x,y,flux,vel,sig,h3,h4,dvel,dsig,dh3,dh4,xgen,ygen
+    #can be switched on for a check. They should show the same. If not, something went wrong with the V. tesselation
+    #plt.figure()
+    #im1=dbg.display_bins_generators(xgen,ygen,vel,x,y,label='Velocity (km/s)')
+     
+    #plt.figure()
+    #im1=dp.display_pixels(x,y,vel[binNum],label='Velocity (km/s)')
+
+    
 
     
 def read_califa(file):
@@ -64,7 +121,7 @@ def read_califa(file):
         xbin[i] = kin_tab[si].X
         ybin[i] = kin_tab[si].Y
     
-    return binNum,xp,yp,flux,vel,sig,h3,h4,dvel,dsig,dh3,dh4,xbin,ybin
+    return binNum-1,xp,yp,flux,vel,sig,h3,h4,dvel,dsig,dh3,dh4,xbin,ybin
 
 def create_aperture_file(dir,expr,minx,maxx,miny,maxy,angle_deg,nx,ny):
     # The angled saved here is measured counter clock-wise
@@ -125,8 +182,14 @@ def create_kin_input(object, file, dyn_model_dir, expr='', angle_deg=0, ngh=4,
     print(file)
     
     #read in binned kinematics, this needs to be changed by the user
-    if kin_input is 'CALIFA':
+    if kin_input == 'CALIFA':
         binNum,xp,yp,flux,vel,sig,h3,h4,dvel,dsig,dh3,dh4,xbin,ybin=read_califa(file)
+        
+    elif kin_input == 'ATLAS3D':
+        binNum,xp,yp,flux,vel,sig,h3,h4,dvel,dsig,dh3,dh4,xbin,ybin=read_atlas3d(file)
+        
+    elif kin_input == 'USER':
+        binNum,xp,yp,flux,vel,sig,h3,h4,dvel,dsig,dh3,dh4,xbin,ybin=read_kinematics_user(file)
     
     nbins = len(vel)
 
@@ -138,7 +201,7 @@ def create_kin_input(object, file, dyn_model_dir, expr='', angle_deg=0, ngh=4,
     vel = vel - np.median(vel)
 
     if fit_PA:
-        angle_deg,_,vel_syst=pa.fit_kinematic_pa(xp,yp,vel[binNum-1]) 
+        angle_deg,_,vel_syst=pa.fit_kinematic_pa(xp,yp,vel[binNum]) 
         plt.savefig(dyn_model_dir+'pafit.pdf')
         
         
@@ -176,7 +239,7 @@ def create_kin_input(object, file, dyn_model_dir, expr='', angle_deg=0, ngh=4,
     grid = np.zeros((int(nx), int(ny)))
     k = ((xp-minx)/dx).astype(int)
     j = ((yp-miny)/dx).astype(int)
-    grid[k, j] = binNum
+    grid[k, j] = binNum+1
 
 
     if plot is True:
@@ -187,14 +250,22 @@ def create_kin_input(object, file, dyn_model_dir, expr='', angle_deg=0, ngh=4,
         print('Vels plot: {0}, {1}, {2}'.format(vmax, smin, smax))
         
         fig, axs = plt.subplots(1, 4, figsize=(20,5))
-        ax1=plt.subplot(1,4,1)
-        im1=dp.display_pixels(xp,yp,vel[binNum-1],label='Velocity (km/s)',angle=angle_deg)
-        ax2=plt.subplot(1,4,2)
-        im2=dp.display_pixels(xp,yp,sig[binNum-1],label='Sigma (km/s)',angle=angle_deg)
-        ax3=plt.subplot(1,4,3)
-        im3=dp.display_pixels(xp,yp,h3[binNum-1],label='h3-GH (km/s)',angle=angle_deg)
-        ax4=plt.subplot(1,4,4)
-        im4=dp.display_pixels(xp,yp,h4[binNum-1],label='h4_GH (km/s)',angle=angle_deg)
+        plt.subplot(1,4,1)
+        plt.title('Velocity (km/s)')
+        dp.display_pixels(xp,yp,vel[binNum],angle=angle_deg,vmin=-vmax,vmax=vmax)
+        
+        plt.subplot(1,4,2)
+        plt.title('Velocity dispersion (km/s)')
+        dp.display_pixels(xp,yp,sig[binNum],angle=angle_deg,vmin=smin,vmax=smax)
+        
+        plt.subplot(1,4,3)
+        plt.title('H3 moment')
+        dp.display_pixels(xp,yp,h3[binNum],angle=angle_deg,vmin=-0.15,vmax=0.15)
+        
+        
+        plt.subplot(1,4,4)
+        plt.title('H4 moment')
+        dp.display_pixels(xp,yp,h4[binNum],angle=angle_deg,vmin=-0.15,vmax=0.15)
         
         fig.savefig(dyn_model_dir+'kinmaps.pdf')
         
@@ -211,6 +282,13 @@ def create_kin_input(object, file, dyn_model_dir, expr='', angle_deg=0, ngh=4,
     data['dh4']=dh4  
     
     if ngh==6:
+        if (kin_input=='CALIFA') or ((kin_input=='ATLAS3D')):
+            h5=np.full_like(h4, 0)
+            h6=np.full_like(h4, 0)
+            
+            dh5=np.full_like(h4, 0.3)
+            dh6=np.full_like(h4, 0.3)
+        
         data['h5']=np.round(h5,decimals=4)
         data['dh5']=dh5
         data['h6']=np.round(h6,decimals=4)
