@@ -313,14 +313,14 @@ class ModelInnerIterator(object):
         Assigns model directories in all_models.table.
 
         Models indexed by rows_orblib:
-        The model directories follow the pattern model_xxx_yyy/mlz.zz where
+        The model directories follow the pattern orblib_xxx_yyy/mlz.zz where
         xxx is the iteration number, yyy a consecutive number of that
         iteration's orbit library, and z.zz is the value of the models'
         ml parameter in the 01.2f format.
 
         Models indexed by rows_ml:
         These models re-use an existing orbit library. Hence, their directory
-        strings re-use an existing model_xxx_yyy part and get augmented with
+        strings re-use an existing orblib_xxx_yyy part and get augmented with
         the appropriate /mlz.zz. 
 
         Parameters
@@ -346,7 +346,7 @@ class ModelInnerIterator(object):
         # new orblib model directories
         for row in rows_orblib:
             n=np.sum(self.all_models.table[:row]['which_iter']==iteration)
-            orblib_dir = f'model_{iteration:03d}_{n:03d}'
+            orblib_dir = f'orblib_{iteration:03d}_{n:03d}'
             self.all_models.table[row]['directory'] = orblib_dir
         # existing orblib directories
         orblib_data = self.all_models.table[self.orblib_parameters]
