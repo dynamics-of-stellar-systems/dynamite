@@ -123,6 +123,9 @@ parameter_space_settings:
         n_max_mods : 50
         n_max_iter : 10
 
+multiprocessing_settings:
+  ncpus: 4
+
 legacy_settings:
     directory: "default"
 
