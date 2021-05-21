@@ -35,7 +35,7 @@ class Plotter():
         pb_sauron_colormap.register_sauron_colormap()
         
 
-    def make_chi2_vs_model_id_plot(self, which_chi2=None):
+    def make_chi2_vs_model_id_plot(self, which_chi2=None, figtype=None):
         """
         Generates a (kin)chi2 vs. model id plot
 
@@ -45,6 +45,9 @@ class Plotter():
             Determines whether chi2 or kinchi2 is used. If None, the setting
             in the configuration file's parameter settings is used.
             Must be None, 'chi2', or 'kinchi2'. The default is None.
+        figtype : STR, optional
+            Determines the file extension to use when saving the figure.
+            If None, the default setting is used ('.png'). 
 
         Raises
         ------
@@ -57,6 +60,8 @@ class Plotter():
             Figure instance.
 
         """
+        if figtype == None:
+            figtype = '.png'
         if which_chi2==None:
             which_chi2 = self.settings.parameter_space_settings['which_chi2']
         if which_chi2 != 'chi2' and which_chi2 != 'kinchi2':
@@ -75,6 +80,11 @@ class Plotter():
         fig.gca().xaxis.set_major_locator(MaxNLocator(integer=True))
         self.logger.info(f'{which_chi2} vs. model id plot created '
                          f'({n_models} models).')
+
+        figname = self.plotdir + which_chi2 + '_progress_plot' + figtype
+        fig.savefig(figname)
+        self.logger.info(f'Plot {figname} saved in {self.plotdir}')
+
         return fig
 
     def make_chi2_plot(self, which_chi2=None, n_excl=0, figtype=None):
@@ -298,8 +308,9 @@ class Plotter():
 
         Returns
         -------
-        fig : matplotlib.pyplot.figure
-            Figure instance.
+        fig : list of tuples (matplotlib.pyplot.figure, kinematics-name) if
+              kin_set == 'all', else matplotlib.pyplot.figure
+            Figure instances along with kinemtics name or figure instance.
 
         """
         # Taken from schw_kin.py.
@@ -307,8 +318,6 @@ class Plotter():
         if figtype == None:
             figtype = '.png'
         
-        plotdir = self.plotdir
-
         stars = \
           self.system.get_component_from_class(physys.TriaxialVisibleComponent)
         n_kin = len(stars.kinematic_data)
@@ -327,8 +336,9 @@ class Plotter():
             text = f'kin_set must be < {n_kin}, but it is {kin_set}'
             self.logger.error(text)
             raise ValueError(text)
+        kin_name = stars.kinematic_data[kin_set].name
         self.logger.info(f'Plotting kinematic maps for kin_set no {kin_set}: '
-                         f'{stars.kinematic_data[kin_set].name}')
+                         f'{kin_name}')
 
         if model is None:
             which_chi2 = self.settings.parameter_space_settings['which_chi2']
@@ -339,7 +349,8 @@ class Plotter():
             t.add_index(which_chi2)
             model_id = t.loc_indices[min_chi2]
             model = self.all_models.get_model_from_row(model_id)
-        kinem_fname = model.get_model_directory() + 'nn_kinem.out'
+        # kinem_fname = model.get_model_directory() + 'nn_kinem.out'
+        kinem_fname = model.directory + 'nn_kinem.out'
         body_kinem = np.genfromtxt(kinem_fname, skip_header=1)
 
         first_bin = sum(k.n_apertures for k in stars.kinematic_data[:kin_set])
@@ -476,7 +487,7 @@ class Plotter():
 
         # The galaxy has NOT already rotated with PA to make major axis aligned with x
 
-        figname = plotdir + 'kinmap_set' + str(kin_set) + figtype
+        figname = self.plotdir + f'kinematic_map_{kin_name}' + figtype
 
         fig = plt.figure(figsize=(27, 12))
         plt.subplots_adjust(hspace=0.7,
