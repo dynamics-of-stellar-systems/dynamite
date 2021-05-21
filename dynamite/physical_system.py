@@ -55,7 +55,8 @@ class System(object):
         #         if any([p.name.endswith(c.name) for c in self.cmp_list]):
         #             raise ValueError('System parameter cannot end with '
         #                              f'"component": {p.name}')
-        if (self.distMPc is None) or (self.name is None) or (self.position_angle is None):
+        if (self.distMPc is None) or (self.name is None) \
+           or (self.position_angle is None):
             text = 'System needs distMPc, name, and position_angle attributes'
             self.logger.error(text)
             raise ValueError(text)
