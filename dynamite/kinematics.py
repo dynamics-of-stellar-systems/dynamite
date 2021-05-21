@@ -21,29 +21,30 @@ class Kinematics(data.Data):
                  **kwargs
                  ):
         super().__init__(**kwargs)
-        self.weight = weight
-        self.type = type
-        if hist_width=='default':
-            self.set_default_hist_width()
-        else:
-            self.hist_width = hist_width
-        if hist_center=='default':
-            self.set_default_hist_center()
-        else:
-            self.hist_center = hist_center
-        if hist_bins=='default':
-            self.set_default_hist_bins()
-        else:
-            self.hist_bins = hist_bins
-        self.__class__.values = list(self.__dict__.keys())
-        self.logger = logging.getLogger(f'{__name__}.{__class__.__name__}')
-        if self.weight==None or self.type==None or self.hist_width==None or \
-                self.hist_center==None or self.hist_bins==None:
-            text = 'Kinematics need (weight, type, hist_width, hist_center, '\
+        if hasattr(self, 'data'):
+            self.weight = weight
+            self.type = type
+            if hist_width=='default':
+                self.set_default_hist_width()
+            else:
+                self.hist_width = hist_width
+            if hist_center=='default':
+                self.set_default_hist_center()
+            else:
+                self.hist_center = hist_center
+            if hist_bins=='default':
+                self.set_default_hist_bins()
+            else:
+                self.hist_bins = hist_bins
+            self.__class__.values = list(self.__dict__.keys())
+            self.logger = logging.getLogger(f'{__name__}.{__class__.__name__}')
+            if self.weight==None or self.type==None or self.hist_width==None or \
+                    self.hist_center==None or self.hist_bins==None:
+                text = 'Kinematics need (weight, type, hist_width, hist_center, '\
                    f'hist_bins), but has ({self.weight}, {self.type}, ' \
                    f'{self.hist_width}, {self.hist_center}, {self.hist_bins})'
-            self.logger.error(text)
-            raise ValueError(text)
+                self.logger.error(text)
+                raise ValueError(text)
 
     def update(self, **kwargs):
         """
