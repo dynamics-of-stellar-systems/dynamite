@@ -39,8 +39,10 @@ docs/.DS_Store
 docs/tutorial_notebooks/.DS_Store
 docs/tutorial_notebooks/.ipynb_checkpoints/*
 docs/tutorial_notebooks/NGC6278_output/*
-!docs/tutorial_notebooks/NGC4550_input/dynamite_input/.gitkeep
-docs/tutorial_notebooks/NGC4550_input/dynamite_input/*
+docs/tutorial_notebooks/NGC4550_input/dynamite_input/bayes_losvd_kins.ecsv
+docs/tutorial_notebooks/NGC4550_input/dynamite_input/aperture.dat
+docs/tutorial_notebooks/NGC4550_input/dynamite_input/bins.dat
+docs/tutorial_notebooks/NGC4550_input/dynamite_output/
 plotbin4dyn/.DS_Store
 plotbin4dyn/__pycache__/*
 build/*
