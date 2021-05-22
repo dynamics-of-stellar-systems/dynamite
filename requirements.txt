@@ -8,3 +8,5 @@ logging
 pathos
 cvxopt
 h5py
+vorbin
+pafit

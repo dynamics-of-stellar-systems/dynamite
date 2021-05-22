@@ -34,6 +34,8 @@ dev_tests/test_validate_pqu_output
 dev_tests/bayes_losvd/IC0719_input/*
 dev_tests/bayes_losvd/IC0719_output/*
 dev_tests/bayes_losvd/.ipynb_checkpoints/*
+dev_tests/Data_prep/Dyn_input/ATLAS3D/*
+dev_tests/Data_prep/Dyn_input/CALIFA/*
 docs/_build/
 docs/.DS_Store
 docs/tutorial_notebooks/.DS_Store

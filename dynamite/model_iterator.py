@@ -2,6 +2,7 @@ import os
 import numpy as np
 import logging
 from pathos.multiprocessing import Pool
+import matplotlib.pyplot as plt
 
 from dynamite import model
 from dynamite import parameter_space
@@ -31,10 +32,11 @@ class ModelIterator(object):
         par_generator = getattr(parameter_space, par_generator_type)(parspace,
                                                                      **kwargs)
 
-        self.the_plotter = plotter.Plotter(system = system,
-                                           settings = settings,
-                                           parspace = parspace,
-                                           all_models = all_models)
+        if plots:
+            self.the_plotter = plotter.Plotter(system = system,
+                                               settings = settings,
+                                               parspace = parspace,
+                                               all_models = all_models)
 
         model_inner_iterator = ModelInnerIterator(
             system=system,
@@ -64,140 +66,11 @@ class ModelIterator(object):
                         f'{total_iter_count}"')
             status = model_inner_iterator.run_iteration()
             if plots:
-                self.make_in_progress_plots(settings, iteration)
-
-    def make_in_progress_plots(self, settings, iteration=None,
-                               chi2_progress=None,
-                               chi2_plot=None,
-                               kin_map=None):
-        """
-        Creates three plots: (kin)chi2 vs. model id, (kin)chi2 and non-fixed
-        parameters ("chi2 plot"), kinematic map of best fit model so-far.
-        The parameter space settings in the config file determine whether
-        chi2 or kinchi2 is used. Will choose file names automatically and
-        append the iteration counter to avoid duplicate file names.
-
-        Parameters
-        ----------
-        settings : Settings object
-            Needed for plot directory and which_chi2 setting.
-        iteration : int, optional
-            Iteration counter; if defined, it will be included in all
-            file names just before the file extension.
-            The default is None.
-        chi2_progress : str, optional
-            File name of the (kin)chi2 vs. model id plot. Can include
-            an extension (default is .png). If a path
-            is included, it will be relative to the plot directory.
-            If None, the file name will be created automatically.
-            The default is None.
-        chi2_plot : str, optional
-            File name of the "chi2 plot". Can include an extension
-            (default is .png). If a path
-            is included, it will be relative to the plot directory.
-            If None, the file name will be created automatically.
-            The default is None.
-        kin_map : str, optional
-            Template file name kin_base.kin_ext of the kinematic maps.
-            Can include an extension kin_ext (.png will be assumed if
-            extension is missing).
-            For each kinematics data set named kin_name, the kinematic
-            map will be saved as f'{kin_base}_{kin_name}{kin_ext}'.
-            If a path is included, it will be relative to the plot directory.
-            If None, the file names will be created automatically.
-            The default is None.
-
-        Raises
-        ------
-        ValueError
-            Will be raised if at least one of the file names is None
-            and iteration is not an integer.
-
-        Returns
-        -------
-        None.
-
-        """
-        if type(iteration) is not int and iteration is not None:
-                text = 'iteration must be None or an integer.'
-                self.logger.error(text)
-                raise ValueError(text)
-        plot_dir = settings.io_settings['plot_directory']
-        which_chi2 = settings.parameter_space_settings['which_chi2']
-
-        # (kin)chi2 vs. model id plot
-        chi2_progress = self._build_plot_filename(chi2_progress,
-                                                 f'{which_chi2}_progress_plot',
-                                                 iteration)
-        chi2_progress = plot_dir + chi2_progress
-        self.delete_if_exists(chi2_progress)
-        self.the_plotter.make_chi2_vs_model_id_plot().savefig(chi2_progress)
-        self.logger.info(f'Plot {chi2_progress} created.')
-
-        # model parameters plot
-        chi2_plot = self._build_plot_filename(chi2_plot,
-                                             f'{which_chi2}_plot',
-                                             iteration)
-        chi2_plot = plot_dir + chi2_plot
-        self.delete_if_exists(chi2_plot)
-        self.the_plotter.make_chi2_plot().savefig(chi2_plot)
-        self.logger.info(f'Plot {chi2_plot} created.')
-
-        # kinematic maps
-        fig_list = self.the_plotter.plot_kinematic_maps(kin_set='all',
-                                                        cbar_lims='data')
-        for fig, kin_name in fig_list:
-            fig_file = None if kin_map is None else f'{kin_map}_{kin_name}'
-            fig_file = self._build_plot_filename(fig_file,
-                                                 f'kinematics_map_{kin_name}',
-                                                 iteration)
-            fig_file = plot_dir + fig_file
-            self.delete_if_exists(fig_file)
-            fig.savefig(fig_file)
-            self.logger.info(f'Plot {fig_file} created.')
-
-
-    def _build_plot_filename(self, f_name, default, iteration):
-        f, ext = (default, '') if f_name is None else os.path.splitext(f_name)
-        if ext == '':
-            ext = '.png'
-        if iteration is not None: # add iteration to base file name
-            f += f'_{iteration}'
-        f += ext # add file extension
-        return f
-
-    def delete_if_exists(self, files):
-        """
-        Given a file name or a list or tuple of file names, this method
-        will check if the file(s) exist and if so, remove it/them.
-
-        Parameters
-        ----------
-        files : str or list or tuple
-            File name including the path or list or tuple of file names.
-
-        Raises
-        ------
-        ValueError
-            Will be raised if files is neither a string nor a list nor
-            a tuple.
-
-        Returns
-        -------
-        None.
-
-        """
-        if type(files) == list or type(files) == tuple:
-            for f in files:
-                if os.path.isfile(f):
-                    os.remove(f)
-        elif type(files) == str:
-            if os.path.isfile(files):
-                os.remove(files)
-        else:
-            text = 'files must be of type str, list, or tuple.'
-            self.logger.error(text)
-            raise ValueError(text)
+                self.the_plotter.make_chi2_vs_model_id_plot()
+                self.the_plotter.make_chi2_plot()
+                self.the_plotter.plot_kinematic_maps(kin_set='all',
+                                                     cbar_lims='data')
+                plt.close('all') # just to make sure...
 
 
 class ModelInnerIterator(object):
@@ -301,10 +174,10 @@ class ModelInnerIterator(object):
         previous_data = all_data[:row_idx]
         if any(np.allclose(tuple(row_data), tuple(r)) for r in previous_data):
             self.logger.debug('Orblib exists above in table: '
-                              f'{dict(row_data)}.')
+                              f'{row_data}.')
             is_new = False
         else:
-            self.logger.debug(f'New orblib: {dict(row_data)}.')
+            self.logger.debug(f'New orblib: {row_data}.')
             is_new = True
         return is_new
 

@@ -55,7 +55,8 @@ class System(object):
         #         if any([p.name.endswith(c.name) for c in self.cmp_list]):
         #             raise ValueError('System parameter cannot end with '
         #                              f'"component": {p.name}')
-        if not(self.distMPc and self.name and self.position_angle):
+        if (self.distMPc is None) or (self.name is None) \
+           or (self.position_angle is None):
             text = 'System needs distMPc, name, and position_angle attributes'
             self.logger.error(text)
             raise ValueError(text)
@@ -375,17 +376,17 @@ class TriaxialVisibleComponent(VisibleComponent):
             w1 = (u2 - q2) * (o2 * u2 - q2) / ((1.0 - q2) * (p2 - q2))
             w2 = (u2 - p2) * (p2 - o2 * u2) * (1.0 - q2) / ((1.0 - u2) * (1.0 - o2 * u2) * (p2 - q2))
             w3 = (1.0 - o2 * u2) * (p2 - o2 * u2) * (u2 - q2) / ((1.0 - u2) * (u2 - p2) * (o2 * u2 - q2))
-    
+
             if w1 >=0.0 :
                 theta = np.arccos(np.sqrt(w1)) * 180 /np.pi
             else:
                 theta=np.nan
-    
+
             if w2 >=0.0 :
                 phi = np.arctan(np.sqrt(w2)) * 180 /np.pi
             else:
                 phi=np.nan
-    
+
             if w3 >=0.0 :
                 psi = 180 - np.arctan(np.sqrt(w3)) * 180 /np.pi
             else:
@@ -468,7 +469,7 @@ class TriaxialCoredLogPotential(DarkComponent):
 
     def validate(self):
         # par_format = {'Vc':'6.3g', 'rho':'6.3g', 'p':'6.3g', 'q':'6.3g'}
-        par_format = {'Vc':'g', 'rho':'g', 'p':'g', 'q':'g'}
+        par_format = {'Vc':'g', 'Rc':'g', 'p':'g', 'q':'g'}
         super().validate(par_format)
 
 
