@@ -189,12 +189,12 @@ class ModelInnerIterator(object):
         The model directories follow the pattern orblib_xxx_yyy/mlz.zz where
         xxx is the iteration number, yyy a consecutive number of that
         iteration's orbit library, and z.zz is the value of the models'
-        ml parameter in the 01.2f format.
+        ml parameter in the 01.2f format (the sformat set in the System class).
 
         Models indexed by rows_ml:
         These models re-use an existing orbit library. Hence, their directory
         strings re-use an existing orblib_xxx_yyy part and get augmented with
-        the appropriate /mlz.zz. 
+        the appropriate /mlz.zz.
 
         Parameters
         ----------
@@ -236,8 +236,9 @@ class ModelInnerIterator(object):
                 raise ValueError(text)
             self.all_models.table[row]['directory'] = orblib_dir
         # ml directories
+        sformat = self.system.parameters[0].sformat # this is ml's format
         for row in rows_orblib+rows_ml:
-            ml_dir = f"/ml{self.all_models.table['ml'][row]:01.2f}/"
+            ml_dir = f"/ml{self.all_models.table['ml'][row]:{sformat}}/"
             self.all_models.table[row]['directory'] += ml_dir
             self.logger.debug(f"New model directory "
                 f"{self.all_models.table[row]['directory']} assigned.")

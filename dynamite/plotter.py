@@ -152,9 +152,6 @@ class Plotter():
             chi2val = val[which_chi2][i]
             model_id=np.where(self.all_models.table[which_chi2]==chi2val)[0][0]
             model = self.all_models.get_model_from_row(model_id)
-            # CAUTION: nn.in only exists for LegacyWeightSolver!
-            # param_fname = model.get_model_directory() + 'nn.in'
-            # scale_factor[i] = np.genfromtxt(param_fname, skip_header=10,max_rows=1,usecols=0)
             ml = model.parset['ml']
             ml_orblib = model.get_orblib().get_ml_of_original_orblib()
             scale_factor[i] = np.sqrt(ml/ml_orblib)

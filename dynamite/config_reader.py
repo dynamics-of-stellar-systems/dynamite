@@ -281,7 +281,7 @@ class Configuration(object):
                                         datafile=data_comp['mge_lum'])
 
                     # add component to system
-                    c.validate() # now also adds the right parameter sformat
+                    c.validate()
                     parset = {c.get_parname(p.name):p.value \
                               for p in c.parameters}
                     if not c.validate_parset(parset):

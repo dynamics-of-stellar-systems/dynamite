@@ -11,7 +11,7 @@ class Parameter(object):
                  name=None,
                  fixed=False,
                  LaTeX=None,
-                 sformat="%g",
+                 sformat=None,
                  value=None,
                  par_generator_settings=None,
                  gpe_parspace_settings=None,
