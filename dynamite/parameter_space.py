@@ -11,7 +11,7 @@ class Parameter(object):
                  name=None,
                  fixed=False,
                  LaTeX=None,
-                 sformat="%g",
+                 sformat=None,
                  value=None,
                  par_generator_settings=None,
                  gpe_parspace_settings=None,
@@ -356,7 +356,7 @@ class ParameterGenerator(object):
             raise ValueError('No or empty model')
         raw_row = [p.value for p in model]
         row = self.par_space.get_param_value_from_raw_value(raw_row)
-        # for all columns after parameters, add a entry to this row
+        # for all columns after parameters, add an entry to this row
         idx_start = self.par_space.n_par
         idx_end = len(self.current_models.table.colnames)
         for i in range(idx_start, idx_end):

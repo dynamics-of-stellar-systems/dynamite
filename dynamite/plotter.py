@@ -150,10 +150,11 @@ class Plotter():
         scale_factor = np.zeros(len(val))
         for i in range(len(val)):
             chi2val = val[which_chi2][i]
-            model_id = np.where(self.all_models.table[which_chi2]==chi2val)[0][0]
+            model_id=np.where(self.all_models.table[which_chi2]==chi2val)[0][0]
             model = self.all_models.get_model_from_row(model_id)
-            param_fname = model.get_model_directory() + 'nn.in'
-            scale_factor[i] = np.genfromtxt(param_fname, skip_header=10,max_rows=1,usecols=0)
+            ml = model.parset['ml']
+            ml_orblib = model.get_orblib().get_ml_of_original_orblib()
+            scale_factor[i] = np.sqrt(ml/ml_orblib)
 
         #because of the large parameter range dh properties and black hole are plotted in log
         val['c-dh']=np.log10(val['c-dh'])

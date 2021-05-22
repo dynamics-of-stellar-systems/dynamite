@@ -88,7 +88,7 @@ system_components:
                 weight: 1.0 # weight of kinematics data specified by name
                 type: GaussHermite # specifies which object class to create
                 hist_width: 10000 #add to kinem #hist_width
-                hist_center: 0.0  #add to kinem      #hist_center 
+                hist_center: 0.0  #add to kinem      #hist_center
                 hist_bins: 501    #add to kinem + auto/manual   #bins
                 datafile: "gauss_hermite_kins_SINFONI.ecsv"  # both discr. & integrated
                 aperturefile: "aperture_SINFONI.dat" # integrated only
@@ -128,10 +128,10 @@ orblib_settings: # don't put in physical system -> config object
     random_seed: 4242 # integer; any value <= 0 results in stochastic seed
 
 weight_solver_settings:
-    # type: "LegacyWeightSolver"
-    # nnls_solver: 1
-    type: "NNLS"
-    nnls_solver: 'scipy'
+    type: "LegacyWeightSolver"
+    nnls_solver: 1
+    # type: "NNLS"
+    # nnls_solver: 'scipy'
     CRcut: False
     regularisation: 0
     number_GH: 4

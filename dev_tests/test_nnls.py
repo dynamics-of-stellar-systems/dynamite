@@ -1,9 +1,6 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
-# first, make sure the paths are set up
-# we assume that this script is located and run in the folder dynamite/tests
-
 import os
 import logging
 import time

@@ -65,7 +65,8 @@ class LegacyWeightSolver(WeightSolver):
         self.settings = settings
         self.legacy_directory = legacy_directory
         self.ml=ml
-        self.mod_dir_with_ml = self.mod_dir + 'ml' + '{:01.2f}'.format(self.ml)
+        self.sformat = self.system.parameters[0].sformat # this is ml's format
+        self.mod_dir_with_ml = self.mod_dir + f'ml{self.ml:{self.sformat}}'
         self.fname_nn_kinem = self.mod_dir_with_ml + '/nn_kinem.out'
         self.fname_nn_nnls = self.mod_dir_with_ml + '/nn_nnls.out'
         if 'CRcut' in settings.keys():
@@ -129,7 +130,7 @@ class LegacyWeightSolver(WeightSolver):
 
         text='infil/parameters_pot.in' +'\n' + \
         str(self.settings['regularisation'])   + '                                  [ regularization strength, 0 = no regularization ]' +'\n'  + \
-        'ml'+ '{:01.2f}'.format(ml) + '/nn' +'\n' + \
+        f'ml{ml:{self.sformat}}/nn\n' + \
         'datfil/mass_qgrid.dat' +'\n' + \
         'datfil/mass_aper.dat' +'\n' + \
         str(self.settings['number_GH']) + '	                           [ # of GH moments to constrain the model]' +'\n' + \
@@ -142,7 +143,7 @@ class LegacyWeightSolver(WeightSolver):
         f'datfil/orblibbox_{ml}.dat' +'\n' + \
         str(self.settings['nnls_solver']) + '                                  [ nnls solver ]'
 
-        nn_file= open(path+'ml'+'{:01.2f}'.format(ml)+'/nn.in',"w")
+        nn_file= open(path+f'ml{ml:{self.sformat}}/nn.in',"w")
         nn_file.write(text)
         nn_file.close()
 
@@ -186,7 +187,6 @@ class LegacyWeightSolver(WeightSolver):
                         break
             self.logger.info("Fitting orbit library to the kinematic " + \
                              f"data: {logfile[:logfile.rindex('/')]}")
-            # p = subprocess.call('bash '+cmdstr, shell=True)
             p = subprocess.run('bash '+cmdstr,
                                stdout=subprocess.PIPE,
                                stderr=subprocess.STDOUT,
@@ -208,7 +208,7 @@ class LegacyWeightSolver(WeightSolver):
         return wts, chi2_tot, chi2_kin
 
     def write_executable_for_weight_solver(self, ml):
-        nn = f'ml{ml:01.2f}/nn'
+        nn = f'ml{ml:{self.sformat}}/nn'
         cmdstr = f'cmd_nnls_{ml}'
         txt_file = open(cmdstr, "w")
         txt_file.write('#!/bin/bash' + '\n')

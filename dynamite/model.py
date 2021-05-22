@@ -48,14 +48,11 @@ class AllModels(object):
         names += ['orblib_done', 'weights_done', 'all_done']
         dtype += [bool, bool, bool]
         # which_iter will record which iteration of parameters a model came from
-        names += ['which_iter']
-        dtype += [int]
-        # ncols = len(names)
-        # data = np.zeros((0, ncols))
-        # self.table = table.Table(data,
-        #                          names=names,
-        #                          dtype=dtype)
-        # self.logger.debug(names, dtype)
+        names.append('which_iter')
+        dtype.append(int)
+        # directory will be the model directory name in the models/ directory
+        names.append('directory')
+        dtype.append(np.object)
         self.table = table.Table(names=names, dtype=dtype)
         return
 
@@ -141,24 +138,33 @@ class AllModels(object):
         return parset
 
     def get_model_from_parset(self, parset):
-        if parset not in [row[self.parspace.par_names] for row in self.table]:
+        for idx, row in enumerate(self.table[self.parspace.par_names]):
+            if np.allclose(tuple(parset), tuple(row)):
+                mod = self.get_model_from_row(idx)
+                break
+        else:
             text = f'parset not in all_models table. parset={parset}, ' \
                    f'all_models table: {self.table}'
             self.logging.error(text)
             raise ValueError(text)
-        mod = Model(system=self.system,
-                    settings=self.settings,
-                    parspace=self.parspace,
-                    parset=parset)
+        # if parset not in [row[self.parspace.par_names] for row in self.table]:
+        #     text = f'parset not in all_models table. parset={parset}, ' \
+        #            f'all_models table: {self.table}'
+        #     self.logging.error(text)
+        #     raise ValueError(text)
+        # mod = Model(system=self.system,
+        #             settings=self.settings,
+        #             parspace=self.parspace,
+        #             parset=parset)
         return mod
 
     def get_model_from_row(self, row_id):
-        parset0 = self.get_parset_from_row(row_id)
-        mod = self.get_model_from_parset(parset0)
-        # mod0 = Model(system=self.system,
-        #              settings=self.settings,
-        #              parspace=self.parspace,
-        #              parset=parset0)
+        parset = self.get_parset_from_row(row_id)
+        mod = Model(system=self.system,
+                      settings=self.settings,
+                      parspace=self.parspace,
+                      parset=parset,
+                      directory=self.table['directory'][row_id])
         return mod
 
     def save(self):
@@ -179,7 +185,8 @@ class Model(object):
                  system=None,
                  settings=None,
                  parspace=None,
-                 parset=None):
+                 parset=None,
+                 directory=None):
         """
         Parameters
         ----------
@@ -190,12 +197,15 @@ class Model(object):
         parspace : dyn.parameter_space.ParameterSpace
             A list of parameter objects for this model
         parset : row of an Astropy Table
-            contains the values of the potential parameters for this model
+            Contains the values of the potential parameters for this model
+        directory : str
+            The model directory name (without path). If None or not specified,
+            the all_models_file will be searched for the directory name.
 
         Returns
         -------
-        Nothing returned. Attributes holidng outputs are are added to the object
-        when methods are run.
+        Nothing returned. Attributes holding outputs are are added to the
+        object when methods are run.
 
         """
         self.logger = logging.getLogger(f'{__name__}.{__class__.__name__}')
@@ -208,36 +218,37 @@ class Model(object):
         self.legacy_directory = self.settings.legacy_settings['directory']
         # directory of the input kinematics
         self.in_dir = self.settings.io_settings['input_directory']
-        self.directory = self.get_model_directory()
+        if directory is None:
+            self.directory = self.get_model_directory()
+        else:
+            self.directory = self.settings.io_settings['output_directory'] + \
+                             'models/' + directory
         self.logger.debug(f'Model directory string: {self.directory}')
         self.directory_noml=self.directory[:self.directory[:-1].rindex('/')+1]
         self.logger.debug('Model directory string up to ml: '
                           f'{self.directory_noml}')
 
     def get_model_directory(self):
-        out_dir = self.settings.io_settings['output_directory']
-        #out_dir += self.system.name
-        out_dir += 'models/'
-        # add all parameters to directory name except ml
-        for par0, pval0 in zip(self.parspace, self.parset):
-            pname0 = par0.name
-            psfmt0  = par0.sformat
-            if pname0 != 'ml':
-                out_dir += f'{pname0}'
-                out_dir += format(pval0, psfmt0)+'_'
-        out_dir = out_dir[:-1]
-        # add ml to directory name
-        out_dir += '/'
-        for par0, pval0 in zip(self.parspace, self.parset):
-            pname0 = par0.name
-            psfmt0  = par0.sformat
-            if par0.name == 'ml':
-                out_dir += f'{pname0}'
-                out_dir += format(pval0, psfmt0)
-        out_dir += '/'
-        # remove all whitespace
-        out_dir = out_dir.replace(" ", "")
-        return out_dir
+        directory = self.settings.io_settings['output_directory']
+        models_file = directory + self.settings.io_settings['all_models_file']
+        try:
+            all_models = ascii.read(models_file)
+            self.logger.debug(f'Setting model dir from file {models_file}...')
+        except:
+            self.logger.error('Error reading all_models file. '
+                              'Cannot set model directory.')
+            raise
+        for idx, parset in enumerate(all_models[self.parspace.par_names]):
+            if np.allclose(tuple(parset),tuple(self.parset)):
+                directory += 'models/' + all_models['directory'][idx]
+                break
+        else:
+            text = f'Cannot set model directory: parset {self.parset} ' \
+                   f'not found in {models_file}.'
+            self.logger.error(text)
+            raise ValueError(text)
+        self.logger.debug(f'...model directory {directory} read from file.')
+        return directory
 
     def create_model_directory(self, path):
         if not os.path.exists(path):
