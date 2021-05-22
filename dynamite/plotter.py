@@ -46,7 +46,7 @@ class Plotter():
             Must be None, 'chi2', or 'kinchi2'. The default is None.
         figtype : STR, optional
             Determines the file extension to use when saving the figure.
-            If None, the default setting is used ('.png'). 
+            If None, the default setting is used ('.png').
 
         Raises
         ------
@@ -91,10 +91,10 @@ class Plotter():
         Generates a chisquare plot
 
         The models generated are shown on a grid of parameter space.
-        The best-fit model is marked with a black cross. 
-        The coloured circles represent models within 3 sigma 
-        confidence level (light colours and larger circles 
-        indicate smaller values of the chisquare). The small 
+        The best-fit model is marked with a black cross.
+        The coloured circles represent models within 3 sigma
+        confidence level (light colours and larger circles
+        indicate smaller values of the chisquare). The small
         black dots indicate the models outside this confidence region.
 
         Parameters
@@ -104,12 +104,12 @@ class Plotter():
             in the configuration file's parameter settings is used.
             Must be None, 'chi2', or 'kinchi2'. The default is None.
         nexcl : integer, optional
-            Determines how many models (in the initial burn-in phase of 
+            Determines how many models (in the initial burn-in phase of
             the fit) to exclude from the plot. Must be an integer number.
             Default is 0 (all models are shown). Use this with caution!
         figtype : STR, optional
             Determines the file extension to use when saving the figure.
-            If None, the default setting is used ('.png'). 
+            If None, the default setting is used ('.png').
 
         Raises
         ------
@@ -138,8 +138,8 @@ class Plotter():
         pars = self.parspace
         val = deepcopy(self.all_models.table)
 
-        # exclude the first 50, 100 (specified by the user) 
-        # models in case the values were really off there 
+        # exclude the first 50, 100 (specified by the user)
+        # models in case the values were really off there
         # (or alternatively based on too big Delta chi2)
         val = val[n_excl:]
 
@@ -217,7 +217,7 @@ class Plotter():
                 pltnum = (nnofix-1-j) * (nnofix-1) + i+1
                 plt.subplot(nnofix-1, nnofix-1, pltnum)
 
-                plt.plot(val[nofix_name[i]],val[nofix_name[j]], 'D', 
+                plt.plot(val[nofix_name[i]],val[nofix_name[j]], 'D',
                          color='black', markersize=2)
                 if j==i+1:
                     plt.xlabel(xtit, fontsize=12)
@@ -230,26 +230,26 @@ class Plotter():
                 for k in range(nf - 1, -1, -1):
                     if chi2[k]/chlim<=3: #only significant chi2 values
 
-                        color = colormap(chi2[k]/chlim) 
+                        color = colormap(chi2[k]/chlim)
                         # * 240) #colours the significant chi2
-                        
-                        markersize = 7-(chi2[k]/(3*chlim)) 
+
+                        markersize = 7-(chi2[k]/(3*chlim))
                         #smaller chi2 become bigger :)
-                        
-                        plt.plot((val[nofix_name[i]])[k], 
-                                 (val[nofix_name[j]])[k], 'o', 
+
+                        plt.plot((val[nofix_name[i]])[k],
+                                 (val[nofix_name[j]])[k], 'o',
                                  markersize=markersize, color=color)
 
                     if chi2[k]==0:
-                        plt.plot((val[nofix_name[i]])[k], 
-                                 (val[nofix_name[j]])[k], 'x', 
+                        plt.plot((val[nofix_name[i]])[k],
+                                 (val[nofix_name[j]])[k], 'x',
                                  markersize=10, color='k')
 
         plt.subplots_adjust(hspace=0)
         plt.subplots_adjust(wspace=0)
         axcb = fig.add_axes([0.75, 0.07, 0.2, 0.02])
-        cb = mpl.colorbar.ColorbarBase(axcb, 
-                    cmap=plt.get_cmap('viridis_r'), 
+        cb = mpl.colorbar.ColorbarBase(axcb,
+                    cmap=plt.get_cmap('viridis_r'),
                     norm=mpl.colors.Normalize(vmin=0., vmax=3),
                     orientation='horizontal')
         plt.subplots_adjust(top=0.99, right=0.99, bottom=0.07, left=0.1)
@@ -263,40 +263,40 @@ class Plotter():
         #
         pass
 
-    def plot_kinematic_maps(self, model=None, kin_set=0, 
+    def plot_kinematic_maps(self, model=None, kin_set=0,
                             cbar_lims='data', figtype=None):
         """
         Generates a kinematic map of a model with v, sigma, h3, h4...
 
-        Maps of the surface brightness, mean line-of-sight velocity, 
-        velocity dispersion, and higher order Gauss–Hermite moments 
-        are shown. The first row are data, the second row the best-fit 
+        Maps of the surface brightness, mean line-of-sight velocity,
+        velocity dispersion, and higher order Gauss–Hermite moments
+        are shown. The first row are data, the second row the best-fit
         model, and the third row the residuals.
 
         Parameters
         ----------
         model : model, optional
             Determines which model is used for the plot.
-            If model = None, the model corresponding to the minimum 
-            chisquare (so far) is used; the setting in the configuration 
-            file's parameter settings is used to determine which chisquare 
-            to consider. The default is None. 
+            If model = None, the model corresponding to the minimum
+            chisquare (so far) is used; the setting in the configuration
+            file's parameter settings is used to determine which chisquare
+            to consider. The default is None.
         kin_set : integer or 'all'
             Determines which kinematic set to use for the plot.
-            The value of this parameter should be the index of the data 
+            The value of this parameter should be the index of the data
             set (e.g. kin_set=0 , kin_set=1). The default is kin_set=0.
-            If kin_set='all', several kinematic maps are produced, one 
-            for each kinematic dataset. A list of (fig,kin_set_name) is 
-            returned where fig are figure objects and kin_set_name are 
+            If kin_set='all', several kinematic maps are produced, one
+            for each kinematic dataset. A list of (fig,kin_set_name) is
+            returned where fig are figure objects and kin_set_name are
             the names of the kinematics sets.
         cbar_lims : STR
-            Determines which set of values is used to determine the 
+            Determines which set of values is used to determine the
             limiting values defining the colorbar used in the plots.
             Accepted values: 'model', 'data', 'combined'.
             The default is 'data'.
         figtype : STR, optional
             Determines the file extension to use when saving the figure.
-            If None, the default setting is used ('.png'). 
+            If None, the default setting is used ('.png').
 
         Raises
         ------
@@ -316,7 +316,7 @@ class Plotter():
 
         if figtype == None:
             figtype = '.png'
-        
+
         stars = \
           self.system.get_component_from_class(physys.TriaxialVisibleComponent)
         n_kin = len(stars.kinematic_data)
@@ -442,7 +442,7 @@ class Plotter():
         sx = np.float(lines[2][0])
         sy = np.float(lines[2][1])
         sy = sy + miny
-        angle_deg = np.float(lines[3][0]) 
+        angle_deg = np.float(lines[3][0])
         nx = np.int(lines[4][0])
         ny = np.int(lines[4][1])
         dx = sx / nx
@@ -607,7 +607,7 @@ class Plotter():
         display_pixels.display_pixels(x, y, c,
                                           vmin=-1, vmax=1,
                                           **kw_display_pixels)
-        fig.subplots_adjust(left=0.04, wspace=0.3, 
+        fig.subplots_adjust(left=0.04, wspace=0.3,
                             hspace=0.01, right=0.97)
         kwtext = dict(size=20, ha='center', va='center', rotation=90.)
         fig.text(0.015, 0.83, 'data', **kwtext)
@@ -659,12 +659,12 @@ class Plotter():
 #############################################################################
 
     def NFW_getpar(self, mstars=None, cc=None, dmfrac=None):
-        
+
         #Computes density scale, radial scale and total mass in
         #the NFW profile used in the model.
         #Input parameters: NFW dark matter concentration and fraction,
         #and stellar mass
-    
+
         grav_const_km = 6.67428e-11*1.98892e30/1e9
         parsec_km = 1.4959787068e8*(648.000e3/np.pi)
         rho_crit = (3.*((7.3000e-5)/parsec_km)**2)/(8.*np.pi*grav_const_km)
@@ -681,29 +681,29 @@ class Plotter():
 
         #Computes cumulative mass of the NWF dark matter halo
         #Input parameters: density scale  and radial scale, and
-        #array of radial positions where to compute the mass.                           
-    
+        #array of radial positions where to compute the mass.
+
         M = 4. * np.pi * rho * Rs**3 * (np.log((Rs + R)/Rs) - R/(Rs + R))
 
         return M
 
 #############################################################################
 
-    def trimge_intrmass(self, r_pc=None, surf_pot_pc=None, 
-                        sigobs_pot_pc=None, qobs_pot=None, 
+    def trimge_intrmass(self, r_pc=None, surf_pot_pc=None,
+                        sigobs_pot_pc=None, qobs_pot=None,
                         psi_off=None, incl=None):
-        
+
         theta = incl[0]
         phi = incl[1]
         psi = incl[2]
 
         pintr, qintr = self.triax_tpp2pqu(theta=theta, phi=phi, psi=psi,
-                                          qobs=qobs_pot, psi_off=psi_off, 
+                                          qobs=qobs_pot, psi_off=psi_off,
                                           res=1)[:2]
         p_pot = np.copy(pintr)
         q_pot = np.copy(qintr)
         sig_pot_pc = np.copy(sigobs_pot_pc)
-        dens_pot_pc = surf_pot_pc*qobs_pot/(np.sqrt(2.*np.pi)* 
+        dens_pot_pc = surf_pot_pc*qobs_pot/(np.sqrt(2.*np.pi)*
                         sig_pot_pc*q_pot*p_pot)
 
         nr = len(r_pc)
@@ -715,8 +715,8 @@ class Plotter():
 
             Fxyparm=np.vstack((dens_pot_pc, sig_pot_pc,q_pot.T,
                                p_pot.T, np.zeros(ng) + Ri))
-            mi2=scipy.integrate.dblquad(self.intg2_trimge_intrmass, 
-                                        0.0, np.pi/2.0, 
+            mi2=scipy.integrate.dblquad(self.intg2_trimge_intrmass,
+                                        0.0, np.pi/2.0,
                                         self.PQ_Limits_l ,self.PQ_Limits_h,
                                         args=[Fxyparm],epsrel=1.00)[0]
             res[i] = mi2*8
@@ -727,7 +727,7 @@ class Plotter():
 
     def triax_tpp2pqu(self, theta=None, phi=None, psi=None, qobs=None,
                       psi_off=None, res=None):
-        
+
         res = 1
         theta_view = theta * (np.pi/180.0)
         phi_view = phi * (np.pi/180.0)
@@ -787,11 +787,11 @@ class Plotter():
         Generates cumulative mass plot
 
         The enclosed mass profiles are shown for the mass-follows-light
-        component (red), for the dark matter (blue), and for the sum 
-        of the two (black). The solid lines correspond to the best-fit 
-        model, the shaded areas represent 1 sigma uncertainties. 
-        The mass (in solar units) is plotted here as a function of 
-        the distancefrom the galactic centre, both in arcsec 
+        component (red), for the dark matter (blue), and for the sum
+        of the two (black). The solid lines correspond to the best-fit
+        model, the shaded areas represent 1 sigma uncertainties.
+        The mass (in solar units) is plotted here as a function of
+        the distancefrom the galactic centre, both in arcsec
         (bottom axis) and in pc (top axis).
 
         Parameters
@@ -804,7 +804,7 @@ class Plotter():
             Determines the upper range of the x-axis. Default value is None.
         figtype : STR, optional
             Determines the file extension to use when saving the figure.
-            If None, the default setting is used ('.png'). 
+            If None, the default setting is used ('.png').
 
         Raises
         ------
@@ -845,11 +845,11 @@ class Plotter():
         val = deepcopy(self.all_models.table)
         val.sort(which_chi2)
         chi2pmin = val[which_chi2][0]
-        
+
         nGH = self.settings.weight_solver_settings['number_GH']
         stars = \
             self.system.get_component_from_class(physys.TriaxialVisibleComponent)
-        Nobs = sum([len(kin.data) for kin in stars.kinematic_data]) 
+        Nobs = sum([len(kin.data) for kin in stars.kinematic_data])
 
         chlim = np.sqrt(2 * Nobs * nGH)
 
@@ -873,7 +873,7 @@ class Plotter():
 
         ## Calulate mass profiles
         nm = 200
-        R = np.logspace(np.log10(0.01),np.log10(Rmax_arcs*1.2),num = nm) 
+        R = np.logspace(np.log10(0.01),np.log10(Rmax_arcs*1.2),num = nm)
 
         ## Setup stellar mass profile calculation
         mgepar = stars.mge_pot.data
@@ -896,16 +896,16 @@ class Plotter():
         phi_a = np.zeros(n)
         psi_a = np.zeros(n)
 
-        plotdir = self.plotdir 
+        plotdir = self.plotdir
 
         for i in range(n):
             p = val['p-stars'][i]
             q = val['q-stars'][i]
             u = val['u-stars'][i]
             th_view,psi_view,ph_view = \
-                physys.TriaxialVisibleComponent.triax_pqu2tpp(stars,p,q,u) 
+                physys.TriaxialVisibleComponent.triax_pqu2tpp(stars,p,q,u)
             incl_view = [th_view, ph_view, psi_view]
-            
+
             ml = val['ml'][i]
             surf_pc = mgeI * ml
             Mstarstot = 2 * np.pi * np.sum(surf_pc * mgeq * sigobs_pc ** 2)
@@ -917,8 +917,8 @@ class Plotter():
             dmR = val['f-dh'][i]
             rhoc, rc = self.NFW_getpar(mstars=Mstarstot, cc=dmconc,
                                         dmfrac=dmR)[:2]
-            mdm = self.NFW_enclosemass(rho=rhoc, Rs=rc, R=r_pc*parsec_km) 
-            
+            mdm = self.NFW_enclosemass(rho=rhoc, Rs=rc, R=r_pc*parsec_km)
+
             mbh = val['m-bh'][i]
 
             mass[:,i,0] = mstars
@@ -932,7 +932,7 @@ class Plotter():
             psi_a[i] = incl_view[2]
 
             np.isfinite(1)
-        
+
         arctpc = distance *np.pi / 0.648
         mm = np.sum(mass, axis=2)
         maxmass = (int(np.max(mm/10**10.)) + 1.)*10**10.
@@ -992,17 +992,17 @@ class Plotter():
 
         ax.plot(R,mm[:,0], '-', color='k', linewidth=2.0,
                 label='Total')
-        ax.fill_between(R, np.min(mm,axis=1), 
+        ax.fill_between(R, np.min(mm,axis=1),
                         np.max(mm,axis=1),facecolor='k',alpha=0.1)
 
         ax.plot(R,mass[:,0,0], '-', color='r', linewidth=2.0,
                 label='Mass-follows-Light')
-        ax.fill_between(R, np.min(mass[:,:,0],axis=1), 
+        ax.fill_between(R, np.min(mass[:,:,0],axis=1),
                         np.max(mass[:,:,0],axis=1),facecolor='r',alpha=0.1)
 
         ax.plot(R,mass[:,0,1], '-', color='b', linewidth=2.0,
                 label='Dark Matter')
-        ax.fill_between(R, np.min(mass[:,:,1],axis=1), 
+        ax.fill_between(R, np.min(mass[:,:,1],axis=1),
                         np.max(mass[:,:,1],axis=1),facecolor='b',alpha=0.1)
 
         ax.legend(loc='upper left', fontsize=8)
@@ -1019,15 +1019,15 @@ class Plotter():
 #############################################################################
 
     def readorbclass(self, file=None, nrow=None, ncol=None):
-        
+
         #read in 'datfil/orblib.dat_orbclass.out'
         #which stores the information of all the orbits stored in the orbit library
-        
-        #norb = nE * nI2 * nI3 * ndithing^3 
+
+        #norb = nE * nI2 * nI3 * ndithing^3
         #for each orbit, the time averaged values are stored:
 
         #lx, ly ,lz, r = sum(sqrt( average(r^2) )), Vrms^2 = average(vx^2 + vy^2 + vz^2 + 2vx*vy + 2vxvz + 2vxvy)
-        
+
         #The file was stored by the fortran code orblib_f.f90 integrator_find_orbtype
 
         data=[]
@@ -1044,7 +1044,7 @@ class Plotter():
 #############################################################################
 
     def readorbout(self, filename=None):
-        
+
         #read in 'mlxxx/nn_orb.out' of one model
 
         nrow=data=np.genfromtxt(filename,max_rows=1)
@@ -1060,14 +1060,14 @@ class Plotter():
         lcut=np.array(data[:,7],dtype=np.float)
         ntot=int(nrow)
         return n, ener,i2, i3, regul, orbtype,orbw,lcut,ntot
-    
+
 #############################################################################
 
     def triaxreadparameters(self, w_dir=None):
 
         #read in all the parameters in parameters.in
 
-        filename = w_dir + 'infil/parameters_pot.in' 
+        filename = w_dir + 'infil/parameters_pot.in'
 
         header = np.genfromtxt(filename, max_rows=1)
         #nmge = int(header[0])  # MGE gaussians
@@ -1130,24 +1130,25 @@ class Plotter():
         """
         Generates an orbit plot for the selected model
 
-        This plot shows the stellar orbit distribution, described 
-        as probability density of orbits; circularity (lambda_z) is 
-        represented here as a function of the distance from the 
+        This plot shows the stellar orbit distribution, described
+        as probability density of orbits; circularity (lambda_z) is
+        represented here as a function of the distance from the
         galactic centre r (in arcsec).
 
         Parameters
         ----------
         model : model, optional
             Determines which model is used for the plot.
-            If model = None, the model corresponding to the minimum 
-            chisquare (so far) is used; the setting in the configuration 
-            file's parameter settings is used to determine which chisquare 
-            to consider. The default is None. 
+            If model = None, the model corresponding to the minimum
+            chisquare (so far) is used; the setting in the configuration
+            file's parameter settings is used to determine which chisquare
+            to consider. The default is None.
         Rmax_arcs : numerical value
-            Determines the upper range of the x-axis.
+             upper radial limit for orbit selection, in arcsec i.e only orbits 
+             extending up to Rmax_arcs are plotted
         figtype : STR, optional
             Determines the file extension to use when saving the figure.
-            If None, the default setting is used ('.png'). 
+            If None, the default setting is used ('.png').
 
         Raises
         ------
@@ -1163,7 +1164,7 @@ class Plotter():
 
         # schw_orbit.py
 
-        if figtype == None: 
+        if figtype == None:
             figtype = '.png'
 
         if Rmax_arcs==None:
@@ -1181,10 +1182,10 @@ class Plotter():
             t.add_index(which_chi2)
             model_id = t.loc_indices[min_chi2]
             model = self.all_models.get_model_from_row(model_id)
-        
-        mdir = model.get_model_directory() 
+
+        mdir = model.get_model_directory()
         mdir_noml = mdir[:mdir[:-1].rindex('/')+1]
-        
+
         file4 = mdir + 'nn_orb.out'
         file2 = mdir_noml + 'datfil/orblib.dat_orbclass.out'
         file3 = mdir_noml + 'datfil/orblibbox.dat_orbclass.out'
@@ -1219,7 +1220,7 @@ class Plotter():
             orbclass[:,:,i*2]=orbclass1[:, :, i]
             orbclass[:,:,i*2 + 1]=orbclass1a[:, :, i]
 
-        ## define circularity of each orbit [nditcher^3, norb]    
+        ## define circularity of each orbit [nditcher^3, norb]
         lz = (orbclass[2,:,:]/orbclass[3,:,:]/np.sqrt(orbclass[4,:,:]))   # lambda_z = lz/(r * Vrms)
         # lx = (orbclass[0,:,:]/orbclass[3,:,:]/np.sqrt(orbclass[4,:,:]))   # lambda_x = lx/(r * Vrms)
         # l= (np.sqrt(np.sum(orbclass[0:3,:,:]**2, axis=0))/orbclass[3,:,:]/np.sqrt(orbclass[4,:,:]))
@@ -1234,12 +1235,12 @@ class Plotter():
         t=np.ravel(np.argsort(rm))
         yy=np.max(np.ravel(np.where(np.cumsum(orbw[t]) <= 0.5)))
         k = t[0:yy]
-        if np.sum(np.sum(lz[:,k], axis=0)/(ndither**3)*orbw[k]) < 0: 
+        if np.sum(np.sum(lz[:,k], axis=0)/(ndither**3)*orbw[k]) < 0:
             lz *= -1.
 
-        # Make the figure    
-        nxbin = 7  
-        nybin = 21 
+        # Make the figure
+        nxbin = 7
+        nybin = 21
 
         f1=r[:,s]
         f2=lz[:,s]
@@ -1256,13 +1257,13 @@ class Plotter():
 
         for i in range(int(0), len(f1[0, :])):
             # RIL, xedges, yedges = np.histogram2d(f1[:,i], f2[:,i], bins=nbins, range=range_bin)
-            RIL = np.histogram2d(f1[:,i], f2[:,i], bins=nbins, 
+            RIL = np.histogram2d(f1[:,i], f2[:,i], bins=nbins,
                                  range=range_bin)[0]
             R += weight[i]*RIL
 
         R = R/np.sum(R)
         minmaxdens = [np.min(R), np.max(R)]
-    
+
         ### plot the orbit distribution on lambda_z vs. r ###
 
         plotdir = self.plotdir
@@ -1270,11 +1271,11 @@ class Plotter():
         imgxrange = xbinned
         imgyrange = ybinned
         extent = [imgxrange[0], imgxrange[1], imgyrange[0], imgyrange[1]]
-        
+
         fig = plt.figure(figsize=(6,5))
-        
+
         ax = fig.add_subplot(1, 1, 1)
-        cax = ax.imshow(R.T, cmap='binary', interpolation='spline16', 
+        cax = ax.imshow(R.T, cmap='binary', interpolation='spline16',
                         extent=extent, origin='lower', vmax=minmaxdens[1],
                         vmin=minmaxdens[0], aspect='auto')
 
@@ -1283,7 +1284,7 @@ class Plotter():
         ax.set_ylabel(r'Circularity $\lambda_{z}$', fontsize=9)
 
         fig.colorbar(cax, orientation='vertical', pad=0.1)
-        
+
         ax.plot(imgxrange, np.array([1,1])*0.80, '--', color='black',
                  linewidth=1)
         ax.plot(imgxrange, np.array([1,1])*0.25, '--', color='black',
@@ -1325,7 +1326,7 @@ class Plotter():
         return res
 
 #############################################################################
-    
+
     def car2sph_mu12(self, x, y, z, mu1car, mu2car, eps=None):
 
         #Conversion from Cartesian to spherical intrinsic moments
@@ -1363,7 +1364,7 @@ class Plotter():
         return mu1sph, mu2sph
 
 #############################################################################
-    
+
     def N_car2cyl(self, x, y, z, eps=None):
 
         #Orthogonal velocity conversion matrix: N=[N_ji] (i=row,j=column)
@@ -1388,7 +1389,7 @@ class Plotter():
         return res
 
 #############################################################################
-    
+
     def car2cyl_mu12(self, x, y, z, mu1car, mu2car, eps=None):
 
         #Conversion from Cartesian to cylindrical intrinsic moments of first
@@ -1451,8 +1452,8 @@ class Plotter():
         v2car = np.reshape(dum[:,:], (ntot,3,3), order='F')  # < v_s * v_t > s, t = x, y, z[(km / s) ^ 2]
         # v1sph, v2sph = self.car2sph_mu12(x, y, z, v1car, v2car)  # (v_r, v_phi, v_theta)
         v2sph = self.car2sph_mu12(x, y, z, v1car, v2car)[1]  # (v_r, v_phi, v_theta)
-        orot = 1 - (0.5*(v2sph[:,1,1] + v2sph[:,2,2]))/(v2sph[:,0,0])    
-        rr = np.sum(np.sum(np.reshape(r,(nrr,nth,nph),order='F'), 
+        orot = 1 - (0.5*(v2sph[:,1,1] + v2sph[:,2,2]))/(v2sph[:,0,0])
+        rr = np.sum(np.sum(np.reshape(r,(nrr,nth,nph),order='F'),
                     axis=2), axis=1)/(nth*nph)
         TM = np.sum(np.sum(np.reshape(data[:,4],(nrr,nth,nph),order='F'),
                     axis=2), axis=1)
@@ -1472,10 +1473,10 @@ class Plotter():
         vzz_r = np.zeros(nbins, dtype=np.float)
         vp_r = np.zeros(nbins, dtype=np.float)
         d = data[:,4]
-        ### Bin along bigR        
+        ### Bin along bigR
         for i in range(nbins):
             ss=np.ravel(np.where((Bigr > Bint[i]) & \
-                        (Bigr < Bint[i+1]) & (np.abs(z) < 5.0)))  
+                        (Bigr < Bint[i+1]) & (np.abs(z) < 5.0)))
                         # restrict to the disk plane with |z| < 5 arcsec
             nss=len(ss)
             if nss > 0:
@@ -1493,12 +1494,12 @@ class Plotter():
         """
         Generates anisotropy plots
 
-        The two plots show the intrinsic and projected anisotropy 
-        (beta_r and beta_z, respectively) as a function of the 
+        The two plots show the intrinsic and projected anisotropy
+        (beta_r and beta_z, respectively) as a function of the
         distance from the galactic centre (in arcsec).
          * beta_r = 1 - (sigma_t/sigma_r)^2
          * beta_z = 1 - (sigma_z/sigma_R)^2
-        Solid lines and shaded areas represent the mean and standard 
+        Solid lines and shaded areas represent the mean and standard
         deviation of the anisotropy of models having parameters in a
         confidence region around the minimum chisquare.
 
@@ -1512,7 +1513,7 @@ class Plotter():
             Determines the upper range of the x-axis.
         figtype : STR, optional
             Determines the file extension to use when saving the figure.
-            If None, the default setting is used ('.png'). 
+            If None, the default setting is used ('.png').
 
         Raises
         ------
@@ -1532,7 +1533,7 @@ class Plotter():
 
         # schw_anisotropy.py
 
-        if figtype == None: 
+        if figtype == None:
             figtype = '.png'
 
         if which_chi2==None:
@@ -1553,7 +1554,7 @@ class Plotter():
         arg = np.argsort(np.array(val[which_chi2]))
         val.sort(which_chi2)
         chi2pmin = val[which_chi2][0]
-        
+
         nGH = self.settings.weight_solver_settings['number_GH']
         stars = \
             self.system.get_component_from_class(physys.TriaxialVisibleComponent)
@@ -1585,11 +1586,11 @@ class Plotter():
         VR2 = np.zeros((100,n), dtype=np.float)
         Vp2= np.zeros((100,n), dtype=np.float)
         Vp = np.zeros((100,n), dtype=np.float)
-        
+
         for i in range(n):
             model_id = arg[i]
-            model = self.all_models.get_model_from_row(model_id)        
-            mdir = model.get_model_directory() 
+            model = self.all_models.get_model_from_row(model_id)
+            mdir = model.get_model_directory()
 
             filei = mdir + 'nn_intrinsic_moments.out'
 
@@ -1609,7 +1610,7 @@ class Plotter():
             VR2[0:nrad,i] = vrr_r
             Vp2[0:nrad,i] = vpp_r
             Vp[0:nrad,i] = vp_r
-        
+
         plotdir = self.plotdir
         filename1 = plotdir + 'anisotropy_var' + figtype
         filename2 = plotdir + 'betaz_var' + figtype
@@ -1635,15 +1636,15 @@ class Plotter():
         if yrange[1]-yrange[0]<=4:
             yticks = np.linspace(int(yrange[0])*1.,
                         int(yrange[1])*1.,int((yrange[1]-yrange[0])/0.5)+1)
-        else: 
+        else:
             yticks = np.linspace(int(yrange[0])*1.,
                         int(yrange[1])*1.,int((yrange[1]-yrange[0]))+1)
         ax1.set_yticks(yticks)
         ax1.plot(RRn_m,orot_m2, '-', color='black', linewidth=3.0)
-        ax1.fill_between(RRn_m, orot_m2-orot_e2, 
+        ax1.fill_between(RRn_m, orot_m2-orot_e2,
                         orot_m2+orot_e2,facecolor='gray',alpha=0.3)
         ax1.set_xlabel(r'$r$ [arcsec]', fontsize=9)
-        ax1.set_ylabel(r'$\beta_{\rm r} = 1 - \sigma_{\rm t}^2/\sigma_{\rm r}^2$', 
+        ax1.set_ylabel(r'$\beta_{\rm r} = 1 - \sigma_{\rm t}^2/\sigma_{\rm r}^2$',
                          fontsize=9)
         ax1.tick_params(labelsize=8)
         ax1.plot(radialrange, [0,0], '--', color='black', linewidth=1.0)
@@ -1671,13 +1672,13 @@ class Plotter():
                 RRn_e[j] = np.sqrt(np.var(RRn[j,kk], ddof=1))
                 orot_m2[j] = np.average(orotn[j,kk])
                 orot_e2[j] = np.sqrt(np.var(orotn[j,kk], ddof=1))
-            else: 
+            else:
                 orot_m2[j] = -1.
         cc = orot_m2 > 0
         Rmaxcc = (int(max(RRn_m[cc])/5) + 1)*5
         ax.set_xlim([0,Rmaxcc])
         ax.plot(RRn_m[cc], orot_m2[cc], '-', color='black', linewidth =3)
-        ax.fill_between(RRn_m[cc], orot_m2[cc]-orot_e2[cc], 
+        ax.fill_between(RRn_m[cc], orot_m2[cc]-orot_e2[cc],
                         orot_m2[cc]+orot_e2[cc],facecolor='gray',alpha=0.3)
         plt.tight_layout()
         plt.savefig(filename2)
@@ -1700,7 +1701,7 @@ class Plotter():
 
 #############################################################################
 
-    def pqintr_mge_v2(self, Rpc=None, surf_pc=None, sigma_pc=None, 
+    def pqintr_mge_v2(self, Rpc=None, surf_pc=None, sigma_pc=None,
                         qobs=None, psi_off=None, incl=None):
 
         theta = incl[0]
@@ -1710,8 +1711,8 @@ class Plotter():
         r = np.arange(101, dtype=np.float)/100.0*max(Rpc)*1.02
         n = len(r)
 
-        pintr, qintr, uintr = self.triax_tpp2pqu(theta=theta, phi=phi, 
-                                                 psi=psi, qobs=qobs, 
+        pintr, qintr, uintr = self.triax_tpp2pqu(theta=theta, phi=phi,
+                                                 psi=psi, qobs=qobs,
                                                  psi_off=psi_off, res=1)
         sigintr_pc = sigma_pc/uintr
         sb3 = surf_pc*(2*np.pi*sigma_pc**2*qobs)/ \
@@ -1749,8 +1750,8 @@ class Plotter():
         """
         Generates triaxiality plot
 
-        The intrinsic flattenings q (C/A) and p (B/A) are shown here, 
-        with the blue and black lines respectively, as a function of 
+        The intrinsic flattenings q (C/A) and p (B/A) are shown here,
+        with the blue and black lines respectively, as a function of
         the distance from the galactic centre (in arcsec).
         The value of T = (1-p^2)/(1-q^2) is also shown (red line).
 
@@ -1764,7 +1765,7 @@ class Plotter():
             Determines the upper range of the x-axis.
         figtype : STR, optional
             Determines the file extension to use when saving the figure.
-            If None, the default setting is used ('.png'). 
+            If None, the default setting is used ('.png').
 
         Raises
         ------
@@ -1782,7 +1783,7 @@ class Plotter():
 
         # schw_qpu.py
 
-        if figtype == None: 
+        if figtype == None:
             figtype = '.png'
 
         if which_chi2==None:
@@ -1803,7 +1804,7 @@ class Plotter():
         arg = np.argsort(np.array(val[which_chi2]))
         val.sort(which_chi2)
         chi2pmin = val[which_chi2][0]
-        
+
         nGH = self.settings.weight_solver_settings['number_GH']
         stars = \
             self.system.get_component_from_class(physys.TriaxialVisibleComponent)
@@ -1829,22 +1830,22 @@ class Plotter():
             n = len(s)
 
         chi2=chi2[s]
-        
+
         q_all = np.zeros((101,n), dtype=np.float)
         p_all = np.zeros((101,n), dtype=np.float)
         Rarc = np.arange(101, dtype=np.float)/100.0*Rmax_arcs
 
         for i in range(0, n):
             model_id = arg[i]
-            model = self.all_models.get_model_from_row(model_id)        
-            mdir = model.get_model_directory() 
+            model = self.all_models.get_model_from_row(model_id)
+            mdir = model.get_model_directory()
             mdir_noml = mdir[:mdir[:-1].rindex('/')+1]
 
             #mgepar, distance, th_view, ph_view, psi_view, ml, \
             #bhmass, softlen, nre, lrmin, lrmax, nrth, nrrad, ndither, \
             #vv1_1, vv1_2, dm1, dm2, conversion_factor, grav_const_km, \
             #parsec_km, rho_crit = self.triaxreadparameters(w_dir=mdir_noml)
-            
+
             mgepar, distance, th_view, ph_view, \
             psi_view = self.triaxreadparameters(w_dir=mdir_noml)[:5]
 
@@ -1881,7 +1882,7 @@ class Plotter():
                 q_var[i] = np.sqrt(np.var(q_all[i,cc],ddof=1))
                 T_m[i] = np.average(T_all[i,cc])
                 T_var[i] = np.sqrt(np.var(T_all[i,cc],ddof=1))
-            else: 
+            else:
                 p_m[i] = -1.
 
         cc = (p_m >= 0)
@@ -1897,25 +1898,25 @@ class Plotter():
         ax.set_ylabel(r'$p$ | $q$ | $T = (1-p^2)/(1-q^2)$', fontsize=9)
         ax.tick_params(labelsize=8)
 
-        ax.plot(Rpc[cc]/arctpc, p_m[cc], '-', color='blue', 
+        ax.plot(Rpc[cc]/arctpc, p_m[cc], '-', color='blue',
                 linewidth=3.0, label=r'$p$')
-        ax.plot(Rpc[cc]/arctpc, p_m[cc]-p_var[cc], '--', 
+        ax.plot(Rpc[cc]/arctpc, p_m[cc]-p_var[cc], '--',
                 color='blue', linewidth=0.8)
-        ax.plot(Rpc[cc]/arctpc, p_m[cc]+p_var[cc], '--', 
+        ax.plot(Rpc[cc]/arctpc, p_m[cc]+p_var[cc], '--',
                 color='blue', linewidth=0.8)
 
-        ax.plot(Rpc[cc]/arctpc, q_m[cc], '-', color='black', 
+        ax.plot(Rpc[cc]/arctpc, q_m[cc], '-', color='black',
                 linewidth=3.0, label=r'$q$')
-        ax.plot(Rpc[cc]/arctpc, q_m[cc]-q_var[cc], '--', 
+        ax.plot(Rpc[cc]/arctpc, q_m[cc]-q_var[cc], '--',
                 color='black', linewidth=0.8)
-        ax.plot(Rpc[cc]/arctpc, q_m[cc]+q_var[cc], '--', 
+        ax.plot(Rpc[cc]/arctpc, q_m[cc]+q_var[cc], '--',
                 color='black', linewidth=0.8)
 
-        ax.plot(Rpc[cc]/arctpc, T_m[cc], '-', color='red', 
+        ax.plot(Rpc[cc]/arctpc, T_m[cc], '-', color='red',
                 linewidth=3.0, label=r'$T$')
-        ax.plot(Rpc[cc]/arctpc, T_m[cc]-T_var[cc], '--', 
+        ax.plot(Rpc[cc]/arctpc, T_m[cc]-T_var[cc], '--',
                 color='red', linewidth=0.8)
-        ax.plot(Rpc[cc]/arctpc, T_m[cc]+T_var[cc], '--', 
+        ax.plot(Rpc[cc]/arctpc, T_m[cc]+T_var[cc], '--',
                 color='red', linewidth=0.8)
 
         ax.legend(loc='upper right', fontsize=8)
@@ -1934,5 +1935,3 @@ class Plotter():
             shell=True, check=True).stdout.decode('utf-8'). \
             split(sep='\n')[0].split()[-1]
         return v
-
-
