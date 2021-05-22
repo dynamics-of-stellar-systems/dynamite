@@ -5,8 +5,8 @@ import os
 import sys
 import subprocess
 import logging
+# import importlib
 import numpy as np
-#import time
 
 # Set matplotlib backend to 'Agg' (compatible when X11 is not running
 # e.g., on a cluster). Note that the backend can only be set BEFORE
@@ -82,7 +82,9 @@ def run_orbit_losvd_test(make_comparison_losvd=False):
     model.get_model_directory()
     orbit_library = model.get_orblib()
 
-    fname = os.path.dirname(__file__) + '/data/comparison_losvd.npz'
+    file_dir = os.path.dirname(__file__)
+    fname = file_dir if file_dir else '.'
+    fname += '/data/comparison_losvd.npz'
     if make_comparison_losvd:
         # create comparison file
         np.savez_compressed(fname,
@@ -122,7 +124,12 @@ if __name__ == '__main__':
 
     # For an ultra-minimal logging configuration, not even the
     # logging.basicConfig call is necessary, but here we want to log on the
-    # INFO level. Comment out the following line to see warnings only.
+    # INFO level and delete all other logging settings.
+    # Comment out the following logging lines to see warnings only or - if
+    # logging was already configured in your kernel - use the existing
+    # logging settings.
+    ## logging.shutdown()         # Only needed to reset existing logging setup
+    ## importlib.reload(logging)  # Only needed to reset existing logging setup
     logging.basicConfig(level=logging.INFO)
 
     run_orbit_losvd_test()

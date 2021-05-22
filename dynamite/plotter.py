@@ -11,12 +11,11 @@ import matplotlib as mpl
 from matplotlib.ticker import MaxNLocator
 import matplotlib.pyplot as plt
 from plotbin import sauron_colormap as pb_sauron_colormap
-import dynamite as dyn
 from plotbin import display_pixels
-import physical_system as physys
-from astropy.table import Table
 # from loess.loess_2d import loess_2d
-#import cmasher as cmr 
+from dynamite import kinematics
+from dynamite import weight_solvers
+from dynamite import physical_system as physys
 
 class Plotter():
 
@@ -33,7 +32,7 @@ class Plotter():
         self.input_directory = settings.io_settings['input_directory']
         self.plotdir = settings.io_settings['plot_directory']
         pb_sauron_colormap.register_sauron_colormap()
-        
+
 
     def make_chi2_vs_model_id_plot(self, which_chi2=None, figtype=None):
         """
@@ -351,6 +350,22 @@ class Plotter():
             model = self.all_models.get_model_from_row(model_id)
         # kinem_fname = model.get_model_directory() + 'nn_kinem.out'
         kinem_fname = model.directory + 'nn_kinem.out'
+
+        # currently this only works for GaussHermite's and LegacyWeightSolver
+        kin_type = type(stars.kinematic_data[kin_set])
+        if kin_type is not kinematics.GaussHermite:
+            self.logger.info(f'kinematic maps cannot be plot for {kin_type} - '
+                             'only GaussHermite')
+            fig = plt.figure(figsize=(27, 12))
+            return fig
+        weight_solver = model.get_weights()
+        ws_type = type(weight_solver)
+        if ws_type is not weight_solvers.LegacyWeightSolver:
+            self.logger.info('kinematic maps cannot be plot for weight solver '
+                             f'{ws_type} - only LegacyWeightSolver')
+            fig = plt.figure(figsize=(27, 12))
+            return fig
+
         body_kinem = np.genfromtxt(kinem_fname, skip_header=1)
 
         first_bin = sum(k.n_apertures for k in stars.kinematic_data[:kin_set])
@@ -535,7 +550,7 @@ class Plotter():
                                           vmin=h4min, vmax=h4max,
                                           **kw_display_pixels)
         ax5.set_title(r'$h_{4}$ moment',fontsize=20, pad=20)
-        
+
         ### PLOT THE MODEL DATA
         plt.subplot(3, 5, 6)
         c = np.array(list(map(np.log10, fluxm[grid[s]] / max(fluxm))))

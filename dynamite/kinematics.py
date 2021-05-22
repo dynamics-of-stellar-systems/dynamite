@@ -1,5 +1,3 @@
-import data
-
 import numpy as np
 from scipy import special, stats
 from astropy import table
@@ -7,9 +5,11 @@ import logging
 import os
 import h5py
 
+from dynamite import data
+
 class Kinematics(data.Data):
     """
-    Kinematics class holding attributes and methods pertaining to kinematics data
+    Kinematics class holding attributes and methods pertaining to kinematic data
     """
     values = []
     def __init__(self,
@@ -21,30 +21,30 @@ class Kinematics(data.Data):
                  **kwargs
                  ):
         super().__init__(**kwargs)
-        self.weight = weight
-        self.type = type
-        # set histogram settings
-        if hist_width=='default':
-            self.set_default_hist_width()
-        else:
-            self.hist_width = hist_width
-        if hist_center=='default':
-            self.set_default_hist_center()
-        else:
-            self.hist_center = hist_center
-        if hist_bins=='default':
-            self.set_default_hist_bins()
-        else:
-            self.hist_bins = hist_bins
-        self.__class__.values = list(self.__dict__.keys())
-        self.logger = logging.getLogger(f'{__name__}.{__class__.__name__}')
-        if self.weight==None or self.type==None or self.hist_width==None or \
-                self.hist_center==None or self.hist_bins==None:
-            text = 'Kinematics need (weight, type, hist_width, hist_center, '\
+        if hasattr(self, 'data'):
+            self.weight = weight
+            self.type = type
+            if hist_width=='default':
+                self.set_default_hist_width()
+            else:
+                self.hist_width = hist_width
+            if hist_center=='default':
+                self.set_default_hist_center()
+            else:
+                self.hist_center = hist_center
+            if hist_bins=='default':
+                self.set_default_hist_bins()
+            else:
+                self.hist_bins = hist_bins
+            self.__class__.values = list(self.__dict__.keys())
+            self.logger = logging.getLogger(f'{__name__}.{__class__.__name__}')
+            if self.weight==None or self.type==None or self.hist_width==None or \
+                    self.hist_center==None or self.hist_bins==None:
+                text = 'Kinematics need (weight, type, hist_width, hist_center, '\
                    f'hist_bins), but has ({self.weight}, {self.type}, ' \
                    f'{self.hist_width}, {self.hist_center}, {self.hist_bins})'
-            self.logger.error(text)
-            raise ValueError(text)
+                self.logger.error(text)
+                raise ValueError(text)
 
     def update(self, **kwargs):
         """
@@ -385,9 +385,10 @@ class GaussHermite(Kinematics, data.Integrated):
         h *= 2 * np.pi**0.5 # pre-factor in eqn 7
         return h
 
-    def transform_orblib_to_observables(self, losvd_histograms, max_gh_order=None):
-        if max_gh_order is None:
-            max_gh_order = self.max_gh_order
+    def transform_orblib_to_observables(self,
+                                        losvd_histograms,
+                                        weight_solver_settings):
+        max_gh_order = weight_solver_settings['number_GH']
         v_mu = self.data['v']
         v_sig = self.data['sigma']
         orblib_gh_coefs = self.get_gh_expansion_coefficients(
@@ -406,9 +407,8 @@ class GaussHermite(Kinematics, data.Integrated):
         orblib_gh_coefs = orblib_gh_coefs[:,:,1:]
         return orblib_gh_coefs
 
-    def get_observed_values_and_uncertainties(self, max_gh_order=None):
-        if max_gh_order is None:
-            max_gh_order = self.max_gh_order
+    def get_observed_values_and_uncertainties(self, weight_solver_settings):
+        max_gh_order = weight_solver_settings['number_GH']
         # construct observed values
         observed_values = np.zeros((self.n_apertures, max_gh_order))
         # h1, h2 = 0, 0
@@ -423,6 +423,14 @@ class GaussHermite(Kinematics, data.Integrated):
         # uncertainties h3, h4, etc... are taken from data table
         for i in range(3, self.max_gh_order+1):
             uncertainties[:,i-1] = self.data[f'dh{i}']
+        # add the systematic uncertainties
+        systematics = weight_solver_settings['GH_sys_err']
+        if type(systematics) is str:
+            systematics = systematics.split(' ')
+            systematics = [float(x) for x in systematics]
+        systematics = np.array(systematics)
+        systematics = systematics[0:max_gh_order]
+        uncertainties = (uncertainties**2. + systematics**2.)**0.5
         return observed_values, uncertainties
 
     def set_default_hist_width(self, n_sig=3.):
@@ -509,6 +517,7 @@ class Histogram(object):
         self.y = tmp
 
     def scale_x_values(self, scale_factor):
+        self.xedg *= scale_factor
         self.x *= scale_factor
         self.dx *= scale_factor
 
@@ -519,18 +528,29 @@ class Histogram(object):
         mean /= norm
         return mean
 
+    def get_sigma(self):
+        na = np.newaxis
+        mean = self.get_mean()
+        v_minus_mu = self.x[na,:,na]-mean[:,na,:]
+        var = np.sum(v_minus_mu**2. * self.y * self.dx[na,:,na],
+                     axis=1)
+        norm = self.get_normalisation()
+        var /= norm
+        sigma = var**0.5
+        return sigma
 
 class BayesLOSVD(Kinematics, data.Integrated):
 
     def __init__(self, **kwargs):
         # super goes left to right, i.e. first calls "Kinematics" __init__, then
         # calls data.Integrated's __init__
-        super().__init__(type='BayesLOSVD', **kwargs)
+        super().__init__(**kwargs)
         self.logger = logging.getLogger(f'{__name__}.{__class__.__name__}')
         if hasattr(self, 'data'):
-            self.convert_losvd_columns_to_one_multidimenstional_column()
+            self.convert_losvd_columns_to_one_multidimensional_column()
+            self.set_mean_v_and_sig_v_per_aperture()
 
-    def convert_losvd_columns_to_one_multidimenstional_column(self):
+    def convert_losvd_columns_to_one_multidimensional_column(self):
         nbins = self.data.meta['nbins']
         nv = self.data.meta['nvbins']
         losvd_mean = np.zeros((nbins,nv))
@@ -542,6 +562,25 @@ class BayesLOSVD(Kinematics, data.Integrated):
             self.data.remove_column(f'dlosvd_{j}')
         self.data['losvd'] = losvd_mean
         self.data['dlosvd'] = losvd_sigma
+
+    def convert_multidimensional_losvd_columns_to_univariate(self):
+        nbins = self.data.meta['nbins']
+        nv = self.data.meta['nvbins']
+        losvd_mean = self.data['losvd']
+        losvd_sigma = self.data['dlosvd']
+        for j in range(nv):
+            self.data[f'losvd_{j}'] = losvd_mean[:,j]
+            self.data[f'dlosvd_{j}'] = losvd_sigma[:,j]
+        self.data.remove_column('losvd')
+        self.data.remove_column('dlosvd')
+
+    def save_data_table(self, outfile=None):
+        if outfile is None:
+            outfile = self.datafile
+            if hasattr(self, 'input_directory'):
+                outfile = self.input_directory + outfile
+        self.convert_multidimensional_losvd_columns_to_univariate()
+        self.data.write(outfile, format='ascii.ecsv', overwrite=True)
 
     def load_hdf5(self, filename):
         """Load a *.hdf5 file containing results from BAYES-LOSVD
@@ -593,14 +632,32 @@ class BayesLOSVD(Kinematics, data.Integrated):
         vcent = result['xvel']
         nv = len(vcent)
         completed_bins = [i for i in result.keys() if type(i) is int]
+        completed_bins = np.sort(completed_bins)
         nbins = len(completed_bins)
         losvd_mean = np.zeros((nbins,nv))
         losvd_sigma = np.zeros((nbins,nv))
-        for i in completed_bins:
-            losvd_mean[i] = result[i]['losvd'][2]
-            losvd_sigma[i] = result[i]['losvd'][3] - result[i]['losvd'][1]
+        # completed_bins may have gaps i.e. some bins may not be completed, so
+        # to fill arrays use a counter `i` - do not use completed_bins as index
+        i = 0
+        for bin in completed_bins:
+            # get median LOSVD
+            losvd_mean[i] = result[bin]['losvd'][2]
+            # get 68% BCI
+            losvd_sigma[i] = result[bin]['losvd'][3] - result[bin]['losvd'][1]
+            i += 1
+        # BAYES-LOSVD returns the velocity array (and losvds) in descening order
+        # let's flip them to make it easier to work with later
+        vcent = vcent[::-1]
+        losvd_mean = losvd_mean[:,::-1]
+        losvd_sigma = losvd_sigma[:,::-1]
+        # put them in a table
         data = table.Table()
-        data['binID'] = completed_bins
+        data['binID_BayesLOSVD'] = completed_bins
+        # BayesLOSVD bin indexing starts at 0 and some bins may be missing, but:
+        # 1) orblib_f.f90 assumes bins start at 1
+        # 2) LegacyOrbitLibrary.read_orbit_base assumes that no bins are missing
+        # so let's introduce a binID_dynamite which satisfies these requirements
+        data['binID_dynamite'] = np.arange(nbins)+1
         for j in range(nv):
             data[f'losvd_{j}'] = losvd_mean[:,j]
             data[f'dlosvd_{j}'] = losvd_sigma[:,j]
@@ -613,6 +670,7 @@ class BayesLOSVD(Kinematics, data.Integrated):
     def write_aperture_and_bin_files(self,
                                      filename=None,
                                      angle_deg=0.,
+                                     center='max_flux',
                                      aperture_filename='aperture.dat',
                                      bin_filename='bins.dat'):
         """Write aperture.dat and 'bins.dat' files from BAYES-LOSVD output
@@ -624,48 +682,84 @@ class BayesLOSVD(Kinematics, data.Integrated):
         angle_deg : float
             Angle in degrees measured counter clockwise from the galaxy major
             axis to the X-axis of the input data
+        center : tuple or string
+            either pair of floats (x0,y0) defining center in pixel co-ordinates
+            or string 'max_flux'
         aperture_filename : string
             name of aperture file
         bin_filename : string
             name of bins file
 
         """
+        def get_pixel_info(x):
+            """Get pixel information for aperture.dat given 1D image co-ords
+
+            Given image co-ordinates x, gives (i) the likely pixel spacing dx
+            assuming x are from a regular grid, and dx is the minimum spacing
+            between sorted x, (ii) the minimum x in the range, (iii) the number
+            of pixels, (iii) the pixel edges
+
+            ** this will fail if there are no adjacent values in x **
+
+            """
+            ux = np.unique(x) # this is sorted
+            dx = ux[1:] - ux[:-1]
+            dx = np.min(dx)
+            min_x, max_x = ux[0], ux[-1]
+            nx = np.round((max_x - min_x)/dx) + 1
+            x_cnt = min_x + np.arange(nx) * dx
+            x_edg = np.concatenate((x_cnt-dx/2., [x_cnt[-1]+dx/2.]))
+            x_rng = x_edg[-1] - x_edg[0]
+            min_x_rng = x_edg[0]
+            return min_x_rng, x_rng, x_edg, x_cnt, dx, int(nx)
         result = self.load_hdf5(filename)
-        # get x data
-        x = result['x']
-        ux = np.unique(x) # returns a sorted array
-        nx = len(ux)
-        dx = ux[1]-ux[0]
-        edg_x = np.concatenate((ux-dx/2., [ux[-1]+dx/2.]))
-        minx, maxx = np.min(edg_x), np.max(edg_x)
-        # get y data
-        y = result['y']
-        uy = np.unique(y) # returns a sorted array
-        ny = len(uy)
-        dy = uy[1]-uy[0]
-        edg_y = np.concatenate((uy-dy/2., [uy[-1]+dy/2.]))
-        miny, maxy = np.min(edg_y), np.max(edg_y)
+        # find bins which appear in the data table
+        idx = np.isin(result['binID'], self.data['binID_BayesLOSVD'])
+        x = result['x'][idx]
+        y = result['y'][idx]
+        # center the object
+        if center == 'max_flux':
+            pixel_flux = result['flux'][idx]
+            idx_max_flux = np.argmax(pixel_flux)
+            x_center = x[idx_max_flux]
+            y_center = y[idx_max_flux]
+        else:
+            x_center, y_center = center
+        x -= x_center
+        y -= y_center
+        # get bin IDs
+        binID_bl = result['binID'][idx]
+        binID_dyn = self.map_binID_blosvd_to_binID_dynamite(binID_bl)
+        # get bin centers and add to the data table
+        xbin = result['xbin'] - x_center
+        ybin = result['ybin'] - y_center
+        self.data['xbin'] = xbin[self.data['binID_BayesLOSVD']]
+        self.data['ybin'] = ybin[self.data['binID_BayesLOSVD']]
+        self.save_data_table()
+        # get pixel sizes
+        min_x, x_rng, x_edg, x_cnt, dx, nx = get_pixel_info(x)
+        min_y, y_rng, y_edg, y_cnt, dy, ny = get_pixel_info(y)
         # Create aperture.dat
         aperture_file = open(aperture_filename, 'w')
         aperture_file.write('#counter_rotation_boxed_aperturefile_version_2 \n')
-        string = '\t{0:<.6f}\t{1:<.6f} \n'.format(minx, miny)
+        string = '\t{0:<.6f}\t{1:<.6f} \n'.format(min_x, min_y)
         aperture_file.write(string)
-        string = '\t{0:<.6f}\t{1:<.6f} \n'.format(maxx-minx, maxy-miny)
+        string = '\t{0:<.6f}\t{1:<.6f} \n'.format(x_rng, y_rng)
         aperture_file.write(string)
         string = '\t{0:<.6f} \n'.format(angle_deg)
         aperture_file.write(string)
-        string = '\t{0}\t{1} \n'.format(int(nx), int(ny))
+        string = '\t{0}\t{1} \n'.format(nx, ny)
         aperture_file.write(string)
         string = ' aperture = -(hst_pa) + 90 \n'
         aperture_file.write(string)
         aperture_file.close()
         # Write bins.dat file
-        ix = np.digitize(x, edg_x)
+        ix = np.digitize(x, x_edg)
         ix -= 1
-        iy = np.digitize(y, edg_y)
+        iy = np.digitize(y, y_edg)
         iy -= 1
         grid = np.zeros((nx, ny), dtype=int)
-        grid[ix, iy] = result['binID']
+        grid[ix, iy] = binID_dyn
         comment_line = '#Counterrotaton_binning_version_1\n'
         grid_size = nx*ny
         first_line = '{0}\n'.format(grid_size)
@@ -682,21 +776,132 @@ class BayesLOSVD(Kinematics, data.Integrated):
         bins_file.write('\n')
         bins_file.close()
 
-    def set_default_hist_width(self):
-        self.hist_width = self.data.meta['nvbins']*self.data.meta['dv']
+    def map_binID_blosvd_to_binID_dynamite(self, binID_blosvd):
+        """Map an input array of BayesLOSVD binIDs to DYNMAITE binIDs.
+
+        Assumes that the table `self.data` has colums `binID_BayesLOSVD` and
+        `binID_dynamite` which define the mapping. Any binID_blosvd with no
+        corresponding binID_dynamite are given binID_dynamite=0.
+
+        Parameters
+        ----------
+        binID_blosvd : array
+            array of BayesLOSVD binIDs
+
+        Returns
+        -------
+        type
+            corresponding array of DYNMAITE binIDs
+
+        """
+        # first find binID_blosvd's which have no corresponding binID_dynamite
+        idx_missing = np.isin(binID_blosvd, self.data['binID_BayesLOSVD'])
+        idx_missing = np.where(idx_missing==False)
+        # do the mapping - the method to do this is taken from
+        # https://stackoverflow.com/q/13572448/11231128
+        idx_srt_binid_blosvd = np.argsort(self.data['binID_BayesLOSVD'])
+        srt_binid_blosvd = self.data['binID_BayesLOSVD'][idx_srt_binid_blosvd]
+        srt_binid_dynamite = self.data['binID_dynamite'][idx_srt_binid_blosvd]
+        index = np.digitize(binID_blosvd, srt_binid_blosvd, right=True)
+        binID_dynamite = srt_binid_dynamite[index]
+        # for missing entries, replace with 0
+        binID_dynamite[idx_missing] = 0
+        return binID_dynamite
+
+    def set_default_hist_width(self, scale=2.):
+        """Set orbit histogram width as scaled multiple of data histogram width
+
+        Sets the result to attribute `self.hist_width`
+
+        Parameters
+        ----------
+        scale : float
+            scale factor
+
+        """
+        vmin = self.data.meta['vcent'][0] - self.data.meta['dv']/2.
+        vmax = self.data.meta['vcent'][-1] + self.data.meta['dv']/2.
+        max_vabs = np.max(np.abs([vmin, vmax]))
+        self.hist_width = 2. * scale * max_vabs
 
     def set_default_hist_center(self):
-        self.hist_center = np.mean(self.data.meta['vcent'])
+        """Sets orbit histogram center (i.e. `self.hist_center`) to 0.
+        """
+        self.hist_center = 0.
 
-    def set_default_hist_bins(self):
-        self.hist_bins = self.data.meta['nvbins']
+    def set_default_hist_bins(self, oversampling_factor=10):
+        """Set orbit histogram nbins by scaling down the data velocity spacing
 
+        Sets the result to attribute `self.hist_bins`
 
+        Parameters
+        ----------
+        oversampling_factor : float
+            scale factor to divide the data velocity spacing
 
+        """
+        data_dv = self.data.meta['dv']
+        orblib_dv = self.data.meta['dv']/oversampling_factor
+        orblib_nbins = self.hist_width/orblib_dv
+        orblib_nbins = int(np.ceil(orblib_nbins))
+        # make nbins odd so histogrammed centered on 0 (allows orbit flipping)
+        if orblib_nbins % 2 == 0:
+            orblib_nbins += 1
+        self.hist_bins = orblib_nbins
 
+    def set_mean_v_and_sig_v_per_aperture(self):
+        # the marginalised LOSVDs saved by BAYES-losvd do not sum to 1 -
+        # we must account for this when calculating moments
+        losvd = (self.data['losvd'].T/np.sum(self.data['losvd'], 1)).T
+        v_array = self.data.meta['vcent']
+        mu_v = np.sum(v_array * losvd, 1)
+        var_v = np.sum((v_array - mu_v[:,np.newaxis])**2 * losvd, 1).T
+        sig_v = var_v**0.5
+        self.data['v'] = mu_v
+        self.data['sigma'] = sig_v
 
+    def rebin_orblib_to_observations(self, losvd_histograms):
+        v_cent, dv = np.array(self.data.meta['vcent']), self.data.meta['dv']
+        v_edg = np.concatenate(((v_cent-dv/2.), [v_cent[-1]+dv/2.]))
+        dx = losvd_histograms.dx[0]
+        assert np.allclose(losvd_histograms.dx, dx), 'vbins must be uniform'
+        # construct matrix to re-bin orbits to the data velocity spacing
+        na = np.newaxis
+        # the boudaries of the i'th data vbin:
+        v_i = v_edg[:-1,na]
+        v_ip1 = v_edg[1:,na]
+        # the boudaries of the j'th orblib vbin:
+        x_j = losvd_histograms.xedg[na,:-1]
+        x_jp1 = losvd_histograms.xedg[na,1:]
+        # f = the fraction of the j'th orblib vbin in the i'th data vbin:
+        f1 = (x_jp1 - v_i)/dx
+        f2 = (v_ip1 - x_j)/dx
+        f1[f1>1] = 1
+        f1[f1<0] = 0
+        f2[f2>1] = 1
+        f2[f2<0] = 0
+        f = np.minimum(f1, f2)
+        # TODO:  check if the following is faster if we use sparseness of f
+        # sparse matrix multiplication won't work with einsum, but may be faster
+        rebined_orbit_vel_hist = np.einsum('ijk,lj->ilk',
+                                           losvd_histograms.y,
+                                           f,
+                                           optimize=True)
+        return rebined_orbit_vel_hist
 
+    def transform_orblib_to_observables(self,
+                                        losvd_histograms,
+                                        weight_solver_settings):
+        losvd_histograms = self.rebin_orblib_to_observations(losvd_histograms)
+        # losvd_histograms has shape (n_orbs, n_vbins, n_aperture)
+        # weight solver expects (n_orbs, n_aperture, n_vbins)
+        losvd_histograms = np.swapaxes(losvd_histograms, 1, 2)
+        return losvd_histograms
 
-
+    def get_observed_values_and_uncertainties(self, weight_solver_settings):
+        # weight solver expects arrays of shape (n_aperture, n_vbins)
+        observed_values = self.data['losvd'] # shape = (n_aperture, n_vbins)
+        uncertainties = self.data['dlosvd'] # shape = (n_aperture, n_vbins)
+        return observed_values, uncertainties
 
 # end

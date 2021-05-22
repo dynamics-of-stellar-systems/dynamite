@@ -28,7 +28,9 @@ def run_user_test():
 
     # read configuration
     if '__file__' in globals():
-        os.chdir(os.path.dirname(__file__))
+        file_dir = os.path.dirname(__file__)
+        if file_dir:
+            os.chdir(file_dir)
     fname = 'user_test_config_multi_ml_FCC.yaml'
     c = dyn.config_reader.Configuration(fname, reset_logging=True)
 
@@ -78,7 +80,7 @@ def run_user_test():
                                                 parset=parset0)
         orblib0.read_losvd_histograms()
         weight_solver = mod0.get_weights()
-        orbmat, rhs, weights_old = weight_solver.read_nnls_orbmat_rhs_and_solution()
+        weights_old, chi2_tot_old, chi2_kin_old = weight_solver.solve(orblib0)
         weight_solver_new = dyn.weight_solvers.NNLS(
                 system=c.system,
                 settings=c.settings.weight_solver_settings,

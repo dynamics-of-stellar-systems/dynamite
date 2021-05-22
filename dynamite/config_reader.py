@@ -4,15 +4,16 @@ import shutil
 import glob
 import math
 import logging
-
+import importlib
 import yaml
+
 import dynamite as dyn
-import physical_system as physys
-import parameter_space as parspace
-import kinematics as kinem
-import populations as popul
-import mges as mge
-import model
+from dynamite import physical_system as physys
+from dynamite import parameter_space as parspace
+from dynamite import kinematics as kinem
+from dynamite import populations as popul
+from dynamite import mges as mge
+from dynamite import model
 
 class Settings(object):
     """
@@ -37,10 +38,10 @@ class Settings(object):
         elif kind == 'io_settings':
             try:
                 out_dir = values['output_directory']
-            except KeyError:
+            except KeyError as e:
                 text = 'Output directory not set in config file.'
                 self.logger.error(text)
-                raise KeyError(text)
+                raise Exception(text) from e
             self.io_settings = values
             self.io_settings['model_directory'] = out_dir + 'models/'
             self.io_settings['plot_directory'] = out_dir + 'plots/'
@@ -131,15 +132,15 @@ class Configuration(object):
         None.
 
         """
-        self.logger = logging.getLogger(f'{__name__}.{__class__.__name__}')
-        logger = self.logger
         if reset_logging is True:
-            logger.info('Resetting logging configuration')
             DynamiteLogging()
-            logger.debug('Logging set to Dynamite defaults')
+            self.logger = logging.getLogger(f'{__name__}.{__class__.__name__}')
+            self.logger.debug('Logging reset to Dynamite defaults')
         else:
-            logger.debug("Dynamite uses the calling application's logging "
-                         "settings")
+            self.logger = logging.getLogger(f'{__name__}.{__class__.__name__}')
+            self.logger.debug("Dynamite uses the calling application's "
+                              "logging settings")
+        logger = self.logger
         self.logger.debug(f'This is Python {sys.version.split()[0]}')
         self.logger.debug(f'Using DYNAMITE version {dyn.__version__} '
                           f'located at {dyn.__path__}')
@@ -150,7 +151,7 @@ class Configuration(object):
         legacy_dir = \
             os.path.realpath(os.path.dirname(__file__)+'/../legacy_fortran')
             # os.path.dirname(os.path.realpath(__file__))+'/../'legacy_fortran'
-        self.logger.debug(f'Legacy Fortran folder: {legacy_dir}')
+        self.logger.debug(f'Default legacy Fortran directory: {legacy_dir}.')
 
         self.config_file = filename
         try:
@@ -178,7 +179,7 @@ class Configuration(object):
                     self.params['io_settings'][io+'_directory'] += '/'
         except:
             logger.error('io_settings: check input_directory '
-                         'and output_directory')
+                         'and output_directory in config file')
             raise
         self.settings.add('io_settings', self.params['io_settings'])
         logger.debug('io_settings assigned to Settings object')
@@ -338,6 +339,8 @@ class Configuration(object):
                 if value['directory'][-1]=='/':
                     value['directory'] = value['directory'][:-1]
                 self.settings.add('legacy_settings', value)
+                self.logger.debug("Legacy directory set to "
+                                  f"{value['directory']}.")
 
             # add output settings to Settings object
 
@@ -441,11 +444,17 @@ class Configuration(object):
         two_n_obs : 2*n_obs, int
 
         """
-        number_GH = self.settings.weight_solver_settings['number_GH']
         stars = \
           self.system.get_component_from_class(physys.TriaxialVisibleComponent)
-        kin_len = sum([len(kin.data) for kin in stars.kinematic_data])
-        two_n_obs = 2 * number_GH * kin_len
+        n_obs = 0.
+        for k in stars.kinematic_data:
+            if k.type == 'GaussHermite':
+                number_GH = self.settings.weight_solver_settings['number_GH']
+                n_obs += number_GH * len(k.data)
+            if k.type == 'BayesLOSVD':
+                nvbins = k.data.meta['nvbins']
+                n_obs += nvbins * len(k.data)
+        two_n_obs = 2 * n_obs
         return two_n_obs
 
     def remove_existing_orblibs(self):
@@ -466,7 +475,7 @@ class Configuration(object):
 
     def remove_existing_orbital_weights(self):
         """
-        Removes existing orbital weights.
+        Removes existing orbital weights ('ml' directories).
 
         Raises
         ------
@@ -523,25 +532,42 @@ class Configuration(object):
             self.logger.warning(f'Directory {plot_dir} not found, cannot '
                                 'remove plots.')
 
-    def remove_existing_all_models_file(self):
+    def remove_existing_all_models_file(self, wipe_other_files=False):
         """
-        Deletes the all models file if it exists and resets
-        self.all_models to an empty AllModels object.
+        Deletes the all models file if it exists and optionally removes
+        all other regular files in the output directory. Additionally
+        resets self.all_models to an empty AllModels object.
+
+        Parameters
+        ----------
+        wipe_other_files : bool, optional
+            If True, all regular files in the output directory will be
+            deleted and a new backup of the config file will be created.
+            If False, only the all models file will be removed.
+            The default is False.
 
         Raises
         ------
-        Exception if all models file cannot be removed.
+        Exception if file(s) cannot be removed.
 
         Returns
         -------
         None.
 
         """
-        all_models_file = self.settings.io_settings['output_directory'] \
-                          + self.settings.io_settings['all_models_file']
-        if os.path.isfile(all_models_file):
-            os.remove(all_models_file)
-            self.logger.info(f'Deleted existing {all_models_file}.')
+        if wipe_other_files:
+            output_dir = self.settings.io_settings['output_directory']
+            for f in glob.glob(f'{output_dir}*'):
+                if os.path.isfile(f):
+                    os.remove(f)
+            self.backup_config_file()
+            self.logger.info(f'Removed files in {output_dir}.')
+        else:
+            all_models_file = self.settings.io_settings['output_directory'] \
+                              + self.settings.io_settings['all_models_file']
+            if os.path.isfile(all_models_file):
+                os.remove(all_models_file)
+                self.logger.info(f'Deleted existing {all_models_file}.')
         self.all_models = model.AllModels(parspace=self.parspace,
                                           settings=self.settings,
                                           system=self.system)
@@ -695,16 +721,31 @@ class Configuration(object):
             if issubclass(type(c), physys.VisibleComponent): # Check vis. comp.
                 if c.kinematic_data:
                     for kin_data in c.kinematic_data:
-                        if kin_data.type != 'GaussHermite':
-                            self.logger.error('VisibleComponent kinematics '
-                                              'need GaussHermite type')
-                            raise ValueError('VisibleComponent kinematics '
-                                             'need GaussHermite type')
+                        check_gh = (kin_data.type == 'GaussHermite')
+                        check_bl = (kin_data.type == 'BayesLOSVD')
+                        if (not check_gh) and (not check_bl):
+                            self.logger.error('VisibleComponent kinematics type'
+                                              'must be GaussHermite or '
+                                              'BayesLOSVD')
+                            raise ValueError('VisibleComponent kinematics type'
+                                             'must be GaussHermite or '
+                                             'BayesLOSVD')
+                        if check_bl:
+                            # check weight solver type
+                            ws_type = self.settings.weight_solver_settings['type']
+                            if ws_type == 'LegacyWeightSolver':
+                                self.logger.error("LegacyWeightSolver can't be "
+                                                  "used with BayesLOSVD - use "
+                                                  "weight-solver type NNLS")
+                                raise ValueError("LegacyWeightSolver can't be "
+                                                  "used with BayesLOSVD - use "
+                                                  "weight-solver type NNLS")
+
                 else:
-                    self.logger.error('VisibleComponent must have kinematics '
-                                      'of type GaussHermite')
-                    raise ValueError('VisibleComponent must have kinematics '
-                                     'of type GaussHermite')
+                    self.logger.error('VisibleComponent must have kinematics: '
+                                      'either GaussHermite or BayesLOSVD')
+                    raise ValueError('VisibleComponent must have kinematics: '
+                                     'either GaussHermite or BayesLOSVD')
                 if c.symmetry != 'triax':
                     self.logger.error('Legacy mode: VisibleComponent must be '
                                       'triaxial')
@@ -783,7 +824,7 @@ class Configuration(object):
 class DynamiteLogging(object):
     """
     Dynamite logging setup. ONLY use if logging has not been configured
-    outside of Dynamite.
+    outside of Dynamite. Resets all logging.
     If no arguments are give, the logging setup is as follows:
     (1) log to the console with logging level INFO, messages include the level,
         timestamp, class name, and message text
@@ -817,10 +858,11 @@ class DynamiteLogging(object):
         None.
 
         """
+        logging.shutdown()
+        importlib.reload(logging)
         logger = logging.getLogger()       # create logger
-        logger.setLevel(logging.DEBUG)     # set level that's lower that wanted
-
-        ch = logging.StreamHandler()       # create console logging handler
+        logger.setLevel(logging.DEBUG)     # set level that's lower than wanted
+        ch = logging.StreamHandler(stream=sys.stderr) # create console handler
         ch.setLevel(console_level)         # set console logging level
         # create formatter
         if console_formatter is None:
@@ -831,7 +873,7 @@ class DynamiteLogging(object):
         logger.addHandler(ch)              # add the handler to the logger
 
         if logfile:
-            fh = logging.FileHandler(logfile, mode='w') # create handler
+            fh = logging.FileHandler(logfile, mode='w') # create file handler
             fh.setLevel(logfile_level)             # set file logging level
             # create formatter
             # formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')

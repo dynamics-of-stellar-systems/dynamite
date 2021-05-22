@@ -8,7 +8,7 @@ Created on Mon Feb 15 08:54:48 2021
 
 import os
 import dynamite as dyn
-import physical_system as physys
+from dynamite import physical_system as physys
 
 print('DYNAMITE')
 print('    version', dyn.__version__)

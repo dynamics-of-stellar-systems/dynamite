@@ -1,17 +1,8 @@
-# some tricks to add the current path to sys.path (so the imports below work)
-
-import os.path
-import sys
-
-this_dir = os.path.dirname(__file__)
-if not this_dir in sys.path:
-    sys.path.append(this_dir)
-
 import numpy as np
 import copy
-import parameter_space as parspace
-from astropy.table import Table
 import logging
+from astropy.table import Table
+from dynamite import parameter_space as parspace
 
 class Parameter(object):
 
@@ -199,9 +190,9 @@ class ParameterSpace(list):
                 except:
                     text = f"Parameter {p.name}={p.value}: cannot check " \
                            "lower bound due to missing 'lo' setting."
-                    self.logger.info(text)
+                    self.logger.debug(text)
                 else:
-                    if not (lo <= p.value):
+                    if lo > p.value:
                         text = f'Parameter {p.name}={p.value} out of ' \
                                f'bounds: violates {lo}<={p.value}.'
                         self.logger.error(text)
@@ -211,15 +202,15 @@ class ParameterSpace(list):
                 except:
                     text = f"Parameter {p.name}={p.value}: cannot check " \
                            "upper bound due to missing 'hi' setting."
-                    self.logger.info(text)
+                    self.logger.debug(text)
                 else:
-                    if not (p.value <= hi):
+                    if p.value > hi:
                         text = f'Parameter {p.name}={p.value} out of ' \
                                f'bounds: violates {p.value}<={hi}.'
                         self.logger.error(text)
                         raise ValueError(text)
             else:
-                self.logger.info(f"Parameter {p.name}={p.value}: cannot " \
+                self.logger.debug(f"Parameter {p.name}={p.value}: cannot " \
                     "check bounds due to missing 'lo' and 'hi' settings.")
 
 
@@ -238,9 +229,9 @@ class ParameterGenerator(object):
         self.parspace_settings = parspace_settings
         which_chi2 = self.parspace_settings.get('which_chi2')
         if which_chi2 not in ['chi2', 'kinchi2']:
-          text = 'Unknown or missing which_chi2 setting, use chi2 or kinchi2'
-          self.logger.error(text)
-          raise ValueError(text)
+            text = 'Unknown or missing which_chi2 setting, use chi2 or kinchi2'
+            self.logger.error(text)
+            raise ValueError(text)
         self.chi2 = 'chi2' if which_chi2 == 'chi2' else 'kinchi2'
         self.status = {}
         self.name = name
@@ -281,7 +272,7 @@ class ParameterGenerator(object):
         the following:
         (i) evaluates stopping criteria, and stop if necessary
         (ii) runs the specific_generate_method of the child class, which
-        updates self.model_list with a list of propsal models
+        updates self.model_list with a list of proposal models
         (iii) removes previously run and/or invalid models from self.model_list
         (iv) converts parameters from raw_values to par_values
         (v) adds new, valid models to current_models.table
@@ -289,7 +280,7 @@ class ParameterGenerator(object):
 
         Parameters
         ----------
-        current_models : schwarzschild.AllModels
+        current_models : dynamite.AllModels
         kw_specific_generate_method : dict
             keyword arguments passed to the specific_generate_method of the
             child class
@@ -309,7 +300,7 @@ class ParameterGenerator(object):
         """
         if current_models is None:
             errormsg = "current_models needs to be a valid " \
-                       "schwarzschild.AllModels instance"
+                       "dynamite.AllModels instance"
             self.logger.error(errormsg)
             raise ValueError(errormsg)
         else:
@@ -893,8 +884,8 @@ class FullGrid(ParameterGenerator):
         Clips parameter values to lo/hi attributes. If clipping violates the
         minstep attribute, the resulting model(s) will not be created. If the
         minstep attribute is missing, the step attribute will be used instead.
-        Explicitly set minstep=0 to allow arbitrarily small steps (not
-        recommended).
+        Explicitly set minstep=0 to allow arbitrarily small steps down to eps
+        (not recommended).
 
         Parameters
         ----------

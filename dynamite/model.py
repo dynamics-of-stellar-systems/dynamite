@@ -5,8 +5,8 @@ from astropy import table
 from astropy.io import ascii
 import logging
 
-import weight_solvers as ws
-import orblib as dyn_orblib
+from dynamite import weight_solvers as ws
+from dynamite import orblib as dyn_orblib
 
 class AllModels(object):
 
@@ -204,14 +204,15 @@ class Model(object):
         self.settings = settings
         self.parset = parset
         self.parspace = parspace
-        # directory of the Schwarzschild fortran files
+        # directory of the legacy fortran files
         self.legacy_directory = self.settings.legacy_settings['directory']
         # directory of the input kinematics
         self.in_dir = self.settings.io_settings['input_directory']
         self.directory = self.get_model_directory()
-        self.logger.debug(f'Model directory: {self.directory}')
+        self.logger.debug(f'Model directory string: {self.directory}')
         self.directory_noml=self.directory[:self.directory[:-1].rindex('/')+1]
-        self.logger.debug(f'Model directory up to ml: {self.directory_noml}')
+        self.logger.debug('Model directory string up to ml: '
+                          f'{self.directory_noml}')
 
     def get_model_directory(self):
         out_dir = self.settings.io_settings['output_directory']

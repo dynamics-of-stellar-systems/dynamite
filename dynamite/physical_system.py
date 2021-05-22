@@ -2,19 +2,9 @@
 # e.g. the stellar light, dark matter, black hole, globular clusters
 
 import numpy as np
-
-# some tricks to add the current path to sys.path (so the imports below work)
-
-import os.path
-import sys
 import logging
 
-this_dir = os.path.dirname(__file__)
-if not this_dir in sys.path:
-    sys.path.append(this_dir)
-
-import mges as mge
-
+from dynamite import mges as mge
 
 class System(object):
 
@@ -65,7 +55,8 @@ class System(object):
         #         if any([p.name.endswith(c.name) for c in self.cmp_list]):
         #             raise ValueError('System parameter cannot end with '
         #                              f'"component": {p.name}')
-        if not(self.distMPc and self.name and self.position_angle):
+        if (self.distMPc is None) or (self.name is None) \
+           or (self.position_angle is None):
             text = 'System needs distMPc, name, and position_angle attributes'
             self.logger.error(text)
             raise ValueError(text)
@@ -301,7 +292,8 @@ class AxisymmetricVisibleComponent(VisibleComponent):
         super().__init__(symmetry='axisymm', **kwds)
 
     def validate(self):
-        par_format = {'par1':'6.3g', 'par2':'6.4g'}
+        # par_format = {'par1':'6.3g', 'par2':'6.4g'}
+        par_format = {'par1':'g', 'par2':'g'}
         super().validate(par_format)
 
 
@@ -322,7 +314,8 @@ class TriaxialVisibleComponent(VisibleComponent):
         None.
 
         """
-        par_format = {'q':'6.3g', 'p':'6.4g', 'u':'7.5g'}
+        # par_format = {'q':'6.3g', 'p':'6.4g', 'u':'7.5g'}
+        par_format = {'q':'g', 'p':'g', 'u':'g'}
         super().validate(par_format=par_format)
         self.qobs = np.amin(self.mge_pot.data['q'])
         if self.qobs is np.nan:
@@ -383,17 +376,17 @@ class TriaxialVisibleComponent(VisibleComponent):
             w1 = (u2 - q2) * (o2 * u2 - q2) / ((1.0 - q2) * (p2 - q2))
             w2 = (u2 - p2) * (p2 - o2 * u2) * (1.0 - q2) / ((1.0 - u2) * (1.0 - o2 * u2) * (p2 - q2))
             w3 = (1.0 - o2 * u2) * (p2 - o2 * u2) * (u2 - q2) / ((1.0 - u2) * (u2 - p2) * (o2 * u2 - q2))
-    
+
             if w1 >=0.0 :
                 theta = np.arccos(np.sqrt(w1)) * 180 /np.pi
             else:
                 theta=np.nan
-    
+
             if w2 >=0.0 :
                 phi = np.arctan(np.sqrt(w2)) * 180 /np.pi
             else:
                 phi=np.nan
-    
+
             if w3 >=0.0 :
                 psi = 180 - np.arctan(np.sqrt(w3)) * 180 /np.pi
             else:
@@ -439,7 +432,8 @@ class Plummer(DarkComponent):
         return rho
 
     def validate(self):
-        par_format = {'m':'6.3g', 'a':'7.3g'}
+        # par_format = {'m':'6.3g', 'a':'7.3g'}
+        par_format = {'m':'g', 'a':'g'}
         super().validate(par_format)
 
 
@@ -450,7 +444,8 @@ class NFW(DarkComponent):
         super().__init__(symmetry='spherical', **kwds)
 
     def validate(self):
-        par_format = {'c':'6.3g', 'f':'6.3g'}
+        # par_format = {'c':'6.3g', 'f':'6.3g'}
+        par_format = {'c':'g', 'f':'g'}
         super().validate(par_format)
 
 
@@ -461,7 +456,8 @@ class Hernquist(DarkComponent):
         super().__init__(symmetry='spherical', **kwds)
 
     def validate(self):
-        par_format = {'rhoc':'6.3g', 'rc':'6.3g'}
+        # par_format = {'rhoc':'6.3g', 'rc':'6.3g'}
+        par_format = {'rhoc':'g', 'rc':'g'}
         super().validate(par_format)
 
 
@@ -472,7 +468,8 @@ class TriaxialCoredLogPotential(DarkComponent):
         super().__init__(symmetry='triaxial', **kwds)
 
     def validate(self):
-        par_format = {'Vc':'6.3g', 'rho':'6.3g', 'p':'6.3g', 'q':'6.3g'}
+        # par_format = {'Vc':'6.3g', 'rho':'6.3g', 'p':'6.3g', 'q':'6.3g'}
+        par_format = {'Vc':'g', 'Rc':'g', 'p':'g', 'q':'g'}
         super().validate(par_format)
 
 
@@ -483,8 +480,9 @@ class GeneralisedNFW(DarkComponent):
         super().__init__(symmetry='triaxial', **kwds)
 
     def validate(self):
-        par_format = {'concentration':'6.3g', 'Mvir':'6.3g',
-                      'inner_log_slope':'6.3g'}
+        # par_format = {'concentration':'6.3g', 'Mvir':'6.3g',
+        #               'inner_log_slope':'6.3g'}
+        par_format = {'concentration':'g', 'Mvir':'g', 'inner_log_slope':'g'}
         super().validate(par_format)
 
 

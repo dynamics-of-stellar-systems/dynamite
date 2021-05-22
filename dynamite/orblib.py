@@ -4,14 +4,9 @@ import shutil
 import logging
 import numpy as np
 from scipy.io import FortranFile
-from astropy import table
 
-import sys
-this_dir = os.path.dirname(__file__)
-if not this_dir in sys.path:
-    sys.path.append(this_dir)
-import physical_system as physys
-import kinematics as dyn_kin
+from dynamite import physical_system as physys
+from dynamite import kinematics as dyn_kin
 
 class OrbitLibrary(object):
 
@@ -75,14 +70,18 @@ class LegacyOrbitLibrary(OrbitLibrary):
             stars = self.system.get_component_from_class( \
                                             physys.TriaxialVisibleComponent)
             kinematics = stars.kinematic_data
-            #create the kinematic input files for each kinematic dataset
+            # create the kinematic input files for each kinematic dataset
             for i in np.arange(len(kinematics)):
-                if len(kinematics)==1:
-                    old_filename = self.mod_dir+'infil/kin_data.dat'
-                else:
-                    old_filename = self.mod_dir+'infil/kin_data_'+str(i)+'.dat'
-                kinematics[i].convert_to_old_format(old_filename)
-
+                # # convert kinematics to old format to input to fortran
+                # # only needed if LegacyWeightSolver is used
+                # ws_type = self.settings.weight_solver_settings['type']
+                # if ws_type == 'LegacyWeightSolver':
+                #     if len(kinematics)==1:
+                #         old_filename = self.mod_dir+'infil/kin_data.dat'
+                #     else:
+                #         old_filename = self.mod_dir+'infil/kin_data_'+str(i)+'.dat'
+                #     kinematics[i].convert_to_old_format(old_filename)
+                # copy aperture and bins file across
                 aperture_file = self.in_dir + kinematics[i].aperturefile
                 shutil.copyfile(aperture_file,
                             self.mod_dir+'infil/'+ kinematics[i].aperturefile)
@@ -90,26 +89,29 @@ class LegacyOrbitLibrary(OrbitLibrary):
                 shutil.copyfile(binfile,
                             self.mod_dir+'infil/'+ kinematics[i].binfile)
 
-            #combined kinematics for legacy dynamite
-            if len(kinematics)>1:
-                gh_order = kinematics[0].get_highest_order_gh_coefficient()
-                if not all(kin.get_highest_order_gh_coefficient() == gh_order \
-                           for kin in kinematics[1:]):
-                    text = 'Multiple kinematics: all need to have the same ' \
-                           'number of gh coefficients'
-                    self.logger.error(text)
-                    raise ValueError(text)
-                if not all(isinstance(kin,dyn_kin.GaussHermite) \
-                           for kin in kinematics):
-                    text = 'Multiple kinematics: all must be GaussHermite'
-                    self.logger.error(text)
-                    raise ValueError(text)
-                # make a dummy 'kins_combined' object ...
-                kins_combined = kinematics[0]
-                # ...replace data attribute with stacked table of all kinematics
-                kins_combined.data = table.vstack([k.data for k in kinematics])
-                old_filename = self.mod_dir+'infil/kin_data_combined.dat'
-                kins_combined.convert_to_old_format(old_filename)
+            # # combine all kinematics into one file
+            # # only needed if LegacyWeightSolver is used
+            # ws_type = self.settings.weight_solver_settings['type']
+            # if ws_type == 'LegacyWeightSolver':
+            #     if len(kinematics)>1:
+            #         gh_order = kinematics[0].get_highest_order_gh_coefficient()
+            #         if not all(kin.get_highest_order_gh_coefficient() == gh_order \
+            #                    for kin in kinematics[1:]):
+            #             text = 'Multiple kinematics: all need to have the same ' \
+            #                    'number of gh coefficients'
+            #             self.logger.error(text)
+            #             raise ValueError(text)
+            #         if not all(isinstance(kin,dyn_kin.GaussHermite) \
+            #                    for kin in kinematics):
+            #             text = 'Multiple kinematics: all must be GaussHermite'
+            #             self.logger.error(text)
+            #             raise ValueError(text)
+            #         # make a dummy 'kins_combined' object ...
+            #         kins_combined = copy.deepcopy(kinematics[0])
+            #         # ...replace data attribute with stacked table of all kinematics
+            #         kins_combined.data = table.vstack([k.data for k in kinematics])
+            #         old_filename = self.mod_dir+'infil/kin_data_combined.dat'
+            #         kins_combined.convert_to_old_format(old_filename)
 
             # calculate orbit libary
             self.get_orbit_ics()
@@ -293,9 +295,20 @@ class LegacyOrbitLibrary(OrbitLibrary):
         os.chdir(self.mod_dir)
         cmdstr = self.write_executable_for_ics()
         self.logger.info('Calculating initial conditions')
-        p = subprocess.call('bash '+cmdstr, shell=True)
-        self.logger.debug('...done. ' + \
-                          f'Logfile: {self.mod_dir}datfil/orbstart.log')
+        # p = subprocess.call('bash '+cmdstr, shell=True)
+        p = subprocess.run('bash '+cmdstr,
+                           stdout=subprocess.PIPE,
+                           stderr=subprocess.STDOUT,
+                           shell=True)
+        log_file = f'Logfile: {self.mod_dir}datfil/orbstart.log'
+        if p.returncode == 0:
+            self.logger.debug(f'...done - {cmdstr} exit code {p.returncode}. '
+                              f'{log_file}')
+        else:
+            text = f'{cmdstr} exit code {p.returncode}. ' \
+                   f'Message: {p.stdout}. {log_file}'
+            self.logger.error(text)
+            raise RuntimeError(text)
         os.chdir(cur_dir)
 
     def write_executable_for_ics(self):
@@ -303,7 +316,7 @@ class LegacyOrbitLibrary(OrbitLibrary):
         #create the fortran executable
         txt_file = open(cmdstr, "w")
         txt_file.write('#!/bin/bash' + '\n')
-        tmp = '/orbitstart < infil/orbstart.in 2>&1 >> datfil/orbstart.log\n'
+        tmp = '/orbitstart < infil/orbstart.in >> datfil/orbstart.log\n'
         txt_file.write(f'{self.legacy_directory}{tmp}')
         txt_file.close()
         # the name of the executable must be returned to use in subprocess.call
@@ -315,15 +328,37 @@ class LegacyOrbitLibrary(OrbitLibrary):
         os.chdir(self.mod_dir)
         cmdstr_tube, cmdstr_box = self.write_executable_for_integrate_orbits()
         self.logger.info('Integrating orbit library tube orbits')
-        p = subprocess.call('bash '+cmdstr_tube, shell=True)
-        self.logger.debug('...done. ' + \
-                          f'Logfiles: {self.mod_dir}datfil/orblib.log, ' + \
-                          f'{self.mod_dir}datfil/triaxmass.log, ' + \
-                          f'{self.mod_dir}datfil/triaxmassbin.log')
+        # p = subprocess.call('bash '+cmdstr_tube, shell=True)
+        p = subprocess.run('bash '+cmdstr_tube,
+                           stdout=subprocess.PIPE,
+                           stderr=subprocess.STDOUT,
+                           shell=True)
+        log_files = f'Logfiles: {self.mod_dir}datfil/orblib.log, ' \
+                    f'{self.mod_dir}datfil/triaxmass.log, ' \
+                    f'{self.mod_dir}datfil/triaxmassbin.log'
+        if p.returncode == 0:
+            self.logger.debug(f'...done - {cmdstr_tube} exit code '
+                              f'{p.returncode}. {log_files}')
+        else:
+            text = f'{cmdstr_tube} exit code {p.returncode}. ' \
+                   f'Message: {p.stdout}. {log_files}'
+            self.logger.error(text)
+            raise RuntimeError(text)
         self.logger.info('Integrating orbit library box orbits')
-        p = subprocess.call('bash '+cmdstr_box, shell=True)
-        self.logger.debug('...done. ' + \
-                          f'Logfile: {self.mod_dir}datfil/orblibbox.log')
+        # p = subprocess.call('bash '+cmdstr_box, shell=True)
+        p = subprocess.run('bash '+cmdstr_box,
+                           stdout=subprocess.PIPE,
+                           stderr=subprocess.STDOUT,
+                           shell=True)
+        log_file = f'Logfile: {self.mod_dir}datfil/orblibbox.log'
+        if p.returncode == 0:
+            self.logger.debug(f'...done - {cmdstr_box} exit code '
+                              f'{p.returncode}. {log_file}')
+        else:
+            text = f'{cmdstr_box} exit code {p.returncode}. ' \
+                   f'Message: {p.stdout}. {log_file}'
+            self.logger.error(text)
+            raise RuntimeError(text)
         # move back to original directory
         os.chdir(cur_dir)
 
