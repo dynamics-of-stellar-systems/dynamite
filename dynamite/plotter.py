@@ -63,7 +63,7 @@ class Plotter():
             figtype = '.png'
         if which_chi2==None:
             which_chi2 = self.settings.parameter_space_settings['which_chi2']
-        if which_chi2 != 'chi2' and which_chi2 != 'kinchi2':
+        if which_chi2 not in ('chi2', 'kinchi2'):
             text = 'which_chi2 needs to be chi2 or kinchi2, ' \
                    f'but it is {which_chi2}'
             self.logger.error(text)
@@ -128,7 +128,7 @@ class Plotter():
 
         if which_chi2==None:
             which_chi2 = self.settings.parameter_space_settings['which_chi2']
-        if which_chi2 != 'chi2' and which_chi2 != 'kinchi2':
+        if which_chi2 not in ('chi2', 'kinchi2'):
             text = 'which_chi2 needs to be chi2 or kinchi2, ' \
                    f'but it is {which_chi2}'
             self.logger.error(text)
@@ -198,8 +198,7 @@ class Plotter():
 
         #start of the plotting
 
-        plotdir = self.plotdir
-        figname = plotdir + which_chi2 + '_plot' + figtype
+        figname = self.plotdir + which_chi2 + '_plot' + figtype
 
         colormap_orig = mpl.cm.viridis
         colormap = mpl.cm.get_cmap('viridis_r')
@@ -254,7 +253,7 @@ class Plotter():
                     orientation='horizontal')
         plt.subplots_adjust(top=0.99, right=0.99, bottom=0.07, left=0.1)
         fig.savefig(figname)
-        self.logger.info(f'Plot {figname} saved in {plotdir}')
+        self.logger.info(f'Plot {figname} saved in {self.plotdir}')
 
         return fig
 
@@ -830,7 +829,7 @@ class Plotter():
 
         if which_chi2==None:
             which_chi2 = self.settings.parameter_space_settings['which_chi2']
-        if which_chi2 != 'chi2' and which_chi2 != 'kinchi2':
+        if which_chi2 not in ('chi2', 'kinchi2'):
             text = 'which_chi2 needs to be chi2 or kinchi2, ' \
                    f'but it is {which_chi2}'
             self.logger.error(text)
@@ -895,8 +894,6 @@ class Plotter():
         incl_a = np.zeros(n)
         phi_a = np.zeros(n)
         psi_a = np.zeros(n)
-
-        plotdir = self.plotdir
 
         for i in range(n):
             p = val['p-stars'][i]
@@ -975,7 +972,7 @@ class Plotter():
         xrange = np.array([0.1, Rmax_arcs])
         yrange = np.array([1.0e6,maxmass])
 
-        filename1 = plotdir + 'enclosedmassm_linear' + figtype
+        filename1 = self.plotdir + 'enclosedmassm_linear' + figtype
         fig = plt.figure(figsize=(5,5))
         #ftit = fig.suptitle(object.upper() + '_enclosedmassm_linear', fontsize=10,fontweight='bold')
         ax = fig.add_subplot(1, 1, 1)
@@ -1009,7 +1006,7 @@ class Plotter():
         plt.tight_layout()
         plt.savefig(filename1)
 
-        self.logger.info(f'Plot {filename1} saved in {plotdir}')
+        self.logger.info(f'Plot {filename1} saved in {self.plotdir}')
 
         return fig
 
@@ -1144,7 +1141,7 @@ class Plotter():
             file's parameter settings is used to determine which chisquare
             to consider. The default is None.
         Rmax_arcs : numerical value
-             upper radial limit for orbit selection, in arcsec i.e only orbits 
+             upper radial limit for orbit selection, in arcsec i.e only orbits
              extending up to Rmax_arcs are plotted
         figtype : STR, optional
             Determines the file extension to use when saving the figure.
@@ -1266,8 +1263,7 @@ class Plotter():
 
         ### plot the orbit distribution on lambda_z vs. r ###
 
-        plotdir = self.plotdir
-        filename5 = plotdir + 'orbit_linear_only' + figtype
+        filename5 = self.plotdir + 'orbit_linear_only' + figtype
         imgxrange = xbinned
         imgyrange = ybinned
         extent = [imgxrange[0], imgxrange[1], imgyrange[0], imgyrange[1]]
@@ -1294,7 +1290,7 @@ class Plotter():
         plt.tight_layout()
         plt.savefig(filename5)
 
-        self.logger.info(f'Plot {filename5} saved in {plotdir}')
+        self.logger.info(f'Plot {filename5} saved in {self.plotdir}')
 
         # compute total angular momentum
         #angular= np.abs(np.sum((lzm[t[0:y+1]])*orbw[t[0:y+1]])/np.sum(orbw[t[0:y+1]]))
@@ -1538,7 +1534,7 @@ class Plotter():
 
         if which_chi2==None:
             which_chi2 = self.settings.parameter_space_settings['which_chi2']
-        if which_chi2 != 'chi2' and which_chi2 != 'kinchi2':
+        if which_chi2 not in ('chi2', 'kinchi2'):
             text = 'which_chi2 needs to be chi2 or kinchi2, ' \
                    f'but it is {which_chi2}'
             self.logger.error(text)
@@ -1611,9 +1607,8 @@ class Plotter():
             Vp2[0:nrad,i] = vpp_r
             Vp[0:nrad,i] = vp_r
 
-        plotdir = self.plotdir
-        filename1 = plotdir + 'anisotropy_var' + figtype
-        filename2 = plotdir + 'betaz_var' + figtype
+        filename1 = self.plotdir + 'anisotropy_var' + figtype
+        filename2 = self.plotdir + 'betaz_var' + figtype
 
         RRn_m = np.zeros(nrr, dtype=np.float)
         RRn_e = np.zeros(nrr, dtype=np.float)
@@ -1651,7 +1646,7 @@ class Plotter():
         plt.tight_layout()
         plt.savefig(filename1)
 
-        self.logger.info(f'Figure {filename1} saved in {plotdir}')
+        self.logger.info(f'Figure {filename1} saved in {self.plotdir}')
 
         fig2 = plt.figure(figsize=(5,5))
         ax = fig2.add_subplot(1,1,1)
@@ -1683,7 +1678,7 @@ class Plotter():
         plt.tight_layout()
         plt.savefig(filename2)
 
-        self.logger.info(f'Figure {filename2} saved in {plotdir}')
+        self.logger.info(f'Figure {filename2} saved in {self.plotdir}')
 
         return fig1, fig2
 
@@ -1788,7 +1783,7 @@ class Plotter():
 
         if which_chi2==None:
             which_chi2 = self.settings.parameter_space_settings['which_chi2']
-        if which_chi2 != 'chi2' and which_chi2 != 'kinchi2':
+        if which_chi2 not in ('chi2', 'kinchi2'):
             text = 'which_chi2 needs to be chi2 or kinchi2, ' \
                    f'but it is {which_chi2}'
             self.logger.error(text)
@@ -1887,8 +1882,7 @@ class Plotter():
 
         cc = (p_m >= 0)
 
-        plotdir = self.plotdir
-        filename1 = plotdir + 'triaxial_qpt' + figtype
+        filename1 = self.plotdir + 'triaxial_qpt' + figtype
         fig = plt.figure(figsize=(5,5))
         ax = fig.add_subplot(1,1,1)
         ax.set_xlim(np.array([0,Rmax_arcs]))
@@ -1923,7 +1917,7 @@ class Plotter():
         plt.tight_layout()
         plt.savefig(filename1)
 
-        self.logger.info(f'Plot {filename1} saved in {plotdir}')
+        self.logger.info(f'Plot {filename1} saved in {self.plotdir}')
 
         return fig
 
