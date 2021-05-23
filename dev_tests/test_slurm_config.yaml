@@ -142,10 +142,10 @@ orblib_settings:
     random_seed: 4242 # integer; any value <= 0 results in stochastic seed
 
 weight_solver_settings:
-    # type: "LegacyWeightSolver"
-    # nnls_solver: 1
-    type: "NNLS"
-    nnls_solver: 'scipy'
+    type: "LegacyWeightSolver"
+    nnls_solver: 1
+    # type: "NNLS"
+    # nnls_solver: 'scipy'
     regularisation: 0
     number_GH: 4
     GH_sys_err: '0.0 0.0 0.0 0.0 0.3 0.3 0.6 0.6'
@@ -167,7 +167,6 @@ parameter_space_settings:
         n_max_iter : 5
 
 legacy_settings:
-    use_legacy_mode: True
     directory: "default"
 
 io_settings: # paths can be given with or without trailing slash

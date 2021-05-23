@@ -186,7 +186,6 @@ parameter_space_settings:
         n_max_iter : 10
 
 legacy_settings:
-    use_legacy_mode: True
     directory: "default"
 
 io_settings: # paths can be given with or without trailing slash
