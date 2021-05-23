@@ -88,20 +88,20 @@ This section lists the following attributes of the system::
 
 The system consists of a number of physical components - e.g. the stars, black hole, dark halo. For each component the following values must be specified
 
-- ``component name``: a descriptive name, but preferably short as this will be used in output directory names (e.g. ``bh`` for black hole)
+- ``component name``: a descriptive name, but preferably short as this will be used to refer to the component in the code (e.g. ``bh`` for black hole)
     - ``type``: a string corresponding to one of the options in in `component types`_
-    - ``contributes_to_potential``: Boolean
+    - ``contributes_to_potential``: Boolean (not currently used)
     - ``include``: Boolean, whether to include this component or not. If False, equivalent to omitting this component entirely
     - ``parameters``. The required parameters for each component are listed in `component types`_. Each  parameter must have values specified for
         - ``fixed``: Boolean, whether the parameter is to be kept fixed
         - ``value``: an initial value for the parameter
-        - ``par_generator_settings``: settings controlling parameter search (can be omitted if ``fixed=True``)
+        - ``par_generator_settings``: settings controlling parameter search (can be omitted if ``fixed=True``). Note that if these settings are given, then ``value`` must be consistent with ``lo`` and ``hi``.
             - ``lo``: minimum value
             - ``hi``: maximum value
             - ``step``: initial step size for parameter search
             - ``minstep``: minimum allowed stepsize for this parameter
-        - ``logarithmic``: Boolean, whether logarithmic steps should be used for parameter search. If true, then (``value``, ``lo``, ``hi``) must all have log units
-        - ``LaTeX``: LaTeX string for this parameter to be used for plots
+        - ``logarithmic``: Boolean, whether logarithmic steps should be used for parameter search. If true, then (``value``, ``lo``, ``hi``) must all have log units.
+        - ``LaTeX``: LaTeX string for this parameter to be used for plots.
 
 ``component types``
 ^^^^^^^^^^^^^^^^^^^^
@@ -152,7 +152,7 @@ The ``TriaxialVisibleComponent`` represents the galaxy's stars, and therefore ha
     - ``mge_lum``: string, filename for the MGE of the projected luminosity density, with intensity units of :math:`L_\odot \mathrm{pc}^{-2}`. See the :ref:`data preparation <data_prep>` page for more information.
     - ``mge_pot``: string, filename for the MGE of the projected mass density, with intensity units of :math:`M_\odot \mathrm{pc}^{-2}`. See the :ref:`data preparation <data_prep>` page for more information. If you assume that stellar-mass follows stellar-light, then the files ``mge_lum`` and ``mge_pot`` will be identical.
     - ``kinematics``
-        - ``name of the kinematic set``
+        - ``name of the kinematic set``: a descriptive name, best without spaces as it will be part of the kinematic plot file name.
             - ``type``: type of kinematics - either ``GaussHermite`` or ``BayesLOSVD``
             - ``weight``: float, weighting applied to this kinematic set in chi2 calculation
             - ``datafile``: string, filename for the kinematics ECSV data file
@@ -167,7 +167,7 @@ The ``TriaxialVisibleComponent`` represents the galaxy's stars, and therefore ha
 
 This section is used for *global* parameters of the system i.e. those which are unrelated to any particular component.
 
-Currently there is only such parameter, ``ml``, which is a scale factor for the **total mass** of the system. Note that this scales the mass of **every** component of the system i.e. not just the stellar component (despite the acronym ``ml`` resembling *mass-to-light*). This is a time-saving trick: by scaling the total mass of the system, we are able to cheaply re-use orbit-libraries by re-scaling their velocity axes.
+Currently there is only one such parameter, ``ml``, which is a scale factor for the **total mass** of the system. Note that this scales the mass of **every** component of the system i.e. not just the stellar component (despite the acronym ``ml`` resembling *mass-to-light*). This is a time-saving trick: by scaling the total mass of the system, we are able to cheaply re-use orbit-libraries by re-scaling their velocity axes.
 
 Care must be taken when interpreting mass parameters for models with different ``ml``. For example, say the system has a ``GeneralisedNFW`` component with ``Mvir=100`` but the system's ``ml`` parameter is equal to 2. The ``GeneralisedNFW`` would therefore *actually* represent a halo with mass ``Mvir=200``. Further note that the ``NFW`` component is parameterised with a mass *fraction* ``f`` rather than an absolute mass, and this fraction does **not** need to be re-scaled by ``ml``.
 
@@ -177,22 +177,22 @@ Specifying the ``ml`` parameter in the configuration file follows the same patte
     - ``ml``
         - ``fixed``: Boolean, whether ``ml`` is to be kept fixed
         - ``value``: an initial value for ``ml``
-        - ``par_generator_settings``: settings controlling parameter search (can be omitted if ``fixed=True``)
+        - ``par_generator_settings``: settings controlling parameter search (can be omitted if ``fixed=True``). Note that if these settings are given, then ``value`` must be consistent with ``lo`` and ``hi``.
             - ``lo``: minimum value
             - ``hi``: maximum value
             - ``step``: initial step size for parameter search
             - ``minstep``: minimum allowed stepsize for this parameter
         - ``logarithmic``: Boolean, whether logarithmic steps should be used for parameter search. If true, then (``value``, ``lo``, ``hi``) must all have log units
-        - ``LaTeX``: LaTeX format string for this parameter to be used for plots, e.g. in axis labels
+        - ``LaTeX``: LaTeX format string for this parameter to be used for plots, e.g. in axis labels.
 
 
 ``orblib_settings``
 =====================
 
-This section is used settings relevant for the calculation of orbit libraries.
+This section is used for settings relevant for the calculation of orbit libraries.
 
 .. note::
-  The size of the orbit library is controlled by 4 parameters: :math:`(n_E, n_{I2}, n_{I3})` and ``dithering``. The parameters :math:`(n_E, n_{I2}, n_{I3})` are the grid-dimensions in the three *integrals-of-motion* used for generating orbit initial conditions. Each initial-condition is used three times: once to seed a *box-orbit*, and twice to seed *tube-orbits* with opposing senses of rotation. The parameter ``dithering`` then seeds a *mini-grid* of orbits around each initial conditions, of size ``dithering``:math:`^3`. The total number of orbits in the library is thus
+  The size of the orbit library is controlled by 4 parameters: :math:`(n_E, n_{I2}, n_{I3})` and ``dithering``. The parameters :math:`(n_E, n_{I2}, n_{I3})` are the grid-dimensions in the three *integrals-of-motion* used for generating orbit initial conditions. Each initial-condition is used three times: once to seed a *box-orbit*, and twice to seed *tube-orbits* with opposing senses of rotation. The parameter ``dithering`` then seeds a *mini-grid* of orbits around each set of initial conditions, of size ``dithering``:math:`^3`. The total number of orbits in the library is thus
 
   .. math::
 
@@ -218,7 +218,7 @@ The following settings must also be set in the configuration files but have *typ
 ``weight_solver_settings``
 ==========================
 
-This section is used settings relevant for solving for orbital weights.
+Settings relevant for solving for orbital weights.
 
 .. note::
   If any kinematic set has type ``BayesLOSVD``, then the ``weight_solver_settings`` must have type ``NNLS``
@@ -237,7 +237,7 @@ This section is used settings relevant for solving for orbital weights.
 If any kinematics have of type ``GaussHermite`` , then the following additional settings are needed.
 
 - ``weight_solver_settings``
-    - ``number_GH``: integer,
+    - ``number_GH``: integer, the number of Gauss-Hermites
     - ``GH_sys_err``: a string of length 2 + ``number_GH`` floats, the systematic error applied to ``V``, ``sigma``, ``h3``, ..., ``hN``
 
 If any kinematic set has type ``BayesLOSVD``, then the ``weight_solver_settings`` must have type ``NNLS``, and no additional settings are required.

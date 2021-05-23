@@ -8,7 +8,7 @@ These pages contain DYNAMITE's API documentation, i.e. the classes and method de
 
 As a broad overview, a DYNAMITE run has the following steps. First, `configuration <configuration>`__ file is read. This will hold all of the user-specified settings. In particular, it will create an object to store information about the `physical_system <physical_system>`__ being modelled (e.g. the galaxy, and its constituent components), as well as any observational `data <data>`__, e.g. `mges <mges>`__ and `kinematics <kinematics>`__. A set of `parameters <parameter_space>`__ is required to define a `model <model>`__. For a given model, we can calculate a `orbit library <orblib>`__, and then solve for the orbital `weights <weight_solver>`__ which best reproduce the observed kinematics. This process is `iterated <model_iterator>`__, using algorithms to `vary the model parameters <parameter_space>`__ till we approach an optimum parameter set. Throughout the process `plots <plotting>`__ are made to visualise the procedure, and additional plotting routines are available to use once you have found a satisfactory fit.
 
-The following pages contain the API documentation for this procedure, and each page corresponds corresponds to a single file of DYNAMITE source code. The bottom of each page shows the inheritance diagram for that section of code.
+The following pages contain the API documentation for this procedure, and each page corresponds to a single file of DYNAMITE source code. The bottom of each page shows the inheritance diagram for that section of code.
 
 .. toctree::
   :maxdepth: 1
