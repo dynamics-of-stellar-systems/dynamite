@@ -133,7 +133,7 @@ If you want to run a grid of models, ``main_script.py`` should be,
   import dynamite as dyn
 
   c = dyn.config_reader.Configuration('config_file.yaml') # read the configuration fie
-  smi = dyn.model_iterator.ModelIterator(   # create and run an interative grid of models
+  smi = dyn.model_iterator.ModelIterator(   # create and run an iterative grid of models
       system=c.system,
       all_models=c.all_models,
       settings=c.settings)
@@ -210,8 +210,17 @@ which you can add to your main script, with caution! The different options may b
 Logging output
 ===================
 
-Logging is handled by the Python `logging <https://docs.python.org/3/library/logging.html>`_ module.
-If you (optionally) wish to control the verbosity of the logging output, add following lines near the top of the main script,
+Logging is handled by the Python `logging <https://docs.python.org/3/library/logging.html>`_ module and by default uses your logging settings in the main script.
+
+If you don't want to think about logging, you can activate the DYNAMITE standard logging settings by specifying ``reset_logging=True`` when reading the configuration file:
+
+.. code-block:: python
+
+  import dynamite as dyn
+  c = dyn.config_reader.Configuration('config_file.yaml’, reset_logging=True)
+
+This will write logging messages of at least level ``INFO`` to the console and messages of at least level ``DEBUG`` to the log-file ``dynamite.log``. The levels, in increasing level of detail, are ``CRITICAL``, ``ERROR``, ``WARNING``, ``INFO``, ``DEBUG`` (currently, DYNAMITE does not use ``CRITICAL``).
+If you (optionally) wish to control the verbosity of the logging output, do not use ``reset_logging=True`` but add the following lines near the top of the main script,
 
 .. code-block:: python
 
@@ -221,4 +230,4 @@ If you (optionally) wish to control the verbosity of the logging output, add fol
                         console_level=logging.INFO,
                         logfile_level=logging.DEBUG)
 
-then you change the name of the log-file, and the level of logging output sent to the console and to the logfile. The levels, in increasing level of detail, are ``INFO``, ``ERROR``, ``DEBUG``, [ANY OTHERS...?]. The values shown above are the defaults.
+then you change the name of the log-file, and the level of logging output sent to the console and to the logfile. The values shown above are the defaults.
