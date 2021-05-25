@@ -229,18 +229,22 @@ class Model(object):
                           f'{self.directory_noml}')
 
     def get_model_directory(self):
-        directory = self.settings.io_settings['output_directory']
+        directory = self.settings.io_settings['output_directory'] + 'models/'
         models_file = directory + self.settings.io_settings['all_models_file']
         try:
             all_models = ascii.read(models_file)
             self.logger.debug(f'Setting model dir from file {models_file}...')
         except:
-            self.logger.error('Error reading all_models file. '
-                              'Cannot set model directory.')
-            raise
+            sformat = self.system.parameters[0].sformat # this is ml's format
+            ml_dir = f"/ml{self.parset['ml']:{sformat}}/"
+            directory += f'orblib_000_000{ml_dir}'
+            self.logger.info(f'Cannot read {models_file} - '
+                                'setting model '
+                                f'directory to {directory}.')
+            return directory #######################################
         for idx, parset in enumerate(all_models[self.parspace.par_names]):
             if np.allclose(tuple(parset),tuple(self.parset)):
-                directory += 'models/' + all_models['directory'][idx]
+                directory += all_models['directory'][idx]
                 break
         else:
             text = f'Cannot set model directory: parset {self.parset} ' \
