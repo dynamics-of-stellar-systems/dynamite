@@ -112,6 +112,35 @@ class System(object):
         self.logger.debug('...check ok.')
         return component
 
+    def get_all_dark_components(self):
+        """Get all components which are Dark
+
+        Returns
+        -------
+        list
+            a list of Component objects, keeping only the dark components
+
+        """
+        dark_cmp = [c for c in self.cmp_list if isinstance(c, DarkComponent)]
+        return dark_cmp
+
+    def get_all_dark_non_plummer_components(self):
+        """Get all Dark components which are not plummer
+
+        Useful in legacy orbit libraries for finding the dark halo component.
+        For legacy models, the black hole is always a plummer, so any Dark but
+        non plummer components must represent the dark halo.
+
+        Returns
+        -------
+        list
+            a list of Component objects, keeping only the dark components
+
+        """
+        dark_cmp = self.get_all_dark_components()
+        dark_non_plum_cmp = [c for c in dark_cmp if not isinstance(c, Plummer)]
+        return dark_non_plum_cmp
+
     def get_all_kinematic_data(self):
         all_kinematics = []
         for component in self.cmp_list:
@@ -423,7 +452,7 @@ class NFW(DarkComponent):
 class Hernquist(DarkComponent):
 
     def __init__(self, **kwds):
-        self.legacy_dm_code = 2
+        self.legacy_code = 2
         super().__init__(symmetry='spherical', **kwds)
 
     def validate(self):
@@ -434,7 +463,7 @@ class Hernquist(DarkComponent):
 class TriaxialCoredLogPotential(DarkComponent):
 
     def __init__(self, **kwds):
-        self.legacy_dm_code = 3
+        self.legacy_code = 3
         super().__init__(symmetry='triaxial', **kwds)
 
     def validate(self):
@@ -445,12 +474,36 @@ class TriaxialCoredLogPotential(DarkComponent):
 class GeneralisedNFW(DarkComponent):
 
     def __init__(self, **kwds):
-        self.legacy_dm_code = 5
+        self.legacy_code = 5
         super().__init__(symmetry='triaxial', **kwds)
 
     def validate(self):
-        par = ['concentration', 'Mvir', 'inner_log_slope']
+        par = ['c', 'Mvir', 'gam']
         super().validate(par=par)
+
+    def validate_parset(self, par):
+        """
+        Validates the GeneralisedNFW's parameter set.
+
+        Requires c and Mvir >0, and gam leq 1
+
+        Parameters
+        ----------
+        par : dict
+            { "p":val, ... } where "p" are the component's parameters and
+            val are their respective values
+
+        Returns
+        -------
+        bool
+            True if the parameter set is valid, False otherwise
+
+        """
+        if (par['c']<0.) or (par['Mvir']<0.) or (par['gam']>1):
+            is_valid = False
+        else:
+            is_valid = True
+        return is_valid
 
 
 # end

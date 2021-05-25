@@ -124,18 +124,24 @@ class LegacyOrbitLibrary(OrbitLibrary):
         stars = \
           self.system.get_component_from_class(physys.TriaxialVisibleComponent)
         bh = self.system.get_component_from_class(physys.Plummer)
-        dh = self.system.get_component_from_class(physys.NFW)
         # used to derive the viewing angles
-        q=self.parset[f'q-{stars.name}']
-        p=self.parset[f'p-{stars.name}']
-        u=self.parset[f'u-{stars.name}']
-        # the minimal flattening from stellar mge
-        # qobs=np.amin(stars.mge.data['q'])
-        # TODO: which dark matter profile
-        dm_specs='1 2'
+        q = self.parset[f'q-{stars.name}']
+        p = self.parset[f'p-{stars.name}']
+        u = self.parset[f'u-{stars.name}']
         theta, psi, phi = stars.triax_pqu2tpp(p,q,u)
+        # get dark halo
+        dh = self.system.get_all_dark_non_plummer_components()
+        self.logger.debug('Checking number of non-plummer dark components')
+        error_msg = 'only one non-plummer dark component should be present'
+        assert len(dh)==1, error_msg
+        self.logger.debug('...checks ok.')
+        dh = dh[0]  # extract the one and only dm component
+        dm_specs = f'{dh.legacy_code} {len(dh.parameters)}'
+        dm_par_vals = ''
+        for dm_par in dh.parameters:
+            dm_par_vals += f"{self.parset[dm_par.name]} "
         # header
-        len_mge=len(stars.mge_pot.data) # must be the same as for mge_lum
+        len_mge = len(stars.mge_pot.data) # must be the same as for mge_lum
         settngs = self.settings
         text = f'{self.system.distMPc}\n'
         text += f'{theta:06.9f} {phi:06.9f} {psi:06.9f}\n'
@@ -147,7 +153,7 @@ class LegacyOrbitLibrary(OrbitLibrary):
         text += f"{settngs['nI3']}\n"
         text += f"{settngs['dithering']}\n"
         text += f"{dm_specs}\n"
-        text += f"{self.parset[f'c-{dh.name}']} {self.parset[f'f-{dh.name}']}"
+        text += f"{dm_par_vals}"
         # parameters_pot.in
         np.savetxt(path + 'parameters_pot.in',
                    stars.mge_pot.data,
