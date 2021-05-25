@@ -366,6 +366,8 @@ class ParameterGenerator(object):
             elif self.current_models.table.columns[i].name == 'which_iter':
                 # iteration
                 val = n_iter
+            elif self.current_models.table.columns[i].name == 'directory':
+                val = None
             else:
                 # empty entry for all other columns
                 dtype = self.current_models.table.columns[i].dtype
