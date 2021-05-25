@@ -143,59 +143,59 @@ You may have additional commands in the main script related to e.g. (i) plotting
 Plotting
 ========
 
-To make plots, you can use the Plotter object::
+To make plots, you can use the Plotter object:
 
 .. code-block:: python
 
-   p = dyn.plotting.Plotter(...) # make the plotter object
+  p = dyn.plotting.Plotter(...) # make the plotter object
 
-Here we propose a few examples of the plots that can be done with this object. First, you can generate maps of the surface brightness, mean line-of-sight velocity, velocity dispersion, and higher order Gauss–Hermite moments. The figure produced will show the maps relative to the data in the first row, those relative to the best-fit model in the second row and residuals in the third row; it can be obtained by using::
-
-.. code-block:: python
-
-   p.plot_kinematic_maps(kin_set=0, cbar_lims='data') # the limits of color bars are based on the data values, and only the first kinematic set is plotted
-
-To explore how the :math:`\chi^2` changes as a function of the parameters or of the model ID, you can use the following two functions, respectively::
+Here we propose a few examples of the plots that can be done with this object. First, you can generate maps of the surface brightness, mean line-of-sight velocity, velocity dispersion, and higher order Gauss–Hermite moments. The figure produced will show the maps relative to the data in the first row, those relative to the best-fit model in the second row and residuals in the third row; it can be obtained by using:
 
 .. code-block:: python
-  
-   p.make_chi2_plot(which_chi2='kinchi', n_excl=50, figtype='.pdf') # saves a .pdf figure of the 'kinchi' chisquare, excluding the first 50 models (burn-in)
-   p.make_chi2_vs_model_id_plot(which_chi2='kinchi') # saves a .png figure (default) of the 'kinchi' chisquare as a function of the model ID
 
-You can also plot the cumulative mass and the (intrinsic and projected) anisotropy profiles, out to a radius of 30 arcsec::
+  p.plot_kinematic_maps(kin_set=0, cbar_lims='data') # the limits of color bars are based on the data values, and only the first kinematic set is plotted
+
+To explore how the :math:`\chi^2` changes as a function of the parameters or of the model ID, you can use the following two functions, respectively:
 
 .. code-block:: python
   
-   p.mass_plot(Rmax_arcs=30) # cumulative mass plot, saved as a .png file
-   p.beta_plot(Rmax_arcs=30) # anisotropy plots, saved as .png files
+  p.make_chi2_plot(which_chi2='kinchi2', n_excl=50, figtype='.pdf') # saves a .pdf figure of the 'kinchi2' chisquare, excluding the first 50 models (burn-in)
+  p.make_chi2_vs_model_id_plot(which_chi2='kinchi2') # saves a .png figure (default) of the 'kinchi2' chisquare as a function of the model ID
 
-These plots are made by considering only models close to the :math:`\chi^2` minimum, within a certain confidence level. You can decide which :math:`\chi^2` to use for this ('kinchi' is the recommended option), and what type of figure to produce, by specifying a file extension in the parameter ``figtype``.
-
-To see how orbits are distributed in the best-fit model (or in a model of your choice, to be specified in the variable ``model`` when calling the function), you can use::
+You can also plot the cumulative mass and the (intrinsic and projected) anisotropy profiles, out to a radius of 30 arcsec:
 
 .. code-block:: python
   
-   p.orbit_plot(Rmax_arcs=30) # orbit plot, saved as a .png file
+  p.mass_plot(Rmax_arcs=30) # cumulative mass plot, saved as a .png file
+  p.beta_plot(Rmax_arcs=30) # anisotropy plots, saved as .png files
+
+These plots are made by considering only models close to the :math:`\chi^2` minimum, within a certain confidence level. You can decide which :math:`\chi^2` to use for this (``kinchi2`` is the recommended option), and what type of figure to produce, by specifying a file extension in the parameter ``figtype``.
+
+To see how orbits are distributed in the best-fit model (or in a model of your choice, to be specified in the variable ``model`` when calling the function), you can use:
+
+.. code-block:: python
+  
+  p.orbit_plot(Rmax_arcs=30) # orbit plot, saved as a .png file
 
 In this case, ``Rmax_arcs`` indicates the upper radial limit for orbit selection, meaning that only orbits extending up to ``Rmax_arcs`` are plotted.
 
-Finally, you can make a plot of the intrinsic flattening of your best-fit model::
+Finally, you can make a plot of the intrinsic flattening of your best-fit model:
 
 .. code-block:: python
   
-   p.qpu_plot(Rmax_arcs=30,figtype='.pdf') # triaxiality plot, saved as a .pdf file
+  p.qpu_plot(Rmax_arcs=30,figtype='.pdf') # triaxiality plot, saved as a .pdf file
 
-In the examples above, the figures are created and saved automatically. If you want to make some changes into the appearance of the plots, you can use the fact that all the above functions return a ``matplotlib.pyplot.figure`` instance. For the figures to appear in the interactive mode, you first need to run the following line::
-
-.. code-block:: python
-  
-   matplotlib.use('TkAgg')
-
-and you can then proceed to make figures that you can modify as you prefer, for example::
+In the examples above, the figures are created and saved automatically. If you want to make some changes into the appearance of the plots, you can use the fact that all the above functions return a ``matplotlib.pyplot.figure`` instance. For the figures to appear in the interactive mode, you first need to run the following line:
 
 .. code-block:: python
   
-   fig = p.mass_plot(Rmax_arcs=30)
+  matplotlib.use('TkAgg')
+
+and you can then proceed to make figures that you can modify as you prefer, for example:
+
+.. code-block:: python
+  
+  fig = p.mass_plot(Rmax_arcs=30)
 
 Please note that a copy of the figure as produced by DYNAMITE is always saved in the ``plots`` folder.
 

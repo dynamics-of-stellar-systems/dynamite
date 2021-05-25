@@ -140,7 +140,7 @@ orblib_settings:
     accuracy: '1.0d-5'
     # the following is intended for development & debugging and should be
     # set to 0 for productive use
-    random_seed: 4242 # integer; any value <= 0 results in stochastic seed
+    random_seed: 0 #4242 # integer; any value <= 0 results in stochastic seed
 
 weight_solver_settings:
     type: "LegacyWeightSolver"

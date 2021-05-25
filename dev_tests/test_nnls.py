@@ -88,7 +88,7 @@ def run_user_test(make_comp=False):
         plt.figure()
         plt.scatter(chi2_compare['model_id'],
                     chi2_compare['chi2'],
-                    s=400,
+                    s=2000,
                     facecolors='none',
                     edgecolors='black')
         plt.plot(range(len(c.all_models.table)),

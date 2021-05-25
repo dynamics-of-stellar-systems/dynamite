@@ -202,8 +202,8 @@ This section is used for settings relevant for the calculation of orbit librarie
     - ``nE``: integer, size of grid in integral-of-motion :math:`E`
     - ``nI2``: integer, size of grid in second integral-of-motion :math:`I_2` (similar to :math:`L_z`). Must be at least 4.
     - ``nI3``: integer, size of grid in third integral-of-motion :math:`I_3`
-    - ``logrmin``: log10 of minimum orbit radius in km
-    - ``logrmax``: log10 of maximum orbit radius in km
+    - ``logrmin``: log10 of minimum orbit radius in arcsecs
+    - ``logrmax``: log10 of maximum orbit radius in arcsecs
     - ``random_seed``: integer, used for stochastically blurring orbit library by the PSF. Any value :math:`\leq 0` gives a stochastic seed.
 
 The following settings must also be set in the configuration files but have *typical* values which should generally be sufficient and should not be changed,
