@@ -18,7 +18,20 @@ from dynamite import weight_solvers
 from dynamite import physical_system as physys
 
 class Plotter():
+    """Class to hold plotting routines
 
+    Class containing methods for plotting results. Each plotting method saves a
+    plot in the `outplot/plots` directory, and returns a `matplotlib` `figure`
+    object.
+
+    Parameters
+    ----------
+    system : a `dyn.physical_system.System` object
+    settings : a `dyn.config_reader.Settings` object
+    parspace : a list of `dyn.parameter_space.Parameter` object
+    all_models : a list of `dyn.models.AllModels` object
+
+    """
     def __init__(self,
                  system=None,
                  settings=None,
@@ -307,9 +320,11 @@ class Plotter():
 
         Returns
         -------
-        fig : list of tuples (matplotlib.pyplot.figure, kinematics-name) if
-              kin_set == 'all', else matplotlib.pyplot.figure
-            Figure instances along with kinemtics name or figure instance.
+
+        list or `matplotlib.pyplot.figure` 
+            if kin_set == 'all', returns `(matplotlib.pyplot.figure, string)`, i.e.
+            Figure instances along with kinemtics name or figure instance
+            else, returns a `matplotlib.pyplot.figure`
 
         """
         # Taken from schw_kin.py.
@@ -1494,8 +1509,10 @@ class Plotter():
         The two plots show the intrinsic and projected anisotropy
         (beta_r and beta_z, respectively) as a function of the
         distance from the galactic centre (in arcsec).
-         * beta_r = 1 - (sigma_t/sigma_r)^2
-         * beta_z = 1 - (sigma_z/sigma_R)^2
+
+        - beta_r = 1 - (sigma_t/sigma_r)^2
+        - beta_z = 1 - (sigma_z/sigma_R)^2
+
         Solid lines and shaded areas represent the mean and standard
         deviation of the anisotropy of models having parameters in a
         confidence region around the minimum chisquare.

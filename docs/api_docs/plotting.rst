@@ -6,6 +6,12 @@ Plotting
 
 Classes related to plotting.
 
+API
+===================
+
+ .. automodule:: plotter
+  :members:
+
 Inheritance Diagram
 ===================
 
