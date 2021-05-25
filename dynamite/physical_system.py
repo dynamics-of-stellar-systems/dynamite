@@ -2,19 +2,9 @@
 # e.g. the stellar light, dark matter, black hole, globular clusters
 
 import numpy as np
-
-# some tricks to add the current path to sys.path (so the imports below work)
-
-import os.path
-import sys
 import logging
 
-this_dir = os.path.dirname(__file__)
-if not this_dir in sys.path:
-    sys.path.append(this_dir)
-
-import mges as mge
-
+from dynamite import mges as mge
 
 class System(object):
     """The physical system being modelled
@@ -76,12 +66,8 @@ class System(object):
         """
         if len(self.cmp_list) != len(set(self.cmp_list)):
             raise ValueError('No duplicate component names allowed')
-        # if self.parameters is not None: # Restriction should not be needed...
-        #     for p in self.parameters:
-        #         if any([p.name.endswith(c.name) for c in self.cmp_list]):
-        #             raise ValueError('System parameter cannot end with '
-        #                              f'"component": {p.name}')
-        if not(self.distMPc and self.name and self.position_angle):
+        if (self.distMPc is None) or (self.name is None) \
+           or (self.position_angle is None):
             text = 'System needs distMPc, name, and position_angle attributes'
             self.logger.error(text)
             raise ValueError(text)
@@ -89,14 +75,11 @@ class System(object):
             text = 'System has no components'
             self.logger.error(text)
             raise ValueError(text)
-        if any(['_' in c.name for c in self.cmp_list]):
-            self.logger.warning('System components should not contain '
-                'underscores - model directory names may get confusing')
         if len(self.parameters) != 1 and self.parameters[0].name != 'ml':
             text = 'System needs ml as its sole parameter'
             self.logger.error(text)
             raise ValueError(text)
-        self.parameters[0].update(sformat = '6.2f')
+        self.parameters[0].update(sformat = '01.2f') # sformat of ml parameter
 
     def validate_parset(self, par):
         """
@@ -236,7 +219,7 @@ class Component(object):
         self.population_data = population_data
         self.parameters = parameters
 
-    def validate(self, par_format=None):
+    def validate(self, par=None):
         """
         Validate the component
 
@@ -245,7 +228,7 @@ class Component(object):
 
         Parameters
         ----------
-        par_format : a dict with parameter_name:sformat pairs. Mandatory.
+        par : a list with parameter names. Mandatory.
 
         Raises
         ------
@@ -257,10 +240,6 @@ class Component(object):
         None.
 
         """
-        # if self.symmetry not in self.symmetries:
-        #     raise ValueError('Illegal symmetry ' + str(self.symmetry) + \
-        #                      '. Allowed: ' + str(self.symmetries))
-        par = par_format.keys()
         errstr = f'Component {self.__class__.__name__} needs attribute '
         if self.visible is None:
             text = errstr + 'visible'
@@ -278,20 +257,9 @@ class Component(object):
         pars = [self.get_parname(p.name) for p in self.parameters]
         if set(pars) != set(par):
             text = f'{self.__class__.__name__} needs parameters ' + \
-                   f'{list(par)}, not ' + \
-                   f'{[self.get_parname(p.name) for p in self.parameters]}'
+                   f'{par}, not {pars}.'
             self.logger.error(text)
             raise ValueError(text)
-
-        self.set_format(par_format)
-
-    def set_format(self, par_format=None):
-        if par_format is None:
-            text = f'{self.__class__.__name__}: no format string'
-            self.logger.error(text)
-            raise ValueError(text)
-        for p in self.parameters:
-            p.update(sformat=par_format[self.get_parname(p.name)])
 
     def validate_parset(self, par):
         """
@@ -391,8 +359,8 @@ class AxisymmetricVisibleComponent(VisibleComponent):
         super().__init__(symmetry='axisymm', **kwds)
 
     def validate(self):
-        par_format = {'par1':'6.3g', 'par2':'6.4g'}
-        super().validate(par_format)
+        par = ['par1', 'par2']
+        super().validate(par=par)
 
 
 class TriaxialVisibleComponent(VisibleComponent):
@@ -420,8 +388,8 @@ class TriaxialVisibleComponent(VisibleComponent):
         None.
 
         """
-        par_format = {'q':'6.3g', 'p':'6.4g', 'u':'7.5g'}
-        super().validate(par_format=par_format)
+        par = ['q', 'p', 'u']
+        super().validate(par=par)
         self.qobs = np.amin(self.mge_pot.data['q'])
         if self.qobs is np.nan:
             raise ValueError(f'{self.__class__.__name__}.qobs is np.nan')
@@ -543,8 +511,8 @@ class Plummer(DarkComponent):
         return rho
 
     def validate(self):
-        par_format = {'m':'6.3g', 'a':'7.3g'}
-        super().validate(par_format)
+        par = ['m', 'a']
+        super().validate(par=par)
 
 
 class NFW(DarkComponent):
@@ -559,8 +527,8 @@ class NFW(DarkComponent):
         super().__init__(symmetry='spherical', **kwds)
 
     def validate(self):
-        par_format = {'c':'6.3g', 'f':'6.3g'}
-        super().validate(par_format)
+        par = ['c', 'f']
+        super().validate(par=par)
 
 
 class Hernquist(DarkComponent):
@@ -575,8 +543,8 @@ class Hernquist(DarkComponent):
         super().__init__(symmetry='spherical', **kwds)
 
     def validate(self):
-        par_format = {'rhoc':'6.3g', 'rc':'6.3g'}
-        super().validate(par_format)
+        par = ['rhoc', 'rc']
+        super().validate(par=par)
 
 
 class TriaxialCoredLogPotential(DarkComponent):
@@ -592,8 +560,8 @@ class TriaxialCoredLogPotential(DarkComponent):
         super().__init__(symmetry='triaxial', **kwds)
 
     def validate(self):
-        par_format = {'Vc':'6.3g', 'rho':'6.3g', 'p':'6.3g', 'q':'6.3g'}
-        super().validate(par_format)
+        par = ['Vc', 'Rc', 'p', 'q']
+        super().validate(par=par)
 
 
 class GeneralisedNFW(DarkComponent):
@@ -609,12 +577,8 @@ class GeneralisedNFW(DarkComponent):
         super().__init__(symmetry='triaxial', **kwds)
 
     def validate(self):
-        par_format = {'concentration':'6.3g', 'Mvir':'6.3g',
-                      'inner_log_slope':'6.3g'}
-        super().validate(par_format)
-
-
-
+        par = ['concentration', 'Mvir', 'inner_log_slope']
+        super().validate(par=par)
 
 
 # end

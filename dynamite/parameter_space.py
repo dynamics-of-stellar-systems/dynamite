@@ -1,17 +1,8 @@
-# some tricks to add the current path to sys.path (so the imports below work)
-
-import os.path
-import sys
-
-this_dir = os.path.dirname(__file__)
-if not this_dir in sys.path:
-    sys.path.append(this_dir)
-
 import numpy as np
 import copy
-import parameter_space as parspace
-from astropy.table import Table
 import logging
+from astropy.table import Table
+from dynamite import parameter_space as parspace
 
 class Parameter(object):
     """Parameter of a model
@@ -40,7 +31,7 @@ class Parameter(object):
                  name=None,
                  fixed=False,
                  LaTeX=None,
-                 sformat="%g",
+                 sformat=None,
                  value=None,
                  par_generator_settings=None,
                  logarithmic=False,
@@ -426,7 +417,7 @@ class ParameterGenerator(object):
 
         Parameters
         ----------
-        current_models : schwarzschild.AllModels
+        current_models : dynamite.AllModels
         kw_specific_generate_method : dict
             keyword arguments passed to the specific_generate_method of the
             child class
@@ -446,7 +437,7 @@ class ParameterGenerator(object):
         """
         if current_models is None:
             errormsg = "current_models needs to be a valid " \
-                       "schwarzschild.AllModels instance"
+                       "dynamite.AllModels instance"
             self.logger.error(errormsg)
             raise ValueError(errormsg)
         else:
@@ -507,7 +498,7 @@ class ParameterGenerator(object):
             raise ValueError('No or empty model')
         raw_row = [p.value for p in model]
         row = self.par_space.get_param_value_from_raw_value(raw_row)
-        # for all columns after parameters, add a entry to this row
+        # for all columns after parameters, add an entry to this row
         idx_start = self.par_space.n_par
         idx_end = len(self.current_models.table.colnames)
         for i in range(idx_start, idx_end):
@@ -1121,8 +1112,8 @@ class FullGrid(ParameterGenerator):
         Clips parameter values to lo/hi attributes. If clipping violates the
         minstep attribute, the resulting model(s) will not be created. If the
         minstep attribute is missing, the step attribute will be used instead.
-        Explicitly set minstep=0 to allow arbitrarily small steps (not
-        recommended).
+        Explicitly set minstep=0 to allow arbitrarily small steps down to eps
+        (not recommended).
 
         Parameters
         ----------

@@ -1,6 +1,6 @@
-import data
 import numpy as np
 from astropy import table
+from dynamite import data
 
 class MGE(data.Data):
     """Multi Gaussian Expansions"""

@@ -67,12 +67,10 @@ class Integrated(Data):
     def __init__(self,
                  aperturefile=None,
                  binfile=None,
-                 maskfile=None,
                  **kwargs
                  ):
         self.aperturefile = aperturefile
         self.binfile = binfile
-        self.maskfile = maskfile
         super().__init__(**kwargs)
         if hasattr(self, 'data'):
             self.PSF = self.data.meta['PSF']

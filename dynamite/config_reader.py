@@ -4,15 +4,16 @@ import shutil
 import glob
 import math
 import logging
-
+import importlib
 import yaml
+
 import dynamite as dyn
-import physical_system as physys
-import parameter_space as parspace
-import kinematics as kinem
-import populations as popul
-import mges as mge
-import model
+from dynamite import physical_system as physys
+from dynamite import parameter_space as parspace
+from dynamite import kinematics as kinem
+from dynamite import populations as popul
+from dynamite import mges as mge
+from dynamite import model
 
 class Settings(object):
     """
@@ -43,10 +44,10 @@ class Settings(object):
         elif kind == 'io_settings':
             try:
                 out_dir = values['output_directory']
-            except KeyError:
+            except KeyError as e:
                 text = 'Output directory not set in config file.'
                 self.logger.error(text)
-                raise KeyError(text)
+                raise Exception(text) from e
             self.io_settings = values
             self.io_settings['model_directory'] = out_dir + 'models/'
             self.io_settings['plot_directory'] = out_dir + 'plots/'
@@ -146,12 +147,14 @@ class Configuration(object):
         self.logger = logging.getLogger(f'{__name__}.{__class__.__name__}')
         logger = self.logger
         if reset_logging is True:
-            logger.info('Resetting logging configuration')
             DynamiteLogging()
-            logger.debug('Logging set to Dynamite defaults')
+            self.logger = logging.getLogger(f'{__name__}.{__class__.__name__}')
+            self.logger.debug('Logging reset to Dynamite defaults')
         else:
-            logger.debug("Dynamite uses the calling application's logging "
-                         "settings")
+            self.logger = logging.getLogger(f'{__name__}.{__class__.__name__}')
+            self.logger.debug("Dynamite uses the calling application's "
+                              "logging settings")
+        logger = self.logger
         self.logger.debug(f'This is Python {sys.version.split()[0]}')
         self.logger.debug(f'Using DYNAMITE version {dyn.__version__} '
                           f'located at {dyn.__path__}')
@@ -162,7 +165,7 @@ class Configuration(object):
         legacy_dir = \
             os.path.realpath(os.path.dirname(__file__)+'/../legacy_fortran')
             # os.path.dirname(os.path.realpath(__file__))+'/../'legacy_fortran'
-        self.logger.debug(f'Legacy Fortran folder: {legacy_dir}')
+        self.logger.debug(f'Default legacy Fortran directory: {legacy_dir}.')
 
         self.config_file = filename
         try:
@@ -190,7 +193,7 @@ class Configuration(object):
                     self.params['io_settings'][io+'_directory'] += '/'
         except:
             logger.error('io_settings: check input_directory '
-                         'and output_directory')
+                         'and output_directory in config file')
             raise
         self.settings.add('io_settings', self.params['io_settings'])
         logger.debug('io_settings assigned to Settings object')
@@ -292,7 +295,7 @@ class Configuration(object):
                                         datafile=data_comp['mge_lum'])
 
                     # add component to system
-                    c.validate() # now also adds the right parameter sformat
+                    c.validate()
                     parset = {c.get_parname(p.name):p.value \
                               for p in c.parameters}
                     if not c.validate_parset(parset):
@@ -350,6 +353,8 @@ class Configuration(object):
                 if value['directory'][-1]=='/':
                     value['directory'] = value['directory'][:-1]
                 self.settings.add('legacy_settings', value)
+                self.logger.debug("Legacy directory set to "
+                                  f"{value['directory']}.")
 
             # add output settings to Settings object
 
@@ -493,7 +498,7 @@ class Configuration(object):
 
     def remove_existing_orbital_weights(self):
         """
-        Removes existing orbital weights.
+        Removes existing orbital weights ('ml' directories).
 
         Deletes all files matching ``output/*/ml*/``
 
@@ -507,16 +512,16 @@ class Configuration(object):
 
         """
         ml_pattern = self.settings.io_settings['model_directory'] + '*/ml*'
-        ml_folders = glob.glob(ml_pattern)
-        if len(ml_folders) > 0:
-            for folder in ml_folders:
-                shutil.rmtree(folder)
-                self.logger.debug(f'Directory {folder} removed.')
+        ml_directories = glob.glob(ml_pattern)
+        if len(ml_directories) > 0:
+            for directory in ml_directories:
+                shutil.rmtree(directory)
+                self.logger.debug(f'Directory {directory} removed.')
             self.logger.info(f'Orbital weights {ml_pattern} removed.')
         else:
             self.logger.info(f'No orbital weights {ml_pattern} to remove.')
 
-    def remove_existing_plots(self, remove_folder=False):
+    def remove_existing_plots(self, remove_directory=False):
         """
         Removes existing plots from the plots directory.
 
@@ -524,10 +529,11 @@ class Configuration(object):
 
         Parameters
         ----------
-        remove_folder : Bool, optional
+        remove_directory : BOOL, optional
             True if the plot directory shall be removed, too. If False,
-            only regular files in the plot directory are deleted (subfolders
-            will remain untouched in that case). The default is False.
+            only regular files in the plot directory are deleted
+            (subdirectories will remain untouched in that case).
+            The default is False.
 
         Raises
         ------
@@ -540,7 +546,7 @@ class Configuration(object):
         """
         plot_dir = self.settings.io_settings['plot_directory']
         if os.path.isdir(plot_dir):
-            if remove_folder:
+            if remove_directory:
                 shutil.rmtree(plot_dir)
                 self.logger.info(f'Plot directory {plot_dir} deleted.')
             else:
@@ -610,7 +616,7 @@ class Configuration(object):
         wipe_all : Bool, optional
             If True, the complete output directory tree will be removed.
             Set to False to keep (a) user files & directories in the output
-            folder and (b) user directories in the plots folder.
+            directory and (b) user directories in the plots directory.
             The default is False.
         create_tree : Bool, optional
             If True, recreates an empty output directory tree with a
@@ -637,7 +643,7 @@ class Configuration(object):
             self.logger.info(f'Output directory tree {out_dir} removed.')
         else:
             self.remove_existing_orblibs()
-            self.remove_existing_plots(remove_folder=False)
+            self.remove_existing_plots(remove_directory=False)
         # Execute in any case to create empty AllModels object:
         self.remove_existing_all_models_file()
         if create_tree:
@@ -874,16 +880,17 @@ class DynamiteLogging(object):
         Format string for console logging. The default is set in the code.
     logfile_formatter : str, optional
         Format string for logfile logging. The default is set in the code.
-    
+
     """
     def __init__(self, logfile='dynamite.log', console_level=logging.INFO,
                                                logfile_level=logging.DEBUG,
                                                console_formatter = None,
                                                logfile_formatter = None):
+        logging.shutdown()
+        importlib.reload(logging)
         logger = logging.getLogger()       # create logger
-        logger.setLevel(logging.DEBUG)     # set level that's lower that wanted
-
-        ch = logging.StreamHandler()       # create console logging handler
+        logger.setLevel(logging.DEBUG)     # set level that's lower than wanted
+        ch = logging.StreamHandler(stream=sys.stderr) # create console handler
         ch.setLevel(console_level)         # set console logging level
         # create formatter
         if console_formatter is None:
@@ -894,7 +901,7 @@ class DynamiteLogging(object):
         logger.addHandler(ch)              # add the handler to the logger
 
         if logfile:
-            fh = logging.FileHandler(logfile, mode='w') # create handler
+            fh = logging.FileHandler(logfile, mode='w') # create file handler
             fh.setLevel(logfile_level)             # set file logging level
             # create formatter
             # formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
