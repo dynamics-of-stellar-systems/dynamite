@@ -217,8 +217,10 @@ class ModelInnerIterator(object):
         """
         iteration = self.all_models.table['which_iter'][-1]
         # new orblib model directories
+        nodir = np.dtype(self.all_models.table['directory'].dtype).type(None)
         for row in rows_orblib:
-            n=np.sum(self.all_models.table[:row]['which_iter']==iteration)
+            t = self.all_models.table[:row]
+            n = np.sum((t['which_iter']==iteration) & (t['directory']!=nodir))
             orblib_dir = f'orblib_{iteration:03d}_{n:03d}'
             self.all_models.table[row]['directory'] = orblib_dir
         # existing orblib directories
@@ -228,7 +230,8 @@ class ModelInnerIterator(object):
             for idx, orblib in enumerate(orblib_data[:row]):
                 if np.allclose(tuple(row_data), tuple(orblib)):
                     orblib_dir = self.all_models.table[idx]['directory']
-                    orblib_dir = orblib_dir[:orblib_dir[:-1].rindex('/')]
+                    if orblib_dir[-1] == '/': # need to strip ml subdirectory?
+                        orblib_dir = orblib_dir[:orblib_dir[:-1].rindex('/')]
                     break
             else:
                 text = f'Unexpected: cannot find orblib {dict(row_data)}.'
