@@ -49,7 +49,6 @@ The following pages give all the information needed to get started,
 
   getting_started/installation.rst
   getting_started/code_overview.rst
-  getting_started/data_preparation.rst
   getting_started/configuration.rst
   getting_started/getting_help.rst
 

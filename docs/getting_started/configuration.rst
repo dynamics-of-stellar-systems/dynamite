@@ -149,8 +149,8 @@ The following types of component are available, listed with their parameters:
 The ``TriaxialVisibleComponent`` represents the galaxy's stars, and therefore has associated observations. You must specify the following entries with filenames for observed data:
 
 - ``TriaxialVisibleComponent``
-    - ``mge_lum``: string, filename for the MGE of the projected luminosity density, with intensity units of :math:`L_\odot \mathrm{pc}^{-2}`. See the :ref:`data preparation <data_prep>` page for more information.
-    - ``mge_pot``: string, filename for the MGE of the projected mass density, with intensity units of :math:`M_\odot \mathrm{pc}^{-2}`. See the :ref:`data preparation <data_prep>` page for more information. If you assume that stellar-mass follows stellar-light, then the files ``mge_lum`` and ``mge_pot`` will be identical.
+    - ``mge_lum``: string, filename for the MGE of the projected luminosity density, with intensity units of :math:`L_\odot \mathrm{pc}^{-2}`.
+    - ``mge_pot``: string, filename for the MGE of the projected mass density, with intensity units of :math:`M_\odot \mathrm{pc}^{-2}`. If you assume that stellar-mass follows stellar-light, then the files ``mge_lum`` and ``mge_pot`` will be identical.
     - ``kinematics``
         - ``name of the kinematic set``: a descriptive name, best without spaces as it will be part of the kinematic plot file name.
             - ``type``: type of kinematics - either ``GaussHermite`` or ``BayesLOSVD``
