@@ -234,7 +234,7 @@ class Model(object):
         try:
             all_models = ascii.read(models_file)
             self.logger.debug(f'Setting model dir from file {models_file}...')
-        except:
+        except FileNotFoundError:
             sformat = self.system.parameters[0].sformat # this is ml's format
             ml_dir = f"/ml{self.parset['ml']:{sformat}}/"
             directory += f'orblib_000_000{ml_dir}'
@@ -242,6 +242,10 @@ class Model(object):
                                 'setting model '
                                 f'directory to {directory}.')
             return directory #######################################
+        except:
+            self.logger.error('Error opening all_models file. '
+                              'Cannot set model directory.')
+            raise
         for idx, parset in enumerate(all_models[self.parspace.par_names]):
             if np.allclose(tuple(parset),tuple(self.parset)):
                 directory += all_models['directory'][idx]
