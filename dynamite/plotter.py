@@ -222,10 +222,6 @@ class Plotter():
         colormap_orig = mpl.cm.viridis
         colormap = mpl.cm.get_cmap('viridis_r')
 
-        print(nofix_name)
-        print(nofix_sel)
-        print(nofix_islog)
-
         fig = plt.figure(figsize=(10, 10))
         for i in range(0, nnofix - 1):
             for j in range(nnofix-1, i, -1):
