@@ -15,7 +15,7 @@ system_attributes:
 
 system_components:
 
-    black_hole:
+    bh:
         parameters:
             m:
                 fixed: True
@@ -30,7 +30,7 @@ system_components:
         include: True
         contributes_to_potential: True
 
-    dark_halo:
+    dh:
         parameters:
             c: # NFW halo concentration
                 fixed: True
@@ -53,15 +53,15 @@ system_components:
     stars:
         parameters:
             q: # intrinsic flattening (C/A)
-                fixed: False
+                fixed: True
                 value: 0.1
                 LaTeX: "$q_{min}$"
             p: # intrinsic B/A
-                fixed: False
+                fixed: True
                 value: 0.99
                 LaTeX: "$p_{min}$"
             u: # sigma_obs / sigma_intrinsic
-                fixed: False
+                fixed: True
                 value: 0.9999
                 LaTeX: "$u_{min}$"
         type: "TriaxialVisibleComponent"
@@ -73,9 +73,9 @@ system_components:
             sauron:
                 weight: 1.0
                 type: BayesLOSVD
-                datafile: "bayes_losvd_kins.ecsv"  # both discr. & integrated
-                aperturefile: "aperture.dat" # integrated only
-                binfile: "bins.dat"          # integrated only
+                datafile: "bayes_losvd_kins.ecsv"
+                aperturefile: "aperture.dat"
+                binfile: "bins.dat"
 
 system_parameters: # physical system standalone parameters
     ml: # M/L
@@ -106,6 +106,7 @@ orblib_settings: # don't put in physical system -> config object
     starting_orbit: 1
     number_orbits: -1 #-1 --> all orbits
     accuracy: '1.0d-5'
+    random_seed: 4242
 
 weight_solver_settings:
     type: "NNLS"
@@ -117,9 +118,9 @@ parameter_space_settings:
     generator_type: "LegacyGridSearch"
     which_chi2: "kinchi2"
     generator_settings:
-        threshold_del_chi2: 0.5
+        threshold_del_chi2_as_frac_of_sqrt2nobs: 0.05
     stopping_criteria:
-        min_delta_chi2 : 0.5
+        min_delta_chi2_rel : 0.1
         n_max_mods : 50
         n_max_iter : 10
 
