@@ -44,14 +44,15 @@ def plot_losvds(losvd_histogram,
                  losvd[:, aperture_idx],
                  ls=ls,
                  color=color,
-                 label=f'aperture {aperture_idx}')
+                 label=f'bin {aperture_idx}')
     if title:
         plt.gca().set_title(f'LOSVD of orbit {orb_idx}\n'
                             f'Python {version_p()}, gfortran {version_f()}\n'
                             f'Random seed: {seed}')
     plt.gca().set_xlabel('v [km/s]')
     plt.gca().set_yscale('log')
-    plt.gca().legend()
+    plt.gca().legend(loc='upper right')
+    plt.xlim([-1750, 1750])
     plt.tight_layout()
     return ax
 

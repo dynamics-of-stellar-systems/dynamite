@@ -9,7 +9,10 @@ from dynamite import data
 
 class Kinematics(data.Data):
     """
-    Kinematics class holding attributes and methods pertaining to kinematic data
+    Abstract class for Kinematics
+
+    Specific implementations (e.g. ``GaussHermite``) should be implemented as
+    child classes
     """
     values = []
     def __init__(self,
@@ -84,9 +87,57 @@ class Kinematics(data.Data):
     def __repr__(self):
         return f'{self.__class__.__name__}({self.__dict__})'
 
+    def transform_orblib_to_observables(self,
+                                        losvd_histograms,
+                                        weight_solver_settings):
+        """trasform orbit library to observed kinematics
+
+        This is a placeholder method. Specific implementations/subclasses of
+        ``Kinematics`` should replace this with methods which transform an orbit
+        library LOSVD to that particular type of kinematics.
+
+        Parameters
+        ----------
+        losvd_histograms : ``dyn.kinematics.Histogram``
+            the LOSVD of an orbit library
+        weight_solver_settings : dict
+            weight solver settings
+
+        Returns
+        -------
+        object
+            the orbit library LOSVD transofrmed to observed kinematics
+
+        """
+        observables = 0
+        return observables
+
+    def get_observed_values_and_uncertainties(self, weight_solver_settings):
+        """Extract mean and uncertainties from the kinematic set
+
+        This is a placeholder method. Specific implementations/subclasses of
+        ``Kinematics`` should replace this with methods which extract the mean
+        and uncertainties of that particular kinematic type.
+
+        Parameters
+        ----------
+        weight_solver_settings : type
+            Description of parameter `weight_solver_settings`.
+
+        Returns
+        -------
+        tuple
+            (observed_values, uncertainties)
+        """
+        observed_values = 0
+        uncertainties = 0
+        return observed_values, uncertainties
 
 class GaussHermite(Kinematics, data.Integrated):
+    """LOSVDs described by a Gauss Hermite expansion
 
+    Using the Capellari et al 2016 convention
+    """
     def __init__(self, **kwargs):
         # super goes left to right, i.e. first calls "Kinematics" __init__, then
         # calls data.Integrated's __init__
@@ -97,6 +148,22 @@ class GaussHermite(Kinematics, data.Integrated):
             self.n_apertures = len(self.data)
 
     def get_highest_order_gh_coefficient(self, max_gh_check=20):
+        """Get max order GH coeeff from data table
+
+        Checks the data table for columns titled ['h{i}'] and ['dh{i}'], and
+        return the largest i such that both exist
+
+        Parameters
+        ----------
+        max_gh_check : int, optional
+            check up to this order
+
+        Returns
+        -------
+        int
+            the highest order GH present in the data table
+
+        """
         colnames = self.data.colnames
         gh_order_in_table = [i for i in range(max_gh_check) if f'h{i}' in colnames and f'dh{i}' in colnames]
         try:
@@ -106,6 +173,21 @@ class GaussHermite(Kinematics, data.Integrated):
         return max_gh_order
 
     def read_file_old_format(self, filename):
+        """Read the old format of GH kinematics
+
+        Old format is that used in triaxialschwarzschild AKA schwpy codes
+
+        Parameters
+        ----------
+        filename : string
+            filename of old format of GH kinematics file
+
+        Returns
+        -------
+        Astropy table
+            the GH kinematics data
+
+        """
         f = open(filename)
         header = f.readline()
         f.close()
@@ -131,6 +213,23 @@ class GaussHermite(Kinematics, data.Integrated):
     def convert_file_from_old_format(self,
                                      filename_old_format,
                                      filename_new_format):
+        """Convert old format of GH kinematics to new format
+
+        Old format is that used in triaxialschwarzschild AKA schwpy codes
+
+        Parameters
+        ----------
+        filename_old_format : string
+            filename of old/shwpy format of GH kinematics file
+        filename_new_format : string
+            desired filename of new Astropy ECSV format
+
+        Returns
+        -------
+        None
+            creates a an astropy ECSV file at filename_new_format
+
+        """
         data = self.read_file_old_format(filename_old_format)
         data = table.Table(data)
         data.remove_column('n_gh')
@@ -172,15 +271,15 @@ class GaussHermite(Kinematics, data.Integrated):
         return 0
 
     def get_hermite_polynomial_coeffients(self, max_order=None):
-        """Get coeffients for hermite polynomials normalised as in eqn 14 of
-        Capellari 2016
+        """Get Hermite poly coeffients
+
+        Normalised as in eqn 14 of Capellari 16
 
         Parameters
         ----------
         max_order : int
-            maximum order hermite polynomial desired
-            e.g. max_order = 1 --> use h0, h1
-            i.e. number of hermite polys = max_order + 1
+            maximum order hermite polynomial desired e.g. max_order = 3 means
+            use h0, h1, h2, h3
 
         Returns
         -------
@@ -206,7 +305,7 @@ class GaussHermite(Kinematics, data.Integrated):
         return coeffients
 
     def standardise_velocities(self, v, v_mu, v_sig):
-        """
+        """ Take away v_mu, divide by v_sig
 
         Parameters
         ----------
@@ -237,24 +336,30 @@ class GaussHermite(Kinematics, data.Integrated):
                                      standardised=True,
                                      v_mu=None,
                                      v_sig=None):
-        """
+        """Evaluate Hermite polynomials
 
         Parameters
         ----------
         coeffients : array (n_herm, n_herm)
             coefficients of hermite polynomials as given by method
-            get_hermite_polynomial_coeffients
+            ``get_hermite_polynomial_coeffients``
         w : array
-            if standardised==True
-                shape (n_regions, n_vbins), standardised velocities
-            else
-                shape (n_vbins,), physical velocities
-                and arrays v_mu and v_sig with shape (n_regions,) must be set
+            if standardised==True then w is array of shape (n_regions, n_vbins)
+            of standardised (AKA whitened) velocities
+            else, w is array of shape (n_vbins,) of physical velocities
+            and arrays v_mu and v_sig with shape (n_regions,) must be set
+        standardised : Boolean
+            whether or not velocities w have been standardised by aperture v/sig
+        v_mu : None or array shape (n_regions,)
+            aperture v_mu's
+        v_sig : None or array shape (n_regions,)
+            aperture v_sigma's
 
         Returns
         -------
-        array shape (n_hists, n_regions, n_vbins)
-            Hermite polynomials evaluated at w in array of
+        array shape (n_herm, n_regions, n_vbins)
+            array[i,j,:] is the i'th Hermite polynomial evaluated at
+            standardised velocities w in the j'th region
 
         """
         if not standardised:
@@ -267,10 +372,16 @@ class GaussHermite(Kinematics, data.Integrated):
         return result
 
     def evaluate_losvd(self, v, v_mu, v_sig, h):
-        """ evaluate
-            losvd(v) = 1/v_sig norm(w; 0, 1^2) Sum_{m=0}^{M} h_m H_m(w)
-        where normalised velocity
-            w = (v-v_mu)/v_sig
+        """ evaluate LOSVDs
+
+        Evaluate the quantity
+
+        .. math::
+
+            \mathrm{LOSVD}(v) = \\frac{1}{v_\sigma} \mathcal{N}(w; 0, 1^2)
+                \Sigma_{m=0}^{M} h_m H_m(w)
+
+        where normalised velocity :math:`w = (v-v_\mu)/v_\sigma`
 
         Parameters
         ----------
@@ -304,17 +415,28 @@ class GaussHermite(Kinematics, data.Integrated):
         return losvd
 
     def evaluate_losvd_normalisation(self, h):
-        """Evaluate the normalising integral
-            int_{-inf}^{inf} losvd(v) dv
-        which is given by
-            Sum_{m=0}^{M} b_m a_m
-        where:
-        - a_m are the coefficients of w in the polynomial
-                Sum_{m=0}^{M} h_m H_m(w)
-        -       { 1          if m=0
-          b_m = { 0          if m is odd
-                { (m-1)!!    if m is non-zero and even
-        and !! is a 'double factorial' - which does *NOT* mean two factorials
+        """Evaluate LOSVD normalisation
+
+        Evaluate the normalising integral
+
+        .. math::
+
+            \int_{-\infty}^{\infty} \mathrm{LOSVD}(v) dv
+
+        which for a GH expansion is given by
+
+        .. math::
+
+            \Sigma_{m=0}^{M} b_m a_m
+
+        where
+            - :math:`a_m` are the coefficients of w in the polynomial :math:`\Sigma_{m=0}^{M} h_m H_m(w)`
+            - :math:`b_m` =
+                    - 1 if m=0
+                    - 0 if m is odd
+                    - (m-1)!!    if m is non-zero and even
+
+        and !! is a 'double factorial' - which does **not** mean two factorials
         but the product integers < n with same even/odd parity as n
 
         Parameters
@@ -346,8 +468,10 @@ class GaussHermite(Kinematics, data.Integrated):
                                       v_sig=None,
                                       vel_hist=None,
                                       max_order=4):
-        """Calcuate coeffients of gauss hermite expansion of histogrammed LOSVD
-        around a given v_mu and v_sig i.e. evaluate qn 7 of vd Marel & Franx 93
+        """Calcuate GH expansion coeffients given an LOSVD
+
+        Expand LOSVD around a given v_mu and v_sig using eqn 7 of
+        vd Marel & Franx 93
 
         Parameters
         ----------
@@ -408,6 +532,23 @@ class GaussHermite(Kinematics, data.Integrated):
         return orblib_gh_coefs
 
     def get_observed_values_and_uncertainties(self, weight_solver_settings):
+        """Extract mean/sigma from the GH kinematics
+
+        Parameters
+        ----------
+        weight_solver_settings : type
+            Description of parameter `weight_solver_settings`.
+
+        Returns
+        -------
+        tuple
+            (observed_values, uncertainties), where:
+            - observed_values is array of GH exapnsion coefficients of shape
+            (n_apertures, max_gh_order)
+            - uncertainties is array of uncertainties on GH exapnsion
+            coefficients of shape (n_apertures, max_gh_order)
+
+        """
         max_gh_order = weight_solver_settings['number_GH']
         # construct observed values
         observed_values = np.zeros((self.n_apertures, max_gh_order))
@@ -434,7 +575,13 @@ class GaussHermite(Kinematics, data.Integrated):
         return observed_values, uncertainties
 
     def set_default_hist_width(self, n_sig=3.):
-        """Sets default histogram width to 2 * max(|v| + n_sig*sig)
+        """Sets default histogram width
+
+        Set it to
+
+        :math:`2 * max(|v| + n_\mathrm{sig}*\sigma)`
+
+        i.e. double the largest velcoity present in the observed LOSVD
 
         Parameters
         ----------
@@ -472,7 +619,7 @@ class GaussHermite(Kinematics, data.Integrated):
         self.hist_bins = hist_bins
 
 class Histogram(object):
-    """Class to hold histograms
+    """LOSVD histograms
 
     Parameters
     ----------
@@ -502,11 +649,29 @@ class Histogram(object):
             self.normalise()
 
     def get_normalisation(self):
+        """Get the normalsition
+
+        Calculates ``Sum_i losvd_i * dv_i``
+
+        Returns
+        -------
+        float
+            the normalisation
+
+        """
         na = np.newaxis
         norm = np.sum(self.y*self.dx[na,:,na], axis=1)
         return norm
 
     def normalise(self):
+        """normalises the LOSVDs
+
+        Returns
+        -------
+        None
+            resets ``self.y`` to a normalised version
+
+        """
         norm = self.get_normalisation()
         na = np.newaxis
         tmp = self.y/norm[:,na,:]
@@ -517,11 +682,33 @@ class Histogram(object):
         self.y = tmp
 
     def scale_x_values(self, scale_factor):
+        """scale the velocity array
+
+        scales vel array, and dv
+
+        Parameters
+        ----------
+        scale_factor : float
+
+        Returns
+        -------
+        None
+            resets ``self.xedg``, ``self.x``, ``self.dx`` to rescaled versions
+
+        """
         self.xedg *= scale_factor
         self.x *= scale_factor
         self.dx *= scale_factor
 
     def get_mean(self):
+        """Get the mean velocity
+
+        Returns
+        -------
+        array shape (n_orbits, n_apertures)
+            mean velcoity of losvd
+
+        """
         na = np.newaxis
         mean = np.sum(self.x[na,:,na] * self.y * self.dx[na,:,na], axis=1)
         norm = self.get_normalisation()
@@ -529,6 +716,14 @@ class Histogram(object):
         return mean
 
     def get_sigma(self):
+        """Get the velocity dispersions
+
+        Returns
+        -------
+        array shape (n_orbits, n_apertures)
+            velocity dispersion of losvd
+
+        """
         na = np.newaxis
         mean = self.get_mean()
         v_minus_mu = self.x[na,:,na]-mean[:,na,:]
@@ -540,7 +735,9 @@ class Histogram(object):
         return sigma
 
 class BayesLOSVD(Kinematics, data.Integrated):
+    """Bayes LOSVD kinematic data
 
+    """
     def __init__(self, **kwargs):
         # super goes left to right, i.e. first calls "Kinematics" __init__, then
         # calls data.Integrated's __init__
@@ -551,6 +748,17 @@ class BayesLOSVD(Kinematics, data.Integrated):
             self.set_mean_v_and_sig_v_per_aperture()
 
     def convert_losvd_columns_to_one_multidimensional_column(self):
+        """Convert 1D to multi-dim columns
+
+        ECSV files can save 1D columns, but useful to work with multi-dim
+        columns for the LOSVSD. This method converts.
+
+        Returns
+        -------
+        Re-sets ``self.data['losvd']`` and ``self.data['dlosvd']`` to multi-dim
+        columns
+
+        """
         nbins = self.data.meta['nbins']
         nv = self.data.meta['nvbins']
         losvd_mean = np.zeros((nbins,nv))
@@ -564,6 +772,18 @@ class BayesLOSVD(Kinematics, data.Integrated):
         self.data['dlosvd'] = losvd_sigma
 
     def convert_multidimensional_losvd_columns_to_univariate(self):
+        """Convert multi-dim columns to 1D
+
+        ECSV files can save 1D columns, but useful to work with multi-dim
+        columns for the LOSVSD. This method converts.
+
+        Returns
+        -------
+        Re-sets ``self.data['losvd']`` and ``self.data['dlosvd']`` to 1D columns
+        called ``self.data['losvd_{i}']`` and ``self.data['dlosvd_{i}']`` for
+        i = 1, ..., N_LOSVD_bins
+
+        """
         nbins = self.data.meta['nbins']
         nv = self.data.meta['nvbins']
         losvd_mean = self.data['losvd']
@@ -575,6 +795,17 @@ class BayesLOSVD(Kinematics, data.Integrated):
         self.data.remove_column('dlosvd')
 
     def save_data_table(self, outfile=None):
+        """Special save method for BayesLOSVD data.
+
+        Handles conversion from multi-dim --> 1D columns. Should supercede the
+        generic method ``dyn.data.Data.save``
+
+        Parameters
+        ----------
+        outfile : string
+            Name of output file
+
+        """
         if outfile is None:
             outfile = self.datafile
             if hasattr(self, 'input_directory'):
@@ -583,17 +814,20 @@ class BayesLOSVD(Kinematics, data.Integrated):
         self.data.write(outfile, format='ascii.ecsv', overwrite=True)
 
     def load_hdf5(self, filename):
-        """Load a *.hdf5 file containing results from BAYES-LOSVD
+        """
+        Load a hdf5 file of BAYES-LOSVD output
 
         Borrowed from bayes_losvd_load_hdf5.py
 
         Parameters
         ----------
         filename : string
+            the hdf5 file of BayesLOSVD output
 
         Returns
         -------
         dict
+            data read from BayesLOSVD output file
 
         """
         self.logger.info("Loading "+filename+" data")
@@ -627,6 +861,24 @@ class BayesLOSVD(Kinematics, data.Integrated):
     def write_losvds_to_ecsv_format(self,
                                     filename=None,
                                     outfile='bayes_losvd_kins.ecsv'):
+        """Convert BayesLOSVD output to ECSV
+
+        Reads in the hdf5 BayesLOSVD output file for all spatial bins.
+        Saves the median and 68% Bayesian Credible Interval of the LOSVD in each
+        LOSVD bin, into an astropy ECSV file.
+
+        Parameters
+        ----------
+        filename : string
+            BayesLOSVD hdf5 output file for all spatial bins.
+        outfile : string
+            desired name of output ECSV file
+
+        Returns
+        -------
+        None
+
+        """
         result = self.load_hdf5(filename)
         dv = float(result['velscale'])
         vcent = result['xvel']
@@ -673,12 +925,13 @@ class BayesLOSVD(Kinematics, data.Integrated):
                                      center='max_flux',
                                      aperture_filename='aperture.dat',
                                      bin_filename='bins.dat'):
-        """Write aperture.dat and 'bins.dat' files from BAYES-LOSVD output
+        """
+        Write ``aperture.dat`` and ``bins.dat`` files
 
         Parameters
         ----------
         filename : string
-            filename *_results.hdf5 of BAYES-LOSVD output (all bins combined)
+            filename XXX_results.hdf5 of BAYES-LOSVD output (all bins combined)
         angle_deg : float
             Angle in degrees measured counter clockwise from the galaxy major
             axis to the X-axis of the input data
@@ -777,7 +1030,7 @@ class BayesLOSVD(Kinematics, data.Integrated):
         bins_file.close()
 
     def map_binID_blosvd_to_binID_dynamite(self, binID_blosvd):
-        """Map an input array of BayesLOSVD binIDs to DYNMAITE binIDs.
+        """Map BayesLOSVD binIDs to DYNMAITE binIDs.
 
         Assumes that the table `self.data` has colums `binID_BayesLOSVD` and
         `binID_dynamite` which define the mapping. Any binID_blosvd with no
@@ -809,9 +1062,10 @@ class BayesLOSVD(Kinematics, data.Integrated):
         return binID_dynamite
 
     def set_default_hist_width(self, scale=2.):
-        """Set orbit histogram width as scaled multiple of data histogram width
+        """Set orbit histogram width
 
-        Sets the result to attribute `self.hist_width`
+        Set it to a multiple of data histogram width. Default 2 i.e. double to
+        width of observed data. Sets result to attribute ``self.hist_width``
 
         Parameters
         ----------
@@ -825,19 +1079,24 @@ class BayesLOSVD(Kinematics, data.Integrated):
         self.hist_width = 2. * scale * max_vabs
 
     def set_default_hist_center(self):
-        """Sets orbit histogram center (i.e. `self.hist_center`) to 0.
+        """Sets orbit histogram center to 0
         """
         self.hist_center = 0.
 
     def set_default_hist_bins(self, oversampling_factor=10):
-        """Set orbit histogram nbins by scaling down the data velocity spacing
+        """Set default LOSVD nbins for orblibs
 
-        Sets the result to attribute `self.hist_bins`
+        Uses velocity spacing of the data divided by oversampling_factor.
+        Also forces nbins to be odd, so that central bin in 0-centered.
 
         Parameters
         ----------
         oversampling_factor : float
             scale factor to divide the data velocity spacing
+
+        Returns
+        ----------
+        Sets the result to attribute `self.hist_bins`
 
         """
         data_dv = self.data.meta['dv']
@@ -850,6 +1109,13 @@ class BayesLOSVD(Kinematics, data.Integrated):
         self.hist_bins = orblib_nbins
 
     def set_mean_v_and_sig_v_per_aperture(self):
+        """get mean and dispersion
+
+        Returns
+        -------
+        creates columns ``self.data['v']`` and ``self.data['sigma']``
+
+        """
         # the marginalised LOSVDs saved by BAYES-losvd do not sum to 1 -
         # we must account for this when calculating moments
         losvd = (self.data['losvd'].T/np.sum(self.data['losvd'], 1)).T
@@ -861,6 +1127,22 @@ class BayesLOSVD(Kinematics, data.Integrated):
         self.data['sigma'] = sig_v
 
     def rebin_orblib_to_observations(self, losvd_histograms):
+        """Rebin orblib to velocity spacing of observations
+
+        Creates a matrix ``f``, the fraction of the j'th orblib vbin in the i'th
+        data vbin. Multiplies orblib losvd_histograms by f to rebin.
+
+        Parameters
+        ----------
+        losvd_histograms : ``dyn.kinematics.Histogram``
+            a histogram object of the orblib LOSVD
+
+        Returns
+        -------
+        ``dyn.kinematics.Histogram``
+            a orblib LOSVD re-binned to the data velocity spacing
+
+        """
         v_cent, dv = np.array(self.data.meta['vcent']), self.data.meta['dv']
         v_edg = np.concatenate(((v_cent-dv/2.), [v_cent[-1]+dv/2.]))
         dx = losvd_histograms.dx[0]
@@ -899,6 +1181,20 @@ class BayesLOSVD(Kinematics, data.Integrated):
         return losvd_histograms
 
     def get_observed_values_and_uncertainties(self, weight_solver_settings):
+        """Get LOSVD mean/uncertainties
+
+        Parameters
+        ----------
+        weight_solver_settings : dict
+
+        Returns
+        -------
+        tuple
+            (observed_values, uncertainties), where:
+            - observed_values array of shape (n_aperture, n_vbins)
+            - uncertainties array of shape (n_aperture, n_vbins)
+
+        """
         # weight solver expects arrays of shape (n_aperture, n_vbins)
         observed_values = self.data['losvd'] # shape = (n_aperture, n_vbins)
         uncertainties = self.data['dlosvd'] # shape = (n_aperture, n_vbins)

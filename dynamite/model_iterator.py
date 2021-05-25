@@ -9,7 +9,32 @@ from dynamite import parameter_space
 from dynamite import plotter
 
 class ModelIterator(object):
+    """Iterator for models
 
+    Creating this ``ModelIterator`` object will (i) generate parameters sets,
+    (ii) run models for those parameters, (iii) check stopping criteria, and
+    iterate this procedure till a stopping criterion is met. This is implemented
+    by created a ``ModelInnerIterator`` object whose ``run_iteration`` method is
+    called a number of times.
+
+    Parameters
+    ----------
+    system : a ``dyn.physical_system.System`` object
+    all_models : a ``dyn.model.AllModels`` object
+    settings : a ``dyn.config_reader.Settings`` object
+    model_kwargs : dict
+        other kewyord argument required for this model
+    do_dummy_run : Bool
+        whether this is a dummy run - if so, dummy_chi2_funciton is executed
+        instead of the model (for testing!)
+    dummy_chi2_function : function
+        a function of model parameters to be executed instead of the real model
+    ncpus : int
+        number of cpus for multiprocessing
+    plots : bool
+        whether or not to make plots
+
+    """
     def __init__(self,
                  system=None,
                  all_models=None,
@@ -20,7 +45,6 @@ class ModelIterator(object):
                  ncpus=1,
                  plots=True):
         self.logger = logging.getLogger(f'{__name__}.{__class__.__name__}')
-
         stopping_crit = settings.parameter_space_settings['stopping_criteria']
         n_max_iter = stopping_crit['n_max_iter']
         self.n_max_mods = stopping_crit['n_max_mods']
@@ -74,7 +98,26 @@ class ModelIterator(object):
 
 
 class ModelInnerIterator(object):
+    """Class to run all models in a single iteration.
 
+    Uses ``pathos.multiprocessing.Pool`` to execute the models
+
+    Parameters
+    ----------
+    system : a DYNMAITE system object
+    all_models : a DYNMAITE all_models object
+    settings : a DYNMAITE settings object
+    model_kwargs : type
+        Description of parameter `model_kwargs`.
+    do_dummy_run : Bool
+        whether this is a dummy run - if so, dummy_chi2_funciton is executed
+        instead of the model (for testing!)
+    dummy_chi2_function : function
+        a function of model parameters to be executed instead of the real model
+    ncpus : int
+        number of cpus for multiprocessing
+
+    """
     def __init__(self,
                  system=None,
                  all_models=None,
@@ -106,7 +149,8 @@ class ModelInnerIterator(object):
         self.ncpus = ncpus
 
     def run_iteration(self):
-        """
+        """run one iteration step
+
         Executes one iteration step: run all models in self.all_models.table
         for which all_done == False. The model runs (1) build the orbit
         library and (2) execute weight_solver. The models are run in parallel
@@ -247,6 +291,20 @@ class ModelInnerIterator(object):
                 f"{self.all_models.table[row]['directory']} assigned.")
 
     def create_and_run_model(self, which_model):
+        """main method to create and run a model
+
+        Parameters
+        ----------
+        input : tuple
+            (i, row) where i is the index of a model in this iteration, and row
+            is the row index of the all_models table for this model
+
+        Returns
+        -------
+        tuple
+            all the output for this model, bundles up in a tuple
+
+        """
         i, row = which_model
         self.logger.info(f'... running model {i+1} out of {self.n_to_do}')
         mod = self.all_models.get_model_from_row(row)
@@ -268,6 +326,20 @@ class ModelInnerIterator(object):
         return output
 
     def write_output_to_all_models_table(self, rows_to_do, output):
+        """write_output_to_all_models_table
+
+        Parameters
+        ----------
+        rows_to_do : list of ints
+            which rows of all models table to fill with output
+        output : list
+            output returned by Pool.map
+
+        Returns
+        -------
+        Fills output into the all_models table
+
+        """
         for i, row in enumerate(rows_to_do):
             orb_done, wts_done, chi2, kinchi2, all_done, time = output[i]
             self.all_models.table['orblib_done'][row] = orb_done

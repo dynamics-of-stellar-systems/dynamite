@@ -377,6 +377,7 @@ You can check the output in the directory ``.../tests/NGC6278_output/plots``, wh
 
 .. image:: orbit_losvds.png
 
+After running a model, an orbit (in this case orbit 15) is selected and its LOSVD in 4 different kinematic Voronoi bins (bins 0, 2, 20, and 30) is shown in this plot with black solid lines. This is compared with pre-computed LOSVDs, shown here with red dashed lines. If the two sets of lines are matching in the figure you obtain (just like in the one reproduced here), the code is running correctly.
 
 NNLS test run
 -------------
@@ -391,14 +392,14 @@ You can check the output in the directory ``.../tests/NGC6278_output/plots``, wh
 
 .. image:: chi2_vs_model_id.png
 
-You should not worry if the red crosses in the image you obtain are slightly outside the black circles, the code is running correctly.
+This figure shows the values of the :math:`\chi^2` obtained for the three models run in the test file, as a function of the ID of each model, and shown with red crosses. The black circles represent the range of expected values for this quantity, which can vary because of details in the numerical computation, depending on the system and the compiler used. If you obtain a figure similar to the one provided here, the code is running correctly (no need to worry if your crosses are falling slightly outside the circles).
 
 
 ..
     NGC 6278 test run
     -----------------
 
-    You can have a test run of the DYNAMITE code and the analysis scripts on the S0 galaxy NGC 6278. In the end you should get similar plots to the ones shown in `Zhu et al. 2018, MNRAS, 473, 3000 <https://arxiv.org/pdf/1709.06649.pdf>`_.
+    You can have a test run of the DYNAMITE code and the analysis scripts on the S0 galaxy NGC 6278. In the end you should get similar plots to the ones shown in `Zhu et al. 2018, MNRAS, 473, 3000 <https://ui.adsabs.harvard.edu/abs/2018MNRAS.473.3000Z/abstract>`_.
     For this test run, we have created a data directory in ``.../tests/NGC6278``, containing all the necessary data. This directory only includes the configuration file ``user_test_config.yaml`` and a folder ``input_data``, which contains the input files of the DYNAMITE code. If you run the code with your own data, make sure that your galaxy folder (named by the object name) has all input files with the parameters set properly for your galaxy.
 
     To run this test, go to the folder ``.../tests`` and start your model by typing in the terminal::

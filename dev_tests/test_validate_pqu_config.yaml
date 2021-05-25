@@ -73,8 +73,6 @@ system_components:
                 value: 0.5
                 LaTeX: "$q_{min}$"
             p: # intrinsic B/A
-                gpe_parspace_settings:
-                    kernel: "to be defined"
                 par_generator_settings:
                     lo: 0.05
                     hi: 0.999

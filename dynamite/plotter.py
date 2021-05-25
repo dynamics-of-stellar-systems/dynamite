@@ -18,7 +18,20 @@ from dynamite import weight_solvers
 from dynamite import physical_system as physys
 
 class Plotter():
+    """Class to hold plotting routines
 
+    Class containing methods for plotting results. Each plotting method saves a
+    plot in the `outplot/plots` directory, and returns a `matplotlib` `figure`
+    object.
+
+    Parameters
+    ----------
+    system : a `dyn.physical_system.System` object
+    settings : a `dyn.config_reader.Settings` object
+    parspace : a list of `dyn.parameter_space.Parameter` object
+    all_models : a list of `dyn.models.AllModels` object
+
+    """
     def __init__(self,
                  system=None,
                  settings=None,
@@ -32,7 +45,6 @@ class Plotter():
         self.input_directory = settings.io_settings['input_directory']
         self.plotdir = settings.io_settings['plot_directory']
         pb_sauron_colormap.register_sauron_colormap()
-
 
     def make_chi2_vs_model_id_plot(self, which_chi2=None, figtype=None):
         """
@@ -153,8 +165,8 @@ class Plotter():
             model_id=np.where(self.all_models.table[which_chi2]==chi2val)[0][0]
             model = self.all_models.get_model_from_row(model_id)
             ml = model.parset['ml']
-            ml_orig = model.get_orblib().get_ml_of_original_orblib()
-            scale_factor[i] = np.sqrt(ml/ml_orig)
+            ml_orblib = model.get_orblib().get_ml_of_original_orblib()
+            scale_factor[i] = np.sqrt(ml/ml_orblib)
 
         dh = self.system.get_all_dark_non_plummer_components()
         dh = dh[0]  # take the first as there should only be one of these
@@ -233,11 +245,18 @@ class Plotter():
                 xtit = nofix_latex[i]
 
                 pltnum = (nnofix-1-j) * (nnofix-1) + i+1
-                ax = plt.subplot(nnofix-1, nnofix-1, pltnum)
+                plt.subplot(nnofix-1, nnofix-1, pltnum)
 
                 plt.plot(val[nofix_name[i]],val[nofix_name[j]], 'D',
                          color='black', markersize=2)
-
+                if j==i+1:
+                    plt.xlabel(xtit, fontsize=12)
+                else:
+                    plt.xticks([])
+                if i==0:
+                    plt.ylabel(ytit, fontsize=12)
+                else:
+                    plt.yticks([])
                 for k in range(nf - 1, -1, -1):
                     if chi2[k]/chlim<=3: #only significant chi2 values
 
@@ -332,9 +351,11 @@ class Plotter():
 
         Returns
         -------
-        fig : list of tuples (matplotlib.pyplot.figure, kinematics-name) if
-              kin_set == 'all', else matplotlib.pyplot.figure
-            Figure instances along with kinemtics name or figure instance.
+
+        list or `matplotlib.pyplot.figure` 
+            if kin_set == 'all', returns `(matplotlib.pyplot.figure, string)`, i.e.
+            Figure instances along with kinemtics name or figure instance
+            else, returns a `matplotlib.pyplot.figure`
 
         """
         # Taken from schw_kin.py.

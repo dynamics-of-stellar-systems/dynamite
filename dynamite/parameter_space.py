@@ -5,7 +5,27 @@ from astropy.table import Table
 from dynamite import parameter_space as parspace
 
 class Parameter(object):
+    """Parameter of a model
 
+    Parameters
+    ----------
+    name : string
+        the parameter name (specific components have specific parameter names)
+    fixed : Bool
+        whether or not to fix this parameter during parameter searches
+    LaTeX : string
+        a ```LaTeX`` format string to use in plots
+    sformat : string
+        a format string for printing parameter values
+    value : float
+        the value of this parameter in a model; the config file contains an
+        initial value, this is updated during the parameter search
+    par_generator_settings : dict
+        settings for the parameter generator
+    logarithmic : Bool
+        whether or not this parameter is specified in log units
+
+    """
     attributes = []
     def __init__(self,
                  name=None,
@@ -14,7 +34,6 @@ class Parameter(object):
                  sformat=None,
                  value=None,
                  par_generator_settings=None,
-                 gpe_parspace_settings=None,
                  logarithmic=False,
                  ):
         self.logger = logging.getLogger(f'{__name__}.{__class__.__name__}')
@@ -24,11 +43,12 @@ class Parameter(object):
         self.sformat = sformat
         self.value = value
         self.par_generator_settings = par_generator_settings
-        self.gpe_parspace_settings = gpe_parspace_settings
         self.logarithmic = logarithmic
         self.__class__.attributes = list(self.__dict__.keys())
 
     def update(self, **kwargs):
+        """update the parameter
+        """
         for k, v in kwargs.items():
             if k not in self.__class__.attributes:
                 text = (f'Invalid parameter key {k}. Allowed keys: '
@@ -38,6 +58,8 @@ class Parameter(object):
             setattr(self, k, v)
 
     def validate(self):
+        """validate the parameter
+        """
         if sorted(self.__class__.attributes) != sorted(self.__dict__.keys()):
             text = (f'Parameter attributes can only be '
                     f'{str(tuple(self.__class__.attributes))}, '
@@ -49,6 +71,24 @@ class Parameter(object):
         return (f'{self.__class__.__name__}({self.__dict__})')
 
     def get_par_value_from_raw_value(self, raw_value):
+        """Get parameter value from the raw value
+
+        In `raw` values, linearly-sized steps are taken during parameter
+        searches. Currently there is only one possible `raw` transformation,
+        going to log units. Future ones may include, e.g. isotropic
+        transformations of viewing angles.
+
+        Parameters
+        ----------
+        raw_value : float
+            the raw parameter value
+
+        Returns
+        -------
+        float
+            the parameter value
+
+        """
         if self.logarithmic is True:
             par_value = 10.**raw_value
         else:
@@ -56,6 +96,24 @@ class Parameter(object):
         return par_value
 
     def get_raw_value_from_par_value(self, par_value):
+        """Get raw parameter value from parameter
+
+        In `raw` values, linearly-sized steps are taken during parameter
+        searches. Currently there is only one possible `raw` transformation,
+        going to log units. Future ones may include, e.g. isotropic
+        transformations of viewing angles.
+
+        Parameters
+        ----------
+        par_value : float
+            the parameter value
+
+        Returns
+        -------
+        float
+            the raw parameter value
+
+        """
         if self.logarithmic is True:
             raw_value = np.log10(par_value)
         else:
@@ -64,7 +122,13 @@ class Parameter(object):
 
 
 class ParameterSpace(list):
+    """A list of all ``Parameter`` objects  in the ``Model``
 
+    Parameters
+    ----------
+    system : a ``dyn.physical_system.System`` object
+
+    """
     def __init__(self, system):
         self.logger = logging.getLogger(f'{__name__}.{__class__.__name__}')
         for cmp in system.cmp_list:
@@ -87,16 +151,63 @@ class ParameterSpace(list):
                 f'{self.__dict__})')
 
     def get_param_value_from_raw_value(self, raw_value):
+        """Get parameter values from raw parameters
+
+        In `raw` values, linearly-sized steps are taken during parameter
+        searches. Currently there is only one possible `raw` transformation,
+        going to log units. Future ones may include, e.g. isotropic
+        transformations of viewing angles.
+
+        Parameters
+        ----------
+        raw_value : list of floats
+            list of raw parameter values for all models
+
+        Returns
+        -------
+        list of floats
+            list of parameter value
+
+        """
         par_val = [p.get_par_value_from_raw_value(rv0)
                    for (rv0, p) in zip(raw_value, self)]
         return par_val
 
     def get_raw_value_from_param_value(self, par_val):
+        """Get raw parameter values from parameters
+
+        In `raw` values, linearly-sized steps are taken during parameter
+        searches. Currently there is only one possible `raw` transformation,
+        going to log units. Future ones may include, e.g. isotropic
+        transformations of viewing angles.
+
+        Parameters
+        ----------
+        par_val : list of floats
+            list of parameter values for all models
+
+        Returns
+        -------
+        list of floats
+            list of raw parameter value
+
+        """
         raw_value = [p.get_raw_value_from_par_value(pv0)
                      for (pv0, p) in zip(par_val, self)]
         return raw_value
 
     def get_parameter_from_name(self, name):
+        """Get a ``Parameter`` from the name
+
+        Parameters
+        ----------
+        name : string
+
+        Returns
+        -------
+        ``dyn.parameter_space.Parameter``
+
+        """
         name_array = np.array(self.par_names)
         idx = np.where(name_array == name)
         self.logger.debug(f'Checking unique parameter name {name}...')
@@ -108,8 +219,7 @@ class ParameterSpace(list):
 
     def get_parset(self):
         """
-        Returns a parset (row of an Astropy Table) corresponding to the
-        parameter values in the ParameterSpace object.
+        Get parset as row of an Astropy Table
 
         Returns
         -------
@@ -128,9 +238,12 @@ class ParameterSpace(list):
 
     def validate_parset(self, parset):
         """
-        Validates the values of each component's parameters by calling the
-        individual components' validate_parameter methods. Does the same for
-        system parameters. Used by the parameter generators.
+        Validates a parameter set
+
+        Validate the values of each component's parameters (e.g. check it is
+        within specified lo/hi bounds) by calling the individual components'
+        validate_parameter methods. Does the same for system parameters. Used by
+        the parameter generators.
 
         Parameters
         ----------
@@ -138,7 +251,7 @@ class ParameterSpace(list):
 
         Returns
         -------
-        bool
+        Bool
             True if validation was successful, False otherwise
 
         """
@@ -154,9 +267,12 @@ class ParameterSpace(list):
 
     def validate_parspace(self):
         """
-        Validates the values of each component's parameters by calling the
-        individual components' validate_parset methods. Does the same for
-        system parameters.
+        Validates a parameter set
+
+        Validate the values of each component's parameters (e.g. check it is
+        within specified lo/hi bounds) by calling the individual components'
+        validate_parameter methods. Does the same for system parameters. Used by
+        the parameter generators.
 
         Raises
         ------
@@ -215,7 +331,26 @@ class ParameterSpace(list):
 
 
 class ParameterGenerator(object):
+    """Abstract class for ``ParameterGenerator``
 
+    ``ParameterGenerator`` have methods to generate new sets of parameters to
+    evaluate models based on existing models. This is an abstrct class, specific
+    implementations should be implemented as child-classes (e.g.
+    ``LegacyGridSearch``). Every implementation must have methods
+    ``check_specific_stopping_critera`` and ``specific_generate_method`` which
+    define the stopping criteria and parameter generation algorithm for that
+    implementation. These are exectuted in addition to ``generic`` methods,
+    which are defined in this parent ``ParameterGenerator`` class.
+
+    Parameters
+    ----------
+    par_space : ``dyn.parameter_space.ParameterSpace`` object
+    parspace_settings : dict
+        parameter space settings
+    name : string
+        the name of the particular ParameterGenerator sub-class
+
+    """
     def __init__(self,
                  par_space=[],
                  parspace_settings=None,
@@ -267,16 +402,18 @@ class ParameterGenerator(object):
     def generate(self,
                  current_models=None,
                  kw_specific_generate_method={}):
-        """Generate new parameter sets. This is a wrapper method around the
-        specific_generate_method of child generator classes. This wrapper does
-        the following:
-        (i) evaluates stopping criteria, and stop if necessary
-        (ii) runs the specific_generate_method of the child class, which
-        updates self.model_list with a list of proposal models
-        (iii) removes previously run and/or invalid models from self.model_list
-        (iv) converts parameters from raw_values to par_values
-        (v) adds new, valid models to current_models.table
-        (vi) update and return the status dictionary
+        """Generate new parameter sets.
+
+        This is a wrapper method around the ``specific_generate_method`` of
+        child generator classes. This wrapper does the following:
+
+            1.   evaluates stopping criteria, and stop if necessary
+            2.   runs the ``specific_generate_method`` of the child class, which
+                 updates ``self.model_list`` with a list of propsal models
+            3.   removes previously run and invalid models from ``self.model_list``
+            4.   converts parameters from raw_values to par_values
+            5.   adds new, valid models to ``current_models.table``
+            6.   update and return the status dictionary
 
         Parameters
         ----------
@@ -288,14 +425,14 @@ class ParameterGenerator(object):
         Returns
         -------
         dict
-            a dictionary status, with entries
-            - stop: bool, whether or not any stopping criteria are met
-            - n_new_models: int
-            and additional bool entries for the indivdidual stopping criteria
-            - last_iter_added_no_new_models
-            - n_max_mods_reached
-            - n_max_iter_reached
-            - plus any criteria specific to the child class
+            a status dictionary, with entries:
+                - stop: bool, whether or not any stopping criteria are met
+                - n_new_models: int
+            and additional Bool entries for the indivdidual stopping criteria:
+                - last_iter_added_no_new_models
+                - n_max_mods_reached
+                - n_max_iter_reached
+                - plus any criteria specific to the child class
 
         """
         if current_models is None:
@@ -330,10 +467,15 @@ class ParameterGenerator(object):
 
     def add_model(self, model=None, n_iter=0):
         """
-        Adds the model passed as an argument to self.current_models.
-        The datetime64 column is populated with the current timestamp
-        numpy.datetime64('now', 'ms').
-        The 'which_iter' column is populated with the argument value n_iter.
+        Add a model
+
+        Adds the model (a list of ``Parameter`` objects) to the table
+        ``self.current_models``. The datetime64 column is populated with the
+        current timestamp numpy.datetime64('now', 'ms'). The 'which_iter' column
+        is populated with the argument value n_iter.
+
+        **Note** - here, `model` refers to a list of Parameter objects, not a
+        ``Model`` object. TODO: clarify the naming confusion.
 
         Parameters
         ----------
@@ -376,6 +518,12 @@ class ParameterGenerator(object):
         self.current_models.table.add_row(row)
 
     def check_stopping_critera(self):
+        """Check stopping criteria
+
+        This is a wrapper which checks both the generic stopping criteria and
+        also the ``specific_stopping_critera`` revelant for any particular
+        ``ParameterGenerator`` used.
+        """
         self.status['stop'] = False
         if len(self.current_models.table) > 0:
         # never stop when current_models is empty
@@ -388,6 +536,8 @@ class ParameterGenerator(object):
                     break
 
     def check_generic_stopping_critera(self):
+        """check generic stopping critera
+        """
         self.status['n_max_mods_reached'] = \
             len(self.current_models.table) \
                 >= self.parspace_settings['stopping_criteria']['n_max_mods']
@@ -398,6 +548,8 @@ class ParameterGenerator(object):
 
     def _is_newmodel(self, model, eps=1e-6):
         """
+        Check if model is new
+
         Checks whether model has valid parameter values and it is a new model
         (i.e., its parameter set does not exist in self.current_models).
 
@@ -432,6 +584,8 @@ class ParameterGenerator(object):
 
     def clip(self, value, mini, maxi):
         """
+        clip to lo/hi
+
         Clips value to the interval [mini, maxi]. Similar to the numpy.clip()
         method. If mini==maxi, that value is returned.
 
@@ -458,9 +612,39 @@ class ParameterGenerator(object):
             logger.error(text)
             raise ValueError(text)
 
+    def specific_generate_method(self):
+        """
+        Placeholder.
+
+        This is a placeholder. Specific ``ParameterGenerator`` sub-classes
+        should have their own ``specific_generate_method`` methods.
+
+        Parameters
+        ----------
+        None.
+
+        Returns
+        -------
+        None.
+            set ``self.model_list`` to be the list of newly generated models
+
+        """
+        return
+
 
 class LegacyGridSearch(ParameterGenerator):
+    """Search around all reasonable models
 
+    This is the method used by previous code versions AKA schwpy. See docstrings
+    for ``specific_generate_method`` and ``check_specific_stopping_critera``
+    for full description.
+
+    Parameters
+    ----------
+    par_space : ``dyn.parameter_space.ParameterSpace`` object
+    parspace_settings : dict
+
+    """
     def __init__(self, par_space=[], parspace_settings=None):
         super().__init__(par_space=par_space,
                          parspace_settings=parspace_settings,
@@ -509,16 +693,14 @@ class LegacyGridSearch(ParameterGenerator):
 
     def specific_generate_method(self, **kwargs):
         """
-        Generates list of new models self.model_list. Each element of
-        self.model_list is a list of Parameter objects. The grid search is the
-        driven by the parameter set with the smallest chi2 value min_chi2.
-        Note that the parameter space setting 'which_chi2' determines whether
-        chi2 or kinchi2 is used. All models with abs(chi2-min_chi2)<=
-        threshold_del_chi2 (given in the config file) are subject to the
-        search. New models are generated based on varying one non-fixed
-        parameter at a time. Parameter lo and hi attributes as well as
-        minstep are considered when creating new models. If no new models can
-        be found, the stepsize of all parameters is halved (up to minstepsize).
+        Generates new models
+
+        Starts at the initial point. Start the iteration: (i) find all models
+        with :math:`|\chi^2 - \chi_\mathrm{min}^2|` within the specified
+        threshold, (ii) for each model within the threshold, seed new models by
+        independently take a step :math:`\pm 1` of size ``step``. If no new
+        models are seeded at the end of an iteration, then divide all parameter
+        stepsizes by two till their specified ``minstep`` are reached.
 
         Parameters
         ----------
@@ -526,7 +708,8 @@ class LegacyGridSearch(ParameterGenerator):
 
         Returns
         -------
-        None. self.model_list is the list of new models.
+        None.
+            sets ``self.model_list`` is the list of new models.
 
         """
         if len(self.current_models.table) == 0:
@@ -576,6 +759,17 @@ class LegacyGridSearch(ParameterGenerator):
         return
 
     def check_specific_stopping_critera(self):
+        """checks specific stopping critera
+
+        If the last iteration did not improve the chi2 by at least
+        min_delta_chi2, then stop.
+
+        Returns
+        -------
+        None
+            sets Bool to ``self.status['min_delta_chi2_reached']``
+
+        """
         # stop if...
         # (i) if iter>1, last iteration did not improve chi2 by min_delta_chi2
         self.status['min_delta_chi2_reached'] = False
@@ -599,7 +793,17 @@ class LegacyGridSearch(ParameterGenerator):
 
 
 class GridWalk(ParameterGenerator):
+    """Walk after the current best fit
 
+    See docstrings for ``specific_generate_method`` and
+    ``check_specific_stopping_critera`` for full description.
+
+    Parameters
+    ----------
+    par_space : ``dyn.parameter_space.ParameterSpace`` object
+    parspace_settings : dict
+
+    """
     def __init__(self,
                  par_space=[],
                  parspace_settings=None):
@@ -624,7 +828,6 @@ class GridWalk(ParameterGenerator):
             text = 'GridWalk: non-fixed parameters need step setting'
             self.logger.error(text)
             raise ValueError(text)
-
         stop_crit = parspace_settings['stopping_criteria']
         self.min_delta_chi2_abs = stop_crit.get('min_delta_chi2_abs', False)
         self.min_delta_chi2_rel = stop_crit.get('min_delta_chi2_rel', False)
@@ -638,11 +841,11 @@ class GridWalk(ParameterGenerator):
 
     def specific_generate_method(self, **kwargs):
         """
-        Generates list of new models self.model_list. Each element of
-        self.model_list is a list of Parameter objects. The center of the
-        grid walk is the parameter set with the smallest chi2 value. Note
-        that the parameter space setting 'which_chi2' determines whether chi2
-        or kinchi2 is used.
+        Generates new models
+
+        The center of the grid walk is the parameter set with the smallest chi2
+        value. Note that the parameter space setting 'which_chi2' determines
+        whether chi2 or kinchi2 is used.
 
         Parameters
         ----------
@@ -654,7 +857,8 @@ class GridWalk(ParameterGenerator):
 
         Returns
         -------
-        None. self.model_list is the list of new models.
+        None.
+            sets the list ``self.model_list`` of new models.
         """
         if len(self.current_models.table) == 0:
             # The 'zeroth iteration' results in only one model
@@ -676,13 +880,14 @@ class GridWalk(ParameterGenerator):
 
     def grid_walk(self, center=None, par=None, eps=1e-6):
         """
-        Walks the grid defined by self.par_space.par_generator_settings
-        attributes.
-        Clips parameter values to lo/hi attributes. If clipping violates the
-        minstep attribute, the resulting model(s) will not be created. If the
-        minstep attribute is missing, the step attribute will be used instead.
-        Explicitly set minstep=0 to allow arbitrarily small steps (not
-        recommended).
+        Walks the grid
+
+        Walks the grid defined by ``self.par_space.par_generator_settings``
+        attributes. Clips parameter values to lo/hi attributes. If clipping
+        violates the minstep attribute, the resulting model(s) will not be
+        created. If the minstep attribute is missing, the step attribute will be
+        used instead. Explicitly set minstep=0 to allow arbitrarily small steps
+        (not recommended).
 
         Parameters
         ----------
@@ -775,6 +980,17 @@ class GridWalk(ParameterGenerator):
             self.grid_walk(center=center, par=self.par_space[paridx+1])
 
     def check_specific_stopping_critera(self):
+        """checks specific stopping critera
+
+        If the last iteration did not improve the chi2 by at least
+        min_delta_chi2, then stop.
+
+        Returns
+        -------
+        None
+            sets Bool to ``self.status['min_delta_chi2_reached']``
+
+        """
         # stop if...
         # (i) if iter>1, last iteration did not improve chi2 by min_delta_chi2
         self.status['min_delta_chi2_reached'] = False
@@ -799,10 +1015,19 @@ class GridWalk(ParameterGenerator):
 
 class FullGrid(ParameterGenerator):
     """
-    This parameter generator is EXPERIMENTAL and not intended for
-    production use (also see the docstring of the grid(...) method below)!
-    """
+    A full cartesian grid.
 
+    A full Cartesian grid in all free parameters, with bounds ``lo/hi`` and
+    stepsize ``step``. **Warning**: If several (>3) parameters are free, this
+    will result in a large number of models. This parameter generator is
+    generally not intended for production use.
+
+    Parameters
+    ----------
+    par_space : ``dyn.parameter_space.ParameterSpace`` object
+    parspace_settings : dict
+
+    """
     def __init__(self,
                  par_space=[],
                  parspace_settings=None):
@@ -841,11 +1066,12 @@ class FullGrid(ParameterGenerator):
 
     def specific_generate_method(self, **kwargs):
         """
-        Generates list of new models self.model_list. Each element of
-        self.model_list is a list of Parameter objects. The center of the
-        grid walk is the parameter set with the smallest chi2 value. Note
-        that the parameter space setting 'which_chi2' determines whether chi2
-        or kinchi2 is used.
+        Generates new models
+
+        Span the whole parameter grid.
+        The center of the grid walk is the parameter set with the smallest chi2
+        value. Note that the parameter space setting 'which_chi2' determines
+        whether chi2 or kinchi2 is used.
 
         Parameters
         ----------
@@ -879,8 +1105,10 @@ class FullGrid(ParameterGenerator):
 
     def grid(self, center=None, par=None, eps=1e-6):
         """
-        Spans the whole parameter grid defined by
-        self.par_space.par_generator_settings attributes.
+        Create the grid
+
+        Span the whole parameter grid defined by
+        ``self.par_space.par_generator_settings`` attributes.
         IN GENERAL THIS WILL RESULT IN A LARGE NUMBER OF MODELS ADDED TO
         self.model_list! PRIMARILY THIS IS INTENDED FOR TESTING AND DEBUGGING.
         Clips parameter values to lo/hi attributes. If clipping violates the
@@ -978,8 +1206,17 @@ class FullGrid(ParameterGenerator):
             self.grid(center=center, par=self.par_space[paridx+1])
 
     def check_specific_stopping_critera(self):
-        # stop if...
-        # (i) if iter>1, last iteration did not improve chi2 by min_delta_chi2
+        """checks specific stopping critera
+
+        If the last iteration did not improve the chi2 by at least
+        min_delta_chi2, then stop.
+
+        Returns
+        -------
+        None
+            sets Bool to ``self.status['min_delta_chi2_reached']``
+
+        """
         self.status['min_delta_chi2_reached'] = False
         last_iter = np.max(self.current_models.table['which_iter'])
         if last_iter > 0:
@@ -1000,16 +1237,6 @@ class FullGrid(ParameterGenerator):
         #       => dealt with by grid_walk (doesn't create such models)
 
 
-class GaussianProcessEmulator(ParameterGenerator):
-
-    def generate(self, current_models=None, n_new=0):
-        # actual code to do gaussian process emulation
-        # return new_parameter_list of length n_new
-        return []
-
-    def check_specific_stopping_critera(self, current_models):
-        stop = True # or false
-        return stop
 
 
 # end

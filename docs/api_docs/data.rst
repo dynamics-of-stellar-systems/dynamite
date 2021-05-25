@@ -4,7 +4,13 @@
 Data
 ******
 
-Describe the Data class.
+Generic data classes.
+
+API
+===================
+
+ .. automodule:: data
+  :members:
 
 Inheritance Diagram
 ===================

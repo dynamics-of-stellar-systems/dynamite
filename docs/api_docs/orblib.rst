@@ -5,12 +5,12 @@
 Orblib
 ******
 
-.. automodule:: orblib
+Classes related to orbit libraries.
 
-.. autoclass:: OrbitLibrary
-  :members:
+API
+===================
 
-.. autoclass:: LegacyOrbitLibrary
+ .. automodule:: orblib
   :members:
 
 Inheritance Diagram

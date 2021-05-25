@@ -4,7 +4,13 @@
 Plotting
 ********
 
-We plot!
+Classes related to plotting.
+
+API
+===================
+
+ .. automodule:: plotter
+  :members:
 
 Inheritance Diagram
 ===================
