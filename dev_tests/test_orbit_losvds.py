@@ -79,7 +79,7 @@ def run_orbit_losvd_test(make_comparison_losvd=False):
         parspace=c.parspace,
         parset=parset)
     model.setup_directories()
-    model.get_model_directory()
+    # model.get_model_directory()
     orbit_library = model.get_orblib()
 
     file_dir = os.path.dirname(__file__)
