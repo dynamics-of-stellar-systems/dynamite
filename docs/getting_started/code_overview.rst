@@ -61,7 +61,7 @@ Note: DYNAMITE can also be run interactively, e.g. from a Jupyter notebook, but 
 Input Files
 ===================
 
-Full details on preparing your input files can be found on the `data preparation page <https://www.univie.ac.at/dynamics/dynamite_docs/data_preparation.html>`_. As an overview, the following input files are required::
+The following input files are required::
 
   | main_directory
   | ├── input_files
@@ -71,9 +71,27 @@ Full details on preparing your input files can be found on the `data preparation
   | │   ├── aperture.dat      # more info about binning of kinematics
   |
 
-The MGE and kinematics files must be in the form of `Astropy ECSV files <https://docs.astropy.org/en/stable/api/astropy.io.ascii.Ecsv.html>`_.
-Different types of kinematic are supported e.g. from IFU surveys, output from the ``gist`` pipeline [ADD A LINK HERE], or from ``BayesLOSVD`` [ADD A LINK HERE].
-The files ``bins.dat`` and ``aperture.dat`` can be generated from your kinematics file - again, see `data preparation <https://www.univie.ac.at/dynamics/dynamite_docs/data_preparation.html>`_ for full details.
+The Multi Gaussian Expansion (MGE) describes the galaxy's 2D surface-brightness distributon. To generate this, fit and MGE to a photometric image e.g. using `mge <http://www-astro.physics.ox.ac.uk/~mxc/software/#mge>`_. The data must be given as a table in `Astropy ECSV format <https://docs.astropy.org/en/stable/api/astropy.io.ascii.Ecsv.html>`_, with columns:
+
+- L_sun/ pc^2
+- sigma in arcseconds
+- q
+- PA_twist in degrees
+
+It is also possible to provide two separate MGE's for the surface-brightness and surface mass-density (see the observed data section of the `Configuration page <configuration.html>`__ for detauls.
+
+Two types of kinematic are supported: tables of Gauss Hermite expansion coefficients, or histogrammed LOSVDs output by `BayesLOSVD <https://github.com/jfalconbarroso/BAYES-LOSVD>`_.
+These must be in the form of `Astropy ECSV files <https://docs.astropy.org/en/stable/api/astropy.io.ascii.Ecsv.html>`_. The files ``aperture.dat`` and ``bins.dat`` contain information about the spatial binning of your kinematic data. Convenience functions are provided for creating converting some standard kinematic data files, and examples demonstrating these can be found in the tutorials [XXXXX].
+
+The file ``aperture.dat`` file contains the spatial extent in arcseconds, the angle (in degrees ) ``90 - position_angle``, and size of the grid in pixels::
+
+  #counter_rotation_boxed_aperturefile_version_2
+        min_x   min_y
+        max_x   max_y
+        90.-position_angle
+        npix_x  n_pix_y
+
+while ``bins.dat`` encodes the spatial (e.g. Voronoi) binning: specifically, one header line with the total number of pixels in the grid, followed by the bin ID of each pixel in the grid.
 
 It is possible to simultaneously fit multiple sets of kinematics in DYNAMITE. In this case, all input files should be placed in this directory::
 
@@ -158,14 +176,14 @@ Here we propose a few examples of the plots that can be done with this object. F
 To explore how the :math:`\chi^2` changes as a function of the parameters or of the model ID, you can use the following two functions, respectively:
 
 .. code-block:: python
-  
+
   p.make_chi2_plot(which_chi2='kinchi2', n_excl=50, figtype='.pdf') # saves a .pdf figure of the 'kinchi2' chisquare, excluding the first 50 models (burn-in)
   p.make_chi2_vs_model_id_plot(which_chi2='kinchi2') # saves a .png figure (default) of the 'kinchi2' chisquare as a function of the model ID
 
 You can also plot the cumulative mass and the (intrinsic and projected) anisotropy profiles, out to a radius of 30 arcsec:
 
 .. code-block:: python
-  
+
   p.mass_plot(Rmax_arcs=30) # cumulative mass plot, saved as a .png file
   p.beta_plot(Rmax_arcs=30) # anisotropy plots, saved as .png files
 
@@ -174,7 +192,7 @@ These plots are made by considering only models close to the :math:`\chi^2` mini
 To see how orbits are distributed in the best-fit model (or in a model of your choice, to be specified in the variable ``model`` when calling the function), you can use:
 
 .. code-block:: python
-  
+
   p.orbit_plot(Rmax_arcs=30) # orbit plot, saved as a .png file
 
 In this case, ``Rmax_arcs`` indicates the upper radial limit for orbit selection, meaning that only orbits extending up to ``Rmax_arcs`` are plotted.
@@ -182,24 +200,24 @@ In this case, ``Rmax_arcs`` indicates the upper radial limit for orbit selection
 Finally, you can make a plot of the intrinsic flattening of your best-fit model:
 
 .. code-block:: python
-  
+
   p.qpu_plot(Rmax_arcs=30,figtype='.pdf') # triaxiality plot, saved as a .pdf file
 
 In the examples above, the figures are created and saved automatically. If you want to make some changes into the appearance of the plots, you can use the fact that all the above functions return a ``matplotlib.pyplot.figure`` instance. For the figures to appear in the interactive mode, you first need to run the following line:
 
 .. code-block:: python
-  
+
   matplotlib.use('TkAgg')
 
 and you can then proceed to make figures that you can modify as you prefer, for example:
 
 .. code-block:: python
-  
+
   fig = p.mass_plot(Rmax_arcs=30)
 
 Please note that a copy of the figure as produced by DYNAMITE is always saved in the ``plots`` folder.
 
-   
+
 Multiprocessing + Slurm Submission
 ======================================
 
