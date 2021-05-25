@@ -1,0 +1,19 @@
+# %ECSV 0.9
+# ---
+# datatype:
+# - name: I
+#   datatype: float64
+# - name: sigma
+#   datatype: float64
+# - name: q
+#   datatype: float64
+# - name: PA_twist
+#   datatype: float64
+# schema: astropy-2.0
+I sigma q PA_twist
+26819.14 0.49416 0.89541 0.0
+2456.39 2.04299 0.79093 0.0
+456.8 2.44313 0.9999 0.0
+645.49 6.5305 0.55097 0.0
+14.73 17.41488 0.9999 0.0
+123.85 21.84711 0.55097 0.0

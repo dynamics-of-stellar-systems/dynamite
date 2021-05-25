@@ -40,6 +40,9 @@ docs/_build/
 docs/.DS_Store
 docs/tutorial_notebooks/.DS_Store
 docs/tutorial_notebooks/.ipynb_checkpoints/*
+!docs/tutorial_notebooks/NGC6278_input/dynamite_input/mge.ecsv
+docs/tutorial_notebooks/NGC6278_input/dynamite_input/*
+docs/tutorial_notebooks/NGC4570_input/dynamite_input/*
 docs/tutorial_notebooks/NGC6278_output/*
 plotbin4dyn/.DS_Store
 plotbin4dyn/__pycache__/*
