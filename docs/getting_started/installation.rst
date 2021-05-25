@@ -377,6 +377,7 @@ You can check the output in the directory ``.../tests/NGC6278_output/plots``, wh
 
 .. image:: orbit_losvds.png
 
+After running a model, an orbit (in this case orbit 15) is selected and its LOSVD in 4 different kinematic Voronoi bins (bins 0, 2, 20, and 30) is shown in this plot with black solid lines. This is compared with pre-computed LOSVDs, shown here with red dashed lines. If the two sets of lines are matching in the figure you obtain (just like in the one reproduced here), the code is running correctly.
 
 NNLS test run
 -------------
@@ -391,7 +392,7 @@ You can check the output in the directory ``.../tests/NGC6278_output/plots``, wh
 
 .. image:: chi2_vs_model_id.png
 
-You should not worry if the red crosses in the image you obtain are slightly outside the black circles, the code is running correctly.
+This figure shows the values of the :math:`\chi^2` obtained for the three models run in the test file, as a function of the ID of each model, and shown with red crosses. The black circles represent the range of expected values for this quantity, which can vary because of details in the numerical computation, depending on the system and the compiler used. If you obtain a figure similar to the one provided here, the code is running correctly (no need to worry if your crosses are falling slightly outside the circles).
 
 
 ..
