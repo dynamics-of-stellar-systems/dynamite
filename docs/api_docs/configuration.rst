@@ -4,7 +4,7 @@
 Configuration
 *************
 
-All configuration settings are stored in the configuration object ``c``, which is structured very similarly to structure of the YAML configuration file,
+All configuration settings are stored in the configuration object ``c``, which is structured very similarly to the YAML configuration file,
 
 .. code-block:: python
 
