@@ -153,18 +153,34 @@ class Plotter():
             model_id=np.where(self.all_models.table[which_chi2]==chi2val)[0][0]
             model = self.all_models.get_model_from_row(model_id)
             ml = model.parset['ml']
-            ml_orblib = model.get_orblib().get_ml_of_original_orblib()
-            scale_factor[i] = np.sqrt(ml/ml_orblib)
+            ml_orig = model.get_orblib().get_ml_of_original_orblib()
+            scale_factor[i] = np.sqrt(ml/ml_orig)
 
-        #because of the large parameter range dh properties and black hole are plotted in log
-        val['c-dh']=np.log10(val['c-dh'])
-        val['f-dh']=np.log10(val['f-dh'])
-        val['m-bh']=np.log10(val['m-bh']*scale_factor**2)
+        dh = self.system.get_all_dark_non_plummer_components()
+        dh = dh[0]  # take the first as there should only be one of these
+        if type(dh) is physys.NFW:
+            val[f'c-{dh.name}'] = val[f'c-{dh.name}']
+            val[f'f-{dh.name}'] = val[f'f-{dh.name}']
+        elif type(dh) is physys.Hernquist:
+            val[f'rhoc-{dh.name}']= val[f'rhoc-{dh.name}']*scale_factor**2
+        elif type(dh) is physys.TriaxialCoredLogPotential:
+            val[f'Vc-{dh.name}'] = val[f'Vc-{dh.name}']*scale_factor
+        elif type(dh) is physys.GeneralisedNFW:
+            val[f'Mvir-{dh.name}'] = val[f'Mvir-{dh.name}']*scale_factor**2
+        else:
+            text = f'unknown dark halo type component'
+            self.logger.error(text)
+            raise ValueError(text)
+
+        # get the plummer component i.e. black hole
+        bh = self.system.get_component_from_class(physys.Plummer)
+        val[f'm-{bh.name}'] = np.log10(val[f'm-{bh.name}']*scale_factor**2)
 
         #get number and names of parameters that are not fixed
         nofix_sel=[]
         nofix_name=[]
         nofix_latex=[]
+        nofix_islog=[]
 
         for i in np.arange(len(pars)):
             if pars[i].fixed==False:
@@ -173,10 +189,12 @@ class Plotter():
                 nofix_sel.append(i)
                 if pars[i].name == 'ml':
                     nofix_name.insert(0, 'ml')
-                    nofix_latex.insert(0, '$Y_{r}$')
+                    nofix_latex.insert(0, pars[i].LaTeX)
+                    nofix_islog.insert(0, pars[i].logarithmic)
                 else:
                     nofix_name.append(pars[i].name)
                     nofix_latex.append(pars[i].LaTeX)
+                    nofix_islog.append(pars[i].logarithmic)
 
         nnofix=len(nofix_sel)
 
@@ -215,18 +233,11 @@ class Plotter():
                 xtit = nofix_latex[i]
 
                 pltnum = (nnofix-1-j) * (nnofix-1) + i+1
-                plt.subplot(nnofix-1, nnofix-1, pltnum)
+                ax = plt.subplot(nnofix-1, nnofix-1, pltnum)
 
                 plt.plot(val[nofix_name[i]],val[nofix_name[j]], 'D',
                          color='black', markersize=2)
-                if j==i+1:
-                    plt.xlabel(xtit, fontsize=12)
-                else:
-                    plt.xticks([])
-                if i==0:
-                    plt.ylabel(ytit, fontsize=12)
-                else:
-                    plt.yticks([])
+
                 for k in range(nf - 1, -1, -1):
                     if chi2[k]/chlim<=3: #only significant chi2 values
 
@@ -244,6 +255,20 @@ class Plotter():
                         plt.plot((val[nofix_name[i]])[k],
                                  (val[nofix_name[j]])[k], 'x',
                                  markersize=10, color='k')
+
+                if nofix_islog[i]:
+                    ax.set_xscale('log')
+                if nofix_islog[j]:
+                    ax.set_yscale('log')
+
+                if j==i+1:
+                    ax.set_xlabel(xtit, fontsize=12)
+                else:
+                    ax.set_xticks([])
+                if i==0:
+                    ax.set_ylabel(ytit, fontsize=12)
+                else:
+                    ax.set_yticks([])
 
         plt.subplots_adjust(hspace=0)
         plt.subplots_adjust(wspace=0)
