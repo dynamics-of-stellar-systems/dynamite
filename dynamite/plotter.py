@@ -245,18 +245,11 @@ class Plotter():
                 xtit = nofix_latex[i]
 
                 pltnum = (nnofix-1-j) * (nnofix-1) + i+1
-                plt.subplot(nnofix-1, nnofix-1, pltnum)
+                ax = plt.subplot(nnofix-1, nnofix-1, pltnum)
 
                 plt.plot(val[nofix_name[i]],val[nofix_name[j]], 'D',
                          color='black', markersize=2)
-                if j==i+1:
-                    plt.xlabel(xtit, fontsize=12)
-                else:
-                    plt.xticks([])
-                if i==0:
-                    plt.ylabel(ytit, fontsize=12)
-                else:
-                    plt.yticks([])
+
                 for k in range(nf - 1, -1, -1):
                     if chi2[k]/chlim<=3: #only significant chi2 values
 
@@ -274,6 +267,20 @@ class Plotter():
                         plt.plot((val[nofix_name[i]])[k],
                                  (val[nofix_name[j]])[k], 'x',
                                  markersize=10, color='k')
+
+                if nofix_islog[i]:
+                    ax.set_xscale('log')
+                if nofix_islog[j]:
+                    ax.set_yscale('log')
+
+                if j==i+1:
+                    ax.set_xlabel(xtit, fontsize=12)
+                else:
+                    ax.set_xticks([])
+                if i==0:
+                    ax.set_ylabel(ytit, fontsize=12)
+                else:
+                    ax.set_yticks([])
 
         plt.subplots_adjust(hspace=0)
         plt.subplots_adjust(wspace=0)
