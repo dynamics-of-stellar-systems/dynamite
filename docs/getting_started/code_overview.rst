@@ -15,7 +15,7 @@ This page gives a descriptive overview of everything you will need to run orbit-
 7. `Managing output`_
 8. `Logging output`_
 
-The tutorial XXXXX [ADD A LINK] shows an example of running DYNAMITE from start to finish - this would also be a great place to start getting acquainted with the code.
+The tutorials show an example of running DYNAMITE from start to finish - this would also be a great place to start getting acquainted with the code.
 
 Directory Structure
 ===================

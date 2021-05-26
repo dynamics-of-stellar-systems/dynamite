@@ -1533,8 +1533,10 @@ class Plotter():
         The two plots show the intrinsic and projected anisotropy
         (beta_r and beta_z, respectively) as a function of the
         distance from the galactic centre (in arcsec).
-         * beta_r = 1 - (sigma_t/sigma_r)^2
-         * beta_z = 1 - (sigma_z/sigma_R)^2
+
+        - beta_r = 1 - (sigma_t/sigma_r)^2
+        - beta_z = 1 - (sigma_z/sigma_R)^2
+
         Solid lines and shaded areas represent the mean and standard
         deviation of the anisotropy of models having parameters in a
         confidence region around the minimum chisquare.

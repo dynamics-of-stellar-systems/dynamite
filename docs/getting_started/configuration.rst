@@ -69,9 +69,9 @@ The following sections go through each section of the configuration file and enu
 8. `multiprocessing_settings`_
 9. `legacy_settings`_
 
-Examples of completed configuration files can be found in the tutorials [ADD LINK], which you may like to use as templates for your own models.
+Examples of completed configuration files can be found in the tutorials, which you may like to use as templates for your own models.
 
-Information about how the DYNAMITE configuration settings can be accessed, which may be useful for developers, can be found in the API documentation [ADD LINK].
+Information about how the DYNAMITE configuration settings can be accessed, which may be useful for developers, can be found in the API documentation.
 
 ``system_attributes``
 =====================
@@ -128,9 +128,9 @@ The following types of component are available, listed with their parameters:
     - ``Rc``: core radius [kpc]
     - ``Vc``: circular velocity for :math:`r>>R_c` [km/s]
 - ``GeneralisedNFW`` from `Zhao (1996) <https://ui.adsabs.harvard.edu/abs/1996MNRAS.278..488Z/abstract>`_
-    - ``concentration``: concentration parameter [:math:`R_{200}` / NFW-scale-length]
+    - ``c``: concentration parameter [:math:`R_{200}` / NFW-scale-length]
     - ``Mvir``: virial mass :math:`M_{200}` [:math:`M_\odot`]
-    - ``inner_log_slope``: logarithmic central density slope [UNITS]
+    - ``gam``: AKA gamma, the inner logarithmic density slope, must be :math:`\leq 1`
 
 .. note::
   currently (v1.0.0) there is only one combination of component types that is valid. This is to ensure compatibility with the Fortran implementation of the orbit integrator. Later implementations may offer more flexibility. The only current valid combination of components is:
