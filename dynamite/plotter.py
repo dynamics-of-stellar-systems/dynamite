@@ -44,6 +44,7 @@ class Plotter():
         self.all_models = all_models
         self.input_directory = settings.io_settings['input_directory']
         self.plotdir = settings.io_settings['plot_directory']
+        self.modeldir = settings.io_settings['model_directory']
         pb_sauron_colormap.register_sauron_colormap()
 
     def make_chi2_vs_model_id_plot(self, which_chi2=None, figtype=None):
@@ -874,7 +875,6 @@ class Plotter():
                    f'but it is {which_chi2}'
             self.logger.error(text)
             raise ValueError(text)
-        self.logger.info(f'Making chi2 plot scaled according to {which_chi2}')
 
         if Rmax_arcs==None:
             text = f'Rmax_arcs must be a number, but it is {Rmax_arcs}'
@@ -1220,7 +1220,7 @@ class Plotter():
             model_id = t.loc_indices[min_chi2]
             model = self.all_models.get_model_from_row(model_id)
 
-        mdir = model.get_model_directory()
+        mdir = model.directory
         mdir_noml = mdir[:mdir[:-1].rindex('/')+1]
 
         file4 = mdir + 'nn_orb.out'
@@ -1571,6 +1571,8 @@ class Plotter():
 
         # schw_anisotropy.py
 
+        modeldir = self.modeldir
+
         if figtype == None:
             figtype = '.png'
 
@@ -1581,7 +1583,6 @@ class Plotter():
                    f'but it is {which_chi2}'
             self.logger.error(text)
             raise ValueError(text)
-        self.logger.info(f'Making chi2 plot scaled according to {which_chi2}')
 
         if Rmax_arcs==None:
             text = f'Rmax_arcs must be a number, but it is {Rmax_arcs}'
@@ -1628,7 +1629,7 @@ class Plotter():
         for i in range(n):
             model_id = arg[i]
             model = self.all_models.get_model_from_row(model_id)
-            mdir = model.get_model_directory()
+            mdir = modeldir + val['directory'][model_id]
 
             filei = mdir + 'nn_intrinsic_moments.out'
 
@@ -1820,6 +1821,8 @@ class Plotter():
 
         # schw_qpu.py
 
+        modeldir = self.modeldir
+
         if figtype == None:
             figtype = '.png'
 
@@ -1830,7 +1833,6 @@ class Plotter():
                    f'but it is {which_chi2}'
             self.logger.error(text)
             raise ValueError(text)
-        self.logger.info(f'Making chi2 plot scaled according to {which_chi2}')
 
         if Rmax_arcs==None:
             text = f'Rmax_arcs must be a number, but it is {Rmax_arcs}'
@@ -1875,7 +1877,7 @@ class Plotter():
         for i in range(0, n):
             model_id = arg[i]
             model = self.all_models.get_model_from_row(model_id)
-            mdir = model.get_model_directory()
+            mdir = modeldir + val['directory'][model_id]
             mdir_noml = mdir[:mdir[:-1].rindex('/')+1]
 
             #mgepar, distance, th_view, ph_view, psi_view, ml, \
