@@ -259,12 +259,12 @@ def create_kin_input(object, file, dyn_model_dir, expr='', angle_deg=0, ngh=4,
         dp.display_pixels(xp,yp,sig[binNum],angle=angle_deg,vmin=smin,vmax=smax)
         
         plt.subplot(1,4,3)
-        plt.title('H3 moment')
+        plt.title(r'$h_{3}$ moment')
         dp.display_pixels(xp,yp,h3[binNum],angle=angle_deg,vmin=-0.15,vmax=0.15)
         
         
         plt.subplot(1,4,4)
-        plt.title('H4 moment')
+        plt.title(r'$h_{4}$ moment')
         dp.display_pixels(xp,yp,h4[binNum],angle=angle_deg,vmin=-0.15,vmax=0.15)
         
         fig.savefig(dyn_model_dir+'kinmaps.pdf')
