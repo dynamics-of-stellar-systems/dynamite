@@ -275,20 +275,6 @@ class Plotter():
                                  (val[nofix_name[j]])[k], 'x',
                                  markersize=10, color='k')
 
-                if nofix_islog[i]:
-                    ax.set_xscale('log')
-                if nofix_islog[j]:
-                    ax.set_yscale('log')
-
-                if j==i+1:
-                    ax.set_xlabel(xtit, fontsize=12)
-                else:
-                    ax.set_xticks([])
-                if i==0:
-                    ax.set_ylabel(ytit, fontsize=12)
-                else:
-                    ax.set_yticks([])
-
         plt.subplots_adjust(hspace=0)
         plt.subplots_adjust(wspace=0)
         axcb = fig.add_axes([0.75, 0.07, 0.2, 0.02])
@@ -352,7 +338,7 @@ class Plotter():
         Returns
         -------
 
-        list or `matplotlib.pyplot.figure` 
+        list or `matplotlib.pyplot.figure`
             if kin_set == 'all', returns `(matplotlib.pyplot.figure, string)`, i.e.
             Figure instances along with kinemtics name or figure instance
             else, returns a `matplotlib.pyplot.figure`
