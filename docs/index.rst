@@ -73,7 +73,7 @@ API Documentation
 
 These pages contain DYNAMITE's API documentation, i.e. the classes and method definitions and descriptions.
 This may be useful for code developers, or anyone who intends to modify the code for their own personal use.
-The `API overview <api_docs/overview>`__ may be a useful starting point.
+The API overview may be a useful starting point.
 
 .. toctree::
    :maxdepth: 1

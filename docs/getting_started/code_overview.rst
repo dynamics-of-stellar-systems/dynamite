@@ -81,7 +81,7 @@ The Multi Gaussian Expansion (MGE) describes the galaxy's 2D surface-brightness 
 It is also possible to provide two separate MGE's for the surface-brightness and surface mass-density (see the observed data section of the `Configuration page <configuration.html>`__ for detauls.
 
 Two types of kinematic are supported: tables of Gauss Hermite expansion coefficients, or histogrammed LOSVDs output by `BayesLOSVD <https://github.com/jfalconbarroso/BAYES-LOSVD>`_.
-These must be in the form of `Astropy ECSV files <https://docs.astropy.org/en/stable/api/astropy.io.ascii.Ecsv.html>`_. The files ``aperture.dat`` and ``bins.dat`` contain information about the spatial binning of your kinematic data. Convenience functions are provided for creating converting some standard kinematic data files, and examples demonstrating these can be found in the tutorials [XXXXX].
+These must be in the form of `Astropy ECSV files <https://docs.astropy.org/en/stable/api/astropy.io.ascii.Ecsv.html>`_. The files ``aperture.dat`` and ``bins.dat`` contain information about the spatial binning of your kinematic data. Convenience functions are provided for creating converting some standard kinematic data files, and examples demonstrating these can be found in the tutorials.
 
 The file ``aperture.dat`` file contains the spatial extent in arcseconds, the angle (in degrees ) ``90 - position_angle``, and size of the grid in pixels::
 
@@ -272,7 +272,7 @@ where ``c`` has the following utility functions,
   c.remove_existing_all_models_file()
   c.remove_all_existing_output()
 
-which you can add to your main script, with caution! The different options may be useful if you want to delete some but not all previous output, e.g. to re-calculate weights but keep old orbit libraries. The API documentation [ADD A LINK] has more information on the different options.
+which you can add to your main script, with caution! The different options may be useful if you want to delete some but not all previous output, e.g. to re-calculate weights but keep old orbit libraries. The API documentation has more information on the different options.
 
 Logging output
 ===================
