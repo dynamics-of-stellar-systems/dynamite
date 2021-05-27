@@ -89,7 +89,7 @@ class AllModels(object):
         return
 
     def read_completed_model_file(self):
-        """read table from file ``self.self.filename``
+        """read table from file ``self.filename``
 
         Returns
         -------
@@ -267,6 +267,40 @@ class AllModels(object):
         """
         self.table.write(self.filename, format='ascii.ecsv', overwrite=True)
         self.logger.debug(f'Model table written to file {self.filename}')
+
+    def get_best_n_models(self, n=10, which_chi2=None):
+        """Get the best n models so far
+
+        Parameters
+        ----------
+        n : int, optional
+            How many models to get. The default is 10.
+        which_chi2 : str, optional
+            Which chi2 is used for determineing the best models. Must be
+            None, chi2, or kinchi2. If None, the setting from the
+            configuration file will be used. The default is None.
+
+        Raises
+        ------
+        ValueError
+            If which_chi2 is neither None, chi2, nor kinchi2.
+
+        Returns
+        -------
+        a new ``astropy.table`` object holding the best n models
+
+        """
+        if which_chi2 is None:
+            which_chi2 = self.settings.parameter_space_settings['which_chi2']
+        if which_chi2 not in ('chi2', 'kinchi2'):
+            text = 'which_chi2 needs to be chi2 or kinchi2, ' \
+                   f'but it is {which_chi2}'
+            self.logger.error(text)
+            raise ValueError(text)
+        table = copy.deepcopy(self.table)
+        table.sort(which_chi2)
+        table = table[:n]
+        return table
 
 
 class Model(object):
