@@ -70,8 +70,6 @@ def run_user_test():
     # print all model results
     print(f'Look at {plotfile}')
     c.all_models.table.pprint(max_lines=-1, max_width=-1)
-    print('The best 3 models:')
-    c.all_models.get_best_n_models(n=3).pprint(max_lines=-1, max_width=-1)
 
 if __name__ == '__main__':
 
