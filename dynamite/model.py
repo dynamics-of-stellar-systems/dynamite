@@ -1,9 +1,9 @@
 import os
 import copy
+import logging
 import numpy as np
 from astropy import table
 from astropy.io import ascii
-import logging
 
 from dynamite import weight_solvers as ws
 from dynamite import orblib as dyn_orblib
@@ -16,23 +16,19 @@ class AllModels(object):
 
     Parameters
     ----------
-    system : a ``dyn.physical_system.System`` object
+    config : a ``dyn.config_reader.Configuration`` object
     from_file : bool
         whether to create this ojbect from a saved `all_models.ecsv` file
-    settings : a ``dyn.config_reader.Settings`` object
-    parspace : a ``dyn.parameter_space.parspace`` object
 
     """
-    def __init__(self,
-                 system=None,
-                 from_file=True,
-                 settings=None,
-                 parspace=None):
+    def __init__(self, config=None, from_file=True):
         self.logger = logging.getLogger(f'{__name__}.{__class__.__name__}')
-        self.system = system
-        self.settings = settings
-        self.set_filename(settings.io_settings['all_models_file'])
-        self.parspace = parspace
+        if config is None:
+            text = 'AllModels needs configuration object, None provided.'
+            self.logger.error(text)
+            raise ValueError(text)
+        self.config = config
+        self.set_filename(config.settings.io_settings['all_models_file'])
         if from_file and os.path.isfile(self.filename):
             self.logger.info('Previous models have been found: '
                         f'Reading {self.filename} into '
@@ -58,7 +54,7 @@ class AllModels(object):
             sets ``self.filename``
 
         """
-        outdir = self.settings.io_settings['output_directory']
+        outdir = self.config.settings.io_settings['output_directory']
         filename = f'{outdir}{filename}'
         self.filename = filename
 
@@ -71,7 +67,7 @@ class AllModels(object):
             sets ``self.table``
 
         """
-        names = self.parspace.par_names.copy()
+        names = self.config.parspace.par_names.copy()
         dtype = [np.float64 for n in names]
         # add the columns from legacy version
         names += ['chi2', 'kinchi2', 'time_modified']
@@ -86,7 +82,6 @@ class AllModels(object):
         names.append('directory')
         dtype.append(np.object)
         self.table = table.Table(names=names, dtype=dtype)
-        return
 
     def read_completed_model_file(self):
         """read table from file ``self.self.filename``
@@ -99,7 +94,6 @@ class AllModels(object):
         """
         self.table = ascii.read(self.filename)
         self.logger.debug(f'Models read from file {self.filename}')
-        return
 
     def read_legacy_chi2_file(self, legacy_filename):
         """
@@ -115,7 +109,7 @@ class AllModels(object):
         """
         ### read the header
         head1 = np.genfromtxt(legacy_filename, max_rows=1)
-        Nf = int(head1[0]);
+        Nf = int(head1[0])
         npar = int(head1[1])
         ### read the main matrix
         mpar = np.genfromtxt(legacy_filename,
@@ -188,7 +182,6 @@ class AllModels(object):
         mods.write(self.filename, format='ascii.ecsv')
         self.logger.debug(f'Legacy chi2 file {legacy_filename} converted ' + \
                           f'to {self.filename}')
-        return
 
     def get_parset_from_row(self, row_id):
         """Get a parset set given a table row
@@ -204,7 +197,7 @@ class AllModels(object):
             a list of ``dyn.parspace.Parameter`` objects
 
         """
-        parset = self.table[row_id][self.parspace.par_names]
+        parset = self.table[row_id][self.config.parspace.par_names]
         return parset
 
     def get_model_from_parset(self, parset):
@@ -220,24 +213,15 @@ class AllModels(object):
         a ``dyn.model.Model`` object
 
         """
-        for idx, row in enumerate(self.table[self.parspace.par_names]):
+        for idx, row in enumerate(self.table[self.config.parspace.par_names]):
             if np.allclose(tuple(parset), tuple(row)):
                 mod = self.get_model_from_row(idx)
                 break
         else:
             text = f'parset not in all_models table. parset={parset}, ' \
                    f'all_models table: {self.table}'
-            self.logging.error(text)
+            self.logger.error(text)
             raise ValueError(text)
-        # if parset not in [row[self.parspace.par_names] for row in self.table]:
-        #     text = f'parset not in all_models table. parset={parset}, ' \
-        #            f'all_models table: {self.table}'
-        #     self.logging.error(text)
-        #     raise ValueError(text)
-        # mod = Model(system=self.system,
-        #             settings=self.settings,
-        #             parspace=self.parspace,
-        #             parset=parset)
         return mod
 
     def get_model_from_row(self, row_id):
@@ -254,11 +238,9 @@ class AllModels(object):
 
         """
         parset = self.get_parset_from_row(row_id)
-        mod = Model(system=self.system,
-                      settings=self.settings,
-                      parspace=self.parspace,
-                      parset=parset,
-                      directory=self.table['directory'][row_id])
+        mod = Model(config=self.config,
+                    parset=parset,
+                    directory=self.table['directory'][row_id])
         return mod
 
     def save(self):
@@ -279,12 +261,7 @@ class Model(object):
 
     Parameters
     ----------
-    system : dyn.physical_system.System
-        Object holding information about the physical system being modelled.
-    settings : dyn.config_reader.Settings
-        Object holding other settings
-    parspace : dyn.parameter_space.ParameterSpace
-        A list of parameter objects for this model
+    config : a ``dyn.config_reader.Configuration`` object
     parset : row of an Astropy Table
         contains the values of the potential parameters for this model
     directory : str
@@ -297,27 +274,23 @@ class Model(object):
     object when methods are run.
 
     """
-    def __init__(self,
-                 system=None,
-                 settings=None,
-                 parspace=None,
-                 parset=None,
-                 directory=None):
+    def __init__(self, config=None, parset=None, directory=None):
         self.logger = logging.getLogger(f'{__name__}.{__class__.__name__}')
-        self.check_parset(parspace, parset)
-        self.system = system
-        self.settings = settings
+        if config is None or parset is None:
+            text = 'Model needs configuration object and parameter set.'
+            self.logger.error(text)
+            raise ValueError(text)
+        self.config = config
+        self.check_parset(config.parspace, parset)
         self.parset = parset
-        self.parspace = parspace
         # directory of the legacy fortran files
-        self.legacy_directory = self.settings.legacy_settings['directory']
+        self.legacy_directory=self.config.settings.legacy_settings['directory']
         # directory of the input kinematics
-        self.in_dir = self.settings.io_settings['input_directory']
         if directory is None:
-            self.directory = self.get_model_directory()
+           self.directory = self.get_model_directory()
         else:
-            self.directory = self.settings.io_settings['output_directory'] + \
-                             'models/' + directory
+           self.directory=self.config.settings.io_settings['output_directory']\
+                          + 'models/' + directory
         self.logger.debug(f'Model directory string: {self.directory}')
         self.directory_noml=self.directory[:self.directory[:-1].rindex('/')+1]
         self.logger.debug('Model directory string up to ml: '
@@ -331,13 +304,15 @@ class Model(object):
         string
 
         """
-        directory = self.settings.io_settings['output_directory'] + 'models/'
-        models_file = directory + self.settings.io_settings['all_models_file']
+        directory = self.config.settings.io_settings['output_directory'] \
+                    + 'models/'
+        models_file = directory \
+                      + self.config.settings.io_settings['all_models_file']
         try:
             all_models = ascii.read(models_file)
             self.logger.debug(f'Setting model dir from file {models_file}...')
         except FileNotFoundError:
-            sformat = self.system.parameters[0].sformat # this is ml's format
+            sformat = self.config.system.parameters[0].sformat # ml's format
             ml_dir = f"/ml{self.parset['ml']:{sformat}}/"
             directory += f'orblib_000_000{ml_dir}'
             self.logger.info(f'Cannot read {models_file} - '
@@ -348,7 +323,7 @@ class Model(object):
             self.logger.error('Error reading all_models file. '
                               'Cannot set model directory.')
             raise
-        for idx, parset in enumerate(all_models[self.parspace.par_names]):
+        for idx, parset in enumerate(all_models[self.config.parspace.par_names]):
             if np.allclose(tuple(parset),tuple(self.parset)):
                 directory += 'models/' + all_models['directory'][idx]
                 break
@@ -392,11 +367,12 @@ class Model(object):
 
         """
         orblib = dyn_orblib.LegacyOrbitLibrary(
-                system=self.system,
+                system=self.config.system,
                 mod_dir=self.directory_noml,
-                settings=self.settings.orblib_settings,
+                settings=self.config.settings.orblib_settings,
                 legacy_directory=self.legacy_directory,
-                input_directory=self.settings.io_settings['input_directory'],
+                input_directory = \
+                    self.config.settings.io_settings['input_directory'],
                 parset=self.parset)
         orblib.get_orblib()
         orblib.read_losvd_histograms()
@@ -414,18 +390,18 @@ class Model(object):
         a ``dyn.weight_solver.WeightSolver`` object
 
         """
-        ws_type = self.settings.weight_solver_settings['type']
+        ws_type = self.config.settings.weight_solver_settings['type']
         if ws_type=='LegacyWeightSolver':
             weight_solver = ws.LegacyWeightSolver(
-                    system=self.system,
+                    system=self.config.system,
                     mod_dir=self.directory_noml,
-                    settings=self.settings.weight_solver_settings,
+                    settings=self.config.settings.weight_solver_settings,
                     legacy_directory=self.legacy_directory,
                     ml=self.parset['ml'])
         elif ws_type=='NNLS':
             weight_solver = ws.NNLS(
-                    system=self.system,
-                    settings=self.settings.weight_solver_settings,
+                    system=self.config.system,
+                    settings=self.config.settings.weight_solver_settings,
                     directory_with_ml=self.directory)
         else:
             raise ValueError('Unknown WeightSolver type')

@@ -30,11 +30,7 @@ print(parset)
 nkin = c.system.n_kin
 print(f'{nkin} kinematics data sets in system')
 
-model = dyn.model.Model(
-    system=c.system,
-    settings=c.settings,
-    parspace=c.parspace,
-    parset=parset)
+model = dyn.model.Model(config=c, parset=parset)
 
 model.setup_directories()
 

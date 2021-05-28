@@ -412,9 +412,7 @@ class Configuration(object):
         logger.info('Instantiated parameter space')
         logger.debug(f'Parameter space: {self.parspace}')
 
-        self.all_models = model.AllModels(parspace=self.parspace,
-                                          settings=self.settings,
-                                          system=self.system)
+        self.all_models = model.AllModels(config=self)
         logger.info('Instantiated AllModels object')
         logger.debug(f'AllModels:\n{self.all_models.table}')
 
@@ -595,9 +593,7 @@ class Configuration(object):
             if os.path.isfile(all_models_file):
                 os.remove(all_models_file)
                 self.logger.info(f'Deleted existing {all_models_file}.')
-        self.all_models = model.AllModels(parspace=self.parspace,
-                                          settings=self.settings,
-                                          system=self.system)
+        self.all_models = model.AllModels(config=self)
         self.logger.info('Instantiated empty AllModels object')
         self.logger.debug(f'AllModels:\n{self.all_models.table}')
 
