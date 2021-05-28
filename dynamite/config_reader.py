@@ -165,9 +165,9 @@ class Configuration(object):
             # os.path.dirname(os.path.realpath(__file__))+'/../'legacy_fortran'
         self.logger.debug(f'Default legacy Fortran directory: {legacy_dir}.')
 
-        self.config_file = filename
+        self.config_file_name = filename
         try:
-            with open(self.config_file, 'r') as f:
+            with open(self.config_file_name, 'r') as f:
                 # self.params = yaml.safe_load(f)
                 config_text = f.read()
         except:
@@ -697,21 +697,21 @@ class Configuration(object):
 
         """
         out_dir = self.settings.io_settings['output_directory']
-        f_root, f_ext = os.path.splitext(os.path.basename(self.config_file))
+        f_root,f_ext=os.path.splitext(os.path.basename(self.config_file_name))
         if reset:
             del_files = glob.iglob(f'{out_dir}*.yaml')
             for f in del_files:
                 if os.path.isfile(f):
                     os.remove(f)
-            dest_file = f'{out_dir}{f_root}_000{f_ext}'
+            dest_file_name = f'{out_dir}{f_root}_000{f_ext}'
         else:
             conf_files=glob.iglob(f'{out_dir}{f_root}_[0-9][0-9][0-9]{f_ext}')
             conf_roots = [os.path.splitext(i)[0] for i in conf_files]
             indices = [int(i[i.rindex('_')+1:]) for i in conf_roots]
             new_idx = max(indices) + 1 if len(indices)> 0 else 0
-            dest_file = f'{out_dir}{f_root}_{new_idx:03d}{f_ext}'
-        shutil.copy(self.config_file, dest_file)
-        self.logger.info(f'Config file backup: {dest_file}')
+            dest_file_name = f'{out_dir}{f_root}_{new_idx:03d}{f_ext}'
+        shutil.copy(self.config_file_name, dest_file_name)
+        self.logger.info(f'Config file backup: {dest_file_name}')
 
     def validate(self):
         """
