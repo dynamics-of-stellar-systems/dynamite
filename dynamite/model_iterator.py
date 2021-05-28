@@ -49,10 +49,7 @@ class ModelIterator(object):
                                 par_generator_type)(config.parspace, **kwargs)
 
         if plots:
-            the_plotter = plotter.Plotter(system = config.system,
-                                          settings = config.settings,
-                                          parspace = config.parspace,
-                                          all_models = config.all_models)
+            the_plotter = plotter.Plotter(config)
 
         model_inner_iterator = ModelInnerIterator(
             config=config,
