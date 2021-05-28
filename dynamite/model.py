@@ -1,9 +1,9 @@
 import os
 import copy
+import logging
 import numpy as np
 from astropy import table
 from astropy.io import ascii
-import logging
 
 from dynamite import weight_solvers as ws
 from dynamite import orblib as dyn_orblib
@@ -86,7 +86,6 @@ class AllModels(object):
         names.append('directory')
         dtype.append(np.object)
         self.table = table.Table(names=names, dtype=dtype)
-        return
 
     def read_completed_model_file(self):
         """read table from file ``self.self.filename``
@@ -99,7 +98,6 @@ class AllModels(object):
         """
         self.table = ascii.read(self.filename)
         self.logger.debug(f'Models read from file {self.filename}')
-        return
 
     def read_legacy_chi2_file(self, legacy_filename):
         """
@@ -188,7 +186,6 @@ class AllModels(object):
         mods.write(self.filename, format='ascii.ecsv')
         self.logger.debug(f'Legacy chi2 file {legacy_filename} converted ' + \
                           f'to {self.filename}')
-        return
 
     def get_parset_from_row(self, row_id):
         """Get a parset set given a table row
@@ -227,7 +224,7 @@ class AllModels(object):
         else:
             text = f'parset not in all_models table. parset={parset}, ' \
                    f'all_models table: {self.table}'
-            self.logging.error(text)
+            self.logger.error(text)
             raise ValueError(text)
         # if parset not in [row[self.parspace.par_names] for row in self.table]:
         #     text = f'parset not in all_models table. parset={parset}, ' \
@@ -340,8 +337,8 @@ class Model(object):
             sformat = self.system.parameters[0].sformat # this is ml's format
             ml_dir = f"/ml{self.parset['ml']:{sformat}}/"
             directory += f'orblib_000_000{ml_dir}'
-            self.logger.info(f'Cannot read {models_file} - '
-                                'setting model '
+            self.logger.info(f'The all_models file {models_file} does not '
+                                'exist - setting model '
                                 f'directory to {directory}.')
             return directory #######################################
         except:
@@ -434,6 +431,29 @@ class Model(object):
         self.kinchi2 = chi2_kin # GH coeeficients 1-Ngh
         self.weights = weights
         return weight_solver
+
+    def get_ml_of_original_orblib(self):
+        """Get ``ml`` of original orblib with shared parameters
+
+        The original ``ml`` is required to rescale orbit libraries for rescaled
+        potentials. This method calls the model's orblib's method of the
+        same name.
+
+        Returns
+        -------
+        float
+            the original ``ml``
+
+        """
+        orblib = dyn_orblib.LegacyOrbitLibrary(
+                system=self.system,
+                mod_dir=self.directory_noml,
+                settings=self.settings.orblib_settings,
+                legacy_directory=self.legacy_directory,
+                input_directory=self.settings.io_settings['input_directory'],
+                parset=self.parset)
+        ml_original = orblib.get_ml_of_original_orblib()
+        return ml_original
 
     def check_parset(self, parspace, parset):
         """
