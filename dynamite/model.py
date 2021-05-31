@@ -393,15 +393,12 @@ class Model(object):
         ws_type = self.config.settings.weight_solver_settings['type']
         if ws_type=='LegacyWeightSolver':
             weight_solver = ws.LegacyWeightSolver(
-                    system=self.config.system,
+                    config=self.config,
                     mod_dir=self.directory_noml,
-                    settings=self.config.settings.weight_solver_settings,
-                    legacy_directory=self.legacy_directory,
                     ml=self.parset['ml'])
         elif ws_type=='NNLS':
             weight_solver = ws.NNLS(
-                    system=self.config.system,
-                    settings=self.config.settings.weight_solver_settings,
+                    config=self.config,
                     directory_with_ml=self.directory)
         else:
             raise ValueError('Unknown WeightSolver type')
