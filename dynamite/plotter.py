@@ -164,10 +164,15 @@ class Plotter():
         for i in range(len(val)):
             chi2val = val[which_chi2][i]
             model_id=np.where(self.all_models.table[which_chi2]==chi2val)[0][0]
-            model = self.all_models.get_model_from_row(model_id)
-            ml = model.parset['ml']
-            ml_orblib = model.get_ml_of_original_orblib()
-            scale_factor[i] = np.sqrt(ml/ml_orblib)
+            # model = self.all_models.get_model_from_row(model_id)
+            # ml = model.parset['ml']
+            # ml_orblib = model.get_ml_of_original_orblib()
+            # scale_factor[i] = np.sqrt(ml/ml_orblib)
+            # scale_factor_new = self.all_models.get_model_scaling_factor(model=model)
+            # scale_factor_id = self.all_models.get_model_scaling_factor(model_id=model_id)
+            # self.logger.debug(f'{scale_factor_id = }, {scale_factor_new = }, {scale_factor[i] = }')
+            scale_factor[i] = \
+                self.all_models.get_model_scaling_factor(model_id=model_id)
 
         dh = self.system.get_all_dark_non_plummer_components()
         dh = dh[0]  # take the first as there should only be one of these
