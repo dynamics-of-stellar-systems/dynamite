@@ -37,7 +37,8 @@ class ModelIterator(object):
                  plots=True):
         self.logger = logging.getLogger(f'{__name__}.{__class__.__name__}')
         if config is None:
-            text = 'ModelIterator needs configuration object, None provided.'
+            text = f'{__class__.__name__} needs configuration object, ' \
+                   'None provided.'
             self.logger.error(text)
             raise ValueError(text)
         parameter_space_settings = config.settings.parameter_space_settings

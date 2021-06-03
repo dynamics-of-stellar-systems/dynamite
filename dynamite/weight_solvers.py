@@ -77,7 +77,8 @@ class LegacyWeightSolver(WeightSolver):
         self.sformat = self.system.parameters[0].sformat # this is ml's format
         ml_idx = self.directory_with_ml.rindex('/ml')
         self.direc_no_ml = directory_with_ml[:ml_idx+1]
-        self.ml = float(self.directory_with_ml[ml_idx+3:-1])
+        ml_str = self.directory_with_ml[ml_idx+3:]
+        self.ml = float(ml_str[:-1]) if ml_str[-1] == '/' else float(ml_str)
         self.fname_nn_kinem = self.directory_with_ml + 'nn_kinem.out'
         self.fname_nn_nnls = self.directory_with_ml + 'nn_nnls.out'
         if 'CRcut' in self.settings.keys():

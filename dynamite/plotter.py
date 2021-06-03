@@ -26,22 +26,19 @@ class Plotter():
 
     Parameters
     ----------
-    system : a `dyn.physical_system.System` object
-    settings : a `dyn.config_reader.Settings` object
-    parspace : a list of `dyn.parameter_space.Parameter` object
-    all_models : a list of `dyn.models.AllModels` object
+    config : a ``dyn.config_reader.Configuration`` object
 
     """
     def __init__(self, config=None):
         self.logger = logging.getLogger(f'{__name__}.{__class__.__name__}')
         if config is None:
-            text = 'Plotter needs configuration object, None provided.'
+            text = f'{__class__.__name__} needs configuration object, ' \
+                   'None provided.'
             self.logger.error(text)
             raise ValueError(text)
         self.config = config
         self.system = config.system
         self.settings = config.settings
-        self.parspace = config.parspace
         self.all_models = config.all_models
         self.input_directory = config.settings.io_settings['input_directory']
         self.plotdir = config.settings.io_settings['plot_directory']
@@ -149,7 +146,7 @@ class Plotter():
             raise ValueError(text)
         self.logger.info(f'Making chi2 plot scaled according to {which_chi2}')
 
-        pars = self.parspace
+        pars = self.config.parspace
         val = deepcopy(self.all_models.table)
 
         # exclude the first 50, 100 (specified by the user)

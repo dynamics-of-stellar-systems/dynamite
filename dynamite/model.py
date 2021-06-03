@@ -24,7 +24,8 @@ class AllModels(object):
     def __init__(self, config=None, from_file=True):
         self.logger = logging.getLogger(f'{__name__}.{__class__.__name__}')
         if config is None:
-            text = 'AllModels needs configuration object, None provided.'
+            text = f'{__class__.__name__} needs configuration object, ' \
+                   'None provided.'
             self.logger.error(text)
             raise ValueError(text)
         self.config = config
@@ -277,14 +278,13 @@ class Model(object):
     def __init__(self, config=None, parset=None, directory=None):
         self.logger = logging.getLogger(f'{__name__}.{__class__.__name__}')
         if config is None or parset is None:
-            text = 'Model needs configuration object and parameter set.'
+            text = f'{__class__.__name__} needs configuration object and ' \
+                   'parameter set.'
             self.logger.error(text)
             raise ValueError(text)
         self.config = config
         self.check_parset(config.parspace, parset)
         self.parset = parset
-        # directory of the legacy fortran files
-        self.legacy_directory=self.config.settings.legacy_settings['directory']
         # directory of the input kinematics
         if directory is None:
            self.directory = self.get_model_directory()
@@ -367,12 +367,8 @@ class Model(object):
 
         """
         orblib = dyn_orblib.LegacyOrbitLibrary(
-                system=self.config.system,
+                config=self.config,
                 mod_dir=self.directory_noml,
-                settings=self.config.settings.orblib_settings,
-                legacy_directory=self.legacy_directory,
-                input_directory = \
-                    self.config.settings.io_settings['input_directory'],
                 parset=self.parset)
         orblib.get_orblib()
         orblib.read_losvd_histograms()
