@@ -394,8 +394,7 @@ class Model(object):
         if ws_type=='LegacyWeightSolver':
             weight_solver = ws.LegacyWeightSolver(
                     config=self.config,
-                    mod_dir=self.directory_noml,
-                    ml=self.parset['ml'])
+                    directory_with_ml=self.directory)
         elif ws_type=='NNLS':
             weight_solver = ws.NNLS(
                     config=self.config,
