@@ -334,10 +334,10 @@ class AllModels(object):
             raise ValueError(text)
         return ml_orblib
 
-    def get_model_scaling_factor(self, model_id=None, model=None):
-        """Get the model's scaling factor
+    def get_model_velocity_scaling_factor(self, model_id=None, model=None):
+        """Get the model's velocity scaling factor
 
-        Returns the model's scaling factor sqrt(model_ml/original_orblib_ml).
+        Returns sqrt(model_ml/original_orblib_ml).
         The model can be either given by its row id in ``self.table`` or
         as a ``Model`` object. Note that the parameters model_id and model
         are mutually exclusive.
@@ -356,7 +356,8 @@ class AllModels(object):
         Returns
         -------
         scaling_factor : float
-            The model's scaling factor sqrt(model_ml/original_orblib_ml).
+            The model's velocity scaling factor
+            sqrt(model_ml/original_orblib_ml).
 
         """
         if model_id is None and isinstance(model, Model):
@@ -542,29 +543,6 @@ class Model(object):
         self.kinchi2 = chi2_kin # GH coeeficients 1-Ngh
         self.weights = weights
         return weight_solver
-
-    # def get_ml_of_original_orblib(self):
-    #     """Get ``ml`` of model's original orblib
-
-    #     The original ``ml`` is required to rescale orbit libraries for rescaled
-    #     potentials. This method calls the model's orblib's method of the
-    #     same name.
-
-    #     Returns
-    #     -------
-    #     float
-    #         the original ``ml``
-
-    #     """
-    #     orblib = dyn_orblib.LegacyOrbitLibrary(
-    #             system=self.system,
-    #             mod_dir=self.directory_noml,
-    #             settings=self.settings.orblib_settings,
-    #             legacy_directory=self.legacy_directory,
-    #             input_directory=self.settings.io_settings['input_directory'],
-    #             parset=self.parset)
-    #     ml_original = orblib.get_ml_of_original_orblib()
-    #     return ml_original
 
     def check_parset(self, parspace, parset):
         """
