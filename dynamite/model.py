@@ -276,7 +276,7 @@ class AllModels(object):
         n : int, optional
             How many models to get. The default is 10.
         which_chi2 : str, optional
-            Which chi2 is used for determineing the best models. Must be
+            Which chi2 is used for determining the best models. Must be
             None, chi2, or kinchi2. If None, the setting from the
             configuration file will be used. The default is None.
 
@@ -301,6 +301,44 @@ class AllModels(object):
         table.sort(which_chi2)
         table = table[:n]
         return table
+
+    def get_mods_within_chi2_thresh(self, which_chi2=None, delta=None):
+        """Get models within delta threshold of best
+
+        Parameters
+        ----------
+        which_chi2 : str, optional
+            Which chi2 is used for determining the best models. Must be
+            None, chi2, or kinchi2. If None, the setting from the
+            configuration file will be used. The default is None.
+        delta : float, optional
+            The threshold value. Models with (kin)chi2 values differing
+            from the opimum by at most delta will be returned. If none,
+            models within 10% of the optimal value will be returned.
+            The default is None.
+
+        Raises
+        ------
+        ValueError
+            If which_chi2 is neither None, chi2, nor kinchi2.
+
+        Returns
+        -------
+        a new ``astropy.table`` object holding the ''delta-best'' models
+
+        """
+        if which_chi2 is None:
+            which_chi2 = self.settings.parameter_space_settings['which_chi2']
+        if which_chi2 not in ('chi2', 'kinchi2'):
+            text = 'which_chi2 needs to be chi2 or kinchi2, ' \
+                   f'but it is {which_chi2}'
+            self.logger.error(text)
+            raise ValueError(text)
+        chi2_min = min(self.table[which_chi2])
+        if delta is None:
+            delta = chi2_min * 0.1
+        models = self.table[self.table[which_chi2] <= chi2_min+delta]
+        return models
 
 
 class Model(object):
