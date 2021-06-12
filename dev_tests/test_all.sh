@@ -1,17 +1,40 @@
 #!/bin/bash
 
-### Run a grid of test scripts
+testdir="test_all"
 
-### This test script executes the scripts given in test_scripts.
-### In the configuration files, the weight solvers and parameter
-### generators are varied according to the entries in
-### weight_solvers/nnls_solvers and parameter_generators,
-### respectively.
+if [ $# -eq 1 ] && ( [ $1 = "?" ] || [ $1 = "-h" ] )
+then
+cat <<EOI
+### Run a grid of DYNAMITE test scripts.
 
-### The results are written into $testdir. Inside this directory, a new
-### directory holding all the test data is created for each combination
-### of <test script> - <weight solver> - <parameter generator>.
-### The console output is captured in the directories' output.txt.
+### A set of DYNAMITE test scripts are run with a variation
+### of weight solvers and parameter generators, in total
+### #(test scripts) * #(weight solvers/nnls solvers)
+### * #(parameter generators) scenarios.
+
+### The results are written into directory $testdir. Inside
+### $testdir, each scenario is written into an individual
+### subdirectory. Existing subdirectories are overwritten.
+### Console output is captured in the directories' output.txt.
+
+### HOW TO USE:
+### 1. Verify that the test scripts and their config files are
+###    in test_scripts and config_files, respectively.
+### 2. Verify that the desired weight solver settings are in
+###    weight_solvers and nnls_solvers, respectively.
+### 3. Verify that the desired parameter generators are in
+###    parameter_generators.
+### 4. Verify that DYNAMITE has been installed correctly
+###    ('python setup.py install --user'). If using SLURM,
+###    make sure the python version matches the module loaded
+###    in script variable slurm1.
+### 4. Execute with $0 (run on local machine)
+###    or $0 SLURM (use SLURM).
+
+### '$0 ?' or '$0 -h' display this help message.
+EOI
+exit
+fi
 
 ## --------------------
 ## Test scripts: enter desired test scripts/config file combinations here.
@@ -30,12 +53,29 @@ nnls_solvers=('1' 'scipy' 'cvxopt')
 ## Parameter generators: enter desired generator_types here
 parameter_generators=('LegacyGridSearch' 'GridWalk' 'FullGrid')
 
+## --------------------
+## SLURM script: slurm0 and slurm1 are used to build SLURM batch scripts
+## used for running each test as an individual batch job.
+## ** Activated with command-line argument SLURM **
+slurm0="#!/bin/bash \n#\n"
+slurm0="${slurm0}#SBATCH --qos=p71474_0096\n"
+slurm0="${slurm0}#SBATCH --job-name="
+slurm1="\n#SBATCH -N 1\n"
+slurm1="${slurm1}#SBATCH --output=\"dyn_%%j.out\"\n"
+slurm1="${slurm1}#SBATCH --error=\"dyn_%%j.err\"\n"
+slurm1="${slurm1}#SBATCH --nodes=1\n"
+slurm1="${slurm1}#SBATCH --ntasks=24\n"
+slurm1="${slurm1}pwd; hostname; date\n"
+slurm1="${slurm1}\nmodule purge\n"
+slurm1="${slurm1}module load python/3.8.0-gcc-9.1.0-6jpq4wd\n"
+slurm1="${slurm1}module load py-setuptools\n\n"
+joblist=""
+
 printf "Starting $0, $(date)\n"
 
 PY=python
 
 cwd=$(pwd)
-testdir="test_all"
 [[ -d "$testdir" ]] || mkdir "$testdir"
 total_count=$((${#weight_solvers[*]}*${#parameter_generators[*]}*${#test_scripts[*]}))
 typeset -i ws_i=0 ws_n=${#weight_solvers[*]} script_i script_n=${#test_scripts[*]} count=1
@@ -50,7 +90,7 @@ do
     do
       script=${test_scripts[script_i]}
       config=${config_files[script_i]}
-      folder="${testdir}/test_${script_i}_${ws}_${nnls}_$pg"
+      folder="${testdir}/${script_i}_${ws}_${nnls}_$pg"
       # create a fresh test folder
       rm -rf $folder
       mkdir $folder
@@ -62,18 +102,32 @@ do
       sed -e "s/    nnls_solver:.*/    nnls_solver: \"$nnls\"/" \
           -e "s/    generator_type:.*/    generator_type: \"$pg\"/" \
           -e 's/    input_directory: "\(.*\)"/    input_directory: "..\/..\/\1"/' > $folder/$config
-      printf "$count of $total_count: Executing $script using $ws/$nnls and $pg... "
       cd $folder
-      # run the script
-      $PY $script &> output.txt
-      exitcode=$?
-      if [ $exitcode -eq 0 ]
+      if [ $# -eq 1 ] && [ $1 = "SLURM" ]
       then
-        printf "OK"
+        jobname=$(echo $folder | cut -d/ -f2)
+        printf "${slurm0}${jobname}${slurm1}$PY $script &> output.txt\ndate" > run.slrm
+        jobid=$(sbatch run.slrm | cut -d' ' -f4)
+        printf "$count of $total_count: SLURM job executing $script using $ws/$nnls and ${pg}: $jobid\n"
+        if [ -z "$joblist" ]
+        then
+          joblist=$jobid
+        else
+          joblist="${joblist},$jobid"
+        fi
       else
-        printf "ERROR"
+        printf "$count of $total_count: Executing $script using $ws/$nnls and $pg... "
+        # run the script
+        $PY $script &> output.txt
+        exitcode=$?
+        if [ $exitcode -eq 0 ]
+        then
+          printf "OK"
+        else
+          printf "ERROR"
+        fi
+        printf ".\n"
       fi
-      printf ".\n"
       cd $cwd
       count+=1
       script_i+=1
@@ -83,3 +137,11 @@ do
 done
 
 printf "$0 done, $(date)\n"
+if [ $# -eq 1 ] && [ $1 = "SLURM" ]
+then
+  jobstat="sacct --jobs=$joblist --format=JobID%15,JobName%40,Start,Submit,NodeList,NCPUS,State,ExitCode"
+  $jobstat
+  printf "\nDon't worry if the table abve does not show all jobs. Check job status with:\n\n"
+  echo ${jobstat}
+  echo
+fi
