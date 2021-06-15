@@ -7,8 +7,9 @@ Change Log
 Version:
 ================
 
-- New feature: the new method ``model.AllModels.get_n_best_models(...)`` returns the ``n`` best models based on their ``chi2``/``kinchi2`` values
-- New feature: the new method ``model.AllModels.get_mods_within_chi2_thresh(...)`` returns all models within a given ``chi2``/``kinchi2`` threshold
+- New feature: Wherever appropriate, the configuration object is now passed to instantiated classes like Plotter, AllModels, Model, the weight solvers, and LegacyOrbitLibrary. This changes the DYNAMITE user interface! Please refer to the tutorials and ``dev_tests/`` scripts on how to use.
+- New feature: The new method ``model.AllModels.get_n_best_models(...)`` returns the ``n`` best models based on their ``chi2``/``kinchi2`` values
+- New feature: The new method ``model.AllModels.get_mods_within_chi2_thresh(...)`` returns all models within a given ``chi2``/``kinchi2`` threshold
 - Updated: All tests in ``dev_tests/`` now use ``kinchi2`` rather than ``chi2``
 
 Version: 1.0
