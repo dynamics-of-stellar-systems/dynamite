@@ -67,6 +67,11 @@ def run_user_test():
     print(f'Look at {plotfile}')
     c.all_models.table.pprint(max_lines=-1, max_width=-1)
 
+    # select and print all models with (kin)chi2 values within a threshold
+    # of delta
+    best_models = c.all_models.get_mods_within_chi2_thresh(delta=300000)
+    best_models.pprint(max_lines=-1, max_width=-1)
+
 if __name__ == '__main__':
 
     # Example for directly setting up DynamiteLogging

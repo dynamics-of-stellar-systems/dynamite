@@ -83,7 +83,7 @@ def run_user_test():
                   s=40,
                   c=c1amt['kinchi2'])
     ax[1].set_xscale('log')
-    ax[1].set_title('LegacyWeightSolver chi2')
+    ax[1].set_title('LegacyWeightSolver $\chi^2$')
     ax[1].set_xlabel('$f_{DM}$')
     ax[1].set_ylabel('ML')
     # plot chi2 grid using new solver
@@ -98,9 +98,9 @@ def run_user_test():
                             rtol=1e-10,
                             atol=1e-6)
     if all_close:
-        ax[2].set_title('new chi2 ARE IDENTICAL')
+        ax[2].set_title('new $\chi^2$ ARE IDENTICAL')
     else:
-        ax[2].set_title('new chi2 ARE NOT IDENTICAL')
+        ax[2].set_title('new $\chi^2$ ARE NOT IDENTICAL')
     ax[2].set_xlabel('$f_{DM}$')
     ax[2].set_ylabel('ML')
     fig.tight_layout()
