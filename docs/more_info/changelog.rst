@@ -4,6 +4,11 @@
 Change Log
 ****************
 
+Version:
+================
+
+- Updated: All tests in ``dev_tests/`` now use ``kinchi2`` rather than ``chi2``
+
 Version: 1.0
 ================
 

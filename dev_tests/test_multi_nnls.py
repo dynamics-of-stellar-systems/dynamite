@@ -29,6 +29,7 @@ def run_user_test():
         if file_dir:
             os.chdir(file_dir)
     fname = 'user_test_config_multi_ml_FCC.yaml'
+    # fname = 'user_test_config_multi_ml.yaml' # alternate config w/ 3 kinsets
     c = dyn.config_reader.Configuration(fname, reset_logging=True)
 
     c.remove_existing_orblibs()
