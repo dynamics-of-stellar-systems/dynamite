@@ -4,6 +4,11 @@
 Change Log
 ****************
 
+Version:
+================
+
+- Improvement: The bash test script ``dev_tests/test_all.sh`` executes a grid of test scenarios (different base scripts with different parameter generators and weight solvers) either locally or via Slurm
+
 Version: 1.0
 ================
 
