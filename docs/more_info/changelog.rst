@@ -4,6 +4,12 @@
 Change Log
 ****************
 
+Version:
+================
+
+- Improvement: Greatly improved performance of the chi2 plot
+- Bugfix: Fixed a bug in the path in ``model.Model.get_model_directory()``
+
 Version: 1.0
 ================
 
