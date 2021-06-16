@@ -41,6 +41,7 @@ fi
 ## Note that config_files must contain matching configuration files.
 test_scripts=('test_nnls.py' 'test_orbit_losvds.py')
 config_files=('user_test_config_ml.yaml' 'user_test_config.yaml')
+ncores=('8' '8')
 
 ## --------------------
 ## Weight solvers: enter desired type/nnls_solver combinations here.
@@ -59,17 +60,19 @@ parameter_generators=('LegacyGridSearch' 'GridWalk' 'FullGrid')
 ## ** Activated with command-line argument SLURM **
 slurm0="#!/bin/bash \n#\n"
 slurm0="${slurm0}#SBATCH --qos=p71474_0096\n"
-slurm0="${slurm0}#SBATCH --job-name="
-slurm1="\n#SBATCH -N 1\n"
-slurm1="${slurm1}#SBATCH --output=\"dyn_%%j.out\"\n"
-slurm1="${slurm1}#SBATCH --error=\"dyn_%%j.err\"\n"
-slurm1="${slurm1}#SBATCH --ntasks-per-node=16\n"
-slurm1="${slurm1}#SBATCH --ntasks-per-core=1\n"
-slurm1="${slurm1}pwd; hostname; date\n"
+slurm0="${slurm0}#SBATCH --job-name=DYNAMITE_test\n"
+slurm0="${slurm0}#SBATCH -N 1\n"
+slurm0="${slurm0}#SBATCH --output=\"dyn_%%j.out\"\n"
+slurm0="${slurm0}#SBATCH --error=\"dyn_%%j.err\"\n"
+slurm0="${slurm0}#SBATCH --ntasks-per-node=96\n"
+slurm0="${slurm0}#SBATCH --ntasks-per-core=2\n"
+slurm0="${slurm0}#SBATCH --array=0-"
+slurm1="\n\npwd; hostname; date\n"
 slurm1="${slurm1}\nmodule purge\n"
 slurm1="${slurm1}module load python/3.8.0-gcc-9.1.0-6jpq4wd\n"
 slurm1="${slurm1}module load py-setuptools\n\n"
-joblist=""
+
+### Script start
 
 printf "Starting $0, $(date)\n"
 
@@ -79,6 +82,13 @@ cwd=$(pwd)
 [[ -d "$testdir" ]] || mkdir "$testdir"
 total_count=$((${#weight_solvers[*]}*${#parameter_generators[*]}*${#test_scripts[*]}))
 typeset -i ws_i=0 ws_n=${#weight_solvers[*]} script_i script_n=${#test_scripts[*]} count=1
+
+if [ $# -eq 1 ] && [ $1 = "SLURM" ]
+then
+  run=run$(date +%s).slrm
+  printf "$slurm0$((script_n-1))$slurm1" > $testdir/$run
+fi
+
 while (( ws_i < ws_n ))
 do
   ws=${weight_solvers[ws_i]}
@@ -90,32 +100,27 @@ do
     do
       script=${test_scripts[script_i]}
       config=${config_files[script_i]}
-      folder="${testdir}/${script_i}_${ws}_${nnls}_$pg"
+      folder="${script_i}_${ws}_${nnls}_$pg"
       # create a fresh test folder
-      rm -rf $folder
-      mkdir $folder
+      rm -rf $testdir/$folder
+      mkdir $testdir/$folder
       # copy sript and comparison data to test folder
-      cp $script $folder
-      cp -r data $folder
+      cp $script $testdir/$folder
+#      printf "#!/bin/bash \n#\necho \"Executing $script using $ws/$nnls and $pg... \"\nsleep 2s\n" > $testdir/$folder/$script
+#      PY=
+#      script=./$script
+      cp -r data $testdir/$folder
       # adapt and copy configuration file to folder
       awk 'BEGIN{ws=0} {if(match($1, "weight_solver_settings")){ws=1};if(ws && match($1,"type")){$0="    type: \"'$ws'\"";ws=0};print}' $config | \
       sed -e "s/    nnls_solver:.*/    nnls_solver: \"$nnls\"/" \
           -e "s/    generator_type:.*/    generator_type: \"$pg\"/" \
-          -e 's/    input_directory: "\(.*\)"/    input_directory: "..\/..\/\1"/' > $folder/$config
-      cd $folder
+          -e 's/    input_directory: "\(.*\)"/    input_directory: "..\/..\/\1"/' \
+          -e "s/    ncpus:.*/    ncpus: ${ncores[script_i]}/" > $testdir/$folder/$config
       if [ $# -eq 1 ] && [ $1 = "SLURM" ]
       then
-        jobname=$(echo $folder | cut -d/ -f2)
-        printf "${slurm0}${jobname}${slurm1}$PY $script &> output.txt\ndate" > run.slrm
-        jobid=$(sbatch run.slrm | cut -d' ' -f4)
-        printf "$count of $total_count: SLURM job executing $script using $ws/$nnls and ${pg}: $jobid\n"
-        if [ -z "$joblist" ]
-        then
-          joblist=$jobid
-        else
-          joblist="${joblist},$jobid"
-        fi
+        printf "if [ \$SLURM_ARRAY_TASK_ID -eq $script_i ]\nthen\n  cd $folder && $PY $script &> output.txt &\nfi\n" >> $testdir/$run
       else
+        cd $folder
         printf "$count of $total_count: Executing $script using $ws/$nnls and $pg... "
         # run the script
         $PY $script &> output.txt
@@ -127,8 +132,8 @@ do
           printf "ERROR"
         fi
         printf ".\n"
+        cd $cwd
       fi
-      cd $cwd
       count+=1
       script_i+=1
     done
@@ -136,12 +141,24 @@ do
   ws_i+=1
 done
 
-printf "$0 done, $(date)\n"
+printf "$0 done, $(date)\nLook into $testdir.\n"
+
 if [ $# -eq 1 ] && [ $1 = "SLURM" ]
 then
-  jobstat="sacct --jobs=$joblist --format=JobID%15,JobName%40,Start,Submit,NodeList,NCPUS,State,ExitCode"
-  $jobstat
-  printf "\nDon't worry if the table abve does not show all jobs. Check job status with:\n\n"
-  echo ${jobstat}
+  cd $testdir
+  printf "\nwait\n" >> $run
+  jobid=$(sbatch $run | cut -d' ' -f4)
+  cd ..
+  printf "Submitted SLURM job $jobid comprising $total_count scenarios in array of $script_n:\n"
+  jobstat="sacct --jobs=$jobid --format=JobID%15,JobName%15,Submit,Start,End,NodeList,State,ExitCode"
+  squeue="squeue --user `whoami`"
   echo
+  $squeue
+  echo
+  $jobstat
+  echo
+  printf "\nDon't worry if the table abve doesn't show the job yet. Check job status with:\n\n"
+  echo ${squeue}
+  echo or
+  echo ${jobstat}
 fi
