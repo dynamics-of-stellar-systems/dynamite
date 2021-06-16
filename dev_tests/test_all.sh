@@ -120,7 +120,7 @@ do
       then
         printf "if [ \$SLURM_ARRAY_TASK_ID -eq $script_i ]\nthen\n  cd $folder && $PY $script &> output.txt &\nfi\n" >> $testdir/$run
       else
-        cd $folder
+        cd $testdir/$folder
         printf "$count of $total_count: Executing $script using $ws/$nnls and $pg... "
         # run the script
         $PY $script &> output.txt
