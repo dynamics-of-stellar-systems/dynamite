@@ -31,6 +31,8 @@ cat <<EOI
 ### 4. Execute with $0 (run on local machine)
 ###    or $0 SLURM (use SLURM).
 
+### Inspect the code and its annotations for further details.
+
 ### '$0 ?' or '$0 -h' display this help message.
 EOI
 exit
@@ -53,6 +55,14 @@ nnls_solvers=('1' 'scipy' 'cvxopt')
 ## --------------------
 ## Parameter generators: enter desired generator_types here
 parameter_generators=('LegacyGridSearch' 'GridWalk' 'FullGrid')
+
+## --------------------
+## If using a cluster and Slurm, the variable slurm_array determines
+## which 'dimension' will be used for the Slurm job array:
+## "script" will use as many nodes as there are test_scripts
+## "ws" will use as many nodes as weight_solvers
+## "pg" will use as many nodes as parameter_generators
+slurm_array="script"  # create one array job per "script", "ws", or "pg"
 
 ## --------------------
 ## SLURM script: slurm0 and slurm1 are used to build SLURM batch scripts
@@ -82,17 +92,23 @@ cwd=$(pwd)
 [[ -d "$testdir" ]] || mkdir "$testdir"
 total_count=$((${#weight_solvers[*]}*${#parameter_generators[*]}*${#test_scripts[*]}))
 typeset -i ws_i=0 ws_n=${#weight_solvers[*]} script_i script_n=${#test_scripts[*]} count=1
+typeset -i pg_i pg_n=${#parameter_generators[*]}
 
+# Create Slurm script header
 if [ $# -eq 1 ] && [ $1 = "SLURM" ]
 then
+  max_array_var=${slurm_array}_n
+  i_array_var=${slurm_array}_i
   run=run$(date +%s).slrm
-  printf "$slurm0$((script_n-1))$slurm1" > $testdir/$run
+  printf "$slurm0$((${!max_array_var}-1))$slurm1" > $testdir/$run
 fi
 
+# Main loop
 while (( ws_i < ws_n ))
 do
   ws=${weight_solvers[ws_i]}
   nnls=${nnls_solvers[ws_i]}
+  pg_i=0
   for pg in ${parameter_generators[*]}
   do
     script_i=0
@@ -104,13 +120,10 @@ do
       # create a fresh test folder
       rm -rf $testdir/$folder
       mkdir $testdir/$folder
-      # copy sript and comparison data to test folder
+      # copy script and comparison data to test folder
       cp $script $testdir/$folder
-#      printf "#!/bin/bash \n#\necho \"Executing $script using $ws/$nnls and $pg... \"\nsleep 2s\n" > $testdir/$folder/$script
-#      PY=
-#      script=./$script
       cp -r data $testdir/$folder
-      # adapt and copy configuration file to folder
+      # adapt and copy DYNAMITE configuration file to test folder
       awk 'BEGIN{ws=0} {if(match($1, "weight_solver_settings")){ws=1};if(ws && match($1,"type")){$0="    type: \"'$ws'\"";ws=0};print}' $config | \
       sed -e "s/    nnls_solver:.*/    nnls_solver: \"$nnls\"/" \
           -e "s/    generator_type:.*/    generator_type: \"$pg\"/" \
@@ -118,8 +131,10 @@ do
           -e "s/    ncpus:.*/    ncpus: ${ncores[script_i]}/" > $testdir/$folder/$config
       if [ $# -eq 1 ] && [ $1 = "SLURM" ]
       then
-        printf "if [ \$SLURM_ARRAY_TASK_ID -eq $script_i ]\nthen\n  cd $folder && $PY $script &> output.txt &\nfi\n" >> $testdir/$run
+        # Add scenario to Slurm file and sort into job array
+        printf "if [ \$SLURM_ARRAY_TASK_ID -eq ${!i_array_var} ]\nthen\n  cd $folder && $PY $script &> output.txt &\nfi\n" >> $testdir/$run
       else
+        # Execute local jobs
         cd $testdir/$folder
         printf "$count of $total_count: Executing $script using $ws/$nnls and $pg... "
         # run the script
@@ -137,6 +152,7 @@ do
       count+=1
       script_i+=1
     done
+  pg_i+=1
   done
   ws_i+=1
 done
@@ -146,10 +162,12 @@ printf "$0 done, $(date)\nLook into $testdir.\n"
 if [ $# -eq 1 ] && [ $1 = "SLURM" ]
 then
   cd $testdir
+  # Finish writing Slurm script
   printf "\nwait\n" >> $run
+  # Submit Slurm jobs
   jobid=$(sbatch $run | cut -d' ' -f4)
   cd ..
-  printf "Submitted SLURM job $jobid comprising $total_count scenarios in array of $script_n:\n"
+  printf "Submitted SLURM job $jobid comprising $total_count scenarios in array of ${!max_array_var}:\n"
   jobstat="sacct --jobs=$jobid --format=JobID%15,JobName%15,Submit,Start,End,NodeList,State,ExitCode"
   squeue="squeue --user `whoami`"
   echo
