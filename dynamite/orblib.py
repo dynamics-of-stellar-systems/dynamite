@@ -23,7 +23,7 @@ class OrbitLibrary(object):
         self.system = system
         self.settings = settings
         self.generate_ics()
-        self.integrate_loop(timesteps)
+        # self.integrate_loop(timesteps)
 
     def generate_ics(self):
         #ics: initial conditions
@@ -58,7 +58,7 @@ class LegacyOrbitLibrary(OrbitLibrary):
         Writes and executes bash scripts to (i) calculate orbit initial
         conditions, (ii) calculate orbit libraries, (iii) calculate aperture and
         3D grid masses for the MGE. If orbit libraries for this model already
-        exitst, then this method does nothing.
+        exist, then this method does nothing.
 
         Returns
         -------

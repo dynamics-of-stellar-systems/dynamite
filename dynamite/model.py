@@ -1,9 +1,9 @@
 import os
 import copy
+import logging
 import numpy as np
 from astropy import table
 from astropy.io import ascii
-import logging
 
 from dynamite import weight_solvers as ws
 from dynamite import orblib as dyn_orblib
@@ -86,7 +86,6 @@ class AllModels(object):
         names.append('directory')
         dtype.append(np.object)
         self.table = table.Table(names=names, dtype=dtype)
-        return
 
     def read_completed_model_file(self):
         """read table from file ``self.filename``
@@ -98,8 +97,8 @@ class AllModels(object):
 
         """
         self.table = ascii.read(self.filename)
-        self.logger.debug(f'Models read from file {self.filename}')
-        return
+        self.logger.debug(f'{len(self.table)} models read '
+                          f'from file {self.filename}')
 
     def read_legacy_chi2_file(self, legacy_filename):
         """
@@ -188,7 +187,6 @@ class AllModels(object):
         mods.write(self.filename, format='ascii.ecsv')
         self.logger.debug(f'Legacy chi2 file {legacy_filename} converted ' + \
                           f'to {self.filename}')
-        return
 
     def get_parset_from_row(self, row_id):
         """Get a parset set given a table row
@@ -227,7 +225,7 @@ class AllModels(object):
         else:
             text = f'parset not in all_models table. parset={parset}, ' \
                    f'all_models table: {self.table}'
-            self.logging.error(text)
+            self.logger.error(text)
             raise ValueError(text)
         # if parset not in [row[self.parspace.par_names] for row in self.table]:
         #     text = f'parset not in all_models table. parset={parset}, ' \
@@ -260,6 +258,117 @@ class AllModels(object):
                       parset=parset,
                       directory=self.table['directory'][row_id])
         return mod
+
+    def get_row_from_model(self, model=None):
+        """Get the table row for a ``Model``
+
+        Parameters
+        ----------
+        model : a ``Model`` object
+
+        Raises
+        ------
+        ValueError
+            If the model is not found in ``self.table`.
+
+        Returns
+        -------
+        row_id : int
+            The ``self.table`` row index of model.
+
+        """
+        row_comp = tuple(model.parset[self.parspace.par_names])
+        for row_id, row in enumerate(self.table[self.parspace.par_names]):
+            if np.allclose(row_comp, tuple(row)):
+                break
+        else:
+            text = 'Cannot find model in all_models table.'
+            self.logger.error(text)
+            raise ValueError(text)
+        return row_id
+
+    def get_ml_of_original_orblib(self, model_id):
+        """Get ``ml`` of model number model_id's original orblib
+
+        The original ``ml`` is required to rescale orbit libraries for rescaled
+        potentials. This method searches ``self.table``, the all_models table.
+
+        Parameters
+        ----------
+        model_id : int
+            The ``self.table`` row index of the model.
+
+        Raises
+        ------
+        ValueError
+            If the ``ml`` parameter is not in the parameter space or the
+            model's orblib cannot be found.
+
+        Returns
+        -------
+        ml_orblib : float
+            the original ``ml``
+
+        """
+        orblib_parameters = self.parspace.par_names[:]
+        ml = 'ml'
+        try:
+            orblib_parameters.remove(ml)
+        except:
+            self.logger.error(f"Parameter '{ml}' not found - check "
+                              "implementation")
+            raise
+        row_comp = tuple(self.table[orblib_parameters][model_id])
+        for row_id, row in enumerate( \
+                                 self.table[orblib_parameters][:model_id+1]):
+            if np.allclose(row_comp, tuple(row)):
+                ml_orblib = self.table['ml'][row_id]
+                self.logger.debug(f'Orblib of model #{model_id} has original '
+                                  f'ml value of {ml_orblib} '
+                                  f'(model #{row_id}).')
+                break
+        else:
+            text = f'Cannot find orblib for model #{model_id} in ' \
+                   'all_models table.'
+            self.logger.error(text)
+            raise ValueError(text)
+        return ml_orblib
+
+    def get_model_velocity_scaling_factor(self, model_id=None, model=None):
+        """Get the model's velocity scaling factor
+
+        Returns sqrt(model_ml/original_orblib_ml).
+        The model can be either given by its row id in ``self.table`` or
+        as a ``Model`` object. Note that the parameters model_id and model
+        are mutually exclusive.
+
+        Parameters
+        ----------
+        model_id : int compatible
+            The model's row id in ``self.table``.
+        model : a ``Model`` object
+
+        Raises
+        ------
+        ValueError
+            If not exactly one of model_id and model are supplied.
+
+        Returns
+        -------
+        scaling_factor : float
+            The model's velocity scaling factor
+            sqrt(model_ml/original_orblib_ml).
+
+        """
+        if model_id is None and isinstance(model, Model):
+            model_id = self.get_row_from_model(model)
+        elif not (model_id == int(model_id) and model is None):
+            text = 'Need to pass either model_id (int) or model (Model).'
+            self.logger.error(text)
+            raise ValueError(text)
+        ml_orblib = self.get_ml_of_original_orblib(model_id)
+        scaling_factor = np.sqrt(self.table['ml'][model_id]/ml_orblib)
+        return scaling_factor
 
     def save(self):
         """Save the all_models table
@@ -404,7 +513,8 @@ class Model(object):
 
         """
         directory = self.settings.io_settings['output_directory'] + 'models/'
-        models_file = directory + self.settings.io_settings['all_models_file']
+        models_file = self.settings.io_settings['output_directory'] \
+                      + self.settings.io_settings['all_models_file']
         try:
             all_models = ascii.read(models_file)
             self.logger.debug(f'Setting model dir from file {models_file}...')
@@ -412,9 +522,8 @@ class Model(object):
             sformat = self.system.parameters[0].sformat # this is ml's format
             ml_dir = f"/ml{self.parset['ml']:{sformat}}/"
             directory += f'orblib_000_000{ml_dir}'
-            self.logger.info(f'Cannot read {models_file} - '
-                                'setting model '
-                                f'directory to {directory}.')
+            self.logger.info(f'The all_models file {models_file} does not '
+                             f'exist - model directory set to {directory}.')
             return directory #######################################
         except:
             self.logger.error('Error reading all_models file. '
@@ -422,7 +531,7 @@ class Model(object):
             raise
         for idx, parset in enumerate(all_models[self.parspace.par_names]):
             if np.allclose(tuple(parset),tuple(self.parset)):
-                directory += 'models/' + all_models['directory'][idx]
+                directory += all_models['directory'][idx]
                 break
         else:
             text = f'Cannot set model directory: parset {self.parset} ' \
