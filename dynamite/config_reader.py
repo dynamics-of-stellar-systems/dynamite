@@ -297,8 +297,9 @@ class Configuration(object):
                     parset = {c.get_parname(p.name):p.value \
                               for p in c.parameters}
                     if not c.validate_parset(parset):
-                        raise ValueError(f'{c.name}: invalid parameters '
-                                         f'{parset}')
+                        text = f'{c.name}: invalid parameters {parset}'
+                        self.logger.error(text)
+                        raise ValueError(text)
                     self.system.add_component(c)
 
                 # once all components added, put all kinematic_data in a list
@@ -396,7 +397,9 @@ class Configuration(object):
         self.system.validate() # now also adds the right parameter sformat
         parset = {p.name:p.value for p in self.system.parameters}
         if not self.system.validate_parset(parset):
-            raise ValueError(f'Invalid system parameters {parset}')
+            text = f'Invalid system parameters {parset}'
+            self.logger.error(text)
+            raise ValueError(text)
         logger.info('System assembled')
         logger.debug(f'System: {self.system}')
         logger.debug(f'Settings: {self.settings}')
