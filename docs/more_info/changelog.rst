@@ -7,6 +7,7 @@ Change Log
 Version:
 ================
 
+- New feature: the number of configuration file backups can be better controlled by ``config_reader.Configuration.backup_config_file(...)`` options
 - Improvement: Greatly improved performance of the chi2 plot
 - Bugfix: Fixed a bug in the path in ``model.Model.get_model_directory()``
 - New feature: The new method ``model.AllModels.get_n_best_models(...)`` returns the ``n`` best models based on their ``chi2``/``kinchi2`` values
