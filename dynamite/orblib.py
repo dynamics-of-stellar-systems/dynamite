@@ -306,7 +306,7 @@ class LegacyOrbitLibrary(OrbitLibrary):
                            stdout=subprocess.PIPE,
                            stderr=subprocess.STDOUT,
                            shell=True)
-        log_file = f'Message: {p.stdout.decode("UTF-8")}.' \
+        log_file = f'Message: {p.stdout.decode("UTF-8")}' \
                    f'Logfile: {self.mod_dir}datfil/orbstart.log.'
         if p.returncode == 0:
             self.logger.info(f'...done - {cmdstr} exit code {p.returncode}. '
@@ -343,7 +343,7 @@ class LegacyOrbitLibrary(OrbitLibrary):
                            stdout=subprocess.PIPE,
                            stderr=subprocess.STDOUT,
                            shell=True)
-        log_files = f'Message: {p.stdout.decode("UTF-8")}.' \
+        log_files = f'Message: {p.stdout.decode("UTF-8")}' \
                     f'Logfiles: {self.mod_dir}datfil/orblib.log, ' \
                     f'{self.mod_dir}datfil/triaxmass.log, ' \
                     f'{self.mod_dir}datfil/triaxmassbin.log.'
@@ -360,7 +360,7 @@ class LegacyOrbitLibrary(OrbitLibrary):
                            stdout=subprocess.PIPE,
                            stderr=subprocess.STDOUT,
                            shell=True)
-        log_file = f'Message: {p.stdout.decode("UTF-8")}.' \
+        log_file = f'Message: {p.stdout.decode("UTF-8")}' \
                    f'Logfile: {self.mod_dir}datfil/orblibbox.log.'
         if p.returncode == 0:
             self.logger.info(f'...done - {cmdstr_box} exit code '
