@@ -72,9 +72,9 @@ class Plotter():
             Figure instance.
 
         """
-        if figtype == None:
+        if figtype is None:
             figtype = '.png'
-        if which_chi2==None:
+        if which_chi2 is None:
             which_chi2 = self.settings.parameter_space_settings['which_chi2']
         if which_chi2 not in ('chi2', 'kinchi2'):
             text = 'which_chi2 needs to be chi2 or kinchi2, ' \
@@ -136,10 +136,10 @@ class Plotter():
 
         """
 
-        if figtype == None:
+        if figtype is None:
             figtype = '.png'
 
-        if which_chi2==None:
+        if which_chi2 is None:
             which_chi2 = self.settings.parameter_space_settings['which_chi2']
         if which_chi2 not in ('chi2', 'kinchi2'):
             text = 'which_chi2 needs to be chi2 or kinchi2, ' \
@@ -164,10 +164,9 @@ class Plotter():
         for i in range(len(val)):
             chi2val = val[which_chi2][i]
             model_id=np.where(self.all_models.table[which_chi2]==chi2val)[0][0]
-            model = self.all_models.get_model_from_row(model_id)
-            ml = model.parset['ml']
-            ml_orblib = model.get_orblib().get_ml_of_original_orblib()
-            scale_factor[i] = np.sqrt(ml/ml_orblib)
+            scale_factor[i] = \
+                self.all_models.get_model_velocity_scaling_factor( \
+                                                            model_id=model_id)
 
         dh = self.system.get_all_dark_non_plummer_components()
         dh = dh[0]  # take the first as there should only be one of these
@@ -354,7 +353,7 @@ class Plotter():
         """
         # Taken from schw_kin.py.
 
-        if figtype == None:
+        if figtype is None:
             figtype = '.png'
 
         stars = \
@@ -865,10 +864,10 @@ class Plotter():
         #   normalized chi^2: chi^2/chi2pmin < chlim: sqrt(2*Nobs * NGH)
         # getallnfw_out copied from schw_mass.py in this function!
 
-        if figtype == None:
+        if figtype is None:
             figtype = '.png'
 
-        if which_chi2==None:
+        if which_chi2 is None:
             which_chi2 = self.settings.parameter_space_settings['which_chi2']
         if which_chi2 not in ('chi2', 'kinchi2'):
             text = 'which_chi2 needs to be chi2 or kinchi2, ' \
@@ -876,7 +875,7 @@ class Plotter():
             self.logger.error(text)
             raise ValueError(text)
 
-        if Rmax_arcs==None:
+        if Rmax_arcs is None:
             text = f'Rmax_arcs must be a number, but it is {Rmax_arcs}'
             self.logger.error(text)
             raise ValueError(text)
@@ -1201,10 +1200,10 @@ class Plotter():
 
         # schw_orbit.py
 
-        if figtype == None:
+        if figtype is None:
             figtype = '.png'
 
-        if Rmax_arcs==None:
+        if Rmax_arcs is None:
             text = f'Rmax_arcs must be a number, but it is {Rmax_arcs}'
             self.logger.error(text)
             raise ValueError(text)
@@ -1573,10 +1572,10 @@ class Plotter():
 
         modeldir = self.modeldir
 
-        if figtype == None:
+        if figtype is None:
             figtype = '.png'
 
-        if which_chi2==None:
+        if which_chi2 is None:
             which_chi2 = self.settings.parameter_space_settings['which_chi2']
         if which_chi2 not in ('chi2', 'kinchi2'):
             text = 'which_chi2 needs to be chi2 or kinchi2, ' \
@@ -1584,7 +1583,7 @@ class Plotter():
             self.logger.error(text)
             raise ValueError(text)
 
-        if Rmax_arcs==None:
+        if Rmax_arcs is None:
             text = f'Rmax_arcs must be a number, but it is {Rmax_arcs}'
             self.logger.error(text)
             raise ValueError(text)
@@ -1823,10 +1822,10 @@ class Plotter():
 
         modeldir = self.modeldir
 
-        if figtype == None:
+        if figtype is None:
             figtype = '.png'
 
-        if which_chi2==None:
+        if which_chi2 is None:
             which_chi2 = self.settings.parameter_space_settings['which_chi2']
         if which_chi2 not in ('chi2', 'kinchi2'):
             text = 'which_chi2 needs to be chi2 or kinchi2, ' \
@@ -1834,7 +1833,7 @@ class Plotter():
             self.logger.error(text)
             raise ValueError(text)
 
-        if Rmax_arcs==None:
+        if Rmax_arcs is None:
             text = f'Rmax_arcs must be a number, but it is {Rmax_arcs}'
             self.logger.error(text)
             raise ValueError(text)
