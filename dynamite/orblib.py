@@ -306,13 +306,13 @@ class LegacyOrbitLibrary(OrbitLibrary):
                            stdout=subprocess.PIPE,
                            stderr=subprocess.STDOUT,
                            shell=True)
-        log_file = f'Message: {p.stdout.decode("UTF-8")}' \
-                   f'Logfile: {self.mod_dir}datfil/orbstart.log.'
-        if p.returncode == 0:
+        log_file = f'Logfile: {self.mod_dir}datfil/orbstart.log.'
+        if not p.stdout.decode("UTF-8"):
             self.logger.info(f'...done - {cmdstr} exit code {p.returncode}. '
-                              f'{log_file}')
+                             f'{log_file}')
         else:
-            text = f'{cmdstr} exit code {p.returncode}. ERROR. {log_file}'
+            text = f'{cmdstr} exit code {p.returncode}. ERROR. ' \
+                   f'Message: {p.stdout.decode("UTF-8")}{log_file}'
             self.logger.error(text)
             raise RuntimeError(text)
         os.chdir(cur_dir)
@@ -343,15 +343,15 @@ class LegacyOrbitLibrary(OrbitLibrary):
                            stdout=subprocess.PIPE,
                            stderr=subprocess.STDOUT,
                            shell=True)
-        log_files = f'Message: {p.stdout.decode("UTF-8")}' \
-                    f'Logfiles: {self.mod_dir}datfil/orblib.log, ' \
+        log_files = f'Logfiles: {self.mod_dir}datfil/orblib.log, ' \
                     f'{self.mod_dir}datfil/triaxmass.log, ' \
                     f'{self.mod_dir}datfil/triaxmassbin.log.'
-        if p.returncode == 0:
+        if not p.stdout.decode("UTF-8"):
             self.logger.info(f'...done - {cmdstr_tube} exit code '
-                              f'{p.returncode}. {log_files}')
+                             f'{p.returncode}. {log_files}')
         else:
-            text=f'{cmdstr_tube} exit code {p.returncode}. ERROR. {log_files}'
+            text=f'{cmdstr_tube} exit code {p.returncode}. ERROR. ' \
+                 f'Message: {p.stdout.decode("UTF-8")}{log_files}'
             self.logger.error(text)
             raise RuntimeError(text)
         self.logger.info('Integrating orbit library box orbits')
@@ -360,13 +360,13 @@ class LegacyOrbitLibrary(OrbitLibrary):
                            stdout=subprocess.PIPE,
                            stderr=subprocess.STDOUT,
                            shell=True)
-        log_file = f'Message: {p.stdout.decode("UTF-8")}' \
-                   f'Logfile: {self.mod_dir}datfil/orblibbox.log.'
-        if p.returncode == 0:
+        log_file = f'Logfile: {self.mod_dir}datfil/orblibbox.log.'
+        if not p.stdout.decode("UTF-8"):
             self.logger.info(f'...done - {cmdstr_box} exit code '
-                              f'{p.returncode}. {log_file}')
+                             f'{p.returncode}. {log_file}')
         else:
-            text = f'{cmdstr_box} exit code {p.returncode}. ERROR. {log_file}'
+            text = f'{cmdstr_box} exit code {p.returncode}. ERROR. ' \
+                   f'Message: {p.stdout.decode("UTF-8")}{log_file}'
             self.logger.error(text)
             raise RuntimeError(text)
         # move back to original directory
