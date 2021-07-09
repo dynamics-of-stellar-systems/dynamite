@@ -7,6 +7,7 @@ Change Log
 Version:
 ================
 
+- Improvement: Make sure DYNAMITE stops with an error if a legacy Fortran executable does not succeed, even if its return code is zero
 - Bugfix: Fixed a bug preventing negative values of logarithmic parameters
 - Improvement: Greatly improved performance of the chi2 plot
 - Bugfix: Fixed a bug in the path in ``model.Model.get_model_directory()``
