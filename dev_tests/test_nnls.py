@@ -37,7 +37,7 @@ def run_user_test(make_comp=False):
     # delete previous output if available
     c.remove_existing_orblibs()
     c.remove_existing_all_models_file(wipe_other_files=False)
-    # c.backup_config_file(reset=True)
+    c.backup_config_file(keep=3, delete_other=True)
     # c.remove_existing_plots()
 
     which_chi2 = c.settings.parameter_space_settings['which_chi2']
@@ -112,7 +112,7 @@ def run_user_test(make_comp=False):
         print(f'Look at {plotfile_ml} and {plotfile_chi2}')
         print(f'{which_chi2} comparison data:\n')
         chi2_compare.pprint(max_lines=-1, max_width=-1)
-        print('The best 3 models:')
+        print('The best 2 models:')
         c.all_models.get_best_n_models(n=2).pprint(max_lines=-1, max_width=-1)
 
     return c.all_models.table, \

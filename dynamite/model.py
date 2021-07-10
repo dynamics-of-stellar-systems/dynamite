@@ -491,9 +491,9 @@ class Model(object):
         string
 
         """
-        directory = self.config.settings.io_settings['output_directory'] \
-                    + 'models/'
-        models_file = directory \
+        output_directory = self.config.settings.io_settings['output_directory']
+        directory = output_directory + 'models/'
+        models_file = output_directory \
                       + self.config.settings.io_settings['all_models_file']
         try:
             all_models = ascii.read(models_file)
@@ -511,7 +511,13 @@ class Model(object):
             raise
         for idx, parset in enumerate(all_models[self.config.parspace.par_names]):
             if np.allclose(tuple(parset),tuple(self.parset)):
-                directory += all_models['directory'][idx]
+                dir_string = all_models['directory'][idx]
+                if dir_string == 'None': # yes, really...
+                    text = f'Something went wrong reading the model # {idx} ' \
+                           'directory. Model not yet computed?'
+                    self.logger.error(text)
+                    raise ValueError(text)
+                directory += dir_string
                 break
         else:
             text = f'Cannot set model directory: parset {self.parset} ' \

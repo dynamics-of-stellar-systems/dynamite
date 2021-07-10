@@ -2,6 +2,7 @@ import os
 import sys
 import shutil
 import glob
+import fnmatch
 import math
 import logging
 import importlib
@@ -672,7 +673,7 @@ class Configuration(object):
         else:
             self.logger.debug(f'Using existing plots directory {plot_dir}.')
 
-    def backup_config_file(self, reset=False):
+    def backup_config_file(self, reset=False, keep=None, delete_other=False):
         """
         Copy the config file to the output directory.
 
@@ -682,9 +683,19 @@ class Configuration(object):
 
         Parameters
         ----------
-        reset : BOOL, optional
+        reset : bool, optional
             If reset==True, all `*`.yaml files in the output directory
             are deleted before the config file is copied.
+            The default is False.
+        keep : int or NoneType, optional
+            If an integer > 0, at most `keep` config files WITH THE SAME
+            BASE NAME are kept. Used to control the number of config file
+            backups in the output folder. Can be combined with delete_other.
+            The current config file will always be backuped. If keep==None,
+            nothing is done. The default is None.
+        delete_other : bool, optional
+            If delete_other==True, all config files WITH A DIFFERENT BASE NAME
+            will be deleted. If delete_other==False, nothing is done.
             The default is False.
 
         Returns
@@ -695,19 +706,38 @@ class Configuration(object):
         out_dir = self.settings.io_settings['output_directory']
         f_root,f_ext=os.path.splitext(os.path.basename(self.config_file_name))
         if reset:
-            del_files = glob.iglob(f'{out_dir}*.yaml')
-            for f in del_files:
-                if os.path.isfile(f):
-                    os.remove(f)
+            del_files = glob.iglob(f'{out_dir}*{f_ext}')
+            for fname in del_files:
+                if os.path.isfile(fname):
+                    os.remove(fname)
             dest_file_name = f'{out_dir}{f_root}_000{f_ext}'
+            self.logger.debug('Config file backup reset.')
         else:
-            conf_files=glob.iglob(f'{out_dir}{f_root}_[0-9][0-9][0-9]{f_ext}')
+            c_pattern = f'{out_dir}{f_root}_[0-9][0-9][0-9]{f_ext}'
+            conf_files=glob.iglob(c_pattern)
             conf_roots = [os.path.splitext(i)[0] for i in conf_files]
             indices = [int(i[i.rindex('_')+1:]) for i in conf_roots]
             new_idx = max(indices) + 1 if len(indices)> 0 else 0
             dest_file_name = f'{out_dir}{f_root}_{new_idx:03d}{f_ext}'
+            if keep is not None:
+                if keep<1 or keep!=int(keep):
+                    text = 'Parameter keep must be a positive integer.'
+                    self.logger.error(text)
+                    raise ValueError(text)
+                for i in sorted(indices)[:-keep]:
+                    os.remove(f'{out_dir}{f_root}_{i:03d}{f_ext}')
+                self.logger.debug(f'{len(indices[:-keep])} config file(s) '
+                                  'removed.')
+            if delete_other:
+                all_conf_files=glob.iglob(f'{out_dir}*_[0-9][0-9][0-9]{f_ext}')
+                del_files = [f for f in all_conf_files
+                             if not fnmatch.fnmatch(f,c_pattern)]
+                for fname in del_files:
+                    os.remove(fname)
+                self.logger.debug(f'{len(del_files)} other config file(s) '
+                                  'removed.')
         shutil.copy(self.config_file_name, dest_file_name)
-        self.logger.info(f'Config file backup: {dest_file_name}')
+        self.logger.info(f'Config file backup: {dest_file_name}.')
 
     def validate(self):
         """

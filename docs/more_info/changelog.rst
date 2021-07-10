@@ -8,6 +8,8 @@ Version:
 ================
 
 - New feature: Wherever appropriate, the configuration object is now passed to instantiated classes like Plotter, AllModels, Model, the weight solvers, and LegacyOrbitLibrary. This changes the DYNAMITE user interface! Please refer to the tutorials and ``dev_tests/`` scripts on how to use.
+- New feature: the number of configuration file backups can be better controlled by ``config_reader.Configuration.backup_config_file(...)`` options
+- Improvement: The bash test script ``dev_tests/test_all.sh`` executes a grid of test scenarios (different base scripts with different parameter generators and weight solvers) either locally or via Slurm
 - Improvement: Greatly improved performance of the chi2 plot
 - Bugfix: Fixed a bug in the path in ``model.Model.get_model_directory()``
 - New feature: The new method ``model.AllModels.get_n_best_models(...)`` returns the ``n`` best models based on their ``chi2``/``kinchi2`` values
