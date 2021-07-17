@@ -29,6 +29,7 @@ class AllModels(object):
             self.logger.error(text)
             raise ValueError(text)
         self.config = config
+        self.system = config.system
         self.set_filename(config.settings.io_settings['all_models_file'])
         if from_file and os.path.isfile(self.filename):
             self.logger.info('Previous models have been found: '
