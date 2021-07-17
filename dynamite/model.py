@@ -455,7 +455,9 @@ class Model(object):
         contains the values of the potential parameters for this model
     directory : str
         The model directory name (without path). If None or not specified,
-        the all_models_file will be searched for the directory name.
+        the all_models_file will be searched for the directory name. If the
+        all_models file does not exist, the model directory will be set to
+        ``orblib_000_000/ml{ml}``.
 
     Returns
     -------
