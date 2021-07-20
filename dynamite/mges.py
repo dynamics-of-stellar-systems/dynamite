@@ -1,3 +1,4 @@
+import logging
 import numpy as np
 from astropy import table
 from dynamite import data
@@ -7,6 +8,29 @@ class MGE(data.Data):
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
+        self.logger = logging.getLogger(f'{__name__}.{__class__.__name__}')
+        self.validate_q_values()
+
+    def validate_q_values(self):
+        """Validates the mge's q values
+
+        Any q=1 will be changed to q=0.999999 for numerical stability. If any
+        changes are made, a warning message will be logged.
+
+        Returns
+        -------
+        None. Any changes are applied to ``self.data``.
+
+        """
+        new_mge = False
+        for r in self.data:
+            if r['q'] >= 1:
+                self.logger.warning(f'changing q={r["q"]} to q=0.99999 for '
+                                    'numerical stability.')
+                r['q'] = 0.99999
+                new_mge = True
+        if new_mge:
+            self.logger.warning(f'New mge:\n{self.data}')
 
     def read_file_old_format(self, filename):
         """read the MGE data from a text file
