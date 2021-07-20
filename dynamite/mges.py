@@ -14,20 +14,23 @@ class MGE(data.Data):
     def validate_q_values(self):
         """Validates the mge's q values
 
-        Any q=1 will be changed to q=0.999999 for numerical stability. If any
-        changes are made, a warning message will be logged.
+        Any q 'too close to 1' will be set to q=NINES for numerical stability.
+        If any changes are made, a warning message will be logged. Note that
+        the 'closeness' to 1 might be machine dependent - for us 'five nines',
+        0.99999, worked...
 
         Returns
         -------
         None. Any changes are applied to ``self.data``.
 
         """
+        NINES = 0.99999
         new_mge = False
         for r in self.data:
-            if r['q'] >= 1:
-                self.logger.warning(f'changing q={r["q"]} to q=0.99999 for '
+            if r['q'] > NINES:
+                self.logger.warning(f'changing q={r["q"]} to q={NINES} for '
                                     'numerical stability.')
-                r['q'] = 0.99999
+                r['q'] = NINES
                 new_mge = True
         if new_mge:
             self.logger.warning(f'New mge:\n{self.data}')
