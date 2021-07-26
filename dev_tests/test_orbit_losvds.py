@@ -67,6 +67,7 @@ def run_orbit_losvd_test(make_comparison_losvd=False):
 
     c.remove_existing_orblibs()
     c.remove_existing_all_models_file()
+    c.backup_config_file(reset=True)
 
     plotdir = c.settings.io_settings['plot_directory']
     plotfile = plotdir + f'orbit_losvds-{version_p()}-{version_f()}.png'
