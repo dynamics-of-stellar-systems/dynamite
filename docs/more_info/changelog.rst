@@ -7,6 +7,8 @@ Change Log
 Version:
 ================
 
+- Improvement: Make sure DYNAMITE stops with an error if a legacy Fortran executable does not succeed, even if its return code is zero
+- Bugfix: Fixed a bug preventing negative values of logarithmic parameters
 - New feature: the number of configuration file backups can be better controlled by ``config_reader.Configuration.backup_config_file(...)`` options
 - Improvement: The bash test script ``dev_tests/test_all.sh`` executes a grid of test scenarios (different base scripts with different parameter generators and weight solvers) either locally or via Slurm
 - Improvement: Greatly improved performance of the chi2 plot
