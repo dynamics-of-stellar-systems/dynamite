@@ -228,13 +228,13 @@ class LegacyWeightSolver(WeightSolver):
                                stdout=subprocess.PIPE,
                                stderr=subprocess.STDOUT,
                                shell=True)
-            log_file = f'Logfile: {self.mod_dir+logfile}'
-            if p.returncode == 0:
-                self.logger.debug(f'...done, NNLS problem solved -  {cmdstr} '
-                                  f'exit code {p.returncode}. {log_file}')
+            log_file = f'Logfile: {self.mod_dir+logfile}.'
+            if not p.stdout.decode("UTF-8"):
+                self.logger.info(f'...done, NNLS problem solved -  {cmdstr} '
+                                 f'exit code {p.returncode}. {log_file}')
             else:
-                text = f'{cmdstr} exit code {p.returncode}. ' \
-                       f'Message: {p.stdout}. {log_file}'
+                text = f'{cmdstr} exit code {p.returncode}. ERROR. ' \
+                       f'Message: {p.stdout.decode("UTF-8")}{log_file}'
                 self.logger.error(text)
                 raise RuntimeError(text)
             #set the current directory to the dynamite directory
