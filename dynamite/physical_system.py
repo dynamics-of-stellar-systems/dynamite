@@ -86,13 +86,14 @@ class System(object):
         Validates the system's parameter values
 
         Kept separate from the validate method to facilitate easy calling from
-        the ``ParameterGenerator`` class.
+        the ``ParameterGenerator`` class. Returns `True` if all parameters are
+        non-negative, except for logarithmic parameters which are not checked.
 
         Parameters
         ----------
         par : dict
             { "p":val, ... } where "p" are the system's parameters and
-            val are their respective values
+            val are their respective raw values
 
         Returns
         -------
@@ -100,7 +101,12 @@ class System(object):
             True if the parameter set is valid, False otherwise
 
         """
-        isvalid = np.all(np.sign(tuple(par.values())) >= 0)
+        p_raw_values = [par[p.name]
+                        for p in self.parameters if not p.logarithmic]
+        isvalid = np.all(np.sign(p_raw_values) >= 0)
+        if not isvalid:
+            self.logger.debug(f'Invalid system parameters {par}: at least '
+                              'one negative non-log parameter.')
         return bool(isvalid)
 
     def __repr__(self):
@@ -297,14 +303,15 @@ class Component(object):
         Kept separate from the
         validate method to facilitate easy calling from the parameter
         generator class. This is a `placeholder` method which returns
-        `True` if all parameters are non-negative. Specific validation
+        `True` if all parameters are non-negative, except for logarithmic
+        parameters which are not checked. Specific validation
         should be implemented for each component subclass.
 
         Parameters
         ----------
         par : dict
             { "p":val, ... } where "p" are the component's parameters and
-            val are their respective values
+            val are their respective raw values
 
         Returns
         -------
@@ -312,9 +319,12 @@ class Component(object):
             True if the parameter set is valid, False otherwise
 
         """
-        isvalid = np.all(np.sign(tuple(par.values())) >= 0)
+        p_raw_values = [par[self.get_parname(p.name)]
+                    for p in self.parameters if not p.logarithmic]
+        isvalid = np.all(np.sign(p_raw_values) >= 0)
         if not isvalid:
-            self.logger.debug(f'Not a non-negative parset: {par}')
+            self.logger.debug(f'Invalid parset {par}: at least one negative '
+                              'non-log parameter.')
         return isvalid
 
     def get_parname(self, par):

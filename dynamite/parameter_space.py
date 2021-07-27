@@ -240,10 +240,9 @@ class ParameterSpace(list):
         """
         Validates a parameter set
 
-        Validate the values of each component's parameters (e.g. check it is
-        within specified lo/hi bounds) by calling the individual components'
-        validate_parameter methods. Does the same for system parameters. Used by
-        the parameter generators.
+        Validate the values of each component's parameters by calling the
+        individual components' validate_parameter methods. Does the same
+        for system parameters. Used by the parameter generators.
 
         Parameters
         ----------
@@ -269,10 +268,10 @@ class ParameterSpace(list):
         """
         Validates a parameter set
 
-        Validate the values of each component's parameters (e.g. check it is
-        within specified lo/hi bounds) by calling the individual components'
-        validate_parameter methods. Does the same for system parameters. Used by
-        the parameter generators.
+        Validate the values of each component's parameters by calling the
+        individual components' validate_parameter methods and check whether
+        parameters are within the specified lo/hi bounds.
+        Does the same for system parameters.
 
         Raises
         ------
