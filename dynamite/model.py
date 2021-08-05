@@ -256,7 +256,7 @@ class AllModels(object):
         Raises
         ------
         ValueError
-            If the model is not found in ``self.table`.
+            If the model is not found in ``self.table``.
 
         Returns
         -------
