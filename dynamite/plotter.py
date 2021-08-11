@@ -210,17 +210,9 @@ class Plotter():
 
         nf=len(val)
 
-        nGH = self.settings.weight_solver_settings['number_GH']
-        stars = \
-            self.system.get_component_from_class(physys.TriaxialVisibleComponent)
-        Nobs = sum([len(kin.data) for kin in stars.kinematic_data])
-
-        self.logger.info(f'nGH={nGH}, Nobs={Nobs}')
-
         ## 1 sigma confidence level
-        #chlim = np.sqrt(2 * Nobs * nGH)
+        chlim = np.sqrt(self.config.get_2n_obs())
         chi2pmin=np.min(val[which_chi2])
-        chlim = np.sqrt(2 * Nobs * nGH)
         chi2=val[which_chi2]
         chi2t = chi2 - chi2pmin
         chi2 = chi2t[np.argsort(-chi2t)]
@@ -881,13 +873,10 @@ class Plotter():
         val.sort(which_chi2)
         chi2pmin = val[which_chi2][0]
 
-        nGH = self.settings.weight_solver_settings['number_GH']
         stars = \
             self.system.get_component_from_class(physys.TriaxialVisibleComponent)
-        Nobs = sum([len(kin.data) for kin in stars.kinematic_data])
 
-        chlim = np.sqrt(2 * Nobs * nGH)
-
+        chlim = np.sqrt(self.config.get_2n_obs())
         chi2 = val[which_chi2]
         chi2 -= chi2pmin
         chilev = chlim * chi2pmin
@@ -1590,12 +1579,7 @@ class Plotter():
         val.sort(which_chi2)
         chi2pmin = val[which_chi2][0]
 
-        nGH = self.settings.weight_solver_settings['number_GH']
-        stars = \
-            self.system.get_component_from_class(physys.TriaxialVisibleComponent)
-        Nobs = sum([len(kin.data) for kin in stars.kinematic_data])
-
-        chlim = np.sqrt(2*Nobs*nGH)
+        chlim = np.sqrt(self.config.get_2n_obs())
 
         chi2 = val[which_chi2]
         chi2 -= chi2pmin
@@ -1840,12 +1824,7 @@ class Plotter():
         val.sort(which_chi2)
         chi2pmin = val[which_chi2][0]
 
-        nGH = self.settings.weight_solver_settings['number_GH']
-        stars = \
-            self.system.get_component_from_class(physys.TriaxialVisibleComponent)
-        Nobs = sum([len(kin.data) for kin in stars.kinematic_data])
-
-        chlim = np.sqrt(2*Nobs*nGH)
+        chlim = np.sqrt(self.config.get_2n_obs())
 
         chi2 = val[which_chi2]
         chi2 -= chi2pmin

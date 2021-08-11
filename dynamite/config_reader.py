@@ -450,7 +450,7 @@ class Configuration(object):
 
     def get_2n_obs(self):
         """
-        Get 2 * number of kinematic observatiosns
+        Get 2 * number of kinematic observations
 
         Used for scaling threshold chi2 values for parameter searches. For
         kinemtic type:
