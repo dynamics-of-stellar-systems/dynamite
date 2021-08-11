@@ -385,7 +385,6 @@ class Plotter():
             t.add_index(which_chi2)
             model_id = t.loc_indices[min_chi2]
             model = self.all_models.get_model_from_row(model_id)
-        # kinem_fname = model.get_model_directory() + 'nn_kinem.out'
         kinem_fname = model.directory + 'nn_kinem.out'
 
         # currently this only works for GaussHermite's and LegacyWeightSolver
@@ -425,16 +424,16 @@ class Plotter():
         #     raise ValueError(text)
 
         if self.settings.weight_solver_settings['number_GH'] == 2:
-            id_num, fluxm, flux, velm, vel, dvel, sigm, sig, dsig = body_kinem.T
+            id_num, flux, fluxm, velm, vel, dvel, sigm, sig, dsig = body_kinem.T
 
             #to not need to change the plotting routine below, higher moments are set to 0
             h3m, h3, dh3, h4m, h4, dh4 = vel*0, vel*0, vel*0+0.4, vel*0, vel*0, vel*0+0.4
 
         if self.settings.weight_solver_settings['number_GH'] == 4:
-            id_num, fluxm, flux, velm, vel, dvel, sigm, sig, dsig, h3m, h3, dh3, h4m, h4, dh4 = body_kinem.T
+            id_num, flux, fluxm, velm, vel, dvel, sigm, sig, dsig, h3m, h3, dh3, h4m, h4, dh4 = body_kinem.T
 
         if self.settings.weight_solver_settings['number_GH'] == 6:
-            id_num, fluxm, flux, velm, vel, dvel, sigm, sig, dsig, h3m, h3, dh3, h4m, h4, dh4, h5m, h5, dh5, h6m, h6, dh6 = body_kinem.T
+            id_num, flux, fluxm, velm, vel, dvel, sigm, sig, dsig, h3m, h3, dh3, h4m, h4, dh4, h5m, h5, dh5, h6m, h6, dh6 = body_kinem.T
 
             #still ToDO: Add the kinematic map plots for h5 and h6
 
