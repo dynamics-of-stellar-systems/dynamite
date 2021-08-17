@@ -2,6 +2,7 @@
 # e.g. the stellar light, dark matter, black hole, globular clusters
 
 import numpy as np
+from scipy import special
 
 # some tricks to add the current path to sys.path (so the imports below work)
 
@@ -438,6 +439,11 @@ class Plummer(DarkComponent):
         rho = 3*M/4/np.pi/a**3 * (1. + (r/a)**2)**-2.5
         return rho
 
+    def mass_enclosed(R, pars):
+        M, a = pars
+        Menc = M*R**3/a**3*(1 + R**2/a**2)**(-1.5)
+        return Menc
+
     def validate(self):
         par_format = {'m':'6.3g', 'a':'7.3g'}
         super().validate(par_format)
@@ -454,6 +460,35 @@ class NFW(DarkComponent):
         super().validate(par_format)
 
 
+    # # c is concentration, f is dark mass fraction
+    # def rhoc(c,f):
+        # return 200/3 * rhocrit * c**3 / (log(1 + c) - c/(1+c))
+    # def rc(c,f):
+        # return (3*M200(c,f)/(800*pi*rhocrit*c**3))**(1/3)
+    # def M200(c,f):
+        # return 800*pi/3*rhocrit*(rc*c)**3
+# 
+    # def potential(x, y, z, pars):
+        # c, f = pars
+        # d2 = x**2 + y**2 + z**2
+        # prefactor = 4*pi*G*rhoc(c,f)*(rc(c,f)**3)/sqrt(d2)
+        # if sqrt(d2)/rc >= 1:
+            # return prefactor * log(1 + sqrt(d2)/rc)
+        # else:
+            # return prefactor * 2 * atanh(sqrt(d2)/(2*rc(c,f) + sqrt(d2)))
+# 
+    # def density(x, y, z, pars):
+        # c, f = pars
+        # r = np.sqrt(x**2 + y**2 + z**2)
+        # rho = rc(c,f)**3*rhoc(c,f)/(r*(r+rc(c,f))**2)
+        # return rho
+# 
+    # def mass_enclosed(x, y, z, pars):
+        # c, f = pars
+        # r = np.sqrt(x**2 + y**2 + z**2)
+        # Menc = 4*np.pi*rc(c,f)**3*rhoc(c,f)*(np.log(1 + r/rc(c,f)) - (r/rc(c,f))/(1 + r/rc(c,f)))
+        # return Menc
+
 class Hernquist(DarkComponent):
 
     def __init__(self, **kwds):
@@ -464,6 +499,22 @@ class Hernquist(DarkComponent):
         par_format = {'rhoc':'6.3g', 'rc':'6.3g'}
         super().validate(par_format)
 
+    def potential(x, y, z, pars):
+        rhoc, rc = pars
+        r = np.sqrt(x**2 + y**2 + z**2)
+        psi = 2*np.pi*G*rhoc*rc**2/(1 + r/rc)
+        return psi
+
+    def density(x, y, z, pars):
+        rhoc, rc = pars
+        r = np.sqrt(x**2 + y**2 + z**2)
+        rho = rc**4*rhoc/(r*(r+rc)**3)
+        return rho
+
+    def mass_enclosed(x, y, z, pars):
+        rhoc, rc = pars
+        Menc = 2*np.pi*r**2*rc**3*rhoc/(r + rc)**2
+        return Menc
 
 class TriaxialCoredLogPotential(DarkComponent):
 
@@ -475,6 +526,29 @@ class TriaxialCoredLogPotential(DarkComponent):
         par_format = {'Vc':'6.3g', 'rho':'6.3g', 'p':'6.3g', 'q':'6.3g'}
         super().validate(par_format)
 
+    def potential(x, y, z, pars):
+        rc, vc, p, q = pars
+        m = x**2 + y**2/p**2 + z**2/q**2
+        psi = -0.5*vc**2*np.log(rc**2 + m)
+        return psi
+
+    def density(x, y, z, pars):
+        rc, vc, p, q = pars
+        m = x**2 + y**2/p**2 + z**2/q**2
+        rho = vc**2/(4*np.pi*G*(m+rc**2)**2)*( (m+rc**2)*(1 + 1/p**2 + 1/q**2) - 2*(x**2 + y**2/p**4 + z**2/q**4))
+        return rho
+
+    # this implementation assumes 1 > p > q
+    def mass_enclosed(x, y, z, pars):
+        rc, vc, p, q = pars
+        r = np.sqrt(x**2 + y**2 + z**2)
+        xx = r**2/(r**2/q**2 + rc**2)
+        yy = r**2/(r**2/p**2 + rc**2)
+        zz = r**2/(r**2 + rc**2)
+        phi = np.arccos(np.sqrt(xx/zz))
+        m = (zz-yy)/(zz-xx)
+        Menc = r*vc**2/G * (1 - rc**2*r/np.sqrt((r**2+rc**2)*(r**2/p**2+rc**2)*(r**2/q**2+rc**2))*(zz-xx)**(-0.5)*special.ellipkinc(phi,m))
+        
 
 class GeneralisedNFW(DarkComponent):
 
@@ -487,8 +561,22 @@ class GeneralisedNFW(DarkComponent):
                       'inner_log_slope':'6.3g'}
         super().validate(par_format)
 
+    def potential(x, y, z, pars):
+        rhoc, rc, gamma = pars
+        xi = r/(r + rc)
+        psi = 4*np.pi*G*rhoc*rc**2*(rc/r*xi**(3-gamma)/(3-gamma)*special.hyp2f1(3-gamma,1,4-gamma,xi) + (1 - xi**(3-gamma))/(2-gamma))
+        return psi
 
+    def density(x, y, z, pars):
+        rhoc, rc, gamma = pars
+        rho = rhoc*rc**3*r**(-gamma)*(r + rc)**(gamma-3)
+        return rho
 
+    def mass_enclosed(x, y, z, pars):
+        rhoc, rc, gamma = pars
+        xi = r/(r + rc)
+        Menc = 4*np.pi*rc**3*rhoc*xi**(3-gamma)/(3-gamma)*special.hyp2f1(3-gamma,1,4-gamma,xi)
+        
 
 
 # end
