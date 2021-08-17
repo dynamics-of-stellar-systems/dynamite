@@ -10,15 +10,15 @@ import os.path
 import sys
 import logging
 
-this_dir = os.path.dirname(__file__)
-if not this_dir in sys.path:
-    sys.path.append(this_dir)
-
-import mges as mge
-
+from dynamite import mges as mge
 
 class System(object):
+    """The physical system being modelled
 
+    e.g. system is a galaxy. A system is composed of ``Components`` e.g. the
+    galaxy is composed of stars, black hole, dark matter halo. This object is
+    automatically created when the configuration file is read.
+    """
     def __init__(self, *args):
         self.logger = logging.getLogger(f'{__name__}.{__class__.__name__}')
         self.n_cmp = 0
@@ -26,28 +26,39 @@ class System(object):
         self.n_pot = 0
         self.n_kin = 0
         self.n_pop = 0
-#        self.n_par = 0
         self.parameters = None
         self.distMPc = None
         self.name = None
         self.position_angle = None
-#        for idx, component in enumerate(args):
         for component in args:
             self.add_component(component)
 
     def add_component(self, cmp):
+        """add a component to the system
+
+        Parameters
+        ----------
+        cmp : a ``dyn.physical_system.Component`` object
+
+        Returns
+        -------
+        None
+            updated the system componenent attributes
+
+        """
         self.cmp_list += [cmp]
         self.n_cmp += 1
         self.n_pot += cmp.contributes_to_potential
         self.n_kin += len(cmp.kinematic_data)
         self.n_pop += len(cmp.population_data)
-#        self.n_par += len(cmp.parameters)
 
     def validate(self):
         """
-        Ensures the System has the required attributes, at least one component,
-        no duplicate component names, and the ml parameter.
-        Additionally, the sformat string for the ml parameter is set.
+        Validate the system
+
+        Ensures the System has the required attributes: at least one component,
+        no duplicate component names, and the ml parameter, and that the
+        sformat string for the ml parameter is set.
 
         Raises
         ------
@@ -61,12 +72,8 @@ class System(object):
         """
         if len(self.cmp_list) != len(set(self.cmp_list)):
             raise ValueError('No duplicate component names allowed')
-        # if self.parameters is not None: # Restriction should not be needed...
-        #     for p in self.parameters:
-        #         if any([p.name.endswith(c.name) for c in self.cmp_list]):
-        #             raise ValueError('System parameter cannot end with '
-        #                              f'"component": {p.name}')
-        if not(self.distMPc and self.name and self.position_angle):
+        if (self.distMPc is None) or (self.name is None) \
+           or (self.position_angle is None):
             text = 'System needs distMPc, name, and position_angle attributes'
             self.logger.error(text)
             raise ValueError(text)
@@ -74,26 +81,25 @@ class System(object):
             text = 'System has no components'
             self.logger.error(text)
             raise ValueError(text)
-        if any(['_' in c.name for c in self.cmp_list]):
-            self.logger.warning('System components should not contain '
-                'underscores - model directory names may get confusing')
         if len(self.parameters) != 1 and self.parameters[0].name != 'ml':
             text = 'System needs ml as its sole parameter'
             self.logger.error(text)
             raise ValueError(text)
-        self.parameters[0].update(sformat = '6.2f')
+        self.parameters[0].update(sformat = '01.2f') # sformat of ml parameter
 
     def validate_parset(self, par):
         """
-        Validates the system's parameter values. Kept separate from the
-        validate method to facilitate easy calling from the parameter
-        generator class.
+        Validates the system's parameter values
+
+        Kept separate from the validate method to facilitate easy calling from
+        the ``ParameterGenerator`` class. Returns `True` if all parameters are
+        non-negative, except for logarithmic parameters which are not checked.
 
         Parameters
         ----------
         par : dict
             { "p":val, ... } where "p" are the system's parameters and
-            val are their respective values
+            val are their respective raw values
 
         Returns
         -------
@@ -101,13 +107,30 @@ class System(object):
             True if the parameter set is valid, False otherwise
 
         """
-        isvalid = np.all(np.sign(tuple(par.values())) >= 0)
+        p_raw_values = [par[p.name]
+                        for p in self.parameters if not p.logarithmic]
+        isvalid = np.all(np.sign(p_raw_values) >= 0)
+        if not isvalid:
+            self.logger.debug(f'Invalid system parameters {par}: at least '
+                              'one negative non-log parameter.')
         return bool(isvalid)
 
     def __repr__(self):
         return f'{self.__class__.__name__} with {self.__dict__}'
 
     def get_component_from_name(self, cmp_name):
+        """get_component_from_name
+
+        Parameters
+        ----------
+        cmp_name : string
+            component name (as specified in the congi file)
+
+        Returns
+        -------
+        a ``dyn.physical_system.Component`` object
+
+        """
         cmp_list_list = np.array([cmp0.name for cmp0 in self.cmp_list])
         idx = np.where(cmp_list_list == cmp_name)
         self.logger.debug(f'Checking for 1 and only 1 component {cmp_name}...')
@@ -118,6 +141,24 @@ class System(object):
         return component
 
     def get_component_from_class(self, cmp_class):
+        """get_component_from_class
+
+        Parameters
+        ----------
+        cmp_class : string
+            name of the component type/class
+
+        Raises
+        -------
+        ValueError : if there are more than one component of the same class.
+            # TODO: remove this limit, e.g. if we had two MGE-based components
+            one for stars, one for gas
+
+        Returns
+        -------
+        a ``dyn.physical_system.Component`` object
+
+        """
         self.logger.debug('Checking for 1 and only 1 component of class '
                           f'{cmp_class}...')
         components = filter(lambda c: isinstance(c,cmp_class), self.cmp_list)
@@ -130,44 +171,105 @@ class System(object):
         self.logger.debug('...check ok.')
         return component
 
+    def get_all_dark_components(self):
+        """Get all components which are Dark
+
+        Returns
+        -------
+        list
+            a list of Component objects, keeping only the dark components
+
+        """
+        dark_cmp = [c for c in self.cmp_list if isinstance(c, DarkComponent)]
+        return dark_cmp
+
+    def get_all_dark_non_plummer_components(self):
+        """Get all Dark components which are not plummer
+
+        Useful in legacy orbit libraries for finding the dark halo component.
+        For legacy models, the black hole is always a plummer, so any Dark but
+        non plummer components must represent the dark halo.
+
+        Returns
+        -------
+        list
+            a list of Component objects, keeping only the dark components
+
+        """
+        dark_cmp = self.get_all_dark_components()
+        dark_non_plum_cmp = [c for c in dark_cmp if not isinstance(c, Plummer)]
+        return dark_non_plum_cmp
+
     def get_all_kinematic_data(self):
+        """get_all_kinematic_data
+
+        Loop over all components, extract their kinemtics into a list.
+
+        Returns
+        -------
+        list
+            all_kinematics in a list
+
+        """
         all_kinematics = []
         for component in self.cmp_list:
             all_kinematics += component.kinematic_data
         return all_kinematics
 
 class Component(object):
+    """A component of the physical system
 
+    e.g. the stellar component, black hole, or dark halo of a galaxy
+
+    Parameters
+    ----------
+    name : string
+        a short but descriptive name of the component
+    visible : Bool
+        whether this is visible <--> whether it has an associated MGE
+    contributes_to_potential : Bool
+        whether this contributes_to_potential **not currently used**
+    symmetry : string
+        one of 'spherical', 'axisymm', or 'triax' **not currently used**
+    kinematic_data : list
+        a list of ``dyn.kinemtics.Kinematic`` data for this component
+    parameters  : list
+        a list of ``dyn.parameter_space.Parameter`` objects for this component
+    population_data : list
+        a list of ``dyn.populations.Population`` data for this component **not
+        currently used**
+
+    """
     def __init__(self,
-                 name = None,                    # string
-                 visible=None,                   # Boolean
-                 contributes_to_potential=None,  # Boolean
-                 symmetry=None,       # OPTIONAL, spherical, axisymm, or triax
-                 kinematic_data=[],              # a list of Kinematic objects
-                 population_data=[],             # a list of Population objects
-                 parameters=[]):                 # a list of Parameter objects
+                 name = None,
+                 visible=None,
+                 contributes_to_potential=None,
+                 symmetry=None,
+                 kinematic_data=[],
+                 population_data=[],
+                 parameters=[]):
         self.logger = logging.getLogger(f'{__name__}.{__class__.__name__}')
         if name == None:
             self.name = self.__class__.__name__
         else:
             self.name = name
-#        self.symmetries = ['spherical', 'axisymm', 'triax']
         self.visible = visible
         self.contributes_to_potential = contributes_to_potential
         self.symmetry = symmetry
         self.kinematic_data = kinematic_data
         self.population_data = population_data
         self.parameters = parameters
-        # self.validate()
 
-    def validate(self, par_format=None):
+    def validate(self, par=None):
         """
-        Ensures the Component has the required attributes and parameters.
+        Validate the component
+
+        Ensure it has the required attributes and parameters.
         Additionally, the sformat strings for the parameters are set.
 
         Parameters
         ----------
-        par_format : a dict with parameter_name:sformat pairs. Mandatory.
+        par : a list with parameter names. Mandatory.
 
         Raises
         ------
@@ -179,10 +281,6 @@ class Component(object):
         None.
 
         """
-        # if self.symmetry not in self.symmetries:
-        #     raise ValueError('Illegal symmetry ' + str(self.symmetry) + \
-        #                      '. Allowed: ' + str(self.symmetries))
-        par = par_format.keys()
         errstr = f'Component {self.__class__.__name__} needs attribute '
         if self.visible is None:
             text = errstr + 'visible'
@@ -200,34 +298,26 @@ class Component(object):
         pars = [self.get_parname(p.name) for p in self.parameters]
         if set(pars) != set(par):
             text = f'{self.__class__.__name__} needs parameters ' + \
-                   f'{list(par)}, not ' + \
-                   f'{[self.get_parname(p.name) for p in self.parameters]}'
+                   f'{par}, not {pars}.'
             self.logger.error(text)
             raise ValueError(text)
-
-        self.set_format(par_format)
-
-    def set_format(self, par_format=None):
-        if par_format is None:
-            text = f'{self.__class__.__name__}: no format string'
-            self.logger.error(text)
-            raise ValueError(text)
-        for p in self.parameters:
-            p.update(sformat=par_format[self.get_parname(p.name)])
 
     def validate_parset(self, par):
         """
-        Validates the component's parameter values. Kept separate from the
+        Validates the component's parameter values.
+
+        Kept separate from the
         validate method to facilitate easy calling from the parameter
         generator class. This is a `placeholder` method which returns
-        `True` if all parameters are non-negative. Specific validation
+        `True` if all parameters are non-negative, except for logarithmic
+        parameters which are not checked. Specific validation
         should be implemented for each component subclass.
 
         Parameters
         ----------
         par : dict
             { "p":val, ... } where "p" are the component's parameters and
-            val are their respective values
+            val are their respective raw values
 
         Returns
         -------
@@ -235,14 +325,17 @@ class Component(object):
             True if the parameter set is valid, False otherwise
 
         """
-        isvalid = np.all(np.sign(tuple(par.values())) >= 0)
+        p_raw_values = [par[self.get_parname(p.name)]
+                    for p in self.parameters if not p.logarithmic]
+        isvalid = np.all(np.sign(p_raw_values) >= 0)
         if not isvalid:
-            self.logger.debug(f'Not a non-negative parset: {par}')
+            self.logger.debug(f'Invalid parset {par}: at least one negative '
+                              'non-log parameter.')
         return isvalid
 
     def get_parname(self, par):
         """
-        Strips the component name suffix from the parameter name.
+        Strip the component name suffix from the parameter name.
 
         Parameters
         ----------
@@ -268,7 +361,16 @@ class Component(object):
 
 
 class VisibleComponent(Component):
+    """Any visible component of the sytem, with an MGE
 
+    Parameters
+    ----------
+    mge_pot : a ``dyn.mges.MGE`` object
+        describing the (projected) surface-mass density
+    mge_lum : a ``dyn.mges.MGE`` object
+        describing the (projected) surface-luminosity density
+
+    """
     def __init__(self,
                  mge_pot=None,
                  mge_lum=None,
@@ -302,12 +404,18 @@ class AxisymmetricVisibleComponent(VisibleComponent):
         super().__init__(symmetry='axisymm', **kwds)
 
     def validate(self):
-        par_format = {'par1':'6.3g', 'par2':'6.4g'}
-        super().validate(par_format)
+        par = ['par1', 'par2']
+        super().validate(par=par)
 
 
 class TriaxialVisibleComponent(VisibleComponent):
+    """Triaxial component with a MGE projected density
 
+    Has parameters (p,q,u) = (b/a, c/a, sigma_obs/sigma_intrinsic) used for
+    deprojecting the MGE. A given (p,q,u) correspond to a fixed set of
+    `viewing angles` for the triaxial ellipsoid.
+
+    """
     def __init__(self, **kwds):
         super().__init__(symmetry='triax', **kwds)
         self.logger = logging.getLogger(f'{__name__}.{__class__.__name__}')
@@ -315,6 +423,8 @@ class TriaxialVisibleComponent(VisibleComponent):
 
     def validate(self):
         """
+        Validate the TriaxialVisibleComponent
+
         In addition to validating parameter names and setting their sformat
         strings, also set self.qobs (minimal flattening from mge data)
 
@@ -323,14 +433,16 @@ class TriaxialVisibleComponent(VisibleComponent):
         None.
 
         """
-        par_format = {'q':'6.3g', 'p':'6.4g', 'u':'7.5g'}
-        super().validate(par_format=par_format)
+        par = ['q', 'p', 'u']
+        super().validate(par=par)
         self.qobs = np.amin(self.mge_pot.data['q'])
         if self.qobs is np.nan:
             raise ValueError(f'{self.__class__.__name__}.qobs is np.nan')
 
     def validate_parset(self, par):
         """
+        Validate the p, q, u parset
+
         Validates the triaxial component's p, q, u parameter set. Requires
         self.qobs to be set. A parameter set is valid if the resulting
         (theta, psi, phi) are not np.nan.
@@ -352,22 +464,21 @@ class TriaxialVisibleComponent(VisibleComponent):
 
     def triax_pqu2tpp(self,p,q,u):
         """
+        transform axis ratios to viewing angles
+
         transfer (p, q, u) to the three viewing angles (theta, psi, phi)
         with known flatting self.qobs.
         Taken from schw_basics, same as in vdB et al. 2008, MNRAS 385,2,647
         We should possibly revisit the expressions later
 
         """
-
         # avoid legacy_fortran's u=1 (rather, phi=psi=90deg) problem
         if u == 1:
             u *= (1-np.finfo(float).epsneg)  # same value as for np.double
-
         p2 = np.double(p) ** 2
         q2 = np.double(q) ** 2
         u2 = np.double(u) ** 2
         o2 = np.double(self.qobs) ** 2
-
         # Check for possible triaxial deprojection (v. d. Bosch 2004,
         # triaxpotent.f90 and v. d. Bosch et al. 2008, MNRAS 385, 2, 647)
         str = f'{q} <= {p} <= {1}, ' \
@@ -384,28 +495,32 @@ class TriaxialVisibleComponent(VisibleComponent):
             w1 = (u2 - q2) * (o2 * u2 - q2) / ((1.0 - q2) * (p2 - q2))
             w2 = (u2 - p2) * (p2 - o2 * u2) * (1.0 - q2) / ((1.0 - u2) * (1.0 - o2 * u2) * (p2 - q2))
             w3 = (1.0 - o2 * u2) * (p2 - o2 * u2) * (u2 - q2) / ((1.0 - u2) * (u2 - p2) * (o2 * u2 - q2))
-    
+
             if w1 >=0.0 :
                 theta = np.arccos(np.sqrt(w1)) * 180 /np.pi
             else:
                 theta=np.nan
-    
+
             if w2 >=0.0 :
                 phi = np.arctan(np.sqrt(w2)) * 180 /np.pi
             else:
                 phi=np.nan
-    
+
             if w3 >=0.0 :
                 psi = 180 - np.arctan(np.sqrt(w3)) * 180 /np.pi
             else:
                 psi=np.nan
-
         self.logger.debug(f'theta={theta}, phi={phi}, psi={psi}')
         return theta,psi,phi
 
 
 class DarkComponent(Component):
+    """Any dark component of the sytem, with no observed MGE or kinemtics
 
+    This is an abstract layer and none of the attributes/methods are currently
+    used.
+
+    """
     def __init__(self,
                  density=None,
                  **kwds):
@@ -429,7 +544,11 @@ class DarkComponent(Component):
 
 
 class Plummer(DarkComponent):
+    """A Plummer sphere
 
+    Defined with parameters: M [mass, Msol] and a [scale length, arcsec]
+
+    """
     def __init__(self, **kwds):
         super().__init__(symmetry='spherical', **kwds)
 
@@ -445,59 +564,71 @@ class Plummer(DarkComponent):
         return Menc
 
     def validate(self):
-        par_format = {'m':'6.3g', 'a':'7.3g'}
-        super().validate(par_format)
+        par = ['m', 'a']
+        super().validate(par=par)
 
 
 class NFW(DarkComponent):
+    """An NFW halo
 
+    Defined with parameters: c [concentration, R200/scale] and f
+    [dm-fraction, M200/total-stellar-mass]
+
+    """
     def __init__(self, **kwds):
         self.legacy_code = 1
         super().__init__(symmetry='spherical', **kwds)
 
     def validate(self):
-        par_format = {'c':'6.3g', 'f':'6.3g'}
-        super().validate(par_format)
+        par = ['c', 'f']
+        super().validate(par=par)
 
 
-    # # c is concentration, f is dark mass fraction
-    # def rhoc(c,f):
-        # return 200/3 * rhocrit * c**3 / (log(1 + c) - c/(1+c))
-    # def rc(c,f):
-        # return (3*M200(c,f)/(800*pi*rhocrit*c**3))**(1/3)
-    # def M200(c,f):
-        # return 800*pi/3*rhocrit*(rc*c)**3
-# 
-    # def potential(x, y, z, pars):
-        # c, f = pars
-        # d2 = x**2 + y**2 + z**2
-        # prefactor = 4*pi*G*rhoc(c,f)*(rc(c,f)**3)/sqrt(d2)
-        # if sqrt(d2)/rc >= 1:
-            # return prefactor * log(1 + sqrt(d2)/rc)
-        # else:
-            # return prefactor * 2 * atanh(sqrt(d2)/(2*rc(c,f) + sqrt(d2)))
-# 
-    # def density(x, y, z, pars):
-        # c, f = pars
-        # r = np.sqrt(x**2 + y**2 + z**2)
-        # rho = rc(c,f)**3*rhoc(c,f)/(r*(r+rc(c,f))**2)
-        # return rho
-# 
-    # def mass_enclosed(x, y, z, pars):
-        # c, f = pars
-        # r = np.sqrt(x**2 + y**2 + z**2)
-        # Menc = 4*np.pi*rc(c,f)**3*rhoc(c,f)*(np.log(1 + r/rc(c,f)) - (r/rc(c,f))/(1 + r/rc(c,f)))
-        # return Menc
+    # c is concentration, f is dark mass fraction
+    ## fixme: should derive rhocrit from (c,f) (?)
+    rhocrit = 1
+    def rhoc(c,f):
+        return 200/3 * rhocrit * c**3 / (log(1 + c) - c/(1+c))
+    def rc(c,f):
+        return (3*M200(c,f)/(800*pi*rhocrit*c**3))**(1/3)
+    def M200(c,f):
+        return 800*pi/3*rhocrit*(rc*c)**3
+
+    def potential(x, y, z, pars):
+        c, f = pars
+        d2 = x**2 + y**2 + z**2
+        prefactor = 4*pi*G*rhoc(c,f)*(rc(c,f)**3)/sqrt(d2)
+        if sqrt(d2)/rc >= 1:
+            return prefactor * log(1 + sqrt(d2)/rc)
+        else:
+            return prefactor * 2 * atanh(sqrt(d2)/(2*rc(c,f) + sqrt(d2)))
+
+    def density(x, y, z, pars):
+        c, f = pars
+        r = np.sqrt(x**2 + y**2 + z**2)
+        rho = rc(c,f)**3*rhoc(c,f)/(r*(r+rc(c,f))**2)
+        return rho
+
+    def mass_enclosed(x, y, z, pars):
+        c, f = pars
+        r = np.sqrt(x**2 + y**2 + z**2)
+        Menc = 4*np.pi*rc(c,f)**3*rhoc(c,f)*(np.log(1 + r/rc(c,f)) - (r/rc(c,f))/(1 + r/rc(c,f)))
+        return Menc
 
 class Hernquist(DarkComponent):
+    """A Hernquist sphere
 
+    Defined with parameters: rhoc [central density, Msun/km^3] and rc [scale
+    length, km]
+
+    """
     def __init__(self, **kwds):
-        self.legacy_dm_code = 2
+        self.legacy_code = 2
         super().__init__(symmetry='spherical', **kwds)
 
     def validate(self):
-        par_format = {'rhoc':'6.3g', 'rc':'6.3g'}
-        super().validate(par_format)
+        par = ['rhoc', 'rc']
+        super().validate(par=par)
 
     def potential(x, y, z, pars):
         rhoc, rc = pars
@@ -517,14 +648,20 @@ class Hernquist(DarkComponent):
         return Menc
 
 class TriaxialCoredLogPotential(DarkComponent):
+    """A TriaxialCoredLogPotential
 
+    see e.g. Binney & Tremaine second edition p.171
+    Defined with parameters: p [B/A], q [C/A], Rc [core radius, kpc], Vc
+    [asympt. circular velovity, km/s]
+
+    """
     def __init__(self, **kwds):
-        self.legacy_dm_code = 3
+        self.legacy_code = 3
         super().__init__(symmetry='triaxial', **kwds)
 
     def validate(self):
-        par_format = {'Vc':'6.3g', 'rho':'6.3g', 'p':'6.3g', 'q':'6.3g'}
-        super().validate(par_format)
+        par = ['Vc', 'Rc', 'p', 'q']
+        super().validate(par=par)
 
     def potential(x, y, z, pars):
         rc, vc, p, q = pars
@@ -551,16 +688,46 @@ class TriaxialCoredLogPotential(DarkComponent):
         
 
 class GeneralisedNFW(DarkComponent):
+    """A GeneralisedNFW halo
 
+    from Zhao (1996)
+    Defined with parameters: concentration [R200/NFW scale length], Mvir [Msol],
+    inner_log_slope []
+
+    """
     def __init__(self, **kwds):
-        self.legacy_dm_code = 5
+        self.legacy_code = 5
         super().__init__(symmetry='triaxial', **kwds)
 
     def validate(self):
-        par_format = {'concentration':'6.3g', 'Mvir':'6.3g',
-                      'inner_log_slope':'6.3g'}
-        super().validate(par_format)
+        par = ['c', 'Mvir', 'gam']
+        super().validate(par=par)
 
+    def validate_parset(self, par):
+        """
+        Validates the GeneralisedNFW's parameter set.
+
+        Requires c and Mvir >0, and gam leq 1
+
+        Parameters
+        ----------
+        par : dict
+            { "p":val, ... } where "p" are the component's parameters and
+            val are their respective values
+
+        Returns
+        -------
+        bool
+            True if the parameter set is valid, False otherwise
+
+        """
+        if (par['c']<0.) or (par['Mvir']<0.) or (par['gam']>1):
+            is_valid = False
+        else:
+            is_valid = True
+        return is_valid
+
+    ## fixme: should actually derive (rhoc,rc) from (c,Mvir)
     def potential(x, y, z, pars):
         rhoc, rc, gamma = pars
         xi = r/(r + rc)
@@ -576,7 +743,5 @@ class GeneralisedNFW(DarkComponent):
         rhoc, rc, gamma = pars
         xi = r/(r + rc)
         Menc = 4*np.pi*rc**3*rhoc*xi**(3-gamma)/(3-gamma)*special.hyp2f1(3-gamma,1,4-gamma,xi)
-        
-
 
 # end

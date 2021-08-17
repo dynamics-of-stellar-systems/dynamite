@@ -1,43 +1,29 @@
 import os
 import subprocess
 import shutil
-# import copy
 import logging
 import numpy as np
 from scipy.io import FortranFile
-# from astropy import table
 
-import sys
-this_dir = os.path.dirname(__file__)
-if not this_dir in sys.path:
-    sys.path.append(this_dir)
-import physical_system as physys
-import kinematics as dyn_kin
+from dynamite import physical_system as physys
+from dynamite import kinematics as dyn_kin
 
 class OrbitLibrary(object):
+    """An abstract class for orbit libraries.
 
+    Parameters
+    ----------
+    system : a ``dyn.physical_system.System`` object
+    settings : a ``dyn.config_reader.settngs`` object
+
+    """
     def __init__(self,
                  system=None,
                  settings=None):
-        """A class for orbit libraries.
-
-        Parameters
-        ----------
-        system : type
-            Description of parameter `system`.
-        settings : type
-            Description of parameter `settings`.
-
-        Returns
-        -------
-        type
-            Description of returned object.
-
-        """
         self.system = system
         self.settings = settings
         self.generate_ics()
-        self.integrate_loop(timesteps)
+        # self.integrate_loop(timesteps)
 
     def generate_ics(self):
         #ics: initial conditions
@@ -48,7 +34,9 @@ class OrbitLibrary(object):
 
 
 class LegacyOrbitLibrary(OrbitLibrary):
+    """Orbit libraries calculated from `legacy` Fortan programs
 
+    """
     def __init__(self,
                  system=None,
                  mod_dir=None,
@@ -56,9 +44,7 @@ class LegacyOrbitLibrary(OrbitLibrary):
                  legacy_directory=None,
                  input_directory=None,
                  parset=None):
-
         self.logger = logging.getLogger(f'{__name__}.{__class__.__name__}')
-
         self.system = system
         self.mod_dir = mod_dir
         self.settings = settings
@@ -67,6 +53,28 @@ class LegacyOrbitLibrary(OrbitLibrary):
         self.parset = parset
 
     def get_orblib(self):
+        """main method to calculate orbit libraries
+
+        Writes and executes bash scripts to (i) calculate orbit initial
+        conditions, (ii) calculate orbit libraries, (iii) calculate aperture and
+        3D grid masses for the MGE. If orbit libraries for this model already
+        exist, then this method does nothing.
+
+        Returns
+        -------
+        Creates the following output files in ``output/models/*/datfil/``:
+            - begin.dat                     (ics for tube orbits)
+            - beginbox.dat                  (ics for box orbits)
+            - orblib.dat.bz2                (zipped tube orbit library)
+            - orblib.dat_orbclass.out       (orbit classification for tube orbs)
+            - orblibbox.dat.bz2             (zipped box orbit library)
+            - orblibbox.dat_orbclass.out    (orbit classification for box orbs)
+            - mass_aper.dat                 (MGE masses in apertures)
+            - mass_qgrid.dat                (MGE masses in 3D grid)
+            - mass_radmass.dat              (MGE masses in radial bins)
+            - +8 log and status files
+
+        """
         # check if orbit library was calculated already
         check1 = os.path.isfile(self.mod_dir+'datfil/orblib.dat.bz2')
         check2 = os.path.isfile(self.mod_dir+'datfil/orblibbox.dat.bz2')
@@ -78,15 +86,6 @@ class LegacyOrbitLibrary(OrbitLibrary):
             kinematics = stars.kinematic_data
             # create the kinematic input files for each kinematic dataset
             for i in np.arange(len(kinematics)):
-                # # convert kinematics to old format to input to fortran
-                # # only needed if LegacyWeightSolver is used
-                # ws_type = self.settings.weight_solver_settings['type']
-                # if ws_type == 'LegacyWeightSolver':
-                #     if len(kinematics)==1:
-                #         old_filename = self.mod_dir+'infil/kin_data.dat'
-                #     else:
-                #         old_filename = self.mod_dir+'infil/kin_data_'+str(i)+'.dat'
-                #     kinematics[i].convert_to_old_format(old_filename)
                 # copy aperture and bins file across
                 aperture_file = self.in_dir + kinematics[i].aperturefile
                 shutil.copyfile(aperture_file,
@@ -94,54 +93,53 @@ class LegacyOrbitLibrary(OrbitLibrary):
                 binfile = self.in_dir + kinematics[i].binfile
                 shutil.copyfile(binfile,
                             self.mod_dir+'infil/'+ kinematics[i].binfile)
-
-            # # combine all kinematics into one file
-            # # only needed if LegacyWeightSolver is used
-            # ws_type = self.settings.weight_solver_settings['type']
-            # if ws_type == 'LegacyWeightSolver':
-            #     if len(kinematics)>1:
-            #         gh_order = kinematics[0].get_highest_order_gh_coefficient()
-            #         if not all(kin.get_highest_order_gh_coefficient() == gh_order \
-            #                    for kin in kinematics[1:]):
-            #             text = 'Multiple kinematics: all need to have the same ' \
-            #                    'number of gh coefficients'
-            #             self.logger.error(text)
-            #             raise ValueError(text)
-            #         if not all(isinstance(kin,dyn_kin.GaussHermite) \
-            #                    for kin in kinematics):
-            #             text = 'Multiple kinematics: all must be GaussHermite'
-            #             self.logger.error(text)
-            #             raise ValueError(text)
-            #         # make a dummy 'kins_combined' object ...
-            #         kins_combined = copy.deepcopy(kinematics[0])
-            #         # ...replace data attribute with stacked table of all kinematics
-            #         kins_combined.data = table.vstack([k.data for k in kinematics])
-            #         old_filename = self.mod_dir+'infil/kin_data_combined.dat'
-            #         kins_combined.convert_to_old_format(old_filename)
-
             # calculate orbit libary
             self.get_orbit_ics()
             self.get_orbit_library()
 
     def create_fortran_input_orblib(self, path):
+        """write input files for Fortran orbit library programs
+
+        Parameters
+        ----------
+        path : string
+            path of the model's ``infil`` directory
+
+        Returns
+        -------
+        Cretaes the following files in the ``infil`` directory:
+            - parameters_pot.in
+            - parameters_lum.in
+            - orblib.in
+            - orblibbox.in
+            - triaxmass.in
+            - triaxmassbin.in
+
+        """
         #---------------------------------------------
         #write parameters_pot.in and parameters_lum.in
         #---------------------------------------------
         stars = \
           self.system.get_component_from_class(physys.TriaxialVisibleComponent)
         bh = self.system.get_component_from_class(physys.Plummer)
-        dh = self.system.get_component_from_class(physys.NFW)
         # used to derive the viewing angles
-        q=self.parset[f'q-{stars.name}']
-        p=self.parset[f'p-{stars.name}']
-        u=self.parset[f'u-{stars.name}']
-        # the minimal flattening from stellar mge
-        # qobs=np.amin(stars.mge.data['q'])
-        # TODO: which dark matter profile
-        dm_specs='1 2'
+        q = self.parset[f'q-{stars.name}']
+        p = self.parset[f'p-{stars.name}']
+        u = self.parset[f'u-{stars.name}']
         theta, psi, phi = stars.triax_pqu2tpp(p,q,u)
+        # get dark halo
+        dh = self.system.get_all_dark_non_plummer_components()
+        self.logger.debug('Checking number of non-plummer dark components')
+        error_msg = 'only one non-plummer dark component should be present'
+        assert len(dh)==1, error_msg
+        self.logger.debug('...checks ok.')
+        dh = dh[0]  # extract the one and only dm component
+        dm_specs = f'{dh.legacy_code} {len(dh.parameters)}'
+        dm_par_vals = ''
+        for dm_par in dh.parameters:
+            dm_par_vals += f"{self.parset[dm_par.name]} "
         # header
-        len_mge=len(stars.mge_pot.data) # must be the same as for mge_lum
+        len_mge = len(stars.mge_pot.data) # must be the same as for mge_lum
         settngs = self.settings
         text = f'{self.system.distMPc}\n'
         text += f'{theta:06.9f} {phi:06.9f} {psi:06.9f}\n'
@@ -153,7 +151,7 @@ class LegacyOrbitLibrary(OrbitLibrary):
         text += f"{settngs['nI3']}\n"
         text += f"{settngs['dithering']}\n"
         text += f"{dm_specs}\n"
-        text += f"{self.parset[f'c-{dh.name}']} {self.parset[f'f-{dh.name}']}"
+        text += f"{dm_par_vals}"
         # parameters_pot.in
         np.savetxt(path + 'parameters_pot.in',
                    stars.mge_pot.data,
@@ -297,45 +295,86 @@ class LegacyOrbitLibrary(OrbitLibrary):
         f.close()
 
     def get_orbit_ics(self):
+        """Execute the bash script to calculate orbit ICs
+        """
         cur_dir = os.getcwd()
         os.chdir(self.mod_dir)
         cmdstr = self.write_executable_for_ics()
         self.logger.info('Calculating initial conditions')
-        p = subprocess.call('bash '+cmdstr, shell=True)
-        self.logger.debug('...done. ' + \
-                          f'Logfile: {self.mod_dir}datfil/orbstart.log')
+        # p = subprocess.call('bash '+cmdstr, shell=True)
+        p = subprocess.run('bash '+cmdstr,
+                           stdout=subprocess.PIPE,
+                           stderr=subprocess.STDOUT,
+                           shell=True)
+        log_file = f'Logfile: {self.mod_dir}datfil/orbstart.log.'
+        if not p.stdout.decode("UTF-8"):
+            self.logger.info(f'...done - {cmdstr} exit code {p.returncode}. '
+                             f'{log_file}')
+        else:
+            text = f'{cmdstr} exit code {p.returncode}. ERROR. ' \
+                   f'Message: {p.stdout.decode("UTF-8")}{log_file}'
+            self.logger.error(text)
+            raise RuntimeError(text)
         os.chdir(cur_dir)
 
     def write_executable_for_ics(self):
+        """Write the bash script to calculate orbit ICs
+        """
         cmdstr = 'cmd_orb_start'
         #create the fortran executable
         txt_file = open(cmdstr, "w")
         txt_file.write('#!/bin/bash' + '\n')
-        tmp = '/orbitstart < infil/orbstart.in 2>&1 >> datfil/orbstart.log\n'
+        tmp = '/orbitstart < infil/orbstart.in >> datfil/orbstart.log\n'
         txt_file.write(f'{self.legacy_directory}{tmp}')
         txt_file.close()
         # the name of the executable must be returned to use in subprocess.call
         return cmdstr
 
     def get_orbit_library(self):
+        """Execute the bash script to calculate orbit libraries
+        """
         # move to model directory
         cur_dir = os.getcwd()
         os.chdir(self.mod_dir)
         cmdstr_tube, cmdstr_box = self.write_executable_for_integrate_orbits()
         self.logger.info('Integrating orbit library tube orbits')
-        p = subprocess.call('bash '+cmdstr_tube, shell=True)
-        self.logger.debug('...done. ' + \
-                          f'Logfiles: {self.mod_dir}datfil/orblib.log, ' + \
-                          f'{self.mod_dir}datfil/triaxmass.log, ' + \
-                          f'{self.mod_dir}datfil/triaxmassbin.log')
+        # p = subprocess.call('bash '+cmdstr_tube, shell=True)
+        p = subprocess.run('bash '+cmdstr_tube,
+                           stdout=subprocess.PIPE,
+                           stderr=subprocess.STDOUT,
+                           shell=True)
+        log_files = f'Logfiles: {self.mod_dir}datfil/orblib.log, ' \
+                    f'{self.mod_dir}datfil/triaxmass.log, ' \
+                    f'{self.mod_dir}datfil/triaxmassbin.log.'
+        if not p.stdout.decode("UTF-8"):
+            self.logger.info(f'...done - {cmdstr_tube} exit code '
+                             f'{p.returncode}. {log_files}')
+        else:
+            text=f'{cmdstr_tube} exit code {p.returncode}. ERROR. ' \
+                 f'Message: {p.stdout.decode("UTF-8")}{log_files}'
+            self.logger.error(text)
+            raise RuntimeError(text)
         self.logger.info('Integrating orbit library box orbits')
-        p = subprocess.call('bash '+cmdstr_box, shell=True)
-        self.logger.debug('...done. ' + \
-                          f'Logfile: {self.mod_dir}datfil/orblibbox.log')
+        # p = subprocess.call('bash '+cmdstr_box, shell=True)
+        p = subprocess.run('bash '+cmdstr_box,
+                           stdout=subprocess.PIPE,
+                           stderr=subprocess.STDOUT,
+                           shell=True)
+        log_file = f'Logfile: {self.mod_dir}datfil/orblibbox.log.'
+        if not p.stdout.decode("UTF-8"):
+            self.logger.info(f'...done - {cmdstr_box} exit code '
+                             f'{p.returncode}. {log_file}')
+        else:
+            text = f'{cmdstr_box} exit code {p.returncode}. ERROR. ' \
+                   f'Message: {p.stdout.decode("UTF-8")}{log_file}'
+            self.logger.error(text)
+            raise RuntimeError(text)
         # move back to original directory
         os.chdir(cur_dir)
 
     def write_executable_for_integrate_orbits(self):
+        """Write the bash script to calculate orbit libraries
+        """
         # tubeorbits
         cmdstr_tube = 'cmd_tube_orbs'
         txt_file = open(cmdstr_tube, "w")
@@ -379,7 +418,7 @@ class LegacyOrbitLibrary(OrbitLibrary):
 
     def read_orbit_base(self, fileroot):
         """
-        Read an orbit library from file datfil/{fileroot}.dat.bz2'
+        Read orbit library from file datfil/{fileroot}.dat.bz2'
 
         Parameters
         ----------
@@ -502,21 +541,21 @@ class LegacyOrbitLibrary(OrbitLibrary):
         return velhists, density_3D
 
     def duplicate_flip_and_interlace_orblib(self, orblib):
-        """ Take an orbit library, create a duplicate library with the velocity
-        signs flipped, then interlace the two i.e. so that resulting library
-        alternates between flipped/unflipped.
+        """mirror the tube orbits
 
-        This creates an orbit library consistent with the Fortran output,
-        enforcing the ordering created by the for loops in lines 157-178 of
-        triaxnnls_CRcut.f90
+        Take an orbit library, create a duplicate library with the velocity
+        signs flipped, then interlace the two i.e. so that resulting library
+        alternates between flipped/unflipped. This creates an orbit library
+        consistent with the Fortran output, enforcing the ordering created by
+        the for loops in lines 157-178 of triaxnnls_CRcut.f90
 
         Parameters
         ----------
-        orblib : Histogram
+        orblib : ``dyn.kinematics.Histogram``
 
         Returns
         -------
-        Histogram
+        ``dyn.kinematics.Histogram``
             the duplicated, flipped and interlaced orblib
 
         """
@@ -536,16 +575,16 @@ class LegacyOrbitLibrary(OrbitLibrary):
         return new_orblib
 
     def combine_orblibs(self, orblib1, orblib2):
-        """Combine two histogrammed orbit libraries into one.
+        """Combine two LOSVD histograms into one.
 
         Parameters
         ----------
-        orblib1 : Histogram
-        orblib2 : Histogram
+        orblib1 : ``dyn.kinematics.Histogram``
+        orblib2 : ``dyn.kinematics.Histogram``
 
         Returns
         -------
-        Histogram
+        ``dyn.kinematics.Histogram``
             the combined orbit libraries
 
         """
@@ -573,11 +612,23 @@ class LegacyOrbitLibrary(OrbitLibrary):
         return new_orblib
 
     def read_losvd_histograms(self):
-        '''
-        Reads the LOSVD histograms: reads box orbits and tube orbits, flips
-        the latter, and combines. Sets the 'losvd_histograms' attribute which
-        is a Histogram of the combined orbit libraries.
-        '''
+        """Read the orbit library
+
+        Read box orbits and tube orbits, mirrors the latter, and combines.
+        Rescales the velocity axis according to the ``ml`` value. Sets LOSVDs
+        and 3D grid/aperture masses of the combined orbit library.
+
+        Returns
+        -------
+        Sets the attributes:
+            -   ``self.losvd_histograms``: a list, whose i'th entry is a
+                ``dyn.kinematics.Histogram`` object holding the orbit lib LOSVDs
+                binned for the i'th kinematic set
+            -   ``self.intrinsic_masses``: 3D grid/intrinsic masses of orbit lib
+            -   ``self.projected_masses``: aperture/proj. masses of orbit lib
+            -   ``self.n_orbs``: number of orbits in the orbit library
+
+        """
         # TODO: check if this ordering is compatible with weights read in by
         # LegacyWeightSolver.read_weights
         tube_orblib, tube_density_3D = self.read_orbit_base('orblib')
@@ -609,6 +660,18 @@ class LegacyOrbitLibrary(OrbitLibrary):
         self.projected_masses = proj_mass
 
     def get_ml_of_original_orblib(self):
+        """Get ``ml`` of original orblib with shared parameters
+
+        The original ``ml`` is required to rescale orbit libraries for rescaled
+        potentials. This method reads it from the first entry of 9th from bottom
+        line of the file ``infil/parameters_pot.in``
+
+        Returns
+        -------
+        float
+            the original ``ml``
+
+        """
         infile = self.mod_dir + 'infil/parameters_pot.in'
         lines = [line.rstrip('\n').split() for line in open(infile)]
         ml_original = float((lines[-9])[0])

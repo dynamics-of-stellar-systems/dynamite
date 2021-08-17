@@ -1,14 +1,12 @@
 # Example yaml configuration file for the legacy implementation
 # All relevant input is in one file with two sections: SYSTEM and SETTINGS
 
-#The input files used in this config-file are the same as in tests/NGC6278_input
-
 # Start of yaml document
 ---
-###############################################################################
+###################################################################################
 # SECTION 1 : SYSTEM
-# Define the physical system (e.g. the galaxy or globular cluster being )
-###############################################################################
+# Define the physical system (e.g. the galaxy, globular cluster etc being modelled)
+###################################################################################
 
 system_attributes:
     distMPc: 39.96
@@ -17,37 +15,47 @@ system_attributes:
 
 system_components:
 
-    black_hole:
+    bh:
         parameters:
-            mass:
+            m:
+                par_generator_settings:
+                    lo: 1.0
+                    hi: 10.0
+                    step: 1.
+                    minstep: 0.
                 fixed: True
-                value: 6.0
+                value: 5.0
                 logarithmic: True
                 LaTeX: "$M_{BH}$"
-            a: # scale length
+            a:
                 fixed: True
-                value: 1.e-3  # dot required, renders as str '1e-3' otherwise
+                value: 0.001
                 LaTeX: "$a_{BH}$"
-        type: "Plummer" # class name
+        type: "Plummer"
         include: True
         contributes_to_potential: True
 
-    dark_halo:
+    dh:
         parameters:
-            dc: # NFW Darkmatter concentration
+            c: # concentration
+                par_generator_settings:
+                    lo: 1.0
+                    hi: 10.0
+                    step: 2.0
+                    minstep: 0.1
                 fixed: True
-                value: 10.0
-                LaTeX: "$c_{NFW}$"
-            f: # NFW Darkmatter fraction
+                value: 8.0
+                LaTeX: "$C$"
+            f: # dark-matter fraction M200/M*
+                par_generator_settings:
+                    lo: -1.5
+                    hi: 1.5
+                    step: 0.5
+                    minstep: 0.1
+                logarithmic: True
                 fixed: False
                 value: 1.0
-                LaTeX: "$log(M_{200}/M_{star})$"
-                logarithmic: True
-                par_generator_settings:
-                    lo: 0.
-                    hi: 3.
-                    step: 0.05
-                    minstep: 0.01
+                LaTeX: "$M_{200}/M_*$"
         type: NFW
         include: True
         contributes_to_potential: True
@@ -55,38 +63,54 @@ system_components:
     stars:
         parameters:
             q: # intrinsic flattening (C/A)
+                par_generator_settings:
+                    lo: 0.05
+                    hi: 0.99
+                    step: 0.04
+                    minstep: 0.02
                 fixed: True
                 value: 0.54
-                LaTeX: "$q_{min}$"
-            p: # intrinsic B/A
+                LaTeX: "$q$"
+            p: # intrinsic flattening (B/A)
+                par_generator_settings:
+                    lo: 0.99
+                    hi: 0.999
+                    step: 0.02
+                    minstep: 0.01
                 fixed: True
                 value: 0.99
-                LaTeX: "$p_{min}$"
+                LaTeX: "$p$"
             u: # sigma_obs / sigma_intrinsic
+                par_generator_settings:
+                    lo: 0.95
+                    hi: 1.0
+                    step: 0.01
+                    minstep: 0.01
                 fixed: True
                 value: 0.9999
-                LaTeX: "$u_{min}$"
-        type: "TriaxialVisibleComponent" # class name
-        mge_file: "mge.ecsv"
+                LaTeX: "$u$"
+        type: "TriaxialVisibleComponent"
+        mge_pot: "mge.ecsv"
+        mge_lum: "mge.ecsv"
         include: True
         contributes_to_potential: True
-        kinematics: # optional, only specified for components with kinematics
-            set1:
-                weight: 1.0 # weight of kinematics data specified by name
-                type: GaussHermite # specifies which object class to create
-                datafile: "gauss_hermite_kins.ecsv"  # both discr. & integrated
-                aperturefile: "aperture.dat" # integrated only
-                binfile: "bins.dat"          # integrated only
+        kinematics:
+            califa:
+                weight: 1.0
+                type: GaussHermite
+                datafile: "gauss_hermite_kins.ecsv"
+                aperturefile: "aperture.dat"
+                binfile: "bins.dat"          
 
-system_parameters: # physical system standalone parameters
-    ml: # M/L
+system_parameters:
+    ml:
         par_generator_settings:
-            lo: 0.8
-            hi: 7.5
-            step: 1.0
+            lo: 1.
+            hi: 9.
+            step: 4.0
             minstep: 0.5
         fixed: False
-        value: 3.0
+        value: 5.
         LaTeX: "$Y_{r}$"
 
 ###############################################################################
@@ -94,53 +118,50 @@ system_parameters: # physical system standalone parameters
 # Define other settings e.g. for the orbit library and weight solver
 ###############################################################################
 
-orblib_settings: # don't put in physical system -> config object
-    nE: 5
+orblib_settings:
+    nE: 6                 # pick small orbit library for fast tutorial exaecution
     logrmin: -0.101275
     logrmax: 1.99123
-    nI2: 4        # must be >= 4
-    nI3: 3
-    dithering: 1
-    #the following values should usually not be changed
+    nI2: 5                # must be >= 4
+    nI3: 4
+    dithering: 1          # pick dithering=1 for for fast tutorial exaecution
+    # the following values should usually not be changed
     orbital_periods: 200
     sampling: 50000
     starting_orbit: 1
-    number_orbits: -1 #-1 --> all orbits
+    number_orbits: -1     # i.e. integrate all orbits
     accuracy: '1.0d-5'
-    hist_vel: '2719.8215332031'
-    hist_sigma: '0.0000'  #check what this is
-    hist_bins: '205'
+    random_seed: 4242     # fixed rnd. seed for reproducible tutorial (set to 0 for stochastic seed)
 
 weight_solver_settings:
     type: "LegacyWeightSolver"
-    setting1: True
-    setting2: False
+    nnls_solver: 1
     regularisation: 0
     number_GH: 4
     GH_sys_err: '0.0 0.0 0.0 0.0 0.3 0.3 0.6 0.6'
     lum_intr_rel_err: 0.01
     sb_proj_rel_err: 0.02
-    nnls_solver: 1
 
 parameter_space_settings:
     generator_type: "LegacyGridSearch"
-    which_chi2: "chi2"
+    which_chi2: "kinchi2"  # only use kinematic part of chi2 for parameter search (recommended)
     generator_settings:
-        specificsetting: 25
-        threshold_del_chi2: 0.5  # LegacyGridSearch setting
+        # For LegacyGridSearch, specify ONE of the following two settings
+        # threshold_del_chi2_abs: 0.5  # absolute change in chi2 threshold
+        threshold_del_chi2_as_frac_of_sqrt2nobs: 0.1
     stopping_criteria:
-        min_delta_chi2 : 0.5
-        n_max_mods : 50
-        n_max_iter : 10
+        min_delta_chi2_abs : 0.5  # absolute "optimality tolerance"
+        #min_delta_chi2_rel : 0.05 # relative "optimality tolerance"
+        n_max_mods : 15
+        n_max_iter : 4
 
-legacy_settings:
-    use_legacy_mode: True
-    directory: "default"
-
-io_settings: # paths can be given with or without trailing slash
-    input_directory: "NGC6278_input/"
+io_settings:        # paths can be given with or without trailing slash
+    input_directory: "NGC6278_input/dynamite_input/"
     output_directory: "NGC6278_output/"
     all_models_file: "all_models.ecsv"
 
-executor_settings:
-    type: "Local"     # e.g. Local, Slurm, etc etc
+multiprocessing_settings:
+    ncpus: 4        # integer or 'all_available'
+
+legacy_settings:
+    directory: "default"

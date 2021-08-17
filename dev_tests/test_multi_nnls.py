@@ -1,9 +1,6 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
-# first, make sure the paths are set up
-# we assume that this script is located and run in the folder dynamite/tests
-
 import os
 import logging
 import time
@@ -28,8 +25,11 @@ def run_user_test():
 
     # read configuration
     if '__file__' in globals():
-        os.chdir(os.path.dirname(__file__))
+        file_dir = os.path.dirname(__file__)
+        if file_dir:
+            os.chdir(file_dir)
     fname = 'user_test_config_multi_ml_FCC.yaml'
+    # fname = 'user_test_config_multi_ml.yaml' # alternate config w/ 3 kinsets
     c = dyn.config_reader.Configuration(fname, reset_logging=True)
 
     c.remove_existing_orblibs()

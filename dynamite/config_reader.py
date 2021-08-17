@@ -2,21 +2,27 @@ import os
 import sys
 import shutil
 import glob
+import fnmatch
 import math
 import logging
-
+import importlib
 import yaml
+
 import dynamite as dyn
-import physical_system as physys
-import parameter_space as parspace
-import kinematics as kinem
-import populations as popul
-import mges as mge
-import model
+from dynamite import physical_system as physys
+from dynamite import parameter_space as parspace
+from dynamite import kinematics as kinem
+from dynamite import populations as popul
+from dynamite import mges as mge
+from dynamite import model
 
 class Settings(object):
     """
-    Class that collects misc configuration settings
+    Class to hold all configuration settings
+
+    Has a dictionary attribute for each entry of the second
+    section of the YAML config file (e.g. orblib_settings etc...)
+
     """
     def __init__(self):
         self.logger = logging.getLogger(f'{__name__}.{__class__.__name__}')
@@ -28,6 +34,8 @@ class Settings(object):
         self.multiprocessing_settings = {}
 
     def add(self, kind, values):
+        """Add each setting to the object
+        """
         if kind == 'orblib_settings':
             self.orblib_settings = values
         elif kind == 'parameter_space_settings':
@@ -37,10 +45,10 @@ class Settings(object):
         elif kind == 'io_settings':
             try:
                 out_dir = values['output_directory']
-            except KeyError:
+            except KeyError as e:
                 text = 'Output directory not set in config file.'
                 self.logger.error(text)
-                raise KeyError(text)
+                raise Exception(text) from e
             self.io_settings = values
             self.io_settings['model_directory'] = out_dir + 'models/'
             self.io_settings['plot_directory'] = out_dir + 'plots/'
@@ -59,6 +67,8 @@ class Settings(object):
             raise ValueError(text)
 
     def validate(self):
+        """Validate that all expected settings are present
+        """
         if not(self.orblib_settings and self.parameter_space_settings and
                self.io_settings and self.weight_solver_settings
                and self.multiprocessing_settings):
@@ -77,6 +87,7 @@ class Settings(object):
 class UniqueKeyLoader(yaml.SafeLoader):
     """
     Special yaml loader with duplicate key checking.
+
     Credits: ErichBSchulz,
     https://stackoverflow.com/questions/33490870/parsing-yaml-in-python-detect-duplicated-keys
     """
@@ -97,8 +108,35 @@ class UniqueKeyLoader(yaml.SafeLoader):
 
 class Configuration(object):
     """
-    Reads the configuration file and instantiates the objects
-    self.system, ...
+    Reads configuration file
+
+    Does some rudimentary checks for consistency.
+    Builds the output directory tree if it does not exist already
+    (does not delete existing data).
+
+    Parameters
+    ----------
+    filename : string
+        needs to refer to an existing file including path
+    silent : DEPRECATED
+        (diagnostic output handled by logging module)
+    reset_logging : bool
+        if False: use the calling application's logging settings
+        if True: set logging to Dynamite defaults
+
+    Raises
+    ------
+    FileNotFoundError
+        If file does not exist or filename is None or not given.
+
+    Returns
+    -------
+    sets attributes:
+        - ``self.system``: a ``dyn.physical_system.System`` object
+        - ``self.cmp_list``: a list of ``dyn.physical_system.Component`` objects
+        - ``self.settings``: a list of ``dyn.config_reader.Settings`` object
+        - ``self.settings``: a list of ``dyn.config_reader.Settings`` object
+
     """
 
     # Class attributes
@@ -107,39 +145,15 @@ class Configuration(object):
     thresh_chi2_scaled = 'threshold_del_chi2_as_frac_of_sqrt2nobs'
 
     def __init__(self, filename=None, silent=None, reset_logging=False):
-        """
-        Reads configuration file and instantiates objects.
-        Does some rudimentary checks for consistency.
-        Builds the output directory tree if it does not exist already
-        (does not delete existing data).
-
-        Parameters
-        ----------
-        filename : string, needs to refer to an existing file including path
-        silent : DEPRECATED (diagnostic output handled by logging module)
-        reset_logging : bool, if False: use the calling application's logging
-                                        settings
-                              if True: set logging to Dynamite defaults
-
-        Raises
-        ------
-        FileNotFoundError
-            If file does not exist or filename is None or not given.
-
-        Returns
-        -------
-        None.
-
-        """
-        self.logger = logging.getLogger(f'{__name__}.{__class__.__name__}')
-        logger = self.logger
         if reset_logging is True:
-            logger.info('Resetting logging configuration')
             DynamiteLogging()
-            logger.debug('Logging set to Dynamite defaults')
+            self.logger = logging.getLogger(f'{__name__}.{__class__.__name__}')
+            self.logger.debug('Logging reset to Dynamite defaults')
         else:
-            logger.debug("Dynamite uses the calling application's logging "
-                         "settings")
+            self.logger = logging.getLogger(f'{__name__}.{__class__.__name__}')
+            self.logger.debug("Dynamite uses the calling application's "
+                              "logging settings")
+        logger = self.logger
         self.logger.debug(f'This is Python {sys.version.split()[0]}')
         self.logger.debug(f'Using DYNAMITE version {dyn.__version__} '
                           f'located at {dyn.__path__}')
@@ -150,7 +164,7 @@ class Configuration(object):
         legacy_dir = \
             os.path.realpath(os.path.dirname(__file__)+'/../legacy_fortran')
             # os.path.dirname(os.path.realpath(__file__))+'/../'legacy_fortran'
-        self.logger.debug(f'Legacy Fortran folder: {legacy_dir}')
+        self.logger.debug(f'Default legacy Fortran directory: {legacy_dir}.')
 
         self.config_file = filename
         try:
@@ -178,7 +192,7 @@ class Configuration(object):
                     self.params['io_settings'][io+'_directory'] += '/'
         except:
             logger.error('io_settings: check input_directory '
-                         'and output_directory')
+                         'and output_directory in config file')
             raise
         self.settings.add('io_settings', self.params['io_settings'])
         logger.debug('io_settings assigned to Settings object')
@@ -280,12 +294,13 @@ class Configuration(object):
                                         datafile=data_comp['mge_lum'])
 
                     # add component to system
-                    c.validate() # now also adds the right parameter sformat
+                    c.validate()
                     parset = {c.get_parname(p.name):p.value \
                               for p in c.parameters}
                     if not c.validate_parset(parset):
-                        raise ValueError(f'{c.name}: invalid parameters '
-                                         f'{parset}')
+                        text = f'{c.name}: invalid parameters {parset}'
+                        self.logger.error(text)
+                        raise ValueError(text)
                     self.system.add_component(c)
 
                 # once all components added, put all kinematic_data in a list
@@ -338,6 +353,8 @@ class Configuration(object):
                 if value['directory'][-1]=='/':
                     value['directory'] = value['directory'][:-1]
                 self.settings.add('legacy_settings', value)
+                self.logger.debug("Legacy directory set to "
+                                  f"{value['directory']}.")
 
             # add output settings to Settings object
 
@@ -381,7 +398,9 @@ class Configuration(object):
         self.system.validate() # now also adds the right parameter sformat
         parset = {p.name:p.value for p in self.system.parameters}
         if not self.system.validate_parset(parset):
-            raise ValueError(f'Invalid system parameters {parset}')
+            text = f'Invalid system parameters {parset}'
+            self.logger.error(text)
+            raise ValueError(text)
         logger.info('System assembled')
         logger.debug(f'System: {self.system}')
         logger.debug(f'Settings: {self.settings}')
@@ -407,8 +426,9 @@ class Configuration(object):
 
     def set_threshold_del_chi2(self, generator_settings):
         """
-        Sets threshold_del_chi2 depending on scaled or unscaled input. Works
-        with the legacy setup only (stars component of class
+        Sets threshold_del_chi2 depending on scaled or unscaled input.
+
+        Works with the legacy setup only (stars component of class
         TriaxialVisibleComponent with one or more sets of kinematics).
 
         Parameters
@@ -432,13 +452,21 @@ class Configuration(object):
 
     def get_2n_obs(self):
         """
-        Returns 2*n_obs = number_GH * number_spatial_bins. Works with the
-        legacy setup only (stars component of class TriaxialVisibleComponent
-        with one or more sets of kinematics).
+        Get 2 * number of kinematic observatiosns
+
+        Used for scaling threshold chi2 values for parameter searches. For
+        kinemtic type:
+
+            - ``GaussHermite``, then n_obs = number_GH * number_spatial_bins
+            - ``BayesLOSVD``, then n_obs = n_LOSVD_bins * number_spatial_bins
+
+        This returns the sum of (2 * n_obs) for all kinematic sets. Take
+        kinemtics from the ``TriaxialVisibleComponent`` of the system.
 
         Returns
         -------
-        two_n_obs : 2*n_obs, int
+        int
+            2 * total number of kinematic observations
 
         """
         stars = \
@@ -456,7 +484,7 @@ class Configuration(object):
 
     def remove_existing_orblibs(self):
         """
-        Removes existing orblibs (entire model output tree).
+        Removes the entire model output tree, including all existing orblibs
 
         Returns
         -------
@@ -472,7 +500,9 @@ class Configuration(object):
 
     def remove_existing_orbital_weights(self):
         """
-        Removes existing orbital weights.
+        Removes existing orbital weights ('ml' directories).
+
+        Deletes all files matching ``output/*/ml*/``
 
         Raises
         ------
@@ -484,26 +514,28 @@ class Configuration(object):
 
         """
         ml_pattern = self.settings.io_settings['model_directory'] + '*/ml*'
-        ml_folders = glob.glob(ml_pattern)
-        if len(ml_folders) > 0:
-            for folder in ml_folders:
-                shutil.rmtree(folder)
-                self.logger.debug(f'Directory {folder} removed.')
+        ml_directories = glob.glob(ml_pattern)
+        if len(ml_directories) > 0:
+            for directory in ml_directories:
+                shutil.rmtree(directory)
+                self.logger.debug(f'Directory {directory} removed.')
             self.logger.info(f'Orbital weights {ml_pattern} removed.')
         else:
             self.logger.info(f'No orbital weights {ml_pattern} to remove.')
 
-    def remove_existing_plots(self, remove_folder=False):
+    def remove_existing_plots(self, remove_directory=False):
         """
-        Removes existing plots from the plots directory. Optionally, the
-        plot directory tree can be removed recursively.
+        Removes existing plots from the plots directory.
+
+        Optionally, the plot directory tree can be removed recursively.
 
         Parameters
         ----------
-        remove_folder : BOOL, optional
+        remove_directory : BOOL, optional
             True if the plot directory shall be removed, too. If False,
-            only regular files in the plot directory are deleted (subfolders
-            will remain untouched in that case). The default is False.
+            only regular files in the plot directory are deleted
+            (subdirectories will remain untouched in that case).
+            The default is False.
 
         Raises
         ------
@@ -516,7 +548,7 @@ class Configuration(object):
         """
         plot_dir = self.settings.io_settings['plot_directory']
         if os.path.isdir(plot_dir):
-            if remove_folder:
+            if remove_directory:
                 shutil.rmtree(plot_dir)
                 self.logger.info(f'Plot directory {plot_dir} deleted.')
             else:
@@ -531,13 +563,15 @@ class Configuration(object):
 
     def remove_existing_all_models_file(self, wipe_other_files=False):
         """
+        Deletes the all models file
+
         Deletes the all models file if it exists and optionally removes
         all other regular files in the output directory. Additionally
-        resets self.all_models to an empty AllModels object.
+        resets ``self.all_models`` to an empty ``AllModels`` object.
 
         Parameters
         ----------
-        wipe_other_files : bool, optional
+        wipe_other_files : Bool, optional
             If True, all regular files in the output directory will be
             deleted and a new backup of the config file will be created.
             If False, only the all models file will be removed.
@@ -573,18 +607,20 @@ class Configuration(object):
 
     def remove_all_existing_output(self, wipe_all=False, create_tree=True):
         """
-        Removes all existing DYNAMITE output. The options determine whether
-        non-DYNAMITE output shall survive in the output folders.
-        Also resets self.all_models to an empty AllModels object.
+        Removes all existing DYNAMITE output.
+
+        The options determine whether non-DYNAMITE output shall survive in the
+        output folders. Also resets ``self.all_models`` to an empty
+        ``AllModels`` object.
 
         Parameters
         ----------
-        wipe_all : BOOL, optional
+        wipe_all : Bool, optional
             If True, the complete output directory tree will be removed.
             Set to False to keep (a) user files & directories in the output
-            folder and (b) user directories in the plots folder.
+            directory and (b) user directories in the plots directory.
             The default is False.
-        create_tree : BOOL, optional
+        create_tree : Bool, optional
             If True, recreates an empty output directory tree with a
             backup of the config file. Does not recreate directories
             if False. The default is True.
@@ -609,7 +645,7 @@ class Configuration(object):
             self.logger.info(f'Output directory tree {out_dir} removed.')
         else:
             self.remove_existing_orblibs()
-            self.remove_existing_plots(remove_folder=False)
+            self.remove_existing_plots(remove_directory=False)
         # Execute in any case to create empty AllModels object:
         self.remove_existing_all_models_file()
         if create_tree:
@@ -618,7 +654,7 @@ class Configuration(object):
 
     def make_output_directory_tree(self):
         """
-        Create output directory tree. Existing directories will not be touched.
+        Create output directory tree. Existing directories not affected.
 
         Returns
         -------
@@ -644,18 +680,29 @@ class Configuration(object):
         else:
             self.logger.debug(f'Using existing plots directory {plot_dir}.')
 
-    def backup_config_file(self, reset=False):
+    def backup_config_file(self, reset=False, keep=None, delete_other=False):
         """
-        Copy the config file to the output directory. A running index of
-        the format _xxx will be appended to the base file name to keep
-        track of earlier config files (config_000.yaml, config_001.yaml,
-        config_002.yaml, etc.).
+        Copy the config file to the output directory.
+
+        A running index of the format _xxx will be appended to the base file
+        name to keep track of earlier config files (config_000.yaml,
+        config_001.yaml, config_002.yaml, etc...)
 
         Parameters
         ----------
-        reset : BOOL, optional
-            If reset==True, all *.yaml files in the output directory
+        reset : bool, optional
+            If reset==True, all `*`.yaml files in the output directory
             are deleted before the config file is copied.
+            The default is False.
+        keep : int or NoneType, optional
+            If an integer > 0, at most `keep` config files WITH THE SAME
+            BASE NAME are kept. Used to control the number of config file
+            backups in the output folder. Can be combined with delete_other.
+            The current config file will always be backuped. If keep==None,
+            nothing is done. The default is None.
+        delete_other : bool, optional
+            If delete_other==True, all config files WITH A DIFFERENT BASE NAME
+            will be deleted. If delete_other==False, nothing is done.
             The default is False.
 
         Returns
@@ -666,25 +713,46 @@ class Configuration(object):
         out_dir = self.settings.io_settings['output_directory']
         f_root, f_ext = os.path.splitext(os.path.basename(self.config_file))
         if reset:
-            del_files = glob.iglob(f'{out_dir}*.yaml')
-            for f in del_files:
-                if os.path.isfile(f):
-                    os.remove(f)
+            del_files = glob.iglob(f'{out_dir}*{f_ext}')
+            for fname in del_files:
+                if os.path.isfile(fname):
+                    os.remove(fname)
             dest_file = f'{out_dir}{f_root}_000{f_ext}'
+            self.logger.debug('Config file backup reset.')
         else:
-            conf_files=glob.iglob(f'{out_dir}{f_root}_[0-9][0-9][0-9]{f_ext}')
+            c_pattern = f'{out_dir}{f_root}_[0-9][0-9][0-9]{f_ext}'
+            conf_files=glob.iglob(c_pattern)
             conf_roots = [os.path.splitext(i)[0] for i in conf_files]
             indices = [int(i[i.rindex('_')+1:]) for i in conf_roots]
             new_idx = max(indices) + 1 if len(indices)> 0 else 0
             dest_file = f'{out_dir}{f_root}_{new_idx:03d}{f_ext}'
+            if keep is not None:
+                if keep<1 or keep!=int(keep):
+                    text = 'Parameter keep must be a positive integer.'
+                    self.logger.error(text)
+                    raise ValueError(text)
+                for i in sorted(indices)[:-keep]:
+                    os.remove(f'{out_dir}{f_root}_{i:03d}{f_ext}')
+                self.logger.debug(f'{len(indices[:-keep])} config file(s) '
+                                  'removed.')
+            if delete_other:
+                all_conf_files=glob.iglob(f'{out_dir}*_[0-9][0-9][0-9]{f_ext}')
+                del_files = [f for f in all_conf_files
+                             if not fnmatch.fnmatch(f,c_pattern)]
+                for fname in del_files:
+                    os.remove(fname)
+                self.logger.debug(f'{len(del_files)} other config file(s) '
+                                  'removed.')
         shutil.copy(self.config_file, dest_file)
-        self.logger.info(f'Config file backup: {dest_file}')
+        self.logger.info(f'Config file backup: {dest_file}.')
 
     def validate(self):
         """
-        Validates the system and settings. This method is still VERY
-        rudimentary and will be adjusted as we add new functionality
-        to dynamite. Currently, this method is geared towards legacy mode.
+        Validates the system and settings.
+
+        This method is still VERY rudimentary and will be adjusted as we add new
+        functionality to dynamite. Currently, this method is geared towards
+        legacy mode.
 
         Returns
         -------
@@ -819,46 +887,41 @@ class Configuration(object):
         self.settings.validate()
 
 class DynamiteLogging(object):
-    """
-    Dynamite logging setup. ONLY use if logging has not been configured
-    outside of Dynamite.
-    If no arguments are give, the logging setup is as follows:
-    (1) log to the console with logging level INFO, messages include the level,
-        timestamp, class name, and message text
-    (2) create a dynamite.log file with logging level DEBUG, messages include
-        the level, timestamp, class name, filename:method:line number, and
-        message text
+    """Dynamite logging setup.
+
+    ONLY use if logging has not been configured outside of Dynamite. If no
+    arguments are given, the logging setup is as follows:
+
+    -   log to the console with logging level INFO, messages include the
+        level, timestamp, class name, and message text
+    -   create a dynamite.log file with logging level DEBUG, messages
+        include the level, timestamp, class name,
+        filename:method:line number, and message text
+
+    Parameters
+    ----------
+    logfile : str, optional
+        Name of the logfile, logfile=None will not create a logfile.
+        The default is 'dynamite.log'.
+    console_level : int, optional
+        Logfile logging level. The default is logging.INFO.
+    logfile_level : int, optional
+        Console logging level. The default is logging.DEBUG.
+    console_formatter : str, optional
+        Format string for console logging. The default is set in the code.
+    logfile_formatter : str, optional
+        Format string for logfile logging. The default is set in the code.
+
     """
     def __init__(self, logfile='dynamite.log', console_level=logging.INFO,
                                                logfile_level=logging.DEBUG,
                                                console_formatter = None,
                                                logfile_formatter = None):
-        """
-        Initialize Dynamite logging.
-
-        Parameters
-        ----------
-        logfile : str, optional
-            Name of the logfile, logfile=None will not create a logfile.
-            The default is 'dynamite.log'.
-        console_level : int, optional
-            Logfile logging level. The default is logging.INFO.
-        logfile_level : int, optional
-            Console logging level. The default is logging.DEBUG.
-        console_formatter : str, optional
-            Format string for console logging. The default is set in the code.
-        logfile_formatter : str, optional
-            Format string for logfile logging. The default is set in the code.
-
-        Returns
-        -------
-        None.
-
-        """
+        logging.shutdown()
+        importlib.reload(logging)
         logger = logging.getLogger()       # create logger
-        logger.setLevel(logging.DEBUG)     # set level that's lower that wanted
-
-        ch = logging.StreamHandler()       # create console logging handler
+        logger.setLevel(logging.DEBUG)     # set level that's lower than wanted
+        ch = logging.StreamHandler(stream=sys.stderr) # create console handler
         ch.setLevel(console_level)         # set console logging level
         # create formatter
         if console_formatter is None:
@@ -869,7 +932,7 @@ class DynamiteLogging(object):
         logger.addHandler(ch)              # add the handler to the logger
 
         if logfile:
-            fh = logging.FileHandler(logfile, mode='w') # create handler
+            fh = logging.FileHandler(logfile, mode='w') # create file handler
             fh.setLevel(logfile_level)             # set file logging level
             # create formatter
             # formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')

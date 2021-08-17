@@ -1,36 +1,23 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
-# first, make sure the paths are set up
-# we assume that this script is located and run in the folder dynamite/tests
-
 import os
 
 import time
 import numpy as np
 import matplotlib.pyplot as plt
 import dynamite as dyn
-import physical_system as physys
+from dynamite import physical_system as physys
 
 def remove_existing_output(config, remove_orblibs=False):
     # delete model directory if it exits
-    # io_settings = config.settings.io_settings
-    # outdir = io_settings['output_directory']
-    # models_folder = outdir + 'models/'
     if remove_orblibs:
-        # shutil.rmtree(models_folder, ignore_errors=True)
         config.remove_existing_orblibs()
     else:
         # just remove all 'ml' directories
         config.remove_existing_orbital_weights()
-        # models_folder_with_ml = outdir + 'models/*/ml*/'
-        # all_ml_folders = glob.glob(models_folder_with_ml)
-        # for folder in all_ml_folders:
-        #     shutil.rmtree(folder, ignore_errors=True)
+    # delete the all_models file
     config.remove_existing_all_models_file()
-    # models_file = outdir + io_settings['all_models_file']
-    # if os.path.isfile(models_file):
-    #     os.remove(models_file)
 
 def run_user_test():
 
@@ -42,8 +29,6 @@ def run_user_test():
     fname = 'reimplement_nnls_config1.yaml'
     c1 = dyn.config_reader.Configuration(fname, reset_logging=True)
     remove_existing_output(c1, remove_orblibs=True)
-    # re-read the config file now that old output has been deleted
-    # c1 = dyn.config_reader.Configuration(fname)
 
     # run the models
     t = time.perf_counter()
@@ -61,8 +46,6 @@ def run_user_test():
     fname = 'reimplement_nnls_config2.yaml'
     c2 = dyn.config_reader.Configuration(fname)
     remove_existing_output(c2, remove_orblibs=False)
-    # re-read the config file now that old output has been deleted
-    # c2 = dyn.config_reader.Configuration(fname)
 
     # "run" the models
     t = time.perf_counter()
@@ -108,7 +91,7 @@ def run_user_test():
                   s=40,
                   c=c1amt['kinchi2'])
     ax[1].set_xscale('log')
-    ax[1].set_title('LegacyWeightSolver chi2')
+    ax[1].set_title('LegacyWeightSolver $\chi^2$')
     ax[1].set_xlabel('$f_{DM}$')
     ax[1].set_ylabel('ML')
     # plot chi2 grid using new solver
@@ -123,9 +106,9 @@ def run_user_test():
                             rtol=1e-10,
                             atol=1e-6)
     if all_close:
-        ax[2].set_title('new chi2 ARE IDENTICAL')
+        ax[2].set_title('new $\chi^2$ ARE IDENTICAL')
     else:
-        ax[2].set_title('new chi2 ARE NOT IDENTICAL')
+        ax[2].set_title('new $\chi^2$ ARE NOT IDENTICAL')
     ax[2].set_xlabel('$f_{DM}$')
     ax[2].set_ylabel('ML')
     fig.tight_layout()

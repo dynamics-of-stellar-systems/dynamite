@@ -5,6 +5,20 @@ import numpy as np
 from plotbin import display_pixels
 
 class Data(object):
+    """Abstract class for data in Astropy ECSV files
+
+    The data is stored in the Astropy table at ``self.data``
+
+    Parameters
+    ----------
+    name : string
+        Descriptve name of this data set
+    datafile : string
+        name of the Astropy ECSV datafile
+    input_directory : string, or None
+        location of the data file
+
+    """
 
     def __init__(self,
                  name=None,
@@ -23,7 +37,11 @@ class Data(object):
 
 
 class Discrete(Data):
+    """Class for discrete data
 
+    # TODO: make this!
+
+    """
     def __init__(self, x, y, values, errors):
         self.x = x
         self.y = y
@@ -31,16 +49,28 @@ class Discrete(Data):
 
 
 class Integrated(Data):
+    """Abstract class for integrated data
 
+    e.g. kinematic maps, population maps. TODO: deal with mask files!
+
+    Parameters
+    ----------
+    aperturefile : string
+        the name of the ``aperture.dat`` file of this dataset
+    binfile : string
+        the name of the ``bins.dat`` file of this dataset
+    maskfile : string
+        the name of the maskfile of this dataset
+    **kwargs :
+        other keyword arguments
+    """
     def __init__(self,
                  aperturefile=None,
                  binfile=None,
-                 maskfile=None,
                  **kwargs
                  ):
         self.aperturefile = aperturefile
         self.binfile = binfile
-        self.maskfile = maskfile
         super().__init__(**kwargs)
         if hasattr(self, 'data'):
             self.PSF = self.data.meta['PSF']
@@ -64,7 +94,7 @@ class Integrated(Data):
         weight : list
             weights of PSF components
         datafile : string
-            Description of parameter `datafile`.
+            output filename
 
         """
         assert type(sigma) is list
@@ -82,8 +112,16 @@ class Integrated(Data):
         new_table.write(datafile, format='ascii.ecsv', overwrite=True)
 
     def read_aperture_and_bin_files(self):
-        '''read aperture and bin files and store the required data for plotting
+        """read aperture and bin files
+
+        Read the two files and store the required data for plotting
         with plotbin.display_pixels to the dictionary self.dp_args'''
+
+        Returns
+        -------
+        Sets the attribute ``self.dp_arg``
+
+        """
         # read aperture file
         aperture_fname = self.input_directory+self.aperturefile
         lines = [line.rstrip('\n').split() for line in open(aperture_fname)]

@@ -84,17 +84,15 @@ system_components:
                 datafile: "gauss_hermite_kins_MUSE.ecsv"  # both discr. & integrated
                 aperturefile: "aperture_MUSE.dat" # integrated only
                 binfile: "bins_MUSE.dat"          # integrated only
-                maskfile: maskfile.dat       # made-up filename
             SINFONI: # PLEASE NOTE: DATA NOT PROVIDED WITH DYNAMITE
                 weight: 1.0 # weight of kinematics data specified by name
                 type: GaussHermite # specifies which object class to create
                 hist_width: 10000 #add to kinem #hist_width
-                hist_center: 0.0  #add to kinem      #hist_center 
+                hist_center: 0.0  #add to kinem      #hist_center
                 hist_bins: 501    #add to kinem + auto/manual   #bins
                 datafile: "gauss_hermite_kins_SINFONI.ecsv"  # both discr. & integrated
                 aperturefile: "aperture_SINFONI.dat" # integrated only
                 binfile: "bins_SINFONI.dat"          # integrated only
-                maskfile: maskfile.dat       # made-up filename
 
 system_parameters:
     ml: # M/L
@@ -130,10 +128,10 @@ orblib_settings: # don't put in physical system -> config object
     random_seed: 4242 # integer; any value <= 0 results in stochastic seed
 
 weight_solver_settings:
-    # type: "LegacyWeightSolver"
-    # nnls_solver: 1
-    type: "NNLS"
-    nnls_solver: 'scipy'
+    type: "LegacyWeightSolver"
+    nnls_solver: 1
+    # type: "NNLS"
+    # nnls_solver: 'scipy'
     CRcut: False
     regularisation: 0
     number_GH: 4
@@ -144,9 +142,8 @@ weight_solver_settings:
 parameter_space_settings:
     generator_type: "LegacyGridSearch"
     #generator_type: "GridWalk"
-    which_chi2: "chi2"
+    which_chi2: "kinchi2"
     generator_settings:
-        specificsetting: 25
         # For LegacyGridSearch, specify ONE of the following two settings
         #threshold_del_chi2_abs: 0.5  # absolute change in chi2 threshold
         threshold_del_chi2_as_frac_of_sqrt2nobs: 0.1
@@ -157,7 +154,6 @@ parameter_space_settings:
         n_max_iter : 10
 
 legacy_settings:
-    use_legacy_mode: True
     directory: "default"
 
 io_settings: # paths can be given with or without trailing slash

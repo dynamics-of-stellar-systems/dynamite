@@ -73,8 +73,6 @@ system_components:
                 value: 0.54
                 LaTeX: "$q_{min}$"
             p: # intrinsic B/A
-                gpe_parspace_settings:
-                    kernel: "to be defined"
                 par_generator_settings:
                     lo: 0.99
                     hi: 0.999
@@ -107,7 +105,6 @@ system_components:
                 datafile: "gauss_hermite_kins.ecsv"  # both discr. & integrated
                 aperturefile: "aperture.dat" # integrated only
                 binfile: "bins.dat"          # integrated only
-                maskfile: maskfile.dat       # made-up filename
 
 system_parameters:
     ml: # M/L
@@ -158,9 +155,8 @@ parameter_space_settings:
     generator_type: "LegacyGridSearch"
     # generator_type: "GridWalk"
     # generator_type: "FullGrid"
-    which_chi2: "chi2"
+    which_chi2: "kinchi2"
     generator_settings:
-        specificsetting: 25
         # For LegacyGridSearch, specify ONE of the following two settings
         #threshold_del_chi2_abs: 0.5  # absolute change in chi2 threshold
         threshold_del_chi2_as_frac_of_sqrt2nobs: 0.1
@@ -171,7 +167,6 @@ parameter_space_settings:
         n_max_iter : 10
 
 legacy_settings:
-    use_legacy_mode: True
     directory: "default"
 
 io_settings: # paths can be given with or without trailing slash

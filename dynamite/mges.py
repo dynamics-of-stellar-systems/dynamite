@@ -1,13 +1,57 @@
-import data
+import logging
 import numpy as np
 from astropy import table
+from dynamite import data
 
 class MGE(data.Data):
+    """Multi Gaussian Expansions"""
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
+        self.logger = logging.getLogger(f'{__name__}.{__class__.__name__}')
+        self.validate_q_values()
+
+    def validate_q_values(self):
+        """Validates the mge's q values
+
+        Any q 'too close to 1' will be set to q=NINES for numerical stability.
+        If any changes are made, a warning message will be logged. Note that
+        the 'closeness' to 1 might be machine dependent - for us 'five nines',
+        0.99999, worked...
+
+        Returns
+        -------
+        None. Any changes are applied to ``self.data``.
+
+        """
+        NINES = 0.99999
+        new_mge = False
+        for r in self.data:
+            if r['q'] > NINES:
+                self.logger.warning(f'changing q={r["q"]} to q={NINES} for '
+                                    'numerical stability.')
+                r['q'] = NINES
+                new_mge = True
+        if new_mge:
+            self.logger.warning(f'New mge:\n{self.data}')
 
     def read_file_old_format(self, filename):
+        """read the MGE data from a text file
+
+        old format = text file, 4 columns (I, sigma, q, PA_twist), with one
+        header line
+
+        Parameters
+        ----------
+        filename : string
+            name of file
+
+        Returns
+        -------
+        ndarray
+            MGE data in structrued numpy array
+
+        """
         with open(filename) as fp:
             n_cmp_mge = fp.readline()
         n_cmp_mge = int(n_cmp_mge)
@@ -20,6 +64,21 @@ class MGE(data.Data):
     def convert_file_from_old_format(self,
                                      filename_old_format,
                                      filename_new_format):
+        """convert old mge file to ECSV file
+
+        Parameters
+        ----------
+        filename_old_format : string
+            old filename
+        filename_new_format : string
+            new filename
+
+        Returns
+        -------
+        None
+            saves file with name ``filename_new_format``
+
+        """
         data = self.read_file_old_format(filename_old_format)
         data = table.Table(data)
         data.write(filename_new_format, format='ascii.ecsv')
@@ -35,6 +94,19 @@ class MGE(data.Data):
         pass
 
     def get_projected_masses_from_file(self, directory_noml):
+        """read mge projected masses from ``mass_aper.dat``
+
+        Parameters
+        ----------
+        directory_noml : string
+            name of model directory exclusing the ``ml/`` extension
+
+        Returns
+        -------
+        array
+            array of aperture masses of the MGE
+
+        """
         fname = f'{directory_noml}datfil/mass_aper.dat'
         aperture_masses = np.loadtxt(fname, skiprows=1)
         # remove first column (aperture index)
@@ -49,54 +121,26 @@ class MGE(data.Data):
         pass
 
     def get_intrinsic_masses_from_file(self, directory_noml):
+        """read mge intrinsic masses from ``mass_qgrid.dat``
+
+        Parameters
+        ----------
+        directory_noml : string
+            name of model directory exclusing the ``ml/`` extension
+
+        Returns
+        -------
+        array
+            3D intrinsic_masses masses of the MGE in a polar grid with sizes
+            (n_r, n_theta, n_phi) which is defined (in Fortran files) to be
+            (6,6,10)
+
+        """
         fname = f'{directory_noml}datfil/mass_qgrid.dat'
         shape = np.loadtxt(fname, max_rows=1, dtype=int)
         intrinsic_masses = np.loadtxt(fname, skiprows=1)
         intrinsic_masses = np.reshape(intrinsic_masses, shape)
         return intrinsic_masses
-
-# TODO:
-# class MGE_from_image(MGE):
-#
-#     def __init__(self, image_filename):
-#         # # img = read_image(image_filename)
-#         # # tmp = self.fit_mge_to_image(img)
-#         # super(MGE_from_image, self).__init__(n = tmp['n'],
-#         #                                      I = tmp['I'],
-#         #                                      sigma = tmp['sigma'],
-#         #                                      q = tmp['q'])
-#         pass
-#
-#     def fit_mge_to_image():
-#         # e.g. Capellari code here
-#         pass
-
-
-# TODO:
-# class intrinsic_MGE(MGE):
-#     # intrinsic 3D density
-#
-#     def __init__(self, n, I, sigma, q):
-#         super(intrinsic_MGE, self).__init__(n = tmp['n'],
-#                                             I = tmp['I'],
-#                                             sigma = tmp['sigma'],
-#                                             q = tmp['q'])
-
-
-# TODO:
-# class intrinsic_MGE_from_xyz_grid(intrinsic_MGE):
-#     # intrinsic 3D density
-#
-#     def __init__(self, xyz_grid, rho):
-#         tmp = self.fit_mge()
-#         super(intrinsic_MGE, self).__init__(n = tmp['n'],
-#                                             I = tmp['I'],
-#                                             sigma = tmp['sigma'],
-#                                             q = tmp['q'])
-#
-#     def fit_mge(self, xyz_grid, rho):
-#         # code to fit MGE given density evaluated at grid of (x,y,z) points
-#         return
 
 
 
