@@ -223,9 +223,9 @@ class Plotter():
         #chlim = np.sqrt(2 * Nobs * nGH)
         chi2pmin=np.min(val[which_chi2])
         chlim = np.sqrt(2 * Nobs * nGH)
-        chi2=val[which_chi2]
-        chi2t = chi2 - chi2pmin
-        chi2 = chi2t[np.argsort(-chi2t)]
+        chi2t = val[which_chi2] - chi2pmin
+        val.add_column(chi2t, name='chi2t')
+        val.sort(['chi2t'])
 
         #start of the plotting
 
@@ -251,19 +251,19 @@ class Plotter():
                          color='black', markersize=2)
 
                 for k in range(nf - 1, -1, -1):
-                    if chi2[k]/chlim<=3: #only significant chi2 values
+                    if val['chi2t'][k]/chlim<=3: #only significant chi2 values
 
-                        color = colormap(chi2[k]/chlim)
+                        color = colormap(val['chi2t'][k]/chlim)
                         # * 240) #colours the significant chi2
 
-                        markersize = 7-(chi2[k]/(3*chlim))
+                        markersize = 10-3*(val['chi2t'][k]/(chlim))
                         #smaller chi2 become bigger :)
 
                         plt.plot((val[nofix_name[i]])[k],
                                  (val[nofix_name[j]])[k], 'o',
                                  markersize=markersize, color=color)
 
-                    if chi2[k]==0:
+                    if val['chi2t'][k]==0:
                         plt.plot((val[nofix_name[i]])[k],
                                  (val[nofix_name[j]])[k], 'x',
                                  markersize=10, color='k')
