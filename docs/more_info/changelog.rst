@@ -7,6 +7,7 @@ Change Log
 Version:
 ================
 
+- Bugfix: fixed sorting of the chisquare values in chi2plot so that the best-fit value is plotted last and always visible
 - New feature: upon reading mge data, q values too close to 1 are set to q=0.99999 for numerical stability
 - Updated: Require astropy v4.2 due to ecsv file compatibility problems with later versions
 - Improvement: Make sure DYNAMITE stops with an error if a legacy Fortran executable does not succeed, even if its return code is zero
