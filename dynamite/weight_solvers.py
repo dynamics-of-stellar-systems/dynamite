@@ -40,7 +40,7 @@ class WeightSolver(object):
         chi2_kin : float
             a chi2 value purely for kinematics
         """
-        self.logger.info("Using WeightSolver: {add name of WeightSolver here}")
+        self.logger.info(f"Using WeightSolver: {__class__.__name__}")
         # ...
         # calculate orbit weights, and model chi2 values here
         # ...
@@ -60,43 +60,33 @@ class LegacyWeightSolver(WeightSolver):
 
     Parameters
     ----------
-    system : a ``dyn.physical_system.System`` object
-    mod_dir : string
-        the model directory
-    settings : dict
-        the weight_solver_settings
-    legacy_directory : string
-        location of fortan programs
-    ml : float
-        the mass-scaling parameter ml
+    config : a ``dyn.config_reader.Configuration`` object
+    directory_with_ml : string
+        model directory with the ml extension
     CRcut : Bool, default False
         whether to use the `CRcut` solution for the counter-rotating orbit
         problem. See Zhu et al. 2018 for more.
 
     """
-    def __init__(self,
-                 system=None,
-                 mod_dir=None,
-                 settings=None,
-                 legacy_directory=None,
-                 ml=None,
-                 CRcut=False):
+    def __init__(self, config, directory_with_ml, CRcut=False):
         self.logger = logging.getLogger(f'{__name__}.{__class__.__name__}')
-        self.system = system
-        self.mod_dir = mod_dir
-        self.settings = settings
-        self.legacy_directory = legacy_directory
-        self.ml=ml
+        self.system = config.system
+        self.directory_with_ml = directory_with_ml
+        self.settings = config.settings.weight_solver_settings
+        self.legacy_directory = config.settings.legacy_settings['directory']
         self.sformat = self.system.parameters[0].sformat # this is ml's format
-        self.mod_dir_with_ml = self.mod_dir + f'ml{self.ml:{self.sformat}}'
-        self.fname_nn_kinem = self.mod_dir_with_ml + '/nn_kinem.out'
-        self.fname_nn_nnls = self.mod_dir_with_ml + '/nn_nnls.out'
-        if 'CRcut' in settings.keys():
-            CRcut = settings['CRcut']
+        ml_idx = self.directory_with_ml.rindex('/ml')
+        self.direc_no_ml = directory_with_ml[:ml_idx+1]
+        ml_str = self.directory_with_ml[ml_idx+3:]
+        self.ml = float(ml_str[:-1]) if ml_str[-1] == '/' else float(ml_str)
+        self.fname_nn_kinem = self.directory_with_ml + 'nn_kinem.out'
+        self.fname_nn_nnls = self.directory_with_ml + 'nn_nnls.out'
+        if 'CRcut' in self.settings.keys():
+            CRcut = self.settings['CRcut']
         self.CRcut = CRcut
         # prepare fortran input file for nnls
         self.copy_kinematic_data()
-        self.create_fortran_input_nnls(self.mod_dir, ml)
+        self.create_fortran_input_nnls(self.direc_no_ml, self.ml)
 
     def copy_kinematic_data(self):
         """Copy kin data to infil/ direc
@@ -107,9 +97,9 @@ class LegacyWeightSolver(WeightSolver):
         # convert kinematics to old format to input to fortran
         for i in np.arange(len(kinematics)):
             if len(kinematics)==1:
-                old_filename = self.mod_dir+'infil/kin_data.dat'
+                old_filename = self.direc_no_ml+'infil/kin_data.dat'
             else:
-                old_filename = self.mod_dir+'infil/kin_data_'+str(i)+'.dat'
+                old_filename = self.direc_no_ml+'infil/kin_data_'+str(i)+'.dat'
             kinematics[i].convert_to_old_format(old_filename)
         # combine all kinematics into one file
         if len(kinematics)>1:
@@ -129,7 +119,7 @@ class LegacyWeightSolver(WeightSolver):
             kins_combined = copy.deepcopy(kinematics[0])
             # ...replace data attribute with stacked table of all kinematics
             kins_combined.data = table.vstack([k.data for k in kinematics])
-            old_filename = self.mod_dir+'infil/kin_data_combined.dat'
+            old_filename = self.direc_no_ml+'infil/kin_data_combined.dat'
             kins_combined.convert_to_old_format(old_filename)
 
     def create_fortran_input_nnls(self, path, ml):
@@ -205,15 +195,15 @@ class LegacyWeightSolver(WeightSolver):
                     coefficients h_1 to h_n
 
         """
-        self.logger.info("Using WeightSolver : LegacyWeightSolver")
+        self.logger.info(f"Using WeightSolver: {__class__.__name__}")
         check1 = os.path.isfile(self.fname_nn_kinem)
         check2 = os.path.isfile(self.fname_nn_nnls)
-        fname = self.mod_dir_with_ml + '/nn_orbmat.out'
+        fname = self.directory_with_ml + 'nn_orbmat.out'
         check3 = os.path.isfile(fname)
         if not check1 or not check2 or not check3:
             # set the current directory to the directory in which the models are computed
             cur_dir = os.getcwd()
-            os.chdir(self.mod_dir)
+            os.chdir(self.direc_no_ml)
             cmdstr = self.write_executable_for_weight_solver(self.ml)
             with open(cmdstr) as f:
                 for line in f:
@@ -228,7 +218,7 @@ class LegacyWeightSolver(WeightSolver):
                                stdout=subprocess.PIPE,
                                stderr=subprocess.STDOUT,
                                shell=True)
-            log_file = f'Logfile: {self.mod_dir+logfile}.'
+            log_file = f'Logfile: {self.direc_no_ml+logfile}'
             if not p.stdout.decode("UTF-8"):
                 self.logger.info(f'...done, NNLS problem solved -  {cmdstr} '
                                  f'exit code {p.returncode}. {log_file}')
@@ -292,7 +282,7 @@ class LegacyWeightSolver(WeightSolver):
             the orbital weights
 
         """
-        fname = self.mod_dir_with_ml + '/nn_orb.out'
+        fname = self.directory_with_ml + 'nn_orb.out'
         col_names = ['orb_idx',
                      'E_idx',
                      'I2_idx',
@@ -322,7 +312,7 @@ class LegacyWeightSolver(WeightSolver):
             (orbmat, rhs, solution)
 
         """
-        fname = self.mod_dir_with_ml + '/nn_orbmat.out'
+        fname = self.directory_with_ml + 'nn_orbmat.out'
         orbmat_shape = np.loadtxt(fname, max_rows=1, dtype=int)
         orbmat_size = np.product(orbmat_shape)
         tmp = np.loadtxt(fname, skiprows=1)
@@ -357,8 +347,8 @@ class LegacyWeightSolver(WeightSolver):
         stars = \
           self.system.get_component_from_class(physys.TriaxialVisibleComponent)
         mge = stars.mge_lum
-        intrinsic_masses = mge.get_intrinsic_masses_from_file(self.mod_dir)
-        projected_masses = mge.get_projected_masses_from_file(self.mod_dir)
+        intrinsic_masses = mge.get_intrinsic_masses_from_file(self.direc_no_ml)
+        projected_masses = mge.get_projected_masses_from_file(self.direc_no_ml)
         n_intrinsic = np.product(intrinsic_masses.shape)
         n_apertures = len(projected_masses)
         chi2_kin = np.sum(chi2_vector[1+n_intrinsic+n_apertures:])
@@ -439,15 +429,13 @@ class NNLS(WeightSolver):
     """Python implementations of NNLS weight solving
 
     Uses either scipy.optimize.nnls or cvxopt as backends. This constructs the
-    NNLS martix and rhs, solves, and saves the result.
+    NNLS matrix and rhs, solves, and saves the result.
 
     Parameters
     ----------
-    system : a ``dyn.physical_system.System`` object
-    settings : dict
-        the weight_solver_settings
+    config : a ``dyn.config_reader.Configuration`` object
     directory_with_ml : string
-        model directory without the ml extension
+        model directory with the ml extension
     CRcut : Bool, default False
         whether to use the `CRcut` solution for the counter-rotating orbit
         problem. See Zhu et al. 2018 for more.
@@ -456,22 +444,21 @@ class NNLS(WeightSolver):
 
     """
     def __init__(self,
-                 system=None,
-                 settings=None,
-                 directory_with_ml=None,
+                 config,
+                 directory_with_ml,
                  CRcut=False,
                  nnls_solver=None):
         self.logger = logging.getLogger(f'{__name__}.{__class__.__name__}')
-        self.system = system
-        self.settings = settings
+        self.system = config.system
+        self.settings = config.settings.weight_solver_settings
         self.direc_with_ml = directory_with_ml
         self.direc_no_ml = directory_with_ml[:-7]
         if nnls_solver is None:
-            nnls_solver = settings['nnls_solver']
+            nnls_solver = self.settings['nnls_solver']
         assert nnls_solver in ['scipy', 'cvxopt'], 'Unknown nnls_solver'
         self.nnls_solver = nnls_solver
-        if 'CRcut' in settings.keys():
-            CRcut = settings['CRcut']
+        if 'CRcut' in self.settings.keys():
+            CRcut = self.settings['CRcut']
         self.CRcut = CRcut
         self.get_observed_mass_constraints()
 
@@ -659,7 +646,8 @@ class NNLS(WeightSolver):
                     coefficients h_1 to h_n
 
         """
-        self.logger.info("Using WeightSolver : NNLS")
+        self.logger.info(f"Using WeightSolver: {__class__.__name__}/"
+                         f"{self.nnls_solver}")
         weight_file = f'{self.direc_with_ml}orbit_weights.ecsv'
         if os.path.isfile(weight_file):
             self.logger.info("NNLS solution read from existing output")
@@ -698,7 +686,7 @@ class NNLS(WeightSolver):
 
 
 class CvxoptNonNegSolver():
-    """Solver fro NNLS problem using CVXOPT
+    """Solver for NNLS problem using CVXOPT
 
     Solves the QP problem:
         argmin (1/2 beta^T P beta + q beta T)

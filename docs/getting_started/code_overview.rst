@@ -134,12 +134,8 @@ To run a single Schwarzschild model ``main_script.py`` should be the following,
    import dynamite as dyn
 
    c = dyn.config_reader.Configuration('config_file.yaml') # read the configuration fie
-   parset = c.parspace.get_parset() # extract a parameter set from configuration
-   model = dyn.model.Model(
-     system=c.system,
-     settings=c.settings,
-     parspace=c.parspace,
-     parset=parset)          # make a model object
+   parset = c.parspace.get_parset()                        # extract a parameter set from configuration
+   model = dyn.model.Model(config=c, parset=parset)        # make a model object
    model.setup_directories() # make directory tree
    model.get_orblib()        # make an orbit library
    model.get_weights()       # find orbital weights
@@ -151,10 +147,7 @@ If you want to run a grid of models, ``main_script.py`` should be,
   import dynamite as dyn
 
   c = dyn.config_reader.Configuration('config_file.yaml') # read the configuration fie
-  smi = dyn.model_iterator.ModelIterator(   # create and run an iterative grid of models
-      system=c.system,
-      all_models=c.all_models,
-      settings=c.settings)
+  smi = dyn.model_iterator.ModelIterator(config=c)        # create and run an iterative grid of models
 
 You may have additional commands in the main script related to e.g. (i) plotting, (ii) multiprocessing, (iii) managing output, and (iv) logging. DYNAMITE provides functions for these four activities, described below.
 
@@ -165,7 +158,7 @@ To make plots, you can use the Plotter object:
 
 .. code-block:: python
 
-  p = dyn.plotting.Plotter(...) # make the plotter object
+  p = dyn.plotting.Plotter(config=c) # make the plotter object
 
 Here we propose a few examples of the plots that can be done with this object. First, you can generate maps of the surface brightness, mean line-of-sight velocity, velocity dispersion, and higher order Gauss–Hermite moments. The figure produced will show the maps relative to the data in the first row, those relative to the best-fit model in the second row and residuals in the third row; it can be obtained by using:
 
@@ -268,9 +261,10 @@ where ``c`` has the following utility functions,
 
   c.remove_existing_orblibs()
   c.remove_existing_orbital_weights()
-  c.remove_existing_plots()
-  c.remove_existing_all_models_file()
-  c.remove_all_existing_output()
+  c.remove_existing_plots(...)
+  c.remove_existing_all_models_file(...)
+  c.remove_all_existing_output(...)
+  c.backup_config_file(...)
 
 which you can add to your main script, with caution! The different options may be useful if you want to delete some but not all previous output, e.g. to re-calculate weights but keep old orbit libraries. The API documentation has more information on the different options.
 

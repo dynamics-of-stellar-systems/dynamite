@@ -26,10 +26,6 @@ c.remove_all_existing_output(wipe_all=True, create_tree=True)
 
 # run the models
 t = time.perf_counter()
-smi = dyn.model_iterator.ModelIterator(
-    system=c.system,
-    all_models=c.all_models,
-    settings=c.settings,
-    ncpus=c.settings.multiprocessing_settings['ncpus'])
+smi = dyn.model_iterator.ModelIterator(c)
 delt = time.perf_counter()-t
 print(f'Computation time: {delt} seconds = {delt/60} minutes')

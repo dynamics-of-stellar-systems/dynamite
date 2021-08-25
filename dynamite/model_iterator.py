@@ -1,10 +1,8 @@
-import os
 import numpy as np
 import logging
 from pathos.multiprocessing import Pool
 import matplotlib.pyplot as plt
 
-from dynamite import model
 from dynamite import parameter_space
 from dynamite import plotter
 
@@ -19,9 +17,7 @@ class ModelIterator(object):
 
     Parameters
     ----------
-    system : a ``dyn.physical_system.System`` object
-    all_models : a ``dyn.model.AllModels`` object
-    settings : a ``dyn.config_reader.Settings`` object
+    config : a ``dyn.config_reader.Configuration`` object
     model_kwargs : dict
         other kewyord argument required for this model
     do_dummy_run : Bool
@@ -29,57 +25,48 @@ class ModelIterator(object):
         instead of the model (for testing!)
     dummy_chi2_function : function
         a function of model parameters to be executed instead of the real model
-    ncpus : int
-        number of cpus for multiprocessing
     plots : bool
         whether or not to make plots
 
     """
     def __init__(self,
-                 system=None,
-                 all_models=None,
-                 settings=None,
+                 config=None,
                  model_kwargs={},
                  do_dummy_run=None,
                  dummy_chi2_function=None,
-                 ncpus=1,
                  plots=True):
         self.logger = logging.getLogger(f'{__name__}.{__class__.__name__}')
-        stopping_crit = settings.parameter_space_settings['stopping_criteria']
-        n_max_iter = stopping_crit['n_max_iter']
-        self.n_max_mods = stopping_crit['n_max_mods']
-        self.all_models = all_models
+        if config is None:
+            text = f'{__class__.__name__} needs configuration object, ' \
+                   'None provided.'
+            self.logger.error(text)
+            raise ValueError(text)
+        parameter_space_settings = config.settings.parameter_space_settings
+        stopping_crit = parameter_space_settings['stopping_criteria']
         # get specified parameter generator
-        parspace = parameter_space.ParameterSpace(system)
-        par_generator_type = settings.parameter_space_settings['generator_type']
-        kwargs = {'parspace_settings':settings.parameter_space_settings}
-        par_generator = getattr(parameter_space, par_generator_type)(parspace,
-                                                                     **kwargs)
+        par_generator_type = parameter_space_settings['generator_type']
+        kwargs = {'parspace_settings':parameter_space_settings}
+        par_generator = getattr(parameter_space,
+                                par_generator_type)(config.parspace, **kwargs)
 
         if plots:
-            self.the_plotter = plotter.Plotter(system = system,
-                                               settings = settings,
-                                               parspace = parspace,
-                                               all_models = all_models)
+            the_plotter = plotter.Plotter(config)
 
         model_inner_iterator = ModelInnerIterator(
-            system=system,
-            all_models=self.all_models,
-            settings=settings,
+            config=config,
             par_generator=par_generator,
             do_dummy_run=do_dummy_run,
-            dummy_chi2_function=dummy_chi2_function,
-            ncpus=ncpus)
-        if len(self.all_models.table)>0:
-            previous_iter = np.max(self.all_models.table['which_iter'])+1
+            dummy_chi2_function=dummy_chi2_function)
+        if len(config.all_models.table)>0:
+            previous_iter = np.max(config.all_models.table['which_iter'])+1
         else:
             previous_iter = 0
         status = {}
         status['stop'] = False
-        for iteration in range(n_max_iter):
+        for iteration in range(stopping_crit['n_max_iter']):
             total_iter_count = previous_iter + iteration
-            n_models_done = np.sum(self.all_models.table['all_done'])
-            if n_models_done>=self.n_max_mods:
+            n_models_done = np.sum(config.all_models.table['all_done'])
+            if n_models_done >= stopping_crit['n_max_mods']:
                 status['n_max_mods_reached'] = True
                 status['stop'] = True
             if status['stop'] is True:
@@ -90,10 +77,10 @@ class ModelIterator(object):
                         f'{total_iter_count}"')
             status = model_inner_iterator.run_iteration()
             if plots:
-                self.the_plotter.make_chi2_vs_model_id_plot()
-                self.the_plotter.make_chi2_plot()
-                self.the_plotter.plot_kinematic_maps(kin_set='all',
-                                                     cbar_lims='data')
+                the_plotter.make_chi2_vs_model_id_plot()
+                the_plotter.make_chi2_plot()
+                the_plotter.plot_kinematic_maps(kin_set='all',
+                                                cbar_lims='data')
                 plt.close('all') # just to make sure...
 
 
@@ -104,34 +91,24 @@ class ModelInnerIterator(object):
 
     Parameters
     ----------
-    system : a DYNMAITE system object
-    all_models : a DYNMAITE all_models object
-    settings : a DYNMAITE settings object
-    model_kwargs : type
-        Description of parameter `model_kwargs`.
+    config : a ``dyn.config_reader.Configuration`` object
+    par_generator : a ``dyn.parameter_space.ParameterGenerator`` child object
     do_dummy_run : Bool
         whether this is a dummy run - if so, dummy_chi2_funciton is executed
         instead of the model (for testing!)
     dummy_chi2_function : function
         a function of model parameters to be executed instead of the real model
-    ncpus : int
-        number of cpus for multiprocessing
 
     """
     def __init__(self,
-                 system=None,
-                 all_models=None,
-                 settings=None,
+                 config=None,
                  par_generator=None,
                  do_dummy_run=False,
-                 dummy_chi2_function=None,
-                 ncpus=1):
+                 dummy_chi2_function=None):
         self.logger = logging.getLogger(f'{__name__}.{__class__.__name__}')
-        self.system = system
-        self.all_models = all_models
-        self.settings = settings
-        self.parspace = parameter_space.ParameterSpace(system)
-        self.orblib_parameters = self.parspace.par_names[:]
+        self.system = config.system
+        self.all_models = config.all_models
+        self.orblib_parameters = config.parspace.par_names[:]
         ml = 'ml'
         try:
             self.orblib_parameters.remove(ml)
@@ -146,7 +123,8 @@ class ModelInnerIterator(object):
             assert dummy_chi2_function is not None
             # TODO: assert dummy_chi2_function is a valid function of parset
         self.dummy_chi2_function = dummy_chi2_function
-        self.ncpus = ncpus
+        self.ncpus = config.settings.multiprocessing_settings['ncpus']
+        self.n_to_do = 0
 
     def run_iteration(self):
         """run one iteration step
@@ -180,8 +158,10 @@ class ModelInnerIterator(object):
             n_orblib = len(rows_to_do_orblib)
             # rows_to_do_ml are the rows that need weight_solver only
             rows_to_do_ml=[i for i in rows_to_do if i not in rows_to_do_orblib]
-            input_list_orblib = [i for i in enumerate(rows_to_do_orblib)]
-            input_list_ml=[i for i in enumerate(rows_to_do_ml, start=n_orblib)]
+            # input_list_orblib = [i for i in enumerate(rows_to_do_orblib)]
+            # input_list_ml=[i for i in enumerate(rows_to_do_ml, start=n_orblib)]
+            input_list_orblib = list(enumerate(rows_to_do_orblib))
+            input_list_ml = list(enumerate(rows_to_do_ml, start=n_orblib))
             self.logger.debug(f'input_list_orblib: {input_list_orblib}, '
                               f'input_list_ml: {input_list_ml}.')
             self.assign_model_directories(rows_to_do_orblib, rows_to_do_ml)

@@ -58,11 +58,7 @@ def run_user_test(make_comp=False):
     logger.debug(f'Comparing results to {compare_file}.')
     # "run" the models
     t = time.perf_counter()
-    smi = dyn.model_iterator.ModelIterator(
-        system=c.system,
-        all_models=c.all_models,
-        settings=c.settings,
-        ncpus=c.settings.multiprocessing_settings['ncpus'])
+    smi = dyn.model_iterator.ModelIterator(c)
     delt = time.perf_counter()-t
     logger.info(f'Computation time: {delt} seconds = {delt/60} minutes')
     # print to console regardless of logging level

@@ -75,13 +75,8 @@ def run_orbit_losvd_test(make_comparison_losvd=False):
         os.remove(plotfile)
 
     parset = c.parspace.get_parset()
-    model = dyn.model.Model(
-        system=c.system,
-        settings=c.settings,
-        parspace=c.parspace,
-        parset=parset)
+    model = dyn.model.Model(config=c, parset=parset)
     model.setup_directories()
-    # model.get_model_directory()
     orbit_library = model.get_orblib()
 
     file_dir = os.path.dirname(__file__)

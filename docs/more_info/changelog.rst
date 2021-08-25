@@ -4,9 +4,10 @@
 Change Log
 ****************
 
-Version:
+Version: 2.0
 ================
 
+- New feature: Wherever appropriate, the configuration object is now passed to instantiated classes like Plotter, AllModels, Model, the weight solvers, and LegacyOrbitLibrary. This changes the DYNAMITE user interface! Please refer to the tutorials and ``dev_tests/`` scripts on how to use.
 - Bugfix: fixed sorting of the chisquare values in chi2plot so that the best-fit value is plotted last and always visible
 - New feature: upon reading mge data, q values too close to 1 are set to q=0.99999 for numerical stability
 - Updated: Require astropy v4.2 due to ecsv file compatibility problems with later versions

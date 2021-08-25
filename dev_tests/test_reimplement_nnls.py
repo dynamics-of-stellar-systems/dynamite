@@ -32,11 +32,7 @@ def run_user_test():
 
     # run the models
     t = time.perf_counter()
-    smi = dyn.model_iterator.ModelIterator(
-        system=c1.system,
-        all_models=c1.all_models,
-        settings=c1.settings,
-        ncpus=c1.settings.multiprocessing_settings['ncpus'])
+    smi = dyn.model_iterator.ModelIterator(c1)
     delt = time.perf_counter()-t
     print(f'Computation time: {delt} seconds = {delt/60} minutes')
     c1.all_models.table.pprint(max_lines=-1, max_width=-1)
@@ -49,11 +45,7 @@ def run_user_test():
 
     # "run" the models
     t = time.perf_counter()
-    smi = dyn.model_iterator.ModelIterator(
-        system=c2.system,
-        all_models=c2.all_models,
-        settings=c2.settings,
-        ncpus=c2.settings.multiprocessing_settings['ncpus'])
+    smi = dyn.model_iterator.ModelIterator(c2)
     delt = time.perf_counter()-t
     print(f'Computation time: {delt} seconds = {delt/60} minutes')
     c2.all_models.table.pprint(max_lines=-1, max_width=-1)

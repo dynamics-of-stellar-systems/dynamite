@@ -26,25 +26,23 @@ class Plotter():
 
     Parameters
     ----------
-    system : a `dyn.physical_system.System` object
-    settings : a `dyn.config_reader.Settings` object
-    parspace : a list of `dyn.parameter_space.Parameter` object
-    all_models : a list of `dyn.models.AllModels` object
+    config : a ``dyn.config_reader.Configuration`` object
 
     """
-    def __init__(self,
-                 system=None,
-                 settings=None,
-                 parspace=None,
-                 all_models=None):
+    def __init__(self, config=None):
         self.logger = logging.getLogger(f'{__name__}.{__class__.__name__}')
-        self.system = system
-        self.settings = settings
-        self.parspace = parspace
-        self.all_models = all_models
-        self.input_directory = settings.io_settings['input_directory']
-        self.plotdir = settings.io_settings['plot_directory']
-        self.modeldir = settings.io_settings['model_directory']
+        if config is None:
+            text = f'{__class__.__name__} needs configuration object, ' \
+                   'None provided.'
+            self.logger.error(text)
+            raise ValueError(text)
+        self.config = config
+        self.system = config.system
+        self.settings = config.settings
+        self.all_models = config.all_models
+        self.input_directory = config.settings.io_settings['input_directory']
+        self.plotdir = config.settings.io_settings['plot_directory']
+        self.modeldir = config.settings.io_settings['model_directory']
         pb_sauron_colormap.register_sauron_colormap()
 
     def make_chi2_vs_model_id_plot(self, which_chi2=None, figtype=None):
@@ -148,7 +146,7 @@ class Plotter():
             raise ValueError(text)
         self.logger.info(f'Making chi2 plot scaled according to {which_chi2}')
 
-        pars = self.parspace
+        pars = self.config.parspace
         val = deepcopy(self.all_models.table)
 
         # exclude the first 50, 100 (specified by the user)
@@ -212,17 +210,9 @@ class Plotter():
 
         nf=len(val)
 
-        nGH = self.settings.weight_solver_settings['number_GH']
-        stars = \
-            self.system.get_component_from_class(physys.TriaxialVisibleComponent)
-        Nobs = sum([len(kin.data) for kin in stars.kinematic_data])
-
-        self.logger.info(f'nGH={nGH}, Nobs={Nobs}')
-
         ## 1 sigma confidence level
-        #chlim = np.sqrt(2 * Nobs * nGH)
+        chlim = np.sqrt(self.config.get_2n_obs())
         chi2pmin=np.min(val[which_chi2])
-        chlim = np.sqrt(2 * Nobs * nGH)
         chi2t = val[which_chi2] - chi2pmin
         val.add_column(chi2t, name='chi2t')
         val.sort(['chi2t'])
@@ -387,7 +377,6 @@ class Plotter():
             t.add_index(which_chi2)
             model_id = t.loc_indices[min_chi2]
             model = self.all_models.get_model_from_row(model_id)
-        # kinem_fname = model.get_model_directory() + 'nn_kinem.out'
         kinem_fname = model.directory + 'nn_kinem.out'
 
         # currently this only works for GaussHermite's and LegacyWeightSolver
@@ -427,16 +416,16 @@ class Plotter():
         #     raise ValueError(text)
 
         if self.settings.weight_solver_settings['number_GH'] == 2:
-            id_num, fluxm, flux, velm, vel, dvel, sigm, sig, dsig = body_kinem.T
+            id_num, flux, fluxm, velm, vel, dvel, sigm, sig, dsig = body_kinem.T
 
             #to not need to change the plotting routine below, higher moments are set to 0
             h3m, h3, dh3, h4m, h4, dh4 = vel*0, vel*0, vel*0+0.4, vel*0, vel*0, vel*0+0.4
 
         if self.settings.weight_solver_settings['number_GH'] == 4:
-            id_num, fluxm, flux, velm, vel, dvel, sigm, sig, dsig, h3m, h3, dh3, h4m, h4, dh4 = body_kinem.T
+            id_num, flux, fluxm, velm, vel, dvel, sigm, sig, dsig, h3m, h3, dh3, h4m, h4, dh4 = body_kinem.T
 
         if self.settings.weight_solver_settings['number_GH'] == 6:
-            id_num, fluxm, flux, velm, vel, dvel, sigm, sig, dsig, h3m, h3, dh3, h4m, h4, dh4, h5m, h5, dh5, h6m, h6, dh6 = body_kinem.T
+            id_num, flux, fluxm, velm, vel, dvel, sigm, sig, dsig, h3m, h3, dh3, h4m, h4, dh4, h5m, h5, dh5, h6m, h6, dh6 = body_kinem.T
 
             #still ToDO: Add the kinematic map plots for h5 and h6
 
@@ -884,13 +873,10 @@ class Plotter():
         val.sort(which_chi2)
         chi2pmin = val[which_chi2][0]
 
-        nGH = self.settings.weight_solver_settings['number_GH']
         stars = \
             self.system.get_component_from_class(physys.TriaxialVisibleComponent)
-        Nobs = sum([len(kin.data) for kin in stars.kinematic_data])
 
-        chlim = np.sqrt(2 * Nobs * nGH)
-
+        chlim = np.sqrt(self.config.get_2n_obs())
         chi2 = val[which_chi2]
         chi2 -= chi2pmin
         chilev = chlim * chi2pmin
@@ -1593,12 +1579,7 @@ class Plotter():
         val.sort(which_chi2)
         chi2pmin = val[which_chi2][0]
 
-        nGH = self.settings.weight_solver_settings['number_GH']
-        stars = \
-            self.system.get_component_from_class(physys.TriaxialVisibleComponent)
-        Nobs = sum([len(kin.data) for kin in stars.kinematic_data])
-
-        chlim = np.sqrt(2*Nobs*nGH)
+        chlim = np.sqrt(self.config.get_2n_obs())
 
         chi2 = val[which_chi2]
         chi2 -= chi2pmin
@@ -1843,12 +1824,7 @@ class Plotter():
         val.sort(which_chi2)
         chi2pmin = val[which_chi2][0]
 
-        nGH = self.settings.weight_solver_settings['number_GH']
-        stars = \
-            self.system.get_component_from_class(physys.TriaxialVisibleComponent)
-        Nobs = sum([len(kin.data) for kin in stars.kinematic_data])
-
-        chlim = np.sqrt(2*Nobs*nGH)
+        chlim = np.sqrt(self.config.get_2n_obs())
 
         chi2 = val[which_chi2]
         chi2 -= chi2pmin

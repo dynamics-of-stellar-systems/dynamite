@@ -11,6 +11,7 @@
 # documentation root, use os.path.abspath to make it absolute, like shown here.
 import os
 import sys
+import dynamite as dyn
 sys.path.insert(0, os.path.abspath('../dynamite/'))
 
 
@@ -21,7 +22,8 @@ copyright = '2021, Stellar Dynamics Group in Vienna'
 author = 'Stellar Dynamics Group in Vienna'
 
 # The full version, including alpha/beta/rc tags
-release = 'v1.0.0'
+#release = 'v1.0.0'
+release = 'v' + dyn.__version__
 
 
 # -- General configuration ---------------------------------------------------

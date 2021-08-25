@@ -30,11 +30,7 @@ print(parset)
 nkin = c.system.n_kin
 print(f'{nkin} kinematics data sets in system')
 
-model = dyn.model.Model(
-    system=c.system,
-    settings=c.settings,
-    parspace=c.parspace,
-    parset=parset)
+model = dyn.model.Model(config=c, parset=parset)
 
 model.setup_directories()
 
@@ -44,10 +40,7 @@ model.get_weights(orblib=orblib)
 
 print(model.chi2)
 
-plotter = dyn.plotter.Plotter(system=c.system,
-                              settings=c.settings,
-                              parspace=c.parspace,
-                              all_models=c.all_models)
+plotter = dyn.plotter.Plotter(config=c)
 
 stars = c.system.get_component_from_class(physys.TriaxialVisibleComponent)
 for kinset in range(nkin):

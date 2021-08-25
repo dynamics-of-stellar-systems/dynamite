@@ -166,9 +166,9 @@ class Configuration(object):
             # os.path.dirname(os.path.realpath(__file__))+'/../'legacy_fortran'
         self.logger.debug(f'Default legacy Fortran directory: {legacy_dir}.')
 
-        self.config_file = filename
+        self.config_file_name = filename
         try:
-            with open(self.config_file, 'r') as f:
+            with open(self.config_file_name, 'r') as f:
                 # self.params = yaml.safe_load(f)
                 config_text = f.read()
         except:
@@ -416,9 +416,7 @@ class Configuration(object):
         logger.info('Instantiated parameter space')
         logger.debug(f'Parameter space: {self.parspace}')
 
-        self.all_models = model.AllModels(parspace=self.parspace,
-                                          settings=self.settings,
-                                          system=self.system)
+        self.all_models = model.AllModels(config=self)
         logger.info('Instantiated AllModels object')
         logger.debug(f'AllModels:\n{self.all_models.table}')
 
@@ -452,7 +450,7 @@ class Configuration(object):
 
     def get_2n_obs(self):
         """
-        Get 2 * number of kinematic observatiosns
+        Get 2 * number of kinematic observations
 
         Used for scaling threshold chi2 values for parameter searches. For
         kinemtic type:
@@ -599,9 +597,7 @@ class Configuration(object):
             if os.path.isfile(all_models_file):
                 os.remove(all_models_file)
                 self.logger.info(f'Deleted existing {all_models_file}.')
-        self.all_models = model.AllModels(parspace=self.parspace,
-                                          settings=self.settings,
-                                          system=self.system)
+        self.all_models = model.AllModels(config=self)
         self.logger.info('Instantiated empty AllModels object')
         self.logger.debug(f'AllModels:\n{self.all_models.table}')
 
@@ -711,13 +707,13 @@ class Configuration(object):
 
         """
         out_dir = self.settings.io_settings['output_directory']
-        f_root, f_ext = os.path.splitext(os.path.basename(self.config_file))
+        f_root,f_ext=os.path.splitext(os.path.basename(self.config_file_name))
         if reset:
             del_files = glob.iglob(f'{out_dir}*{f_ext}')
             for fname in del_files:
                 if os.path.isfile(fname):
                     os.remove(fname)
-            dest_file = f'{out_dir}{f_root}_000{f_ext}'
+            dest_file_name = f'{out_dir}{f_root}_000{f_ext}'
             self.logger.debug('Config file backup reset.')
         else:
             c_pattern = f'{out_dir}{f_root}_[0-9][0-9][0-9]{f_ext}'
@@ -725,7 +721,7 @@ class Configuration(object):
             conf_roots = [os.path.splitext(i)[0] for i in conf_files]
             indices = [int(i[i.rindex('_')+1:]) for i in conf_roots]
             new_idx = max(indices) + 1 if len(indices)> 0 else 0
-            dest_file = f'{out_dir}{f_root}_{new_idx:03d}{f_ext}'
+            dest_file_name = f'{out_dir}{f_root}_{new_idx:03d}{f_ext}'
             if keep is not None:
                 if keep<1 or keep!=int(keep):
                     text = 'Parameter keep must be a positive integer.'
@@ -743,8 +739,8 @@ class Configuration(object):
                     os.remove(fname)
                 self.logger.debug(f'{len(del_files)} other config file(s) '
                                   'removed.')
-        shutil.copy(self.config_file, dest_file)
-        self.logger.info(f'Config file backup: {dest_file}.')
+        shutil.copy(self.config_file_name, dest_file_name)
+        self.logger.info(f'Config file backup: {dest_file_name}.')
 
     def validate(self):
         """

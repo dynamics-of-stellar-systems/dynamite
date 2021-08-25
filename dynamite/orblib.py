@@ -18,10 +18,9 @@ class OrbitLibrary(object):
 
     """
     def __init__(self,
-                 system=None,
-                 settings=None):
-        self.system = system
-        self.settings = settings
+                 config=None):
+        self.system = config.system
+        self.settings = config.settings.orblib_settings
         self.generate_ics()
         # self.integrate_loop(timesteps)
 
@@ -38,19 +37,21 @@ class LegacyOrbitLibrary(OrbitLibrary):
 
     """
     def __init__(self,
-                 system=None,
+                 config=None,
                  mod_dir=None,
-                 settings=None,
-                 legacy_directory=None,
-                 input_directory=None,
                  parset=None):
         self.logger = logging.getLogger(f'{__name__}.{__class__.__name__}')
-        self.system = system
+        if config is None:
+            text = f'{__class__.__name__} needs configuration object, ' \
+                   'None provided.'
+            self.logger.error(text)
+            raise ValueError(text)
         self.mod_dir = mod_dir
-        self.settings = settings
-        self.legacy_directory = legacy_directory
-        self.in_dir = input_directory
         self.parset = parset
+        self.system = config.system
+        self.settings = config.settings.orblib_settings
+        self.legacy_directory = config.settings.legacy_settings['directory']
+        self.in_dir = config.settings.io_settings['input_directory']
 
     def get_orblib(self):
         """main method to calculate orbit libraries

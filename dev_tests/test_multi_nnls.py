@@ -53,11 +53,7 @@ def run_user_test():
 
     # "run" the models
     t = time.perf_counter()
-    smi = dyn.model_iterator.ModelIterator(
-        system=c.system,
-        all_models=c.all_models,
-        settings=c.settings,
-        ncpus=c.settings.multiprocessing_settings['ncpus'])
+    smi = dyn.model_iterator.ModelIterator(c)
     delt = time.perf_counter()-t
     logger.info(f'Computation time: {delt} seconds = {delt/60} minutes')
     # print to console regardless of logging level
@@ -72,16 +68,14 @@ def run_user_test():
     for i in [0,1,2]:
         mod0 = c.all_models.get_model_from_row(i)
         parset0 = c.all_models.get_parset_from_row(i)
-        orblib0 = dyn.orblib.LegacyOrbitLibrary(system=c.system,
+        orblib0 = dyn.orblib.LegacyOrbitLibrary(config=c,
                                                 mod_dir=mod0.directory_noml,
-                                                settings=c.settings,
                                                 parset=parset0)
         orblib0.read_losvd_histograms()
         weight_solver = mod0.get_weights()
         weights_old, chi2_tot_old, chi2_kin_old = weight_solver.solve(orblib0)
         weight_solver_new = dyn.weight_solvers.NNLS(
-                system=c.system,
-                settings=c.settings.weight_solver_settings,
+                config=c,
                 directory_with_ml=mod0.directory,
                 CRcut=True,
                 nnls_solver='scipy')

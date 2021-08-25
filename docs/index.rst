@@ -32,12 +32,8 @@ To get started with DYNAMITE,
    import dynamite as dyn
 
    c = dyn.config_reader.Configuration('my_config.yaml') # read configuration fie
-   parset = c.parspace.get_parset() # extract a parameter set from configuration
-   model = dyn.model.Model(
-     system=c.system,
-     settings=c.settings,
-     parspace=c.parspace,
-     parset=parset)          # make a model object
+   parset = c.parspace.get_parset()                      # extract a parameter set from configuration
+   model = dyn.model.Model(config=c,parset=parset)       # make a model object
    model.setup_directories() # make directory tree
    model.get_orblib()        # make an orbit library
    model.get_weights()       # find orbital weights
