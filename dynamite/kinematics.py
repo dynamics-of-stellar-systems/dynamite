@@ -895,7 +895,8 @@ class BayesLOSVD(Kinematics, data.Integrated):
             # get median LOSVD
             losvd_mean[i] = result[bin]['losvd'][2]
             # get 68% BCI
-            losvd_sigma[i] = result[bin]['losvd'][3] - result[bin]['losvd'][1]
+            bci_68 = result[bin]['losvd'][3] - result[bin]['losvd'][1]
+            losvd_sigma[i] = 0.5*bci_68
             i += 1
         # BAYES-LOSVD returns the velocity array (and losvds) in descening order
         # let's flip them to make it easier to work with later
