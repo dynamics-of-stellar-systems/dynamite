@@ -507,6 +507,55 @@ class TriaxialVisibleComponent(VisibleComponent):
         self.logger.debug(f'theta={theta}, phi={phi}, psi={psi}')
         return theta,psi,phi
 
+    def suggest_parameter_values(self):
+        """Suggest valid values of the parameters (p,q,u)
+
+        Creates a gris of all values of 0<(p,q,u)<1, and finds those which have
+        a valid deprojection subject to the fulfilment of all three criteria:
+        1. q <= p
+        2. max(q/qobs, p) < u
+        3. u< min(p/qobs, 1)
+        where qobs is the smallest value of q for the MGE. For each of (p,q,u),
+        we suggest values:
+        - lo/hi : the min/max of all valid values
+        - value : the mean of all valid values
+        - step/minstep : a fifth/twentieth of the range of valid values
+
+        Returns
+        -------
+        string
+            text to print out suggesting quantities for (p,q,u)
+
+        """
+        # make grid of possible p,q,u values
+        p = np.linspace(0, 1, 200)
+        q = np.linspace(0, 1, 200)
+        u = np.linspace(0, 1, 200)
+        p, q, u = np.meshgrid(p, q, u, indexing='ij')
+        # check three conditions for whether (p,q,u) give a valid deprojection
+        invalid_a = q>p
+        invalid_b = np.maximum(q/self.qobs, p) >= u
+        invalid_c = u >= np.minimum(p/self.qobs, 1.)
+        # combine the conditions
+        invalid_ab = np.logical_or(invalid_a, invalid_b)
+        invalid_abc = np.logical_or(invalid_ab, invalid_c)
+        valid = np.logical_not(invalid_abc)
+        # combine the conditions
+        text = "No deprojection possible for the specificed values of (p,q,u)."
+        text += "Here are some suggestions: \n"
+        for (symbol, array) in zip(['p', 'q', 'u'],
+                                   [p[valid], q[valid], u[valid]]):
+            lo, hi, val = np.min(array), np.max(array), np.mean(array)
+            step = (hi-lo)/5.
+            minstep = (hi-lo)/20.
+            text += f'\t{symbol}:\n'
+            text += f'\t\t lo : {lo:.2f}\n'
+            text += f'\t\t hi : {hi:.2f}\n'
+            text += f'\t\t step : {step:.2f}\n'
+            text += f'\t\t minstep : {minstep:.2f}\n'
+            text += f'\t\t value : {val:.2f}\n'
+        return text
+
 
 class DarkComponent(Component):
     """Any dark component of the sytem, with no observed MGE or kinemtics

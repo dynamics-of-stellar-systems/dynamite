@@ -300,6 +300,9 @@ class Configuration(object):
                     if not c.validate_parset(parset):
                         text = f'{c.name}: invalid parameters {parset}'
                         self.logger.error(text)
+                        if type(c) is physys.TriaxialVisibleComponent:
+                            text = c.suggest_parameter_values()
+                            self.logger.error(text)
                         raise ValueError(text)
                     self.system.add_component(c)
 
