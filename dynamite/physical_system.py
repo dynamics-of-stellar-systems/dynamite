@@ -473,6 +473,22 @@ class TriaxialVisibleComponent(VisibleComponent):
         q2 = np.double(q) ** 2
         u2 = np.double(u) ** 2
         o2 = np.double(self.qobs) ** 2
+        # Check for p=0
+        if np.isclose(p, 0.):
+            theta = phi = psi = np.nan
+            self.logger.debug(f'DEPROJ FAIL: p=0')
+        # Check for q=0
+        if np.isclose(q, 0.):
+            theta = phi = psi = np.nan
+            self.logger.debug(f'DEPROJ FAIL: q=0')
+        # Check for u=0
+        if np.isclose(u, 0.):
+            theta = phi = psi = np.nan
+            self.logger.debug(f'DEPROJ FAIL: u=0')
+        # Check for u>1
+        if u>1:
+            theta = phi = psi = np.nan
+            self.logger.debug(f'DEPROJ FAIL: u>1')
         # Check for possible triaxial deprojection (v. d. Bosch 2004,
         # triaxpotent.f90 and v. d. Bosch et al. 2008, MNRAS 385, 2, 647)
         str = f'{q} <= {p} <= {1}, ' \
