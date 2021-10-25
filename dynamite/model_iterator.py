@@ -165,7 +165,9 @@ class ModelInnerIterator(object):
             self.logger.debug(f'input_list_orblib: {input_list_orblib}, '
                               f'input_list_ml: {input_list_ml}.')
             self.assign_model_directories(rows_to_do_orblib, rows_to_do_ml)
-
+            # save all_models table once directories are assigned - this is
+            # useful if the run fails
+            self.all_models.save()
             with Pool(self.ncpus) as p:
                 output_orblib = \
                     p.map(self.create_and_run_model, input_list_orblib)
