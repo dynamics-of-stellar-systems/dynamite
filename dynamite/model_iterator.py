@@ -1,4 +1,5 @@
 import numpy as np
+from astropy import table
 import logging
 from pathos.multiprocessing import Pool
 import matplotlib.pyplot as plt
@@ -304,6 +305,16 @@ class ModelInnerIterator(object):
             wts_done = True
         all_done = orb_done and wts_done
         time = np.datetime64('now', 'ms')
+        # Build and write model_done.ecsv
+        current_model = table.Table(self.all_models.table[row])
+        for name, value in zip(
+                ['orblib_done','weights_done','chi2',
+                 'kinchi2','all_done','time_modified'],
+                [orb_done, wts_done, mod.chi2, mod.kinchi2, all_done, time]):
+            current_model[name][0] = value
+        file_name = mod.directory + 'model_done.ecsv'
+        current_model.write(file_name, format='ascii.ecsv', overwrite=True)
+        self.logger.info(f'Model {i+1}: {file_name} written.')
         output = orb_done, wts_done, mod.chi2, mod.kinchi2, all_done, time
         return output
 
