@@ -507,16 +507,48 @@ class TriaxialVisibleComponent(VisibleComponent):
         self.logger.debug(f'theta={theta}, phi={phi}, psi={psi}')
         return theta,psi,phi
 
+    def find_grid_of_valid_pqu(self, n_grid=200):
+        """Find valid values of the parameters (p,q,u)
+
+        Creates a grid of all values of 0<(p,q,u)<=1, and finds those which have
+        a valid deprojection subject to the fulfilment of all three criteria:
+        1. 0 < q <= p <=1
+        2. max(q/qobs, p) < u
+        3. u< min(p/qobs, 1)
+        where qobs is the smallest value of q for the MGE.
+
+        Parameters
+        ----------
+        n_grid : int
+            grid size used for p,q,u
+
+        Returns
+        -------
+        (p,q,u), valid
+            3d grids of p,q,u values, and boolen array `valid` which is `True`
+            for valid values
+
+        """
+        # make grid of possible p,q,u values
+        p = np.linspace(0, 1, n_grid)[1:]
+        q = np.linspace(0, 1, n_grid)[1:]
+        u = np.linspace(0, 1, n_grid)[1:]
+        p, q, u = np.meshgrid(p, q, u, indexing='ij')
+        # check three conditions for whether (p,q,u) give a valid deprojection
+        invalid_a = q>p
+        invalid_b = np.maximum(q/self.qobs, p) >= u
+        invalid_c = u >= np.minimum(p/self.qobs, 1.)
+        # combine the conditions
+        invalid_ab = np.logical_or(invalid_a, invalid_b)
+        invalid_abc = np.logical_or(invalid_ab, invalid_c)
+        valid = np.logical_not(invalid_abc)
+        return (p,q,u), valid
+
     def suggest_parameter_values(self):
         """Suggest valid values of the parameters (p,q,u)
 
-        Creates a gris of all values of 0<(p,q,u)<1, and finds those which have
-        a valid deprojection subject to the fulfilment of all three criteria:
-        1. q <= p
-        2. max(q/qobs, p) < u
-        3. u< min(p/qobs, 1)
-        where qobs is the smallest value of q for the MGE. For each of (p,q,u),
-        we suggest values:
+        Find valid values using the mehtod `find_grid_of_valid_pqu`. Then for
+        each of (p,q,u), we suggest values:
         - lo/hi : the min/max of all valid values
         - value : the mean of all valid values
         - step/minstep : a fifth/twentieth of the range of valid values
@@ -527,20 +559,7 @@ class TriaxialVisibleComponent(VisibleComponent):
             text to print out suggesting quantities for (p,q,u)
 
         """
-        # make grid of possible p,q,u values
-        p = np.linspace(0, 1, 200)
-        q = np.linspace(0, 1, 200)
-        u = np.linspace(0, 1, 200)
-        p, q, u = np.meshgrid(p, q, u, indexing='ij')
-        # check three conditions for whether (p,q,u) give a valid deprojection
-        invalid_a = q>p
-        invalid_b = np.maximum(q/self.qobs, p) >= u
-        invalid_c = u >= np.minimum(p/self.qobs, 1.)
-        # combine the conditions
-        invalid_ab = np.logical_or(invalid_a, invalid_b)
-        invalid_abc = np.logical_or(invalid_ab, invalid_c)
-        valid = np.logical_not(invalid_abc)
-        # combine the conditions
+        (p, q, u), valid = self.find_grid_of_valid_pqu()
         text = "No deprojection possible for the specificed values of (p,q,u)."
         text += "Here are some suggestions: \n"
         for (symbol, array) in zip(['p', 'q', 'u'],
