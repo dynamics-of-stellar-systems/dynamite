@@ -3,6 +3,7 @@ import copy
 import logging
 from astropy.table import Table
 from dynamite import parameter_space as parspace
+from scipy.stats import qmc
 
 class Parameter(object):
     """Parameter of a model
@@ -1237,5 +1238,109 @@ class FullGrid(ParameterGenerator):
 
 
 
+
+
+class LatinHypercubeSampling(ParameterGenerator):
+    """
+    Latin Hypercube Sampling
+
+    A description.
+
+    Parameters
+    ----------
+    par_space : ``dyn.parameter_space.ParameterSpace`` object
+    parspace_settings : dict
+
+    """
+    def __init__(self,
+                 par_space=[],
+                 parspace_settings=None):
+        super().__init__(par_space=par_space,
+                         parspace_settings=parspace_settings,
+                         name='FullGrid')
+        self.logger = logging.getLogger(f'{__name__}.{__class__.__name__}')
+        generator_settings = self.parspace_settings['generator_settings']
+        # extract n_mods_per_iter from settings
+        try:
+            self.n_mods_per_iter = generator_settings['n_mods_per_iter']
+        except:
+            text =  "For LatinHypercubeSampling, the setting \n" \
+                    "   parameter_space_settings:\n" \
+                    "      generator_settings:\n" \
+                    "         n_mods_per_iter: XXX\n" \
+                    "must be specified in the configuration file"
+            self.logger.error(text)
+            raise ValueError(text)
+        # make the LHS sampler object
+        n_free = np.sum([p.fixed is False for p in self.par_space])
+        # TODO: SCIPY V1.8 will have LatinHypercube with `strength` keyword
+        # parameter - setting strength=2 will give better random sampling.
+        # Use this once V.1.8 is released.
+        self.lhc_sampler = qmc.LatinHypercube(d=n_free)
+        # estimate the number of
+
+        # make empty model list
+        self.model_list = []
+
+    def specific_generate_method(self, **kwargs):
+        """
+        Generates new models
+
+        Description
+
+        Parameters
+        ----------
+        None.
+
+        Returns
+        -------
+        None. self.model_list is the list of new models.
+        """
+        # use LHS to add new models till we have at least `n_mods_per_iter`
+        while len(self.model_list)<self.n_mods_per_iter:
+            tmp_mod_list = self.do_it_once()
+            self.model_list += tmp_mod_list
+        # remove extra models, to leave exactly `n_mods_per_iter`
+        len_model_list = len(self.model_list)
+        if len_model_list>self.n_mods_per_iter:
+            idx = np.random.choice(len_model_list, size=self.n_mods_per_iter)
+            self.model_list = [self.model_list[idx0] for idx0 in idx]
+
+    def do_it_once(self):
+        sample = self.lhc_sampler.random(n=self.n_mods_per_iter)
+        # sample is LHS with shape (n_mods_per_iter, n_free), values in (0,1)
+        n_pars = len(self.par_space)
+        all_par_vals = np.zeros((self.n_mods_per_iter, n_pars))
+        free_counter = 0
+        for i, par in enumerate(self.par_space):
+            if par.fixed is False:
+                lo = par.par_generator_settings['lo']
+                hi = par.par_generator_settings['hi']
+                rng = hi-lo
+                all_par_vals[:,i] = lo + rng*sample[:,free_counter]
+                free_counter += 1
+            else:
+                val = 1.*par.value
+                all_par_vals[:,i] = par.value
+        tmp_mod_list = []
+        for i in range(self.n_mods_per_iter):
+            tmp_mod = [copy.deepcopy(par) for par in self.par_space]
+            for j in range(n_pars):
+                tmp_mod[j].value = all_par_vals[i,j]
+            if self.par_space.validate_parset(tmp_mod):
+                tmp_mod_list += [tmp_mod]
+        return tmp_mod_list
+
+    def check_specific_stopping_critera(self):
+        """checks specific stopping critera
+
+        There are none - just run for number of specified iterations
+
+        Returns
+        -------
+        None
+
+        """
+        pass
 
 # end

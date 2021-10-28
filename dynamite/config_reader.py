@@ -830,7 +830,10 @@ class Configuration(object):
                                      f'or GeneralisedNFW, not {type(c)}')
 
         gen_type = self.settings.parameter_space_settings["generator_type"]
-        allowed_types = ['GridWalk', 'LegacyGridSearch', 'FullGrid']
+        allowed_types = ['GridWalk',
+                         'LegacyGridSearch',
+                         'FullGrid',
+                         'LatinHypercubeSampling']
         if gen_type not in allowed_types:
             text = f'Legacy mode: parameter space generator_type ' \
                    f'must be in {allowed_types}'
