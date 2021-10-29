@@ -140,7 +140,8 @@ class LegacyOrbitLibrary(OrbitLibrary):
         for dm_par in dh.parameters:
             dm_par_vals += f"{self.parset[dm_par.name]} "
         # header
-        len_mge = len(stars.mge_pot.data) # must be the same as for mge_lum
+        len_mge_pot = len(stars.mge_pot.data) # must be the same as for mge_lum
+        len_mge_lum = len(stars.mge_lum.data) # why??
         settngs = self.settings
         text = f'{self.system.distMPc}\n'
         text += f'{theta:06.9f} {phi:06.9f} {psi:06.9f}\n'
@@ -156,14 +157,14 @@ class LegacyOrbitLibrary(OrbitLibrary):
         # parameters_pot.in
         np.savetxt(path + 'parameters_pot.in',
                    stars.mge_pot.data,
-                   header=str(len_mge),
+                   header=str(len_mge_pot),
                    footer=text,
                    comments='',
                    fmt=['%10.2f','%10.5f','%10.5f','%10.2f'])
         # parameters_lum.in
         np.savetxt(path + 'parameters_lum.in',
                    stars.mge_lum.data,
-                   header=str(len_mge),
+                   header=str(len_mge_lum),
                    footer=text,
                    comments='',
                    fmt=['%10.2f','%10.5f','%10.5f','%10.2f'])

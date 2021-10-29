@@ -93,8 +93,8 @@ system_components:
                 value: 0.9999
                 LaTeX: "$u_{min}$"
         type: "TriaxialVisibleComponent" # class name
-        mge_pot: "mge.ecsv"
-        mge_lum: "mge.ecsv"
+        mge_pot: "mge_lum.ecsv"
+        mge_lum: "mge_pot.ecsv"
         include: True
         contributes_to_potential: True
         kinematics: # optional, only specified for components with kinematics
