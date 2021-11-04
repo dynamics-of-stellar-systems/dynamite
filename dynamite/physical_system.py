@@ -544,27 +544,43 @@ class TriaxialVisibleComponent(VisibleComponent):
         valid = np.logical_not(invalid_abc)
         return (p,q,u), valid
 
-    def suggest_parameter_values(self):
+    def suggest_parameter_values(self, target_u=0.9):
         """Suggest valid values of the parameters (p,q,u)
 
         Find valid values using the mehtod `find_grid_of_valid_pqu`. Then for
         each of (p,q,u), we suggest values:
         - lo/hi : the min/max of all valid values
-        - value : the mean of all valid values
+        - value : u=target_u, and p/q = mean of all valid p/q values where u is
+        close to target value
         - step/minstep : a fifth/twentieth of the range of valid values
+
+        Parameters
+        ----------
+        target_u : float
+            Desired value of the parameter u
 
         Returns
         -------
         string
             text to print out suggesting quantities for (p,q,u)
-
         """
         (p, q, u), valid = self.find_grid_of_valid_pqu()
         text = "No deprojection possible for the specificed values of (p,q,u)."
         text += "Here are some suggestions: \n"
-        for (symbol, array) in zip(['p', 'q', 'u'],
-                                   [p[valid], q[valid], u[valid]]):
-            lo, hi, val = np.min(array), np.max(array), np.mean(array)
+        # take avg of valid p's and q's where u is close to targer value
+        target_u = 0.9
+        idx = np.where(np.abs(u[valid]-target_u)<0.005)
+        if idx[0].shape==(0,):
+            text = f"Cannot suggest valid (p,q,u) for a target u={target_u}"
+            self.logger.error(text)
+            raise ValueError(text)
+        suggest_p = np.mean(p[valid][idx])
+        suggest_q = np.mean(q[valid][idx])
+        suggested_values = [suggest_p, suggest_q, target_u]
+        for (symbol, array, val) in zip(['p', 'q', 'u'],
+                                        [p[valid], q[valid], u[valid]],
+                                        suggested_values):
+            lo, hi = np.min(array), np.max(array)
             step = (hi-lo)/5.
             minstep = (hi-lo)/20.
             text += f'\t{symbol}:\n'
