@@ -501,7 +501,7 @@ class ParameterGenerator(object):
         idx_start = self.par_space.n_par
         idx_end = len(self.current_models.table.colnames)
         for i in range(idx_start, idx_end):
-            if self.current_models.table.columns[i].dtype == '<M8[ms]':
+            if self.current_models.table.columns[i].name == 'time_modified':
                 # current time
                 val = np.datetime64('now', 'ms')
             elif self.current_models.table.columns[i].name == 'which_iter':
