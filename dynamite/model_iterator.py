@@ -166,14 +166,38 @@ class ModelInnerIterator(object):
                               f'input_list_ml: {input_list_ml}.')
             self.assign_model_directories(rows_to_do_orblib, rows_to_do_ml)
 
-            with Pool(self.ncpus) as p:
-                output_orblib = \
-                    p.map(self.create_and_run_model, input_list_orblib)
-                output_ml = p.map(self.create_and_run_model, input_list_ml)
-            # save the output
-            self.write_output_to_all_models_table(rows_to_do_orblib,
-                                                  output_orblib)
-            self.write_output_to_all_models_table(rows_to_do_ml, output_ml)
+            i_orblib = 0
+            n_ml, i_ml = len(rows_to_do_ml), 0
+            while i_orblib < n_orblib:
+                n_orblib_rows = min(self.ncpus, n_orblib-i_orblib)
+                rows_orblib = rows_to_do_orblib[i_orblib:i_orblib+n_orblib_rows]
+                self.logger.debug(f'Executing pool with {input_list_orblib[i_orblib:i_orblib+n_orblib_rows] = }.')
+                with Pool(self.ncpus) as p:
+                    output_orblib = \
+                        p.map(self.create_and_run_model, input_list_orblib[i_orblib:i_orblib+n_orblib_rows])
+                self.write_output_to_all_models_table(rows_orblib,output_orblib)
+                i_orblib += n_orblib_rows
+            while i_ml < n_ml:
+                n_ml_rows = min(self.ncpus, n_ml-i_ml)
+                rows_ml = rows_to_do_ml[i_ml:i_ml+n_ml_rows]
+                self.logger.debug(f'Executing pool with {input_list_ml[i_ml:i_ml+n_ml_rows] = }.')
+                with Pool(self.ncpus) as p:
+                    output_ml = \
+                        p.map(self.create_and_run_model, input_list_ml[i_ml:i_ml+n_ml_rows])
+                self.write_output_to_all_models_table(rows_ml,output_ml)
+                i_ml += n_ml_rows
+
+
+
+
+            # with Pool(self.ncpus) as p:
+            #     output_orblib = \
+            #         p.map(self.create_and_run_model, input_list_orblib)
+            #     output_ml = p.map(self.create_and_run_model, input_list_ml)
+            # # save the output
+            # self.write_output_to_all_models_table(rows_to_do_orblib,
+            #                                       output_orblib)
+            # self.write_output_to_all_models_table(rows_to_do_ml, output_ml)
             self.all_models.save() # save all_models table once models are run
         return self.par_generator.status
 
