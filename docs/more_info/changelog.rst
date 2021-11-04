@@ -4,6 +4,8 @@
 Change Log
 ****************
 
+- New feature: Each model writes a file model_done_staging.ecsv upon completion. After a crash, DYNAMITE will update the all_models table with the completed models' dataand delete any "all_done==False" models.
+
 Version: 2.0
 ================
 

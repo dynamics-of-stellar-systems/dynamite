@@ -300,6 +300,8 @@ class ModelInnerIterator(object):
         """
         i, row = which_model
         self.logger.info(f'... running model {i+1} out of {self.n_to_do}')
+        # if i==3:
+        #     qrx
         mod = self.all_models.get_model_from_row(row)
         orb_done = False
         wts_done = False

@@ -86,7 +86,11 @@ class AllModels(object):
         self.table = table.Table(names=names, dtype=dtype)
 
     def read_completed_model_file(self):
-        """read table from file ``self.filename``
+        """Read table from file ``self.filename``
+
+        Each model entry that has all_done==False is deleted unless there
+        is an existing model_done_staging.ecsv file in its model directory.
+        In that case, the data is added to the table.
 
         Returns
         -------
@@ -97,6 +101,29 @@ class AllModels(object):
         self.table = ascii.read(self.filename)
         self.logger.debug(f'{len(self.table)} models read '
                           f'from file {self.filename}')
+
+        table_modified = False
+        to_delete = []
+        for i, row in enumerate(self.table):
+            if not row['all_done']:
+                table_modified = True
+                mod = self.get_model_from_row(i)
+                staging_filename = mod.directory+'model_done_staging.ecsv'
+                if os.path.isfile(staging_filename):
+                    staging_file = ascii.read(staging_filename)
+                    self.table[i] = staging_file[0]
+                    self.logger.info(f'Staging file {staging_filename} '
+                                f'used to update {__class__.__name__}.table.')
+                    os.remove(staging_filename)
+                    self.logger.debug(
+                        f'Staging file {staging_filename} deleted.')
+                else:
+                    to_delete.append(i)
+                    self.logger.info('No finished model found in '
+                                     f'{row["directory"]} - removing row {i}.')
+        self.table.remove_rows(to_delete)
+        if table_modified:
+            self.save()
 
     def read_legacy_chi2_file(self, legacy_filename):
         """
