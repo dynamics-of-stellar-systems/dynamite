@@ -1,3 +1,4 @@
+import os
 import numpy as np
 from astropy import table
 import logging
@@ -178,6 +179,15 @@ class ModelInnerIterator(object):
                                                   output_orblib)
             self.write_output_to_all_models_table(rows_to_do_ml, output_ml)
             self.all_models.save() # save all_models table once models are run
+            # delete all staging files
+            for row in rows_to_do:
+                f_name = self.all_models.get_model_from_row(row).directory + \
+                    'model_done_staging.ecsv'
+                if os.path.isfile(f_name):
+                    os.remove(f_name)
+                else:
+                    self.logger.warning(f'Strange: {f_name} does not exist.')
+            self.logger.info('Iteration done, staging files deleted.')
         return self.par_generator.status
 
     def is_new_orblib(self, row_idx):
@@ -305,15 +315,15 @@ class ModelInnerIterator(object):
             wts_done = True
         all_done = orb_done and wts_done
         time = np.datetime64('now', 'ms')
-        # Build and write model_done.ecsv
-        current_model = table.Table(self.all_models.table[row])
+        # Build and write model_done_staging.ecsv
+        current_model_row = table.Table(self.all_models.table[row])
         for name, value in zip(
                 ['orblib_done','weights_done','chi2',
                  'kinchi2','all_done','time_modified'],
                 [orb_done, wts_done, mod.chi2, mod.kinchi2, all_done, time]):
-            current_model[name][0] = value
-        file_name = mod.directory + 'model_done.ecsv'
-        current_model.write(file_name, format='ascii.ecsv', overwrite=True)
+            current_model_row[name][0] = value
+        file_name = mod.directory + 'model_done_staging.ecsv'
+        current_model_row.write(file_name, format='ascii.ecsv', overwrite=True)
         self.logger.info(f'Model {i+1}: {file_name} written.')
         output = orb_done, wts_done, mod.chi2, mod.kinchi2, all_done, time
         return output
