@@ -3,6 +3,7 @@ import copy
 import logging
 from astropy.table import Table
 from dynamite import parameter_space as parspace
+from scipy.stats import qmc
 
 class Parameter(object):
     """Parameter of a model
@@ -1236,6 +1237,111 @@ class FullGrid(ParameterGenerator):
         #       => dealt with by grid_walk (doesn't create such models)
 
 
+class SobolSequence(ParameterGenerator):
+    """
+    Generate parameters via a Sobol Sequence
+
+    This samples `n_mods_per_iter` points from the hypercube of free parameters.
+    To achieve exactly this number, we will perform rejection sampling with
+    an increasing number of trials, til exactly the desired number is left.
+    Invalid models (e.g. invalid p,q,u) will be excluded.
+
+    Parameters
+    ----------
+    par_space : ``dyn.parameter_space.ParameterSpace`` object
+    parspace_settings : dict
+    """
+    def __init__(self,
+                 par_space=[],
+                 parspace_settings=None):
+        super().__init__(par_space=par_space,
+                         parspace_settings=parspace_settings,
+                         name='SobolSequence')
+        self.logger = logging.getLogger(f'{__name__}.{__class__.__name__}')
+        generator_settings = self.parspace_settings['generator_settings']
+        # extract n_mods_per_iter from settings
+        try:
+            self.n_mods_per_iter = generator_settings['n_mods_per_iter']
+        except:
+            text =  "For the SobolSequence generator, the setting \n" \
+                    "   parameter_space_settings:\n" \
+                    "      generator_settings:\n" \
+                    "         n_mods_per_iter: XXX\n" \
+                    "must be specified in the configuration file"
+            self.logger.error(text)
+            raise ValueError(text)
+        # make the sampler object
+        n_free = np.sum([p.fixed is False for p in self.par_space])
+        self.qmc_sampler = qmc.Sobol(d=n_free, scramble=True)
+
+    def specific_generate_method(self,
+                                 trial_factor=1.5,
+                                 max_iter=100,
+                                 **kwargs):
+        """
+        Generates new models
+
+        Parameters
+        ----------
+        None.
+
+        Returns
+        -------
+        None. self.model_list is the list of new models.
+        """
+        n_pars = self.par_space.n_par
+        n_trial = int(trial_factor*self.n_mods_per_iter)
+        i_iter = 0
+        model_list = []
+        while (len(model_list)<self.n_mods_per_iter) and (i_iter<max_iter):
+            free_par_sample = self.qmc_sampler.random(n=n_trial)
+            all_par_vals = np.zeros((n_trial, n_pars))
+            free_counter = 0
+            for i, par in enumerate(self.par_space):
+                if par.fixed is False:
+                    lo = par.par_generator_settings['lo']
+                    hi = par.par_generator_settings['hi']
+                    rng = hi-lo
+                    all_par_vals[:,i] = lo + rng*free_par_sample[:,free_counter]
+                    free_counter += 1
+                else:
+                    all_par_vals[:,i] = 1.*par.value
+            # check whether the suggestions are valid
+            valid_par_vals = []
+            for i in range(n_trial):
+                tmp_mod = [copy.deepcopy(par) for par in self.par_space]
+                for j in range(n_pars):
+                    tmp_mod[j].value = 1.*all_par_vals[i,j]
+                if self.par_space.validate_parset(tmp_mod):
+                    valid_par_vals += [tmp_mod]
+            # update iterator variables
+            n_trial = int(trial_factor*n_trial)
+            i_iter += 1
+            model_list = copy.deepcopy(valid_par_vals)
+        len_model_list = len(model_list)
+        if (len_model_list<self.n_mods_per_iter):
+            text =  "Not enough models were found. Try increasing " \
+                    "`trial_factor` or `n_max_iter`. Alternatively, consider " \
+                    "why no de-projection is possible e.g. does your MGE have a" \
+                    "a very flat (i.e. q<0.1) component? Can this be removed?"
+            self.logger.error(text)
+            raise ValueError(text)
+        # remove extra models, to leave exactly `n_mods_per_iter`
+        if len_model_list>self.n_mods_per_iter:
+            idx = np.random.choice(len_model_list,
+                                   size=self.n_mods_per_iter,
+                                   replace=False)
+            model_list = [model_list[idx0] for idx0 in idx]
+        self.model_list = model_list
+
+    def check_specific_stopping_critera(self):
+        """checks specific stopping critera
+        There are none - just run for number of specified iterations
+        Returns
+        -------
+        None
+        """
+        pass
 
 
 # end
