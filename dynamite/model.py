@@ -109,7 +109,15 @@ class AllModels(object):
                 table_modified = True
                 mod = self.get_model_from_row(i)
                 staging_filename = mod.directory+'model_done_staging.ecsv'
+                check1 = os.path.isfile(
+                    mod.directory_noml+'datfil/orblib.dat.bz2'
+                    )
+                check2 = os.path.isfile(
+                    mod.directory_noml+'datfil/orblibbox.dat.bz2'
+                    )
+                check_if_orblibs_present = check1 and check2
                 if os.path.isfile(staging_filename):
+                    # the model has completed but was not entered in the table
                     staging_file = ascii.read(staging_filename)
                     self.table[i] = staging_file[0]
                     self.logger.info(f'Staging file {staging_filename} '
@@ -117,7 +125,11 @@ class AllModels(object):
                     os.remove(staging_filename)
                     self.logger.debug(
                         f'Staging file {staging_filename} deleted.')
+                elif (check_if_orblibs_present):
+                    # orblibs were computed but not weights
+                    self.table[i]['orblib_done'] = True
                 else:
+                    # neither orblibs nor weights were completed
                     to_delete.append(i)
                     self.logger.info('No finished model found in '
                                      f'{row["directory"]} - removing row {i}.')

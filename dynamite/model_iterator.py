@@ -65,6 +65,9 @@ class ModelIterator(object):
             previous_iter = 0
         status = {}
         status['stop'] = False
+        # if there are any previous models with orblibs but no weights,
+        # try again here to calculate the weights
+        # TODO: implement this!
         for iteration in range(stopping_crit['n_max_iter']):
             total_iter_count = previous_iter + iteration
             n_models_done = np.sum(config.all_models.table['all_done'])
