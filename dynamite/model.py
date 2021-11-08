@@ -103,7 +103,6 @@ class AllModels(object):
                           f'from file {self.filename}')
 
         table_modified = False
-        to_delete = []
         for i, row in enumerate(self.table):
             if not row['all_done']:
                 table_modified = True
@@ -130,9 +129,26 @@ class AllModels(object):
                     self.table[i]['orblib_done'] = True
                 else:
                     # neither orblibs nor weights were completed
+                    pass
+        # collect failed models to delete (both their directory and table entry)
+        to_delete = []
+        # if we will reattempt weight solving, only delete models with no orblib
+        if self.config.weight_solver_settings['reattempt_failures']:
+            for i, row in enumerate(self.table):
+                if not row['orblib_done']:
+                    to_delete.append(i)
+                    self.logger.info('No orblibs calculate for model in '
+                                     f'{row["directory"]} - removing row {i}.')
+        # otherwise delete any model which is not `all_done`
+        else:
+            for i, row in enumerate(self.table):
+                if not row['all_done']:
                     to_delete.append(i)
                     self.logger.info('No finished model found in '
                                      f'{row["directory"]} - removing row {i}.')
+        # do the deletion
+        for row in to_delete:
+            os.rmdir(self.table[row]['directory'])
         self.table.remove_rows(to_delete)
         if table_modified:
             self.save()

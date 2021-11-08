@@ -43,6 +43,7 @@ class ModelIterator(object):
                    'None provided.'
             self.logger.error(text)
             raise ValueError(text)
+        self.config = config
         parameter_space_settings = config.settings.parameter_space_settings
         stopping_crit = parameter_space_settings['stopping_criteria']
         # get specified parameter generator
@@ -65,9 +66,10 @@ class ModelIterator(object):
             previous_iter = 0
         status = {}
         status['stop'] = False
-        # if there are any previous models with orblibs but no weights,
-        # try again here to calculate the weights
-        # TODO: implement this!
+        # if configured, re-calculate weights for past models where weight
+        # calculation failed
+        if config.settings.weight_solver_settings['reattempt_failures']:
+            self.reattempt_failed_weights()
         for iteration in range(stopping_crit['n_max_iter']):
             total_iter_count = previous_iter + iteration
             n_models_done = np.sum(config.all_models.table['all_done'])
@@ -88,6 +90,30 @@ class ModelIterator(object):
                                                 cbar_lims='data')
                 plt.close('all') # just to make sure...
 
+        def reattempt_failed_weights(self):
+            config = self.config
+            idx = np.where((config.all_models.table['orblib_done']=True) and
+                           (config.all_models.table['weights_done']=False))
+            rows_with_orbits_but_no_weights = idx[0]
+            n_to_do = len(rows_with_orbits_but_no_weights)
+            if n_to_do>0:
+                ncpus = config.settings.multiprocessing_settings['ncpus']
+                with Pool(ncpus) as p:
+                    missing_weights = p.map(self.get_missing_weights,
+                                            rows_with_orbits_but_no_weights)
+                for row in rows_with_orbits_but_no_weights:
+                    chi2, kinchi2, weights = missing_weights
+                    config.all_models.table[row]['chi2'] = chi2
+                    config.all_models.table[row]['kinchi2'] = kinchi2
+                    config.all_models.table[row]['weights_done'] = True
+                    config.all_models.table[row]['all_done'] = True
+            config.all_models.save()
+
+        def get_missing_weights(self, row):
+            mod = self.config.all_models.get_model_from_row(row)
+            orblib = mod.get_orblib()
+            weight_solver = mod.get_weights(orblib)
+            return mod.chi2, mod.kinchi2, mod.weights
 
 class ModelInnerIterator(object):
     """Class to run all models in a single iteration.

@@ -53,6 +53,11 @@ class Settings(object):
             self.io_settings['model_directory'] = out_dir + 'models/'
             self.io_settings['plot_directory'] = out_dir + 'plots/'
         elif kind == 'weight_solver_settings':
+            # TODO: check here if weight_solver_settings['reattempt_failures']
+            # has been set. If not, then add a default value here, either
+            # reattempt_failures=True (for the desired behaivour?)
+            # reattempt_failures=True (for backward compatibility? But this is
+            # risky, as it may delete orblibs when we don't want to)
             self.weight_solver_settings = values
         elif kind == 'multiprocessing_settings':
             self.multiprocessing_settings = values
