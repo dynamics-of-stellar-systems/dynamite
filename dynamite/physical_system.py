@@ -384,12 +384,6 @@ class VisibleComponent(Component):
                     'must be mges.MGE objects'
             self.logger.error(text)
             raise ValueError(text)
-        if len(self.mge_pot.data) != len(self.mge_lum.data):
-            text = f'{self.__class__.__name__}.mge_pot and ' \
-                   f'{self.__class__.__name__}.mge_lum ' \
-                    'must be of equal length'
-            self.logger.error(text)
-            raise ValueError(text)
 
 
 class AxisymmetricVisibleComponent(VisibleComponent):
