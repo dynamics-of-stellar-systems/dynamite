@@ -423,7 +423,7 @@ class Configuration(object):
         logger.info('Instantiated AllModels object')
         logger.debug(f'AllModels:\n{self.all_models.table}')
 
-        self.backup_config_file(reset=False)
+        # self.backup_config_file(reset=False)
 
     def set_threshold_del_chi2(self, generator_settings):
         """
@@ -592,7 +592,7 @@ class Configuration(object):
             for f in glob.glob(f'{output_dir}*'):
                 if os.path.isfile(f):
                     os.remove(f)
-            self.backup_config_file()
+            # self.backup_config_file()
             self.logger.info(f'Removed files in {output_dir}.')
         else:
             all_models_file = self.settings.io_settings['output_directory'] \
@@ -649,7 +649,7 @@ class Configuration(object):
         self.remove_existing_all_models_file()
         if create_tree:
             self.make_output_directory_tree()
-            self.backup_config_file()
+            # self.backup_config_file()
 
     def make_output_directory_tree(self):
         """
@@ -679,6 +679,34 @@ class Configuration(object):
         else:
             self.logger.debug(f'Using existing plots directory {plot_dir}.')
 
+    def copy_config_file(self, dest_directory, clean=True):
+        """
+        Copy config file to dest_directory.
+
+        Creates a copy of the config file, intended to add it to the directory
+        holding the model results. The file date will be preserved if possible.
+
+        Parameters
+        ----------
+        dest_directory : str, mandatory
+            The directory the config file will be copied to.
+        clean : bool, optional
+            If True, all *.yaml files in dest_directory will be deleted before
+            copying. Default is True.
+        """
+        if dest_directory[-1] != '/':
+            dest_directory += '/'
+        if clean:
+            del_files = glob.iglob(f'{dest_directory}*.yaml')
+            for f_name in del_files:
+                if os.path.isfile(f_name):
+                    os.remove(f_name)
+            self.logger.debug(f'{dest_directory}*.yaml files deleted.')
+        shutil.copy2(self.config_file_name, dest_directory)
+        self.logger.info('Config file copied to '
+                         f'{dest_directory}{self.config_file_name}.')
+
+
     def backup_config_file(self, reset=False, keep=None, delete_other=False):
         """
         Copy the config file to the output directory.
@@ -686,6 +714,8 @@ class Configuration(object):
         A running index of the format _xxx will be appended to the base file
         name to keep track of earlier config files (config_000.yaml,
         config_001.yaml, config_002.yaml, etc...)
+
+        This method is not used in standard DYNAMITE and provided as a utility.
 
         Parameters
         ----------

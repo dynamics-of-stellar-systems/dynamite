@@ -70,6 +70,7 @@ class LegacyWeightSolver(WeightSolver):
     """
     def __init__(self, config, directory_with_ml, CRcut=False):
         self.logger = logging.getLogger(f'{__name__}.{__class__.__name__}')
+        self.config = config
         self.system = config.system
         self.directory_with_ml = directory_with_ml
         self.settings = config.settings.weight_solver_settings
@@ -229,6 +230,9 @@ class LegacyWeightSolver(WeightSolver):
                 raise RuntimeError(text)
             #set the current directory to the dynamite directory
             os.chdir(cur_dir)
+            #delete existing .yaml files and copy current config file
+            #into model directory
+            self.config.copy_config_file(self.directory_with_ml)
         else:
             self.logger.info("NNLS solution read from existing output")
         wts, chi2_tot, chi2_kin = self.get_weights_and_chi2_from_orbmat_file()
@@ -449,6 +453,7 @@ class NNLS(WeightSolver):
                  CRcut=False,
                  nnls_solver=None):
         self.logger = logging.getLogger(f'{__name__}.{__class__.__name__}')
+        self.config = config
         self.system = config.system
         self.settings = config.settings.weight_solver_settings
         self.direc_with_ml = directory_with_ml
@@ -682,6 +687,9 @@ class NNLS(WeightSolver):
             meta = {'chi2_tot':chi2_tot, 'chi2_kin':chi2_kin}
             results = table.Table(results, meta=meta)
             results.write(weight_file, format='ascii.ecsv', overwrite=True)
+            #delete existing .yaml files and copy current config file
+            #into model directory
+            self.config.copy_config_file(self.direc_with_ml)
         return weights, chi2_tot, chi2_kin
 
 

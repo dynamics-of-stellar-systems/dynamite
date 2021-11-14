@@ -4,6 +4,7 @@
 Change Log
 ****************
 
+- Improvement: For better tracking, each model folder holds a copy of the config file now (instead of saving the config file in the output folder)
 - Bugfix: Fixed a bug that on rare occasion caused an error when updating the timestamp entry when continuing an aborted run
 
 Version: 2.0
