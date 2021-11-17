@@ -107,6 +107,7 @@ class ModelInnerIterator(object):
                  do_dummy_run=False,
                  dummy_chi2_function=None):
         self.logger = logging.getLogger(f'{__name__}.{__class__.__name__}')
+        self.config = config
         self.system = config.system
         self.all_models = config.all_models
         self.orblib_parameters = config.parspace.par_names[:]
@@ -315,7 +316,8 @@ class ModelInnerIterator(object):
                 self.logger.error(msg)
                 raise ValueError(msg)
             mod.setup_directories()
-            if not get_orblib and self.is_new_orblib(row):
+            if not get_orblib and self.is_new_orblib(row) and \
+                              not self.all_models.table['orblib_done'][row]:
                 msg = f'Unexpected: orbit library in row {row} not existing! ' \
                       'Will calculate it...'
                 self.logger.warning(msg)
@@ -362,14 +364,16 @@ class SplitModelIterator(ModelInnerIterator):
     First calculates the orbit libraries and then runs weight solving. Both
     orbit integration and weight solving can be switched on and off.
     Uses ``pathos.multiprocessing.Pool`` to execute the models.
+    Orbit integration uses a pool of ncpus parallel processes, weight
+    solving uses ncpus_weights from the Configuration object.
 
     Parameters
     ----------
     do_orblib : Bool
-        If True, calculate orbit libraries for models with orblib_done==False
+        If True, calculate orbit libraries for models with orblib_done==False.
     do_weights : Bool
-        If True, run weight solving for models with weights_done == False
-        Orblibs will be read from disk or computed if not existing
+        If True, run weight solving for models with weights_done == False.
+        Orblibs will be read from disk or computed if not existing.
     config : a ``dyn.config_reader.Configuration`` object
     par_generator : a ``dyn.parameter_space.ParameterGenerator`` child object
     do_dummy_run : Bool
@@ -381,8 +385,10 @@ class SplitModelIterator(ModelInnerIterator):
     """
     def __init__(self, do_orblib=True, do_weights=True, **kwargs):
         super().__init__(**kwargs)
+        self.logger = logging.getLogger(f'{__name__}.{__class__.__name__}')
         self.do_orblib, self.do_weights = do_orblib, do_weights
-        self.ncpus_weights = self.ncpus
+        self.ncpus_weights = \
+            self.config.settings.multiprocessing_settings['ncpus_weights']
 
     def run_iteration(self):
         """Execute one iteration step

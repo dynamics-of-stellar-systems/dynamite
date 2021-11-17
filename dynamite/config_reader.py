@@ -390,7 +390,13 @@ class Configuration(object):
                         ncpus = multiprocessing.cpu_count()
                     value['ncpus'] = ncpus
                 if not silent:
-                    logger.info(f"... using {value['ncpus']} CPUs.")
+                    logger.info(f"... using {value['ncpus']} CPUs "
+                                "for orbit integration.")
+                if 'ncpus_weights' not in value:
+                    value['ncpus_weights'] = value['ncpus']
+                if not silent:
+                    logger.info(f"... using {value['ncpus_weights']} CPUs "
+                                "for weight solving.")
                 if 'modeliterator' not in value:
                     value['modeliterator'] = 'ModelInnerIterator'
                 if not silent:

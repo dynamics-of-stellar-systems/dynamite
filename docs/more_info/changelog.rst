@@ -4,6 +4,7 @@
 Change Log
 ****************
 
+- New feature: The new model iterator SplitModelIterator calculates orbit libraries and weights consecutively with independently adjustable number of threads
 - Bugfix: Fixed a bug that on rare occasion caused an error when updating the timestamp entry when continuing an aborted run
 
 Version: 2.0
