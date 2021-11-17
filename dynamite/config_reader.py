@@ -334,6 +334,12 @@ class Configuration(object):
             # add orbit library settings to Settings object
 
             elif key == 'orblib_settings':
+                # set a default value to
+                #      orblib_settings --> use_new_mirroring : False
+                if 'use_new_mirroring' in value.keys():
+                    pass
+                else:
+                    value.update({'use_new_mirroring':False})
                 logger.info('orblib_settings...')
                 logger.debug(f'orblib_settings: {tuple(value.keys())}')
                 self.settings.add('orblib_settings', value)

@@ -103,7 +103,7 @@ GALAHADTYPE= mac.osx.gfo/double/
 #GALAHADTYPE= pc.lnx.gfo/double
 ##########################################################
 
-all : orbitstart orblib triaxmass triaxmassbin triaxnnls_CRcut triaxnnls_noCRcut modelgen partgen
+all : orbitstart orblib orblib_new_mirror triaxmass triaxmassbin triaxnnls_CRcut triaxnnls_noCRcut modelgen partgen
 
 #########################################################
 #
@@ -111,8 +111,8 @@ all : orbitstart orblib triaxmass triaxmassbin triaxnnls_CRcut triaxnnls_noCRcut
 #
 #########################################################
 
-RCS : Makefile run_model.sh iniparam_f.f90 orblib_f.f90 orblibwgas_f.f90 triaxpotent.f90 interpolpotent.f90 orblibprogram.f90    triaxmassbin.f90 modelgen.f90           triaxmass.f90 orbitstart.f90  triaxnnls_CRcut.f90    triaxnnls_noCRcut.f90   triaxnnls_scratch_nosave.f90 triaxgasnnls.f90 dmpotent.f90 partgen.f90
-	ci -q -l -mcompile Makefile run_model.sh iniparam_f.f90 orblib_f.f90orblibwgas_f.f90 triaxpotent.f90 interpolpotent.f90  orblibprogram.f90  triaxmassbin.f90 modelgen.f90 triaxmass.f90 orbitstart.f90 triaxnnls_CRcut.f90  triaxnnls_noCRcut.f90   triaxnnls_scratch_nosave.f90 triaxgasnnls.f90 dmpotent.f90 partgen.f90
+RCS : Makefile run_model.sh iniparam_f.f90 orblib_f.f90 orblib_f_new_mirror.f90 orblibwgas_f.f90 triaxpotent.f90 interpolpotent.f90 orblibprogram.f90    triaxmassbin.f90 modelgen.f90           triaxmass.f90 orbitstart.f90  triaxnnls_CRcut.f90    triaxnnls_noCRcut.f90   triaxnnls_scratch_nosave.f90 triaxgasnnls.f90 dmpotent.f90 partgen.f90
+	ci -q -l -mcompile Makefile run_model.sh iniparam_f.f90 orblib_f.f90 orblib_f_new_mirror.f90 orblibwgas_f.f90 triaxpotent.f90 interpolpotent.f90  orblibprogram.f90  triaxmassbin.f90 modelgen.f90 triaxmass.f90 orbitstart.f90 triaxnnls_CRcut.f90  triaxnnls_noCRcut.f90   triaxnnls_scratch_nosave.f90 triaxgasnnls.f90 dmpotent.f90 partgen.f90
 
 ##########################################################
 #
@@ -220,6 +220,8 @@ triaxmassbin: $(MGEOBJ) triaxmassbin.f90
 
 ORBLIBCDE= $(MGECDE) sub/numrec_arloc.f $(DOPCDE) orblib_f.f90
 ORBLIBOBJ= $(MGEOBJ) numrec_arloc.o $(DOPOBJ) orblib_f.o
+ORBLIBNMCDE= $(MGECDE) sub/numrec_arloc.f $(DOPCDE) orblib_f_new_mirror.f90
+ORBLIBNMOBJ= $(MGEOBJ) numrec_arloc.o $(DOPOBJ) orblib_f_new_mirror.o
 ORBLIBWGASCDE= $(MGECDE) sub/numrec_arloc.f $(DOPCDE) orblibwgas_f.f90
 ORBLIBWGASOBJ= $(MGEOBJ) numrec_arloc.o $(DOPOBJ) orblibwgas_f.o
 ORBLIBABELCDE= $(ABELCDE) sub/numrec_arloc.f $(DOPCDE) orblib_f.f90
@@ -227,6 +229,7 @@ ORBLIBABELOBJ= $(ABELOBJ) numrec_arloc.o $(DOPOBJ) orblib_f.o
 
 ifeq ($(FAST),TRUE)
   ORBLIBOBJ=$(ORBLIBCDE)
+	ORBLIBNMOBJ=$(ORBLIBNMCDE)
   ORBLIBWGASOBJ=$(ORBLIBWGASCDE)
   ORBLIBABELOBJ=$(ORBLIBABELCDE)
 endif
@@ -236,6 +239,12 @@ orblib_f.o : orblib_f.f90 $(MGEOBJ) numrec_arloc.o $(DOPOBJ)
 
 orblib : $(ORBLIBOBJ) orblibprogram.f90
 	$(link) orblib  $(ORBLIBOBJ) orblibprogram.f90
+
+orblib_f_new_mirror.o : orblib_f_new_mirror.f90 $(MGEOBJ) numrec_arloc.o $(DOPOBJ)
+	$(fortran90) orblib_f_new_mirror.f90
+
+orblib_new_mirror : $(ORBLIBNMOBJ) orblibprogram.f90
+	$(link) orblib_new_mirror  $(ORBLIBNMOBJ) orblibprogram.f90
 
 orblibwgas_f.o : orblibwgas_f.f90 $(MGEOBJ) numrec_arloc.o $(DOPOBJ)
 	$(fortran90) orblibwgas_f.f90
