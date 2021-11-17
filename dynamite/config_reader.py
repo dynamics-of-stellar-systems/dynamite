@@ -391,6 +391,10 @@ class Configuration(object):
                     value['ncpus'] = ncpus
                 if not silent:
                     logger.info(f"... using {value['ncpus']} CPUs.")
+                if 'modeliterator' not in value:
+                    value['modeliterator'] = 'ModelInnerIterator'
+                if not silent:
+                    logger.info(f"... using iterator {value['modeliterator']}.")
                 self.settings.add('multiprocessing_settings', value)
 
             else:

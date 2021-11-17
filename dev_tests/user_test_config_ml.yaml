@@ -175,6 +175,7 @@ io_settings: # paths can be given with or without trailing slash
     all_models_file: "all_models.ecsv"
 
 multiprocessing_settings:
-    ncpus: 'all_available' # integer or 'all_available'
+    ncpus: 'all_available' # integer or 'all_available' for multiprocessing
+    modeliterator: 'ModelInnerIterator' # optional, default 'ModelInnerIterator'
 
 # end

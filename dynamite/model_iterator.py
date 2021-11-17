@@ -52,7 +52,8 @@ class ModelIterator(object):
         if plots:
             the_plotter = plotter.Plotter(config)
 
-        model_inner_iterator = ModelInnerIterator(
+        iterator = config.settings.multiprocessing_settings['modeliterator']
+        model_inner_iterator = globals()[iterator](
             config=config,
             par_generator=par_generator,
             do_dummy_run=do_dummy_run,
