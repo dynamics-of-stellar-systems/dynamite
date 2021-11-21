@@ -9,7 +9,6 @@
 ##############################################################
 FAST=TRUE
 #PROFILE=TRUE
-ABEL_NO_INTERPOL=true
 compiler=gfortran
 
 #PROFILEDIR=~/profile/
@@ -111,8 +110,8 @@ all : orbitstart orblib triaxmass triaxmassbin triaxnnls_CRcut triaxnnls_noCRcut
 #
 #########################################################
 
-RCS : Makefile run_model.sh iniparam_f.f90 orblib_f.f90 triaxpotent.f90 interpolpotent.f90 orblibprogram.f90    triaxmassbin.f90 modelgen.f90           triaxmass.f90 orbitstart.f90  triaxnnls_CRcut.f90    triaxnnls_noCRcut.f90   triaxnnls_scratch_nosave.f90 dmpotent.f90
-	ci -q -l -mcompile Makefile run_model.sh iniparam_f.f90 orblib_f.f90 triaxpotent.f90 interpolpotent.f90  orblibprogram.f90  triaxmassbin.f90 modelgen.f90 triaxmass.f90 orbitstart.f90 triaxnnls_CRcut.f90  triaxnnls_noCRcut.f90   triaxnnls_scratch_nosave.f90 dmpotent.f90
+RCS : Makefile run_model.sh iniparam_f.f90 orblib_f.f90 triaxpotent.f90 interpolpotent.f90 orblibprogram.f90    triaxmassbin.f90 modelgen.f90           triaxmass.f90 orbitstart.f90  triaxnnls_CRcut.f90    triaxnnls_noCRcut.f90   dmpotent.f90
+	ci -q -l -mcompile Makefile run_model.sh iniparam_f.f90 orblib_f.f90 triaxpotent.f90 interpolpotent.f90  orblibprogram.f90  triaxmassbin.f90 modelgen.f90 triaxmass.f90 orbitstart.f90 triaxnnls_CRcut.f90  triaxnnls_noCRcut.f90 dmpotent.f90
 
 ##########################################################
 #
@@ -220,12 +219,9 @@ triaxmassbin: $(MGEOBJ) triaxmassbin.f90
 
 ORBLIBCDE= $(MGECDE) sub/numrec_arloc.f $(DOPCDE) orblib_f.f90
 ORBLIBOBJ= $(MGEOBJ) numrec_arloc.o $(DOPOBJ) orblib_f.o
-ORBLIBABELCDE= $(ABELCDE) sub/numrec_arloc.f $(DOPCDE) orblib_f.f90
-ORBLIBABELOBJ= $(ABELOBJ) numrec_arloc.o $(DOPOBJ) orblib_f.o
 
 ifeq ($(FAST),TRUE)
   ORBLIBOBJ=$(ORBLIBCDE)
-  ORBLIBABELOBJ=$(ORBLIBABELCDE)
 endif
 
 orblib_f.o : orblib_f.f90 $(MGEOBJ) numrec_arloc.o $(DOPOBJ)
@@ -239,16 +235,6 @@ modelgen : $(ORBLIBOBJ) modelgen.f90
 
 orbitstart : $(ORBLIBOBJ) orbitstart.f90
 	$(link) orbitstart  $(ORBLIBOBJ) orbitstart.f90
-
-orblibabel : $(ORBLIBABELOBJ) orblibprogram.f90
-	$(link) orblibabel  $(ORBLIBABELOBJ) orblibprogram.f90
-
-orbsolabel : $(ORBLIBABELOBJ) modelgen.f90
-	$(link) orbsolabel  $(ORBLIBABELOBJ) modelgen.f90
-
-orbitstartabel : $(ORBLIBABELOBJ) orbitstart.f90
-	$(link) orbitstartabel  $(ORBLIBABELOBJ) orbitstart.f90
-
 
 ##############################################################
 #
@@ -300,7 +286,7 @@ triaxnnls_noCRcut.o : triaxnnls_noCRcut.f90 numeric_kinds_f.o iniparam_f.o
 ##########################################
 
 distclean:
-	rm -f *.o *.il *.mod *.dyn work.* *.d *.exe ifc* *.dpi *.spi gmon.out orbitstart orblib triaxmass triaxmassbin triaxnnls_CRcut orbsol  orblibabel orbitstartabel orbsolabel modelgen
+	rm -f *.o *.il *.mod *.dyn work.* *.d *.exe ifc* *.dpi *.spi gmon.out orbitstart orblib triaxmass triaxmassbin triaxnnls_CRcut triaxnnls_noCRcut modelgen
 
 clean:
 	rm -f *.o *.il *.mod work.* *.d ifc*
