@@ -111,8 +111,8 @@ all : orbitstart orblib triaxmass triaxmassbin triaxnnls_CRcut triaxnnls_noCRcut
 #
 #########################################################
 
-RCS : Makefile run_model.sh iniparam_f.f90 orblib_f.f90 orblibwgas_f.f90 triaxpotent.f90 interpolpotent.f90 orblibprogram.f90    triaxmassbin.f90 modelgen.f90           triaxmass.f90 orbitstart.f90  triaxnnls_CRcut.f90    triaxnnls_noCRcut.f90   triaxnnls_scratch_nosave.f90 triaxgasnnls.f90 dmpotent.f90
-	ci -q -l -mcompile Makefile run_model.sh iniparam_f.f90 orblib_f.f90 orblibwgas_f.f90 triaxpotent.f90 interpolpotent.f90  orblibprogram.f90  triaxmassbin.f90 modelgen.f90 triaxmass.f90 orbitstart.f90 triaxnnls_CRcut.f90  triaxnnls_noCRcut.f90   triaxnnls_scratch_nosave.f90 triaxgasnnls.f90 dmpotent.f90
+RCS : Makefile run_model.sh iniparam_f.f90 orblib_f.f90 triaxpotent.f90 interpolpotent.f90 orblibprogram.f90    triaxmassbin.f90 modelgen.f90           triaxmass.f90 orbitstart.f90  triaxnnls_CRcut.f90    triaxnnls_noCRcut.f90   triaxnnls_scratch_nosave.f90 dmpotent.f90
+	ci -q -l -mcompile Makefile run_model.sh iniparam_f.f90 orblib_f.f90 triaxpotent.f90 interpolpotent.f90  orblibprogram.f90  triaxmassbin.f90 modelgen.f90 triaxmass.f90 orbitstart.f90 triaxnnls_CRcut.f90  triaxnnls_noCRcut.f90   triaxnnls_scratch_nosave.f90 dmpotent.f90
 
 ##########################################################
 #
@@ -220,14 +220,11 @@ triaxmassbin: $(MGEOBJ) triaxmassbin.f90
 
 ORBLIBCDE= $(MGECDE) sub/numrec_arloc.f $(DOPCDE) orblib_f.f90
 ORBLIBOBJ= $(MGEOBJ) numrec_arloc.o $(DOPOBJ) orblib_f.o
-ORBLIBWGASCDE= $(MGECDE) sub/numrec_arloc.f $(DOPCDE) orblibwgas_f.f90
-ORBLIBWGASOBJ= $(MGEOBJ) numrec_arloc.o $(DOPOBJ) orblibwgas_f.o
 ORBLIBABELCDE= $(ABELCDE) sub/numrec_arloc.f $(DOPCDE) orblib_f.f90
 ORBLIBABELOBJ= $(ABELOBJ) numrec_arloc.o $(DOPOBJ) orblib_f.o
 
 ifeq ($(FAST),TRUE)
   ORBLIBOBJ=$(ORBLIBCDE)
-  ORBLIBWGASOBJ=$(ORBLIBWGASCDE)
   ORBLIBABELOBJ=$(ORBLIBABELCDE)
 endif
 
@@ -236,12 +233,6 @@ orblib_f.o : orblib_f.f90 $(MGEOBJ) numrec_arloc.o $(DOPOBJ)
 
 orblib : $(ORBLIBOBJ) orblibprogram.f90
 	$(link) orblib  $(ORBLIBOBJ) orblibprogram.f90
-
-orblibwgas_f.o : orblibwgas_f.f90 $(MGEOBJ) numrec_arloc.o $(DOPOBJ)
-	$(fortran90) orblibwgas_f.f90
-
-orblibwgas : $(ORBLIBWGASOBJ) orblibprogram.f90
-	$(link) orblibwgas  $(ORBLIBWGASOBJ) orblibprogram.f90
 
 modelgen : $(ORBLIBOBJ) modelgen.f90
 	$(link) modelgen  $(ORBLIBOBJ) modelgen.f90
@@ -291,21 +282,6 @@ triaxnnls_scratch_nosave.o : triaxnnls_scratch_nosave.f90 numeric_kinds_f.o inip
 
 ##############################################################
 #
-# triaxgasnnls
-#
-##############################################################
-
-OBJECTS6 = nnls95.o iniparam_f.o numeric_kinds_f.o gausherm.o triaxgasnnls.o
-
-
-triaxgasnnls : $(OBJECTS6)
-	$(link) triaxgasnnls $(OBJECTS6)   -I$(GALAHADDIR)/modules/$(GALAHADTYPE)  -L$(GALAHADDIR)/objects/$(GALAHADTYPE)  -lgalahad  -lgalahad_hsl -lgalahad_metis -lgalahad_lapack -lgalahad_blas
-
-triaxgasnnls.o : triaxgasnnls.f90 numeric_kinds_f.o iniparam_f.o
-	$(fortran90) triaxgasnnls.f90  -I$(GALAHADDIR)/modules/$(GALAHADTYPE)  -L$(GALAHADDIR)/objects/$(GALAHADTYPE)
-
-##############################################################
-#
 ##############################################################
 
 OBJECTS7 = nnls95.o iniparam_f.o numeric_kinds_f.o gausherm.o triaxnnls_noCRcut.o
@@ -324,7 +300,7 @@ triaxnnls_noCRcut.o : triaxnnls_noCRcut.f90 numeric_kinds_f.o iniparam_f.o
 ##########################################
 
 distclean:
-	rm -f *.o *.il *.mod *.dyn work.* *.d *.exe ifc* *.dpi *.spi gmon.out orbitstart orblib orblibwgas triaxmass triaxmassbin triaxnnls_CRcut triaxgasnnls orbsol  orblibabel orbitstartabel orbsolabel modelgen
+	rm -f *.o *.il *.mod *.dyn work.* *.d *.exe ifc* *.dpi *.spi gmon.out orbitstart orblib triaxmass triaxmassbin triaxnnls_CRcut orbsol  orblibabel orbitstartabel orbsolabel modelgen
 
 clean:
 	rm -f *.o *.il *.mod work.* *.d ifc*
