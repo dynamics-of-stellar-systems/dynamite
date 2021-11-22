@@ -339,7 +339,7 @@ class Configuration(object):
                 if 'use_new_mirroring' in value.keys():
                     pass
                 else:
-                    value.update({'use_new_mirroring':False})
+                    value.update({'use_new_mirroring':True})
                 logger.info('orblib_settings...')
                 logger.debug(f'orblib_settings: {tuple(value.keys())}')
                 self.settings.add('orblib_settings', value)
