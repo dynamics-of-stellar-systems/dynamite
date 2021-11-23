@@ -5,6 +5,7 @@ Change Log
 ****************
 
 - Bugfix: Fixed a bug that on rare occasion caused an error when updating the timestamp entry when continuing an aborted run
+- Implement the correction to orbit mirroring introduced in `Quenneville et al 2021 <https://arxiv.org/abs/2111.06904>`_
 
 Version: 2.0
 ================
