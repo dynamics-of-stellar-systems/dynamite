@@ -336,7 +336,7 @@ triaxnnls_noCRcut.o : triaxnnls_noCRcut.f90 numeric_kinds_f.o iniparam_f.o
 ##########################################
 
 distclean:
-	rm -f *.o *.il *.mod *.dyn work.* *.d *.exe ifc* *.dpi *.spi gmon.out orbitstart orblib orblibwgas triaxmass triaxmassbin triaxnnls_CRcut triaxgasnnls orbsol  orblibabel orbitstartabel orbsolabel partgen modelgen
+	rm -f *.o *.il *.mod *.dyn work.* *.d *.exe ifc* *.dpi *.spi gmon.out orbitstart orblib orblib_new_mirror orblibwgas triaxmass triaxmassbin triaxnnls_CRcut triaxgasnnls orbsol  orblibabel orbitstartabel orbsolabel partgen modelgen
 
 clean:
 	rm -f *.o *.il *.mod work.* *.d ifc*
