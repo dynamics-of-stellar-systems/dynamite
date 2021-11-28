@@ -377,13 +377,17 @@ class LegacyOrbitLibrary(OrbitLibrary):
     def write_executable_for_integrate_orbits(self):
         """Write the bash script to calculate orbit libraries
         """
+        if self.settings['use_new_mirroring']:
+            orb_prgrm = 'orblib_new_mirror'
+        else:
+            orb_prgrm = 'orblib'
         # tubeorbits
         cmdstr_tube = 'cmd_tube_orbs'
         txt_file = open(cmdstr_tube, "w")
         txt_file.write('#!/bin/bash\n')
         txt_file.write('touch datfil/orblib.dat.tmp datfil/orblib.dat\n')
         txt_file.write('rm -f datfil/orblib.dat.tmp datfil/orblib.dat\n')
-        txt_file.write(f'{self.legacy_directory}/orblib < infil/orblib.in '
+        txt_file.write(f'{self.legacy_directory}/{orb_prgrm} < infil/orblib.in '
                        '>> datfil/orblib.log\n')
         txt_file.write('touch datfil/mass_qgrid.dat datfil/mass_radmass.dat '
                        'datfil/mass_aper.dat\n')
@@ -404,7 +408,7 @@ class LegacyOrbitLibrary(OrbitLibrary):
         txt_file.write('#!/bin/bash\n')
         txt_file.write('touch datfil/orblibbox.dat.tmp datfil/orblibbox.dat\n')
         txt_file.write('rm -f datfil/orblibbox.dat.tmp datfil/orblibbox.dat\n')
-        txt_file.write(f'{self.legacy_directory}/orblib '
+        txt_file.write(f'{self.legacy_directory}/{orb_prgrm} '
                        '< infil/orblibbox.in >> datfil/orblibbox.log\n')
         txt_file.write('# if the gzipped orbit library does not exist zip it\n')
         txt_file.write('test -e datfil/orblibbox.dat.bz2 '
