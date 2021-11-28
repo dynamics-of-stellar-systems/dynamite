@@ -284,12 +284,17 @@ Settings specifying the location of input and output directory names. Paths are 
 ``multiprocessing_settings``
 ============================
 
-Settings for multiprocessing. Models can be evaluated in parallel, with the number of parallel processes specified by::
+Settings for multiprocessing. Models can be evaluated in parallel, with the number of parallel processes specified by the ``ncpus*`` settings::
 
   multiprocessing_settings:
-      ncpus: 4    # integer or string 'all_available'
+      ncpus: 4          # integer or string 'all_available'
+      ncpus_weights: 4  # int or 'all_available', optional (default: ncpus), not used by all iterators
+      modeliterator: 'SplitModelIterator' # optional, defaults to 'ModelInnerIterator'
 
-If ``ncpus : 'all_available'`` is set, then we automatically detect the number of available cpus for parallelisation.
+Due to very different CPU and memory consumption of orbit integration and weight solving, there are two different settings: while orbit integration will use ``ncpus``, weight solving will use ``ncpus_weights`` parallel processes. Note that ``ncpus_weights`` will default to ``ncpus`` if not specified. Currently, only the ``SplitModelIterator`` model iterator uses the ``ncpus_weights`` setting.
+
+If ``ncpus : 'all_available'`` or ``ncpus_weights : 'all_available'`` is set, then DYNAMITE automatically detects the number of available cpus for parallelisation.
+
 
 ``legacy_settings``
 =====================

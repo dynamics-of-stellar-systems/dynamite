@@ -389,17 +389,14 @@ class Configuration(object):
                 except KeyError:
                     pass
                 if value['ncpus']=='all_available':
-                    try:
-                        ncpus = int(os.environ["SLURM_JOB_CPUS_PER_NODE"])
-                    except KeyError:
-                        import multiprocessing
-                        ncpus = multiprocessing.cpu_count()
-                    value['ncpus'] = ncpus
+                    value['ncpus'] = self.get_n_cpus()
                 if not silent:
                     logger.info(f"... using {value['ncpus']} CPUs "
                                 "for orbit integration.")
                 if 'ncpus_weights' not in value:
                     value['ncpus_weights'] = value['ncpus']
+                elif value['ncpus_weights'] == 'all_available':
+                    value['ncpus_weights'] = self.get_n_cpus()
                 if not silent:
                     logger.info(f"... using {value['ncpus_weights']} CPUs "
                                 "for weight solving.")
@@ -440,6 +437,17 @@ class Configuration(object):
         logger.debug(f'AllModels:\n{self.all_models.table}')
 
         self.backup_config_file(reset=False)
+
+    def get_n_cpus(self):
+        """"
+        Returns the number of avalable CPUs.
+        """
+        try:
+            ncpus = int(os.environ["SLURM_JOB_CPUS_PER_NODE"])
+        except KeyError:
+            import multiprocessing
+            ncpus = multiprocessing.cpu_count()
+        return ncpus
 
     def set_threshold_del_chi2(self, generator_settings):
         """
