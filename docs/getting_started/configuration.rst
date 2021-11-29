@@ -242,6 +242,11 @@ If any kinematics have of type ``GaussHermite`` , then the following additional 
 
 If any kinematic set has type ``BayesLOSVD``, then the ``weight_solver_settings`` must have type ``NNLS``, and no additional settings are required.
 
+If DYNAMITE shall recover from an unsuccessful weight solving attempt, the following option can be used:
+
+- ``weight_solver_settings``
+    - ``reattempt_failures``: if True, DYNAMITE will use a model's existing orblibs from an earlier run to reattempt weight solving.
+
 ``parameter_space_settings``
 ============================
 

@@ -4,7 +4,8 @@
 Change Log
 ****************
 
-- New feature: Each model writes a file model_done_staging.ecsv upon completion. After a crash, DYNAMITE will update the all_models table with the completed models' dataand delete any "all_done==False" models.
+- New feature: Each model writes a file model_done_staging.ecsv upon completion. After a crash, DYNAMITE will update the all_models table with the completed models' data and delete any "all_done==False" models
+- New feature: New weight_solver_settings option reattempt_failures for reattempting failed weight solving when an orbit library already exists
 
 Version: 2.0
 ================
