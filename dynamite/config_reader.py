@@ -381,7 +381,6 @@ class Configuration(object):
 
             elif key == 'multiprocessing_settings':
                 logger.info('multiprocessing_settings...')
-                logger.debug(f'multiprocessing_settings: {tuple(value.keys())}')
                 # if submitted as slurm script we must add cwd to path
                 try: # check if Slurm being using
                     os.environ["SLURM_JOB_CPUS_PER_NODE"]
@@ -409,6 +408,7 @@ class Configuration(object):
                 if not silent:
                     logger.info("... integrate orblibs in parallel: "
                                 f"{value['orblibs_in_parallel']}.")
+                logger.debug(f'multiprocessing_settings: {tuple(value.keys())}')
                 self.settings.add('multiprocessing_settings', value)
 
             else:
