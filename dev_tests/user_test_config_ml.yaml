@@ -178,5 +178,6 @@ multiprocessing_settings:
     ncpus: 'all_available' # integer or 'all_available' for multiprocessing
     ncpus_weights: 'all_available' # integer or 'all_available', optional, defaults to ncpus (not used by all iterators)
     modeliterator: 'SplitModelIterator' # optional, default 'ModelInnerIterator'
+    orblibs_in_parallel: True
 
 # end

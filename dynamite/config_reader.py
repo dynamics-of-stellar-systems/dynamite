@@ -404,6 +404,11 @@ class Configuration(object):
                     value['modeliterator'] = 'ModelInnerIterator'
                 if not silent:
                     logger.info(f"... using iterator {value['modeliterator']}.")
+                if 'orblibs_in_parallel' not in value:
+                    value['orblibs_in_parallel'] = False
+                if not silent:
+                    logger.info("... integrate orblibs in parallel: "
+                                f"{value['orblibs_in_parallel']}.")
                 self.settings.add('multiprocessing_settings', value)
 
             else:

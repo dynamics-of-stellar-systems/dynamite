@@ -52,6 +52,8 @@ class LegacyOrbitLibrary(OrbitLibrary):
         self.settings = config.settings.orblib_settings
         self.legacy_directory = config.settings.legacy_settings['directory']
         self.in_dir = config.settings.io_settings['input_directory']
+        self.orblibs_in_parallel = \
+            config.settings.multiprocessing_settings['orblibs_in_parallel']
 
     def get_orblib(self):
         """main method to calculate orbit libraries
@@ -96,7 +98,10 @@ class LegacyOrbitLibrary(OrbitLibrary):
                             self.mod_dir+'infil/'+ kinematics[i].binfile)
             # calculate orbit libary
             self.get_orbit_ics()
-            self.get_orbit_library()
+            if self.orblibs_in_parallel:
+                self.get_orbit_library_par()
+            else:
+                self.get_orbit_library()
 
     def create_fortran_input_orblib(self, path):
         """write input files for Fortran orbit library programs
@@ -332,6 +337,34 @@ class LegacyOrbitLibrary(OrbitLibrary):
         # the name of the executable must be returned to use in subprocess.call
         return cmdstr
 
+    def get_orbit_library_par(self):
+        """Execute the bash script to calculate orbit libraries in parallel
+        """
+        # move to model directory
+        cur_dir = os.getcwd()
+        os.chdir(self.mod_dir)
+        cmdstr = self.write_executable_for_integrate_orbits_par()
+        self.logger.info('Integrating orbit library tube and box orbits')
+        # p = subprocess.call('bash '+cmdstr_tube, shell=True)
+        p = subprocess.run('bash '+cmdstr,
+                           stdout=subprocess.PIPE,
+                           stderr=subprocess.STDOUT,
+                           shell=True)
+        log_files = f'Logfiles: {self.mod_dir}datfil/orblib.log, ' \
+                    f'{self.mod_dir}datfil/orblibbox.log, ' \
+                    f'{self.mod_dir}datfil/triaxmass.log, ' \
+                    f'{self.mod_dir}datfil/triaxmassbin.log.'
+        if not p.stdout.decode("UTF-8"):
+            self.logger.info(f'...done - {cmdstr} exit code '
+                             f'{p.returncode}. {log_files}')
+        else:
+            text=f'{cmdstr} exit code {p.returncode}. ERROR. ' \
+                 f'Message: {p.stdout.decode("UTF-8")}{log_files}'
+            self.logger.error(text)
+            raise RuntimeError(text)
+        # move back to original directory
+        os.chdir(cur_dir)
+
     def get_orbit_library(self):
         """Execute the bash script to calculate orbit libraries
         """
@@ -373,6 +406,41 @@ class LegacyOrbitLibrary(OrbitLibrary):
             raise RuntimeError(text)
         # move back to original directory
         os.chdir(cur_dir)
+
+    def write_executable_for_integrate_orbits_par(self):
+        """Write the bash script to calculate orbit libraries
+        """
+        if self.settings['use_new_mirroring']:
+            orb_prgrm = 'orblib_new_mirror'
+        else:
+            orb_prgrm = 'orblib'
+        cmd_string = 'cmd_tube_box_orbs'
+        txt_file = open(cmd_string, "w")
+        txt_file.write('#!/bin/bash\n')
+        txt_file.write('(rm -f datfil/orblib.dat.tmp datfil/orblib.dat\n')
+        txt_file.write(f'{self.legacy_directory}/{orb_prgrm} < infil/orblib.in '
+                        '>> datfil/orblib.log\n')
+        txt_file.write('rm -f datfil/mass_qgrid.dat datfil/mass_radmass.dat '
+                        'datfil/mass_aper.dat\n')
+        txt_file.write(f'{self.legacy_directory}/triaxmass '
+                        '< infil/triaxmass.in >> datfil/triaxmass.log\n')
+        txt_file.write(f'{self.legacy_directory}/triaxmassbin '
+                        '< infil/triaxmassbin.in >> datfil/triaxmassbin.log\n')
+        txt_file.write('rm -f datfil/orblib.dat.bz2 '
+                        '&& bzip2 -k datfil/orblib.dat\n')
+        txt_file.write('rm datfil/orblib.dat) &\n')
+        txt_file.write('orblib=$!\n')
+        txt_file.write('(rm -f datfil/orblibbox.dat.tmp datfil/orblibbox.dat\n')
+        txt_file.write(f'{self.legacy_directory}/{orb_prgrm} '
+                       '< infil/orblibbox.in >> datfil/orblibbox.log\n')
+        txt_file.write('rm -f datfil/orblibbox.dat.bz2 '
+                       '&& bzip2 -k datfil/orblibbox.dat\n')
+        txt_file.write('rm datfil/orblibbox.dat) &\n')
+        txt_file.write('orblibbox=$!\n')
+        txt_file.write('wait $orblib $orblibbox\n')
+        txt_file.close()
+        # returns the name of the executables
+        return cmd_string
 
     def write_executable_for_integrate_orbits(self):
         """Write the bash script to calculate orbit libraries
