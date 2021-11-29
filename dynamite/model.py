@@ -1,6 +1,7 @@
 import os
 import copy
 import logging
+import shutil
 import numpy as np
 from astropy import table
 from astropy.io import ascii
@@ -88,9 +89,19 @@ class AllModels(object):
     def read_completed_model_file(self):
         """Read table from file ``self.filename``
 
-        Each model entry that has all_done==False is deleted unless there
-        is an existing model_done_staging.ecsv file in its model directory.
-        In that case, the data is added to the table.
+        Dealing with incomplete models:
+        Models with all_done==False but an existing model_done_staging.ecsv
+        will be updated in the table and the staging file will be deleted.
+        Models with all_done==False and no existing orblib will be deleted
+        from the table and their model directory will be deleted, too.
+        The configuration setting reattempt_failures determines how partially
+        completed models with all_done==False but existing orblibs are treated:
+        If reattempt_failures==True, their orblib_done will be set to True
+        and weight solving will be done based on the existing orblibs.
+        If reattempt_failures==False, the model and its directory will be
+        deleted.
+        Note that orbit libraries on disk will not be deleted as they
+        may be in use by other models.
 
         Returns
         -------
@@ -133,11 +144,11 @@ class AllModels(object):
         # collect failed models to delete (both their directory and table entry)
         to_delete = []
         # if we will reattempt weight solving, only delete models with no orblib
-        if self.config.weight_solver_settings['reattempt_failures']:
+        if self.config.settings.weight_solver_settings['reattempt_failures']:
             for i, row in enumerate(self.table):
                 if not row['orblib_done']:
                     to_delete.append(i)
-                    self.logger.info('No orblibs calculate for model in '
+                    self.logger.info('No orblibs calculated for model in '
                                      f'{row["directory"]} - removing row {i}.')
         # otherwise delete any model which is not `all_done`
         else:
@@ -148,7 +159,9 @@ class AllModels(object):
                                      f'{row["directory"]} - removing row {i}.')
         # do the deletion
         for row in to_delete:
-            os.rmdir(self.table[row]['directory'])
+            shutil.rmtree(self.table[row]['directory'])
+            self.logger.info(f"Model {row}'s directory "
+                             f"{self.table[row]['directory']} removed.")
         self.table.remove_rows(to_delete)
         if table_modified:
             self.save()

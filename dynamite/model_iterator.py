@@ -90,30 +90,38 @@ class ModelIterator(object):
                                                 cbar_lims='data')
                 plt.close('all') # just to make sure...
 
-        def reattempt_failed_weights(self):
-            config = self.config
-            idx = np.where((config.all_models.table['orblib_done']=True) and
-                           (config.all_models.table['weights_done']=False))
-            rows_with_orbits_but_no_weights = idx[0]
-            n_to_do = len(rows_with_orbits_but_no_weights)
-            if n_to_do>0:
-                ncpus = config.settings.multiprocessing_settings['ncpus']
-                with Pool(ncpus) as p:
-                    missing_weights = p.map(self.get_missing_weights,
-                                            rows_with_orbits_but_no_weights)
-                for row in rows_with_orbits_but_no_weights:
-                    chi2, kinchi2, weights = missing_weights
-                    config.all_models.table[row]['chi2'] = chi2
-                    config.all_models.table[row]['kinchi2'] = kinchi2
-                    config.all_models.table[row]['weights_done'] = True
-                    config.all_models.table[row]['all_done'] = True
+    def reattempt_failed_weights(self):
+        config = self.config
+        rows_with_orbits_but_no_weights = \
+            [i for i,t in enumerate(config.all_models.table) \
+             if t['orblib_done'] and not t['weights_done']]
+        n_to_do = len(rows_with_orbits_but_no_weights)
+        if n_to_do>0:
+            self.logger.info('Reattempting weight solving for models in '
+                             f'rows {rows_with_orbits_but_no_weights}.')
+            # TODO will need to be changed to ncpus_weights later...
+            ncpus = config.settings.multiprocessing_settings['ncpus']
+            with Pool(ncpus) as p:
+                output = p.map(self.get_missing_weights,
+                               rows_with_orbits_but_no_weights)
+            for i, row in enumerate(rows_with_orbits_but_no_weights):
+                chi2, kinchi2, time = output[i]
+                config.all_models.table[row]['chi2'] = chi2
+                config.all_models.table[row]['kinchi2'] = kinchi2
+                config.all_models.table[row]['time_modified'] = time
+                config.all_models.table[row]['weights_done'] = True
+                config.all_models.table[row]['all_done'] = True
             config.all_models.save()
+            self.logger.debug('Reattempted weight solving for models in in rows'
+                             f' {rows_with_orbits_but_no_weights} successful.')
 
-        def get_missing_weights(self, row):
-            mod = self.config.all_models.get_model_from_row(row)
-            orblib = mod.get_orblib()
-            weight_solver = mod.get_weights(orblib)
-            return mod.chi2, mod.kinchi2, mod.weights
+    def get_missing_weights(self, row):
+        self.logger.debug(f'Reattempting weight solving for model {row}.')
+        mod = self.config.all_models.get_model_from_row(row)
+        orblib = mod.get_orblib()
+        weight_solver = mod.get_weights(orblib)
+        time = np.datetime64('now', 'ms')
+        return mod.chi2, mod.kinchi2, time
 
 class ModelInnerIterator(object):
     """Class to run all models in a single iteration.

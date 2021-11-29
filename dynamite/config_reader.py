@@ -53,11 +53,6 @@ class Settings(object):
             self.io_settings['model_directory'] = out_dir + 'models/'
             self.io_settings['plot_directory'] = out_dir + 'plots/'
         elif kind == 'weight_solver_settings':
-            # TODO: check here if weight_solver_settings['reattempt_failures']
-            # has been set. If not, then add a default value here, either
-            # reattempt_failures=True (for the desired behaivour?)
-            # reattempt_failures=True (for backward compatibility? But this is
-            # risky, as it may delete orblibs when we don't want to)
             self.weight_solver_settings = values
         elif kind == 'multiprocessing_settings':
             self.multiprocessing_settings = values
@@ -370,6 +365,10 @@ class Configuration(object):
 
             elif key == 'weight_solver_settings':
                 logger.info('weight_solver_settings...')
+                if 'reattempt_failures' not in value:
+                    value['reattempt_failures'] = True
+                if value['reattempt_failures']:
+                    logger.info('Will attempt to recover partially run models.')
                 logger.debug(f'weight_solver_settings: {tuple(value.keys())}')
                 self.settings.add('weight_solver_settings', value)
 
@@ -464,7 +463,7 @@ class Configuration(object):
             - ``BayesLOSVD``, then n_obs = n_LOSVD_bins * number_spatial_bins
 
         This returns the sum of (2 * n_obs) for all kinematic sets. Take
-        kinemtics from the ``TriaxialVisibleComponent`` of the system.
+        kinematics from the ``TriaxialVisibleComponent`` of the system.
 
         Returns
         -------
