@@ -49,12 +49,11 @@ After running the script, the following directories/files will be created::
   | │   ├── models/     # output model directory
   | │   ├── plots/      # output plot directory
   | │   ├── all_models.ecsv        # summarises all models run so far
-  | │   ├── config_file_000.yaml   # a copy of the config file
   |
 
 Subsequent runs of scripts from the main directory (e.g. after you have altered configuration settings) will not change this directory structure.
 Instead, each run will add more output to the existing output directory.
-With each run, a copy of the configuration file will be created in ``output``, incrementing as ``*_001.yaml``, ``*_002.yaml`` etc.
+To keep track of your configuration settings, a copy of the configuration file will be created in the output model directories e.g. ``output/models/orblib_XXX_YYY/mlZZZ/config_file.yaml``.
 
 Note: DYNAMITE can also be run interactively, e.g. from a Jupyter notebook, but this must be launched from ``main_directory``.
 
