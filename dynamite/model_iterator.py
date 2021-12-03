@@ -52,7 +52,8 @@ class ModelIterator(object):
         if plots:
             the_plotter = plotter.Plotter(config)
 
-        model_inner_iterator = ModelInnerIterator(
+        iterator = config.settings.multiprocessing_settings['modeliterator']
+        model_inner_iterator = globals()[iterator](
             config=config,
             par_generator=par_generator,
             do_dummy_run=do_dummy_run,
@@ -106,6 +107,7 @@ class ModelInnerIterator(object):
                  do_dummy_run=False,
                  dummy_chi2_function=None):
         self.logger = logging.getLogger(f'{__name__}.{__class__.__name__}')
+        self.config = config
         self.system = config.system
         self.all_models = config.all_models
         self.orblib_parameters = config.parspace.par_names[:]
@@ -205,7 +207,7 @@ class ModelInnerIterator(object):
             is_new = True
         return is_new
 
-    def assign_model_directories(self, rows_orblib=None, rows_ml=None):
+    def assign_model_directories(self, rows_orblib=[], rows_ml=[]):
         """
         Assigns model directories in all_models.table.
 
@@ -270,14 +272,20 @@ class ModelInnerIterator(object):
             self.logger.debug(f"New model directory "
                 f"{self.all_models.table[row]['directory']} assigned.")
 
-    def create_and_run_model(self, which_model):
-        """main method to create and run a model
+    def create_and_run_model(self, data_input):
+        """Main method to create and run a model
 
         Parameters
         ----------
-        input : tuple
+        data_input : tuple of length 2 or 4
+            len(input)==2:
             (i, row) where i is the index of a model in this iteration, and row
             is the row index of the all_models table for this model
+            Both the orblib and the weights will be computed.
+            len(input==4):
+            (i, row, get_orblib, get_weights) where i and row are as above,
+            get_orblib==True if the orblib needs to be computed
+            get_weights==True if the weights need to be computed
 
         Returns
         -------
@@ -285,7 +293,15 @@ class ModelInnerIterator(object):
             all the output for this model, bundles up in a tuple
 
         """
-        i, row = which_model
+        if len(data_input) == 2:
+            i, row = data_input
+            get_orblib, get_weights = True, True
+        elif len(data_input) == 4:
+            i, row, get_orblib, get_weights = data_input
+        else:
+            msg = 'Unexpected input, need a tuple of length 2 or 4.'
+            self.logger.error(msg)
+            raise ValueError(msg)
         self.logger.info(f'... running model {i+1} out of {self.n_to_do}')
         mod = self.all_models.get_model_from_row(row)
         orb_done = False
@@ -295,11 +311,23 @@ class ModelInnerIterator(object):
             mod.chi2 = self.dummy_chi2_function(parset)
             mod.kinchi2 = 0.
         else:
+            if not (get_orblib or get_weights):
+                msg = 'Nothing to run, specify get_orblib and/or get_weights'
+                self.logger.error(msg)
+                raise ValueError(msg)
             mod.setup_directories()
+            if not get_orblib and self.is_new_orblib(row) and \
+                              not self.all_models.table['orblib_done'][row]:
+                msg = f'Unexpected: orbit library in row {row} not existing! ' \
+                      'Will calculate it...'
+                self.logger.warning(msg)
             orblib = mod.get_orblib()
             orb_done = True
-            weight_solver = mod.get_weights(orblib)
-            wts_done = True
+            if get_weights:
+                weight_solver = mod.get_weights(orblib)
+                wts_done = True
+            else:
+                mod.chi2, mod.kinchi2 = 0, 0
         all_done = orb_done and wts_done
         time = np.datetime64('now', 'ms')
         output = orb_done, wts_done, mod.chi2, mod.kinchi2, all_done, time
@@ -328,4 +356,104 @@ class ModelInnerIterator(object):
             self.all_models.table['kinchi2'][row] = kinchi2
             self.all_models.table['all_done'][row] = all_done
             self.all_models.table['time_modified'][row] = time
+
+
+class SplitModelIterator(ModelInnerIterator):
+    """Class to run all models in a single iteration.
+
+    First calculates the orbit libraries and then runs weight solving. Both
+    orbit integration and weight solving can be switched on and off.
+    Uses ``pathos.multiprocessing.Pool`` to execute the models.
+    Orbit integration uses a pool of ncpus parallel processes, weight
+    solving uses ncpus_weights from the Configuration object.
+
+    Parameters
+    ----------
+    do_orblib : Bool
+        If True, calculate orbit libraries for models with orblib_done==False.
+    do_weights : Bool
+        If True, run weight solving for models with weights_done == False.
+        Orblibs will be read from disk or computed if not existing.
+    config : a ``dyn.config_reader.Configuration`` object
+    par_generator : a ``dyn.parameter_space.ParameterGenerator`` child object
+    do_dummy_run : Bool
+        whether this is a dummy run - if so, dummy_chi2_funciton is executed
+        instead of the model (for testing!)
+    dummy_chi2_function : function
+        a function of model parameters to be executed instead of the real model
+
+    """
+    def __init__(self, do_orblib=True, do_weights=True, **kwargs):
+        super().__init__(**kwargs)
+        self.logger = logging.getLogger(f'{__name__}.{__class__.__name__}')
+        self.do_orblib, self.do_weights = do_orblib, do_weights
+        self.ncpus_weights = \
+            self.config.settings.multiprocessing_settings['ncpus_weights']
+
+    def run_iteration(self):
+        """Execute one iteration step
+
+        Calls the parameter generator and (a) calculates all new orbit
+        libraries and consecutively (b) does the weight solving.
+        (a) and (b) are run in their respective parallel pools
+        as defined by the ncpus and ncpus_weights parameters, respectively.
+
+        Returns
+        -------
+        dict
+            ParameterGenerator.status.
+
+        """
+
+        self.par_generator.generate(current_models=self.all_models)
+        self.all_models.save() # save all_models table once parameters are added
+        # generate parameter sets for this iteration
+        if not self.par_generator.status['stop'] and (self.do_orblib or
+                                                      self.do_weights):
+            if self.do_orblib:
+                rows_to_do=np.where(self.all_models.table['orblib_done']==False)
+                rows_to_do=rows_to_do[0]
+                self.logger.debug(f'orblib rows_to_do: {rows_to_do}.')
+                self.n_to_do = len(rows_to_do)
+                rows_to_do_orblib=[i for i in rows_to_do
+                                   if self.is_new_orblib(i)]
+                input_list = [i + (True,False)
+                              for i in enumerate(rows_to_do_orblib)]
+                self.logger.debug(f'{len(input_list)} unique new '
+                                  f'orlibs: {input_list}.')
+                if len(input_list) > 0:
+                    self.assign_model_directories(rows_orblib=rows_to_do_orblib)
+                    with Pool(self.ncpus) as p:
+                        output = p.map(self.create_and_run_model, input_list)
+                    self.write_output_to_all_models_table(rows_to_do_orblib,
+                                                          output)
+                    self.all_models.save() # save all_models table
+            if self.do_weights:
+                # rows_to_do = np.where(self.all_models.table['orblib_done']
+                #     & (self.all_models.table['weights_done']==False))
+                rows_to_do = \
+                    np.where(self.all_models.table['weights_done']==False)
+                rows_to_do=rows_to_do[0]
+                self.logger.debug(f'weight rows_to_do: {rows_to_do}.')
+                self.n_to_do = len(rows_to_do)
+                input_list = [i + (False,True)
+                              for i in enumerate(rows_to_do)]
+                self.logger.debug(f'{len(input_list)} weight solves: '
+                                  f'{input_list}.')
+                if len(input_list) > 0:
+                    # model directory already assigned if it is a 'new' orblib
+                    no_dir = \
+                      np.dtype(self.all_models.table['directory'].dtype).type(None)
+                    new_dir_idx = [i for i in rows_to_do
+                        if self.all_models.table['directory'][i] == no_dir]
+                    if len(new_dir_idx) > 0:
+                        self.assign_model_directories(rows_ml=new_dir_idx)
+                    with Pool(self.ncpus_weights) as p:
+                        output = p.map(self.create_and_run_model, input_list)
+                    self.write_output_to_all_models_table(rows_to_do, output)
+                    self.all_models.save() # save all_models table
+            else:
+                self.logger.debug('Nothing to do...')
+        return self.par_generator.status
+
 # end

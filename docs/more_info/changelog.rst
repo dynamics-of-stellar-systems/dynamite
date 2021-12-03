@@ -5,7 +5,10 @@ Change Log
 ****************
 
 - Improvement: For better tracking, each model folder holds a copy of the config file now (instead of saving the config file in the output folder)
+- New feature: The new model iterator SplitModelIterator calculates orbit libraries and weights consecutively with independently adjustable number of threads
+- Improvement: Cleaned up the legacy_fortran folder and the makefile in it, unused orbgen.f90 and partgen.f90 moved to subfolder
 - Bugfix: Fixed a bug that on rare occasion caused an error when updating the timestamp entry when continuing an aborted run
+- Implement the correction to orbit mirroring introduced in `Quenneville et al 2021 <https://arxiv.org/abs/2111.06904>`_
 
 Version: 2.0
 ================

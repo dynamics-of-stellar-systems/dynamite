@@ -45,6 +45,7 @@ setuptools.setup(
             "../legacy_fortran/modelgen",
             "../legacy_fortran/orbitstart",
             "../legacy_fortran/orblib",
+            "../legacy_fortran/orblib_new_mirror",
             "../legacy_fortran/partgen",
             "../legacy_fortran/triaxmass",
             "../legacy_fortran/triaxmassbin",
