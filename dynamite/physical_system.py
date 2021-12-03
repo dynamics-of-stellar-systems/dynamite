@@ -384,12 +384,6 @@ class VisibleComponent(Component):
                     'must be mges.MGE objects'
             self.logger.error(text)
             raise ValueError(text)
-        if len(self.mge_pot.data) != len(self.mge_lum.data):
-            text = f'{self.__class__.__name__}.mge_pot and ' \
-                   f'{self.__class__.__name__}.mge_lum ' \
-                    'must be of equal length'
-            self.logger.error(text)
-            raise ValueError(text)
 
 
 class AxisymmetricVisibleComponent(VisibleComponent):
@@ -473,6 +467,22 @@ class TriaxialVisibleComponent(VisibleComponent):
         q2 = np.double(q) ** 2
         u2 = np.double(u) ** 2
         o2 = np.double(self.qobs) ** 2
+        # Check for p=0
+        if np.isclose(p, 0.):
+            theta = phi = psi = np.nan
+            self.logger.debug(f'DEPROJ FAIL: p=0')
+        # Check for q=0
+        if np.isclose(q, 0.):
+            theta = phi = psi = np.nan
+            self.logger.debug(f'DEPROJ FAIL: q=0')
+        # Check for u=0
+        if np.isclose(u, 0.):
+            theta = phi = psi = np.nan
+            self.logger.debug(f'DEPROJ FAIL: u=0')
+        # Check for u>1
+        if u>1:
+            theta = phi = psi = np.nan
+            self.logger.debug(f'DEPROJ FAIL: u>1')
         # Check for possible triaxial deprojection (v. d. Bosch 2004,
         # triaxpotent.f90 and v. d. Bosch et al. 2008, MNRAS 385, 2, 647)
         str = f'{q} <= {p} <= {1}, ' \
@@ -506,6 +516,90 @@ class TriaxialVisibleComponent(VisibleComponent):
                 psi=np.nan
         self.logger.debug(f'theta={theta}, phi={phi}, psi={psi}')
         return theta,psi,phi
+
+    def find_grid_of_valid_pqu(self, n_grid=200):
+        """Find valid values of the parameters (p,q,u)
+
+        Creates a grid of all values of 0<(p,q,u)<=1, and finds those which have
+        a valid deprojection subject to the fulfilment of all three criteria:
+        1. 0 < q <= p <=1
+        2. max(q/qobs, p) < u
+        3. u< min(p/qobs, 1)
+        where qobs is the smallest value of q for the MGE.
+
+        Parameters
+        ----------
+        n_grid : int
+            grid size used for p,q,u
+
+        Returns
+        -------
+        (p,q,u), valid
+            3d grids of p,q,u values, and boolen array `valid` which is `True`
+            for valid values
+
+        """
+        # make grid of possible p,q,u values
+        p = np.linspace(0, 1, n_grid)[1:]
+        q = np.linspace(0, 1, n_grid)[1:]
+        u = np.linspace(0, 1, n_grid)[1:]
+        p, q, u = np.meshgrid(p, q, u, indexing='ij')
+        # check three conditions for whether (p,q,u) give a valid deprojection
+        invalid_a = q>p
+        invalid_b = np.maximum(q/self.qobs, p) >= u
+        invalid_c = u >= np.minimum(p/self.qobs, 1.)
+        # combine the conditions
+        invalid_ab = np.logical_or(invalid_a, invalid_b)
+        invalid_abc = np.logical_or(invalid_ab, invalid_c)
+        valid = np.logical_not(invalid_abc)
+        return (p,q,u), valid
+
+    def suggest_parameter_values(self, target_u=0.9):
+        """Suggest valid values of the parameters (p,q,u)
+
+        Find valid values using the mehtod `find_grid_of_valid_pqu`. Then for
+        each of (p,q,u), we suggest values:
+        - lo/hi : the min/max of all valid values
+        - value : u=target_u, and p/q = mean of all valid p/q values where u is
+        close to target value
+        - step/minstep : a fifth/twentieth of the range of valid values
+
+        Parameters
+        ----------
+        target_u : float
+            Desired value of the parameter u
+
+        Returns
+        -------
+        string
+            text to print out suggesting quantities for (p,q,u)
+        """
+        (p, q, u), valid = self.find_grid_of_valid_pqu()
+        text = "No deprojection possible for the specificed values of (p,q,u)."
+        text += "Here are some suggestions: \n"
+        # take avg of valid p's and q's where u is close to targer value
+        target_u = 0.9
+        idx = np.where(np.abs(u[valid]-target_u)<0.005)
+        if idx[0].shape==(0,):
+            text = f"Cannot suggest valid (p,q,u) for a target u={target_u}"
+            self.logger.error(text)
+            raise ValueError(text)
+        suggest_p = np.mean(p[valid][idx])
+        suggest_q = np.mean(q[valid][idx])
+        suggested_values = [suggest_p, suggest_q, target_u]
+        for (symbol, array, val) in zip(['p', 'q', 'u'],
+                                        [p[valid], q[valid], u[valid]],
+                                        suggested_values):
+            lo, hi = np.min(array), np.max(array)
+            step = (hi-lo)/5.
+            minstep = (hi-lo)/20.
+            text += f'\t{symbol}:\n'
+            text += f'\t\t lo : {lo:.2f}\n'
+            text += f'\t\t hi : {hi:.2f}\n'
+            text += f'\t\t step : {step:.2f}\n'
+            text += f'\t\t minstep : {minstep:.2f}\n'
+            text += f'\t\t value : {val:.2f}\n'
+        return text
 
 
 class DarkComponent(Component):

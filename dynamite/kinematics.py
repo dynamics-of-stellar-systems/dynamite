@@ -255,12 +255,12 @@ class GaussHermite(Kinematics, data.Integrated):
         dsigSym = self.data['dsigma'].data
         n_gh_col = np.full_like(velSym, n_gh)
         array_to_print = [idx, velSym, dvelSym, sigSym, dsigSym, n_gh_col]
-        fmt = '%5i %13.13s %13.13s %13.13s %13.13s %5i '
+        fmt = '%5i %13.13f %13.13f %13.13f %13.13f %5i '
         for i in range(3, n_gh+1):
             hi_Sym = self.data[f'h{i}'].data
             dhi_Sym = self.data[f'dh{i}'].data
             array_to_print += [hi_Sym, dhi_Sym]
-            fmt += '%13.13s %13.13s '
+            fmt += '%13.13f %13.13f '
         array_to_print = np.transpose(array_to_print)
         np.savetxt(filename_old_format,
                    array_to_print,

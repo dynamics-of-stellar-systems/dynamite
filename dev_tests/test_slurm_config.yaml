@@ -175,5 +175,8 @@ io_settings: # paths can be given with or without trailing slash
 
 multiprocessing_settings:
     ncpus: 'all_available' # integer or 'all_available'
+    ncpus_weights: 2 # integer, optional, defaults to ncpus (not used by all iterators)
+    modeliterator: 'SplitModelIterator' # optional, default 'ModelInnerIterator'
+    
 
 # end
