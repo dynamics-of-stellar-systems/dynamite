@@ -100,9 +100,8 @@ class ModelIterator(object):
         if n_to_do>0:
             self.logger.info('Reattempting weight solving for models in '
                              f'rows {rows_with_orbits_but_no_weights}.')
-            # TODO will need to be changed to ncpus_weights later...
-            ncpus = config.settings.multiprocessing_settings['ncpus']
-            with Pool(ncpus) as p:
+            n_proc = config.settings.multiprocessing_settings['ncpus_weights']
+            with Pool(n_proc) as p:
                 output = p.map(self.get_missing_weights,
                                rows_with_orbits_but_no_weights)
             for i, row in enumerate(rows_with_orbits_but_no_weights):
@@ -477,6 +476,9 @@ class SplitModelIterator(ModelInnerIterator):
                 self.n_to_do = len(rows_to_do)
                 rows_to_do_orblib=[i for i in rows_to_do
                                    if self.is_new_orblib(i)]
+                rows_to_do_ex_orblib=[i for i in rows_to_do
+                                      if not self.is_new_orblib(i)]
+                self.assign_model_directories(rows_ml=rows_to_do_ex_orblib)
                 input_list = [i + (True,False)
                               for i in enumerate(rows_to_do_orblib)]
                 self.logger.debug(f'{len(input_list)} unique new '
@@ -487,7 +489,7 @@ class SplitModelIterator(ModelInnerIterator):
                         output = p.map(self.create_and_run_model, input_list)
                     self.write_output_to_all_models_table(rows_to_do_orblib,
                                                           output)
-                    self.all_models.save() # save all_models table
+                self.all_models.save() # save all_models table
             if self.do_weights:
                 # rows_to_do = np.where(self.all_models.table['orblib_done']
                 #     & (self.all_models.table['weights_done']==False))

@@ -135,12 +135,13 @@ class AllModels(object):
                     os.remove(staging_filename)
                     self.logger.debug(
                         f'Staging file {staging_filename} deleted.')
-                elif (check_if_orblibs_present):
-                    # orblibs were computed but not weights
+                elif check_if_orblibs_present:
+                    self.logger.debug(f'Row {i}: orblibs were computed '
+                                      'but not weights.')
                     self.table[i]['orblib_done'] = True
                 else:
-                    # neither orblibs nor weights were completed
-                    pass
+                    self.logger.debug(f'Row {i}: neither orblibs nor '
+                                      'weights were completed.')
         # collect failed models to delete (both their directory and table entry)
         to_delete = []
         # if we will reattempt weight solving, only delete models with no orblib
