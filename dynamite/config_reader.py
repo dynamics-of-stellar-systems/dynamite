@@ -374,6 +374,10 @@ class Configuration(object):
 
             elif key == 'weight_solver_settings':
                 logger.info('weight_solver_settings...')
+                if 'reattempt_failures' not in value:
+                    value['reattempt_failures'] = True
+                if value['reattempt_failures']:
+                    logger.info('Will attempt to recover partially run models.')
                 logger.debug(f'weight_solver_settings: {tuple(value.keys())}')
                 self.settings.add('weight_solver_settings', value)
 
@@ -486,7 +490,7 @@ class Configuration(object):
             - ``BayesLOSVD``, then n_obs = n_LOSVD_bins * number_spatial_bins
 
         This returns the sum of (2 * n_obs) for all kinematic sets. Take
-        kinemtics from the ``TriaxialVisibleComponent`` of the system.
+        kinematics from the ``TriaxialVisibleComponent`` of the system.
 
         Returns
         -------

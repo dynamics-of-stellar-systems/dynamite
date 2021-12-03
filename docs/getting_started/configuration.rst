@@ -250,6 +250,11 @@ If any kinematics have of type ``GaussHermite`` , then the following additional 
 
 If any kinematic set has type ``BayesLOSVD``, then the ``weight_solver_settings`` must have type ``NNLS``, and no additional settings are required.
 
+If DYNAMITE shall recover from an unsuccessful weight solving attempt, the following option can be used:
+
+- ``weight_solver_settings``
+    - ``reattempt_failures``: if True, DYNAMITE will use a model's existing orblibs from an earlier run to reattempt weight solving.
+
 ``parameter_space_settings``
 ============================
 
@@ -291,7 +296,7 @@ Settings for multiprocessing. Models can be evaluated in parallel, with the numb
       ncpus_weights: 4  # int or 'all_available', optional (default: ncpus), not used by all iterators
       modeliterator: 'SplitModelIterator' # optional, defaults to 'ModelInnerIterator'
 
-Due to very different CPU and memory consumption of orbit integration and weight solving, there are two different settings: while orbit integration will use ``ncpus``, weight solving will use ``ncpus_weights`` parallel processes. Note that ``ncpus_weights`` will default to ``ncpus`` if not specified. Currently, only the ``SplitModelIterator`` model iterator uses the ``ncpus_weights`` setting.
+Due to very different CPU and memory consumption of orbit integration and weight solving, there are two different settings: while orbit integration will use ``ncpus``, weight solving will use ``ncpus_weights`` parallel processes. Note that ``ncpus_weights`` will default to ``ncpus`` if not specified. Currently, only the ``SplitModelIterator`` model iterator and recovering from an unsuccessful weight solving attempt (``reattempt_failures=True``) use the ``ncpus_weights`` setting.
 
 If ``ncpus : 'all_available'`` or ``ncpus_weights : 'all_available'`` is set, then DYNAMITE automatically detects the number of available cpus for parallelisation.
 
