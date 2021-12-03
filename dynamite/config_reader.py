@@ -405,9 +405,8 @@ class Configuration(object):
                     logger.info(f"... using iterator {value['modeliterator']}.")
                 if 'orblibs_in_parallel' not in value:
                     value['orblibs_in_parallel'] = False
-                if not silent:
-                    logger.info("... integrate orblibs in parallel: "
-                                f"{value['orblibs_in_parallel']}.")
+                logger.debug("... integrate orblibs in parallel: "
+                             f"{value['orblibs_in_parallel']}.")
                 logger.debug(f'multiprocessing_settings: {tuple(value.keys())}')
                 self.settings.add('multiprocessing_settings', value)
 
