@@ -391,14 +391,13 @@ class LegacyOrbitLibrary(OrbitLibrary):
                        '>> datfil/orblib.log\n')
         txt_file.write('rm -f datfil/mass_qgrid.dat datfil/mass_radmass.dat '
                        'datfil/mass_aper.dat\n')
-        txt_file.write(f'{self.legacy_directory}/triaxmass       '
+        txt_file.write(f'{self.legacy_directory}/triaxmass '
                        '< infil/triaxmass.in >> datfil/triaxmass.log\n')
-        txt_file.write(f'{self.legacy_directory}/triaxmassbin    '
+        txt_file.write(f'{self.legacy_directory}/triaxmassbin '
                        '< infil/triaxmassbin.in >> datfil/triaxmassbin.log\n')
-        txt_file.write('bzip2 -kc datfil/orblib.dat '
-                       '> datfil/orblib.dat.staging.bz2\n')
-        txt_file.write('mv datfil/orblib.dat.staging.bz2 '
-                       'datfil/orblib.dat.bz2\n')
+        txt_file.write(
+            'bzip2 -kc datfil/orblib.dat > datfil/orblib.dat.staging.bz2 '
+            '&& mv datfil/orblib.dat.staging.bz2 datfil/orblib.dat.bz2\n')
         txt_file.write('rm datfil/orblib.dat\n')
         txt_file.close()
         # boxorbits
@@ -409,10 +408,9 @@ class LegacyOrbitLibrary(OrbitLibrary):
                        'datfil/orblibbox.dat.bz2\n')
         txt_file.write(f'{self.legacy_directory}/{orb_prgrm} '
                        '< infil/orblibbox.in >> datfil/orblibbox.log\n')
-        txt_file.write('bzip2 -kc datfil/orblibbox.dat '
-                       '> datfil/orblibbox.dat.staging.bz2\n')
-        txt_file.write('mv datfil/orblibbox.dat.staging.bz2 '
-                       'datfil/orblibbox.dat.bz2\n')
+        txt_file.write(
+            'bzip2 -kc datfil/orblibbox.dat > datfil/orblibbox.dat.staging.bz2 '
+            '&& mv datfil/orblibbox.dat.staging.bz2 datfil/orblibbox.dat.bz2\n')
         txt_file.write('rm datfil/orblibbox.dat\n')
         txt_file.close()
         # returns the name of the executables
