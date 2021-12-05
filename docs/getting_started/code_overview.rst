@@ -279,7 +279,9 @@ If you don't want to think about logging, you can activate the DYNAMITE standard
   import dynamite as dyn
   c = dyn.config_reader.Configuration('config_file.yaml’, reset_logging=True)
 
-This will write logging messages of at least level ``INFO`` to the console and messages of at least level ``DEBUG`` to the log-file ``dynamite.log``. The levels, in increasing level of detail, are ``CRITICAL``, ``ERROR``, ``WARNING``, ``INFO``, ``DEBUG`` (currently, DYNAMITE does not use ``CRITICAL``).
+This will write logging messages of at least level ``INFO`` to the console and messages of at least level ``DEBUG`` to the log-file. The levels, in increasing level of detail, are ``CRITICAL``, ``ERROR``, ``WARNING``, ``INFO``, ``DEBUG`` (currently, DYNAMITE does not use ``CRITICAL``).
+The default name of the log-file will be the same as the configuration file, with its extension replaced by ``.log`` (in the above example, it will be ``config_file.log``).
+
 If you (optionally) wish to control the verbosity of the logging output, do not use ``reset_logging=True`` but add the following lines near the top of the main script,
 
 .. code-block:: python

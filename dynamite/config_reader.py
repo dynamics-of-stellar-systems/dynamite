@@ -145,10 +145,15 @@ class Configuration(object):
     thresh_chi2_scaled = 'threshold_del_chi2_as_frac_of_sqrt2nobs'
 
     def __init__(self, filename=None, silent=None, reset_logging=False):
+        if filename is None:
+            raise ValueError('Config file name cannot be None, specify '
+                             'existing file.')
         if reset_logging is True:
-            DynamiteLogging()
+            log_file = os.path.splitext(filename)[0] + '.log'
+            DynamiteLogging(logfile=log_file)
             self.logger = logging.getLogger(f'{__name__}.{__class__.__name__}')
-            self.logger.debug('Logging reset to Dynamite defaults')
+            self.logger.info('Logging reset to Dynamite defaults. '
+                             f'Logfile: {log_file}.')
         else:
             self.logger = logging.getLogger(f'{__name__}.{__class__.__name__}')
             self.logger.debug("Dynamite uses the calling application's "

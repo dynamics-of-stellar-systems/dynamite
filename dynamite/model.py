@@ -160,9 +160,14 @@ class AllModels(object):
                                      f'{row["directory"]} - removing row {i}.')
         # do the deletion
         for row in to_delete:
-            shutil.rmtree(self.table[row]['directory'])
-            self.logger.info(f"Model {row}'s directory "
-                             f"{self.table[row]['directory']} removed.")
+            try:
+                shutil.rmtree(self.table[row]['directory'])
+                self.logger.info(f"Model {row}'s directory "
+                                 f"{self.table[row]['directory']} removed.")
+            except FileNotFoundError:
+                self.logger.debug(f"Cannot remove model {row}'s directory "
+                                  f"{self.table[row]['directory']} - file "
+                                  "not found.")
         self.table.remove_rows(to_delete)
         if table_modified:
             self.save()

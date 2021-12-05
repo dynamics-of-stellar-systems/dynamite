@@ -23,7 +23,7 @@ class ModelIterator(object):
     model_kwargs : dict
         other kewyord argument required for this model
     do_dummy_run : Bool
-        whether this is a dummy run - if so, dummy_chi2_funciton is executed
+        whether this is a dummy run - if so, dummy_chi2_function is executed
         instead of the model (for testing!)
     dummy_chi2_function : function
         a function of model parameters to be executed instead of the real model
@@ -90,6 +90,7 @@ class ModelIterator(object):
                 the_plotter.plot_kinematic_maps(kin_set='all',
                                                 cbar_lims='data')
                 plt.close('all') # just to make sure...
+        self.logger.info(f'{__class__.__name__} done.')
 
     def reattempt_failed_weights(self):
         config = self.config
