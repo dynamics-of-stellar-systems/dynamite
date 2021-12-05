@@ -4,6 +4,7 @@
 Change Log
 ****************
 
+- Improvement: The presence of datfil/orblib.dat.bz2 and datfil/orblibbox.dat.bz2 is now a more reliable indicator for existing orblibs. In the past, a crash may have resulted in corrupt bz2 files.
 - New feature: Each model writes a file model_done_staging.ecsv upon completion. After a crash, DYNAMITE will update the all_models table with the completed models' data and delete any "all_done==False" models
 - New feature: New weight_solver_settings option reattempt_failures for reattempting failed weight solving when an orbit library already exists
 
