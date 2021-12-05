@@ -4,7 +4,7 @@
 Change Log
 ****************
 
-- Improvement: The default name of fhe logfile is now the same as the config file, with its extension replaced by .log.
+- Improvement: The default name of the logfile is now the same as the config file, with its extension replaced by .log.
 - New feature: Each model writes a file model_done_staging.ecsv upon completion. After a crash, DYNAMITE will update the all_models table with the completed models' data and delete any "all_done==False" models
 - New feature: New weight_solver_settings option reattempt_failures for reattempting failed weight solving when an orbit library already exists
 
