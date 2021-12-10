@@ -812,6 +812,7 @@ class BayesLOSVD(Kinematics, data.Integrated):
                 outfile = self.input_directory + outfile
         self.convert_multidimensional_losvd_columns_to_univariate()
         self.data.write(outfile, format='ascii.ecsv', overwrite=True)
+        self.convert_losvd_columns_to_one_multidimensional_column()
 
     def load_hdf5(self, filename):
         """
@@ -906,6 +907,8 @@ class BayesLOSVD(Kinematics, data.Integrated):
         # put them in a table
         data = table.Table()
         data['binID_BayesLOSVD'] = completed_bins
+        # add bin fluxes to the table
+        data['bin_flux'] = result['bin_flux']
         # BayesLOSVD bin indexing starts at 0 and some bins may be missing, but:
         # 1) orblib_f.f90 assumes bins start at 1
         # 2) LegacyOrbitLibrary.read_orbit_base assumes that no bins are missing
@@ -1108,6 +1111,31 @@ class BayesLOSVD(Kinematics, data.Integrated):
         if orblib_nbins % 2 == 0:
             orblib_nbins += 1
         self.hist_bins = orblib_nbins
+
+    def center_v_systemic(self, v_systemic='flux_weighted'):
+        """Center the LOSVD histograms on systemtic velocity
+
+        Uses velocity spacing of the data divided by oversampling_factor.
+        Also forces nbins to be odd, so that central bin in 0-centered.
+
+        Parameters
+        ----------
+        v_systemic : string or float. If 'flux_weighted', then use the flux
+            weighted mean-velocity of the kinematics. Otherwise, provide a float
+            directly.
+
+        Returns
+        ----------
+        Sets the result to attribute `self.hist_bins`
+
+        """
+        if v_systemic=='flux_weighted':
+            v_systemic = np.sum(self.data['bin_flux']*self.data['v'])
+            v_systemic /= np.sum(self.data['bin_flux'])
+        vcent_new = np.array(self.data.meta['vcent'])-v_systemic
+        self.data.meta['vcent'] = list(vcent_new)
+        self.set_mean_v_and_sig_v_per_aperture()
+        return
 
     def set_mean_v_and_sig_v_per_aperture(self):
         """get mean and dispersion
