@@ -5,9 +5,9 @@ Change Log
 ****************
 
 - Improvement: The presence of datfil/orblib.dat.bz2 and datfil/orblibbox.dat.bz2 is now a more reliable indicator for existing orblibs. In the past, a crash may have resulted in corrupt bz2 files.
+- New feature: add new data-preparation method `BayesLOSVD.center_v_systemic`
 - New feature: Each model writes a file model_done_staging.ecsv upon completion. After a crash, DYNAMITE will update the all_models table with the completed models' data and delete any "all_done==False" models
 - New feature: New weight_solver_settings option reattempt_failures for reattempting failed weight solving when an orbit library already exists
-
 - Improvement: For better tracking, each model folder holds a copy of the config file now (instead of saving the config file in the output folder)
 - New feature: The new model iterator SplitModelIterator calculates orbit libraries and weights consecutively with independently adjustable number of threads
 - Improvement: Cleaned up the legacy_fortran folder and the makefile in it, unused orbgen.f90 and partgen.f90 moved to subfolder

@@ -394,20 +394,17 @@ class Configuration(object):
                     pass
                 if value['ncpus']=='all_available':
                     value['ncpus'] = self.get_n_cpus()
-                if not silent:
-                    logger.info(f"... using {value['ncpus']} CPUs "
-                                "for orbit integration.")
+                logger.debug(f"... using {value['ncpus']} CPUs "
+                             "for orbit integration.")
                 if 'ncpus_weights' not in value:
                     value['ncpus_weights'] = value['ncpus']
                 elif value['ncpus_weights'] == 'all_available':
                     value['ncpus_weights'] = self.get_n_cpus()
-                if not silent:
-                    logger.info(f"... using {value['ncpus_weights']} CPUs "
-                                "for weight solving.")
+                logger.debug(f"... using {value['ncpus_weights']} CPUs "
+                            "for weight solving.")
                 if 'modeliterator' not in value:
                     value['modeliterator'] = 'ModelInnerIterator'
-                if not silent:
-                    logger.info(f"... using iterator {value['modeliterator']}.")
+                logger.debug(f"... using iterator {value['modeliterator']}.")
                 self.settings.add('multiprocessing_settings', value)
 
             else:
