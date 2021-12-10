@@ -4,6 +4,7 @@
 Change Log
 ****************
 
+- New feature: add new data-preparation method `BayesLOSVD.center_v_systemic`
 - New feature: The new model iterator SplitModelIterator calculates orbit libraries and weights consecutively with independently adjustable number of threads
 - Improvement: Cleaned up the legacy_fortran folder and the makefile in it, unused orbgen.f90 and partgen.f90 moved to subfolder
 - Bugfix: Fixed a bug that on rare occasion caused an error when updating the timestamp entry when continuing an aborted run
