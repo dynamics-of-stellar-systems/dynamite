@@ -491,7 +491,7 @@ class SplitModelIterator(ModelInnerIterator):
                         output = p.map(self.create_and_run_model, input_list)
                     self.write_output_to_all_models_table(rows_to_do_orblib,
                                                           output)
-                self.all_models.save() # save all_models table
+                    self.all_models.save() # save all_models table
             if self.do_weights:
                 # rows_to_do = np.where(self.all_models.table['orblib_done']
                 #     & (self.all_models.table['weights_done']==False))
