@@ -78,6 +78,7 @@ def run_orbit_losvd_test(make_comparison_losvd=False):
     model = dyn.model.Model(config=c, parset=parset)
     model.setup_directories()
     orbit_library = model.get_orblib()
+    orbit_library.read_losvd_histograms()
 
     file_dir = os.path.dirname(__file__)
     fname = file_dir if file_dir else '.'
