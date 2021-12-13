@@ -32,11 +32,12 @@ def run_user_test(make_comp=False):
     else:
         file_dir = None
     fname = 'user_test_config_ml.yaml'
-    c = dyn.config_reader.Configuration(fname, reset_logging=True)
+    c = dyn.config_reader.Configuration(fname, reset_logging=True,
+                                        reset_existing_output=True)
 
     # delete previous output if available
-    c.remove_existing_orblibs()
-    c.remove_existing_all_models_file(wipe_other_files=False)
+    # c.remove_existing_orblibs()
+    # c.remove_existing_all_models_file(wipe_other_files=False)
     # c.backup_config_file(keep=3, delete_other=True)
     # c.remove_existing_plots()
 
