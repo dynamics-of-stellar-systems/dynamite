@@ -377,23 +377,33 @@ class Plotter():
             t.add_index(which_chi2)
             model_id = t.loc_indices[min_chi2]
             model = self.all_models.get_model_from_row(model_id)
-        kinem_fname = model.directory + 'nn_kinem.out'
 
-        # currently this only works for GaussHermite's and LegacyWeightSolver
         kin_type = type(stars.kinematic_data[kin_set])
-        if kin_type is not kinematics.GaussHermite:
-            self.logger.info(f'kinematic maps cannot be plot for {kin_type} - '
-                             'only GaussHermite')
-            fig = plt.figure(figsize=(27, 12))
-            return fig
         weight_solver = model.get_weights()
         ws_type = type(weight_solver)
-        if ws_type is not weight_solvers.LegacyWeightSolver:
-            self.logger.info('kinematic maps cannot be plot for weight solver '
-                             f'{ws_type} - only LegacyWeightSolver')
-            fig = plt.figure(figsize=(27, 12))
-            return fig
 
+        if kin_type is kinematics.GaussHermite:
+            if ws_type is weight_solvers.LegacyWeightSolver:
+                fig = self._plot_kinematic_maps_gaussherm(
+                    model,
+                    kin_set,
+                    cbar_lims=cbar_lims)
+            else:
+                self.logger.info(f'kinematic maps cannot be plot for {kin_type} - '
+                                 'only GaussHermite')
+                fig = plt.figure(figsize=(27, 12))
+        elif kin_type is kinematics.BayesLOSVD:
+            fig = self._plot_kinematic_maps_bayeslosvd(
+                model,
+                kin_set,
+                cbar_lims=cbar_lims)
+
+        figname = self.plotdir + f'kinematic_map_{kin_name}' + figtype
+        fig.savefig(figname)
+        return fig
+
+    def _plot_kinematic_maps_gaussherm(model, kin_set, cbar_lims='data'):
+        kinem_fname = model.directory + 'nn_kinem.out'
         body_kinem = np.genfromtxt(kinem_fname, skip_header=1)
 
         first_bin = sum(k.n_apertures for k in stars.kinematic_data[:kin_set])
