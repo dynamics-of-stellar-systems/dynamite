@@ -123,6 +123,9 @@ class Configuration(object):
     reset_logging : bool
         if False: use the calling application's logging settings
         if True: set logging to Dynamite defaults
+    reset_existing_output : bool
+        if False: do not touch existing data in the output directory tree
+        if True: rebuild the output directory tree and delete existing data
 
     Raises
     ------
@@ -144,7 +147,8 @@ class Configuration(object):
     thresh_chi2_abs = 'threshold_del_chi2_abs'
     thresh_chi2_scaled = 'threshold_del_chi2_as_frac_of_sqrt2nobs'
 
-    def __init__(self, filename=None, silent=None, reset_logging=False):
+    def __init__(self, filename=None, silent=None, reset_logging=False,
+                 reset_existing_output=False):
         if reset_logging is True:
             DynamiteLogging()
             self.logger = logging.getLogger(f'{__name__}.{__class__.__name__}')
@@ -196,7 +200,13 @@ class Configuration(object):
             raise
         self.settings.add('io_settings', self.params['io_settings'])
         logger.debug('io_settings assigned to Settings object')
+        if reset_existing_output:
+            out_dir = self.settings.io_settings['output_directory']
+            if os.path.isdir(out_dir):
+                shutil.rmtree(out_dir)
+                self.logger.info(f'Output directory tree {out_dir} removed.')
         self.make_output_directory_tree()
+        self.logger.info(f'Output directory tree: {out_dir}.')
 
         for key, value in self.params.items(): # walk through file contents...
 
