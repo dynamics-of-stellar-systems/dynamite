@@ -160,6 +160,7 @@ class AllModels(object):
                                      f'{row["directory"]} - removing row {i}.')
         # do the deletion
         for row in to_delete:
+            self.logger.info(f"{os.getcwd()}")
             shutil.rmtree(self.table[row]['directory'])
             self.logger.info(f"Model {row}'s directory "
                              f"{self.table[row]['directory']} removed.")
