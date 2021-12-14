@@ -386,9 +386,8 @@ class Plotter():
                              'only GaussHermite')
             fig = plt.figure(figsize=(27, 12))
             return fig
-        weight_solver = model.get_weights()
-        ws_type = type(weight_solver)
-        if ws_type is not weight_solvers.LegacyWeightSolver:
+        ws_type = self.settings.weight_solver_settings['type']
+        if ws_type is not 'LegacyWeightSolver':
             self.logger.info('kinematic maps cannot be plot for weight solver '
                              f'{ws_type} - only LegacyWeightSolver')
             fig = plt.figure(figsize=(27, 12))

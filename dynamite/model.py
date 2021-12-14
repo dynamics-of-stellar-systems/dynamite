@@ -638,7 +638,6 @@ class Model(object):
                 mod_dir=self.directory_noml,
                 parset=self.parset)
         orblib.get_orblib()
-        orblib.read_losvd_histograms()
         return orblib
 
     def get_weights(self, orblib=None):
