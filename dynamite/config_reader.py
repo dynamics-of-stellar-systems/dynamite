@@ -200,8 +200,8 @@ class Configuration(object):
             raise
         self.settings.add('io_settings', self.params['io_settings'])
         logger.debug('io_settings assigned to Settings object')
+        out_dir = self.settings.io_settings['output_directory']
         if reset_existing_output:
-            out_dir = self.settings.io_settings['output_directory']
             if os.path.isdir(out_dir):
                 shutil.rmtree(out_dir)
                 self.logger.info(f'Output directory tree {out_dir} removed.')
