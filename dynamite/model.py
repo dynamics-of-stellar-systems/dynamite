@@ -162,9 +162,12 @@ class AllModels(object):
         cwd = os.getcwd()
         os.chdir(self.config.settings.io_settings['model_directory'])
         for row in to_delete:
-            shutil.rmtree(self.table[row]['directory'])
-            self.logger.info(f"Model {row}'s directory "
-                             f"{self.table[row]['directory']} removed.")
+            try:
+                shutil.rmtree(self.table[row]['directory'])
+                self.logger.info(f"Model {row}'s directory "
+                                 f"{self.table[row]['directory']} removed.")
+            except FileNotFoundError:
+                pass
         os.chdir(cwd)
         self.table.remove_rows(to_delete)
         if table_modified:

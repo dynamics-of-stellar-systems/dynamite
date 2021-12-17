@@ -85,11 +85,14 @@ class ModelIterator(object):
                         f'{total_iter_count}"')
             status = model_inner_iterator.run_iteration()
             if plots:
-                the_plotter.make_chi2_vs_model_id_plot()
-                the_plotter.make_chi2_plot()
-                the_plotter.plot_kinematic_maps(kin_set='all',
-                                                cbar_lims='data')
-                plt.close('all') # just to make sure...
+                try:
+                    the_plotter.make_chi2_vs_model_id_plot()
+                    the_plotter.make_chi2_plot()
+                    the_plotter.plot_kinematic_maps(kin_set='all',
+                                                    cbar_lims='data')
+                    plt.close('all') # just to make sure...
+                except ValueError:
+                    pass
 
     def reattempt_failed_weights(self):
         config = self.config
@@ -370,12 +373,17 @@ class ModelInnerIterator(object):
                 msg = f'Unexpected: orbit library in row {row} not existing! ' \
                       'Will calculate it...'
                 self.logger.warning(msg)
-            orblib = mod.get_orblib()
-            orb_done = True
-            if get_weights:
-                weight_solver = mod.get_weights(orblib)
-                wts_done = True
-            else:
+            cwd = os.getcwd()
+            try:
+                orblib = mod.get_orblib()
+                orb_done = True
+                if get_weights:
+                    weight_solver = mod.get_weights(orblib)
+                    wts_done = True
+                else:
+                    mod.chi2, mod.kinchi2 = 0, 0
+            except RuntimeError:
+                os.chdir(cwd)
                 mod.chi2, mod.kinchi2 = 0, 0
         all_done = orb_done and wts_done
         time = np.datetime64('now', 'ms')
