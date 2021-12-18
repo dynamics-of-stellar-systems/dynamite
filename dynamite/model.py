@@ -167,7 +167,9 @@ class AllModels(object):
                 self.logger.info(f"Model {row}'s directory "
                                  f"{self.table[row]['directory']} removed.")
             except FileNotFoundError:
-                pass
+                self.logger.warning(f"Cannot remove model {row}'s directory "
+                                    f"{self.table[row]['directory']} - "
+                                    "file does not exist.")
         os.chdir(cwd)
         self.table.remove_rows(to_delete)
         if table_modified:

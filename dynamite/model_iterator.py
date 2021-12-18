@@ -92,7 +92,8 @@ class ModelIterator(object):
                                                     cbar_lims='data')
                     plt.close('all') # just to make sure...
                 except ValueError:
-                    pass
+                    self.logger.warning(f'Iteration {total_iter_count}: '
+                                        'plotting failed!')
 
     def reattempt_failed_weights(self):
         config = self.config
@@ -385,6 +386,13 @@ class ModelInnerIterator(object):
             except RuntimeError:
                 os.chdir(cwd)
                 mod.chi2, mod.kinchi2 = 0, 0
+                w_txt = f'Model {i+1} (row {row}): get_orblib ' \
+                        + ('or get_weights ' if get_weights else '')+'failed.'\
+                        + (' chi2 and kinchi2 set to 0!' if get_weights else '')
+                if get_weights:
+                    self.logger.error(w_txt)
+                else:
+                    self.logger.warning(w_txt)
         all_done = orb_done and wts_done
         time = np.datetime64('now', 'ms')
         # Build and write model_done_staging.ecsv
