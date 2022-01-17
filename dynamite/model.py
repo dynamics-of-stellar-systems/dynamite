@@ -712,7 +712,8 @@ class Model(object):
                                     'unchanged (not in parset).')
             else:
                 par = parspace_copy[par_idx]
-                par.value = par.get_raw_value_from_par_value(parset[par_name])
+                par.raw_value = \
+                    par.get_raw_value_from_par_value(parset[par_name])
         parspace_copy.validate_parspace()
         self.logger.debug('parset validated against parspace.')
 

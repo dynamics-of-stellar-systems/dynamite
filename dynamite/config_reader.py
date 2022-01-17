@@ -305,7 +305,7 @@ class Configuration(object):
 
                     # add component to system
                     c.validate()
-                    parset = {c.get_parname(p.name):p.value \
+                    parset = {c.get_parname(p.name):p.raw_value \
                               for p in c.parameters}
                     if not c.validate_parset(parset):
                         text = f'{c.name}: invalid parameters {parset}'
@@ -423,7 +423,7 @@ class Configuration(object):
                 raise ValueError(text)
 
         self.system.validate() # now also adds the right parameter sformat
-        parset = {p.name:p.value for p in self.system.parameters}
+        parset = {p.name:p.raw_value for p in self.system.parameters}
         if not self.system.validate_parset(parset):
             text = f'Invalid system parameters {parset}'
             self.logger.error(text)
