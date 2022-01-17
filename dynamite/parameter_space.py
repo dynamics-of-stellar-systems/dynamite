@@ -1,6 +1,6 @@
-import numpy as np
 import copy
 import logging
+import numpy as np
 from astropy.table import Table
 from dynamite import parameter_space as parspace
 
@@ -379,8 +379,8 @@ class ParameterGenerator(object):
                     self.lo.append(settings['lo'])
                     self.hi.append(settings['hi'])
                 else:
-                    self.lo.append([])
-                    self.hi.append([])
+                    self.lo.append(None)
+                    self.hi.append(None)
         except:
             text = 'ParameterGenerator: non-fixed parameters ' + \
                    'need hi and lo settings'
@@ -440,8 +440,7 @@ class ParameterGenerator(object):
                        "dynamite.AllModels instance"
             self.logger.error(errormsg)
             raise ValueError(errormsg)
-        else:
-            self.current_models = current_models
+        self.current_models = current_models
         self.check_stopping_critera()
         if len(self.current_models.table)==0:
             this_iter = 0
@@ -822,8 +821,8 @@ class GridWalk(ParameterGenerator):
                     self.minstep.append(settings['minstep'] \
                         if 'minstep' in settings else self.step)
                 else:
-                    self.step.append([])
-                    self.minstep.append([])
+                    self.step.append(None)
+                    self.minstep.append(None)
         except:
             text = 'GridWalk: non-fixed parameters need step setting'
             self.logger.error(text)
@@ -876,7 +875,6 @@ class GridWalk(ParameterGenerator):
             self.grid_walk(center=raw_center)
             # for m in self.model_list:
             #     self.logger.debug(f'{[(p.name, p.raw_value) for p in m]}')
-        return
 
     def grid_walk(self, center=None, par=None, eps=1e-6):
         """
@@ -1047,8 +1045,8 @@ class FullGrid(ParameterGenerator):
                     self.minstep.append(settings['minstep'] \
                         if 'minstep' in settings else self.step)
                 else:
-                    self.step.append([])
-                    self.minstep.append([])
+                    self.step.append(None)
+                    self.minstep.append(None)
         except:
             text = 'FullGrid: non-fixed parameters need step setting'
             self.logger.error(text)
@@ -1102,7 +1100,6 @@ class FullGrid(ParameterGenerator):
             self.grid(center=raw_center)
             # for m in self.model_list:
             #     self.logger.debug(f'{[(p.name, p.raw_value) for p in m]}')
-        return
 
     def grid(self, center=None, par=None, eps=1e-6):
         """
