@@ -71,6 +71,18 @@ class Parameter(object):
     def __repr__(self):
         return (f'{self.__class__.__name__}({self.__dict__})')
 
+    @property
+    def par_value(self):
+        """ getter method for par_value to be used like an attribute
+        """
+        return self.get_par_value_from_raw_value(self.raw_value)
+
+    @par_value.setter
+    def par_value(self, new_par_value):
+        """ setter method for par_value to be used like an attribute
+        """
+        self.raw_value = self.get_raw_value_from_par_value(new_par_value)
+
     def get_par_value_from_raw_value(self, raw_value):
         """Get parameter value from the raw value
 
@@ -230,9 +242,7 @@ class ParameterSpace(list):
         """
         t = Table()
         for par in self:
-            raw_value = par.raw_value
-            par_value = par.get_par_value_from_raw_value(raw_value)
-            t[par.name] = [par_value]
+            t[par.name] = [par.par_value]
         # extract 0th - i.e. the only - row from the table
         parset = t[0]
         return parset
@@ -495,8 +505,7 @@ class ParameterGenerator(object):
         if not model:
             self.logger.error('No or empty model')
             raise ValueError('No or empty model')
-        raw_row = [p.raw_value for p in model]
-        row = self.par_space.get_param_value_from_raw_value(raw_row)
+        row = [p.par_value for p in model]
         # for all columns after parameters, add an entry to this row
         idx_start = self.par_space.n_par
         idx_end = len(self.current_models.table.colnames)
@@ -571,9 +580,7 @@ class ParameterGenerator(object):
             isnew = False
         else:
             isnew = True
-            raw_model_values = [p.raw_value for p in model]
-            model_values = \
-                self.par_space.get_param_value_from_raw_value(raw_model_values)
+            model_values = [p.par_value for p in model]
             if len(self.current_models.table) > 0:
                 for mod in self.current_models.table[self.par_space.par_names]:
                     if np.allclose(list(mod), model_values, rtol=eps):
@@ -723,8 +730,7 @@ class LegacyGridSearch(ParameterGenerator):
         self.model_list = []
         step_ok = True
         while step_ok and len(self.model_list) == 0:
-            for paridx in range(len(self.new_parset)):
-                par = self.new_parset[paridx]
+            for paridx, par in enumerate(self.new_parset):
                 if par.fixed: # parameter fixed -> do nothing
                     continue
                 lo = self.lo[paridx] #par.par_generator_settings['lo']
@@ -733,7 +739,7 @@ class LegacyGridSearch(ParameterGenerator):
                 minstep = self.minstep[paridx]
                 for m in prop_list: # for all models within threshold_del_chi2
                     for p in self.new_parset:
-                        p.raw_value = p.get_raw_value_from_par_value(m[p.name])
+                        p.par_value = m[p.name]
                     raw_center = self.new_parset[paridx].raw_value
                     for s in [-1, 1]:
                         new_raw_value = np.clip(raw_center + s*step, lo, hi)
