@@ -1,6 +1,6 @@
-import numpy as np
 import copy
 import logging
+import numpy as np
 from astropy.table import Table
 from dynamite import parameter_space as parspace
 
@@ -19,7 +19,8 @@ class Parameter(object):
         a format string for printing parameter values
     value : float
         the value of this parameter in a model; the config file contains an
-        initial value, this is updated during the parameter search
+        initial value, this is updated during the parameter search; this value
+        can be in log or linear units, depending on the config file
     par_generator_settings : dict
         settings for the parameter generator
     logarithmic : Bool
@@ -41,7 +42,7 @@ class Parameter(object):
         self.fixed = fixed
         self.LaTeX = LaTeX
         self.sformat = sformat
-        self.value = value
+        self.raw_value = value
         self.par_generator_settings = par_generator_settings
         self.logarithmic = logarithmic
         self.__class__.attributes = list(self.__dict__.keys())
@@ -69,6 +70,18 @@ class Parameter(object):
 
     def __repr__(self):
         return (f'{self.__class__.__name__}({self.__dict__})')
+
+    @property
+    def par_value(self):
+        """ getter method for par_value to be used like an attribute
+        """
+        return self.get_par_value_from_raw_value(self.raw_value)
+
+    @par_value.setter
+    def par_value(self, new_par_value):
+        """ setter method for par_value to be used like an attribute
+        """
+        self.raw_value = self.get_raw_value_from_par_value(new_par_value)
 
     def get_par_value_from_raw_value(self, raw_value):
         """Get parameter value from the raw value
@@ -229,9 +242,7 @@ class ParameterSpace(list):
         """
         t = Table()
         for par in self:
-            raw_value = par.value
-            par_value = par.get_par_value_from_raw_value(raw_value)
-            t[par.name] = [par_value]
+            t[par.name] = [par.par_value]
         # extract 0th - i.e. the only - row from the table
         parset = t[0]
         return parset
@@ -256,10 +267,10 @@ class ParameterSpace(list):
         """
         isvalid = True
         for comp in self.system.cmp_list:
-            par = {comp.get_parname(p.name):p.value for p in parset \
+            par = {comp.get_parname(p.name):p.raw_value for p in parset \
                    if p.name.rfind(f'{comp.name}')>=0}
             isvalid = isvalid and comp.validate_parset(par)
-        par = {p.name:p.value for p in parset \
+        par = {p.name:p.raw_value for p in parset \
                if p.name in [n.name for n in self.system.parameters]}
         isvalid = isvalid and self.system.validate_parset(par)
         return isvalid
@@ -284,14 +295,14 @@ class ParameterSpace(list):
 
         """
         for comp in self.system.cmp_list:
-            par = {comp.get_parname(p.name):p.value for p in self \
+            par = {comp.get_parname(p.name):p.raw_value for p in self \
                    if p.name.rfind(f'{comp.name}')>=0}
             if not comp.validate_parset(par):
                 text = f'Parameters {par} of component {comp.name} failed ' \
                        'to validate.'
                 self.logger.error(text)
                 raise ValueError(text)
-        par = {p.name:p.value for p in self \
+        par = {p.name:p.raw_value for p in self \
                if p.name in [n.name for n in self.system.parameters]}
         if not self.system.validate_parset(par):
             text = f'System parameters {par} failed to validate.'
@@ -303,29 +314,29 @@ class ParameterSpace(list):
                 try:
                     lo = p.par_generator_settings['lo']
                 except:
-                    text = f"Parameter {p.name}={p.value}: cannot check " \
+                    text = f"Parameter {p.name}={p.raw_value}: cannot check " \
                            "lower bound due to missing 'lo' setting."
                     self.logger.debug(text)
                 else:
-                    if lo > p.value:
-                        text = f'Parameter {p.name}={p.value} out of ' \
-                               f'bounds: violates {lo}<={p.value}.'
+                    if lo > p.raw_value:
+                        text = f'Parameter {p.name}={p.raw_value} out of ' \
+                               f'bounds: violates {lo}<={p.raw_value}.'
                         self.logger.error(text)
                         raise ValueError(text)
                 try:
                     hi = p.par_generator_settings['hi']
                 except:
-                    text = f"Parameter {p.name}={p.value}: cannot check " \
+                    text = f"Parameter {p.name}={p.raw_value}: cannot check " \
                            "upper bound due to missing 'hi' setting."
                     self.logger.debug(text)
                 else:
-                    if p.value > hi:
-                        text = f'Parameter {p.name}={p.value} out of ' \
-                               f'bounds: violates {p.value}<={hi}.'
+                    if p.raw_value > hi:
+                        text = f'Parameter {p.name}={p.raw_value} out of ' \
+                               f'bounds: violates {p.raw_value}<={hi}.'
                         self.logger.error(text)
                         raise ValueError(text)
             else:
-                self.logger.debug(f"Parameter {p.name}={p.value}: cannot " \
+                self.logger.debug(f"Parameter {p.name}={p.raw_value}: cannot "\
                     "check bounds due to missing 'lo' and 'hi' settings.")
 
 
@@ -378,8 +389,8 @@ class ParameterGenerator(object):
                     self.lo.append(settings['lo'])
                     self.hi.append(settings['hi'])
                 else:
-                    self.lo.append([])
-                    self.hi.append([])
+                    self.lo.append(None)
+                    self.hi.append(None)
         except:
             text = 'ParameterGenerator: non-fixed parameters ' + \
                    'need hi and lo settings'
@@ -406,7 +417,7 @@ class ParameterGenerator(object):
         This is a wrapper method around the ``specific_generate_method`` of
         child generator classes. This wrapper does the following:
 
-            1.   evaluates stopping criteria, and stop if necessary
+            1.   evaluates stopping criteria, and stops if necessary
             2.   runs the ``specific_generate_method`` of the child class, which
                  updates ``self.model_list`` with a list of propsal models
             3.   removes previously run and invalid models from ``self.model_list``
@@ -439,8 +450,7 @@ class ParameterGenerator(object):
                        "dynamite.AllModels instance"
             self.logger.error(errormsg)
             raise ValueError(errormsg)
-        else:
-            self.current_models = current_models
+        self.current_models = current_models
         self.check_stopping_critera()
         if len(self.current_models.table)==0:
             this_iter = 0
@@ -495,8 +505,7 @@ class ParameterGenerator(object):
         if not model:
             self.logger.error('No or empty model')
             raise ValueError('No or empty model')
-        raw_row = [p.value for p in model]
-        row = self.par_space.get_param_value_from_raw_value(raw_row)
+        row = [p.par_value for p in model]
         # for all columns after parameters, add an entry to this row
         idx_start = self.par_space.n_par
         idx_end = len(self.current_models.table.colnames)
@@ -571,9 +580,7 @@ class ParameterGenerator(object):
             isnew = False
         else:
             isnew = True
-            raw_model_values = [p.value for p in model]
-            model_values = \
-                self.par_space.get_param_value_from_raw_value(raw_model_values)
+            model_values = [p.par_value for p in model]
             if len(self.current_models.table) > 0:
                 for mod in self.current_models.table[self.par_space.par_names]:
                     if np.allclose(list(mod), model_values, rtol=eps):
@@ -713,7 +720,7 @@ class LegacyGridSearch(ParameterGenerator):
         """
         if len(self.current_models.table) == 0:
             # The 'zeroth iteration' results in only one model
-            # (all parameters at their .value level)
+            # (all parameters at their .raw_value level)
             self.model_list = [[p for p in self.par_space]]
             return ###########################################################
         min_chi2 = np.min(self.current_models.table[self.chi2])
@@ -723,8 +730,7 @@ class LegacyGridSearch(ParameterGenerator):
         self.model_list = []
         step_ok = True
         while step_ok and len(self.model_list) == 0:
-            for paridx in range(len(self.new_parset)):
-                par = self.new_parset[paridx]
+            for paridx, par in enumerate(self.new_parset):
                 if par.fixed: # parameter fixed -> do nothing
                     continue
                 lo = self.lo[paridx] #par.par_generator_settings['lo']
@@ -733,12 +739,12 @@ class LegacyGridSearch(ParameterGenerator):
                 minstep = self.minstep[paridx]
                 for m in prop_list: # for all models within threshold_del_chi2
                     for p in self.new_parset:
-                        p.value = p.get_raw_value_from_par_value(m[p.name])
-                    center_value = self.new_parset[paridx].value
+                        p.par_value = m[p.name]
+                    raw_center = self.new_parset[paridx].raw_value
                     for s in [-1, 1]:
-                        new_value = np.clip(center_value + s*step, lo, hi)
-                        if abs(new_value-par.value) >= minstep:
-                            self.new_parset[paridx].value = new_value
+                        new_raw_value = np.clip(raw_center + s*step, lo, hi)
+                        if abs(new_raw_value-par.raw_value) >= minstep:
+                            self.new_parset[paridx].raw_value = new_raw_value
                             if self._is_newmodel(self.new_parset, eps=1e-10):
                                 self.model_list.append\
                                   ([copy.deepcopy(p) for p in self.new_parset])
@@ -821,8 +827,8 @@ class GridWalk(ParameterGenerator):
                     self.minstep.append(settings['minstep'] \
                         if 'minstep' in settings else self.step)
                 else:
-                    self.step.append([])
-                    self.minstep.append([])
+                    self.step.append(None)
+                    self.minstep.append(None)
         except:
             text = 'GridWalk: non-fixed parameters need step setting'
             self.logger.error(text)
@@ -861,7 +867,7 @@ class GridWalk(ParameterGenerator):
         """
         if len(self.current_models.table) == 0:
             # The 'zeroth iteration' results in only one model
-            # (all parameters at their .value level)
+            # (all parameters at their .raw_value level)
             self.model_list = [[p for p in self.par_space]]
         else: # Subsequent iterations...
             # center criterion: min(chi2)
@@ -874,8 +880,7 @@ class GridWalk(ParameterGenerator):
             self.model_list = []
             self.grid_walk(center=raw_center)
             # for m in self.model_list:
-            #     self.logger.debug(f'{[(p.name, p.value) for p in m]}')
-        return
+            #     self.logger.debug(f'{[(p.name, p.raw_value) for p in m]}')
 
     def grid_walk(self, center=None, par=None, eps=1e-6):
         """
@@ -916,8 +921,8 @@ class GridWalk(ParameterGenerator):
                           f'n_par={self.par_space.n_par}')
 
         if par.fixed:
-            par_values = [par.value]
-            if abs(center[paridx] - par.value) > eps:
+            raw_values = [par.raw_value]
+            if abs(center[paridx] - par.raw_value) > eps:
                 text='Something is wrong: fixed parameter value not in center'
                 self.logger.error(text)
                 raise ValueError(text)
@@ -926,34 +931,34 @@ class GridWalk(ParameterGenerator):
             hi = self.hi[paridx]
             step = self.step[paridx]
             minstep = self.minstep[paridx]
-            # up to 3 *distinct* par_values (clipped lo, mid, hi values)
-            par_values = []
+            # up to 3 *distinct* raw_values (clipped lo, mid, hi values)
+            raw_values = []
             # start with lo...
             delta = center[paridx] - self.clip(center[paridx] - step, lo, hi)
             if abs(delta) >= minstep:
-                par_values.append(self.clip(center[paridx] - step, lo, hi))
+                raw_values.append(self.clip(center[paridx] - step, lo, hi))
             # now mid... tol(erance) is necessary in case minstep < eps
-            if len(par_values) > 0:
-                # check for values differing by more than eps...
-                tol = abs(self.clip(center[paridx], lo, hi) - par_values[0])
-                if abs(par_values[0]) > eps: # relative tolerance usable=?
-                    tol /= abs(par_values[0])
+            if len(raw_values) > 0:
+                # check for raw values differing by more than eps...
+                tol = abs(self.clip(center[paridx], lo, hi) - raw_values[0])
+                if abs(raw_values[0]) > eps: # relative tolerance usable=?
+                    tol /= abs(raw_values[0])
                 if tol > eps:
-                    par_values.append(self.clip(center[paridx], lo, hi))
+                    raw_values.append(self.clip(center[paridx], lo, hi))
             else:
-                par_values.append(self.clip(center[paridx], lo, hi))
+                raw_values.append(self.clip(center[paridx], lo, hi))
             # and now hi...
             delta = self.clip(center[paridx] + step, lo, hi) - center[paridx]
             if abs(delta) >= minstep:
-                tol = abs(self.clip(center[paridx]+step,lo,hi)-par_values[-1])
-                if abs(par_values[-1]) > eps:
-                    tol /= abs(par_values[-1])
+                tol = abs(self.clip(center[paridx]+step,lo,hi)-raw_values[-1])
+                if abs(raw_values[-1]) > eps:
+                    tol /= abs(raw_values[-1])
                 if tol > eps:
-                    par_values.append(self.clip(center[paridx]+step, lo, hi))
+                    raw_values.append(self.clip(center[paridx]+step, lo, hi))
 
-        for value in par_values:
+        for raw_value in raw_values:
             parcpy = copy.deepcopy(par)
-            parcpy.value = value
+            parcpy.raw_value = raw_value
             if not self.model_list: # add first entry if model_list is empty
                 self.model_list = [[parcpy]]
                 models_prev = [[]]
@@ -961,18 +966,19 @@ class GridWalk(ParameterGenerator):
                                   f'{parcpy.name}')
             elif parcpy.name in [p.name for p in self.model_list[0]]:
                 # in this case, create new (partial) model by copying last
-                # models and setting the new parameter value
+                # models and setting the new parameter raw_value
                 for m in models_prev:
                     new_model = m + [parcpy]
                     self.model_list.append(new_model)
                 self.logger.debug(f'{parcpy.name} is in '
                       f'{[p.name for p in self.model_list[0]]}, '
-                      f'added {parcpy.name}={parcpy.value}')
+                      f'added {parcpy.name}={parcpy.raw_value}')
             else: # new parameter: append it to existing (partial) models
                 models_prev = copy.deepcopy(self.model_list)
                 for m in self.model_list:
                     m.append(parcpy)
-                self.logger.debug(f'new parameter {parcpy.name}={parcpy.value}')
+                self.logger.debug(f'new parameter {parcpy.name}='
+                                  f'{parcpy.raw_value}')
 
         # call recursively until all paramaters are done:
         if paridx < self.par_space.n_par - 1:
@@ -1045,8 +1051,8 @@ class FullGrid(ParameterGenerator):
                     self.minstep.append(settings['minstep'] \
                         if 'minstep' in settings else self.step)
                 else:
-                    self.step.append([])
-                    self.minstep.append([])
+                    self.step.append(None)
+                    self.minstep.append(None)
         except:
             text = 'FullGrid: non-fixed parameters need step setting'
             self.logger.error(text)
@@ -1086,7 +1092,7 @@ class FullGrid(ParameterGenerator):
         """
         if len(self.current_models.table) == 0:
             # The 'zeroth iteration' results in only one model
-            # (all parameters at their .value level)
+            # (all parameters at their .raw_value level)
             self.model_list = [[p for p in self.par_space]]
         else: # Subsequent iterations...
             # center criterion: min(chi2)
@@ -1099,8 +1105,7 @@ class FullGrid(ParameterGenerator):
             self.model_list = []
             self.grid(center=raw_center)
             # for m in self.model_list:
-            #     self.logger.debug(f'{[(p.name, p.value) for p in m]}')
-        return
+            #     self.logger.debug(f'{[(p.name, p.raw_value) for p in m]}')
 
     def grid(self, center=None, par=None, eps=1e-6):
         """
@@ -1144,8 +1149,8 @@ class FullGrid(ParameterGenerator):
                           f'n_par={self.par_space.n_par}')
 
         if par.fixed:
-            par_values = [par.value]
-            if abs(center[paridx] - par.value) > eps:
+            raw_values = [par.raw_value]
+            if abs(center[paridx] - par.raw_value) > eps:
                 text='Something is wrong: fixed parameter value not in center'
                 self.logger.error(text)
                 raise ValueError(text)
@@ -1154,32 +1159,32 @@ class FullGrid(ParameterGenerator):
             hi = self.hi[paridx]
             step = self.step[paridx]
             minstep = self.minstep[paridx]
-            # up to 3 *distinct* par_values (clipped lo, mid, hi values)
-            par_values = []
-            par_val = center[paridx]
+            # up to 3 *distinct* par_raw (clipped lo, mid, hi values)
+            raw_values = []
+            raw_value = center[paridx]
             # add the center
-            par_values.append(self.clip(par_val, lo, hi))
+            raw_values.append(self.clip(raw_value, lo, hi))
             # start with lo...
-            while par_val >= lo:
-                new_val = self.clip(par_val-step, lo, hi)
-                if abs(par_val-new_val) >= max(minstep,eps):
-                    par_values.append(new_val)
+            while raw_value >= lo:
+                raw_new = self.clip(raw_value-step, lo, hi)
+                if abs(raw_value-raw_new) >= max(minstep,eps):
+                    raw_values.append(raw_new)
                 else:
                     break
-                par_val = new_val
+                raw_value = raw_new
             # now hi...
-            par_val = center[paridx]
-            while par_val <= hi:
-                new_val = self.clip(par_val+step, lo, hi)
-                if abs(par_val-new_val) >= max(minstep,eps):
-                    par_values.append(new_val)
+            raw_value = center[paridx]
+            while raw_value <= hi:
+                raw_new = self.clip(raw_value+step, lo, hi)
+                if abs(raw_value-raw_new) >= max(minstep,eps):
+                    raw_values.append(raw_new)
                 else:
                     break
-                par_val = new_val
+                raw_value = raw_new
 
-        for value in par_values:
+        for raw_value in raw_values:
             parcpy = copy.deepcopy(par)
-            parcpy.value = value
+            parcpy.raw_value = raw_value
             if not self.model_list: # add first entry if model_list is empty
                 self.model_list = [[parcpy]]
                 models_prev = [[]]
@@ -1187,18 +1192,19 @@ class FullGrid(ParameterGenerator):
                                   f'{parcpy.name}')
             elif parcpy.name in [p.name for p in self.model_list[0]]:
                 # in this case, create new (partial) model by copying last
-                # models and setting the new parameter value
+                # models and setting the new parameter raw_value
                 for m in models_prev:
                     new_model = m + [parcpy]
                     self.model_list.append(new_model)
                 self.logger.debug(f'{parcpy.name} is in '
                       f'{[p.name for p in self.model_list[0]]}, '
-                      f'added {parcpy.name}={parcpy.value}')
+                      f'added {parcpy.name}={parcpy.raw_value}')
             else: # new parameter: append it to existing (partial) models
                 models_prev = copy.deepcopy(self.model_list)
                 for m in self.model_list:
                     m.append(parcpy)
-                self.logger.debug(f'new parameter {parcpy.name}={parcpy.value}')
+                self.logger.debug(f'new parameter {parcpy.name}='
+                                  f'{parcpy.raw_value}')
 
         # call recursively until all paramaters are done:
         if paridx < self.par_space.n_par - 1:
