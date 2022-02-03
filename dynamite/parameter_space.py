@@ -408,7 +408,7 @@ class ParameterGenerator(object):
 
             1.   evaluates stopping criteria, and stop if necessary
             2.   runs the ``specific_generate_method`` of the child class, which
-                 updates ``self.model_list`` with a list of propsal models
+                 updates ``self.model_list`` with a list of proposal models
             3.   removes previously run and invalid models from ``self.model_list``
             4.   converts parameters from raw_values to par_values
             5.   adds new, valid models to ``current_models.table``
@@ -507,12 +507,9 @@ class ParameterGenerator(object):
             elif self.current_models.table.columns[i].name == 'which_iter':
                 # iteration
                 val = n_iter
-            elif self.current_models.table.columns[i].name == 'directory':
-                val = None
             else:
-                # empty entry for all other columns
-                dtype = self.current_models.table.columns[i].dtype
-                val = np.dtype(dtype).type(0)
+                # empty/nan/'None' entry for all other columns
+                val = self.current_models.table.columns[i].dtype.type(None)
             row.append(val)
         self.current_models.table.add_row(row)
 
@@ -716,7 +713,7 @@ class LegacyGridSearch(ParameterGenerator):
             # (all parameters at their .value level)
             self.model_list = [[p for p in self.par_space]]
             return ###########################################################
-        min_chi2 = np.min(self.current_models.table[self.chi2])
+        min_chi2 = np.nanmin(self.current_models.table[self.chi2])
         prop_mask = \
             abs(self.current_models.table[self.chi2]-min_chi2) <= self.thresh
         prop_list = self.current_models.table[prop_mask]
@@ -779,9 +776,10 @@ class LegacyGridSearch(ParameterGenerator):
             mask = self.current_models.table['which_iter'] == last_iter-1
             models1 = self.current_models.table[mask]
             # Don't use abs() so we stop on increasing chi2 values, too:
-            delta_chi2 = np.min(models1[self.chi2])-np.min(models0[self.chi2])
+            delta_chi2 = np.nanmin(models1[self.chi2]) \
+                         - np.nanmin(models0[self.chi2])
             if self.min_delta_chi2_rel:
-                delta_chi2 /= np.min(models1[self.chi2])
+                delta_chi2 /= np.nanmin(models1[self.chi2])
                 delta_chi2 /= self.min_delta_chi2_rel
             else:
                 delta_chi2 /= self.min_delta_chi2_abs
@@ -865,7 +863,7 @@ class GridWalk(ParameterGenerator):
             self.model_list = [[p for p in self.par_space]]
         else: # Subsequent iterations...
             # center criterion: min(chi2)
-            center_idx = np.argmin(self.current_models.table[self.chi2])
+            center_idx = np.nanargmin(self.current_models.table[self.chi2])
             n_par = self.par_space.n_par
             center = list(self.current_models.table[center_idx])[:n_par]
             raw_center = self.par_space.get_raw_value_from_param_value(center)
@@ -1000,9 +998,10 @@ class GridWalk(ParameterGenerator):
             mask = self.current_models.table['which_iter'] == last_iter-1
             models1 = self.current_models.table[mask]
             # Don't use abs() so we stop on increasing chi2 values, too:
-            delta_chi2 = np.min(models1[self.chi2])-np.min(models0[self.chi2])
+            delta_chi2 = np.nanmin(models1[self.chi2]) \
+                         - np.nanmin(models0[self.chi2])
             if self.min_delta_chi2_rel:
-                delta_chi2 /= np.min(models1[self.chi2])
+                delta_chi2 /= np.nanmin(models1[self.chi2])
                 delta_chi2 /= self.min_delta_chi2_rel
             else:
                 delta_chi2 /= self.min_delta_chi2_abs
@@ -1090,7 +1089,7 @@ class FullGrid(ParameterGenerator):
             self.model_list = [[p for p in self.par_space]]
         else: # Subsequent iterations...
             # center criterion: min(chi2)
-            center_idx = np.argmin(self.current_models.table[self.chi2])
+            center_idx = np.nanargmin(self.current_models.table[self.chi2])
             n_par = self.par_space.n_par
             center = list(self.current_models.table[center_idx])[:n_par]
             raw_center = self.par_space.get_raw_value_from_param_value(center)
@@ -1224,9 +1223,10 @@ class FullGrid(ParameterGenerator):
             mask = self.current_models.table['which_iter'] == last_iter-1
             models1 = self.current_models.table[mask]
             # Don't use abs() so we stop on increasing chi2 values, too:
-            delta_chi2 = np.min(models1[self.chi2])-np.min(models0[self.chi2])
+            delta_chi2 = np.nanmin(models1[self.chi2]) \
+                         - np.nanmin(models0[self.chi2])
             if self.min_delta_chi2_rel:
-                delta_chi2 /= np.min(models1[self.chi2])
+                delta_chi2 /= np.nanmin(models1[self.chi2])
                 delta_chi2 /= self.min_delta_chi2_rel
             else:
                 delta_chi2 /= self.min_delta_chi2_abs

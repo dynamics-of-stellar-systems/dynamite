@@ -473,7 +473,7 @@ class AllModels(object):
             self.logger.error(text)
             raise ValueError(text)
         table = copy.deepcopy(self.table)
-        table.sort(which_chi2)
+        table.sort(which_chi2) # nan values will be sorted to the end
         table = table[:n]
         return table
 
@@ -510,7 +510,7 @@ class AllModels(object):
                    f'but it is {which_chi2}'
             self.logger.error(text)
             raise ValueError(text)
-        chi2_min = min(self.table[which_chi2])
+        chi2_min = np.nanmin(self.table[which_chi2])
         if delta is None:
             delta = chi2_min * 0.1
         models = self.table[self.table[which_chi2] <= chi2_min+delta]
