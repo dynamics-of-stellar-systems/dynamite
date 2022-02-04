@@ -121,8 +121,8 @@ parameter_space_settings:
         threshold_del_chi2_as_frac_of_sqrt2nobs: 0.1
     stopping_criteria:
         min_delta_chi2_rel : 0.1
-        n_max_mods : 20
-        n_max_iter : 5
+        n_max_mods : 3
+        n_max_iter : 2
 
 multiprocessing_settings:
   ncpus: 4

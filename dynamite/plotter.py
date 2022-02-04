@@ -6,6 +6,8 @@ import os
 import scipy.integrate
 from scipy.special import erf
 from scipy.interpolate import UnivariateSpline
+from scipy.sparse import csr_matrix
+from scipy.sparse.csgraph import maximum_bipartite_matching
 from copy import deepcopy
 import matplotlib as mpl
 from matplotlib.ticker import MaxNLocator
@@ -16,6 +18,9 @@ from plotbin import display_pixels
 from dynamite import kinematics
 from dynamite import weight_solvers
 from dynamite import physical_system as physys
+
+class ReorderLOSVDError(Exception):
+    pass
 
 class Plotter():
     """Class to hold plotting routines
@@ -290,8 +295,12 @@ class Plotter():
         #
         pass
 
-    def plot_kinematic_maps(self, model=None, kin_set=0,
-                            cbar_lims='data', figtype=None):
+    def plot_kinematic_maps(self,
+                            model=None,
+                            kin_set=0,
+                            cbar_lims='default',
+                            figtype=None,
+                            **kwargs):
         """
         Generates a kinematic map of a model with v, sigma, h3, h4...
 
@@ -319,8 +328,9 @@ class Plotter():
         cbar_lims : STR
             Determines which set of values is used to determine the
             limiting values defining the colorbar used in the plots.
-            Accepted values: 'model', 'data', 'combined'.
-            The default is 'data'.
+            Accepted values: 'model', 'data', 'combined', 'default'.
+            The default is 'data' for GaussHermite kinematics, and [0,3] for
+            BayesLOSVD kinematics where reduced chi2 values are plotted.
         figtype : STR, optional
             Determines the file extension to use when saving the figure.
             If None, the default setting is used ('.png').
@@ -349,6 +359,7 @@ class Plotter():
         stars = \
           self.system.get_component_from_class(physys.TriaxialVisibleComponent)
         n_kin = len(stars.kinematic_data)
+
         #########################################
         if kin_set == 'all':
             self.logger.info(f'Plotting kinematic maps for {n_kin} kin_sets.')
@@ -384,25 +395,285 @@ class Plotter():
 
         if kin_type is kinematics.GaussHermite:
             if ws_type is weight_solvers.LegacyWeightSolver:
+                if cbar_lims=='default':
+                    cbar_lims = 'data'
                 fig = self._plot_kinematic_maps_gaussherm(
                     model,
                     kin_set,
-                    cbar_lims=cbar_lims)
+                    cbar_lims=cbar_lims,
+                    **kwargs)
             else:
-                self.logger.info(f'kinematic maps cannot be plot for {kin_type} - '
-                                 'only GaussHermite')
+                self.logger.info(f'Gauss Hermite kinematic maps can only be '
+                                 'plot if LegacyWeightSolver is used')
                 fig = plt.figure(figsize=(27, 12))
         elif kin_type is kinematics.BayesLOSVD:
+            if cbar_lims=='default':
+                cbar_lims = [0,3]
             fig = self._plot_kinematic_maps_bayeslosvd(
                 model,
                 kin_set,
-                cbar_lims=cbar_lims)
+                cbar_lims=cbar_lims,
+                **kwargs)
 
         figname = self.plotdir + f'kinematic_map_{kin_name}' + figtype
-        fig.savefig(figname)
+        fig.savefig(figname, dpi=300)
         return fig
 
-    def _plot_kinematic_maps_gaussherm(model, kin_set, cbar_lims='data'):
+    def _plot_kinematic_maps_bayeslosvd(self,
+                                        model,
+                                        kin_set,
+                                        cmap=None,
+                                        cbar_lims=[0,3],
+                                        color_dat='0.3',
+                                        color_mod='C2'):
+        """Short summary.
+
+        Parameters
+        ----------
+        model : type
+            Description of parameter `model`.
+        kin_set : type
+            Description of parameter `kin_set`.
+        cmap : type
+            Description of parameter `cmap`.
+        cbar_lims : type
+            Description of parameter `cbar_lims`.
+        color_dat : type
+            Description of parameter `color_dat`.
+        color_mod : type
+            Description of parameter `color_mod`.
+
+        Returns
+        -------
+        type
+            Description of returned object.
+
+        """
+        # get the data
+        stars = \
+          self.system.get_component_from_class(physys.TriaxialVisibleComponent)
+        kin_set = stars.kinematic_data[kin_set]
+        # helper function to decide which losvds to plot
+        def dissimilar_subset_greedy_search(distance_matrix, target_size):
+            """Greedy algorithm to find dissimilar subsets
+            Args:
+                distance_matrix (array): 2D matrix of pairwise distances.
+                target_size (int): Desired size of subset.
+            Returns:
+                tuple: (list of index values of subset in distance_matrix,
+                    minimum pairwise distance in this subset)
+            """
+            n = distance_matrix.shape[0]
+            idx = np.unravel_index(np.argmax(distance_matrix), distance_matrix.shape)
+            idx = list(idx)
+            tmp = distance_matrix[idx][:,idx]
+            for n0 in range(3, target_size+1):
+                iii = list(range(n))
+                for idx0 in idx:
+                    iii.remove(idx0)
+                ttt = []
+                for i in iii:
+                    idx_tmp = idx + [i]
+                    tmp = distance_matrix[idx_tmp][:,idx_tmp]
+                    ttt += [np.min(tmp[np.triu_indices(n0, k=1)])]
+                idx += [iii[np.argmax(ttt)]]
+            tmp = distance_matrix[idx][:,idx]
+            min_pairwise_dist = np.min(tmp[np.triu_indices(target_size, k=1)])
+            return idx, min_pairwise_dist
+        # helper function to get positions of a regular 3x3 grid on the map
+        def get_coords_of_regular_3by3_grid():
+            # get range of x and y values
+            minx = np.min(kin_set.data['xbin'])
+            maxx = np.max(kin_set.data['xbin'])
+            x = np.array([minx, maxx])
+            miny = np.min(kin_set.data['ybin'])
+            maxy = np.max(kin_set.data['ybin'])
+            y = np.array([miny, maxy])
+            x, y = kin_set.convert_to_plot_coords(x, y)
+            # get 3 evenly spaced coords in x and y
+            # taking every other element from 7 points i.e - 0 1 0 1 0 1 0
+            xgrid = np.linspace(*x, 7)[1::2]
+            ygrid = np.linspace(*y, 7)[1::2]
+            xgrid = np.sort(xgrid) # sort left to right
+            ygrid = np.sort(ygrid)[::-1] # sort top to bottom
+            xgrid, ygrid = np.meshgrid(xgrid, ygrid, indexing='xy')
+            xgrid, ygrid = np.ravel(xgrid), np.ravel(ygrid)
+            return xgrid, ygrid
+        # helper function to map positions of chosen LOSVDs to regular 3x3 grid
+        def find_min_dist_matching_of_bipartite_graph(dist,
+                                                      n_iter_binary_search=15):
+            # dist = distance matrix between 2 sets of points (a1, a2, ..., aN)
+            # and (b1, b2, ..., bN). We want to find a 1-1 matching between a's
+            # and b's so that distances between matched pairs are not too big.
+            # The decision problem version of this optimization problem is to
+            # find the smallest distance threshold t such that the bipartite
+            # graph G has a matching, where G has nodes connected iff they are
+            # within distance t. This function finds this threshold using a
+            # binary search.
+            def has_complete_matching(threshold):
+                G = csr_matrix(dist<threshold)
+                matching = maximum_bipartite_matching(G, perm_type='columns')
+                return -1 not in matching
+            lo, hi = np.min(dist), np.max(dist)
+            test = (has_complete_matching(lo), has_complete_matching(hi))
+            if test==(False,True):
+                pass
+            else:
+                raise ReorderLOSVDError('Error Reordering LOSVDs')
+            for i in range(n_iter_binary_search):
+                med = np.mean([lo, hi])
+                med_has_matching = has_complete_matching(med)
+                if med_has_matching:
+                    lo = lo
+                    hi = med
+                else:
+                    lo = med
+                    hi = hi
+            if has_complete_matching(lo):
+                threshold = lo
+            elif has_complete_matching(hi):
+                threshold = hi
+            else:
+                raise ReorderLOSVDError('Error Reordering LOSVDs')
+            return threshold
+        # helper function to reorder the plotted LOSVDs into a sensible order
+        def reorder_losvds(idx_to_plot):
+            x = kin_set.data['xbin'][idx_to_plot]
+            y = kin_set.data['ybin'][idx_to_plot]
+            x, y = kin_set.convert_to_plot_coords(x, y)
+            xg, yg = get_coords_of_regular_3by3_grid()
+            # get distance between plot positions and regular grid
+            dist = (x[:,np.newaxis] - xg[np.newaxis,:])**2
+            dist += (y[:,np.newaxis] - yg[np.newaxis,:])**2
+            dist = dist**0.5
+            threshold = find_min_dist_matching_of_bipartite_graph(dist)
+            graph = csr_matrix(dist<threshold)
+            idx_reorder = maximum_bipartite_matching(graph, perm_type='columns')
+            idx_to_plot = np.array(idx_to_plot)[idx_reorder]
+            return idx_to_plot
+        # get the model LOSVDs
+        orblib = model.get_orblib()
+        weight_solver = model.get_weights(orblib)
+        orblib.read_losvd_histograms()
+        losvd_orblib = kin_set.transform_orblib_to_observables(
+            orblib.losvd_histograms[0],
+            None)
+        losvd_model = np.einsum('ijk,i->jk', losvd_orblib, model.weights)
+        # normalise LOSVDs to same scale at data, i.e. summing to 1
+        losvd_model = (losvd_model.T/np.sum(losvd_model, 1)).T
+        # get chi2's
+        chi2_per_losvd_bin = losvd_model - kin_set.data['losvd']
+        chi2_per_losvd_bin = chi2_per_losvd_bin/kin_set.data['dlosvd']
+        chi2_per_losvd_bin = chi2_per_losvd_bin**2.
+        chi2_per_apertur = np.sum(chi2_per_losvd_bin, 1)
+        reduced_chi2_per_apertur = chi2_per_apertur/kin_set.data.meta['nvbins']
+        # pick a subset of 9 LOSVDs to plot which are not similar to one another
+        dist = 1.*kin_set.data['losvd']
+        dist = dist[:,np.newaxis,:] - dist[np.newaxis,:,:]
+        dist = np.sum(dist**2., 2)**0.5
+        idx_to_plot, _ = dissimilar_subset_greedy_search(dist, 9)
+        # reorder losvds so they increase like "reading direction" i.e. from
+        # left to right, then from top to bottom
+        try:
+            idx_to_plot = reorder_losvds(idx_to_plot)
+        except ReorderLOSVDError:
+            txt = 'Failed to reorder LOSVDs in a sensible way. '
+            txt += 'Using an arbitary order instead.'
+            self.logger.info(txt)
+            pass
+        # setup the figure
+        fig = plt.figure(figsize=(7.5, 3.5))
+        gs = fig.add_gridspec(ncols=2, nrows=1, top=0.9)
+        # add axis for chi map
+        ax_chi2 = fig.add_subplot(gs[1])
+        ax_chi2.minorticks_off()
+        ax_chi2.tick_params(length=3)
+        ax_chi2.set_xlabel('x [arcsec]')
+        ax_chi2.set_ylabel('y [arcsec]')
+        pos = ax_chi2.get_position()
+        dx = 0.04
+        pos = [pos.x0+dx, pos.y0, pos.width-dx, pos.height]
+        ax_chi2.set_position(pos)
+        # add axes for losvds
+        gs2 = gs[0].subgridspec(3, 3, hspace=0, wspace=0)
+        ax_losvds = []
+        for i in range(3):
+            for j in range(3):
+                ax = fig.add_subplot(gs2[i,j])
+                ax_losvds += [ax]
+                if i<2:
+                    ax.set_xticks([])
+                else:
+                    ax.set_xlabel('$v_\mathrm{LOS}$ [km/s]')
+                ax.set_yticks([])
+        # get cmap
+        vmin, vmax = cbar_lims
+        if cmap is None:
+            if (vmin<1) and (1<vmax):
+                cmap = self.shiftedColorMap(
+                    plt.cm.RdYlBu_r,
+                    start=0,
+                    midpoint=(1.-vmin)/(vmax-vmin),
+                    stop=1.0)
+            else:
+                cmap = plt.cm.RdYlBu_r
+        # plot the chi2 map
+        map_plotter = kin_set.get_map_plotter()
+        plt.sca(ax_chi2)
+        map_plotter(reduced_chi2_per_apertur,
+                    label='$\chi^2_r$',
+                    colorbar=True,
+                    vmin=vmin,
+                    vmax=vmax,
+                    cmap=cmap)
+        mean_chi2r = np.mean(reduced_chi2_per_apertur)
+        ax_chi2.set_title(f'$\chi^2_r={mean_chi2r:.2f}$')
+        # plot locations of LOSVDs
+        x = kin_set.data['xbin'][idx_to_plot]
+        y = kin_set.data['ybin'][idx_to_plot]
+        x, y = kin_set.convert_to_plot_coords(x, y)
+        ax_chi2.plot(x, y, 'o', ms=15, c='none', mec='0.2')
+        for i, (x0,y0) in enumerate(zip(x,y)):
+            ax_chi2.text(x0, y0, f'{i+1}', ha='center', va='center')
+        # plot LOSVDs
+        varr = kin_set.data.meta['vcent']
+        for i, (idx0, ax0) in enumerate(zip(idx_to_plot, ax_losvds)):
+            col = (reduced_chi2_per_apertur[idx0]-vmin)/(vmax-vmin)
+            col = cmap(col)
+            ax0.text(0.05, 0.95, f'{i+1}',
+                     transform=ax0.transAxes, ha='left', va='top',
+                     bbox = dict(boxstyle=f"circle", fc=col, alpha=0.5)
+                    )
+            dat_line, = ax0.plot(varr,
+                                 kin_set.data['losvd'][idx0],
+                                 ls=':',
+                                 color=color_dat)
+            dat_band = ax0.fill_between(
+                varr,
+                kin_set.data['losvd'][idx0]-kin_set.data['dlosvd'][idx0],
+                kin_set.data['losvd'][idx0]+kin_set.data['dlosvd'][idx0],
+                alpha=0.2,
+                color=color_dat,
+                )
+            mod_line, = ax0.plot(varr,
+                                 losvd_model[idx0],
+                                 '-',
+                                 color=color_mod)
+            ylim = ax0.get_ylim()
+            ax0.set_ylim(0, ylim[1])
+        # add legend()
+        pos = ax_losvds[1].get_position()
+        x0 = pos.x0+pos.width/2.
+        fig.legend([(dat_line, dat_band), mod_line],
+                   ['data', 'model'],
+                   bbox_to_anchor=[x0, 0.95],
+                   loc='center',
+                   ncol=2)
+        return fig
+
+    def _plot_kinematic_maps_gaussherm(self, model, kin_set, cbar_lims='data'):
+        stars = \
+          self.system.get_component_from_class(physys.TriaxialVisibleComponent)
         kinem_fname = model.directory + 'nn_kinem.out'
         body_kinem = np.genfromtxt(kinem_fname, skip_header=1)
 
@@ -540,8 +811,6 @@ class Plotter():
 
         # The galaxy has NOT already rotated with PA to make major axis aligned with x
 
-        figname = self.plotdir + f'kinematic_map_{kin_name}' + figtype
-
         fig = plt.figure(figsize=(27, 12))
         plt.subplots_adjust(hspace=0.7,
                             wspace=0.01,
@@ -651,8 +920,6 @@ class Plotter():
         fig.text(0.015, 0.83, 'data', **kwtext)
         fig.text(0.015, 0.53, 'model', **kwtext)
         fig.text(0.015, 0.2, 'residual', **kwtext)
-
-        fig.savefig(figname)
 
         return fig
 
@@ -1333,6 +1600,62 @@ class Plotter():
         #angular2= np.abs(np.sum((lzm[t[0:y+1]])*orbw[t[0:y+1]])/np.sum(orbw[t[0:y+1]]))
 
         return fig
+
+    def shiftedColorMap(self,
+                        cmap,
+                        start=0,
+                        midpoint=0.5,
+                        stop=1.0,
+                        name='shiftedcmap'):
+        '''
+        Function to offset the "center" of a colormap. Useful for
+        data with a negative min and positive max and you want the
+        middle of the colormap's dynamic range to be at zero.
+
+        Input
+        -----
+          cmap : The matplotlib colormap to be altered
+          start : Offset from lowest point in the colormap's range.
+              Defaults to 0.0 (no lower offset). Should be between
+              0.0 and `midpoint`.
+          midpoint : The new center of the colormap. Defaults to
+              0.5 (no shift). Should be between 0.0 and 1.0. In
+              general, this should be  1 - vmax / (vmax + abs(vmin))
+              For example if your data range from -15.0 to +5.0 and
+              you want the center of the colormap at 0.0, `midpoint`
+              should be set to  1 - 5/(5 + 15)) or 0.75
+          stop : Offset from highest point in the colormap's range.
+              Defaults to 1.0 (no upper offset). Should be between
+              `midpoint` and 1.0.
+        '''
+        cdict = {
+            'red': [],
+            'green': [],
+            'blue': [],
+            'alpha': []
+        }
+
+        # regular index to compute the colors
+        reg_index = np.linspace(start, stop, 257)
+
+        # shifted index to match the data
+        shift_index = np.hstack([
+            np.linspace(0.0, midpoint, 128, endpoint=False),
+            np.linspace(midpoint, 1.0, 129, endpoint=True)
+        ])
+
+        for ri, si in zip(reg_index, shift_index):
+            r, g, b, a = cmap(ri)
+
+            cdict['red'].append((si, r, r))
+            cdict['green'].append((si, g, g))
+            cdict['blue'].append((si, b, b))
+            cdict['alpha'].append((si, a, a))
+
+        newcmap = mpl.colors.LinearSegmentedColormap(name, cdict)
+        plt.register_cmap(cmap=newcmap)
+
+        return newcmap
 
 #############################################################################
 ######## Routines from schw_anisotropy.py, necessary for beta_plot ##########
