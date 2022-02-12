@@ -159,10 +159,13 @@ class AllModels(object):
                     self.logger.info('No finished model found in '
                                      f'{row["directory"]} - removing row {i}.')
         # do the deletion
+        cwd = os.getcwd()
+        os.chdir(self.config.settings.io_settings['model_directory'])
         for row in to_delete:
             shutil.rmtree(self.table[row]['directory'])
             self.logger.info(f"Model {row}'s directory "
                              f"{self.table[row]['directory']} removed.")
+        os.chdir(cwd)
         self.table.remove_rows(to_delete)
         if table_modified:
             self.save()
@@ -635,7 +638,6 @@ class Model(object):
                 mod_dir=self.directory_noml,
                 parset=self.parset)
         orblib.get_orblib()
-        orblib.read_losvd_histograms()
         return orblib
 
     def get_weights(self, orblib=None):
@@ -710,7 +712,7 @@ class Model(object):
                                     'unchanged (not in parset).')
             else:
                 par = parspace_copy[par_idx]
-                par.value = par.get_raw_value_from_par_value(parset[par_name])
+                par.par_value = parset[par_name]
         parspace_copy.validate_parspace()
         self.logger.debug('parset validated against parspace.')
 

@@ -390,11 +390,10 @@ class Plotter():
             model = self.all_models.get_model_from_row(model_id)
 
         kin_type = type(stars.kinematic_data[kin_set])
-        weight_solver = model.get_weights()
-        ws_type = type(weight_solver)
+        ws_type = self.settings.weight_solver_settings['type']
 
         if kin_type is kinematics.GaussHermite:
-            if ws_type is weight_solvers.LegacyWeightSolver:
+            if ws_type == 'LegacyWeightSolver':
                 if cbar_lims=='default':
                     cbar_lims = 'data'
                 fig = self._plot_kinematic_maps_gaussherm(
