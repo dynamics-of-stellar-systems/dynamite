@@ -303,6 +303,9 @@ class Configuration(object):
                         c.mge_lum = mge.MGE(input_directory=path,
                                         datafile=data_comp['mge_lum'])
 
+                    if 'c_m200' in data_comp:
+                        c.c_m200 = data_comp['c_m200']
+
                     # add component to system
                     c.validate()
                     parset = {c.get_parname(p.name):p.raw_value \

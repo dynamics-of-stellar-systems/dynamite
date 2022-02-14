@@ -58,6 +58,7 @@ system_components:
                 value: 1.0
                 LaTeX: "$log(M_{200}/M_{star})$"
         type: NFW
+        c_m200: True # if True, c is fixed by the correlation between C vs. M200
         include: True
         contributes_to_potential: True
 
