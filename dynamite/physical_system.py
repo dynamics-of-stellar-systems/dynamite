@@ -670,9 +670,10 @@ class NFW(DarkComponent):
         super().validate(par=par)
         c_idx = [self.get_parname(p.name) for p in self.parameters].index('c')
         if self.c_m200 and not self.parameters[c_idx].fixed:
-            self.logger.warning(f'{__class__.__name__} parameter c must '
-                'be fixed if c_m200=True. Setting c_m200 to False.')
-            self.c_m200 = False
+            text = f'{__class__.__name__} parameter c must ' \
+                   'be fixed if c_m200=True.'
+            self.logger.error(text)
+            raise ValueError(text)
 
 
 class Hernquist(DarkComponent):
