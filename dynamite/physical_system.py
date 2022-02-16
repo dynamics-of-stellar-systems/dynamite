@@ -659,19 +659,19 @@ class NFW(DarkComponent):
 
     """
     def __init__(self,
-                 c_m200=False,
+                 m200_c=False,
                  **kwds):
         self.legacy_code = 1
-        self.c_m200 = c_m200
+        self.m200_c = m200_c
         super().__init__(symmetry='spherical', **kwds)
 
     def validate(self):
         par = ['c', 'f']
         super().validate(par=par)
         c_idx = [self.get_parname(p.name) for p in self.parameters].index('c')
-        if self.c_m200 and not self.parameters[c_idx].fixed:
+        if self.m200_c and not self.parameters[c_idx].fixed:
             text = f'{__class__.__name__} parameter c must ' \
-                   'be fixed if c_m200=True.'
+                   'be fixed if m200-c_relation=True.'
             self.logger.error(text)
             raise ValueError(text)
 

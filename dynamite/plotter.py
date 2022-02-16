@@ -435,13 +435,13 @@ class Plotter():
         if cbar_lims=='model':
             vmax = np.max(np.abs(velm))
             smax, smin = np.max(sigm), np.min(sigm)
-            h3max, h3min = np.max(h3m), np.min(h3m)
-            h4max, h4min = np.max(h4m), np.min(h4m)
+            h3max, h3min = 0.15, -0.15
+            h4max, h4min = 0.15, -0.15
         elif cbar_lims=='data':
             vmax = np.max(np.abs(vel))
             smax, smin = np.max(sig), np.min(sig)
-            h3max, h3min = np.max(h3), np.min(h3)
-            h4max, h4min = np.max(h4), np.min(h4)
+            h3max, h3min = 0.15, -0.15
+            h4max, h4min = 0.15, -0.15
             if h4max == h4min:
                 h4max, h4min = np.max(h4m), np.min(h4m)
         elif cbar_lims=='combined':
@@ -899,7 +899,7 @@ class Plotter():
         R = np.logspace(np.log10(0.01),np.log10(Rmax_arcs*1.2),num = nm)
 
         ## Setup stellar mass profile calculation
-        mgepar = stars.mge_pot.data
+        mgepar = stars.mge_pot.data #sabine: should this not be mge_lum?
         mgeI = mgepar['I']
         mgesigma = mgepar['sigma']
         mgeq = mgepar['q']
@@ -1295,7 +1295,7 @@ class Plotter():
         fig = plt.figure(figsize=(6,5))
 
         ax = fig.add_subplot(1, 1, 1)
-        cax = ax.imshow(R.T, cmap='binary', interpolation='spline16',
+        cax = ax.imshow(R.T, cmap='terrain_r', interpolation='spline16',
                         extent=extent, origin='lower', vmax=minmaxdens[1],
                         vmin=minmaxdens[0], aspect='auto')
 

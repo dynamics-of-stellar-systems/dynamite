@@ -137,11 +137,45 @@ class LegacyOrbitLibrary(OrbitLibrary):
         dh = dh[0]  # extract the one and only dm component
         dm_specs = f'{dh.legacy_code} {len(dh.parameters)}'
         dm_par_vals = ''
-        for dm_par in dh.parameters:
-            dm_par_vals += f"{self.parset[dm_par.name]} "
+        
+        #fix c via m200_c relation if m200_c is True,m200 can only be True if NFW dm profile
+        if dh.m200_c==True:
+            #this should probably be written in an extra function in physical system, if we have a function for this, we can also add this function in line 902 of plotter
+            #------- calculation of the total luminosity of the mge's
+            mgepar = stars.mge_lum.data
+            mgeI = mgepar['I']
+            mgesigma = mgepar['sigma']
+            mgeq = mgepar['q']
+            
+            distance = self.system.distMPc
+            arctpc = distance*np.pi/0.648
+            sigobs_pc = mgesigma*arctpc
+            
+            Lstarstot = 2 * np.pi * np.sum(mgeI * mgeq * sigobs_pc ** 2)
+            #----------
+            h=0.671 #add paper
+            #total mass of dark matter
+            MvDM = self.parset['f-dh'] * Lstarstot * self.parset['ml']
+            #dutton&maccio2014 (https://arxiv.org/pdf/1402.7073.pdf)
+            lc200 = 0.905 - 0.101*np.log10( MvDM/(10**12.0/h))
+            
+
+            dm_par_vals = f"{10**lc200} " + f"{self.parset['f-dh']} "
+            
+            print(dm_par_vals)
+        
+        else:
+            #for dm_par in dh.parameters:
+            #    dm_par_vals += f"{self.parset[dm_par.name]} "
+            #sabine
+            #This is not correct. If the order of c and f are switched in the logfile, those parameters are incorrectly inserted in the parameters file.
+            #quick fix for NFW. Need to be added for other dark matter implementations?
+            dm_par_vals = f"{c-dh} " + f"{self.parset['f-dh']} "
+
+            
         # header
-        len_mge_pot = len(stars.mge_pot.data) # must be the same as for mge_lum
-        len_mge_lum = len(stars.mge_lum.data) # why??
+        len_mge_pot = len(stars.mge_pot.data)
+        len_mge_lum = len(stars.mge_lum.data)
         settngs = self.settings
         text = f'{self.system.distMPc}\n'
         text += f'{theta:06.9f} {phi:06.9f} {psi:06.9f}\n'

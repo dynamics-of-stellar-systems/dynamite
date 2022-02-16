@@ -303,8 +303,8 @@ class Configuration(object):
                         c.mge_lum = mge.MGE(input_directory=path,
                                         datafile=data_comp['mge_lum'])
 
-                    if 'c_m200' in data_comp:
-                        c.c_m200 = data_comp['c_m200']
+                    if 'm200-c_relation' in data_comp:
+                        c.m200_c = data_comp['m200-c_relation']
 
                     # add component to system
                     c.validate()
