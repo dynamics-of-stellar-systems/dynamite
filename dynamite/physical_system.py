@@ -291,7 +291,7 @@ class Component(object):
 
         pars = [self.get_parname(p.name) for p in self.parameters]
         if set(pars) != set(par):
-            text = f'{self.__class__.__name__} needs parameters ' + \
+            text = f'{self.__class__.__name__} needs parameter(s) ' + \
                    f'{par}, not {pars}.'
             self.logger.error(text)
             raise ValueError(text)
@@ -374,6 +374,33 @@ class VisibleComponent(Component):
         self.mge_lum = mge_lum
         super().__init__(visible=True, **kwds)
         self.logger = logging.getLogger(f'{__name__}.{__class__.__name__}')
+
+    def get_M_stars_tot(self, distance, ml):
+        """
+        Calculates and returns the total stellar mass via the mge.
+
+        Parameters
+        ----------
+        distance : float
+            Distance of the system in MPc
+        ml : float
+            mass-to-light ratio
+
+        Returns
+        -------
+        float
+            Total stellar mass
+
+        """
+        mgepar = self.mge_lum.data
+        mgeI = mgepar['I']
+        mgesigma = mgepar['sigma']
+        mgeq = mgepar['q']
+
+        arctpc = distance*np.pi/0.648
+        sigobs_pc = mgesigma*arctpc
+
+        return 2 * np.pi * np.sum(mgeI * mgeq * sigobs_pc ** 2) * ml
 
     def validate(self, **kwds):
         super().validate(**kwds)
@@ -658,22 +685,54 @@ class NFW(DarkComponent):
     [dm-fraction, M200/total-stellar-mass]
 
     """
-    def __init__(self,
-                 m200_c=False,
-                 **kwds):
+    def __init__(self, **kwds):
         self.legacy_code = 1
-        self.m200_c = m200_c
         super().__init__(symmetry='spherical', **kwds)
 
     def validate(self):
         par = ['c', 'f']
         super().validate(par=par)
-        c_idx = [self.get_parname(p.name) for p in self.parameters].index('c')
-        if self.m200_c and not self.parameters[c_idx].fixed:
-            text = f'{__class__.__name__} parameter c must ' \
-                   'be fixed if m200-c_relation=True.'
-            self.logger.error(text)
-            raise ValueError(text)
+
+
+class NFW_m200_c(DarkComponent):
+    """An NFW halo with fixed m200-c relation
+
+    Defined with parameter f [dm-fraction, M200/total-stellar-mass]
+
+    """
+    def __init__(self, **kwds):
+        self.legacy_code = 1
+        super().__init__(symmetry='spherical', **kwds)
+
+    def validate(self):
+        par = ['f']
+        super().validate(par=par)
+
+    @staticmethod
+    def get_c200(M_stars_tot, f):
+        """
+        Calculates and returns c200 (see Dutton & Maccio 2014).
+
+        Parameters
+        ----------
+        M_stars_tot : float
+            Total stellar mass
+        f : float
+            Dark matter fraction f
+
+        Returns
+        -------
+        float
+            c200
+
+        """
+        h=0.671 #add paper
+        #total mass of dark matter
+        MvDM = f * M_stars_tot
+        #dutton&maccio2014 (https://arxiv.org/pdf/1402.7073.pdf) Eq. (8)
+        lc200 = 0.905 - 0.101*np.log10( MvDM/(1e12/h))
+
+        return 10.**lc200
 
 
 class Hernquist(DarkComponent):

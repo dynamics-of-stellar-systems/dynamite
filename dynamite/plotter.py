@@ -171,6 +171,8 @@ class Plotter():
         if type(dh) is physys.NFW:
             val[f'c-{dh.name}'] = val[f'c-{dh.name}']
             val[f'f-{dh.name}'] = val[f'f-{dh.name}']
+        elif type(dh) is physys.NFW_m200_c:
+            pass
         elif type(dh) is physys.Hernquist:
             val[f'rhoc-{dh.name}']= val[f'rhoc-{dh.name}']*scale_factor**2
         elif type(dh) is physys.TriaxialCoredLogPotential:
@@ -874,6 +876,12 @@ class Plotter():
 
         stars = \
             self.system.get_component_from_class(physys.TriaxialVisibleComponent)
+        dh = self.system.get_all_dark_non_plummer_components()
+        self.logger.debug('Checking number of non-plummer dark components')
+        error_msg = 'only one non-plummer dark component should be present'
+        assert len(dh)==1, error_msg
+        self.logger.debug('...checks ok.')
+        dh = dh[0]  # extract the one and only dm component
 
         chlim = np.sqrt(self.config.get_2n_obs())
         chi2 = val[which_chi2]
@@ -934,10 +942,15 @@ class Plotter():
                                 sigobs_pot_pc=sigobs_pc, qobs_pot=mgeq,
                                 psi_off=psi_off, incl=incl_view)
 
-            dmconc = val['c-dh'][i]
             dmR = val['f-dh'][i]
+            if isinstance(dh, physys.NFW):
+                dmconc = val['c-dh'][i]
+            elif isinstance(dh, physys.NFW_m200_c):
+                dmconc = dh.get_c200(M_stars_tot=Mstarstot, f=dmR)
+            else:
+                raise ValueError(f'Unsupported dh halo type {type(dh)}')
             rhoc, rc = self.NFW_getpar(mstars=Mstarstot, cc=dmconc,
-                                        dmfrac=dmR)[:2]
+                                       dmfrac=dmR)[:2]
             mdm = self.NFW_enclosemass(rho=rhoc, Rs=rc, R=r_pc*parsec_km)
 
             mbh = val['m-bh'][i]
