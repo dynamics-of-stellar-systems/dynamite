@@ -170,7 +170,7 @@ class LegacyOrbitLibrary(OrbitLibrary):
             #sabine
             #This is not correct. If the order of c and f are switched in the logfile, those parameters are incorrectly inserted in the parameters file.
             #quick fix for NFW. Need to be added for other dark matter implementations?
-            dm_par_vals = f"{c-dh} " + f"{self.parset['f-dh']} "
+            dm_par_vals = f"{self.parset['c-dh']} " + f"{self.parset['f-dh']} "
 
             
         # header
