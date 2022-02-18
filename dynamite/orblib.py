@@ -14,7 +14,7 @@ class OrbitLibrary(object):
     Parameters
     ----------
     system : a ``dyn.physical_system.System`` object
-    settings : a ``dyn.config_reader.settngs`` object
+    settings : a ``dyn.config_reader.settings`` object
 
     """
     def __init__(self,
@@ -138,52 +138,10 @@ class LegacyOrbitLibrary(OrbitLibrary):
 
         if isinstance(dh, physys.NFW_m200_c):
             #fix c via m200_c relation, for legacy Fortran it is still NFW
-            dm_specs = f'{dh.legacy_code} 2'
-            M_stars_tot = stars.get_M_stars_tot(distance=self.system.distMPc,
-                                                ml=self.parset['ml'])
-            c200 = dh.get_c200(M_stars_tot=M_stars_tot, f=self.parset['f-dh'])
-            dm_par_vals = f"{c200} {self.parset['f-dh']}"
+            dm_specs, dm_par_vals = dh.get_dh_legacy_strings(self.parset,
+                                                             self.system)
         else:
-            dm_specs = f'{dh.legacy_code} {len(dh.parameters)}'
-            #This is not correct. If the order of c and f are switched in the logfile, those parameters are incorrectly inserted in the parameters file.
-            #quick fix for NFW. Need to be added for other dark matter implementations?
-            #FIXME!
-            dm_par_vals = f"{self.parset['c-dh']} " + f"{self.parset['f-dh']} "
-
-        # #fix c via m200_c relation if m200_c is True,m200 can only be True if NFW dm profile
-        # if dh.m200_c==True:
-        #     #this should probably be written in an extra function in physical system, if we have a function for this, we can also add this function in line 902 of plotter
-        #     #------- calculation of the total luminosity of the mge's
-        #     mgepar = stars.mge_lum.data
-        #     mgeI = mgepar['I']
-        #     mgesigma = mgepar['sigma']
-        #     mgeq = mgepar['q']
-
-        #     distance = self.system.distMPc
-        #     arctpc = distance*np.pi/0.648
-        #     sigobs_pc = mgesigma*arctpc
-
-        #     Lstarstot = 2 * np.pi * np.sum(mgeI * mgeq * sigobs_pc ** 2)
-        #     #----------
-        #     h=0.671 #add paper
-        #     #total mass of dark matter
-        #     MvDM = self.parset['f-dh'] * Lstarstot * self.parset['ml']
-        #     #dutton&maccio2014 (https://arxiv.org/pdf/1402.7073.pdf)
-        #     lc200 = 0.905 - 0.101*np.log10( MvDM/(10**12.0/h))
-
-
-        #     dm_par_vals = f"{10**lc200} " + f"{self.parset['f-dh']} "
-
-        #     print(dm_par_vals)
-
-        # else:
-        #     #for dm_par in dh.parameters:
-        #     #    dm_par_vals += f"{self.parset[dm_par.name]} "
-        #     #sabine
-        #     #This is not correct. If the order of c and f are switched in the logfile, those parameters are incorrectly inserted in the parameters file.
-        #     #quick fix for NFW. Need to be added for other dark matter implementations?
-        #     dm_par_vals = f"{self.parset['c-dh']} " + f"{self.parset['f-dh']} "
-
+            dm_specs, dm_par_vals = dh.get_dh_legacy_strings(self.parset)
 
         # header
         len_mge_pot = len(stars.mge_pot.data)

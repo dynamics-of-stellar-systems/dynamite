@@ -323,8 +323,8 @@ class Component(object):
                     for p in self.parameters if not p.logarithmic]
         isvalid = np.all(np.sign(p_raw_values) >= 0)
         if not isvalid:
-            self.logger.debug(f'Invalid parset {par}: at least one negative '
-                              'non-log parameter.')
+            self.logger.debug(f'Invalid parameters {par}: at least one '
+                              'negative non-log parameter.')
         return isvalid
 
     def get_parname(self, par):
@@ -375,7 +375,7 @@ class VisibleComponent(Component):
         super().__init__(visible=True, **kwds)
         self.logger = logging.getLogger(f'{__name__}.{__class__.__name__}')
 
-    def get_M_stars_tot(self, distance, ml):
+    def get_M_stars_tot(self, distance, parset):
         """
         Calculates and returns the total stellar mass via the mge.
 
@@ -383,8 +383,8 @@ class VisibleComponent(Component):
         ----------
         distance : float
             Distance of the system in MPc
-        ml : float
-            mass-to-light ratio
+        parset : astropy table row
+            must contain mass-to-light ratio ml
 
         Returns
         -------
@@ -392,7 +392,7 @@ class VisibleComponent(Component):
             Total stellar mass
 
         """
-        mgepar = self.mge_lum.data
+        mgepar = self.mge_pot.data
         mgeI = mgepar['I']
         mgesigma = mgepar['sigma']
         mgeq = mgepar['q']
@@ -400,7 +400,7 @@ class VisibleComponent(Component):
         arctpc = distance*np.pi/0.648
         sigobs_pc = mgesigma*arctpc
 
-        return 2 * np.pi * np.sum(mgeI * mgeq * sigobs_pc ** 2) * ml
+        return 2 * np.pi * np.sum(mgeI * mgeq * sigobs_pc ** 2) * parset['ml']
 
     def validate(self, **kwds):
         super().validate(**kwds)
@@ -456,9 +456,9 @@ class TriaxialVisibleComponent(VisibleComponent):
 
     def validate_parset(self, par):
         """
-        Validate the p, q, u parset
+        Validate the p, q, u parameters
 
-        Validates the triaxial component's p, q, u parameter set. Requires
+        Validates the triaxial component's p, q, u parameters. Requires
         self.qobs to be set. A parameter set is valid if the resulting
         (theta, psi, phi) are not np.nan.
 
@@ -657,6 +657,41 @@ class DarkComponent(Component):
         rho = self.density.evaluate(xyz_grid, parameters)
         # self.mge = MGES.intrinsic_MGE_from_xyz_grid(xyz_grid, rho)
 
+    def get_dh_legacy_strings(self, parset):
+        """
+        Generates and returns two strings needed for the legacy Fortran files.
+
+        This method only applies to dark halo components.
+
+        Parameters
+        ----------
+        parset : astropy table row
+            Holds the parameter set.
+
+        Returns
+        -------
+        specs : str
+            A string with the legacy code and the number of parameters, space
+            separated.
+        par_vals : str
+            The parameter values in the sequence legacy Fortran expects them,
+            space separated.
+
+        """
+        try:
+            legacy_code = self.legacy_code
+            specs = f'{legacy_code} {len(self.parameters)}'
+            par_vals = ''
+            for par in self.par_names:
+                p = f'{par}-{self.name}'
+                par_vals += f'{parset[p]} '
+            par_vals = par_vals[:-1]
+            self.logger.debug(f'DH {self.__class__.__name__} legacy strings: '
+                              f'{specs} / {par_vals}.')
+            return specs, par_vals
+        except AttributeError: # Only dh has a legacy code, Plummer: do nothing
+            pass
+
 
 class Plummer(DarkComponent):
     """A Plummer sphere
@@ -685,13 +720,14 @@ class NFW(DarkComponent):
     [dm-fraction, M200/total-stellar-mass]
 
     """
+    par_names = ['c', 'f'] # parameter names in legacy sequence
+
     def __init__(self, **kwds):
         self.legacy_code = 1
         super().__init__(symmetry='spherical', **kwds)
 
     def validate(self):
-        par = ['c', 'f']
-        super().validate(par=par)
+        super().validate(par=self.par_names)
 
 
 class NFW_m200_c(DarkComponent):
@@ -700,25 +736,24 @@ class NFW_m200_c(DarkComponent):
     Defined with parameter f [dm-fraction, M200/total-stellar-mass]
 
     """
+    par_names = ['f'] # parameter names in legacy sequence
+
     def __init__(self, **kwds):
         self.legacy_code = 1
         super().__init__(symmetry='spherical', **kwds)
 
     def validate(self):
-        par = ['f']
-        super().validate(par=par)
+        super().validate(par=self.par_names)
 
-    @staticmethod
-    def get_c200(M_stars_tot, f):
+    def get_c200(self, system, parset):
         """
         Calculates and returns c200 (see Dutton & Maccio 2014).
 
         Parameters
         ----------
-        M_stars_tot : float
-            Total stellar mass
-        f : float
-            Dark matter fraction f
+        system : a ``dyn.physical_system.System`` object
+        parset : astropy table row
+            Must contain dark matter fraction f-{self.name} and ml
 
         Returns
         -------
@@ -726,6 +761,9 @@ class NFW_m200_c(DarkComponent):
             c200
 
         """
+        stars = system.get_component_from_class(TriaxialVisibleComponent)
+        M_stars_tot = stars.get_M_stars_tot(system.distMPc, parset)
+        f = parset[f'f-{self.name}']
         h=0.671 #add paper
         #total mass of dark matter
         MvDM = f * M_stars_tot
@@ -733,6 +771,37 @@ class NFW_m200_c(DarkComponent):
         lc200 = 0.905 - 0.101*np.log10( MvDM/(1e12/h))
 
         return 10.**lc200
+
+    def get_dh_legacy_strings(self, parset, system):
+        """
+        Generates and returns two strings needed for the legacy Fortran files.
+
+        This method overrides the parent class' method because for legacy
+        Fortran purposes, NFW_m200_c has two parameters. Note that NFW_m200_c
+        needs an addiional parameter ``system``.
+
+        Parameters
+        ----------
+        parset : astropy table row
+            Holds the parameter set.
+
+        Returns
+        -------
+        specs : str
+            A string with the legacy code and the number of parameters, space
+            separated.
+        par_vals : str
+            The parameter values in the sequence legacy Fortran expects them,
+            space separated.
+
+        """
+        specs, par_vals = super().get_dh_legacy_strings(parset)
+        c200 = self.get_c200(system, parset)
+        specs = f'{self.legacy_code} 2'
+        par_vals = f'{c200} {par_vals}'
+        self.logger.debug(f'DH {self.__class__.__name__} legacy strings '
+                          f'amended to {specs} / {par_vals}.')
+        return specs, par_vals
 
 
 class Hernquist(DarkComponent):
@@ -742,13 +811,14 @@ class Hernquist(DarkComponent):
     length, km]
 
     """
+    par_names = ['rhoc', 'rc'] # parameter names in legacy sequence
+
     def __init__(self, **kwds):
         self.legacy_code = 2
         super().__init__(symmetry='spherical', **kwds)
 
     def validate(self):
-        par = ['rhoc', 'rc']
-        super().validate(par=par)
+        super().validate(par=self.par_names)
 
 
 class TriaxialCoredLogPotential(DarkComponent):
@@ -759,13 +829,14 @@ class TriaxialCoredLogPotential(DarkComponent):
     [asympt. circular velovity, km/s]
 
     """
+    par_names = ['Vc', 'Rc', 'p', 'q'] # parameter names in legacy sequence
+
     def __init__(self, **kwds):
         self.legacy_code = 3
         super().__init__(symmetry='triaxial', **kwds)
 
     def validate(self):
-        par = ['Vc', 'Rc', 'p', 'q']
-        super().validate(par=par)
+        super().validate(par=self.par_names)
 
 
 class GeneralisedNFW(DarkComponent):
@@ -776,17 +847,18 @@ class GeneralisedNFW(DarkComponent):
     inner_log_slope []
 
     """
+    par_names = ['c', 'Mvir', 'gam'] # parameter names in legacy sequence
+
     def __init__(self, **kwds):
         self.legacy_code = 5
         super().__init__(symmetry='triaxial', **kwds)
 
     def validate(self):
-        par = ['c', 'Mvir', 'gam']
-        super().validate(par=par)
+        super().validate(par=self.par_names)
 
     def validate_parset(self, par):
         """
-        Validates the GeneralisedNFW's parameter set.
+        Validates the GeneralisedNFW's parameters.
 
         Requires c and Mvir >0, and gam leq 1
 

@@ -389,7 +389,7 @@ class Plotter():
             fig = plt.figure(figsize=(27, 12))
             return fig
         ws_type = self.settings.weight_solver_settings['type']
-        if ws_type is not 'LegacyWeightSolver':
+        if ws_type != 'LegacyWeightSolver':
             self.logger.info('kinematic maps cannot be plot for weight solver '
                              f'{ws_type} - only LegacyWeightSolver')
             fig = plt.figure(figsize=(27, 12))
@@ -937,7 +937,8 @@ class Plotter():
 
             ml = val['ml'][i]
             surf_pc = mgeI * ml
-            Mstarstot = 2 * np.pi * np.sum(surf_pc * mgeq * sigobs_pc ** 2)
+            Mstarstot = stars.get_M_stars_tot(distance=distance,
+                                              parset=val[i])
             mstars = self.trimge_intrmass(r_pc=r_pc, surf_pot_pc=surf_pc,
                                 sigobs_pot_pc=sigobs_pc, qobs_pot=mgeq,
                                 psi_off=psi_off, incl=incl_view)
@@ -946,7 +947,7 @@ class Plotter():
             if isinstance(dh, physys.NFW):
                 dmconc = val['c-dh'][i]
             elif isinstance(dh, physys.NFW_m200_c):
-                dmconc = dh.get_c200(M_stars_tot=Mstarstot, f=dmR)
+                dmconc = dh.get_c200(system=self.system, parset=val[i])
             else:
                 raise ValueError(f'Unsupported dh halo type {type(dh)}')
             rhoc, rc = self.NFW_getpar(mstars=Mstarstot, cc=dmconc,

@@ -4,6 +4,7 @@
 Change Log
 ****************
 
+- New feature: Added support for new dark halo component type NFW_m200_c (fixed m200_c relation)
 - New feature: The Configuration object parameter reset_existing_output will delete previously existing data and create a new output directory tree
 - Improvement: The presence of datfil/orblib.dat.bz2 and datfil/orblibbox.dat.bz2 is now a more reliable indicator for existing orblibs. In the past, a crash may have resulted in corrupt bz2 files.
 - New feature: add new data-preparation method `BayesLOSVD.center_v_systemic`
