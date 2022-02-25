@@ -372,7 +372,8 @@ class ModelInnerIterator(object):
             if not get_orblib and self.is_new_orblib(row) and \
                               not self.all_models.table['orblib_done'][row]:
                 msg = f'Unexpected: orbit library in row {row} not existing! ' \
-                      'Will calculate it...'
+                      'Will calculate it (beware of multithreading - use ' \
+                      'the restart feature or ncpus=1 in case of problems)...'
                 self.logger.warning(msg)
             cwd = os.getcwd()
             try:
