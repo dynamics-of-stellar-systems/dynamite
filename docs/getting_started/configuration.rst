@@ -119,7 +119,7 @@ The following types of component are available, listed with their parameters:
 - ``NFW``
     - ``c``: concentration parameter [:math:`R_{200}` / NFW-scale-length]
     - ``f``: dark matter fraction [:math:`M_{200}` / total-stellar-mass]
-- ``NFW_m200_c``
+- ``NFW_m200_c``, an NFW halo with mass-concentration from Dutton & Maccio 14
     - ``f``: dark matter fraction [:math:`M_{200}` / total-stellar-mass]
 - ``Hernquist``
     - ``rhoc``: central density [:math:`M_\odot/\mathrm{km}^3`]
