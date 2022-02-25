@@ -61,6 +61,22 @@ system_components:
         include: True
         contributes_to_potential: True
 
+    # dh: # dark_halo
+    #     parameters:
+    #         f: # NFW Darkmatter fraction
+    #             par_generator_settings:
+    #                 lo: 0.0
+    #                 hi: 2.0
+    #                 step: 0.5
+    #                 minstep: 0.1
+    #             logarithmic: True
+    #             fixed: True
+    #             value: 1.0
+    #             LaTeX: "$log(M_{200}/M_{star})$"
+    #     type: NFW_m200_c
+    #     include: True
+    #     contributes_to_potential: True
+
     stars:
         parameters:
             q: # intrinsic flattening (C/A)

@@ -89,7 +89,7 @@ class ModelIterator(object):
                     the_plotter.make_chi2_vs_model_id_plot()
                     the_plotter.make_chi2_plot()
                     the_plotter.plot_kinematic_maps(kin_set='all',
-                                                    cbar_lims='data')
+                                                    cbar_lims='default')
                     plt.close('all') # just to make sure...
                 except ValueError:
                     self.logger.warning(f'Iteration {total_iter_count}: '

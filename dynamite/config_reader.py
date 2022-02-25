@@ -305,7 +305,7 @@ class Configuration(object):
 
                     # add component to system
                     c.validate()
-                    parset = {c.get_parname(p.name):p.value \
+                    parset = {c.get_parname(p.name):p.raw_value \
                               for p in c.parameters}
                     if not c.validate_parset(parset):
                         text = f'{c.name}: invalid parameters {parset}'
@@ -404,13 +404,13 @@ class Configuration(object):
                     pass
                 if value['ncpus']=='all_available':
                     value['ncpus'] = self.get_n_cpus()
-                logger.debug(f"... using {value['ncpus']} CPUs "
+                logger.info(f"... using {value['ncpus']} CPUs "
                              "for orbit integration.")
                 if 'ncpus_weights' not in value:
                     value['ncpus_weights'] = value['ncpus']
                 elif value['ncpus_weights'] == 'all_available':
                     value['ncpus_weights'] = self.get_n_cpus()
-                logger.debug(f"... using {value['ncpus_weights']} CPUs "
+                logger.info(f"... using {value['ncpus_weights']} CPUs "
                             "for weight solving.")
                 if 'modeliterator' not in value:
                     value['modeliterator'] = 'ModelInnerIterator'
@@ -423,7 +423,7 @@ class Configuration(object):
                 raise ValueError(text)
 
         self.system.validate() # now also adds the right parameter sformat
-        parset = {p.name:p.value for p in self.system.parameters}
+        parset = {p.name:p.raw_value for p in self.system.parameters}
         if not self.system.validate_parset(parset):
             text = f'Invalid system parameters {parset}'
             self.logger.error(text)
@@ -884,15 +884,15 @@ class Configuration(object):
             if issubclass(type(c), physys.DarkComponent) \
                 and not isinstance(c, physys.Plummer):
             # Check allowed dm halos in legacy mode
-                if type(c) not in [physys.NFW, physys.Hernquist,
+                if type(c) not in [physys.NFW, physys.NFW_m200_c,
+                                   physys.Hernquist,
                                    physys.TriaxialCoredLogPotential,
                                    physys.GeneralisedNFW]:
-                    self.logger.error(f'DM Halo needs to be of type NFW, '
-                                      f'Hernquist, TriaxialCoredLogPotential, '
-                                      f'or GeneralisedNFW, not {type(c)}')
-                    raise ValueError(f'DM Halo needs to be of type NFW, '
-                                     f'Hernquist, TriaxialCoredLogPotential, '
-                                     f'or GeneralisedNFW, not {type(c)}')
+                    text = 'DM Halo needs to be of type NFW, NFW_m200_c, ' \
+                           'Hernquist, TriaxialCoredLogPotential, ' \
+                           f'or GeneralisedNFW, not {type(c)}'
+                    self.logger.error(text)
+                    raise ValueError(text)
 
         gen_type = self.settings.parameter_space_settings["generator_type"]
         allowed_types = ['GridWalk', 'LegacyGridSearch', 'FullGrid']

@@ -4,6 +4,7 @@
 Change Log
 ****************
 
+- New feature: Added support for new dark halo component type NFW_m200_c (fixed m200_c relation)
 - New feature: The Configuration object parameter reset_existing_output will delete previously existing data and create a new output directory tree
 - Improvement: The presence of datfil/orblib.dat.bz2 and datfil/orblibbox.dat.bz2 is now a more reliable indicator for existing orblibs. In the past, a crash may have resulted in corrupt bz2 files.
 - New feature: add new data-preparation method `BayesLOSVD.center_v_systemic`
@@ -14,6 +15,7 @@ Change Log
 - Improvement: Cleaned up the legacy_fortran folder and the makefile in it, unused orbgen.f90 and partgen.f90 moved to subfolder
 - Bugfix: Fixed a bug that on rare occasion caused an error when updating the timestamp entry when continuing an aborted run
 - Implement the correction to orbit mirroring introduced in `Quenneville et al 2021 <https://arxiv.org/abs/2111.06904>`_
+- Implement kinematic maps for BayesLOSVD data
 
 Version: 2.0
 ================
