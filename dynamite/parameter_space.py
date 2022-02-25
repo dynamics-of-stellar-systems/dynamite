@@ -346,8 +346,9 @@ class ParameterGenerator(object):
     ``ParameterGenerator`` have methods to generate new sets of parameters to
     evaluate models based on existing models. This is an abstrct class, specific
     implementations should be implemented as child-classes (e.g.
-    ``LegacyGridSearch``). Every implementation must have methods
-    ``check_specific_stopping_critera`` and ``specific_generate_method`` which
+    ``LegacyGridSearch``). Every implementation may have a method
+    ``check_specific_stopping_critera`` and must have a method
+    ``specific_generate_method`` which
     define the stopping criteria and parameter generation algorithm for that
     implementation. These are exectuted in addition to ``generic`` methods,
     which are defined in this parent ``ParameterGenerator`` class.
@@ -550,6 +551,52 @@ class ParameterGenerator(object):
             np.max(self.current_models.table['which_iter']) \
                 >= self.parspace_settings['stopping_criteria']['n_max_iter']
         # iii) ...
+
+    def check_specific_stopping_critera(self):
+        """checks specific stopping critera
+
+        If the last iteration did not improve the chi2 by at least
+        min_delta_chi2, then stop. May be overwritten or extended in
+        each ``ParameterGenerator`` class.
+
+        Returns
+        -------
+        None
+            sets Bool to ``self.status['min_delta_chi2_reached']``
+
+        """
+        # stop if...
+        # (i) if iter>1, last iteration did not improve chi2 by min_delta_chi2
+        self.status['min_delta_chi2_reached'] = False
+        last_iter = np.max(self.current_models.table['which_iter'])
+        if last_iter > 0:
+            last_chi2 = np.nan
+            while np.isnan(last_chi2): # look for non-nan (kin)chi2 value
+                if last_iter <= 0:
+                    return
+                mask = self.current_models.table['which_iter'] == last_iter
+                models0 = self.current_models.table[mask]
+                last_chi2 = np.nanmin(models0[self.chi2])
+                last_iter -= 1
+            previous_chi2 = np.nan
+            while np.isnan(previous_chi2): # look for non-nan (kin)chi2 value
+                if last_iter < 0:
+                    return
+                mask = self.current_models.table['which_iter'] == last_iter
+                models1 = self.current_models.table[mask]
+                previous_chi2 = np.nanmin(models1[self.chi2])
+                last_iter -= 1
+            # Don't use abs() so we stop on increasing chi2 values, too:
+            delta_chi2 = previous_chi2 - last_chi2
+            if self.min_delta_chi2_rel:
+                delta_chi2 /= previous_chi2
+                delta_chi2 /= self.min_delta_chi2_rel
+            else:
+                delta_chi2 /= self.min_delta_chi2_abs
+            if delta_chi2 <= 1:
+                self.status['min_delta_chi2_reached'] = True
+        # (ii) if step_size < min_step_size for all params
+        #       => dealt with by grid_walk (doesn't create such models)
 
     def _is_newmodel(self, model, eps=1e-6):
         """
@@ -764,51 +811,6 @@ class LegacyGridSearch(ParameterGenerator):
                         step_ok = True
         return
 
-    def check_specific_stopping_critera(self):
-        """checks specific stopping critera
-
-        If the last iteration did not improve the chi2 by at least
-        min_delta_chi2, then stop.
-
-        Returns
-        -------
-        None
-            sets Bool to ``self.status['min_delta_chi2_reached']``
-
-        """
-        # stop if...
-        # (i) if iter>1, last iteration did not improve chi2 by min_delta_chi2
-        self.status['min_delta_chi2_reached'] = False
-        last_iter = np.max(self.current_models.table['which_iter'])
-        if last_iter > 0:
-            last_chi2 = np.nan
-            while np.isnan(last_chi2): # look for non-nan (kin)chi2 value
-                if last_iter <= 0:
-                    return
-                mask = self.current_models.table['which_iter'] == last_iter
-                models0 = self.current_models.table[mask]
-                last_chi2 = np.nanmin(models0[self.chi2])
-                last_iter -= 1
-            previous_chi2 = np.nan
-            while np.isnan(previous_chi2): # look for non-nan (kin)chi2 value
-                if last_iter < 0:
-                    return
-                mask = self.current_models.table['which_iter'] == last_iter
-                models1 = self.current_models.table[mask]
-                previous_chi2 = np.nanmin(models1[self.chi2])
-                last_iter -= 1
-            # Don't use abs() so we stop on increasing chi2 values, too:
-            delta_chi2 = previous_chi2 - last_chi2
-            if self.min_delta_chi2_rel:
-                delta_chi2 /= previous_chi2
-                delta_chi2 /= self.min_delta_chi2_rel
-            else:
-                delta_chi2 /= self.min_delta_chi2_abs
-            if delta_chi2 <= 1:
-                self.status['min_delta_chi2_reached'] = True
-        # (ii) if step_size < min_step_size for all params
-        #       => dealt with by grid_walk (doesn't create such models)
-
 
 class GridWalk(ParameterGenerator):
     """Walk after the current best fit
@@ -996,40 +998,6 @@ class GridWalk(ParameterGenerator):
         # call recursively until all paramaters are done:
         if paridx < self.par_space.n_par - 1:
             self.grid_walk(center=center, par=self.par_space[paridx+1])
-
-    def check_specific_stopping_critera(self):
-        """checks specific stopping critera
-
-        If the last iteration did not improve the chi2 by at least
-        min_delta_chi2, then stop.
-
-        Returns
-        -------
-        None
-            sets Bool to ``self.status['min_delta_chi2_reached']``
-
-        """
-        # stop if...
-        # (i) if iter>1, last iteration did not improve chi2 by min_delta_chi2
-        self.status['min_delta_chi2_reached'] = False
-        last_iter = np.max(self.current_models.table['which_iter'])
-        if last_iter > 0:
-            mask = self.current_models.table['which_iter'] == last_iter
-            models0 = self.current_models.table[mask]
-            mask = self.current_models.table['which_iter'] == last_iter-1
-            models1 = self.current_models.table[mask]
-            # Don't use abs() so we stop on increasing chi2 values, too:
-            delta_chi2 = np.nanmin(models1[self.chi2]) \
-                         - np.nanmin(models0[self.chi2])
-            if self.min_delta_chi2_rel:
-                delta_chi2 /= np.nanmin(models1[self.chi2])
-                delta_chi2 /= self.min_delta_chi2_rel
-            else:
-                delta_chi2 /= self.min_delta_chi2_abs
-            if delta_chi2 <= 1:
-                self.status['min_delta_chi2_reached'] = True
-        # (ii) if step_size < min_step_size for all params
-        #       => dealt with by grid_walk (doesn't create such models)
 
 
 class FullGrid(ParameterGenerator):
@@ -1223,40 +1191,6 @@ class FullGrid(ParameterGenerator):
         # call recursively until all paramaters are done:
         if paridx < self.par_space.n_par - 1:
             self.grid(center=center, par=self.par_space[paridx+1])
-
-    def check_specific_stopping_critera(self):
-        """checks specific stopping critera
-
-        If the last iteration did not improve the chi2 by at least
-        min_delta_chi2, then stop.
-
-        Returns
-        -------
-        None
-            sets Bool to ``self.status['min_delta_chi2_reached']``
-
-        """
-        self.status['min_delta_chi2_reached'] = False
-        last_iter = np.max(self.current_models.table['which_iter'])
-        if last_iter > 0:
-            mask = self.current_models.table['which_iter'] == last_iter
-            models0 = self.current_models.table[mask]
-            mask = self.current_models.table['which_iter'] == last_iter-1
-            models1 = self.current_models.table[mask]
-            # Don't use abs() so we stop on increasing chi2 values, too:
-            delta_chi2 = np.nanmin(models1[self.chi2]) \
-                         - np.nanmin(models0[self.chi2])
-            if self.min_delta_chi2_rel:
-                delta_chi2 /= np.nanmin(models1[self.chi2])
-                delta_chi2 /= self.min_delta_chi2_rel
-            else:
-                delta_chi2 /= self.min_delta_chi2_abs
-            if delta_chi2 <= 1:
-                self.status['min_delta_chi2_reached'] = True
-        # (ii) if step_size < min_step_size for all params
-        #       => dealt with by grid_walk (doesn't create such models)
-
-
 
 
 # end
