@@ -14,7 +14,7 @@ class OrbitLibrary(object):
     Parameters
     ----------
     system : a ``dyn.physical_system.System`` object
-    settings : a ``dyn.config_reader.settngs`` object
+    settings : a ``dyn.config_reader.settings`` object
 
     """
     def __init__(self,
@@ -135,13 +135,17 @@ class LegacyOrbitLibrary(OrbitLibrary):
         assert len(dh)==1, error_msg
         self.logger.debug('...checks ok.')
         dh = dh[0]  # extract the one and only dm component
-        dm_specs = f'{dh.legacy_code} {len(dh.parameters)}'
-        dm_par_vals = ''
-        for dm_par in dh.parameters:
-            dm_par_vals += f"{self.parset[dm_par.name]} "
+
+        if isinstance(dh, physys.NFW_m200_c):
+            #fix c via m200_c relation, for legacy Fortran it is still NFW
+            dm_specs, dm_par_vals = dh.get_dh_legacy_strings(self.parset,
+                                                             self.system)
+        else:
+            dm_specs, dm_par_vals = dh.get_dh_legacy_strings(self.parset)
+
         # header
-        len_mge_pot = len(stars.mge_pot.data) # must be the same as for mge_lum
-        len_mge_lum = len(stars.mge_lum.data) # why??
+        len_mge_pot = len(stars.mge_pot.data)
+        len_mge_lum = len(stars.mge_lum.data)
         settngs = self.settings
         text = f'{self.system.distMPc}\n'
         text += f'{theta:06.9f} {phi:06.9f} {psi:06.9f}\n'

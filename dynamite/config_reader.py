@@ -884,15 +884,15 @@ class Configuration(object):
             if issubclass(type(c), physys.DarkComponent) \
                 and not isinstance(c, physys.Plummer):
             # Check allowed dm halos in legacy mode
-                if type(c) not in [physys.NFW, physys.Hernquist,
+                if type(c) not in [physys.NFW, physys.NFW_m200_c,
+                                   physys.Hernquist,
                                    physys.TriaxialCoredLogPotential,
                                    physys.GeneralisedNFW]:
-                    self.logger.error(f'DM Halo needs to be of type NFW, '
-                                      f'Hernquist, TriaxialCoredLogPotential, '
-                                      f'or GeneralisedNFW, not {type(c)}')
-                    raise ValueError(f'DM Halo needs to be of type NFW, '
-                                     f'Hernquist, TriaxialCoredLogPotential, '
-                                     f'or GeneralisedNFW, not {type(c)}')
+                    text = 'DM Halo needs to be of type NFW, NFW_m200_c, ' \
+                           'Hernquist, TriaxialCoredLogPotential, ' \
+                           f'or GeneralisedNFW, not {type(c)}'
+                    self.logger.error(text)
+                    raise ValueError(text)
 
         gen_type = self.settings.parameter_space_settings["generator_type"]
         allowed_types = ['GridWalk', 'LegacyGridSearch', 'FullGrid']

@@ -176,6 +176,8 @@ class Plotter():
         if type(dh) is physys.NFW:
             val[f'c-{dh.name}'] = val[f'c-{dh.name}']
             val[f'f-{dh.name}'] = val[f'f-{dh.name}']
+        elif type(dh) is physys.NFW_m200_c:
+            pass
         elif type(dh) is physys.Hernquist:
             val[f'rhoc-{dh.name}']= val[f'rhoc-{dh.name}']*scale_factor**2
         elif type(dh) is physys.TriaxialCoredLogPotential:
@@ -716,13 +718,13 @@ class Plotter():
         if cbar_lims=='model':
             vmax = np.max(np.abs(velm))
             smax, smin = np.max(sigm), np.min(sigm)
-            h3max, h3min = np.max(h3m), np.min(h3m)
-            h4max, h4min = np.max(h4m), np.min(h4m)
+            h3max, h3min = 0.15, -0.15
+            h4max, h4min = 0.15, -0.15
         elif cbar_lims=='data':
             vmax = np.max(np.abs(vel))
             smax, smin = np.max(sig), np.min(sig)
-            h3max, h3min = np.max(h3), np.min(h3)
-            h4max, h4min = np.max(h4), np.min(h4)
+            h3max, h3min = 0.15, -0.15
+            h4max, h4min = 0.15, -0.15
             if h4max == h4min:
                 h4max, h4min = np.max(h4m), np.min(h4m)
         elif cbar_lims=='combined':
@@ -1151,6 +1153,12 @@ class Plotter():
 
         stars = \
             self.system.get_component_from_class(physys.TriaxialVisibleComponent)
+        dh = self.system.get_all_dark_non_plummer_components()
+        self.logger.debug('Checking number of non-plummer dark components')
+        error_msg = 'only one non-plummer dark component should be present'
+        assert len(dh)==1, error_msg
+        self.logger.debug('...checks ok.')
+        dh = dh[0]  # extract the one and only dm component
 
         chlim = np.sqrt(self.config.get_2n_obs())
         chi2 = val[which_chi2]
@@ -1176,7 +1184,7 @@ class Plotter():
         R = np.logspace(np.log10(0.01),np.log10(Rmax_arcs*1.2),num = nm)
 
         ## Setup stellar mass profile calculation
-        mgepar = stars.mge_pot.data
+        mgepar = stars.mge_pot.data #sabine: should this not be mge_lum?
         mgeI = mgepar['I']
         mgesigma = mgepar['sigma']
         mgeq = mgepar['q']
@@ -1206,15 +1214,21 @@ class Plotter():
 
             ml = val['ml'][i]
             surf_pc = mgeI * ml
-            Mstarstot = 2 * np.pi * np.sum(surf_pc * mgeq * sigobs_pc ** 2)
+            Mstarstot = stars.get_M_stars_tot(distance=distance,
+                                              parset=val[i])
             mstars = self.trimge_intrmass(r_pc=r_pc, surf_pot_pc=surf_pc,
                                 sigobs_pot_pc=sigobs_pc, qobs_pot=mgeq,
                                 psi_off=psi_off, incl=incl_view)
 
-            dmconc = val['c-dh'][i]
             dmR = val['f-dh'][i]
+            if isinstance(dh, physys.NFW):
+                dmconc = val['c-dh'][i]
+            elif isinstance(dh, physys.NFW_m200_c):
+                dmconc = dh.get_c200(system=self.system, parset=val[i])
+            else:
+                raise ValueError(f'Unsupported dh halo type {type(dh)}')
             rhoc, rc = self.NFW_getpar(mstars=Mstarstot, cc=dmconc,
-                                        dmfrac=dmR)[:2]
+                                       dmfrac=dmR)[:2]
             mdm = self.NFW_enclosemass(rho=rhoc, Rs=rc, R=r_pc*parsec_km)
 
             mbh = val['m-bh'][i]
@@ -1572,7 +1586,7 @@ class Plotter():
         fig = plt.figure(figsize=(6,5))
 
         ax = fig.add_subplot(1, 1, 1)
-        cax = ax.imshow(R.T, cmap='binary', interpolation='spline16',
+        cax = ax.imshow(R.T, cmap='terrain_r', interpolation='spline16',
                         extent=extent, origin='lower', vmax=minmaxdens[1],
                         vmin=minmaxdens[0], aspect='auto')
 
