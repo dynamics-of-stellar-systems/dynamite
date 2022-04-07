@@ -56,6 +56,8 @@ We can check if gfortran is installed by typing in the Terminal::
 
     man -k fortran
 
+    which gfortran
+
 with the output: ``gfortran(1) - GNU Fortran compiler``. The command ::
 
     which gfortran
