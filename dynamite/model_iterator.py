@@ -120,7 +120,7 @@ class ModelIterator(object):
         mod = self.config.all_models.get_model_from_row(row)
         orblib = mod.get_orblib()
         weight_solver = mod.get_weights(orblib)
-        time = np.datetime64('now', 'ms')
+        time = str(np.datetime64('now', 'ms'))
         return mod.chi2, mod.kinchi2, time
 
 class ModelInnerIterator(object):
@@ -378,7 +378,7 @@ class ModelInnerIterator(object):
             else:
                 mod.chi2, mod.kinchi2 = 0, 0
         all_done = orb_done and wts_done
-        time = np.datetime64('now', 'ms')
+        time = str(np.datetime64('now', 'ms'))
         # Build and write model_done_staging.ecsv
         current_model_row = table.Table(self.all_models.table[row])
         for name, value in zip(
