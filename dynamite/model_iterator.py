@@ -292,7 +292,7 @@ class ModelInnerIterator(object):
         """
         iteration = self.all_models.table['which_iter'][-1]
         # new orblib model directories
-        nodir = np.dtype(self.all_models.table['directory'].dtype).type(None)
+        nodir = ''
         for row in rows_orblib:
             t = self.all_models.table[:row]
             n = np.sum((t['which_iter']==iteration) & (t['directory']!=nodir))
@@ -505,8 +505,7 @@ class SplitModelIterator(ModelInnerIterator):
                                   f'{input_list}.')
                 if len(input_list) > 0:
                     # model directory already assigned if it is a 'new' orblib
-                    no_dir = \
-                      np.dtype(self.all_models.table['directory'].dtype).type(None)
+                    no_dir = ''
                     new_dir_idx = [i for i in rows_to_do
                         if self.all_models.table['directory'][i] == no_dir]
                     if len(new_dir_idx) > 0:
