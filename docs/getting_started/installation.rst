@@ -52,11 +52,13 @@ In the following, we explain the installation of the GCC Fortran compiler via Ho
     brew update
     brew install gcc@9
 
+GCC should now be listed under your homebrew packages. You can check this by typing::
+
+    brew list
+ 
 We can check if gfortran is installed by typing in the Terminal::
 
     man -k fortran
-
-    which gfortran
 
 with the output: ``gfortran(1) - GNU Fortran compiler``. The command ::
 
@@ -114,7 +116,9 @@ Installation and Configure Procedure
 
 Download from `github <https://github.com/dynamics-of-stellar-systems/dynamite>`_, unzip and move the DYNAMITE code to the directory in which you want to install it. Make sure that your system fulfills the :ref:`software-requirements` listed above (in particular the Fortran compiler).
 
-The installation of DYNAMITE consists of three steps, as detailed below.
+If you encouter problems during the installation process, have a look at the section :ref:`troubleshooting`. Some of the most common issues are gathered there.  
+
+The installation of DYNAMITE consists of three steps, as detailed below.a
 
 1. Installation of GALAHAD
 --------------------------
@@ -271,7 +275,7 @@ When using MacOS:
 Finalizing the installation of GALAHAD
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Set environment variables and path as prompted at the end of successful Galahad installation e.g. in your .bashrc file.
+Set environment variables and path as prompted at the end of successful Galahad installation e.g. in your .bashrc or .zshrc file, depending on the shell you are using.
 
 
 **Example: GALAHAD environment variables**
@@ -388,7 +392,7 @@ To check that also the NNLS (Non-Negative Least Square) part of the code is also
 
     python test_nnls.py
 
-in the ``.../tests/`` directory, which takes less than two minutes to run.
+in the ``.../dev_tests/`` directory, which takes less than two minutes to run.
 
 You can check the output in the directory ``.../tests/NGC6278_output/plots``, where you should find a plot called ``chi2_vs_model_id.png``, looking like the following figure.
 
@@ -408,7 +412,7 @@ This figure shows the values of the :math:`\chi^2` obtained for the three models
 
         python user_test
 
-
+.. _troubleshooting:
 
 Troubleshooting
 ===============
@@ -432,6 +436,18 @@ Try ``python3``instead of ``python``::
 
     python3 setup.py install
 
+If ``setup.py`` still does not work, this may be because of failed package installations. Make sure to have at least ``numpy`` installed beforehand. Running ``setup.py`` will install the necessary packages for you, but you can also install some packages manually if needed.
+
+We recommend the use of a new python environment for ``dynamite``, where you can load all the packages you need without conflicts. Some packages need specific versions to be installed, which you can do manually as follows::
+
+    pip install astropy==4.2
+
+Or, if you are using conda::
+
+    conda install astropy=4.2
+
+A list of all required python packages can be found in ``dynamite/requirements.txt``.
+
 Compile errors when building legacy Fortran code
 ------------------------------------------------
 
@@ -449,4 +465,3 @@ to::
 
 (``-ftree-loop-linear`` is the same as ``-floop-nest-optimize`` and poses a problem if gcc/gfortran is compiled without isl).
 
-(under construction...)
