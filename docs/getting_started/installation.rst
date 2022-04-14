@@ -9,7 +9,7 @@ Installation guide
 System requirements
 ===================
 
-Computers running the DYNAMITE models must meet the following hardware requirements.
+Leah's change: Computers running the DYNAMITE models must meet the following hardware requirements.
 
 .. **Minimum Hardware Requirements**
 
