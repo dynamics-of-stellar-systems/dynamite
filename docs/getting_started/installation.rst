@@ -9,7 +9,7 @@ Installation guide
 System requirements
 ===================
 
-Leah's change: Computers running the DYNAMITE models must meet the following hardware requirements.
+Computers running the DYNAMITE models must meet the following hardware requirements.
 
 .. **Minimum Hardware Requirements**
 
@@ -337,9 +337,6 @@ Several Python packages are installed in this way (if they are not already), inc
       * PyYAML
       * numpy
       * matplotlib
-      * glob
-      * os
-      * shutil
 
 DYNAMITE should now be installed and ready to be run! You can now try the examples proposed in :ref:`test-run`.
 
