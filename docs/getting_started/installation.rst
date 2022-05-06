@@ -433,15 +433,13 @@ Try ``python3``instead of ``python``::
 
     python3 setup.py install
 
-If ``setup.py`` still does not work, this may be because of failed package installations. Make sure to have at least ``numpy`` installed beforehand. Running ``setup.py`` will install the necessary packages for you, but you can also install some packages manually if needed.
+If ``setup.py`` still does not work, this may be because of failed package installations. Make sure to have at least ``numpy`` installed beforehand. Running ``setup.py`` will install the necessary packages for you, but you can also install some packages manually if needed:
 
-We recommend the use of a new python environment for ``dynamite``, where you can load all the packages you need without conflicts. Some packages need specific versions to be installed, which you can do manually as follows::
-
-    pip install astropy==4.2
+    pip install astropy
 
 Or, if you are using conda::
 
-    conda install astropy=4.2
+    conda install astropy
 
 A list of all required python packages can be found in ``dynamite/requirements.txt``.
 

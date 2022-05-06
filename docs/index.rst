@@ -18,7 +18,7 @@ Getting Started
 
 To get started with DYNAMITE,
 
-1. Get the latest version from `GitHub page <https://github.com/dynamics-of-stellar-systems/dynamite/releases>`_
+1. Get the latest stable version from our `GitHub release page <https://github.com/dynamics-of-stellar-systems/dynamite/releases>`_. If you want the current version in development, you can also download this from our `GitHub page <https://github.com/dynamics-of-stellar-systems/dynamite>`_.
 2. Install. The `installation page <https://www.univie.ac.at/dynamics/dynamite_docs/getting_started/installation.html>`_ has the full instructions. An overview is:
 
   a. Install Galahad: in the directory ``legacy_fortran/galahad-2.3/`` run the command ``./install_Galahad``
@@ -60,9 +60,9 @@ Each page is an ipython notebook which you can either view in the browser, or do
    :maxdepth: 1
    :caption: Tutorials:
 
-   tutorial_notebooks/data_prep_for_gauss_hermites.ipynb
-   tutorial_notebooks/Quickstart.ipynb
-   tutorial_notebooks/BayesLOSVD_and_DYNAMITE.ipynb
+   tutorial_notebooks/1_data_prep_for_gauss_hermites.ipynb
+   tutorial_notebooks/2_quickstart.ipynb
+   tutorial_notebooks/4_BayesLOSVD.ipynb
 
 API Documentation
 =================
