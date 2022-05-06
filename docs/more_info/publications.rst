@@ -12,7 +12,7 @@ Zhu, L., van de Ven, G., Leaman, R., Pillepich, A., Coccato, L., Yuchen, D., Fal
 
 Zhu, L., van de Ven, G., Leaman, R., Grand, R.J.J., Falcón-Barroso, J., Jethwa, P., Watkins, L.L., Mao, S., Poci, A., McDermid, R.M., Xu, D., Nelson, D., 2020, MNRAS, 496,1579, `Disentangling the formation history of galaxies via population-orbit superposition: method validation <https://academic.oup.com/mnras/article-abstract/496/2/1579/5854214?redirectedFrom=fulltext>`_ 
 
-Zhu, L., van de Ven, G., van den Bosch, R., Rix, H.-W., Lyubenova, M., Falcón-Barroso, J.,  Martig, M., Mao, S., Xu, D., Jin, Y., Obreja, A., Grand, R.J.J., Dutton, A.A., Maccio, A.V.,  Gómez, F.A., Walcher, J.C., García-Benito, R., Zibetti, S., Sánchez, S.F., 2018, Nature, 2, 233, `The stellar orbit distribution in present-day galaxies inferred from the CALIFA survey <https://www.nature.com/articles/s41550-017-0348-1>`_ 
+Zhu, L., van de Ven, G., van den Bosch, R., Rix, H.-W., Lyubenova, M., Falcón-Barroso, J.,  Martig, M., Mao, S., Xu, D., Jin, Y., Obreja, A., Grand, R.J.J., Dutton, A.A., Maccio, A.V.,  Gómez, F.A., Walcher, J.C., García-Benito, R., Zibetti, S., Sánchez, S.F., 2018, Nature Astronomy, 2, 233, `The stellar orbit distribution in present-day galaxies inferred from the CALIFA survey <https://www.nature.com/articles/s41550-017-0348-1>`_ 
 
 van den Bosch R. C. E., van de Ven G., Verolme E. K., Cappellari M., de Zeeuw P. T., 2008, MNRAS, 385, 647, `Triaxial orbit based galaxy models with an application to the (apparent) decoupled core galaxy NGC 4365 <https://ui.adsabs.harvard.edu/abs/2008MNRAS.385..647V/abstract>`_
 
@@ -20,4 +20,3 @@ van den Bosch R. C. E., van de Ven G., 2009, MNRAS, 398, 1117, `Recovering the i
 
 van de Ven G., de Zeeuw P. T., van den Bosch R. C. E., 2008, MNRAS, 385, 614, `Recovery of the internal orbital structure of galaxies <https://ui.adsabs.harvard.edu/abs/2008MNRAS.385..614V/abstract>`_
 
-Zhu L., van de Ven G., van den Bosch R., Rix H.-W., Lyubenova M., Falcon-Barroso J., Martig M., et al., 2018, Nature Astronomy, 2, 233, `The stellar orbit distribution in present-day galaxies inferred from the CALIFA survey <https://ui.adsabs.harvard.edu/abs/2018NatAs...2..233Z/abstract>`_
