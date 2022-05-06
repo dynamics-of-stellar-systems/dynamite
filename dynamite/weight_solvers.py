@@ -653,6 +653,7 @@ class NNLS(WeightSolver):
         """
         self.logger.info(f"Using WeightSolver: {__class__.__name__}/"
                          f"{self.nnls_solver}")
+        orblib.read_losvd_histograms()
         weight_file = f'{self.direc_with_ml}orbit_weights.ecsv'
         if os.path.isfile(weight_file):
             self.logger.info("NNLS solution read from existing output")

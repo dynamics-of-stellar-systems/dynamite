@@ -2,6 +2,12 @@
 # e.g. the stellar light, dark matter, black hole, globular clusters
 
 import numpy as np
+from scipy import special
+
+# some tricks to add the current path to sys.path (so the imports below work)
+
+import os.path
+import sys
 import logging
 
 from dynamite import mges as mge
@@ -291,7 +297,7 @@ class Component(object):
 
         pars = [self.get_parname(p.name) for p in self.parameters]
         if set(pars) != set(par):
-            text = f'{self.__class__.__name__} needs parameters ' + \
+            text = f'{self.__class__.__name__} needs parameter(s) ' + \
                    f'{par}, not {pars}.'
             self.logger.error(text)
             raise ValueError(text)
@@ -323,8 +329,8 @@ class Component(object):
                     for p in self.parameters if not p.logarithmic]
         isvalid = np.all(np.sign(p_raw_values) >= 0)
         if not isvalid:
-            self.logger.debug(f'Invalid parset {par}: at least one negative '
-                              'non-log parameter.')
+            self.logger.debug(f'Invalid parameters {par}: at least one '
+                              'negative non-log parameter.')
         return isvalid
 
     def get_parname(self, par):
@@ -374,6 +380,33 @@ class VisibleComponent(Component):
         self.mge_lum = mge_lum
         super().__init__(visible=True, **kwds)
         self.logger = logging.getLogger(f'{__name__}.{__class__.__name__}')
+
+    def get_M_stars_tot(self, distance, parset):
+        """
+        Calculates and returns the total stellar mass via the mge.
+
+        Parameters
+        ----------
+        distance : float
+            Distance of the system in MPc
+        parset : astropy table row
+            must contain mass-to-light ratio ml
+
+        Returns
+        -------
+        float
+            Total stellar mass
+
+        """
+        mgepar = self.mge_pot.data
+        mgeI = mgepar['I']
+        mgesigma = mgepar['sigma']
+        mgeq = mgepar['q']
+
+        arctpc = distance*np.pi/0.648
+        sigobs_pc = mgesigma*arctpc
+
+        return 2 * np.pi * np.sum(mgeI * mgeq * sigobs_pc ** 2) * parset['ml']
 
     def validate(self, **kwds):
         super().validate(**kwds)
@@ -429,9 +462,9 @@ class TriaxialVisibleComponent(VisibleComponent):
 
     def validate_parset(self, par):
         """
-        Validate the p, q, u parset
+        Validate the p, q, u parameters
 
-        Validates the triaxial component's p, q, u parameter set. Requires
+        Validates the triaxial component's p, q, u parameters. Requires
         self.qobs to be set. A parameter set is valid if the resulting
         (theta, psi, phi) are not np.nan.
 
@@ -630,6 +663,41 @@ class DarkComponent(Component):
         rho = self.density.evaluate(xyz_grid, parameters)
         # self.mge = MGES.intrinsic_MGE_from_xyz_grid(xyz_grid, rho)
 
+    def get_dh_legacy_strings(self, parset):
+        """
+        Generates and returns two strings needed for the legacy Fortran files.
+
+        This method only applies to dark halo components.
+
+        Parameters
+        ----------
+        parset : astropy table row
+            Holds the parameter set.
+
+        Returns
+        -------
+        specs : str
+            A string with the legacy code and the number of parameters, space
+            separated.
+        par_vals : str
+            The parameter values in the sequence legacy Fortran expects them,
+            space separated.
+
+        """
+        try:
+            legacy_code = self.legacy_code
+            specs = f'{legacy_code} {len(self.parameters)}'
+            par_vals = ''
+            for par in self.par_names:
+                p = f'{par}-{self.name}'
+                par_vals += f'{parset[p]} '
+            par_vals = par_vals[:-1]
+            self.logger.debug(f'DH {self.__class__.__name__} legacy strings: '
+                              f'{specs} / {par_vals}.')
+            return specs, par_vals
+        except AttributeError: # Only dh has a legacy code, Plummer: do nothing
+            pass
+
 
 class Plummer(DarkComponent):
     """A Plummer sphere
@@ -646,6 +714,11 @@ class Plummer(DarkComponent):
         rho = 3*M/4/np.pi/a**3 * (1. + (r/a)**2)**-2.5
         return rho
 
+    def mass_enclosed(R, pars):
+        M, a = pars
+        Menc = M*R**3/a**3*(1 + R**2/a**2)**(-1.5)
+        return Menc
+
     def validate(self):
         par = ['m', 'a']
         super().validate(par=par)
@@ -658,14 +731,121 @@ class NFW(DarkComponent):
     [dm-fraction, M200/total-stellar-mass]
 
     """
+    par_names = ['c', 'f'] # parameter names in legacy sequence
+
     def __init__(self, **kwds):
         self.legacy_code = 1
         super().__init__(symmetry='spherical', **kwds)
 
     def validate(self):
-        par = ['c', 'f']
-        super().validate(par=par)
+        super().validate(par=self.par_names)
 
+
+class NFW_m200_c(DarkComponent):
+    """An NFW halo with m200-c relation from Dutton & Maccio 14
+
+    The relation: log10(c200) = 0.905 - 0.101 * log10(M200/(1e12/h)).
+    Component defined with parameter f [dm-fraction, M200/total-stellar-mass]
+
+    """
+    par_names = ['f'] # parameter names in legacy sequence
+
+    def __init__(self, **kwds):
+        self.legacy_code = 1
+        super().__init__(symmetry='spherical', **kwds)
+
+    def validate(self):
+        super().validate(par=self.par_names)
+
+    def get_c200(self, system, parset):
+        """
+        Calculates and returns c200 (see Dutton & Maccio 2014).
+
+        Parameters
+        ----------
+        system : a ``dyn.physical_system.System`` object
+        parset : astropy table row
+            Must contain dark matter fraction f-{self.name} and ml
+
+        Returns
+        -------
+        float
+            c200
+
+        """
+        stars = system.get_component_from_class(TriaxialVisibleComponent)
+        M_stars_tot = stars.get_M_stars_tot(system.distMPc, parset)
+        f = parset[f'f-{self.name}']
+        h=0.671 #add paper
+        #total mass of dark matter
+        MvDM = f * M_stars_tot
+        #dutton&maccio2014 (https://arxiv.org/pdf/1402.7073.pdf) Eq. (8)
+        lc200 = 0.905 - 0.101*np.log10( MvDM/(1e12/h))
+
+        return 10.**lc200
+
+    def get_dh_legacy_strings(self, parset, system):
+        """
+        Generates and returns two strings needed for the legacy Fortran files.
+
+        This method overrides the parent class' method because for legacy
+        Fortran purposes, NFW_m200_c has two parameters. Note that NFW_m200_c
+        needs an addiional parameter ``system``.
+
+        Parameters
+        ----------
+        parset : astropy table row
+            Holds the parameter set.
+
+        Returns
+        -------
+        specs : str
+            A string with the legacy code and the number of parameters, space
+            separated.
+        par_vals : str
+            The parameter values in the sequence legacy Fortran expects them,
+            space separated.
+
+        """
+        specs, par_vals = super().get_dh_legacy_strings(parset)
+        c200 = self.get_c200(system, parset)
+        specs = f'{self.legacy_code} 2'
+        par_vals = f'{c200} {par_vals}'
+        self.logger.debug(f'DH {self.__class__.__name__} legacy strings '
+                          f'amended to {specs} / {par_vals}.')
+        return specs, par_vals
+
+
+    # c is concentration, f is dark mass fraction
+    ## fixme: should derive rhocrit from (c,f) (?)
+    rhocrit = 1
+    def rhoc(c,f):
+        return 200/3 * rhocrit * c**3 / (log(1 + c) - c/(1+c))
+    def rc(c,f):
+        return (3*M200(c,f)/(800*pi*rhocrit*c**3))**(1/3)
+    def M200(c,f):
+        return 800*pi/3*rhocrit*(rc*c)**3
+
+    def potential(x, y, z, pars):
+        c, f = pars
+        d2 = x**2 + y**2 + z**2
+        prefactor = 4*pi*G*rhoc(c,f)*(rc(c,f)**3)/sqrt(d2)
+        if sqrt(d2)/rc >= 1:
+            return prefactor * log(1 + sqrt(d2)/rc)
+        else:
+            return prefactor * 2 * atanh(sqrt(d2)/(2*rc(c,f) + sqrt(d2)))
+
+    def density(x, y, z, pars):
+        c, f = pars
+        r = np.sqrt(x**2 + y**2 + z**2)
+        rho = rc(c,f)**3*rhoc(c,f)/(r*(r+rc(c,f))**2)
+        return rho
+
+    def mass_enclosed(x, y, z, pars):
+        c, f = pars
+        r = np.sqrt(x**2 + y**2 + z**2)
+        Menc = 4*np.pi*rc(c,f)**3*rhoc(c,f)*(np.log(1 + r/rc(c,f)) - (r/rc(c,f))/(1 + r/rc(c,f)))
+        return Menc
 
 class Hernquist(DarkComponent):
     """A Hernquist sphere
@@ -674,14 +854,31 @@ class Hernquist(DarkComponent):
     length, km]
 
     """
+    par_names = ['rhoc', 'rc'] # parameter names in legacy sequence
+
     def __init__(self, **kwds):
         self.legacy_code = 2
         super().__init__(symmetry='spherical', **kwds)
 
     def validate(self):
-        par = ['rhoc', 'rc']
-        super().validate(par=par)
+        super().validate(par=self.par_names)
 
+    def potential(x, y, z, pars):
+        rhoc, rc = pars
+        r = np.sqrt(x**2 + y**2 + z**2)
+        psi = 2*np.pi*G*rhoc*rc**2/(1 + r/rc)
+        return psi
+
+    def density(x, y, z, pars):
+        rhoc, rc = pars
+        r = np.sqrt(x**2 + y**2 + z**2)
+        rho = rc**4*rhoc/(r*(r+rc)**3)
+        return rho
+
+    def mass_enclosed(x, y, z, pars):
+        rhoc, rc = pars
+        Menc = 2*np.pi*r**2*rc**3*rhoc/(r + rc)**2
+        return Menc
 
 class TriaxialCoredLogPotential(DarkComponent):
     """A TriaxialCoredLogPotential
@@ -691,14 +888,38 @@ class TriaxialCoredLogPotential(DarkComponent):
     [asympt. circular velovity, km/s]
 
     """
+    par_names = ['Vc', 'Rc', 'p', 'q'] # parameter names in legacy sequence
+
     def __init__(self, **kwds):
         self.legacy_code = 3
         super().__init__(symmetry='triaxial', **kwds)
 
     def validate(self):
-        par = ['Vc', 'Rc', 'p', 'q']
-        super().validate(par=par)
+        super().validate(par=self.par_names)
 
+    def potential(x, y, z, pars):
+        rc, vc, p, q = pars
+        m = x**2 + y**2/p**2 + z**2/q**2
+        psi = -0.5*vc**2*np.log(rc**2 + m)
+        return psi
+
+    def density(x, y, z, pars):
+        rc, vc, p, q = pars
+        m = x**2 + y**2/p**2 + z**2/q**2
+        rho = vc**2/(4*np.pi*G*(m+rc**2)**2)*( (m+rc**2)*(1 + 1/p**2 + 1/q**2) - 2*(x**2 + y**2/p**4 + z**2/q**4))
+        return rho
+
+    # this implementation assumes 1 > p > q
+    def mass_enclosed(x, y, z, pars):
+        rc, vc, p, q = pars
+        r = np.sqrt(x**2 + y**2 + z**2)
+        xx = r**2/(r**2/q**2 + rc**2)
+        yy = r**2/(r**2/p**2 + rc**2)
+        zz = r**2/(r**2 + rc**2)
+        phi = np.arccos(np.sqrt(xx/zz))
+        m = (zz-yy)/(zz-xx)
+        Menc = r*vc**2/G * (1 - rc**2*r/np.sqrt((r**2+rc**2)*(r**2/p**2+rc**2)*(r**2/q**2+rc**2))*(zz-xx)**(-0.5)*special.ellipkinc(phi,m))
+        
 
 class GeneralisedNFW(DarkComponent):
     """A GeneralisedNFW halo
@@ -708,17 +929,18 @@ class GeneralisedNFW(DarkComponent):
     inner_log_slope []
 
     """
+    par_names = ['c', 'Mvir', 'gam'] # parameter names in legacy sequence
+
     def __init__(self, **kwds):
         self.legacy_code = 5
         super().__init__(symmetry='triaxial', **kwds)
 
     def validate(self):
-        par = ['c', 'Mvir', 'gam']
-        super().validate(par=par)
+        super().validate(par=self.par_names)
 
     def validate_parset(self, par):
         """
-        Validates the GeneralisedNFW's parameter set.
+        Validates the GeneralisedNFW's parameters.
 
         Requires c and Mvir >0, and gam leq 1
 
@@ -740,5 +962,21 @@ class GeneralisedNFW(DarkComponent):
             is_valid = True
         return is_valid
 
+    ## fixme: should actually derive (rhoc,rc) from (c,Mvir)
+    def potential(x, y, z, pars):
+        rhoc, rc, gamma = pars
+        xi = r/(r + rc)
+        psi = 4*np.pi*G*rhoc*rc**2*(rc/r*xi**(3-gamma)/(3-gamma)*special.hyp2f1(3-gamma,1,4-gamma,xi) + (1 - xi**(3-gamma))/(2-gamma))
+        return psi
+
+    def density(x, y, z, pars):
+        rhoc, rc, gamma = pars
+        rho = rhoc*rc**3*r**(-gamma)*(r + rc)**(gamma-3)
+        return rho
+
+    def mass_enclosed(x, y, z, pars):
+        rhoc, rc, gamma = pars
+        xi = r/(r + rc)
+        Menc = 4*np.pi*rc**3*rhoc*xi**(3-gamma)/(3-gamma)*special.hyp2f1(3-gamma,1,4-gamma,xi)
 
 # end

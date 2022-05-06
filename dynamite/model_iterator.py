@@ -88,7 +88,7 @@ class ModelIterator(object):
                 the_plotter.make_chi2_vs_model_id_plot()
                 the_plotter.make_chi2_plot()
                 the_plotter.plot_kinematic_maps(kin_set='all',
-                                                cbar_lims='data')
+                                                cbar_lims='default')
                 plt.close('all') # just to make sure...
         self.logger.info(f'{__class__.__name__} done.')
 
@@ -121,7 +121,7 @@ class ModelIterator(object):
         mod = self.config.all_models.get_model_from_row(row)
         orblib = mod.get_orblib()
         weight_solver = mod.get_weights(orblib)
-        time = np.datetime64('now', 'ms')
+        time = str(np.datetime64('now', 'ms'))
         return mod.chi2, mod.kinchi2, time
 
 class ModelInnerIterator(object):
@@ -293,7 +293,7 @@ class ModelInnerIterator(object):
         """
         iteration = self.all_models.table['which_iter'][-1]
         # new orblib model directories
-        nodir = np.dtype(self.all_models.table['directory'].dtype).type(None)
+        nodir = ''
         for row in rows_orblib:
             t = self.all_models.table[:row]
             n = np.sum((t['which_iter']==iteration) & (t['directory']!=nodir))
@@ -379,7 +379,7 @@ class ModelInnerIterator(object):
             else:
                 mod.chi2, mod.kinchi2 = 0, 0
         all_done = orb_done and wts_done
-        time = np.datetime64('now', 'ms')
+        time = str(np.datetime64('now', 'ms'))
         # Build and write model_done_staging.ecsv
         current_model_row = table.Table(self.all_models.table[row])
         for name, value in zip(
@@ -479,18 +479,19 @@ class SplitModelIterator(ModelInnerIterator):
                                    if self.is_new_orblib(i)]
                 rows_to_do_ex_orblib=[i for i in rows_to_do
                                       if not self.is_new_orblib(i)]
-                self.assign_model_directories(rows_ml=rows_to_do_ex_orblib)
+                self.assign_model_directories(rows_ml=rows_to_do_ex_orblib,
+                                              rows_orblib=rows_to_do_orblib)
+                self.all_models.save() # save all_models table
                 input_list = [i + (True,False)
                               for i in enumerate(rows_to_do_orblib)]
                 self.logger.debug(f'{len(input_list)} unique new '
                                   f'orlibs: {input_list}.')
                 if len(input_list) > 0:
-                    self.assign_model_directories(rows_orblib=rows_to_do_orblib)
                     with Pool(self.ncpus) as p:
                         output = p.map(self.create_and_run_model, input_list)
                     self.write_output_to_all_models_table(rows_to_do_orblib,
                                                           output)
-                self.all_models.save() # save all_models table
+                    self.all_models.save() # save all_models table
             if self.do_weights:
                 # rows_to_do = np.where(self.all_models.table['orblib_done']
                 #     & (self.all_models.table['weights_done']==False))
@@ -505,12 +506,12 @@ class SplitModelIterator(ModelInnerIterator):
                                   f'{input_list}.')
                 if len(input_list) > 0:
                     # model directory already assigned if it is a 'new' orblib
-                    no_dir = \
-                      np.dtype(self.all_models.table['directory'].dtype).type(None)
+                    no_dir = ''
                     new_dir_idx = [i for i in rows_to_do
                         if self.all_models.table['directory'][i] == no_dir]
                     if len(new_dir_idx) > 0:
                         self.assign_model_directories(rows_ml=new_dir_idx)
+                        self.all_models.save() # save all_models table
                     with Pool(self.ncpus_weights) as p:
                         output = p.map(self.create_and_run_model, input_list)
                     self.write_output_to_all_models_table(rows_to_do, output)

@@ -33,7 +33,7 @@ def run_user_test():
 
     # read configuration
     fname = 'test_slurm_config.yaml'
-    c = dyn.config_reader.Configuration(fname, silent=True)
+    c = dyn.config_reader.Configuration(fname)
 
     # delete previous output if available
     c.remove_existing_orblibs()

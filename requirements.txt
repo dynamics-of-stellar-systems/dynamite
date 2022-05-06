@@ -1,4 +1,4 @@
-astropy==4.2
+astropy>=5.0.4
 cvxopt>=1.2.6
 h5py>=3.1.0
 logging>=0.4.9.6

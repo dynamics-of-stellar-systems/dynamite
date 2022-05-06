@@ -74,7 +74,7 @@ class AllModels(object):
         dtype = [np.float64 for n in names]
         # add the columns from legacy version
         names += ['chi2', 'kinchi2', 'time_modified']
-        dtype += [np.float64, np.float64, np.object]
+        dtype += [np.float64, np.float64, str]
         # add extra columns
         names += ['orblib_done', 'weights_done', 'all_done']
         dtype += [bool, bool, bool]
@@ -83,7 +83,7 @@ class AllModels(object):
         dtype.append(int)
         # directory will be the model directory name in the models/ directory
         names.append('directory')
-        dtype.append(np.object)
+        dtype.append('<S256') # little-endian string of max. 256 characters
         self.table = table.Table(names=names, dtype=dtype)
 
     def read_completed_model_file(self):
@@ -160,6 +160,7 @@ class AllModels(object):
                                      f'{row["directory"]} - removing row {i}.')
         # do the deletion
         cwd = os.getcwd()
+        os.chdir(self.config.settings.io_settings['model_directory'])
         for row in to_delete:
             try:
                 shutil.rmtree(self.table[row]['directory'])
@@ -642,7 +643,6 @@ class Model(object):
                 mod_dir=self.directory_noml,
                 parset=self.parset)
         orblib.get_orblib()
-        orblib.read_losvd_histograms()
         return orblib
 
     def get_weights(self, orblib=None):
@@ -717,7 +717,7 @@ class Model(object):
                                     'unchanged (not in parset).')
             else:
                 par = parspace_copy[par_idx]
-                par.value = par.get_raw_value_from_par_value(parset[par_name])
+                par.par_value = parset[par_name]
         parspace_copy.validate_parspace()
         self.logger.debug('parset validated against parspace.')
 
