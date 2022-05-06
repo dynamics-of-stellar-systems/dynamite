@@ -159,6 +159,7 @@ class AllModels(object):
                     self.logger.info('No finished model found in '
                                      f'{row["directory"]} - removing row {i}.')
         # do the deletion
+        cwd = os.getcwd()
         for row in to_delete:
             try:
                 shutil.rmtree(self.table[row]['directory'])
@@ -168,6 +169,7 @@ class AllModels(object):
                 self.logger.debug(f"Cannot remove model {row}'s directory "
                                   f"{self.table[row]['directory']} - file "
                                   "not found.")
+        os.chdir(cwd)
         self.table.remove_rows(to_delete)
         if table_modified:
             self.save()
