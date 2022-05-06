@@ -272,6 +272,10 @@ class Plotter():
 
                 if j==i+1:
                     ax.set_xlabel(xtit, fontsize=12)
+                    ax.set_xmargin(0.5)
+                    nbins = len(ax.get_xticklabels())
+                    ax.xaxis.set_major_locator(MaxNLocator(nbins=nbins, prune='lower'))
+
                 else:
                     ax.set_xticks([])
                 if i==0:
@@ -908,12 +912,12 @@ class Plotter():
         plt.subplot(3, 5, 14)
         c = (h3m[grid[s]] - h3[grid[s]]) / dh3[grid[s]]
         display_pixels.display_pixels(x, y, c,
-                                          vmin=-1, vmax=1,
+                                          vmin=-10, vmax=10,
                                           **kw_display_pixels)
         plt.subplot(3, 5, 15)
         c = (h4m[grid[s]] - h4[grid[s]]) / dh4[grid[s]]
         display_pixels.display_pixels(x, y, c,
-                                          vmin=-1, vmax=1,
+                                          vmin=-10, vmax=10,
                                           **kw_display_pixels)
         fig.subplots_adjust(left=0.04, wspace=0.3,
                             hspace=0.01, right=0.97)
