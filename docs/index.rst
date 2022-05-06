@@ -13,6 +13,7 @@ How to cite
 
 If you use DYNAMITE, please cite our `ASCL entry <http://www.ascl.net/code/v/2684>`_ using the following `BibTex citation <https://ui.adsabs.harvard.edu/abs/2020ascl.soft11007J/exportcitation>`_
 
+=======
 Orbit mirroring bug
 ================
 
@@ -27,7 +28,7 @@ Getting Started
 
 To get started with DYNAMITE,
 
-1. Get the latest version from `GitHub page <https://github.com/dynamics-of-stellar-systems/dynamite/releases>`_
+1. Get the latest stable version from our `GitHub release page <https://github.com/dynamics-of-stellar-systems/dynamite/releases>`_. If you want the current version in development, you can also download this from our `GitHub page <https://github.com/dynamics-of-stellar-systems/dynamite>`_.
 2. Install. The `installation page <https://www.univie.ac.at/dynamics/dynamite_docs/getting_started/installation.html>`_ has the full instructions. An overview is:
 
   a. Install Galahad: in the directory ``legacy_fortran/galahad-2.3/`` run the command ``./install_Galahad``
@@ -75,6 +76,7 @@ Each page is an ipython notebook which you can either view in the browser, or do
    tutorial_notebooks/4_BayesLOSVD.ipynb
    tutorial_notebooks/5_parameter_space.ipynb
    tutorial_notebooks/6_orbits_and_weights.ipynb
+
 
 API Documentation
 =================
