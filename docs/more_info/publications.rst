@@ -22,6 +22,10 @@ Fahrion K., Lyubenova M., van de Ven G., Leaman R., Hilker M., Martín-Navarro I
 
 Zhu L., van de Ven G., van den Bosch R., Rix H.-W., Lyubenova M., Falcón-Barroso J.,  Martig M., Mao S., Xu D., Jin Y., Obreja A., Grand R.J.J., Dutton A.A., Maccio A.V.,  Gómez F.A., Walcher J.C., García-Benito R., Zibetti S., Sánchez S.F., 2018, Nature Astronomy, 2, 233, `The stellar orbit distribution in present-day galaxies inferred from the CALIFA survey <https://ui.adsabs.harvard.edu/abs/2018NatAs...2..233Z/abstract>`_ 
 
+Walsh J.L., van den Bosch R.C.E., Gebhardt K., Yıldırım A., Richstone D.O., Gültekin K., Husemann B., ApJ, 2016, 817, 2, `A 5 x 109 Msun Black Hole in NGC 1277 from Adaptive Optics Spectroscopy  <https://ui.adsabs.harvard.edu/abs/2016ApJ...817....2W/abstract>`_
+
+Walsh J.L., van den Bosch R.C.E. Gebhardt K., Yıldırım A., Gültekin K., Husemann B., Richstone D.O., ApJ, 2015, 808, 183, `The Black Hole in the Compact, High-dispersion Galaxy NGC 1271  <https://ui.adsabs.harvard.edu/abs/2015ApJ...808..183W/abstract>`_
+
 van den Bosch R.C.E., Gebhardt K., Gültekin K., van de Ven G., van der Wel A., Walsh J.L., 2012, Nature, 491, 729, `An over-massive black hole in the compact lenticular galaxy NGC 1277  <https://ui.adsabs.harvard.edu/abs/2012Natur.491..729V/abstract>`_
 
 van den Bosch R.C.E., de Zeeuw P.T., 2010, MNRAS, 401, 1770, `Estimating black hole masses in triaxial galaxies <https://ui.adsabs.harvard.edu/abs/2010MNRAS.401.1770V/abstract>`_
