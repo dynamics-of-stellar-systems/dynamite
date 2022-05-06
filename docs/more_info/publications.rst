@@ -1,10 +1,21 @@
 .. _publications:
 
 ************
-Publications
+Publications on the DYNAMITE methods
 ************
 
 Thater S., Jethwa P., Tahmasebzadeh B., Zhu L., den Brok M., Santucci G., Ding Y., Poci A., Lilley E., de Zeeuw P.T., Zocchi A., Maindl T.I., Rigamonti F., van de Ven G., Yang M., Fahrion K., 2022, A&A, (submitted), `On the robustness of triaxial Schwarzschild modelling: The effects of correcting the orbit mirroring <https://ucloud.univie.ac.at/index.php/s/t8atbqqJ7LW2cpH>`_
+
+Zhu L., van de Ven G., Leaman R., Grand R.J.J., Falcón-Barroso J., Jethwa P., Watkins L.L., Mao S., Poci A., McDermid R.M., Xu D., Nelson D., 2020, MNRAS, 496,1579, `Disentangling the formation history of galaxies via population-orbit superposition: method validation <https://ui.adsabs.harvard.edu/abs/2020MNRAS.496.1579Z/abstract>`_ 
+
+van den Bosch R. C. E., van de Ven G., Verolme E. K., Cappellari M., de Zeeuw P. T., 2008, MNRAS, 385, 647, `Triaxial orbit based galaxy models with an application to the (apparent) decoupled core galaxy NGC 4365 <https://ui.adsabs.harvard.edu/abs/2008MNRAS.385..647V/abstract>`_
+
+
+
+************
+Publications on the Application of triaxial Schwarzschild models (DYNAMITE)
+************
+
 
 Poci A., Smith, R.J., 2022, MNRAS, (accepted), `Comparing Lensing and Stellar Orbital Models of a Nearby Massive Strong-Lens Galaxy <https://ui.adsabs.harvard.edu/abs/2022MNRAS.512.5298P/abstract>`_ 
 
@@ -16,7 +27,6 @@ Poci A., McDermid R.M., Lyubenova M., Zhu L., van de Ven, G., Iodice E., Coccato
 
 Zhu L., van de Ven G., Leaman R., Pillepich A., Coccato L., Yuchen D., Falcón-Barroso J., Iodice E., Martín-Navarro, I., Pinna F., Corsini E.M., Gadotti D.A., Fahrion K., Lyubenova M., Saude M., McDermid R.M., Poci A., Sarzi M., de Zeeuw P.T., 2020, MNRAS, 496, 1579, `The Fornax3D project: discovery of ancient massive merger events in the Fornax cluster galaxies NGC 1380 and NGC 1427  <https://ui.adsabs.harvard.edu/abs/2022arXiv220315822Z/abstract>`_ 
 
-Zhu L., van de Ven G., Leaman R., Grand R.J.J., Falcón-Barroso J., Jethwa P., Watkins L.L., Mao S., Poci A., McDermid R.M., Xu D., Nelson D., 2020, MNRAS, 496,1579, `Disentangling the formation history of galaxies via population-orbit superposition: method validation <https://ui.adsabs.harvard.edu/abs/2020MNRAS.496.1579Z/abstract>`_ 
 
 Fahrion K., Lyubenova M., van de Ven G., Leaman R., Hilker M., Martín-Navarro I., Zhu L., Alfaro-Cuello M., Coccato L., Corsini E.M., Falcón-Barroso J., Iodice E., McDermid R.M., Sarzi M., de Zeeuw, P.T. 2019, A&A, 628, A92, `Constraining nuclear star cluster formation using MUSE-AO observations of the early-type galaxy FCC 47 <https://ui.adsabs.harvard.edu/abs/2019A%26A...628A..92F/abstract>`_
 
@@ -34,5 +44,4 @@ van den Bosch R. C. E., van de Ven G., 2009, MNRAS, 398, 1117, `Recovering the i
 
 van de Ven G., de Zeeuw P. T., van den Bosch R. C. E., 2008, MNRAS, 385, 614, `Recovery of the internal orbital structure of galaxies <https://ui.adsabs.harvard.edu/abs/2008MNRAS.385..614V/abstract>`_
 
-van den Bosch R. C. E., van de Ven G., Verolme E. K., Cappellari M., de Zeeuw P. T., 2008, MNRAS, 385, 647, `Triaxial orbit based galaxy models with an application to the (apparent) decoupled core galaxy NGC 4365 <https://ui.adsabs.harvard.edu/abs/2008MNRAS.385..647V/abstract>`_
 
