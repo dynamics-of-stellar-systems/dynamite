@@ -13,7 +13,7 @@ van den Bosch R. C. E., van de Ven G., Verolme E. K., Cappellari M., de Zeeuw P.
 
 
 ************
-Publications on the Application of triaxial Schwarzschild models (DYNAMITE)
+Publications on the application of triaxial Schwarzschild models (DYNAMITE)
 ************
 
 
