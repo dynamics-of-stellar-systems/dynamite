@@ -1,6 +1,7 @@
 import os
 import copy
 import logging
+import shutil
 import numpy as np
 from astropy import table
 from astropy.io import ascii
@@ -73,7 +74,7 @@ class AllModels(object):
         dtype = [np.float64 for n in names]
         # add the columns from legacy version
         names += ['chi2', 'kinchi2', 'time_modified']
-        dtype += [np.float64, np.float64, np.object]
+        dtype += [np.float64, np.float64, str]
         # add extra columns
         names += ['orblib_done', 'weights_done', 'all_done']
         dtype += [bool, bool, bool]
@@ -82,11 +83,25 @@ class AllModels(object):
         dtype.append(int)
         # directory will be the model directory name in the models/ directory
         names.append('directory')
-        dtype.append(np.object)
+        dtype.append('<S256') # little-endian string of max. 256 characters
         self.table = table.Table(names=names, dtype=dtype)
 
     def read_completed_model_file(self):
-        """read table from file ``self.filename``
+        """Read table from file ``self.filename``
+
+        Dealing with incomplete models:
+        Models with all_done==False but an existing model_done_staging.ecsv
+        will be updated in the table and the staging file will be deleted.
+        Models with all_done==False and no existing orblib will be deleted
+        from the table and their model directory will be deleted, too.
+        The configuration setting reattempt_failures determines how partially
+        completed models with all_done==False but existing orblibs are treated:
+        If reattempt_failures==True, their orblib_done will be set to True
+        and weight solving will be done based on the existing orblibs.
+        If reattempt_failures==False, the model and its directory will be
+        deleted.
+        Note that orbit libraries on disk will not be deleted as they
+        may be in use by other models.
 
         Returns
         -------
@@ -97,6 +112,63 @@ class AllModels(object):
         self.table = ascii.read(self.filename)
         self.logger.debug(f'{len(self.table)} models read '
                           f'from file {self.filename}')
+
+        table_modified = False
+        for i, row in enumerate(self.table):
+            if not row['all_done']:
+                table_modified = True
+                mod = self.get_model_from_row(i)
+                staging_filename = mod.directory+'model_done_staging.ecsv'
+                check1 = os.path.isfile(
+                    mod.directory_noml+'datfil/orblib.dat.bz2'
+                    )
+                check2 = os.path.isfile(
+                    mod.directory_noml+'datfil/orblibbox.dat.bz2'
+                    )
+                check_if_orblibs_present = check1 and check2
+                if os.path.isfile(staging_filename):
+                    # the model has completed but was not entered in the table
+                    staging_file = ascii.read(staging_filename)
+                    self.table[i] = staging_file[0]
+                    self.logger.info(f'Staging file {staging_filename} '
+                                f'used to update {__class__.__name__}.table.')
+                    os.remove(staging_filename)
+                    self.logger.debug(
+                        f'Staging file {staging_filename} deleted.')
+                elif check_if_orblibs_present:
+                    self.logger.debug(f'Row {i}: orblibs were computed '
+                                      'but not weights.')
+                    self.table[i]['orblib_done'] = True
+                else:
+                    self.logger.debug(f'Row {i}: neither orblibs nor '
+                                      'weights were completed.')
+        # collect failed models to delete (both their directory and table entry)
+        to_delete = []
+        # if we will reattempt weight solving, only delete models with no orblib
+        if self.config.settings.weight_solver_settings['reattempt_failures']:
+            for i, row in enumerate(self.table):
+                if not row['orblib_done']:
+                    to_delete.append(i)
+                    self.logger.info('No orblibs calculated for model in '
+                                     f'{row["directory"]} - removing row {i}.')
+        # otherwise delete any model which is not `all_done`
+        else:
+            for i, row in enumerate(self.table):
+                if not row['all_done']:
+                    to_delete.append(i)
+                    self.logger.info('No finished model found in '
+                                     f'{row["directory"]} - removing row {i}.')
+        # do the deletion
+        cwd = os.getcwd()
+        os.chdir(self.config.settings.io_settings['model_directory'])
+        for row in to_delete:
+            shutil.rmtree(self.table[row]['directory'])
+            self.logger.info(f"Model {row}'s directory "
+                             f"{self.table[row]['directory']} removed.")
+        os.chdir(cwd)
+        self.table.remove_rows(to_delete)
+        if table_modified:
+            self.save()
 
     def read_legacy_chi2_file(self, legacy_filename):
         """
@@ -566,7 +638,6 @@ class Model(object):
                 mod_dir=self.directory_noml,
                 parset=self.parset)
         orblib.get_orblib()
-        orblib.read_losvd_histograms()
         return orblib
 
     def get_weights(self, orblib=None):
@@ -641,7 +712,7 @@ class Model(object):
                                     'unchanged (not in parset).')
             else:
                 par = parspace_copy[par_idx]
-                par.value = par.get_raw_value_from_par_value(parset[par_name])
+                par.par_value = parset[par_name]
         parspace_copy.validate_parspace()
         self.logger.debug('parset validated against parspace.')
 

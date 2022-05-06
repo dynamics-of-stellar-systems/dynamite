@@ -214,5 +214,26 @@ class Integrated(Data):
             return
         return map_plotter
 
+    def convert_to_plot_coords(self, x, y):
+        """Convert a set of co-ordinates (x,y) into those used for plotting.
+
+        i.e. rotated so major-axis lies along x-axis
+
+        Parameters
+        ----------
+        x : float, or array like
+            x-coordinates
+        y : float, or array like
+            x-coordinates
+
+        Returns
+        -------
+        tuple
+            rotated (x,y) co-ordinates which can be used on plots
+
+        """
+        ang = np.radians(self.dp_args['angle'])
+        x, y = x*np.cos(ang) - y*np.sin(ang), x*np.sin(ang) + y*np.cos(ang)
+        return x, y
 
 # end

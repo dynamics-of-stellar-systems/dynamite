@@ -40,17 +40,18 @@ fi
 
 ## --------------------
 ## Test scripts: enter desired test scripts/config file combinations here.
-## Note that config_files must contain matching configuration files.
-test_scripts=('test_nnls.py' 'test_orbit_losvds.py')
-config_files=('user_test_config_ml.yaml' 'user_test_config.yaml')
-ncores=('8' '8')
+## Note that config_files must contain element-wise matching configuration
+## files and ncores the number of CPU to be used for each test script.
+test_scripts=('test_nnls.py')
+config_files=('user_test_config_ml.yaml')
+ncores=('8')
 
 ## --------------------
 ## Weight solvers: enter desired type/nnls_solver combinations here.
-## Note that nnls_solvers must contain matching nnls_solver entries
-## for the configuration files.
-weight_solvers=('LegacyWeightSolver' 'NNLS' 'NNLS')
-nnls_solvers=('1' 'scipy' 'cvxopt')
+## Note that nnls_solvers must contain element-wise matching nnls_solver
+## entries for the respective configuration files.
+weight_solvers=('LegacyWeightSolver' 'NNLS')
+nnls_solvers=('1' 'scipy')
 
 ## --------------------
 ## Parameter generators: enter desired generator_types here
@@ -124,7 +125,12 @@ do
       cp $script $testdir/$folder
       cp -r data $testdir/$folder
       # adapt and copy DYNAMITE configuration file to test folder
-      awk 'BEGIN{ws=0} {if(match($1, "weight_solver_settings")){ws=1};if(ws && match($1,"type")){$0="    type: \"'$ws'\"";ws=0};print}' $config | \
+      # first, set fixed: False for the black hole mass (must be the first
+      # parameter in the bh component with existing fixed: ... entry)
+      awk 'BEGIN{m=0} {if(match($1, "bh:")){m=1};if(m && match($1,"fixed:")){$0="                fixed: False";m=0};print}' $config | \
+      # then, inject the weight solver into the configuration file
+      awk 'BEGIN{ws=0} {if(match($1, "weight_solver_settings")){ws=1};if(ws && match($1,"type")){$0="    type: \"'$ws'\"";ws=0};print}' | \
+      # at last, inject the nnls solver, generator type, input directory, and ncpus
       sed -e "s/    nnls_solver:.*/    nnls_solver: \"$nnls\"/" \
           -e "s/    generator_type:.*/    generator_type: \"$pg\"/" \
           -e 's/    input_directory: "\(.*\)"/    input_directory: "..\/..\/\1"/' \
