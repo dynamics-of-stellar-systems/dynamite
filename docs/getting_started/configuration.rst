@@ -135,7 +135,7 @@ The following types of component are available, listed with their parameters:
     - ``gam``: AKA gamma, the inner logarithmic density slope, must be :math:`\leq 1`
 
 .. note::
-  currently (v2.0) there is only one combination of component types that is valid. This is to ensure compatibility with the Fortran implementation of the orbit integrator. Later implementations may offer more flexibility. The only current valid combination of components is:
+  currently, there is only one combination of component types that is valid. This is to ensure compatibility with the Fortran implementation of the orbit integrator. Later implementations may offer more flexibility. The only current valid combination of components is:
 
   - one ``Plummer`` component
       - representing the black hole

@@ -11,6 +11,7 @@
 # documentation root, use os.path.abspath to make it absolute, like shown here.
 import os
 import sys
+import datetime
 import dynamite as dyn
 sys.path.insert(0, os.path.abspath('../dynamite/'))
 
@@ -18,11 +19,10 @@ sys.path.insert(0, os.path.abspath('../dynamite/'))
 # -- Project information -----------------------------------------------------
 
 project = 'DYNAMITE'
-copyright = '2021, Stellar Dynamics Group in Vienna'
+copyright = f'2020-{datetime.date.today().year}, Stellar Dynamics Group in Vienna'
 author = 'Stellar Dynamics Group in Vienna'
 
 # The full version, including alpha/beta/rc tags
-#release = 'v1.0.0'
 release = 'v' + dyn.__version__
 
 
