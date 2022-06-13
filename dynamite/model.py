@@ -511,6 +511,41 @@ class AllModels(object):
         models = self.table[self.table[which_chi2] <= chi2_min+delta]
         return models
 
+    def remove_unused_orblibs(self, n_models_keep=None, chi2_rel_thresh=None):
+        """
+        Removes orbit libraries for ''bad'' models.
+
+        bla
+
+        Returns
+        -------
+        None.
+
+        """
+        if n_models_keep is not None and chi2_rel_thresh is not None:
+            txt = 'Do not specify both n_models_keep and chi2_rel_thresh.'
+            self.logger.error(txt)
+            raise ValueError(txt)
+        which_chi2=self.config.settings.parameter_space_settings['which_chi2']
+        if n_models_keep is None:
+            if chi2_rel_thresh is None:
+                chi2_rel_thresh = 1.1
+                self.logger.debug('No argument given, '
+                                  f'will use {chi2_rel_thresh =}.')
+            chi2_abs_thresh = min(self.table[which_chi2]) * chi2_rel_thresh
+            models = self.table[self.table[which_chi2] > chi2_abs_thresh]
+            self.logger.debug(f'Will remove {len(models)} models with '
+                              f'{which_chi2} > {chi2_abs_thresh}.')
+        else:
+            models = copy.deepcopy(self.table).sort(which_chi2)
+            models = models[n_models_keep:]
+            self.logger.debug(f'Will remove {len(models)} models.')
+
+        # with (identify orblibs to delete):
+        # set orblib_done, weights-done, and all_done to False
+        # delete (what excactly?)
+        bla
+
 
 class Model(object):
     """A DYNAMITE model.

@@ -534,29 +534,6 @@ class Configuration(object):
         else:
             self.logger.warning(f'No model output at {model_dir} to remove.')
 
-    def remove_unused_orblibs(self, n_models_keep=None, chi2_rel_thresh=None):
-        """
-        Removes orbit libraries for ''bad'' models.
-
-        bla
-
-        Returns
-        -------
-        None.
-
-        """
-        if n_models_keep is not None and chi2_rel_thresh is not None:
-            txt = 'Do not specify both n_models_keep and chi2_rel_thresh.'
-            self.logger.error(txt)
-            raise ValueError(txt)
-        if n_models_keep is None:
-            if chi2_rel_thresh is None:
-                chi2_rel_thresh = 0.9
-                self.logger.debug('No argument given, '
-                                  f'will use {chi2_rel_thresh =}.')
-        bla
-
-
     def remove_existing_orbital_weights(self):
         """
         Removes existing orbital weights ('ml' directories).
