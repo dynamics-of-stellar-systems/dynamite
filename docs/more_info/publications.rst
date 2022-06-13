@@ -4,7 +4,7 @@
 Publications on the DYNAMITE methods
 ************************************
 
-Thater S., Jethwa P., Tahmasebzadeh B., Zhu L., den Brok M., Santucci G., Ding Y., Poci A., Lilley E., de Zeeuw P.T., Zocchi A., Maindl T.I., Rigamonti F., van de Ven G., Yang M., Fahrion K., 2022, A&A, (submitted), `On the robustness of triaxial Schwarzschild modelling: The effects of correcting the orbit mirroring <https://ucloud.univie.ac.at/index.php/s/t8atbqqJ7LW2cpH>`_
+Thater S., Jethwa P., Tahmasebzadeh B., Zhu L., den Brok M., Santucci G., Ding Y., Poci A., Lilley E., de Zeeuw P.T., Zocchi A., Maindl T.I., Rigamonti F., van de Ven G., Yang M., Fahrion K., 2022, A&A, (submitted), `On the robustness of triaxial Schwarzschild modelling: The effects of correcting the orbit mirroring <https://doi.org/10.48550/arXiv.2205.04165>`_
 
 Zhu L., van de Ven G., Leaman R., Grand R.J.J., Falcón-Barroso J., Jethwa P., Watkins L.L., Mao S., Poci A., McDermid R.M., Xu D., Nelson D., 2020, MNRAS, 496,1579, `Disentangling the formation history of galaxies via population-orbit superposition: method validation <https://ui.adsabs.harvard.edu/abs/2020MNRAS.496.1579Z/abstract>`_
 
@@ -17,9 +17,9 @@ Publications on the application of triaxial Schwarzschild models (DYNAMITE)
 ***************************************************************************
 
 
-Poci A., Smith, R.J., 2022, MNRAS, (accepted), `Comparing Lensing and Stellar Orbital Models of a Nearby Massive Strong-Lens Galaxy <https://ui.adsabs.harvard.edu/abs/2022MNRAS.512.5298P/abstract>`_
+Poci A., Smith, R.J., 2022, MNRAS, 512, 5298, `Comparing Lensing and Stellar Orbital Models of a Nearby Massive Strong-Lens Galaxy <https://ui.adsabs.harvard.edu/abs/2022MNRAS.512.5298P/abstract>`_
 
-Santucci G., Brough S., van de Sande J., McDermid R.M., van de Ven G., Zhu L., D'Eugenio F., Bland-Hawthorn J., Barsanti S., Bryant J.J., Croom S.M., Davies R.L., Green A.W., Lawrence J.S., Lorente N.P.F., Owers M.S., Poci A. Richards S.N., Thater S., Yi S., 2022, ApJ, (accepted), `The SAMI Galaxy Survey: The internal orbital structure and mass distribution of passive galaxies from triaxial orbit-superposition Schwarzschild models <https://ui.adsabs.harvard.edu/abs/2022arXiv220303648S/abstract>`_
+Santucci G., Brough S., van de Sande J., McDermid R.M., van de Ven G., Zhu L., D'Eugenio F., Bland-Hawthorn J., Barsanti S., Bryant J.J., Croom S.M., Davies R.L., Green A.W., Lawrence J.S., Lorente N.P.F., Owers M.S., Poci A. Richards S.N., Thater S., Yi S., 2022, ApJ, 930, 153, `The SAMI Galaxy Survey: The internal orbital structure and mass distribution of passive galaxies from triaxial orbit-superposition Schwarzschild models <https://ui.adsabs.harvard.edu/abs/2022ApJ...930..153S/abstract>`_
 
 den Brok M., Krajnović D., Emsellem E., Brinchmann J., Maseda M., 2021, MNRAS, 508, 4786, `Dynamical modelling of the twisted galaxy PGC 046832   <https://ui.adsabs.harvard.edu/abs/2021MNRAS.508.4786D/abstract>`_
 
