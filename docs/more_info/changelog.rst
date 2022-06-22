@@ -4,6 +4,8 @@
 Change Log
 ****************
 
+- Bugfix: Fixed a bug that - in rare cases - may occur in the parameter generators
+
 Version: 3.0
 ================
 
