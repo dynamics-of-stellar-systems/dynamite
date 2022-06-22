@@ -11,6 +11,7 @@ from scipy.sparse.csgraph import maximum_bipartite_matching
 from copy import deepcopy
 import matplotlib as mpl
 from matplotlib.ticker import MaxNLocator
+from matplotlib.ticker import NullFormatter
 import matplotlib.pyplot as plt
 from plotbin import sauron_colormap as pb_sauron_colormap
 from plotbin import display_pixels
@@ -272,12 +273,17 @@ class Plotter():
 
                 if j==i+1:
                     ax.set_xlabel(xtit, fontsize=12)
+                    ax.set_xmargin(0.5)
+                    nbins = len(ax.get_xticklabels())
+                    ax.xaxis.set_major_locator(MaxNLocator(nbins=nbins, prune='lower'))
+
                 else:
                     ax.set_xticks([])
                 if i==0:
                     ax.set_ylabel(ytit, fontsize=12)
                 else:
-                    ax.set_yticks([])
+                    ax.yaxis.set_major_formatter(NullFormatter())
+                    ax.yaxis.set_minor_formatter(NullFormatter())
 
         plt.subplots_adjust(hspace=0)
         plt.subplots_adjust(wspace=0)
