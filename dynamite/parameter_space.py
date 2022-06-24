@@ -458,9 +458,9 @@ class ParameterGenerator(object):
         else:
             this_iter = np.max(self.current_models.table['which_iter']) + 1
         # check whether we need to do anything in the first place...
+        newmodels = 0
         if not self.status['stop']:
             self.specific_generate_method(**kw_specific_generate_method)
-            newmodels = 0
             # Add new models to current_models.table
             for m in self.model_list:
                 if self._is_newmodel(m, eps=1e-10):
