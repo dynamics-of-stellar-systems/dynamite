@@ -516,15 +516,17 @@ class TriaxialVisibleComponent(VisibleComponent):
         if u>1:
             theta = phi = psi = np.nan
             self.logger.debug(f'DEPROJ FAIL: u>1')
+        if np.isclose(u,p):
+            u=p
         # Check for possible triaxial deprojection (v. d. Bosch 2004,
         # triaxpotent.f90 and v. d. Bosch et al. 2008, MNRAS 385, 2, 647)
         str = f'{q} <= {p} <= {1}, ' \
-              f'{max((q/self.qobs,p))} <= {u} <= {min((p/self.qobs),1)}, ' \
+              f'{max((q/self.qobs,p))} < {u} <= {min((p/self.qobs),1)}, ' \
               f'q\'={self.qobs}'
         # 0<=t<=1, t = (1-p2)/(1-q2) and p,q>0 is the same as 0<q<=p<=1 and q<1
         t = (1-p2)/(1-q2)
         if not (0 <= t <= 1) or \
-           not (max((q/self.qobs,p)) <= u <= min((p/self.qobs),1)) :
+           not (max((q/self.qobs,p)) < u <= min((p/self.qobs),1)) :
             theta = phi = psi = np.nan
             self.logger.debug(f'DEPROJ FAIL: {str}')
         else:
@@ -919,7 +921,7 @@ class TriaxialCoredLogPotential(DarkComponent):
         phi = np.arccos(np.sqrt(xx/zz))
         m = (zz-yy)/(zz-xx)
         Menc = r*vc**2/G * (1 - rc**2*r/np.sqrt((r**2+rc**2)*(r**2/p**2+rc**2)*(r**2/q**2+rc**2))*(zz-xx)**(-0.5)*special.ellipkinc(phi,m))
-        
+
 
 class GeneralisedNFW(DarkComponent):
     """A GeneralisedNFW halo
