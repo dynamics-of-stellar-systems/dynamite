@@ -4,6 +4,10 @@
 Change Log
 ****************
 
+
+- Improvement: update publication list
+- Bugfix: fixed wrong version number and copyright year in documentation
+
 Version: 3.0
 ================
 

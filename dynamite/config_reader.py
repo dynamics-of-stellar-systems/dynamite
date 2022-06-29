@@ -726,8 +726,8 @@ class Configuration(object):
         dest_directory : str, mandatory
             The directory the config file will be copied to.
         clean : bool, optional
-            If True, all *.yaml files in dest_directory will be deleted before
-            copying. Default is True.
+            If True, all `*`.yaml files in dest_directory will be deleted
+            before copying. Default is True.
         """
         if dest_directory[-1] != '/':
             dest_directory += '/'
