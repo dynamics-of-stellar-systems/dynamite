@@ -6,7 +6,7 @@ A package for Schwarzschild- and stellar-population modelling of stellar systems
 
 ## Installation
 
-See [the documentation](https://www.univie.ac.at/dynamics/dynamite_docs/getting_started/installation.html) for full instructions. An overview is:
+See [the documentation](https://dynamics.univie.ac.at/dynamite_docs/getting_started/installation.html) for full instructions. An overview is:
 1. Install the Galahad optimization library
    - ``./install_galahad`` in the directory ``legacy_fortran/galahad-2.3/``
 2. Compile the Fortran programs
