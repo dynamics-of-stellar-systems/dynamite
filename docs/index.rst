@@ -29,7 +29,7 @@ Getting Started
 To get started with DYNAMITE,
 
 1. Get the latest stable version from our `GitHub release page <https://github.com/dynamics-of-stellar-systems/dynamite/releases>`_. If you want the current version in development, you can also download this from our `GitHub page <https://github.com/dynamics-of-stellar-systems/dynamite>`_.
-2. Install. The `installation page <https://www.univie.ac.at/dynamics/dynamite_docs/getting_started/installation.html>`_ has the full instructions. An overview is:
+2. Install. The `installation page <https://dynamics.univie.ac.at/dynamite_docs/getting_started/installation.html>`_ has the full instructions. An overview is:
 
   a. Install Galahad: in the directory ``legacy_fortran/galahad-2.3/`` run the command ``./install_Galahad``
   b. Compile the Fortran programs: in the directory ``legacy_fortran/``  run the command ``make all``
