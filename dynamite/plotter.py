@@ -271,9 +271,10 @@ class Plotter():
                 if nofix_islog[j]:
                     ax.set_yscale('log')
 
+                ax.set_xmargin(0.5)
+
                 if j==i+1:
                     ax.set_xlabel(xtit, fontsize=12)
-                    ax.set_xmargin(0.5)
                     nbins = len(ax.get_xticklabels())
                     ax.xaxis.set_major_locator(MaxNLocator(nbins=nbins, prune='lower'))
 
