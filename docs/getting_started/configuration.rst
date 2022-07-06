@@ -294,9 +294,10 @@ Settings specifying the location of input and output directory names. Paths are 
 Settings for multiprocessing. Models can be evaluated in parallel, with the number of parallel processes specified by the ``ncpus*`` settings::
 
   multiprocessing_settings:
-      ncpus: 4          # integer or string 'all_available'
-      ncpus_weights: 4  # int or 'all_available', optional (default: ncpus), not used by all iterators
-      modeliterator: 'SplitModelIterator' # optional, defaults to 'ModelInnerIterator'
+      ncpus: 4                              # integer or string 'all_available' (default: 'all_available')
+      ncpus_weights: 4                      # int or 'all_available', optional (default: ncpus), not used by all iterators
+      orblibs_in_parallel: True             # calculate tube and box orbits in parallel (default: True)
+      modeliterator: 'SplitModelIterator'   # optional (default: 'ModelInnerIterator')
 
 Due to very different CPU and memory consumption of orbit integration and weight solving, there are two different settings: while orbit integration will use ``ncpus``, weight solving will use ``ncpus_weights`` parallel processes. Note that ``ncpus_weights`` will default to ``ncpus`` if not specified. Currently, only the ``SplitModelIterator`` model iterator and recovering from an unsuccessful weight solving attempt (``reattempt_failures=True``) use the ``ncpus_weights`` setting.
 

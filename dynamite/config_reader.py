@@ -401,6 +401,8 @@ class Configuration(object):
                     sys.path.append(os.getcwd())
                 except KeyError:
                     pass
+                if 'ncpus' not in value:
+                    value['ncpus'] = 'all_available'
                 if value['ncpus']=='all_available':
                     value['ncpus'] = self.get_n_cpus()
                 logger.info(f"... using {value['ncpus']} CPUs "
