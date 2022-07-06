@@ -395,13 +395,14 @@ class Configuration(object):
 
             elif key == 'multiprocessing_settings':
                 logger.info('multiprocessing_settings...')
-                logger.debug(f'multiprocessing_settings: {tuple(value.keys())}')
                 # if submitted as slurm script we must add cwd to path
                 try: # check if Slurm being using
                     os.environ["SLURM_JOB_CPUS_PER_NODE"]
                     sys.path.append(os.getcwd())
                 except KeyError:
                     pass
+                if 'ncpus' not in value:
+                    value['ncpus'] = 'all_available'
                 if value['ncpus']=='all_available':
                     value['ncpus'] = self.get_n_cpus()
                 logger.info(f"... using {value['ncpus']} CPUs "
@@ -415,6 +416,11 @@ class Configuration(object):
                 if 'modeliterator' not in value:
                     value['modeliterator'] = 'ModelInnerIterator'
                 logger.debug(f"... using iterator {value['modeliterator']}.")
+                if 'orblibs_in_parallel' not in value:
+                    value['orblibs_in_parallel'] = True
+                logger.debug("... integrate orblibs in parallel: "
+                             f"{value['orblibs_in_parallel']}.")
+                logger.debug(f'multiprocessing_settings: {tuple(value.keys())}')
                 self.settings.add('multiprocessing_settings', value)
 
             else:

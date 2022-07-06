@@ -12,6 +12,7 @@ Version: 3.0
 ================
 
 - Improvement: DYNAMITE now works with newer versions of Astropy. The new requirement is astropy>=5.0.4
+- New feature: Integrate tube and box orbits in parallel by setting the multiprocessing option orblibs_in_parallel
 - New feature: Added support for new dark halo component type NFW_m200_c (fixed m200_c relation)
 - New feature: The Configuration object parameter reset_existing_output will delete previously existing data and create a new output directory tree
 - Improvement: The presence of datfil/orblib.dat.bz2 and datfil/orblibbox.dat.bz2 is now a more reliable indicator for existing orblibs. In the past, a crash may have resulted in corrupt bz2 files.
