@@ -147,7 +147,7 @@ class AllModels(object):
         # if we will reattempt weight solving, only delete models with no orblib
         if self.config.settings.weight_solver_settings['reattempt_failures']:
             for i, row in enumerate(self.table):
-                if not row['orblib_done']:
+                if (not row['orblib_done']) and (not row['all_done']):
                     to_delete.append(i)
                     self.logger.info('No orblibs calculated for model in '
                                      f'{row["directory"]} - removing row {i}.')
@@ -438,12 +438,13 @@ class AllModels(object):
         self.logger.debug(f'Model table written to file {self.filename}')
 
     def get_best_n_models(self, n=10, which_chi2=None):
-        """Get the best n models so far
+        """Get the best n models or all but the n best models so far
 
         Parameters
         ----------
         n : int, optional
-            How many models to get. The default is 10.
+            How many models to get. If negative, all models except the
+            n best models will be returned. The default is 10.
         which_chi2 : str, optional
             Which chi2 is used for determining the best models. Must be
             None, chi2, or kinchi2. If None, the setting from the
@@ -469,11 +470,14 @@ class AllModels(object):
             raise ValueError(text)
         table = copy.deepcopy(self.table)
         table.sort(which_chi2)
-        table = table[:n]
+        if n>=0:
+            table = table[:n]
+        else:
+            table = table[-n:]
         return table
 
     def get_mods_within_chi2_thresh(self, which_chi2=None, delta=None):
-        """Get models within delta threshold of best
+        """Get models within or outside a delta threshold of the best
 
         Parameters
         ----------
@@ -484,8 +488,10 @@ class AllModels(object):
         delta : float, optional
             The threshold value. Models with (kin)chi2 values differing
             from the opimum by at most delta will be returned. If none,
-            models within 10% of the optimal value will be returned.
-            The default is None.
+            models within 10% of the optimal value will be returned. If
+            delta is negative, models that are NOT within a delta
+            threshold of the best are returned.
+            The default is to return models within 10% of the best.
 
         Raises
         ------
@@ -495,6 +501,8 @@ class AllModels(object):
         Returns
         -------
         a new ``astropy.table`` object holding the ''delta-best'' models
+        (if delta >= 0) or holding all but the ''delta-best'' models
+        (if delta < 0), respectively.
 
         """
         if which_chi2 is None:
@@ -508,18 +516,45 @@ class AllModels(object):
         chi2_min = min(self.table[which_chi2])
         if delta is None:
             delta = chi2_min * 0.1
-        models = self.table[self.table[which_chi2] <= chi2_min+delta]
+        if delta >= 0:
+            models = self.table[self.table[which_chi2] <= chi2_min+delta]
+        else:
+            models = self.table[self.table[which_chi2] > chi2_min-delta]
         return models
 
     def remove_unused_orblibs(self, n_models_keep=None, chi2_rel_thresh=None):
         """
-        Removes orbit libraries for ''bad'' models.
+        Removes orbit libraries for 'bad' models.
 
-        bla
+        Frees disk space by deleting data of models far away from the optimum.
+        Selection of data to delete: either the ``n_models_keep`` best models
+        are kept or models within a ``chi2_rel_thresh`` interval of the
+        so-far best (kin)chi2 value.  Will assume ``chi2_rel_thresh=0.1``
+        if neither of the parameters is given.
+        Will mark a deleted orbit library with ``orblib_done=False`` and
+        ``weights_done=False`` in the all_models table. If an orblib cannot
+        be deleted because it is used by another model, only the nnls
+        data will be deleted, which is marked by ``weights_done=False``
+        in the all_models table.
+
+        Parameters
+        ----------
+        n_models_keep : int, optional (see above)
+            Number of models of which to keep data on disk.
+            The default is None.
+        chi2_rel_thresh : float, optional (see above)
+            Relative chi2 threshold. The default is None.
+
+        Raises
+        ------
+        ValueError
+            Raised if both parameters are given.
 
         Returns
         -------
-        None.
+        bool
+            ``True`` if data deletion has been attempted,
+            ``False`` if no data to delete could be identified.
 
         """
         if n_models_keep is not None and chi2_rel_thresh is not None:
@@ -529,22 +564,82 @@ class AllModels(object):
         which_chi2=self.config.settings.parameter_space_settings['which_chi2']
         if n_models_keep is None:
             if chi2_rel_thresh is None:
-                chi2_rel_thresh = 1.1
+                chi2_rel_thresh = 0.1
                 self.logger.debug('No argument given, '
                                   f'will use {chi2_rel_thresh =}.')
             chi2_abs_thresh = min(self.table[which_chi2]) * chi2_rel_thresh
-            models = self.table[self.table[which_chi2] > chi2_abs_thresh]
-            self.logger.debug(f'Will remove {len(models)} models with '
-                              f'{which_chi2} > {chi2_abs_thresh}.')
+            model_rows_keep = \
+                self.get_mods_within_chi2_thresh(delta=chi2_abs_thresh)
+            model_rows_del = \
+                self.get_mods_within_chi2_thresh(delta=-chi2_abs_thresh)
+            self.logger.debug(f'Will remove data of {len(model_rows_del)} '
+                              f'models with {which_chi2} > {chi2_abs_thresh}, '
+                              f'keep data of {n_models_keep} models.')
         else:
-            models = copy.deepcopy(self.table).sort(which_chi2)
-            models = models[n_models_keep:]
-            self.logger.debug(f'Will remove {len(models)} models.')
+            model_rows_keep = self.get_best_n_models(n=n_models_keep)
+            model_rows_del = self.get_best_n_models(n=-n_models_keep)
+            self.logger.debug(f'Will remove data of {len(model_rows_del)} '
+                              f'models, keep data of {n_models_keep} models.')
 
-        # with (identify orblibs to delete):
-        # set orblib_done, weights-done, and all_done to False
-        # delete (what excactly?)
-        bla
+        if len(model_rows_del) == 0:
+            self.logger.info('Nothing to do.')
+            return False
+
+        # parameters that identify an orblib
+        orblib_parameters = self.config.parspace.par_names[:]
+        ml = 'ml'
+        try:
+            orblib_parameters.remove(ml)
+        except:
+            self.logger.error(f"Parameter '{ml}' not found - check "
+                              "implementation")
+            raise
+
+        # now try to remove the data...
+        n_removed = 0
+        for model_row_del in model_rows_del:
+
+            # get model object and row id of model whose data to delete
+            parset = model_row_del[self.config.parspace.par_names]
+            model = self.get_model_from_parset(parset)
+            row_id = self.get_row_from_model(model)
+
+            # remove unused orblibs
+            delete_orblib = True
+            for model_row_keep in model_rows_keep: # orblib used by others?
+                if np.allclose(tuple(model_row_del[orblib_parameters]),
+                               tuple(model_row_keep[orblib_parameters])):
+                    delete_orblib = False
+                    self.logger.debug("Orblib of model "
+                        f"{tuple(model_row_del[orblib_parameters])} "
+                        "still in use - won't be deleted.")
+                    break
+            if delete_orblib:
+                directory = model.directory_noml
+                try:
+                    shutil.rmtree(directory)
+                    self.logger.info("Orblib of model "
+                        f"{tuple(model_row_del[orblib_parameters])} "
+                        f"in {directory} removed.")
+                    n_removed += 1
+                except:
+                    self.logger.info("Cannot remove orblib of model "
+                        f"{tuple(model_row_del[orblib_parameters])} in "
+                        f"{directory}, perhaps it was already removed before.")
+                self.table[row_id]['orblib_done'] = False
+            else:
+                # orblib must be kept, but we can delete the model's nnls data
+                directory = model.directory
+                shutil.rmtree(directory)
+                self.logger.info("NNLS data of model "
+                    f"{tuple(model_row_del[self.config.parspace.par_names])} "
+                    f"in {directory} removed.")
+                n_removed += 1
+            self.table[row_id]['weights_done'] = False
+        self.save()
+        self.logger.info(f'Removed data of {n_removed} of '
+                         f'{len(model_rows_del)} models from disk.')
+        return True
 
 
 class Model(object):

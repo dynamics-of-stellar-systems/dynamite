@@ -4,6 +4,9 @@
 Change Log
 ****************
 
+
+- New feature: Added AllModels.remove_unused_orblibs() utility method to free up disk space
+
 Version: 3.0
 ================
 
