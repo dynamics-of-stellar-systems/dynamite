@@ -263,6 +263,7 @@ contains
     integer (kind=i4b)    :: temporbit        
     real    (kind=dp ),dimension(5) :: moments
   !----------------------------------------------------------------------
+    alldone=.false.
     if (first) then 
        integrator_current=integrator_current+1
        dith=0
