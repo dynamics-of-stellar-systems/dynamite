@@ -5,6 +5,7 @@ Change Log
 ****************
 
 
+- Improvement: now the models of the first two iterations are computed together, better utilizing parallel computing
 - Improvement: update publication list
 - Bugfix: fixed wrong version number and copyright year in documentation
 
