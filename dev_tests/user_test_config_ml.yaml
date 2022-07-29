@@ -181,7 +181,7 @@ parameter_space_settings:
     stopping_criteria:
         min_delta_chi2_abs : 0.5  # absolute "optimality tolerance"
         #min_delta_chi2_rel : 0.05 # relative "optimality tolerance"
-        n_max_mods : 5 #3
+        n_max_mods : 3
         n_max_iter : 10
 
 legacy_settings:
