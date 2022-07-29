@@ -479,8 +479,8 @@ class ParameterGenerator(object):
             self.logger.info(f'{self.name} added {newmodels} new model(s) '
                              f'out of {len(self.model_list)}')
         self.status['n_new_models'] = newmodels
-        last_iter_check = True if newmodels == 0 else False
-        self.status['last_iter_added_no_new_models'] = last_iter_check
+        last_iter_no_new_models = True if newmodels == 0 else False
+        self.status['last_iter_added_no_new_models'] = last_iter_no_new_models
         if newmodels == 0:
             self.status['stop'] = True
         return self.status
