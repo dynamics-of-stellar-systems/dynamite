@@ -85,7 +85,7 @@ class System(object):
             text = 'System needs ml as its sole parameter'
             self.logger.error(text)
             raise ValueError(text)
-        self.parameters[0].update(sformat = '01.2f') # sformat of ml parameter
+        self.parameters[0].update(sformat = '05.2f') # sformat of ml parameter
 
     def validate_parset(self, par):
         """
