@@ -612,7 +612,7 @@ class AllModels(object):
                     delete_orblib = False
                     self.logger.debug("Orblib of model "
                         f"{tuple(model_row_del[orblib_parameters])} "
-                        "still in use - won't be deleted.")
+                        "still in use - will delete weight solving data only.")
                     break
             if delete_orblib:
                 directory = model.directory_noml
@@ -623,22 +623,27 @@ class AllModels(object):
                         f"in {directory} removed.")
                     n_removed += 1
                 except:
-                    self.logger.info("Cannot remove orblib of model "
+                    self.logger.warning("Cannot remove orblib of model "
                         f"{tuple(model_row_del[orblib_parameters])} in "
                         f"{directory}, perhaps it was already removed before.")
                 self.table[row_id]['orblib_done'] = False
             else:
                 # orblib must be kept, but we can delete the model's nnls data
                 directory = model.directory
-                shutil.rmtree(directory)
-                self.logger.info("NNLS data of model "
-                    f"{tuple(model_row_del[self.config.parspace.par_names])} "
-                    f"in {directory} removed.")
-                n_removed += 1
+                try:
+                    shutil.rmtree(directory)
+                    self.logger.info("Weight solving data of model "
+                     f"{tuple(model_row_del[self.config.parspace.par_names])} "
+                     f"in {directory} removed.")
+                    n_removed += 1
+                except:
+                    self.logger.warning("Cannot remove weight solving data of "
+                        f"model {tuple(model_row_del[orblib_parameters])} in "
+                        f"{directory}, perhaps it was already removed before.")
             self.table[row_id]['weights_done'] = False
         self.save()
         self.logger.info(f'Removed data of {n_removed} of '
-                         f'{len(model_rows_del)} models from disk.')
+                         f'{len(model_rows_del)} identified models from disk.')
         return True
 
 
