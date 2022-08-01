@@ -264,8 +264,9 @@ class Component(object):
         """
         Validate the component
 
-        Ensure it has the required attributes and parameters.
-        Additionally, the sformat strings for the parameters are set.
+        Ensure it has the required attributes and parameters. Also validates
+        the parameter generator settings' minstep value for non-fixed
+        parameters.
 
         Parameters
         ----------
@@ -301,6 +302,16 @@ class Component(object):
                    f'{par}, not {pars}.'
             self.logger.error(text)
             raise ValueError(text)
+
+        for p in [p for p in self.parameters
+                  if not p.fixed and 'minstep' in p.par_generator_settings]:
+            generator_settings = p.par_generator_settings
+            if generator_settings['minstep'] > generator_settings['step']:
+                text = f"{self.__class__.__name__} parameter {p.name}'s " \
+                       "parameter generator settings have minstep > step, " \
+                       f"setting minstep=step={generator_settings['step']}."
+                self.logger.warning(text)
+                generator_settings['minstep'] = generator_settings['step']
 
     def validate_parset(self, par):
         """
@@ -446,8 +457,8 @@ class TriaxialVisibleComponent(VisibleComponent):
         """
         Validate the TriaxialVisibleComponent
 
-        In addition to validating parameter names and setting their sformat
-        strings, also set self.qobs (minimal flattening from mge data)
+        Validates parameter names and sets self.qobs
+        (minimal flattening from mge data).
 
         Returns
         -------
