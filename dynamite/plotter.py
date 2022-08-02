@@ -840,13 +840,20 @@ class Plotter():
         #sauron_colormap = plt.get_cmap('sauron')
         #sauron_r_colormap = plt.get_cmap('sauron_r')
         #colormapname = plt.get_cmap('cmr.ember')
-
+        map1 = cmr.get_sub_cmap('twilight_shifted', 0.05, 0.6)
+        map2 = 'twilight_shifted'
+        kw_display_pixels1 = dict(pixelsize=dx,
+                                 angle=angle_deg,
+                                 colorbar=True,
+                                 nticks=7,
+                                 #cmap='sauron')
+                                 cmap=map1)
         kw_display_pixels = dict(pixelsize=dx,
                                  angle=angle_deg,
                                  colorbar=True,
                                  nticks=7,
                                  #cmap='sauron')
-                                 cmap='cmr.ember')
+                                 cmap=map2)
         x, y = xi[s], yi[s]
 
         ### PLOT THE REAL DATA
@@ -854,7 +861,7 @@ class Plotter():
         c = np.array(list(map(np.log10, flux[grid[s]] / max(flux))))
         display_pixels.display_pixels(x, y, c,
                                           vmin=minf, vmax=maxf,
-                                          **kw_display_pixels)
+                                          **kw_display_pixels1)
         ax1.set_title('surface brightness (log)',fontsize=20, pad=20)
         ax2 = plt.subplot(3, 5, 2)
         display_pixels.display_pixels(x, y, vel[grid[s]],
@@ -864,7 +871,7 @@ class Plotter():
         ax3 = plt.subplot(3, 5, 3)
         display_pixels.display_pixels(x, y, sig[grid[s]],
                                           vmin=smin, vmax=smax,
-                                          **kw_display_pixels)
+                                          **kw_display_pixels1)
         ax3.set_title('velocity dispersion',fontsize=20, pad=20)
         ax4 = plt.subplot(3, 5, 4)
         display_pixels.display_pixels(x, y, h3[grid[s]],
@@ -882,7 +889,7 @@ class Plotter():
         c = np.array(list(map(np.log10, fluxm[grid[s]] / max(fluxm))))
         display_pixels.display_pixels(x, y, c,
                                           vmin=minfm, vmax=maxfm,
-                                          **kw_display_pixels)
+                                          **kw_display_pixels1)
         plt.subplot(3, 5, 7)
         display_pixels.display_pixels(x, y, velm[grid[s]],
                                           vmin=-1.0 * vmax, vmax=vmax,
@@ -890,7 +897,7 @@ class Plotter():
         plt.subplot(3, 5, 8)
         display_pixels.display_pixels(x, y, sigm[grid[s]],
                                           vmin=smin, vmax=smax,
-                                          **kw_display_pixels)
+                                          **kw_display_pixels1)
         plt.subplot(3, 5, 9)
         display_pixels.display_pixels(x, y, h3m[grid[s]],
                                           vmin=h3min, vmax=h3max,
@@ -905,7 +912,7 @@ class Plotter():
                                  angle=angle_deg,
                                  colorbar=True,
                                  nticks=7,
-                                 cmap='bwr')
+                                 cmap=map2)
 
         ### PLOT THE ERROR NORMALISED RESIDUALS
         plt.subplot(3, 5, 11)
