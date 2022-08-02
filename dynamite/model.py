@@ -522,33 +522,20 @@ class AllModels(object):
             models = self.table[self.table[which_chi2] > chi2_min-delta]
         return models
 
-    def remove_unused_orblibs(self, n_models_keep=None, chi2_rel_thresh=None):
+    def remove_unused_orblibs(self):
         """
         Removes orbit libraries for 'bad' models.
 
-        Frees disk space by deleting data of models far away from the optimum.
-        Selection of data to delete: either the ``n_models_keep`` best models
-        are kept or models within a ``chi2_rel_thresh`` interval of the
-        so-far best (kin)chi2 value.  Will assume ``chi2_rel_thresh=0.1``
-        if neither of the parameters is given.
+        Frees disk space by deleting data, keeping only model data required
+        by the ``beta_plot`` and ``mass_plot`` plotting routines.
+        Keeps data of models with (kin)chi2 values less than or equal to
+        ``sqrt(2 * number of kinematic observations) * min(chi2)``, but at
+        least 3 models.
         Will mark a deleted orbit library with ``orblib_done=False`` and
         ``weights_done=False`` in the all_models table. If an orblib cannot
         be deleted because it is used by another model, only the nnls
         data will be deleted, which is marked by ``weights_done=False``
         in the all_models table.
-
-        Parameters
-        ----------
-        n_models_keep : int, optional (see above)
-            Number of models of which to keep data on disk.
-            The default is None.
-        chi2_rel_thresh : float, optional (see above)
-            Relative chi2 threshold. The default is None.
-
-        Raises
-        ------
-        ValueError
-            Raised if both parameters are given.
 
         Returns
         -------
@@ -557,29 +544,42 @@ class AllModels(object):
             ``False`` if no data to delete could be identified.
 
         """
-        if n_models_keep is not None and chi2_rel_thresh is not None:
-            txt = 'Do not specify both n_models_keep and chi2_rel_thresh.'
-            self.logger.error(txt)
-            raise ValueError(txt)
+        # if n_models_keep is not None and chi2_rel_thresh is not None:
+        #     txt = 'Do not specify both n_models_keep and chi2_rel_thresh.'
+        #     self.logger.error(txt)
+        #     raise ValueError(txt)
         which_chi2=self.config.settings.parameter_space_settings['which_chi2']
-        if n_models_keep is None:
-            if chi2_rel_thresh is None:
-                chi2_rel_thresh = 0.1
-                self.logger.debug('No argument given, '
-                                  f'will use {chi2_rel_thresh =}.')
-            chi2_abs_thresh = min(self.table[which_chi2]) * chi2_rel_thresh
-            model_rows_keep = \
-                self.get_mods_within_chi2_thresh(delta=chi2_abs_thresh)
-            model_rows_del = \
-                self.get_mods_within_chi2_thresh(delta=-chi2_abs_thresh)
-            self.logger.debug(f'Will remove data of {len(model_rows_del)} '
-                              f'models with {which_chi2} > {chi2_abs_thresh}, '
-                              f'keep data of {n_models_keep} models.')
-        else:
-            model_rows_keep = self.get_best_n_models(n=n_models_keep)
-            model_rows_del = self.get_best_n_models(n=-n_models_keep)
-            self.logger.debug(f'Will remove data of {len(model_rows_del)} '
-                              f'models, keep data of {n_models_keep} models.')
+        chi2_min = min(self.table[which_chi2])
+        chi2_abs_thresh = chi2_min * np.sqrt(self.config.get_2n_obs())
+        model_rows_keep = \
+            self.get_mods_within_chi2_thresh(delta=chi2_abs_thresh)
+        model_rows_del = \
+            self.get_mods_within_chi2_thresh(delta=-chi2_abs_thresh)
+        if len(model_rows_keep) < 3:
+            self.logger.debug('smaller than 3!')
+            model_rows_keep = self.get_best_n_models(n=3)
+            model_rows_del = self.get_best_n_models(n=-3)
+        self.logger.debug(f'Will remove data of {len(model_rows_del)} '
+                  f'models with {which_chi2} > {chi2_min+chi2_abs_thresh}, '
+                  f'keep data of {len(model_rows_keep)} models.')
+        # if n_models_keep is None:
+        #     if chi2_rel_thresh is None:
+        #         chi2_rel_thresh = 0.1
+        #         self.logger.debug('No argument given, '
+        #                           f'will use {chi2_rel_thresh =}.')
+        #     chi2_abs_thresh = min(self.table[which_chi2]) * chi2_rel_thresh
+        #     model_rows_keep = \
+        #         self.get_mods_within_chi2_thresh(delta=chi2_abs_thresh)
+        #     model_rows_del = \
+        #         self.get_mods_within_chi2_thresh(delta=-chi2_abs_thresh)
+        #     self.logger.debug(f'Will remove data of {len(model_rows_del)} '
+        #                       f'models with {which_chi2} > {chi2_abs_thresh}, '
+        #                       f'keep data of {n_models_keep} models.')
+        # else:
+        #     model_rows_keep = self.get_best_n_models(n=n_models_keep)
+        #     model_rows_del = self.get_best_n_models(n=-n_models_keep)
+        #     self.logger.debug(f'Will remove data of {len(model_rows_del)} '
+        #                       f'models, keep data of {n_models_keep} models.')
 
         if len(model_rows_del) == 0:
             self.logger.info('Nothing to do.')
