@@ -4,7 +4,7 @@
 Change Log
 ****************
 
-
+- Improvement: made DYNAMITE compatible with more Linux distributions
 - Improvement: update publication list
 - Bugfix: fixed wrong version number and copyright year in documentation
 
