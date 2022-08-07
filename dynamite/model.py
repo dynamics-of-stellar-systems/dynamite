@@ -73,8 +73,8 @@ class AllModels(object):
         names = self.config.parspace.par_names.copy()
         dtype = [np.float64 for n in names]
         # add the columns from legacy version
-        names += ['chi2', 'kinchi2', 'time_modified']
-        dtype += [np.float64, np.float64, str]
+        names += ['chi2', 'kinchi2', 'kinmapchi2', 'time_modified']
+        dtype += [np.float64, np.float64, np.float64, str]
         # add extra columns
         names += ['orblib_done', 'weights_done', 'all_done']
         dtype += [bool, bool, bool]
@@ -445,28 +445,29 @@ class AllModels(object):
         n : int, optional
             How many models to get. The default is 10.
         which_chi2 : str, optional
-            Which chi2 is used for determining the best models. Must be
-            None, chi2, or kinchi2. If None, the setting from the
-            configuration file will be used. The default is None.
+            Which chi2 is used for determining the best models. If None, the
+            setting from the configuration file will be used.
+            The default is None.
 
         Raises
         ------
         ValueError
-            If which_chi2 is neither None, chi2, nor kinchi2.
+            If which_chi2 is neither None nor a valid chi2 type.
 
         Returns
         -------
         a new ``astropy.table`` object holding the best n models
 
         """
-        if which_chi2 is None:
-            which_chi2 = \
-                self.config.settings.parameter_space_settings['which_chi2']
-        if which_chi2 not in ('chi2', 'kinchi2'):
-            text = 'which_chi2 needs to be chi2 or kinchi2, ' \
-                   f'but it is {which_chi2}'
-            self.logger.error(text)
-            raise ValueError(text)
+        which_chi2 = self.config.validate_chi2(which_chi2)
+        # if which_chi2 is None:
+        #     which_chi2 = \
+        #         self.config.settings.parameter_space_settings['which_chi2']
+        # if which_chi2 not in ('chi2', 'kinchi2'):
+        #     text = 'which_chi2 needs to be chi2 or kinchi2, ' \
+        #            f'but it is {which_chi2}'
+        #     self.logger.error(text)
+        #     raise ValueError(text)
         table = copy.deepcopy(self.table)
         table.sort(which_chi2)
         table = table[:n]
@@ -478,11 +479,11 @@ class AllModels(object):
         Parameters
         ----------
         which_chi2 : str, optional
-            Which chi2 is used for determining the best models. Must be
-            None, chi2, or kinchi2. If None, the setting from the
-            configuration file will be used. The default is None.
+            Which chi2 is used for determining the best models. If None, the
+            setting from the configuration file will be used.
+            The default is None.
         delta : float, optional
-            The threshold value. Models with (kin)chi2 values differing
+            The threshold value. Models with chi2 values differing
             from the opimum by at most delta will be returned. If none,
             models within 10% of the optimal value will be returned.
             The default is None.
@@ -490,21 +491,22 @@ class AllModels(object):
         Raises
         ------
         ValueError
-            If which_chi2 is neither None, chi2, nor kinchi2.
+            If which_chi2 is neither None nor a valid chi2 type.
 
         Returns
         -------
         a new ``astropy.table`` object holding the ''delta-best'' models
 
         """
-        if which_chi2 is None:
-            which_chi2 = \
-                self.config.settings.parameter_space_settings['which_chi2']
-        if which_chi2 not in ('chi2', 'kinchi2'):
-            text = 'which_chi2 needs to be chi2 or kinchi2, ' \
-                   f'but it is {which_chi2}'
-            self.logger.error(text)
-            raise ValueError(text)
+        which_chi2 = self.config.validate_chi2(which_chi2)
+        # if which_chi2 is None:
+        #     which_chi2 = \
+        #         self.config.settings.parameter_space_settings['which_chi2']
+        # if which_chi2 not in ('chi2', 'kinchi2'):
+        #     text = 'which_chi2 needs to be chi2 or kinchi2, ' \
+        #            f'but it is {which_chi2}'
+        #     self.logger.error(text)
+        #     raise ValueError(text)
         chi2_min = min(self.table[which_chi2])
         if delta is None:
             delta = chi2_min * 0.1
@@ -663,9 +665,10 @@ class Model(object):
                     directory_with_ml=self.directory)
         else:
             raise ValueError('Unknown WeightSolver type')
-        weights, chi2_tot, chi2_kin = weight_solver.solve(orblib)
+        weights, chi2_tot, chi2_kin, chi2_kinmap = weight_solver.solve(orblib)
         self.chi2 = chi2_tot # instrinsic/projected mass + GH coeeficients 1-Ngh
         self.kinchi2 = chi2_kin # GH coeeficients 1-Ngh
+        self.kinmapchi2 = chi2_kinmap
         self.weights = weights
         return weight_solver
 

@@ -372,12 +372,12 @@ class ParameterGenerator(object):
             self.logger.error(text)
             raise ValueError(text)
         self.parspace_settings = parspace_settings
-        which_chi2 = self.parspace_settings.get('which_chi2')
-        if which_chi2 not in ['chi2', 'kinchi2']:
-            text = 'Unknown or missing which_chi2 setting, use chi2 or kinchi2'
-            self.logger.error(text)
-            raise ValueError(text)
-        self.chi2 = 'chi2' if which_chi2 == 'chi2' else 'kinchi2'
+        # which_chi2 = self.parspace_settings.get('which_chi2')
+        # if which_chi2 not in ['chi2', 'kinchi2']:
+        #     text = 'Unknown or missing which_chi2 setting, use chi2 or kinchi2'
+        #     self.logger.error(text)
+        #     raise ValueError(text)
+        self.chi2 = self.parspace_settings.get('which_chi2')
         self.status = {}
         self.name = name
         self.lo = []
@@ -849,8 +849,7 @@ class GridWalk(ParameterGenerator):
         Generates new models
 
         The center of the grid walk is the parameter set with the smallest chi2
-        value. Note that the parameter space setting 'which_chi2' determines
-        whether chi2 or kinchi2 is used.
+        value, depending on the parameter space setting 'which_chi2'.
 
         Parameters
         ----------
@@ -1075,8 +1074,7 @@ class FullGrid(ParameterGenerator):
 
         Span the whole parameter grid.
         The center of the grid walk is the parameter set with the smallest chi2
-        value. Note that the parameter space setting 'which_chi2' determines
-        whether chi2 or kinchi2 is used.
+        value, depending on the parameter space setting 'which_chi2'.
 
         Parameters
         ----------

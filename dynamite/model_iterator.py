@@ -105,9 +105,10 @@ class ModelIterator(object):
                 output = p.map(self.get_missing_weights,
                                rows_with_orbits_but_no_weights)
             for i, row in enumerate(rows_with_orbits_but_no_weights):
-                chi2, kinchi2, time = output[i]
+                chi2, kinchi2, kinmapchi2, time = output[i] # add kinmapchi2
                 config.all_models.table[row]['chi2'] = chi2
                 config.all_models.table[row]['kinchi2'] = kinchi2
+                config.all_models.table[row]['kinmapchi2'] = kinmapchi2
                 config.all_models.table[row]['time_modified'] = time
                 config.all_models.table[row]['weights_done'] = True
                 config.all_models.table[row]['all_done'] = True
@@ -121,7 +122,7 @@ class ModelIterator(object):
         orblib = mod.get_orblib()
         weight_solver = mod.get_weights(orblib)
         time = str(np.datetime64('now', 'ms'))
-        return mod.chi2, mod.kinchi2, time
+        return mod.chi2, mod.kinchi2, mod.kinmapchi2, time
 
 class ModelInnerIterator(object):
     """Class to run all models in a single iteration.
@@ -359,6 +360,7 @@ class ModelInnerIterator(object):
             parset = self.all_models.get_parset_from_row(row)
             mod.chi2 = self.dummy_chi2_function(parset)
             mod.kinchi2 = 0.
+            mod.kinmapchi2 = 0.
         else:
             if not (get_orblib or get_weights):
                 msg = 'Nothing to run, specify get_orblib and/or get_weights'
@@ -376,20 +378,22 @@ class ModelInnerIterator(object):
                 weight_solver = mod.get_weights(orblib)
                 wts_done = True
             else:
-                mod.chi2, mod.kinchi2 = 0, 0
+                mod.chi2, mod.kinchi2, mod.kinmapchi2 = 0, 0, 0
         all_done = orb_done and wts_done
         time = str(np.datetime64('now', 'ms'))
         # Build and write model_done_staging.ecsv
         current_model_row = table.Table(self.all_models.table[row])
         for name, value in zip(
                 ['orblib_done','weights_done','chi2',
-                 'kinchi2','all_done','time_modified'],
-                [orb_done, wts_done, mod.chi2, mod.kinchi2, all_done, time]):
+                 'kinchi2','kinmapchi2','all_done','time_modified'],
+                [orb_done, wts_done, mod.chi2,
+                 mod.kinchi2, mod.kinmapchi2, all_done, time]):
             current_model_row[name][0] = value
         file_name = mod.directory + 'model_done_staging.ecsv'
         current_model_row.write(file_name, format='ascii.ecsv', overwrite=True)
         self.logger.info(f'Model {i+1}: {file_name} written.')
-        output = orb_done, wts_done, mod.chi2, mod.kinchi2, all_done, time
+        output = orb_done, wts_done, mod.chi2, \
+                 mod.kinchi2, mod.kinmapchi2, all_done, time
         return output
 
     def write_output_to_all_models_table(self, rows_to_do, output):
@@ -408,11 +412,13 @@ class ModelInnerIterator(object):
 
         """
         for i, row in enumerate(rows_to_do):
-            orb_done, wts_done, chi2, kinchi2, all_done, time = output[i]
+            orb_done, wts_done, \
+                chi2, kinchi2, kinmapchi2, all_done, time = output[i]
             self.all_models.table['orblib_done'][row] = orb_done
             self.all_models.table['weights_done'][row] = wts_done
             self.all_models.table['chi2'][row] = chi2
             self.all_models.table['kinchi2'][row] = kinchi2
+            self.all_models.table['kinmapchi2'][row] = kinmapchi2
             self.all_models.table['all_done'][row] = all_done
             self.all_models.table['time_modified'][row] = time
 

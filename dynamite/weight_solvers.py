@@ -47,8 +47,9 @@ class WeightSolver(object):
         weights = 0.
         chi2_tot = 0.
         chi2_kin = 0.
+        chi2_kinmap = 0.
         # ...
-        return weights, chi2_tot, chi2_kin
+        return weights, chi2_tot, chi2_kin, chi2_kinmap
 
 
 class LegacyWeightSolver(WeightSolver):
@@ -194,6 +195,8 @@ class LegacyWeightSolver(WeightSolver):
                     masses, projected_masses and GH coefficients from h_1 to h_n
                 -   chi2_kin : float sum of squared residuals for GH
                     coefficients h_1 to h_n
+                -   chi2_kinmap : directly calculates the chi2 from the
+                    kinematic maps NOT CURRENTLY IMPLEMENTED, RETURNS 0.!
 
         """
         self.logger.info(f"Using WeightSolver: {__class__.__name__}")
@@ -236,7 +239,8 @@ class LegacyWeightSolver(WeightSolver):
         else:
             self.logger.info("NNLS solution read from existing output")
         wts, chi2_tot, chi2_kin = self.get_weights_and_chi2_from_orbmat_file()
-        return wts, chi2_tot, chi2_kin
+        chi2_kinmap = 0.
+        return wts, chi2_tot, chi2_kin, chi2_kinmap
 
     def write_executable_for_weight_solver(self, ml):
         """write executable bash script file
@@ -649,6 +653,8 @@ class NNLS(WeightSolver):
                     masses, projected_masses and GH coefficients from h_1 to h_n
                 -   chi2_kin : float sum of squared residuals for GH
                     coefficients h_1 to h_n
+                -   chi2_kinmap : directly calculates the chi2 from the
+                    kinematic maps NOT CURRENTLY IMPLEMENTED, RETURNS nan!
 
         """
         self.logger.info(f"Using WeightSolver: {__class__.__name__}/"
@@ -691,7 +697,8 @@ class NNLS(WeightSolver):
             #delete existing .yaml files and copy current config file
             #into model directory
             self.config.copy_config_file(self.direc_with_ml)
-        return weights, chi2_tot, chi2_kin
+            chi2_kinmap = float('nan')
+        return weights, chi2_tot, chi2_kin, chi2_kinmap
 
 
 class CvxoptNonNegSolver():
