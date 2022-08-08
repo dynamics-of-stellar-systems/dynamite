@@ -123,16 +123,13 @@ def run_user_test(make_comp=False):
 def create_comparison_data():
 
     model_results, output_file, n_max = run_user_test(make_comp=True)
-    chi2_values = list(model_results['chi2'])
-    for i in range(len(chi2_values),n_max): # just in case...
-        chi2_values.append(float("NaN"))
-    kinchi2_values = list(model_results['kinchi2'])
-    for i in range(len(kinchi2_values),n_max): # just in case...
-        kinchi2_values.append(float("NaN"))
     t = table.Table()
-    t['model_id'] = range(len(chi2_values))
-    t['chi2'] = chi2_values
-    t['kinchi2'] = kinchi2_values
+    t['model_id'] = range(n_max)
+    for which_chi2 in ('chi2', 'kinchi2', 'kinmapchi2'):
+        values = list(model_results[which_chi2])
+        for i in range(len(values),n_max): # just in case...
+            values.append(float("NaN"))
+        t[which_chi2] = values
     print(t)
     t.write(output_file, format='ascii', overwrite=True)
 

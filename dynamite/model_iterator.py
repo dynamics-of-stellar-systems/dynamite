@@ -105,7 +105,7 @@ class ModelIterator(object):
                 output = p.map(self.get_missing_weights,
                                rows_with_orbits_but_no_weights)
             for i, row in enumerate(rows_with_orbits_but_no_weights):
-                chi2, kinchi2, kinmapchi2, time = output[i] # add kinmapchi2
+                chi2, kinchi2, kinmapchi2, time = output[i]
                 config.all_models.table[row]['chi2'] = chi2
                 config.all_models.table[row]['kinchi2'] = kinchi2
                 config.all_models.table[row]['kinmapchi2'] = kinmapchi2

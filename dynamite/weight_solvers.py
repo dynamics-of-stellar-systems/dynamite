@@ -39,6 +39,8 @@ class WeightSolver(object):
             a total chi2 value
         chi2_kin : float
             a chi2 value purely for kinematics
+        chi2_kinmap : float
+            directly calculates the chi2 from the kinematic maps
         """
         self.logger.info(f"Using WeightSolver: {__class__.__name__}")
         # ...
@@ -196,7 +198,7 @@ class LegacyWeightSolver(WeightSolver):
                 -   chi2_kin : float sum of squared residuals for GH
                     coefficients h_1 to h_n
                 -   chi2_kinmap : directly calculates the chi2 from the
-                    kinematic maps NOT CURRENTLY IMPLEMENTED, RETURNS 0.!
+                    kinematic maps
 
         """
         self.logger.info(f"Using WeightSolver: {__class__.__name__}")
@@ -239,7 +241,7 @@ class LegacyWeightSolver(WeightSolver):
         else:
             self.logger.info("NNLS solution read from existing output")
         wts, chi2_tot, chi2_kin = self.get_weights_and_chi2_from_orbmat_file()
-        chi2_kinmap = 0.
+        _, chi2_kinmap = self.read_chi2()
         return wts, chi2_tot, chi2_kin, chi2_kinmap
 
     def write_executable_for_weight_solver(self, ml):
@@ -733,9 +735,5 @@ class CvxoptNonNegSolver():
         sol = cvxopt.solvers.qp(P, q, G, h)
         self.success = sol['status']=='optimal'
         self.beta = np.squeeze(np.array(sol['x']))
-
-
-
-
 
 # end

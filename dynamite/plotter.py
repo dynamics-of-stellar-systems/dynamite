@@ -79,13 +79,6 @@ class Plotter():
         if figtype is None:
             figtype = '.png'
         which_chi2 = self.config.validate_chi2(which_chi2)
-        # if which_chi2 is None:
-        #     which_chi2 = self.settings.parameter_space_settings['which_chi2']
-        # if which_chi2 not in ('chi2', 'kinchi2'):
-        #     text = 'which_chi2 needs to be chi2 or kinchi2, ' \
-        #            f'but it is {which_chi2}'
-        #     self.logger.error(text)
-        #     raise ValueError(text)
         n_models = len(self.all_models.table)
         fig = plt.figure()
         plt.plot([i for i in range(n_models)],
@@ -145,13 +138,6 @@ class Plotter():
             figtype = '.png'
 
         which_chi2 = self.config.validate_chi2(which_chi2)
-        # if which_chi2 is None:
-        #     which_chi2 = self.settings.parameter_space_settings['which_chi2']
-        # if which_chi2 not in ('chi2', 'kinchi2'):
-        #     text = 'which_chi2 needs to be chi2 or kinchi2, ' \
-        #            f'but it is {which_chi2}'
-        #     self.logger.error(text)
-        #     raise ValueError(text)
         self.logger.info(f'Making chi2 plot scaled according to {which_chi2}')
 
         pars = self.config.parspace
@@ -1162,13 +1148,6 @@ class Plotter():
             figtype = '.png'
 
         which_chi2 = self.config.validate_chi2(which_chi2)
-        # if which_chi2 is None:
-        #     which_chi2 = self.settings.parameter_space_settings['which_chi2']
-        # if which_chi2 not in ('chi2', 'kinchi2'):
-        #     text = 'which_chi2 needs to be chi2 or kinchi2, ' \
-        #            f'but it is {which_chi2}'
-        #     self.logger.error(text)
-        #     raise ValueError(text)
 
         if Rmax_arcs is None:
             text = f'Rmax_arcs must be a number, but it is {Rmax_arcs}'
@@ -1936,13 +1915,6 @@ class Plotter():
             figtype = '.png'
 
         which_chi2 = self.config.validate_chi2(which_chi2)
-        # if which_chi2 is None:
-        #     which_chi2 = self.settings.parameter_space_settings['which_chi2']
-        # if which_chi2 not in ('chi2', 'kinchi2'):
-        #     text = 'which_chi2 needs to be chi2 or kinchi2, ' \
-        #            f'but it is {which_chi2}'
-        #     self.logger.error(text)
-        #     raise ValueError(text)
 
         if Rmax_arcs is None:
             text = f'Rmax_arcs must be a number, but it is {Rmax_arcs}'
@@ -2182,13 +2154,6 @@ class Plotter():
             figtype = '.png'
 
         which_chi2 = self.config.validate_chi2(which_chi2)
-        # if which_chi2 is None:
-        #     which_chi2 = self.settings.parameter_space_settings['which_chi2']
-        # if which_chi2 not in ('chi2', 'kinchi2'):
-        #     text = 'which_chi2 needs to be chi2 or kinchi2, ' \
-        #            f'but it is {which_chi2}'
-        #     self.logger.error(text)
-        #     raise ValueError(text)
 
         if Rmax_arcs is None:
             text = f'Rmax_arcs must be a number, but it is {Rmax_arcs}'

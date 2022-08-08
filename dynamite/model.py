@@ -460,14 +460,6 @@ class AllModels(object):
 
         """
         which_chi2 = self.config.validate_chi2(which_chi2)
-        # if which_chi2 is None:
-        #     which_chi2 = \
-        #         self.config.settings.parameter_space_settings['which_chi2']
-        # if which_chi2 not in ('chi2', 'kinchi2'):
-        #     text = 'which_chi2 needs to be chi2 or kinchi2, ' \
-        #            f'but it is {which_chi2}'
-        #     self.logger.error(text)
-        #     raise ValueError(text)
         table = copy.deepcopy(self.table)
         table.sort(which_chi2)
         table = table[:n]
@@ -499,14 +491,6 @@ class AllModels(object):
 
         """
         which_chi2 = self.config.validate_chi2(which_chi2)
-        # if which_chi2 is None:
-        #     which_chi2 = \
-        #         self.config.settings.parameter_space_settings['which_chi2']
-        # if which_chi2 not in ('chi2', 'kinchi2'):
-        #     text = 'which_chi2 needs to be chi2 or kinchi2, ' \
-        #            f'but it is {which_chi2}'
-        #     self.logger.error(text)
-        #     raise ValueError(text)
         chi2_min = min(self.table[which_chi2])
         if delta is None:
             delta = chi2_min * 0.1

@@ -852,6 +852,8 @@ class Configuration(object):
                              'one VisibleComponent, and zero or one DM Halo '
                              'object(s)')
 
+        ws_type = self.settings.weight_solver_settings['type']
+
         for c in self.system.cmp_list:
             if issubclass(type(c), physys.VisibleComponent): # Check vis. comp.
                 if c.kinematic_data:
@@ -867,7 +869,6 @@ class Configuration(object):
                                              'BayesLOSVD')
                         if check_bl:
                             # check weight solver type
-                            ws_type = self.settings.weight_solver_settings['type']
                             if ws_type == 'LegacyWeightSolver':
                                 self.logger.error("LegacyWeightSolver can't be "
                                                   "used with BayesLOSVD - use "
@@ -916,7 +917,6 @@ class Configuration(object):
             raise ValueError(f'Only specify one of {chi2abs}, {chi2scaled}, '
                              'not both')
 
-        ws_type = self.settings.weight_solver_settings['type']
         if ws_type == 'LegacyWeightSolver':
             # check velocity histograms settings if LegacyWeightSolver is used.
             # (i) check all velocity histograms have center 0, (ii) force them
@@ -955,7 +955,12 @@ class Configuration(object):
                 for k in stars.kinematic_data:
                     k.hist_bins = max_bins
         self.settings.validate()
-        self.validate_chi2()
+
+        which_chi2 = self.validate_chi2()
+        if which_chi2 == 'kinmapchi2' and ws_type != 'LegacyWeightSolver':
+            msg = 'kinmapchi2 is only allowed with LegacyWeightSolver'
+            self.logger.error(msg)
+            raise ValueError(msg)
 
     def validate_chi2(self, which_chi2=None):
         """

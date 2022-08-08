@@ -4,6 +4,7 @@
 Change Log
 ****************
 
+- New feature: chi2 can now be directly calculated from the kinematic maps when using the LegacyWeightSolver via which_chi2: "kinmapchi2"
 - Improvement: made DYNAMITE compatible with more Linux distributions
 - Improvement: update publication list
 - Bugfix: fixed wrong version number and copyright year in documentation
