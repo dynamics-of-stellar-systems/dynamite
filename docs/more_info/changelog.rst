@@ -4,7 +4,7 @@
 Change Log
 ****************
 
-- Bugfix: reattempt_failures does no longer result in an error if multiple to-delete models share the same orblib
+- Bugfix: reattempt_failures will no longer result in an error if multiple to-delete models share the same orblib or the orblib directory does not exist
 - Improvement: made DYNAMITE compatible with more Linux distributions
 - Improvement: update publication list
 - Bugfix: fixed wrong version number and copyright year in documentation
