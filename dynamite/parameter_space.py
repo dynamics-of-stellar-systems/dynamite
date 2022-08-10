@@ -512,7 +512,7 @@ class ParameterGenerator(object):
         for i in range(idx_start, idx_end):
             if self.current_models.table.columns[i].name == 'time_modified':
                 # current time
-                val = str(np.datetime64('now', 'ms'))
+                val = str(np.datetime64('now', 's'))
             elif self.current_models.table.columns[i].name == 'which_iter':
                 # iteration
                 val = n_iter

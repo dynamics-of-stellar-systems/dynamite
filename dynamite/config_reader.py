@@ -7,6 +7,7 @@ import math
 import logging
 import importlib
 import yaml
+import datetime
 
 import dynamite as dyn
 from dynamite import physical_system as physys
@@ -964,15 +965,15 @@ class DynamiteLogging(object):
 
     -   log to the console with logging level INFO, messages include the
         level, timestamp, class name, and message text
-    -   create a dynamite.log file with logging level DEBUG, messages
-        include the level, timestamp, class name,
-        filename:method:line number, and message text
+    -   create a log file with logging level DEBUG, messages include the
+        level, timestamp, class name, filename:method:line number,
+        and message text
 
     Parameters
     ----------
     logfile : str, optional
         Name of the logfile, logfile=None will not create a logfile.
-        The default is 'dynamite.log'.
+        The default is the UTC-timestamped ``dynamiteYYMMDD-HHMMSSuuuuuu.log``.
     console_level : int, optional
         Logfile logging level. The default is logging.INFO.
     logfile_level : int, optional
@@ -983,10 +984,14 @@ class DynamiteLogging(object):
         Format string for logfile logging. The default is set in the code.
 
     """
-    def __init__(self, logfile='dynamite.log', console_level=logging.INFO,
-                                               logfile_level=logging.DEBUG,
-                                               console_formatter = None,
-                                               logfile_formatter = None):
+    def __init__(self, logfile=False, console_level=logging.INFO,
+                                      logfile_level=logging.DEBUG,
+                                      console_formatter = None,
+                                      logfile_formatter = None):
+        if logfile is False: # as opposed to None...
+            logfile = 'dynamite' +\
+                      datetime.datetime.utcnow().strftime('%Y%m%d-%H%M%S%f') +\
+                      '.log'
         logging.shutdown()
         importlib.reload(logging)
         logger = logging.getLogger()       # create logger
