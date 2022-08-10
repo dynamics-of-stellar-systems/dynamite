@@ -469,20 +469,19 @@ class ParameterGenerator(object):
                          f'{len(self.model_list)}')
         # combine first two iterations by calling the generator again...
         if this_iter==0 and newmodels>0:
-            this_iter = np.max(self.current_models.table['which_iter']) + 1
+            newmodels0 = newmodels
+            this_iter += 1
             self.specific_generate_method(**kw_specific_generate_method)
             # Add new models to current_models.table
             for m in self.model_list:
                 if self._is_newmodel(m, eps=1e-10):
                     self.add_model(m, n_iter=this_iter)
                     newmodels += 1
-            self.logger.info(f'{self.name} added {newmodels} new model(s) '
-                             f'out of {len(self.model_list)}')
+            self.logger.info(f'{self.name} added {newmodels-newmodels0} new '
+                             f'model(s) out of {len(self.model_list)}')
         self.status['n_new_models'] = newmodels
-        last_iter_no_new_models = True if newmodels == 0 else False
-        self.status['last_iter_added_no_new_models'] = last_iter_no_new_models
-        if newmodels == 0:
-            self.status['stop'] = True
+        self.status['last_iter_added_no_new_models'] = newmodels==0
+        self.status['stop'] = newmodels==0
         return self.status
 
     def add_model(self, model=None, n_iter=0):

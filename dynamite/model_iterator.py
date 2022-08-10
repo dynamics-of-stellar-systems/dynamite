@@ -296,10 +296,10 @@ class ModelInnerIterator(object):
         None.
 
         """
-        iteration = self.all_models.table['which_iter'][-1]
         # new orblib model directories
         nodir = ''
         for row in rows_orblib:
+            iteration = self.all_models.table[row]['which_iter']
             t = self.all_models.table[:row]
             n = np.sum((t['which_iter']==iteration) & (t['directory']!=nodir))
             orblib_dir = f'orblib_{iteration:03d}_{n:03d}'
