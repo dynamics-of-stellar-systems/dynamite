@@ -4,6 +4,7 @@
 Change Log
 ****************
 
+- Improvement: standard log file names are now unique by including a timestamp, avoiding log conflicts with multiple DYNAMITE runs in the same directory
 - Bugfix: reattempt_failures will no longer result in an error if multiple to-delete models share the same orblib or the orblib directory does not exist
 - Improvement: made DYNAMITE compatible with more Linux distributions
 - Improvement: update publication list
