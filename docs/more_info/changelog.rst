@@ -6,6 +6,8 @@ Change Log
 
 - Improvement: DYNAMITE will retrofit existing all_models tables with the new column kinmapchi2 and calculate its values for existing models whenever possible
 - New feature: chi2 can now be directly calculated from the kinematic maps when using the LegacyWeightSolver via which_chi2: "kinmapchi2"
+- Bugfix: included cmasher in the list of required packages
+- Bugfix: reattempt_failures will no longer result in an error if multiple to-delete models share the same orblib or the orblib directory does not exist
 - Improvement: made DYNAMITE compatible with more Linux distributions
 - Improvement: update publication list
 - Bugfix: fixed wrong version number and copyright year in documentation
