@@ -97,7 +97,8 @@ class AllModels(object):
         The configuration setting reattempt_failures determines how partially
         completed models with all_done==False but existing orblibs are treated:
         If reattempt_failures==True, their orblib_done will be set to True
-        and weight solving will be done based on the existing orblibs.
+        and later the ModelIterator will execute the weight solving
+        based on the existing orblibs.
         If reattempt_failures==False, the model and its directory will be
         deleted.
         Note that orbit libraries on disk will not be deleted as they
@@ -167,6 +168,35 @@ class AllModels(object):
                              f"{self.table[row]['directory']} removed.")
         os.chdir(cwd)
         self.table.remove_rows(to_delete)
+
+        which_chi2 = 'kinmapchi2'
+        if which_chi2 not in self.table.colnames:
+            table_modified = True
+            # a legacy all_models table does not have the kinmapchi2 column
+            # add that column to the table and initialize with nan
+            self.logger.info('Legacy all_models table read, adding and '
+                             f'updating {which_chi2} column...')
+            self.table.add_column(float('nan'),
+                                  index=self.table.colnames.index('kinchi2')+1,
+                                  name=which_chi2,
+                                  copy=True)
+            for row_id, row in enumerate(self.table):
+                if row['orblib_done'] and row['weights_done']:
+                    # both orblib_done and weights_done being True indicates
+                    # that data for kinmapchi2 is on the disk -> calculate
+                    # kinmapchi2 (not nan only for LegacyWeightSolver)
+                    mod = self.get_model_from_row(row_id)
+                    ws_type=self.config.settings.weight_solver_settings['type']
+                    weight_solver = getattr(ws,ws_type)(
+                                            config=self.config,
+                                            directory_with_ml=mod.directory)
+                    row[which_chi2] = weight_solver.chi2_kinmap()
+                    self.logger.info(f'Model {row_id}: {which_chi2} = '
+                                     f'{row[which_chi2]}')
+                else:
+                    self.logger.warning(f'Model {row_id}: cannot update '
+                                        f'{which_chi2} - data deleted?')
+
         if table_modified:
             self.save()
 

@@ -53,6 +53,21 @@ class WeightSolver(object):
         # ...
         return weights, chi2_tot, chi2_kin, chi2_kinmap
 
+    def chi2_kinmap(self):
+        """
+        Template chi2_kinmap method
+
+        Returns the chi2 directly calculated from the kinematic maps.
+        Specific implementations should override this.
+
+        Returns
+        -------
+        chi2_kinmap : float
+            chi2 directly calculated from the kinematic maps.
+
+        """
+        return float('nan')
+
 
 class LegacyWeightSolver(WeightSolver):
     """Use `legacy` AKA Fortran weight solving.
@@ -204,10 +219,10 @@ class LegacyWeightSolver(WeightSolver):
         self.logger.info(f"Using WeightSolver: {__class__.__name__}")
         check1 = os.path.isfile(self.fname_nn_kinem)
         check2 = os.path.isfile(self.fname_nn_nnls)
-        fname = self.directory_with_ml + 'nn_orbmat.out'
-        check3 = os.path.isfile(fname)
+        check3 = os.path.isfile(self.directory_with_ml + 'nn_orbmat.out')
         if not check1 or not check2 or not check3:
-            # set the current directory to the directory in which the models are computed
+            # set the current directory to the directory in which
+            # the models are computed
             cur_dir = os.getcwd()
             os.chdir(self.direc_no_ml)
             cmdstr = self.write_executable_for_weight_solver(self.ml)
@@ -241,8 +256,7 @@ class LegacyWeightSolver(WeightSolver):
         else:
             self.logger.info("NNLS solution read from existing output")
         wts, chi2_tot, chi2_kin = self.get_weights_and_chi2_from_orbmat_file()
-        _, chi2_kinmap = self.read_chi2()
-        return wts, chi2_tot, chi2_kin, chi2_kinmap
+        return wts, chi2_tot, chi2_kin, self.chi2_kinmap()
 
     def write_executable_for_weight_solver(self, ml):
         """write executable bash script file
@@ -363,6 +377,19 @@ class LegacyWeightSolver(WeightSolver):
         n_apertures = len(projected_masses)
         chi2_kin = np.sum(chi2_vector[1+n_intrinsic+n_apertures:])
         return weights, chi2_tot, chi2_kin
+
+    def chi2_kinmap(self):
+        """
+        Returns the chi2 directly calculated from the kinematic maps.
+
+        Returns
+        -------
+        chi2_kinmap : float
+            chi2 directly calculated from the kinematic maps.
+
+        """
+        _, chi2_kinmap = self.read_chi2()
+        return chi2_kinmap
 
     def read_chi2(self):
         """Read chi2 values from `nn_kinem.out`
@@ -699,8 +726,7 @@ class NNLS(WeightSolver):
             #delete existing .yaml files and copy current config file
             #into model directory
             self.config.copy_config_file(self.direc_with_ml)
-            chi2_kinmap = float('nan')
-        return weights, chi2_tot, chi2_kin, chi2_kinmap
+        return weights, chi2_tot, chi2_kin, self.chi2_kinmap()
 
 
 class CvxoptNonNegSolver():
