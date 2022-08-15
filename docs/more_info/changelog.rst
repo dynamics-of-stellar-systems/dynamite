@@ -4,6 +4,7 @@
 Change Log
 ****************
 
+- Bugfix: Fixed a bug that may cause a crash in case a parameter does not have a minstep value
 - Improvement: DYNAMITE will catch and correct the erroneous parameter generator setting minstep>step by setting minstep=step for non-fixed component parameters
 - Bugfix: Fixed a bug that may occur in the parameter generators (ensures that DYNAMITE creates all possible models)
 

@@ -58,7 +58,9 @@ class System(object):
 
         Ensures the System has the required attributes: at least one component,
         no duplicate component names, and the ml parameter, and that the
-        sformat string for the ml parameter is set.
+        sformat string for the ml parameter is set. Also validates
+        the parameter generator settings' minstep value for ml if it is a
+        non-fixed parameter.
 
         Raises
         ------
@@ -85,7 +87,16 @@ class System(object):
             text = 'System needs ml as its sole parameter'
             self.logger.error(text)
             raise ValueError(text)
-        self.parameters[0].update(sformat = '01.2f') # sformat of ml parameter
+        ml = self.parameters[0]
+        ml.update(sformat = '01.2f') # sformat of ml parameter
+        if not ml.fixed and 'minstep' in ml.par_generator_settings:
+            generator_settings = ml.par_generator_settings
+            if generator_settings['minstep'] > generator_settings['step']:
+                text = f"{self.__class__.__name__} parameter {ml.name}'s " \
+                       "parameter generator settings have minstep > step, " \
+                       f"setting minstep=step={generator_settings['step']}."
+                self.logger.warning(text)
+                generator_settings['minstep'] = generator_settings['step']
 
     def validate_parset(self, par):
         """
