@@ -10,16 +10,16 @@ from scipy.sparse import csr_matrix
 from scipy.sparse.csgraph import maximum_bipartite_matching
 from copy import deepcopy
 import matplotlib as mpl
-from matplotlib.ticker import MaxNLocator
+from matplotlib.ticker import MaxNLocator, FixedLocator
 from matplotlib.ticker import NullFormatter
 import matplotlib.pyplot as plt
-from plotbin import sauron_colormap as pb_sauron_colormap
+#from plotbin import sauron_colormap as pb_sauron_colormap
 from plotbin import display_pixels
 # from loess.loess_2d import loess_2d
 from dynamite import kinematics
 from dynamite import weight_solvers
 from dynamite import physical_system as physys
-
+import cmasher as cmr
 class ReorderLOSVDError(Exception):
     pass
 
@@ -49,7 +49,7 @@ class Plotter():
         self.input_directory = config.settings.io_settings['input_directory']
         self.plotdir = config.settings.io_settings['plot_directory']
         self.modeldir = config.settings.io_settings['model_directory']
-        pb_sauron_colormap.register_sauron_colormap()
+        #pb_sauron_colormap.register_sauron_colormap()
 
     def make_chi2_vs_model_id_plot(self, which_chi2=None, figtype=None):
         """
@@ -232,7 +232,7 @@ class Plotter():
         colormap_orig = mpl.cm.viridis
         colormap = mpl.cm.get_cmap('viridis_r')
 
-        fig = plt.figure(figsize=(10, 10))
+        fig = plt.figure(figsize=(12, 12))
         for i in range(0, nnofix - 1):
             for j in range(nnofix-1, i, -1):
 
@@ -247,7 +247,7 @@ class Plotter():
 
                 plt.plot(val[nofix_name[i]],val[nofix_name[j]], 'D',
                          color='black', markersize=2)
-
+                
                 for k in range(nf - 1, -1, -1):
                     if val['chi2t'][k]/chlim<=3: #only significant chi2 values
 
@@ -266,21 +266,33 @@ class Plotter():
                                  (val[nofix_name[j]])[k], 'x',
                                  markersize=10, color='k')
 
-                if nofix_islog[i]:
-                    ax.set_xscale('log')
-                if nofix_islog[j]:
-                    ax.set_yscale('log')
+                ax.set_xmargin(0.1)
+                ax.set_ymargin(0.1)
+
+                label_format = '{:.1e}'
 
                 if j==i+1:
-                    ax.set_xlabel(xtit, fontsize=12)
-                    ax.set_xmargin(0.5)
-                    nbins = len(ax.get_xticklabels())
-                    ax.xaxis.set_major_locator(MaxNLocator(nbins=nbins, prune='lower'))
-
+                    ax.set_xlabel(xtit, fontsize=14)
+                    if max(val[nofix_name[i]])>200:
+                        ax.xaxis.set_major_locator(MaxNLocator(3))
+                        ticks_loc = ax.get_xticks().tolist()
+                        ax.xaxis.set_major_locator(FixedLocator(ticks_loc))
+                        ax.set_xticklabels([label_format.format(x).replace('e+0','e') for x in ticks_loc])
+                    else: 
+                        ax.xaxis.set_major_locator(MaxNLocator(nbins=4, prune='lower'))
                 else:
-                    ax.set_xticks([])
+                    ax.xaxis.set_major_formatter(NullFormatter())
+                    ax.xaxis.set_minor_formatter(NullFormatter())
+                
                 if i==0:
-                    ax.set_ylabel(ytit, fontsize=12)
+                    ax.set_ylabel(ytit, fontsize=14)
+                    if max(val[nofix_name[j]])>200:
+                        ax.yaxis.set_major_locator(MaxNLocator(3))
+                        ticks_loc = ax.get_yticks().tolist()
+                        ax.yaxis.set_major_locator(FixedLocator(ticks_loc))
+                        ax.set_yticklabels([label_format.format(x).replace('e+0','e') for x in ticks_loc])
+                    else:
+                        ax.yaxis.set_major_locator(MaxNLocator(nbins=3, prune='lower'))
                 else:
                     ax.yaxis.set_major_formatter(NullFormatter())
                     ax.yaxis.set_minor_formatter(NullFormatter())
@@ -825,16 +837,23 @@ class Plotter():
                             bottom=0.05,
                             top=0.99,
                             right=0.99)
-        sauron_colormap = plt.get_cmap('sauron')
-        sauron_r_colormap = plt.get_cmap('sauron_r')
+        #sauron_colormap = plt.get_cmap('sauron')
+        #sauron_r_colormap = plt.get_cmap('sauron_r')
         #colormapname = plt.get_cmap('cmr.ember')
-
+        map1 = cmr.get_sub_cmap('twilight_shifted', 0.05, 0.6)
+        map2 = 'twilight_shifted'
+        kw_display_pixels1 = dict(pixelsize=dx,
+                                 angle=angle_deg,
+                                 colorbar=True,
+                                 nticks=7,
+                                 #cmap='sauron')
+                                 cmap=map1)
         kw_display_pixels = dict(pixelsize=dx,
                                  angle=angle_deg,
                                  colorbar=True,
                                  nticks=7,
-                                 cmap='sauron')
-                                 #cmap='cmr.ember')
+                                 #cmap='sauron')
+                                 cmap=map2)
         x, y = xi[s], yi[s]
 
         ### PLOT THE REAL DATA
@@ -842,7 +861,7 @@ class Plotter():
         c = np.array(list(map(np.log10, flux[grid[s]] / max(flux))))
         display_pixels.display_pixels(x, y, c,
                                           vmin=minf, vmax=maxf,
-                                          **kw_display_pixels)
+                                          **kw_display_pixels1)
         ax1.set_title('surface brightness (log)',fontsize=20, pad=20)
         ax2 = plt.subplot(3, 5, 2)
         display_pixels.display_pixels(x, y, vel[grid[s]],
@@ -852,7 +871,7 @@ class Plotter():
         ax3 = plt.subplot(3, 5, 3)
         display_pixels.display_pixels(x, y, sig[grid[s]],
                                           vmin=smin, vmax=smax,
-                                          **kw_display_pixels)
+                                          **kw_display_pixels1)
         ax3.set_title('velocity dispersion',fontsize=20, pad=20)
         ax4 = plt.subplot(3, 5, 4)
         display_pixels.display_pixels(x, y, h3[grid[s]],
@@ -870,7 +889,7 @@ class Plotter():
         c = np.array(list(map(np.log10, fluxm[grid[s]] / max(fluxm))))
         display_pixels.display_pixels(x, y, c,
                                           vmin=minfm, vmax=maxfm,
-                                          **kw_display_pixels)
+                                          **kw_display_pixels1)
         plt.subplot(3, 5, 7)
         display_pixels.display_pixels(x, y, velm[grid[s]],
                                           vmin=-1.0 * vmax, vmax=vmax,
@@ -878,7 +897,7 @@ class Plotter():
         plt.subplot(3, 5, 8)
         display_pixels.display_pixels(x, y, sigm[grid[s]],
                                           vmin=smin, vmax=smax,
-                                          **kw_display_pixels)
+                                          **kw_display_pixels1)
         plt.subplot(3, 5, 9)
         display_pixels.display_pixels(x, y, h3m[grid[s]],
                                           vmin=h3min, vmax=h3max,
@@ -893,7 +912,7 @@ class Plotter():
                                  angle=angle_deg,
                                  colorbar=True,
                                  nticks=7,
-                                 cmap='bwr')
+                                 cmap=map2)
 
         ### PLOT THE ERROR NORMALISED RESIDUALS
         plt.subplot(3, 5, 11)

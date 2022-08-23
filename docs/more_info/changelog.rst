@@ -7,11 +7,18 @@ Change Log
 - Bugfix: Fixed a bug that may cause a crash in case a parameter does not have a minstep value
 - Improvement: DYNAMITE will catch and correct the erroneous parameter generator setting minstep>step by setting minstep=step for non-fixed component parameters
 - Bugfix: Fixed a bug that may occur in the parameter generators (ensures that DYNAMITE creates all possible models)
+- Improvement: now the models of the first two iterations are computed together, better utilizing parallel computing
+- Bugfix: included cmasher in the list of required packages
+- Bugfix: reattempt_failures will no longer result in an error if multiple to-delete models share the same orblib or the orblib directory does not exist
+- Improvement: made DYNAMITE compatible with more Linux distributions
+- Improvement: update publication list
+- Bugfix: fixed wrong version number and copyright year in documentation
 
 Version: 3.0
 ================
 
 - Improvement: DYNAMITE now works with newer versions of Astropy. The new requirement is astropy>=5.0.4
+- New feature: Integrate tube and box orbits in parallel by setting the multiprocessing option orblibs_in_parallel
 - New feature: Added support for new dark halo component type NFW_m200_c (fixed m200_c relation)
 - New feature: The Configuration object parameter reset_existing_output will delete previously existing data and create a new output directory tree
 - Improvement: The presence of datfil/orblib.dat.bz2 and datfil/orblibbox.dat.bz2 is now a more reliable indicator for existing orblibs. In the past, a crash may have resulted in corrupt bz2 files.
