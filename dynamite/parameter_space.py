@@ -1,3 +1,4 @@
+import sys
 import copy
 import logging
 import numpy as np
@@ -457,9 +458,9 @@ class ParameterGenerator(object):
         else:
             this_iter = np.max(self.current_models.table['which_iter']) + 1
         # check whether we need to do anything in the first place...
+        newmodels = 0
         if not self.status['stop']:
             self.specific_generate_method(**kw_specific_generate_method)
-            newmodels = 0
             # Add new models to current_models.table
             for m in self.model_list:
                 if self._is_newmodel(m, eps=1e-10):
@@ -680,7 +681,7 @@ class LegacyGridSearch(ParameterGenerator):
                     # Explicitly set minstep=0 to allow arbitrarily
                     # small steps, not recommended.
                     self.minstep.append(settings['minstep'] \
-                        if 'minstep' in settings else self.step)
+                        if 'minstep' in settings else settings['step'])
                 else:
                     self.step.append(None)
                     self.minstep.append(None)
@@ -753,7 +754,8 @@ class LegacyGridSearch(ParameterGenerator):
                     raw_center = self.new_parset[paridx].raw_value
                     for s in [-1, 1]:
                         new_raw_value = np.clip(raw_center + s*step, lo, hi)
-                        if abs(new_raw_value-par.raw_value) >= minstep:
+                        if abs(new_raw_value-par.raw_value) \
+                           >= minstep - sys.float_info.epsilon:
                             self.new_parset[paridx].raw_value = new_raw_value
                             if self._is_newmodel(self.new_parset, eps=1e-10):
                                 self.model_list.append\
@@ -835,7 +837,7 @@ class GridWalk(ParameterGenerator):
                     self.step.append(settings['step'])
                     # use 'minstep' value if present, otherwise use 'step'
                     self.minstep.append(settings['minstep'] \
-                        if 'minstep' in settings else self.step)
+                        if 'minstep' in settings else settings['step'])
                 else:
                     self.step.append(None)
                     self.minstep.append(None)
@@ -945,7 +947,7 @@ class GridWalk(ParameterGenerator):
             raw_values = []
             # start with lo...
             delta = center[paridx] - self.clip(center[paridx] - step, lo, hi)
-            if abs(delta) >= minstep:
+            if abs(delta) >= minstep - sys.float_info.epsilon:
                 raw_values.append(self.clip(center[paridx] - step, lo, hi))
             # now mid... tol(erance) is necessary in case minstep < eps
             if len(raw_values) > 0:
@@ -959,7 +961,7 @@ class GridWalk(ParameterGenerator):
                 raw_values.append(self.clip(center[paridx], lo, hi))
             # and now hi...
             delta = self.clip(center[paridx] + step, lo, hi) - center[paridx]
-            if abs(delta) >= minstep:
+            if abs(delta) >= minstep - sys.float_info.epsilon:
                 tol = abs(self.clip(center[paridx]+step,lo,hi)-raw_values[-1])
                 if abs(raw_values[-1]) > eps:
                     tol /= abs(raw_values[-1])
@@ -1059,7 +1061,7 @@ class FullGrid(ParameterGenerator):
                     self.step.append(settings['step'])
                     # use 'minstep' value if present, otherwise use 'step'
                     self.minstep.append(settings['minstep'] \
-                        if 'minstep' in settings else self.step)
+                        if 'minstep' in settings else settings['step'])
                 else:
                     self.step.append(None)
                     self.minstep.append(None)
@@ -1177,7 +1179,8 @@ class FullGrid(ParameterGenerator):
             # start with lo...
             while raw_value >= lo:
                 raw_new = self.clip(raw_value-step, lo, hi)
-                if abs(raw_value-raw_new) >= max(minstep,eps):
+                if abs(raw_value-raw_new) >= max(minstep,eps) \
+                                             - sys.float_info.epsilon:
                     raw_values.append(raw_new)
                 else:
                     break
@@ -1186,7 +1189,8 @@ class FullGrid(ParameterGenerator):
             raw_value = center[paridx]
             while raw_value <= hi:
                 raw_new = self.clip(raw_value+step, lo, hi)
-                if abs(raw_value-raw_new) >= max(minstep,eps):
+                if abs(raw_value-raw_new) >= max(minstep,eps) \
+                                             - sys.float_info.epsilon:
                     raw_values.append(raw_new)
                 else:
                     break

@@ -58,7 +58,9 @@ class System(object):
 
         Ensures the System has the required attributes: at least one component,
         no duplicate component names, and the ml parameter, and that the
-        sformat string for the ml parameter is set.
+        sformat string for the ml parameter is set. Also validates
+        the parameter generator settings' minstep value for ml if it is a
+        non-fixed parameter.
 
         Raises
         ------
@@ -85,7 +87,16 @@ class System(object):
             text = 'System needs ml as its sole parameter'
             self.logger.error(text)
             raise ValueError(text)
-        self.parameters[0].update(sformat = '01.2f') # sformat of ml parameter
+        ml = self.parameters[0]
+        ml.update(sformat = '01.2f') # sformat of ml parameter
+        if not ml.fixed and 'minstep' in ml.par_generator_settings:
+            generator_settings = ml.par_generator_settings
+            if generator_settings['minstep'] > generator_settings['step']:
+                text = f"{self.__class__.__name__} parameter {ml.name}'s " \
+                       "parameter generator settings have minstep > step, " \
+                       f"setting minstep=step={generator_settings['step']}."
+                self.logger.warning(text)
+                generator_settings['minstep'] = generator_settings['step']
 
     def validate_parset(self, par):
         """
@@ -264,8 +275,9 @@ class Component(object):
         """
         Validate the component
 
-        Ensure it has the required attributes and parameters.
-        Additionally, the sformat strings for the parameters are set.
+        Ensure it has the required attributes and parameters. Also validates
+        the parameter generator settings' minstep value for non-fixed
+        parameters.
 
         Parameters
         ----------
@@ -301,6 +313,16 @@ class Component(object):
                    f'{par}, not {pars}.'
             self.logger.error(text)
             raise ValueError(text)
+
+        for p in [p for p in self.parameters
+                  if not p.fixed and 'minstep' in p.par_generator_settings]:
+            generator_settings = p.par_generator_settings
+            if generator_settings['minstep'] > generator_settings['step']:
+                text = f"{self.__class__.__name__} parameter {p.name}'s " \
+                       "parameter generator settings have minstep > step, " \
+                       f"setting minstep=step={generator_settings['step']}."
+                self.logger.warning(text)
+                generator_settings['minstep'] = generator_settings['step']
 
     def validate_parset(self, par):
         """
@@ -446,8 +468,8 @@ class TriaxialVisibleComponent(VisibleComponent):
         """
         Validate the TriaxialVisibleComponent
 
-        In addition to validating parameter names and setting their sformat
-        strings, also set self.qobs (minimal flattening from mge data)
+        Validates parameter names and sets self.qobs
+        (minimal flattening from mge data).
 
         Returns
         -------
@@ -516,15 +538,17 @@ class TriaxialVisibleComponent(VisibleComponent):
         if u>1:
             theta = phi = psi = np.nan
             self.logger.debug(f'DEPROJ FAIL: u>1')
+        if np.isclose(u,p):
+            u=p
         # Check for possible triaxial deprojection (v. d. Bosch 2004,
         # triaxpotent.f90 and v. d. Bosch et al. 2008, MNRAS 385, 2, 647)
         str = f'{q} <= {p} <= {1}, ' \
-              f'{max((q/self.qobs,p))} <= {u} <= {min((p/self.qobs),1)}, ' \
+              f'{max((q/self.qobs,p))} < {u} <= {min((p/self.qobs),1)}, ' \
               f'q\'={self.qobs}'
         # 0<=t<=1, t = (1-p2)/(1-q2) and p,q>0 is the same as 0<q<=p<=1 and q<1
         t = (1-p2)/(1-q2)
         if not (0 <= t <= 1) or \
-           not (max((q/self.qobs,p)) <= u <= min((p/self.qobs),1)) :
+           not (max((q/self.qobs,p)) < u <= min((p/self.qobs),1)) :
             theta = phi = psi = np.nan
             self.logger.debug(f'DEPROJ FAIL: {str}')
         else:
@@ -919,7 +943,7 @@ class TriaxialCoredLogPotential(DarkComponent):
         phi = np.arccos(np.sqrt(xx/zz))
         m = (zz-yy)/(zz-xx)
         Menc = r*vc**2/G * (1 - rc**2*r/np.sqrt((r**2+rc**2)*(r**2/p**2+rc**2)*(r**2/q**2+rc**2))*(zz-xx)**(-0.5)*special.ellipkinc(phi,m))
-        
+
 
 class GeneralisedNFW(DarkComponent):
     """A GeneralisedNFW halo
