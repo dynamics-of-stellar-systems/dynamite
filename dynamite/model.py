@@ -159,14 +159,26 @@ class AllModels(object):
                     self.logger.info('No finished model found in '
                                      f'{row["directory"]} - removing row {i}.')
         # do the deletion
-        cwd = os.getcwd()
-        os.chdir(self.config.settings.io_settings['model_directory'])
-        for row in to_delete:
-            shutil.rmtree(self.table[row]['directory'])
-            self.logger.info(f"Model {row}'s directory "
-                             f"{self.table[row]['directory']} removed.")
-        os.chdir(cwd)
-        self.table.remove_rows(to_delete)
+        # note: only models without orblibs are deleted, so we delete the
+        # entire orblibs' directories
+        if len(to_delete)>0:
+            cwd = os.getcwd()
+            os.chdir(self.config.settings.io_settings['model_directory'])
+            dirs_to_delete = set(
+                                 [d[:d[:-1].rindex('/')+1]
+                                 for d in self.table[to_delete]['directory']]
+                                )
+            self.logger.info(f'Will remove {len(dirs_to_delete)} '
+                             'unique orblibs.')
+            for directory in dirs_to_delete:
+                try:
+                    shutil.rmtree(directory)
+                    self.logger.info(f'Model directory {directory} removed.')
+                except:
+                    self.logger.warning(f'Cannot remove orblib in {directory},'
+                        ' perhaps it has already been removed before.')
+            os.chdir(cwd)
+            self.table.remove_rows(to_delete)
         if table_modified:
             self.save()
 

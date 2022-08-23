@@ -86,8 +86,6 @@ ifeq ($(compilername),gfortran)
    # on MAC OS X we can use the built-in BLAS/LAPACK
   #flags += -fexternal-blas -framework Accelerate
   flags += -fexternal-blas
-  # On MAC OS X te build static binaries
-  flags += -static-libgfortran -static-libgcc
 
   fortran90 = $(FORTRAN) $(flags) -c
   fortran77 = $(FORTRAN) $(flags) -c
@@ -100,9 +98,6 @@ endif
 #GALAHADDIR =/home/alice/old_home/Work/Vienna/DYNAMITE/dynamite/legacy_fortran/galahad-2.3
 
 # Define galahad compiled libary choice (platform dependant)
-
-# MAC, gfortran
-GALAHADTYPE= mac.osx.gfo/double/
 
 # linux, ifort
 # GALAHADTYPE= pc.lnx.ifc/double

@@ -1,26 +1,22 @@
-diff --git legacy_fortran/triaxnnls_CRcut.f90 legacy_fortran/triaxnnls_CRcut.f90
-index 8351e23..7d11d4f 100755
 --- legacy_fortran/triaxnnls_CRcut.f90
 +++ legacy_fortran/triaxnnls_CRcut.f90
-@@ -1093,7 +1093,7 @@ end subroutine donnls_galahad
-    !CALL PRESOLVE_apply( p, pcontrol, inform, pdata )
-    IF ( inform%status /= 0 ) STOP
+@@ -1074,7 +1074,7 @@
+         !CALL PRESOLVE_apply( p, pcontrol, inform, pdata )
+         IF (inform%status /= 0) STOP
  
--   CALL QPB_initialize( data, control)!,info )         ! Initialize control parameters
-+   CALL QPB_initialize( data, control,info )         ! Initialize control parameters
-    !   control%rho_g = 1.0_dp ; control%rho_b = 1.0_dp        ! initial penalty parameters
-    control%infinity = infinity                  ! Set infinity
-    control%print_level = 1
-diff --git legacy_fortran/triaxnnls_noCRcut.f90 legacy_fortran/triaxnnls_noCRcut.f90
-index 1f2398a..65dc1bd 100644
+-        CALL QPB_initialize(data, control)!,info )         ! Initialize control parameters
++        CALL QPB_initialize(data, control,info )         ! Initialize control parameters
+         !   control%rho_g = 1.0_dp ; control%rho_b = 1.0_dp        ! initial penalty parameters
+         control%infinity = infinity                  ! Set infinity
+         control%print_level = 1
 --- legacy_fortran/triaxnnls_noCRcut.f90
 +++ legacy_fortran/triaxnnls_noCRcut.f90
-@@ -1097,7 +1097,7 @@ end subroutine donnls_galahad
-    !CALL PRESOLVE_apply( p, pcontrol, inform, pdata )
-    IF ( inform%status /= 0 ) STOP
+@@ -1079,7 +1079,7 @@
+         !CALL PRESOLVE_apply( p, pcontrol, inform, pdata )
+         IF (inform%status /= 0) STOP
  
--   CALL QPB_initialize( data, control)!,info )         ! Initialize control parameters
-+   CALL QPB_initialize( data, control,info )         ! Initialize control parameters
-    !   control%rho_g = 1.0_dp ; control%rho_b = 1.0_dp        ! initial penalty parameters
-    control%infinity = infinity                  ! Set infinity
-    control%print_level = 1
+-        CALL QPB_initialize(data, control)!,info )         ! Initialize control parameters
++        CALL QPB_initialize(data, control,info )         ! Initialize control parameters
+         !   control%rho_g = 1.0_dp ; control%rho_b = 1.0_dp        ! initial penalty parameters
+         control%infinity = infinity                  ! Set infinity
+         control%print_level = 1
