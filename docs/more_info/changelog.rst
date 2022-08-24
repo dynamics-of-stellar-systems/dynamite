@@ -5,6 +5,11 @@ Change Log
 ****************
 
 - Improvement: when instantiating the Configuration object, the user can now specify the name of the logfile (several options), avoiding log conflicts with multiple DYNAMITE runs in the same directory
+- Bugfix: Fixed a bug that may cause a crash in case a parameter does not have a minstep value
+- Improvement: DYNAMITE will catch and correct the erroneous parameter generator setting minstep>step by setting minstep=step for non-fixed component parameters
+- Bugfix: Fixed a bug that may occur in the parameter generators (ensures that DYNAMITE creates all possible models)
+- Improvement: now the models of the first two iterations are computed together, better utilizing parallel computing
+- Bugfix: included cmasher in the list of required packages
 - Bugfix: reattempt_failures will no longer result in an error if multiple to-delete models share the same orblib or the orblib directory does not exist
 - Improvement: made DYNAMITE compatible with more Linux distributions
 - Improvement: update publication list
