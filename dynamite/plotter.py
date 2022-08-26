@@ -53,7 +53,7 @@ class Plotter():
 
     def make_chi2_vs_model_id_plot(self, which_chi2=None, figtype=None):
         """
-        Generates a (kin)chi2 vs. model id plot
+        Generates a chi2 vs. model id plot
 
         Parameters
         ----------
