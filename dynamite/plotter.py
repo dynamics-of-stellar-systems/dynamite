@@ -13,9 +13,7 @@ import matplotlib as mpl
 from matplotlib.ticker import MaxNLocator, FixedLocator,LogLocator
 from matplotlib.ticker import NullFormatter
 import matplotlib.pyplot as plt
-#from plotbin import sauron_colormap as pb_sauron_colormap
 from plotbin import display_pixels
-# from loess.loess_2d import loess_2d
 from dynamite import kinematics
 from dynamite import weight_solvers
 from dynamite import physical_system as physys
@@ -49,19 +47,17 @@ class Plotter():
         self.input_directory = config.settings.io_settings['input_directory']
         self.plotdir = config.settings.io_settings['plot_directory']
         self.modeldir = config.settings.io_settings['model_directory']
-        #pb_sauron_colormap.register_sauron_colormap()
 
     def make_chi2_vs_model_id_plot(self, which_chi2=None, figtype=None):
         """
-        Generates a (kin)chi2 vs. model id plot
+        Generates a chi2 vs. model id plot
 
         Parameters
         ----------
         which_chi2 : STR, optional
-            Determines whether chi2, kinchi2 or kinmapchi2 is used. 
-            If None, the setting in the configuration file's parameter 
-            settings is used. 
-            Must be None, 'chi2', or 'kinchi2'. The default is None.
+            Which chi2 is used for determining the best models. If None, 
+            the setting from the configuration file will be used.
+            The default is None.
         figtype : STR, optional
             Determines the file extension to use when saving the figure.
             If None, the default setting is used ('.png').
@@ -69,8 +65,7 @@ class Plotter():
         Raises
         ------
         ValueError
-            If which_chi2 is not one of None, 
-            'chi2', 'kinchi2' or 'kinmapchi2'.
+            If which_chi2 is neither None nor a valid chi2 type.
 
         Returns
         -------
@@ -80,13 +75,9 @@ class Plotter():
         """
         if figtype is None:
             figtype = '.png'
-        if which_chi2 is None:
-            which_chi2 = self.settings.parameter_space_settings['which_chi2']
-        if which_chi2 not in ('chi2', 'kinchi2','kinmapchi2'):
-            text = 'which_chi2 needs to be chi2, kinchi2 ' \
-                   f'or kinmapchi2, but it is {which_chi2}'
-            self.logger.error(text)
-            raise ValueError(text)
+        
+        which_chi2 = self.config.validate_chi2(which_chi2)
+
         n_models = len(self.all_models.table)
         fig = plt.figure()
         plt.plot([i for i in range(n_models)],
@@ -119,10 +110,9 @@ class Plotter():
         Parameters
         ----------
         which_chi2 : STR, optional
-            Determines whether chi2, kinchi2 or kinmapchi2 is used. 
-            If None, the setting in the configuration file's parameter 
-            settings is used. 
-            Must be None, 'chi2', or 'kinchi2'. The default is None.
+            Which chi2 is used for determining the best models. If None, 
+            the setting from the configuration file will be used.
+            The default is None.
         nexcl : integer, optional
             Determines how many models (in the initial burn-in phase of
             the fit) to exclude from the plot. Must be an integer number.
@@ -134,8 +124,7 @@ class Plotter():
         Raises
         ------
         ValueError
-            If which_chi2 is not one of None, 
-            'chi2', 'kinchi2' or 'kinmapchi2'.
+            If which_chi2 is neither None nor a valid chi2 type.
 
         Returns
         -------
@@ -147,13 +136,7 @@ class Plotter():
         if figtype is None:
             figtype = '.png'
 
-        if which_chi2 is None:
-            which_chi2 = self.settings.parameter_space_settings['which_chi2']
-        if which_chi2 not in ('chi2', 'kinchi2','kinmapchi2'):
-            text = 'which_chi2 needs to be chi2, kinchi2 ' \
-                   f'or kinmapchi2, but it is {which_chi2}'
-            self.logger.error(text)
-            raise ValueError(text)
+        which_chi2 = self.config.validate_chi2(which_chi2)
         self.logger.info(f'Making chi2 plot scaled according to {which_chi2}')
 
         pars = self.config.parspace
@@ -297,7 +280,7 @@ class Plotter():
                         ax.set_yscale('log')
                 else:
                     ax.xaxis.set_major_formatter(NullFormatter())
-                    
+
                 if i==0:
                     ax.set_ylabel(ytit, fontsize=size)
                     if nofix_islog[i]:
@@ -1152,10 +1135,9 @@ class Plotter():
         Parameters
         ----------
         which_chi2 : STR, optional
-            Determines whether chi2, kinchi2 or kinmapchi2 is used. 
-            If None, the setting in the configuration file's parameter 
-            settings is used. 
-            Must be None, 'chi2', or 'kinchi2'. The default is None.
+            Which chi2 is used for determining the best models. If None, 
+            the setting from the configuration file will be used.
+            The default is None.
         Rmax_arcs : numerical value
             Determines the upper range of the x-axis. Default value is None.
         figtype : STR, optional
@@ -1165,8 +1147,7 @@ class Plotter():
         Raises
         ------
         ValueError
-            If which_chi2 is not one of None, 
-            'chi2', 'kinchi2' or 'kinmapchi2'.
+            If which_chi2 is neither None nor a valid chi2 type.
         ValueError
             If Rmax_arcs is not set to a numerical value.
 
@@ -1185,13 +1166,7 @@ class Plotter():
         if figtype is None:
             figtype = '.png'
 
-        if which_chi2 is None:
-            which_chi2 = self.settings.parameter_space_settings['which_chi2']
-        if which_chi2 not in ('chi2', 'kinchi2','kinmapchi2'):
-            text = 'which_chi2 needs to be chi2, kinchi2 ' \
-                   f'or kinmapchi2, but it is {which_chi2}'
-            self.logger.error(text)
-            raise ValueError(text)
+        which_chi2 = self.config.validate_chi2(which_chi2)
 
         if Rmax_arcs is None:
             text = f'Rmax_arcs must be a number, but it is {Rmax_arcs}'
@@ -1926,10 +1901,9 @@ class Plotter():
         Parameters
         ----------
         which_chi2 : STR, optional
-            Determines whether chi2, kinchi2 or kinmapchi2 is used. 
-            If None, the setting in the configuration file's parameter 
-            settings is used. 
-            Must be None, 'chi2', or 'kinchi2'. The default is None.
+            Which chi2 is used for determining the best models. If None, 
+            the setting from the configuration file will be used.
+            The default is None.
         Rmax_arcs : numerical value
             Determines the upper range of the x-axis.
         figtype : STR, optional
@@ -1939,8 +1913,7 @@ class Plotter():
         Raises
         ------
         ValueError
-            If which_chi2 is not one of None, 
-            'chi2', 'kinchi2' or 'kinmapchi2'.
+            If which_chi2 is neither None nor a valid chi2 type.
         ValueError
             If Rmax_arcs is not set to a numerical value.
 
@@ -1960,13 +1933,7 @@ class Plotter():
         if figtype is None:
             figtype = '.png'
 
-        if which_chi2 is None:
-            which_chi2 = self.settings.parameter_space_settings['which_chi2']
-        if which_chi2 not in ('chi2', 'kinchi2','kinmapchi2'):
-            text = 'which_chi2 needs to be chi2, kinchi2 ' \
-                   f'or kinmapchi2, but it is {which_chi2}'
-            self.logger.error(text)
-            raise ValueError(text)
+        which_chi2 = self.config.validate_chi2(which_chi2)
 
         if Rmax_arcs is None:
             text = f'Rmax_arcs must be a number, but it is {Rmax_arcs}'
@@ -2175,10 +2142,9 @@ class Plotter():
         Parameters
         ----------
         which_chi2 : STR, optional
-            Determines whether chi2, kinchi2 or kinmapchi2 is used. 
-            If None, the setting in the configuration file's parameter 
-            settings is used. 
-            Must be None, 'chi2', or 'kinchi2'. The default is None.
+           Which chi2 is used for determining the best models. If None, 
+            the setting from the configuration file will be used.
+            The default is None.
         Rmax_arcs : numerical value
             Determines the upper range of the x-axis.
         figtype : STR, optional
@@ -2188,8 +2154,7 @@ class Plotter():
         Raises
         ------
         ValueError
-            If which_chi2 is not one of None, 
-            'chi2', 'kinchi2' or 'kinmapchi2'.
+            If which_chi2 is neither None nor a valid chi2 type.
         ValueError
             If Rmax_arcs is not set to a numerical value.
 
@@ -2207,13 +2172,7 @@ class Plotter():
         if figtype is None:
             figtype = '.png'
 
-        if which_chi2 is None:
-            which_chi2 = self.settings.parameter_space_settings['which_chi2']
-        if which_chi2 not in ('chi2', 'kinchi2','kinmapchi2'):
-            text = 'which_chi2 needs to be chi2, kinchi2 ' \
-                   f'or kinmapchi2, but it is {which_chi2}'
-            self.logger.error(text)
-            raise ValueError(text)
+        which_chi2 = self.config.validate_chi2(which_chi2)
 
         if Rmax_arcs is None:
             text = f'Rmax_arcs must be a number, but it is {Rmax_arcs}'
