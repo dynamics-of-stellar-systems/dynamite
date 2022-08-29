@@ -10,7 +10,7 @@ from scipy.sparse import csr_matrix
 from scipy.sparse.csgraph import maximum_bipartite_matching
 from copy import deepcopy
 import matplotlib as mpl
-from matplotlib.ticker import MaxNLocator, FixedLocator
+from matplotlib.ticker import MaxNLocator, FixedLocator,LogLocator
 from matplotlib.ticker import NullFormatter
 import matplotlib.pyplot as plt
 #from plotbin import sauron_colormap as pb_sauron_colormap
@@ -58,8 +58,9 @@ class Plotter():
         Parameters
         ----------
         which_chi2 : STR, optional
-            Determines whether chi2 or kinchi2 is used. If None, the setting
-            in the configuration file's parameter settings is used.
+            Determines whether chi2, kinchi2 or kinmapchi2 is used. 
+            If None, the setting in the configuration file's parameter 
+            settings is used. 
             Must be None, 'chi2', or 'kinchi2'. The default is None.
         figtype : STR, optional
             Determines the file extension to use when saving the figure.
@@ -68,7 +69,8 @@ class Plotter():
         Raises
         ------
         ValueError
-            If which_chi2 is not one of None, 'chi2', or 'kinchi2'.
+            If which_chi2 is not one of None, 
+            'chi2', 'kinchi2' or 'kinmapchi2'.
 
         Returns
         -------
@@ -80,9 +82,9 @@ class Plotter():
             figtype = '.png'
         if which_chi2 is None:
             which_chi2 = self.settings.parameter_space_settings['which_chi2']
-        if which_chi2 not in ('chi2', 'kinchi2'):
-            text = 'which_chi2 needs to be chi2 or kinchi2, ' \
-                   f'but it is {which_chi2}'
+        if which_chi2 not in ('chi2', 'kinchi2','kinmapchi2'):
+            text = 'which_chi2 needs to be chi2, kinchi2 ' \
+                   f'or kinmapchi2, but it is {which_chi2}'
             self.logger.error(text)
             raise ValueError(text)
         n_models = len(self.all_models.table)
@@ -117,8 +119,9 @@ class Plotter():
         Parameters
         ----------
         which_chi2 : STR, optional
-            Determines whether chi2 or kinchi2 is used. If None, the setting
-            in the configuration file's parameter settings is used.
+            Determines whether chi2, kinchi2 or kinmapchi2 is used. 
+            If None, the setting in the configuration file's parameter 
+            settings is used. 
             Must be None, 'chi2', or 'kinchi2'. The default is None.
         nexcl : integer, optional
             Determines how many models (in the initial burn-in phase of
@@ -131,7 +134,8 @@ class Plotter():
         Raises
         ------
         ValueError
-            If which_chi2 is not one of None, 'chi2', or 'kinchi2'.
+            If which_chi2 is not one of None, 
+            'chi2', 'kinchi2' or 'kinmapchi2'.
 
         Returns
         -------
@@ -145,9 +149,9 @@ class Plotter():
 
         if which_chi2 is None:
             which_chi2 = self.settings.parameter_space_settings['which_chi2']
-        if which_chi2 not in ('chi2', 'kinchi2'):
-            text = 'which_chi2 needs to be chi2 or kinchi2, ' \
-                   f'but it is {which_chi2}'
+        if which_chi2 not in ('chi2', 'kinchi2','kinmapchi2'):
+            text = 'which_chi2 needs to be chi2, kinchi2 ' \
+                   f'or kinmapchi2, but it is {which_chi2}'
             self.logger.error(text)
             raise ValueError(text)
         self.logger.info(f'Making chi2 plot scaled according to {which_chi2}')
@@ -232,7 +236,10 @@ class Plotter():
         colormap_orig = mpl.cm.viridis
         colormap = mpl.cm.get_cmap('viridis_r')
 
-        fig = plt.figure(figsize=(12, 12))
+        size = 12+len(nofix_islog)
+        fontsize = max(size-4,15)
+        
+        fig = plt.figure(figsize=(size, size))
         for i in range(0, nnofix - 1):
             for j in range(nnofix-1, i, -1):
 
@@ -272,30 +279,47 @@ class Plotter():
                 label_format = '{:.1e}'
 
                 if j==i+1:
-                    ax.set_xlabel(xtit, fontsize=14)
-                    if max(val[nofix_name[i]])>200:
-                        ax.xaxis.set_major_locator(MaxNLocator(3))
-                        ticks_loc = ax.get_xticks().tolist()
-                        ax.xaxis.set_major_locator(FixedLocator(ticks_loc))
-                        ax.set_xticklabels([label_format.format(x).replace('e+0','e') for x in ticks_loc])
-                    else: 
+                    ax.set_xlabel(xtit, fontsize=size)
+                    if nofix_islog[i]: 
+                        ax.set_xscale('log')
+                        if  max(val[nofix_name[i]])/min(val[nofix_name[i]]) > 100:
+                            ax.xaxis.set_major_locator(LogLocator(base=10,numticks=3))
+                        else:
+                            ax.xaxis.set_major_locator(MaxNLocator(nbins=3, prune='lower'))
+                    else:
                         ax.xaxis.set_major_locator(MaxNLocator(nbins=4, prune='lower'))
+                    ticks_loc = ax.get_xticks().tolist()
+                    ax.xaxis.set_major_locator(FixedLocator(ticks_loc))
+                    if max(val[nofix_name[i]]) > 200 or nofix_islog[i]:
+                        ax.set_xticklabels([label_format.format(x).replace('e+0','e') for x in ticks_loc],fontsize=fontsize)
+                    ax.xaxis.set_tick_params(labelsize=fontsize)
+                    if nofix_islog[j]:
+                        ax.set_yscale('log')
                 else:
                     ax.xaxis.set_major_formatter(NullFormatter())
-                    ax.xaxis.set_minor_formatter(NullFormatter())
-                
+                    
                 if i==0:
-                    ax.set_ylabel(ytit, fontsize=14)
-                    if max(val[nofix_name[j]])>200:
-                        ax.yaxis.set_major_locator(MaxNLocator(3))
-                        ticks_loc = ax.get_yticks().tolist()
-                        ax.yaxis.set_major_locator(FixedLocator(ticks_loc))
-                        ax.set_yticklabels([label_format.format(x).replace('e+0','e') for x in ticks_loc])
+                    ax.set_ylabel(ytit, fontsize=size)
+                    if nofix_islog[i]:
+                        ax.set_xscale('log')
+                    if nofix_islog[j]:
+                        ax.set_yscale('log')
+                        if  max(val[nofix_name[j]])/min(val[nofix_name[j]]) > 100:
+                            ax.yaxis.set_major_locator(LogLocator(base=10,numticks=3))
+                        else:
+                            ax.yaxis.set_major_locator(MaxNLocator(nbins=3, prune='lower'))
                     else:
-                        ax.yaxis.set_major_locator(MaxNLocator(nbins=3, prune='lower'))
+                        ax.yaxis.set_major_locator(MaxNLocator(nbins=4, prune='lower'))
+                    ticks_loc = ax.get_yticks().tolist()
+                    ax.yaxis.set_major_locator(FixedLocator(ticks_loc))
+                    if max(val[nofix_name[j]]) > 200 or nofix_islog[j]:
+                        ax.set_yticklabels([label_format.format(x).replace('e+0','e') for x in ticks_loc],fontsize=fontsize)
+                    ax.yaxis.set_tick_params(labelsize=fontsize)
                 else:
                     ax.yaxis.set_major_formatter(NullFormatter())
-                    ax.yaxis.set_minor_formatter(NullFormatter())
+
+                ax.xaxis.set_minor_formatter(NullFormatter())
+                ax.yaxis.set_minor_formatter(NullFormatter())
 
         plt.subplots_adjust(hspace=0)
         plt.subplots_adjust(wspace=0)
@@ -304,6 +328,7 @@ class Plotter():
                     cmap=plt.get_cmap('viridis_r'),
                     norm=mpl.colors.Normalize(vmin=0., vmax=3),
                     orientation='horizontal')
+        cb.ax.tick_params(labelsize=fontsize)
         plt.subplots_adjust(top=0.99, right=0.99, bottom=0.07, left=0.1)
         fig.savefig(figname)
         self.logger.info(f'Plot {figname} saved in {self.plotdir}')
@@ -1128,8 +1153,9 @@ class Plotter():
         Parameters
         ----------
         which_chi2 : STR, optional
-            Determines whether chi2 or kinchi2 is used. If None, the setting
-            in the configuration file's parameter settings is used.
+            Determines whether chi2, kinchi2 or kinmapchi2 is used. 
+            If None, the setting in the configuration file's parameter 
+            settings is used. 
             Must be None, 'chi2', or 'kinchi2'. The default is None.
         Rmax_arcs : numerical value
             Determines the upper range of the x-axis. Default value is None.
@@ -1140,7 +1166,8 @@ class Plotter():
         Raises
         ------
         ValueError
-            If which_chi2 is not one of None, 'chi2', or 'kinchi2'.
+            If which_chi2 is not one of None, 
+            'chi2', 'kinchi2' or 'kinmapchi2'.
         ValueError
             If Rmax_arcs is not set to a numerical value.
 
@@ -1161,9 +1188,9 @@ class Plotter():
 
         if which_chi2 is None:
             which_chi2 = self.settings.parameter_space_settings['which_chi2']
-        if which_chi2 not in ('chi2', 'kinchi2'):
-            text = 'which_chi2 needs to be chi2 or kinchi2, ' \
-                   f'but it is {which_chi2}'
+        if which_chi2 not in ('chi2', 'kinchi2','kinmapchi2'):
+            text = 'which_chi2 needs to be chi2, kinchi2 ' \
+                   f'or kinmapchi2, but it is {which_chi2}'
             self.logger.error(text)
             raise ValueError(text)
 
@@ -1900,8 +1927,9 @@ class Plotter():
         Parameters
         ----------
         which_chi2 : STR, optional
-            Determines whether chi2 or kinchi2 is used. If None, the setting
-            in the configuration file's parameter settings is used.
+            Determines whether chi2, kinchi2 or kinmapchi2 is used. 
+            If None, the setting in the configuration file's parameter 
+            settings is used. 
             Must be None, 'chi2', or 'kinchi2'. The default is None.
         Rmax_arcs : numerical value
             Determines the upper range of the x-axis.
@@ -1912,7 +1940,8 @@ class Plotter():
         Raises
         ------
         ValueError
-            If which_chi2 is not one of None, 'chi2', or 'kinchi2'.
+            If which_chi2 is not one of None, 
+            'chi2', 'kinchi2' or 'kinmapchi2'.
         ValueError
             If Rmax_arcs is not set to a numerical value.
 
@@ -1934,9 +1963,9 @@ class Plotter():
 
         if which_chi2 is None:
             which_chi2 = self.settings.parameter_space_settings['which_chi2']
-        if which_chi2 not in ('chi2', 'kinchi2'):
-            text = 'which_chi2 needs to be chi2 or kinchi2, ' \
-                   f'but it is {which_chi2}'
+        if which_chi2 not in ('chi2', 'kinchi2','kinmapchi2'):
+            text = 'which_chi2 needs to be chi2, kinchi2 ' \
+                   f'or kinmapchi2, but it is {which_chi2}'
             self.logger.error(text)
             raise ValueError(text)
 
@@ -2147,8 +2176,9 @@ class Plotter():
         Parameters
         ----------
         which_chi2 : STR, optional
-            Determines whether chi2 or kinchi2 is used. If None, the setting
-            in the configuration file's parameter settings is used.
+            Determines whether chi2, kinchi2 or kinmapchi2 is used. 
+            If None, the setting in the configuration file's parameter 
+            settings is used. 
             Must be None, 'chi2', or 'kinchi2'. The default is None.
         Rmax_arcs : numerical value
             Determines the upper range of the x-axis.
@@ -2159,7 +2189,8 @@ class Plotter():
         Raises
         ------
         ValueError
-            If which_chi2 is not one of None, 'chi2', or 'kinchi2'.
+            If which_chi2 is not one of None, 
+            'chi2', 'kinchi2' or 'kinmapchi2'.
         ValueError
             If Rmax_arcs is not set to a numerical value.
 
@@ -2179,9 +2210,9 @@ class Plotter():
 
         if which_chi2 is None:
             which_chi2 = self.settings.parameter_space_settings['which_chi2']
-        if which_chi2 not in ('chi2', 'kinchi2'):
-            text = 'which_chi2 needs to be chi2 or kinchi2, ' \
-                   f'but it is {which_chi2}'
+        if which_chi2 not in ('chi2', 'kinchi2','kinmapchi2'):
+            text = 'which_chi2 needs to be chi2, kinchi2 ' \
+                   f'or kinmapchi2, but it is {which_chi2}'
             self.logger.error(text)
             raise ValueError(text)
 
