@@ -62,27 +62,33 @@ class ModelIterator(object):
             do_dummy_run=do_dummy_run,
             dummy_chi2_function=dummy_chi2_function)
         if len(config.all_models.table)>0:
-            previous_iter = np.max(config.all_models.table['which_iter'])+1
+            previous_iter = np.max(config.all_models.table['which_iter'])
         else:
-            previous_iter = 0
+            previous_iter = -1
         status = {}
         status['stop'] = False
         # if configured, re-calculate weights for past models where weight
         # calculation failed
         if config.settings.weight_solver_settings['reattempt_failures']:
             self.reattempt_failed_weights()
-        for iteration in range(stopping_crit['n_max_iter']):
-            total_iter_count = previous_iter + iteration
+        iteration = 1
+        while iteration <= stopping_crit['n_max_iter']:
+            total_iter = previous_iter + iteration
             n_models_done = np.sum(config.all_models.table['all_done'])
             if n_models_done >= stopping_crit['n_max_mods']:
                 status['n_max_mods_reached'] = True
                 status['stop'] = True
             if status['stop'] is True:
-                self.logger.info(f'Stopping at iteration {total_iter_count}')
+                self.logger.info(f'Stopping at iteration {total_iter}')
                 self.logger.debug(status)
                 break
-            self.logger.info(f'{par_generator_type}: "iteration '
-                        f'{total_iter_count}"')
+            if total_iter > 0:
+                self.logger.info(f'{par_generator_type}: iteration '
+                                 f'{total_iter}')
+                iteration += 1
+            else:
+                self.logger.info(f'{par_generator_type}: iterations 0 and 1')
+                iteration += 2
             status = model_inner_iterator.run_iteration()
             if plots:
                 the_plotter.make_chi2_vs_model_id_plot()
@@ -291,10 +297,10 @@ class ModelInnerIterator(object):
         None.
 
         """
-        iteration = self.all_models.table['which_iter'][-1]
         # new orblib model directories
         nodir = ''
         for row in rows_orblib:
+            iteration = self.all_models.table[row]['which_iter']
             t = self.all_models.table[:row]
             n = np.sum((t['which_iter']==iteration) & (t['directory']!=nodir))
             orblib_dir = f'orblib_{iteration:03d}_{n:03d}'

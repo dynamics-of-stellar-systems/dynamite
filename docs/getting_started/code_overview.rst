@@ -159,7 +159,7 @@ To make plots, you can use the Plotter object:
 
   p = dyn.plotting.Plotter(config=c) # make the plotter object
 
-Here we propose a few examples of the plots that can be done with this object. First, you can generate maps of the surface brightness, mean line-of-sight velocity, velocity dispersion, and higher order Gauss–Hermite moments. The figure produced will show the maps relative to the data in the first row, those relative to the best-fit model in the second row and residuals in the third row; it can be obtained by using:
+Here we propose a few examples of the plots that can be done with this object. First, you can generate maps of the surface brightness, mean line-of-sight velocity, velocity dispersion, and higher order Gauss-Hermite moments. The figure produced will show the maps relative to the data in the first row, those relative to the best-fit model in the second row and residuals in the third row; it can be obtained by using:
 
 .. code-block:: python
 
@@ -277,7 +277,7 @@ If you don't want to think about logging, you can activate the DYNAMITE standard
 .. code-block:: python
 
   import dynamite as dyn
-  c = dyn.config_reader.Configuration('config_file.yaml’, reset_logging=True)
+  c = dyn.config_reader.Configuration('config_file.yaml', reset_logging=True)
 
 This will write logging messages of at least level ``INFO`` to the console and messages of at least level ``DEBUG`` to the log-file ``dynamite.log``. The levels, in increasing level of detail, are ``CRITICAL``, ``ERROR``, ``WARNING``, ``INFO``, ``DEBUG`` (currently, DYNAMITE does not use ``CRITICAL``).
 If you (optionally) wish to control the verbosity of the logging output, do not use ``reset_logging=True`` but add the following lines near the top of the main script,
@@ -291,3 +291,5 @@ If you (optionally) wish to control the verbosity of the logging output, do not 
                         logfile_level=logging.DEBUG)
 
 then you change the name of the log-file, and the level of logging output sent to the console and to the logfile. The values shown above are the defaults.
+
+By default, the logging output is recorded in the file ``dynamite.log``, but you can also specify a different file name by using the parameter ``user_logfile`` (in ``Configuration``) or ``logfile`` (in ``DynamiteLogging``). These parameters can take, as values: a string indicating your desired name for the logfile (``.log`` will be appended to the string you provide), ``False`` (which will create a UTC-timestamped logfile ``dynamiteYYMMDD-HHMMSSuuuuuu.log``), or ``None`` (which will **not** create a logfile). This option can be useful especially if you are launching multiple DYNAMITE runs from the same directory, because otherwise the logging from all the runs will be written in the same ``dynamite.log`` file.

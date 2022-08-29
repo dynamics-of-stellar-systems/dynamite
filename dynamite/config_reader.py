@@ -7,6 +7,7 @@ import math
 import logging
 import importlib
 import yaml
+import datetime
 
 import dynamite as dyn
 from dynamite import physical_system as physys
@@ -123,6 +124,14 @@ class Configuration(object):
     reset_logging : bool
         if False: use the calling application's logging settings
         if True: set logging to Dynamite defaults
+    user_logfile : str or None or False
+        Name of the logfile (``.log`` will be appended).
+        Special values: ``user_logfile=None`` will not create a logfile.
+        ``user_logfile=False`` will create a UTC-timestamped logfile
+        ``dynamiteYYMMDD-HHMMSSuuuuuu.log``.
+        Will be ignored if ``reset_logging=False``.
+        The default is ``user_logfile='dynamite'``.
+
     reset_existing_output : bool
         if False: do not touch existing data in the output directory tree
         if True: rebuild the output directory tree and delete existing data
@@ -147,10 +156,14 @@ class Configuration(object):
     thresh_chi2_abs = 'threshold_del_chi2_abs'
     thresh_chi2_scaled = 'threshold_del_chi2_as_frac_of_sqrt2nobs'
 
-    def __init__(self, filename=None, silent=None, reset_logging=False,
+    def __init__(self,
+                 filename=None,
+                 silent=None,
+                 reset_logging=False,
+                 user_logfile='dynamite',
                  reset_existing_output=False):
         if reset_logging is True:
-            DynamiteLogging()
+            DynamiteLogging(logfile=user_logfile)
             self.logger = logging.getLogger(f'{__name__}.{__class__.__name__}')
             self.logger.debug('Logging reset to Dynamite defaults')
         else:
@@ -1006,15 +1019,18 @@ class DynamiteLogging(object):
 
     -   log to the console with logging level INFO, messages include the
         level, timestamp, class name, and message text
-    -   create a dynamite.log file with logging level DEBUG, messages
-        include the level, timestamp, class name,
-        filename:method:line number, and message text
+    -   create a log file with logging level DEBUG, messages include the
+        level, timestamp, class name, filename:method:line number,
+        and message text
 
     Parameters
     ----------
-    logfile : str, optional
-        Name of the logfile, logfile=None will not create a logfile.
-        The default is 'dynamite.log'.
+    logfile : str or None or False, optional
+        Name of the logfile (``.log`` will be appended).
+        Special values: ``logfile=None`` will not create a logfile.
+        ``logfile=False`` will create a UTC-timestamped logfile
+        ``dynamiteYYMMDD-HHMMSSuuuuuu.log``.
+        The default is ``logfile='dynamite'``.
     console_level : int, optional
         Logfile logging level. The default is logging.INFO.
     logfile_level : int, optional
@@ -1025,10 +1041,15 @@ class DynamiteLogging(object):
         Format string for logfile logging. The default is set in the code.
 
     """
-    def __init__(self, logfile='dynamite.log', console_level=logging.INFO,
-                                               logfile_level=logging.DEBUG,
-                                               console_formatter = None,
-                                               logfile_formatter = None):
+    def __init__(self, logfile='dynamite', console_level=logging.INFO,
+                                           logfile_level=logging.DEBUG,
+                                           console_formatter = None,
+                                           logfile_formatter = None):
+        if logfile is False: # as opposed to None...
+            logfile = 'dynamite' +\
+                      datetime.datetime.utcnow().strftime('%Y%m%d-%H%M%S%f')
+        if type(logfile) is str:
+            logfile += '.log'
         logging.shutdown()
         importlib.reload(logging)
         logger = logging.getLogger()       # create logger

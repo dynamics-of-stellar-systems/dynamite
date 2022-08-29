@@ -6,6 +6,11 @@ Change Log
 
 - Improvement: DYNAMITE will retrofit existing all_models tables with the new column kinmapchi2 and calculate its values for existing models whenever possible
 - New feature: chi2 can now be directly calculated from the kinematic maps when using the LegacyWeightSolver via which_chi2: "kinmapchi2"
+- Improvement: when instantiating the Configuration object, the user can now specify the name of the logfile (several options), avoiding log conflicts with multiple DYNAMITE runs in the same directory
+- Bugfix: Fixed a bug that may cause a crash in case a parameter does not have a minstep value
+- Improvement: DYNAMITE will catch and correct the erroneous parameter generator setting minstep>step by setting minstep=step for non-fixed component parameters
+- Bugfix: Fixed a bug that may occur in the parameter generators (ensures that DYNAMITE creates all possible models)
+- Improvement: now the models of the first two iterations are computed together, better utilizing parallel computing
 - Bugfix: included cmasher in the list of required packages
 - Bugfix: reattempt_failures will no longer result in an error if multiple to-delete models share the same orblib or the orblib directory does not exist
 - Improvement: made DYNAMITE compatible with more Linux distributions
