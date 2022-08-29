@@ -852,6 +852,8 @@ class Plotter():
         maxf = max(np.array(list(map(np.log10, flux[grid[s]] / max(flux)))))
         minfm = min(np.array(list(map(np.log10, fluxm[grid[s]] / max(fluxm)))))
         maxfm = max(np.array(list(map(np.log10, fluxm[grid[s]] / max(fluxm)))))
+        minsb = min(minf,minfm)
+        maxsb = max(maxf,maxfm)
 
         # The galaxy has NOT already rotated with PA to make major axis aligned with x
 
@@ -862,9 +864,6 @@ class Plotter():
                             bottom=0.05,
                             top=0.99,
                             right=0.99)
-        #sauron_colormap = plt.get_cmap('sauron')
-        #sauron_r_colormap = plt.get_cmap('sauron_r')
-        #colormapname = plt.get_cmap('cmr.ember')
         map1 = cmr.get_sub_cmap('twilight_shifted', 0.05, 0.6)
         map2 = 'twilight_shifted'
         kw_display_pixels1 = dict(pixelsize=dx,
@@ -885,7 +884,7 @@ class Plotter():
         ax1 = plt.subplot(3, 5, 1)
         c = np.array(list(map(np.log10, flux[grid[s]] / max(flux))))
         display_pixels.display_pixels(x, y, c,
-                                          vmin=minf, vmax=maxf,
+                                          vmin=minsb, vmax=maxsb,
                                           **kw_display_pixels1)
         ax1.set_title('surface brightness (log)',fontsize=20, pad=20)
         ax2 = plt.subplot(3, 5, 2)
@@ -913,7 +912,7 @@ class Plotter():
         plt.subplot(3, 5, 6)
         c = np.array(list(map(np.log10, fluxm[grid[s]] / max(fluxm))))
         display_pixels.display_pixels(x, y, c,
-                                          vmin=minfm, vmax=maxfm,
+                                          vmin=minsb, vmax=maxsb,
                                           **kw_display_pixels1)
         plt.subplot(3, 5, 7)
         display_pixels.display_pixels(x, y, velm[grid[s]],
