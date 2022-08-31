@@ -848,7 +848,7 @@ class Plotter():
                             top=0.99,
                             right=0.99)
         map1 = cmr.get_sub_cmap('twilight_shifted', 0.05, 0.6)
-        map2 = 'twilight_shifted'
+        map2 = cmr.get_sub_cmap('twilight_shifted', 0.05, 0.95)
         kw_display_pixels1 = dict(pixelsize=dx,
                                  angle=angle_deg,
                                  colorbar=True,
