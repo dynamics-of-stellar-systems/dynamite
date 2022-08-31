@@ -244,7 +244,7 @@ class Plotter():
                         color = colormap(val['chi2t'][k]/chlim)
                         # * 240) #colours the significant chi2
 
-                        markersize = 10-3*(val['chi2t'][k]/(chlim))
+                        markersize = 15-3*(val['chi2t'][k]/(chlim))
                         #smaller chi2 become bigger :)
 
                         plt.plot((val[nofix_name[i]])[k],
@@ -254,7 +254,7 @@ class Plotter():
                     if val['chi2t'][k]==0:
                         plt.plot((val[nofix_name[i]])[k],
                                  (val[nofix_name[j]])[k], 'x',
-                                 markersize=10, color='k')
+                                 markersize=15, color='k')
 
                 ax.set_xmargin(0.1)
                 ax.set_ymargin(0.1)
