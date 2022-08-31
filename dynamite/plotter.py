@@ -236,7 +236,7 @@ class Plotter():
                 ax = plt.subplot(nnofix-1, nnofix-1, pltnum)
 
                 plt.plot(val[nofix_name[i]],val[nofix_name[j]], 'D',
-                         color='black', markersize=2)
+                         color='black', markersize=4)
 
                 for k in range(nf - 1, -1, -1):
                     if val['chi2t'][k]/chlim<=3: #only significant chi2 values
@@ -244,7 +244,7 @@ class Plotter():
                         color = colormap(val['chi2t'][k]/chlim)
                         # * 240) #colours the significant chi2
 
-                        markersize = 10-3*(val['chi2t'][k]/(chlim))
+                        markersize = 15-3*(val['chi2t'][k]/(chlim))
                         #smaller chi2 become bigger :)
 
                         plt.plot((val[nofix_name[i]])[k],
@@ -254,7 +254,7 @@ class Plotter():
                     if val['chi2t'][k]==0:
                         plt.plot((val[nofix_name[i]])[k],
                                  (val[nofix_name[j]])[k], 'x',
-                                 markersize=10, color='k')
+                                 markersize=15, color='k')
 
                 ax.set_xmargin(0.1)
                 ax.set_ymargin(0.1)
@@ -848,7 +848,7 @@ class Plotter():
                             top=0.99,
                             right=0.99)
         map1 = cmr.get_sub_cmap('twilight_shifted', 0.05, 0.6)
-        map2 = 'twilight_shifted'
+        map2 = cmr.get_sub_cmap('twilight_shifted', 0.05, 0.95)
         kw_display_pixels1 = dict(pixelsize=dx,
                                  angle=angle_deg,
                                  colorbar=True,
