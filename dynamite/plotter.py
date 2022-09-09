@@ -956,18 +956,6 @@ class Plotter():
 
         return res
 
-# --------------------------------------------
-
-    def PQ_Limits_l(self, x):
-
-        return np.float(0.0)
-
-# --------------------------------------------
-
-    def PQ_Limits_h(self, x):
-
-        return np.float(np.pi/np.float(2.0))
-
 #############################################################################
 
     def NFW_getpar(self, mstars=None, cc=None, dmfrac=None):
@@ -1029,7 +1017,7 @@ class Plotter():
                                p_pot.T, np.zeros(ng) + Ri))
             mi2=scipy.integrate.dblquad(self.intg2_trimge_intrmass,
                                         0.0, np.pi/2.0,
-                                        self.PQ_Limits_l ,self.PQ_Limits_h,
+                                        0.0, np.pi/np.float(2.0), # self.PQ_Limits_l ,self.PQ_Limits_h,
                                         args=[Fxyparm],epsrel=1.00)[0]
             res[i] = mi2*8
 
@@ -1153,11 +1141,6 @@ class Plotter():
             self.logger.error(text)
             raise ValueError(text)
 
-        val0 = deepcopy(self.all_models.table)
-        arg = np.argsort(np.array(val0[which_chi2]))
-        val = val0[arg]
-        chi2pmin = val[which_chi2][0]
-
         stars = \
             self.system.get_component_from_class(physys.TriaxialVisibleComponent)
         dh = self.system.get_all_dark_non_plummer_components()
@@ -1167,22 +1150,16 @@ class Plotter():
         self.logger.debug('...checks ok.')
         dh = dh[0]  # extract the one and only dm component
 
+        val0 = deepcopy(self.all_models.table)
+        arg = np.argsort(np.array(val0[which_chi2]))
+        val = val0[arg]
+        chi2pmin = val[which_chi2][0]
         chlim = np.sqrt(self.config.get_2n_obs())
-        chi2 = val[which_chi2]
-        chi2 -= chi2pmin
-        #chilev = chlim * chi2pmin
-
-        s = np.ravel(np.argsort(chi2))
-        chi2=chi2[s]
 
         # select the models within 1 sigma confidence level
-        s=np.ravel(np.where(chi2 <= np.min(chi2) + chlim*3))
-        n=len(s)
+        n = len(np.ravel(np.where(val[which_chi2] <=  chi2pmin + chlim*3)))
         if n < 3:
-            s = np.arange(3, dtype=np.int)
-            n = len(s)
-
-        chi2=chi2[s]
+            n = 3
 
         print('Selecting ',n,' models')
 
@@ -1252,43 +1229,8 @@ class Plotter():
 
             np.isfinite(1)
 
-        arctpc = distance *np.pi / 0.648
         mm = np.sum(mass, axis=2)
         maxmass = (int(np.max(mm/10**10.)) + 1.)*10**10.
-
-        '''
-        snn = np.ravel(np.where((np.isfinite(phi_a)) & (np.isfinite(psi_a))))
-        mmmin = np.min(mm, axis=1)
-        mmmax = np.max(mm, axis=1)
-        m0min = np.min(mass[:,:,0], axis = 1)
-        m0max = np.max(mass[:,:,0], axis = 1)
-        m1min = np.min(mass[:,:,1], axis = 1)
-        m1max = np.max(mass[:,:,1], axis = 1)
-
-        with open(plotdir + 'cumulative_mass.dat', 'w') as outfile:
-            outfile.write(str(distance) + '   # distance\n')
-            outfile.write(str(np.average(mlstellar))+'  '+
-                          str(np.sqrt(np.var(mlstellar, ddof=1))) +
-                          '   # stellar m/l, error\n')
-            outfile.write(str(np.average(incl_a[snn]))+' '+
-                          str(np.average(phi_a[snn]))+'  '+
-                          str(np.average(psi_a[snn]))+'  # incl\n')
-            outfile.write(str(np.sqrt(np.var(incl_a[snn], ddof=1)))+'  '+
-                          str(np.sqrt(np.var(phi_a[snn], ddof=1)))+'  '+
-                          str(np.sqrt(np.var(psi_a[snn], ddof=1)))+
-                          ' # incl error\n')
-            # mtot, mstellar, mdm
-            for i in range(nm):
-                outfile.write(("%7.3f" % R[i])+ '  '+("%10.4e" % mm[i,0])+ '  '+
-                              ("%10.4e" % mmmin[i]) + '  '+
-                              ("%10.4e" % mmmax[i]) + '  '+
-                              ("%10.4e" % mass[i,0,0]) + '  '+
-                              ("%10.4e" % m0min[i]) + '  '+
-                              ("%10.4e" % m0max[i]) + '  '+
-                              ("%10.4e" % mass[i,0,1]) + '  '+
-                              ("%10.4e" % m1min[i]) + '  '+
-                              ("%10.4e" % m1max[i])+ '\n')
-        '''
 
         ## plot in linear scale
         xrange = np.array([0.1, Rmax_arcs])
@@ -1382,69 +1324,6 @@ class Plotter():
 
 #############################################################################
 
-    def triaxreadparameters(self, w_dir=None):
-
-        #read in all the parameters in parameters.in
-
-        filename = w_dir + 'infil/parameters_pot.in'
-
-        header = np.genfromtxt(filename, max_rows=1)
-        #nmge = int(header[0])  # MGE gaussians
-        nmge = int(header)  # MGE gaussians
-        mgepar = np.genfromtxt(filename, max_rows=nmge, skip_header=1)
-        mgepar = mgepar.T  # MGE parameters
-
-        distance = np.genfromtxt(filename, max_rows=1, skip_header=nmge + 1)
-        distance = np.double(distance)  # distance [Mpc]
-
-        view_ang = np.genfromtxt(filename, max_rows=1, skip_header=nmge + 2)
-        th_view = np.double(view_ang[0])
-        ph_view = np.double(view_ang[1])
-        psi_view = np.double(view_ang[2])
-
-        ml = np.genfromtxt(filename, max_rows=1, skip_header=nmge + 3)
-        ml = np.double(ml)  # M/L [M_sun/L-sun]
-
-        bhmass = np.genfromtxt(filename, max_rows=1, skip_header=nmge + 4)
-        bhmass = np.double(bhmass)  # BH mass [M_sun]
-
-        softlen = np.genfromtxt(filename, max_rows=1, skip_header=nmge + 5)
-        softlen = np.double(softlen)  # softening length
-
-        nrell = np.genfromtxt(filename, max_rows=1, skip_header=nmge + 6)
-        nre = np.double(nrell[0])
-        lrmin = np.double(nrell[1])
-        lrmax = np.double(nrell[2])  # E, minmax log(r) [arcsec]
-
-        nrth = np.genfromtxt(filename, max_rows=1, skip_header=nmge + 7)
-        nrth = np.int(nrth)  # theta [# I2]
-
-        nrrad = np.genfromtxt(filename, max_rows=1, skip_header=nmge + 8)
-        nrrad = np.int(nrrad)  # phi [# I3]
-
-        ndither = np.genfromtxt(filename, max_rows=1, skip_header=nmge + 9)
-        ndither = np.int(ndither)  # dithering dimension
-
-        vv1 = np.genfromtxt(filename, max_rows=1, skip_header=nmge + 10)
-        vv1_1 = np.int(vv1[0])
-        vv1_2 = np.int(vv1[1])
-
-        dmm = np.genfromtxt(filename, max_rows=1, skip_header=nmge + 11)
-        dm1 = np.double(dmm[0])
-        dm2 = np.double(dmm[1])
-
-        conversion_factor = distance*1.0e6*1.49598e8
-        grav_const_km = 6.67428e-11*1.98892e30/1e9
-        parsec_km = 1.4959787068e8*(648.000e3/np.pi)
-        rho_crit = (3.0*((7.3000e-5)/parsec_km)**2)/(8.0*np.pi*grav_const_km)
-
-        return mgepar, distance, th_view, ph_view, psi_view, ml, \
-            bhmass,softlen, nre, lrmin, lrmax, nrth, nrrad, \
-            ndither, vv1_1, vv1_2,dm1, dm2, conversion_factor, \
-            grav_const_km, parsec_km, rho_crit
-
-#############################################################################
-
     def orbit_plot(self, model=None, Rmax_arcs=None, figtype =None):
         """
         Generates an orbit plot for the selected model
@@ -1512,17 +1391,13 @@ class Plotter():
         if not file3_test: file3= '%s' % file2
 
         xrange=[0.0,Rmax_arcs]
-
-        triaxreadparameters = self.triaxreadparameters(w_dir=mdir_noml)
-        #distance = triaxreadparameters[1]
-        nre = triaxreadparameters[8]
-        nrth, nrrad, ndither = triaxreadparameters[11:14]
-        conversion_factor = triaxreadparameters[18]
-
-        #mgepar, distance, th_view, ph_view, psi_view, ml, bhmass,\
-        #softlen,nre, lrmin, lrmax, nrth, nrrad, ndither, vv1_1, \
-        #vv1_2,dm1,dm2,conversion_factor,grav_const_km,parsec_km, \
-        #rho_crit = self.triaxreadparameters(w_dir=mdir_noml)
+        
+        distance = self.all_models.system.distMPc
+        conversion_factor = distance*1.0e6*1.49598e8
+        nre = self.settings.orblib_settings['nE']
+        nrth = self.settings.orblib_settings['nI2']
+        nrrad = self.settings.orblib_settings['nI3']
+        ndither = self.settings.orblib_settings['dithering']
 
         norb = int(nre*nrth*nrrad)
         orbclass1 = self.readorbclass(file=file2, nrow=norb, ncol=ndither**3)
@@ -1722,7 +1597,6 @@ class Plotter():
 
         if not eps: eps=1.0e-10
         nn=len(x)
-        # print(nn)
         mu1sph=np.zeros((nn,3), dtype=np.float)
         mu2sph=np.zeros((nn,3,3), dtype=np.float)
         for i in range(nn):
@@ -1774,7 +1648,6 @@ class Plotter():
 
         if not eps: eps=1.0e-10
         nn=len(x)
-        # print(nn)
         mu1sph=np.zeros((nn,3), dtype=np.float)
         mu2sph=np.zeros((nn,3,3), dtype=np.float)
         for i in range(nn):
@@ -1931,24 +1804,12 @@ class Plotter():
         arg = np.argsort(np.array(val0[which_chi2]))
         val = val0[arg]
         chi2pmin = val[which_chi2][0]
-
         chlim = np.sqrt(self.config.get_2n_obs())
 
-        chi2 = val[which_chi2]
-        chi2 -= chi2pmin
-        #chilev = chlim * chi2pmin
-
-        s = np.ravel(np.argsort(chi2))
-        chi2=chi2[s]
-
         # select the models within 1 sigma confidence level
-        s=np.ravel(np.where(chi2 <=  np.min(chi2) + chlim*3))
-        n=len(s)
+        n = len(np.ravel(np.where(val[which_chi2] <=  chi2pmin + chlim*3)))
         if n < 3:
-            s = np.arange(3, dtype=np.int)
-            n = len(s)
-
-        chi2=chi2[s]
+            n = 3
 
         RRn = np.zeros((100,n), dtype=np.float)
         orotn = np.zeros((100,n), dtype=np.float)
@@ -1960,9 +1821,7 @@ class Plotter():
         Vp = np.zeros((100,n), dtype=np.float)
 
         for i in range(n):
-            mdir = modeldir + val['directory'][i]
-
-            filei = mdir + 'nn_intrinsic_moments.out'
+            filei = modeldir + val['directory'][i] + 'nn_intrinsic_moments.out'
 
             rr, orotR, Rad, vzz_r, vrr_r, vpp_r, \
                 vp_r = self.anisotropy_single(file=filei)
@@ -2174,52 +2033,37 @@ class Plotter():
         arg = np.argsort(np.array(val0[which_chi2]))
         val = val0[arg]
         chi2pmin = val[which_chi2][0]
-
         chlim = np.sqrt(self.config.get_2n_obs())
 
-        chi2 = val[which_chi2]
-        chi2 -= chi2pmin
-        #chilev = chlim * chi2pmin
-
-        s = np.ravel(np.argsort(chi2))
-        chi2=chi2[s]
-
-        # select the models within 1 sigma confidence level
-        s=np.ravel(np.where(chi2 <= np.min(chi2) + chlim*3))
-        n=len(s)
+        n = len(np.ravel(np.where(val[which_chi2] <=  chi2pmin + chlim*3)))
         if n < 3:
-            s = np.arange(3, dtype=np.int)
-            n = len(s)
-        if n > 100:
-            s = np.arange(100, dtype=np.int)
-            n = len(s)
-
-        chi2=chi2[s]
+            n = 3
 
         q_all = np.zeros((101,n), dtype=np.float)
         p_all = np.zeros((101,n), dtype=np.float)
         Rarc = np.arange(101, dtype=np.float)/100.0*Rmax_arcs
 
+        stars = \
+          self.system.get_component_from_class(physys.TriaxialVisibleComponent)
+
+        distance = self.all_models.system.distMPc
+        arctpc = distance*np.pi/0.648
+        mgepar = stars.mge_pot.data
+        mgeI = mgepar['I']
+        mgesigma = mgepar['sigma']
+        mgeq = mgepar['q']
+        mgePAtwist = mgepar['PA_twist']
+        Rpc = Rarc*arctpc
+        sigobs_pc = mgesigma*arctpc
+
         for i in range(0, n):
-            mdir = modeldir + val['directory'][i]
-            mdir_noml = mdir[:mdir[:-1].rindex('/')+1]
-
-            #mgepar, distance, th_view, ph_view, psi_view, ml, \
-            #bhmass, softlen, nre, lrmin, lrmax, nrth, nrrad, ndither, \
-            #vv1_1, vv1_2, dm1, dm2, conversion_factor, grav_const_km, \
-            #parsec_km, rho_crit = self.triaxreadparameters(w_dir=mdir_noml)
-
-            mgepar, distance, th_view, ph_view, \
-            psi_view = self.triaxreadparameters(w_dir=mdir_noml)[:5]
-
-            arctpc = distance*np.pi/0.648
-            Rpc = Rarc*arctpc
-            surf_pc = mgepar[0,:]
-            sigobs_pc = mgepar[1,:]*arctpc
-            qobs = mgepar[2,:]
-            p_k, q_k = self.pqintr_mge_v2(Rpc=Rpc, surf_pc=surf_pc, \
-                                    sigma_pc=sigobs_pc, qobs=qobs, \
-                                    psi_off=mgepar[3,:], \
+            q = val['q-stars'][i]
+            p = val['p-stars'][i]
+            u = val['u-stars'][i]
+            th_view, psi_view, ph_view = stars.triax_pqu2tpp(p,q,u)
+            p_k, q_k = self.pqintr_mge_v2(Rpc=Rpc, surf_pc=mgeI, \
+                                    sigma_pc=sigobs_pc, qobs=mgeq, \
+                                    psi_off=mgePAtwist, \
                                     incl=[th_view, ph_view, psi_view])
             p_all[:,i] = p_k
             q_all[:,i] = q_k
