@@ -2185,7 +2185,7 @@ class Plotter():
         chi2=chi2[s]
 
         # select the models within 1 sigma confidence level
-        s=np.ravel(np.where(chi2 <=  np.min(chi2) + chlim*3))
+        s=np.ravel(np.where(chi2 <= np.min(chi2) + chlim*3))
         n=len(s)
         if n < 3:
             s = np.arange(3, dtype=np.int)
