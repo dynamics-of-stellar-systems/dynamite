@@ -1153,8 +1153,9 @@ class Plotter():
             self.logger.error(text)
             raise ValueError(text)
 
-        val = deepcopy(self.all_models.table)
-        val.sort(which_chi2)
+        val0 = deepcopy(self.all_models.table)
+        arg = np.argsort(np.array(val0[which_chi2]))
+        val = val0[arg]
         chi2pmin = val[which_chi2][0]
 
         stars = \
@@ -1169,13 +1170,13 @@ class Plotter():
         chlim = np.sqrt(self.config.get_2n_obs())
         chi2 = val[which_chi2]
         chi2 -= chi2pmin
-        chilev = chlim * chi2pmin
+        #chilev = chlim * chi2pmin
 
         s = np.ravel(np.argsort(chi2))
         chi2=chi2[s]
 
         # select the models within 1 sigma confidence level
-        s=np.ravel(np.where(chi2 <=  np.min(chi2)+chilev))
+        s=np.ravel(np.where(chi2 <= np.min(chi2) + chlim*3))
         n=len(s)
         if n < 3:
             s = np.arange(3, dtype=np.int)
@@ -1926,22 +1927,22 @@ class Plotter():
             self.logger.error(text)
             raise ValueError(text)
 
-        val = deepcopy(self.all_models.table)
-        arg = np.argsort(np.array(val[which_chi2]))
-        val.sort(which_chi2)
+        val0 = deepcopy(self.all_models.table)
+        arg = np.argsort(np.array(val0[which_chi2]))
+        val = val0[arg]
         chi2pmin = val[which_chi2][0]
 
         chlim = np.sqrt(self.config.get_2n_obs())
 
         chi2 = val[which_chi2]
         chi2 -= chi2pmin
-        chilev = chlim * chi2pmin
+        #chilev = chlim * chi2pmin
 
         s = np.ravel(np.argsort(chi2))
         chi2=chi2[s]
 
         # select the models within 1 sigma confidence level
-        s=np.ravel(np.where(chi2 <=  np.min(chi2)+chilev))
+        s=np.ravel(np.where(chi2 <=  np.min(chi2) + chlim*3))
         n=len(s)
         if n < 3:
             s = np.arange(3, dtype=np.int)
@@ -1959,9 +1960,7 @@ class Plotter():
         Vp = np.zeros((100,n), dtype=np.float)
 
         for i in range(n):
-            model_id = arg[i]
-            model = self.all_models.get_model_from_row(model_id)
-            mdir = modeldir + val['directory'][model_id]
+            mdir = modeldir + val['directory'][i]
 
             filei = mdir + 'nn_intrinsic_moments.out'
 
@@ -2171,22 +2170,22 @@ class Plotter():
             self.logger.error(text)
             raise ValueError(text)
 
-        val = deepcopy(self.all_models.table)
-        arg = np.argsort(np.array(val[which_chi2]))
-        val.sort(which_chi2)
+        val0 = deepcopy(self.all_models.table)
+        arg = np.argsort(np.array(val0[which_chi2]))
+        val = val0[arg]
         chi2pmin = val[which_chi2][0]
 
         chlim = np.sqrt(self.config.get_2n_obs())
 
         chi2 = val[which_chi2]
         chi2 -= chi2pmin
-        chilev = chlim * chi2pmin
+        #chilev = chlim * chi2pmin
 
         s = np.ravel(np.argsort(chi2))
         chi2=chi2[s]
 
         # select the models within 1 sigma confidence level
-        s=np.ravel(np.where(chi2 <=  np.min(chi2)+chilev))
+        s=np.ravel(np.where(chi2 <=  np.min(chi2) + chlim*3))
         n=len(s)
         if n < 3:
             s = np.arange(3, dtype=np.int)
@@ -2202,9 +2201,7 @@ class Plotter():
         Rarc = np.arange(101, dtype=np.float)/100.0*Rmax_arcs
 
         for i in range(0, n):
-            model_id = arg[i]
-            model = self.all_models.get_model_from_row(model_id)
-            mdir = modeldir + val['directory'][model_id]
+            mdir = modeldir + val['directory'][i]
             mdir_noml = mdir[:mdir[:-1].rindex('/')+1]
 
             #mgepar, distance, th_view, ph_view, psi_view, ml, \

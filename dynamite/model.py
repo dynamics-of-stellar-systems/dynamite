@@ -550,7 +550,7 @@ class AllModels(object):
         #     raise ValueError(txt)
         which_chi2=self.config.settings.parameter_space_settings['which_chi2']
         chi2_min = min(self.table[which_chi2])
-        chi2_abs_thresh = chi2_min * np.sqrt(self.config.get_2n_obs())
+        chi2_abs_thresh = 3 * np.sqrt(self.config.get_2n_obs())
         model_rows_keep = \
             self.get_mods_within_chi2_thresh(delta=chi2_abs_thresh)
         model_rows_del = \
