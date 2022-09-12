@@ -107,7 +107,7 @@ PARDISO = -lgalahad_pardiso
  
 #  -- MKL Pardiso
  
-MKL_PARDISO = -lgalahad_mkl_pardiso
+MKL_PARDISO = -lgalahad_pardiso
  
 #  -- WSMP
  

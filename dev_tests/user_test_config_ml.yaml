@@ -173,7 +173,7 @@ parameter_space_settings:
     generator_type: "LegacyGridSearch"
     # generator_type: "GridWalk"
     # generator_type: "FullGrid"
-    which_chi2: "kinchi2"
+    which_chi2: "kinchi2" # "chi2", "kinchi2", or "kinmapchi2"
     generator_settings:
         # For LegacyGridSearch, specify ONE of the following two settings
         #threshold_del_chi2_abs: 0.5  # absolute change in chi2 threshold
@@ -196,5 +196,6 @@ multiprocessing_settings:
     ncpus: 'all_available' # integer or 'all_available' for multiprocessing
     ncpus_weights: 'all_available' # integer or 'all_available', optional, defaults to ncpus (not used by all iterators)
     modeliterator: 'SplitModelIterator' # optional, default 'ModelInnerIterator'
+    orblibs_in_parallel: True
 
 # end
