@@ -775,13 +775,16 @@ class LegacyGridSearch(ParameterGenerator):
             # (all parameters at their .raw_value level)
             self.model_list = [[p for p in self.par_space]]
             return ###########################################################
-        min_chi2 = np.nanmin(self.current_models.table[self.chi2])
-        if np.isnan(min_chi2):
-            text = 'All (kin)chi2 values are nan.'
-            self.logger.error(text)
-            raise ValueError(text)
-        prop_mask = \
-            abs(self.current_models.table[self.chi2]-min_chi2) <= self.thresh
+        if len(self.current_models.table) == 1: # 'first' iteration
+            prop_mask = [True]
+        else:
+            min_chi2 = np.nanmin(self.current_models.table[self.chi2])
+            if np.isnan(min_chi2):
+                text = 'All (kin)chi2 values are nan.'
+                self.logger.error(text)
+                raise ValueError(text)
+            prop_mask = \
+                abs(self.current_models.table[self.chi2]-min_chi2)<=self.thresh
         prop_list = self.current_models.table[prop_mask]
         self.model_list = []
         step_ok = True
@@ -893,8 +896,11 @@ class GridWalk(ParameterGenerator):
             # (all parameters at their .raw_value level)
             self.model_list = [[p for p in self.par_space]]
         else: # Subsequent iterations...
-            # center criterion: min(chi2)
-            center_idx = np.nanargmin(self.current_models.table[self.chi2])
+            if len(self.current_models.table) == 1: # 'first' iteration
+                center_idx = 0
+            else:
+                # center criterion: min(chi2)
+                center_idx = np.nanargmin(self.current_models.table[self.chi2])
             n_par = self.par_space.n_par
             center = list(self.current_models.table[center_idx])[:n_par]
             raw_center = self.par_space.get_raw_value_from_param_value(center)
@@ -1084,8 +1090,11 @@ class FullGrid(ParameterGenerator):
             # (all parameters at their .raw_value level)
             self.model_list = [[p for p in self.par_space]]
         else: # Subsequent iterations...
-            # center criterion: min(chi2)
-            center_idx = np.nanargmin(self.current_models.table[self.chi2])
+            if len(self.current_models.table) == 1: # 'first' iteration
+                center_idx = 0
+            else:
+                # center criterion: min(chi2)
+                center_idx = np.nanargmin(self.current_models.table[self.chi2])
             n_par = self.par_space.n_par
             center = list(self.current_models.table[center_idx])[:n_par]
             raw_center = self.par_space.get_raw_value_from_param_value(center)

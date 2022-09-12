@@ -391,7 +391,8 @@ class ModelInnerIterator(object):
                     weight_solver = mod.get_weights(orblib)
                     wts_done = True
                 else:
-                mod.chi2, mod.kinchi2, mod.kinmapchi2 = np.nan, np.nan, np.nan
+                    mod.chi2, mod.kinchi2, mod.kinmapchi2 \
+                        = np.nan, np.nan, np.nan
             except RuntimeError:
                 os.chdir(cwd)
                 mod.chi2, mod.kinchi2, mod.kinmapchi2 = np.nan, np.nan, np.nan
