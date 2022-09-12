@@ -62,27 +62,33 @@ class ModelIterator(object):
             do_dummy_run=do_dummy_run,
             dummy_chi2_function=dummy_chi2_function)
         if len(config.all_models.table)>0:
-            previous_iter = np.max(config.all_models.table['which_iter'])+1
+            previous_iter = np.max(config.all_models.table['which_iter'])
         else:
-            previous_iter = 0
+            previous_iter = -1
         status = {}
         status['stop'] = False
         # if configured, re-calculate weights for past models where weight
         # calculation failed
         if config.settings.weight_solver_settings['reattempt_failures']:
             self.reattempt_failed_weights()
-        for iteration in range(stopping_crit['n_max_iter']):
-            total_iter_count = previous_iter + iteration
+        iteration = 1
+        while iteration <= stopping_crit['n_max_iter']:
+            total_iter = previous_iter + iteration
             n_models_done = np.sum(config.all_models.table['all_done'])
             if n_models_done >= stopping_crit['n_max_mods']:
                 status['n_max_mods_reached'] = True
                 status['stop'] = True
             if status['stop'] is True:
-                self.logger.info(f'Stopping at iteration {total_iter_count}')
+                self.logger.info(f'Stopping at iteration {total_iter}')
                 self.logger.debug(status)
                 break
-            self.logger.info(f'{par_generator_type}: "iteration '
-                        f'{total_iter_count}"')
+            if total_iter > 0:
+                self.logger.info(f'{par_generator_type}: iteration '
+                                 f'{total_iter}')
+                iteration += 1
+            else:
+                self.logger.info(f'{par_generator_type}: iterations 0 and 1')
+                iteration += 2
             status = model_inner_iterator.run_iteration()
             if plots:
                 try:
@@ -109,9 +115,10 @@ class ModelIterator(object):
                 output = p.map(self.get_missing_weights,
                                rows_with_orbits_but_no_weights)
             for i, row in enumerate(rows_with_orbits_but_no_weights):
-                chi2, kinchi2, time = output[i]
+                chi2, kinchi2, kinmapchi2, time = output[i]
                 config.all_models.table[row]['chi2'] = chi2
                 config.all_models.table[row]['kinchi2'] = kinchi2
+                config.all_models.table[row]['kinmapchi2'] = kinmapchi2
                 config.all_models.table[row]['time_modified'] = time
                 config.all_models.table[row]['weights_done'] = True
                 config.all_models.table[row]['all_done'] = True
@@ -125,7 +132,7 @@ class ModelIterator(object):
         orblib = mod.get_orblib()
         weight_solver = mod.get_weights(orblib)
         time = str(np.datetime64('now', 'ms'))
-        return mod.chi2, mod.kinchi2, time
+        return mod.chi2, mod.kinchi2, mod.kinmapchi2, time
 
 class ModelInnerIterator(object):
     """Class to run all models in a single iteration.
@@ -137,7 +144,7 @@ class ModelInnerIterator(object):
     config : a ``dyn.config_reader.Configuration`` object
     par_generator : a ``dyn.parameter_space.ParameterGenerator`` child object
     do_dummy_run : Bool
-        whether this is a dummy run - if so, dummy_chi2_funciton is executed
+        whether this is a dummy run - if so, dummy_chi2_function is executed
         instead of the model (for testing!)
     dummy_chi2_function : function
         a function of model parameters to be executed instead of the real model
@@ -294,10 +301,10 @@ class ModelInnerIterator(object):
         None.
 
         """
-        iteration = self.all_models.table['which_iter'][-1]
         # new orblib model directories
         nodir = ''
         for row in rows_orblib:
+            iteration = self.all_models.table[row]['which_iter']
             t = self.all_models.table[:row]
             n = np.sum((t['which_iter']==iteration) & (t['directory']!=nodir))
             orblib_dir = f'orblib_{iteration:03d}_{n:03d}'
@@ -362,7 +369,8 @@ class ModelInnerIterator(object):
         if self.do_dummy_run:
             parset = self.all_models.get_parset_from_row(row)
             mod.chi2 = self.dummy_chi2_function(parset)
-            mod.kinchi2 = 0.
+            mod.kinchi2 = np.nan
+            mod.kinmapchi2 = np.nan
         else:
             if not (get_orblib or get_weights):
                 msg = 'Nothing to run, specify get_orblib and/or get_weights'
@@ -383,13 +391,13 @@ class ModelInnerIterator(object):
                     weight_solver = mod.get_weights(orblib)
                     wts_done = True
                 else:
-                    mod.chi2, mod.kinchi2 = np.nan, np.nan
+                mod.chi2, mod.kinchi2, mod.kinmapchi2 = np.nan, np.nan, np.nan
             except RuntimeError:
                 os.chdir(cwd)
-                mod.chi2, mod.kinchi2 = np.nan, np.nan
+                mod.chi2, mod.kinchi2, mod.kinmapchi2 = np.nan, np.nan, np.nan
                 w_txt = f'Model {i+1} (row {row}): get_orblib ' \
                         + ('or get_weights ' if get_weights else '')+'failed.'\
-                        + (' chi2 and kinchi2 set to nan!' \
+                        + (' all chi2 values set to nan!' \
                            if get_weights else '')
                 self.logger.warning(w_txt)
         all_done = orb_done and wts_done
@@ -398,13 +406,15 @@ class ModelInnerIterator(object):
         current_model_row = table.Table(self.all_models.table[row])
         for name, value in zip(
                 ['orblib_done','weights_done','chi2',
-                 'kinchi2','all_done','time_modified'],
-                [orb_done, wts_done, mod.chi2, mod.kinchi2, all_done, time]):
+                 'kinchi2','kinmapchi2','all_done','time_modified'],
+                [orb_done, wts_done, mod.chi2,
+                 mod.kinchi2, mod.kinmapchi2, all_done, time]):
             current_model_row[name][0] = value
         file_name = mod.directory + 'model_done_staging.ecsv'
         current_model_row.write(file_name, format='ascii.ecsv', overwrite=True)
         self.logger.info(f'Model {i+1}: {file_name} written.')
-        output = orb_done, wts_done, mod.chi2, mod.kinchi2, all_done, time
+        output = orb_done, wts_done, mod.chi2, \
+                 mod.kinchi2, mod.kinmapchi2, all_done, time
         return output
 
     def write_output_to_all_models_table(self, rows_to_do, output):
@@ -423,11 +433,13 @@ class ModelInnerIterator(object):
 
         """
         for i, row in enumerate(rows_to_do):
-            orb_done, wts_done, chi2, kinchi2, all_done, time = output[i]
+            orb_done, wts_done, \
+                chi2, kinchi2, kinmapchi2, all_done, time = output[i]
             self.all_models.table['orblib_done'][row] = orb_done
             self.all_models.table['weights_done'][row] = wts_done
             self.all_models.table['chi2'][row] = chi2
             self.all_models.table['kinchi2'][row] = kinchi2
+            self.all_models.table['kinmapchi2'][row] = kinmapchi2
             self.all_models.table['all_done'][row] = all_done
             self.all_models.table['time_modified'][row] = time
 

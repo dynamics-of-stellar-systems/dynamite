@@ -20,35 +20,19 @@ cd ${DYNAMITE}/legacy_fortran
 [ -a cutest_makefile ] || { echo Did not find cutest_makefile ; exit 1 ; }
 
 if [ ! -d archdefs ] ; then
-    git clone https://github.com/ralna/ARCHDefs archdefs
-else
-    cd archdefs
-    git pull
-    cd ${DYNAMITE}/legacy_fortran
+    git clone https://github.com/ralna/ARCHDefs archdefs --branch v2.0.4
 fi
 
 if [ ! -d cutest ] ; then
-    git clone https://github.com/ralna/CUTEst cutest
-else
-    cd cutest
-    git pull
-    cd ${DYNAMITE}/legacy_fortran
+    git clone https://github.com/ralna/CUTEst cutest --branch v2.0.3
 fi
 
 if [ ! -d sifdecode ] ; then
-    git clone https://github.com/ralna/SIFDecode sifdecode
-else
-    cd sifdecode
-    git pull
-    cd ${DYNAMITE}/legacy_fortran
+    git clone https://github.com/ralna/SIFDecode sifdecode --branch v2.0.3
 fi
 
 if [ ! -d galahad ] ; then
-    git clone https://github.com/ralna/GALAHAD galahad
-else
-    cd galahad
-    git pull
-    cd ${DYNAMITE}/legacy_fortran
+    git clone https://github.com/ralna/GALAHAD galahad --branch v4.0.0
 fi
 
 export CUTEST=${DYNAMITE}/legacy_fortran/cutest

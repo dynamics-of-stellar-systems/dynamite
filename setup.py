@@ -20,7 +20,7 @@ setuptools.setup(
     description="dynamics, age and metallicity indicators tracing evolution",
     long_description=long_description,
     long_description_content_type="text/markdown",
-    url="https://www.univie.ac.at/dynamics/dynamite_docs/index.html",
+    url="https://dynamics.univie.ac.at/dynamite_docs/index.html",
     packages=setuptools.find_packages(),
     classifiers=[
         "Programming Language :: Python :: 3",
@@ -28,7 +28,7 @@ setuptools.setup(
     ],
     project_urls={
         "Source": "https://github.com/dynamics-of-stellar-systems/dynamite/",
-        "Documentation": "https://www.univie.ac.at/dynamics/dynamite_docs/index.html",
+        "Documentation": "https://dynamics.univie.ac.at/dynamite_docs/index.html",
     },
     python_requires=">=3.7",
     # use the already parsed requirements from requirements.txt

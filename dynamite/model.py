@@ -73,8 +73,8 @@ class AllModels(object):
         names = self.config.parspace.par_names.copy()
         dtype = [np.float64 for n in names]
         # add the columns from legacy version
-        names += ['chi2', 'kinchi2', 'time_modified']
-        dtype += [np.float64, np.float64, str]
+        names += ['chi2', 'kinchi2', 'kinmapchi2', 'time_modified']
+        dtype += [np.float64, np.float64, np.float64, str]
         # add extra columns
         names += ['orblib_done', 'weights_done', 'all_done']
         dtype += [bool, bool, bool]
@@ -97,7 +97,8 @@ class AllModels(object):
         The configuration setting reattempt_failures determines how partially
         completed models with all_done==False but existing orblibs are treated:
         If reattempt_failures==True, their orblib_done will be set to True
-        and weight solving will be done based on the existing orblibs.
+        and later the ModelIterator will execute the weight solving
+        based on the existing orblibs.
         If reattempt_failures==False, the model and its directory will be
         deleted.
         Note that orbit libraries on disk will not be deleted as they
@@ -159,19 +160,55 @@ class AllModels(object):
                     self.logger.info('No finished model found in '
                                      f'{row["directory"]} - removing row {i}.')
         # do the deletion
-        cwd = os.getcwd()
-        os.chdir(self.config.settings.io_settings['model_directory'])
-        for row in to_delete:
-            try:
-                shutil.rmtree(self.table[row]['directory'])
-                self.logger.info(f"Model {row}'s directory "
-                                 f"{self.table[row]['directory']} removed.")
-            except FileNotFoundError:
-                self.logger.warning(f"Cannot remove model {row}'s directory "
-                                    f"{self.table[row]['directory']} - "
-                                    "file does not exist.")
-        os.chdir(cwd)
-        self.table.remove_rows(to_delete)
+        # note: only models without orblibs are deleted, so we delete the
+        # entire orblibs' directories
+        if len(to_delete)>0:
+            cwd = os.getcwd()
+            os.chdir(self.config.settings.io_settings['model_directory'])
+            dirs_to_delete = set(
+                                 [d[:d[:-1].rindex('/')+1]
+                                 for d in self.table[to_delete]['directory']]
+                                )
+            self.logger.info(f'Will remove {len(dirs_to_delete)} '
+                             'unique orblibs.')
+            for directory in dirs_to_delete:
+                try:
+                    shutil.rmtree(directory)
+                    self.logger.info(f'Model directory {directory} removed.')
+                except:
+                    self.logger.warning(f'Cannot remove orblib in {directory},'
+                        ' perhaps it has already been removed before.')
+            os.chdir(cwd)
+            self.table.remove_rows(to_delete)
+
+        which_chi2 = 'kinmapchi2'
+        if which_chi2 not in self.table.colnames:
+            table_modified = True
+            # a legacy all_models table does not have the kinmapchi2 column
+            # add that column to the table and initialize with nan
+            self.logger.info('Legacy all_models table read, adding and '
+                             f'updating {which_chi2} column...')
+            self.table.add_column(float('nan'),
+                                  index=self.table.colnames.index('kinchi2')+1,
+                                  name=which_chi2,
+                                  copy=True)
+            for row_id, row in enumerate(self.table):
+                if row['orblib_done'] and row['weights_done']:
+                    # both orblib_done and weights_done being True indicates
+                    # that data for kinmapchi2 is on the disk -> calculate
+                    # kinmapchi2 (not nan only for LegacyWeightSolver)
+                    mod = self.get_model_from_row(row_id)
+                    ws_type=self.config.settings.weight_solver_settings['type']
+                    weight_solver = getattr(ws,ws_type)(
+                                            config=self.config,
+                                            directory_with_ml=mod.directory)
+                    row[which_chi2] = weight_solver.chi2_kinmap()
+                    self.logger.info(f'Model {row_id}: {which_chi2} = '
+                                     f'{row[which_chi2]}')
+                else:
+                    self.logger.warning(f'Model {row_id}: cannot update '
+                                        f'{which_chi2} - data deleted?')
+
         if table_modified:
             self.save()
 
@@ -450,28 +487,21 @@ class AllModels(object):
         n : int, optional
             How many models to get. The default is 10.
         which_chi2 : str, optional
-            Which chi2 is used for determining the best models. Must be
-            None, chi2, or kinchi2. If None, the setting from the
-            configuration file will be used. The default is None.
+            Which chi2 is used for determining the best models. If None, the
+            setting from the configuration file will be used.
+            The default is None.
 
         Raises
         ------
         ValueError
-            If which_chi2 is neither None, chi2, nor kinchi2.
+            If which_chi2 is neither None nor a valid chi2 type.
 
         Returns
         -------
         a new ``astropy.table`` object holding the best n models
 
         """
-        if which_chi2 is None:
-            which_chi2 = \
-                self.config.settings.parameter_space_settings['which_chi2']
-        if which_chi2 not in ('chi2', 'kinchi2'):
-            text = 'which_chi2 needs to be chi2 or kinchi2, ' \
-                   f'but it is {which_chi2}'
-            self.logger.error(text)
-            raise ValueError(text)
+        which_chi2 = self.config.validate_chi2(which_chi2)
         table = copy.deepcopy(self.table)
         table.sort(which_chi2) # nan values will be sorted to the end
         table = table[:n]
@@ -483,11 +513,11 @@ class AllModels(object):
         Parameters
         ----------
         which_chi2 : str, optional
-            Which chi2 is used for determining the best models. Must be
-            None, chi2, or kinchi2. If None, the setting from the
-            configuration file will be used. The default is None.
+            Which chi2 is used for determining the best models. If None, the
+            setting from the configuration file will be used.
+            The default is None.
         delta : float, optional
-            The threshold value. Models with (kin)chi2 values differing
+            The threshold value. Models with chi2 values differing
             from the opimum by at most delta will be returned. If none,
             models within 10% of the optimal value will be returned.
             The default is None.
@@ -495,21 +525,14 @@ class AllModels(object):
         Raises
         ------
         ValueError
-            If which_chi2 is neither None, chi2, nor kinchi2.
+            If which_chi2 is neither None nor a valid chi2 type.
 
         Returns
         -------
         a new ``astropy.table`` object holding the ''delta-best'' models
 
         """
-        if which_chi2 is None:
-            which_chi2 = \
-                self.config.settings.parameter_space_settings['which_chi2']
-        if which_chi2 not in ('chi2', 'kinchi2'):
-            text = 'which_chi2 needs to be chi2 or kinchi2, ' \
-                   f'but it is {which_chi2}'
-            self.logger.error(text)
-            raise ValueError(text)
+        which_chi2 = self.config.validate_chi2(which_chi2)
         chi2_min = np.nanmin(self.table[which_chi2])
         if delta is None:
             delta = chi2_min * 0.1
@@ -668,9 +691,10 @@ class Model(object):
                     directory_with_ml=self.directory)
         else:
             raise ValueError('Unknown WeightSolver type')
-        weights, chi2_tot, chi2_kin = weight_solver.solve(orblib)
+        weights, chi2_tot, chi2_kin, chi2_kinmap = weight_solver.solve(orblib)
         self.chi2 = chi2_tot # instrinsic/projected mass + GH coeeficients 1-Ngh
         self.kinchi2 = chi2_kin # GH coeeficients 1-Ngh
+        self.kinmapchi2 = chi2_kinmap
         self.weights = weights
         return weight_solver
 

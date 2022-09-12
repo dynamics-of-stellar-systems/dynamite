@@ -79,8 +79,6 @@ ifeq ($(compiler),gfortran)
    # on MAC OS X we can use the built-in BLAS/LAPACK
   #flags += -fexternal-blas -framework Accelerate
   flags += -fexternal-blas
-  # On MAC OS X te build static binaries
-  flags += -static-libgfortran -static-libgcc
 
   fortran90 = gfortran $(flags) -c
   fortran77 = gfortran $(flags) -c

@@ -7,6 +7,7 @@ import math
 import logging
 import importlib
 import yaml
+import datetime
 
 import dynamite as dyn
 from dynamite import physical_system as physys
@@ -123,6 +124,14 @@ class Configuration(object):
     reset_logging : bool
         if False: use the calling application's logging settings
         if True: set logging to Dynamite defaults
+    user_logfile : str or None or False
+        Name of the logfile (``.log`` will be appended).
+        Special values: ``user_logfile=None`` will not create a logfile.
+        ``user_logfile=False`` will create a UTC-timestamped logfile
+        ``dynamiteYYMMDD-HHMMSSuuuuuu.log``.
+        Will be ignored if ``reset_logging=False``.
+        The default is ``user_logfile='dynamite'``.
+
     reset_existing_output : bool
         if False: do not touch existing data in the output directory tree
         if True: rebuild the output directory tree and delete existing data
@@ -147,10 +156,14 @@ class Configuration(object):
     thresh_chi2_abs = 'threshold_del_chi2_abs'
     thresh_chi2_scaled = 'threshold_del_chi2_as_frac_of_sqrt2nobs'
 
-    def __init__(self, filename=None, silent=None, reset_logging=False,
+    def __init__(self,
+                 filename=None,
+                 silent=None,
+                 reset_logging=False,
+                 user_logfile='dynamite',
                  reset_existing_output=False):
         if reset_logging is True:
-            DynamiteLogging()
+            DynamiteLogging(logfile=user_logfile)
             self.logger = logging.getLogger(f'{__name__}.{__class__.__name__}')
             self.logger.debug('Logging reset to Dynamite defaults')
         else:
@@ -395,13 +408,14 @@ class Configuration(object):
 
             elif key == 'multiprocessing_settings':
                 logger.info('multiprocessing_settings...')
-                logger.debug(f'multiprocessing_settings: {tuple(value.keys())}')
                 # if submitted as slurm script we must add cwd to path
                 try: # check if Slurm being using
                     os.environ["SLURM_JOB_CPUS_PER_NODE"]
                     sys.path.append(os.getcwd())
                 except KeyError:
                     pass
+                if 'ncpus' not in value:
+                    value['ncpus'] = 'all_available'
                 if value['ncpus']=='all_available':
                     value['ncpus'] = self.get_n_cpus()
                 logger.info(f"... using {value['ncpus']} CPUs "
@@ -415,6 +429,11 @@ class Configuration(object):
                 if 'modeliterator' not in value:
                     value['modeliterator'] = 'ModelInnerIterator'
                 logger.debug(f"... using iterator {value['modeliterator']}.")
+                if 'orblibs_in_parallel' not in value:
+                    value['orblibs_in_parallel'] = True
+                logger.debug("... integrate orblibs in parallel: "
+                             f"{value['orblibs_in_parallel']}.")
+                logger.debug(f'multiprocessing_settings: {tuple(value.keys())}')
                 self.settings.add('multiprocessing_settings', value)
 
             else:
@@ -726,8 +745,8 @@ class Configuration(object):
         dest_directory : str, mandatory
             The directory the config file will be copied to.
         clean : bool, optional
-            If True, all *.yaml files in dest_directory will be deleted before
-            copying. Default is True.
+            If True, all `*`.yaml files in dest_directory will be deleted
+            before copying. Default is True.
         """
         if dest_directory[-1] != '/':
             dest_directory += '/'
@@ -846,6 +865,8 @@ class Configuration(object):
                              'one VisibleComponent, and zero or one DM Halo '
                              'object(s)')
 
+        ws_type = self.settings.weight_solver_settings['type']
+
         for c in self.system.cmp_list:
             if issubclass(type(c), physys.VisibleComponent): # Check vis. comp.
                 if c.kinematic_data:
@@ -861,7 +882,6 @@ class Configuration(object):
                                              'BayesLOSVD')
                         if check_bl:
                             # check weight solver type
-                            ws_type = self.settings.weight_solver_settings['type']
                             if ws_type == 'LegacyWeightSolver':
                                 self.logger.error("LegacyWeightSolver can't be "
                                                   "used with BayesLOSVD - use "
@@ -910,7 +930,6 @@ class Configuration(object):
             raise ValueError(f'Only specify one of {chi2abs}, {chi2scaled}, '
                              'not both')
 
-        ws_type = self.settings.weight_solver_settings['type']
         if ws_type == 'LegacyWeightSolver':
             # check velocity histograms settings if LegacyWeightSolver is used.
             # (i) check all velocity histograms have center 0, (ii) force them
@@ -950,6 +969,48 @@ class Configuration(object):
                     k.hist_bins = max_bins
         self.settings.validate()
 
+        which_chi2 = self.validate_chi2()
+        if which_chi2 == 'kinmapchi2' and ws_type != 'LegacyWeightSolver':
+            msg = 'kinmapchi2 is only allowed with LegacyWeightSolver'
+            self.logger.error(msg)
+            raise ValueError(msg)
+
+    def validate_chi2(self, which_chi2=None):
+        """
+        Validates which_chi2 setting
+
+        Validates the which_chi2 setting in the config file (if argument
+        which_chi2 is None) or the string given in the argument.
+
+        Parameters
+        ----------
+        which_chi2 : str, optional
+            If None, the which_chi2 setting in the config file is validated;
+            if not None, the string given is validated. The default is None.
+
+        Raises
+        ------
+        ValueError
+            If which_chi2 fails validation.
+
+        Returns
+        -------
+        which_chi2 : str
+            The valid which_chi2 setting: either the value from the config
+            file or the string passed as an argument.
+
+        """
+        allowed_chi2 = ('chi2', 'kinchi2', 'kinmapchi2')
+        if which_chi2 == None:
+            which_chi2 = self.settings.parameter_space_settings['which_chi2']
+        if which_chi2 not in allowed_chi2:
+            text = 'parameter_space_settings: which_chi2 must be one of ' \
+                   f'{allowed_chi2}, not {which_chi2}.'
+            self.logger.error(text)
+            raise ValueError(text)
+        return which_chi2
+
+
 class DynamiteLogging(object):
     """Dynamite logging setup.
 
@@ -958,15 +1019,18 @@ class DynamiteLogging(object):
 
     -   log to the console with logging level INFO, messages include the
         level, timestamp, class name, and message text
-    -   create a dynamite.log file with logging level DEBUG, messages
-        include the level, timestamp, class name,
-        filename:method:line number, and message text
+    -   create a log file with logging level DEBUG, messages include the
+        level, timestamp, class name, filename:method:line number,
+        and message text
 
     Parameters
     ----------
-    logfile : str, optional
-        Name of the logfile, logfile=None will not create a logfile.
-        The default is 'dynamite.log'.
+    logfile : str or None or False, optional
+        Name of the logfile (``.log`` will be appended).
+        Special values: ``logfile=None`` will not create a logfile.
+        ``logfile=False`` will create a UTC-timestamped logfile
+        ``dynamiteYYMMDD-HHMMSSuuuuuu.log``.
+        The default is ``logfile='dynamite'``.
     console_level : int, optional
         Logfile logging level. The default is logging.INFO.
     logfile_level : int, optional
@@ -977,10 +1041,15 @@ class DynamiteLogging(object):
         Format string for logfile logging. The default is set in the code.
 
     """
-    def __init__(self, logfile='dynamite.log', console_level=logging.INFO,
-                                               logfile_level=logging.DEBUG,
-                                               console_formatter = None,
-                                               logfile_formatter = None):
+    def __init__(self, logfile='dynamite', console_level=logging.INFO,
+                                           logfile_level=logging.DEBUG,
+                                           console_formatter = None,
+                                           logfile_formatter = None):
+        if logfile is False: # as opposed to None...
+            logfile = 'dynamite' +\
+                      datetime.datetime.utcnow().strftime('%Y%m%d-%H%M%S%f')
+        if type(logfile) is str:
+            logfile += '.log'
         logging.shutdown()
         importlib.reload(logging)
         logger = logging.getLogger()       # create logger
