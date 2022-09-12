@@ -457,7 +457,8 @@ class NNLS(WeightSolver):
         self.system = config.system
         self.settings = config.settings.weight_solver_settings
         self.direc_with_ml = directory_with_ml
-        self.direc_no_ml = directory_with_ml[:-8]
+        self.direc_no_ml \
+            = directory_with_ml[:directory_with_ml[:-1].rindex('/')+1]
         if nnls_solver is None:
             nnls_solver = self.settings['nnls_solver']
         assert nnls_solver in ['scipy', 'cvxopt'], 'Unknown nnls_solver'

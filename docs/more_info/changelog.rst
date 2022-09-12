@@ -5,6 +5,7 @@ Change Log
 ****************
 
 
+- Improvement: Changed the ml directory name format to '05.2f' so all model directory names have the same length
 - New feature: Added AllModels.remove_unused_orblibs() utility method to free up disk space
 
 Version: 3.0
