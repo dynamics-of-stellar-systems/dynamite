@@ -270,10 +270,10 @@ class ModelInnerIterator(object):
         Assigns model directories in all_models.table.
 
         Models indexed by rows_orblib:
-        The model directories follow the pattern orblib_xxx_yyy/mlz.zz where
+        The model directories follow the pattern orblib_xxx_yyy/mlzz.zz where
         xxx is the iteration number, yyy a consecutive number of that
-        iteration's orbit library, and z.zz is the value of the models'
-        ml parameter in the 01.2f format (the sformat set in the System class).
+        iteration's orbit library, and zz.zz is the value of the models'
+        ml parameter in the 05.2f format (the sformat set in the System class).
 
         Models indexed by rows_ml:
         These models re-use an existing orbit library. Hence, their directory
