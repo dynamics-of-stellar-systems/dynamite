@@ -14,7 +14,7 @@ from matplotlib.ticker import MaxNLocator, FixedLocator,LogLocator
 from matplotlib.ticker import NullFormatter
 import matplotlib.pyplot as plt
 from plotbin import display_pixels
-from dynamite.global_vars import *
+from dynamite import constants as const
 from dynamite import kinematics
 from dynamite import weight_solvers
 from dynamite import physical_system as physys
@@ -1004,9 +1004,9 @@ class Plotter():
         #Input parameters: NFW dark matter concentration and fraction,
         #and stellar mass
 
-        rhoc = (200./3.)*rho_crit*cc**3/(np.log(1.+cc) - cc/(1.+cc))
-        rc = (3./(800.*np.pi*rho_crit*cc**3)*dmfrac*mstars)**(1./3.)
-        darkmass = (800./3.)*np.pi*rho_crit*(rc*cc)**3
+        rhoc = (200./3.)*const.RHO_CRIT*cc**3/(np.log(1.+cc) - cc/(1.+cc))
+        rc = (3./(800.*np.pi*const.RHO_CRIT*cc**3)*dmfrac*mstars)**(1./3.)
+        darkmass = (800./3.)*np.pi*const.RHO_CRIT*(rc*cc)**3
 
         return rhoc, rc, darkmass
 

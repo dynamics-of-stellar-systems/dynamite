@@ -11,7 +11,7 @@ import datetime
 import numpy as np
 
 import dynamite as dyn
-from dynamite.global_vars import *
+from dynamite import constants as const
 from dynamite import physical_system as physys
 from dynamite import parameter_space as parspace
 from dynamite import kinematics as kinem
@@ -181,8 +181,8 @@ class Configuration(object):
             self.logger.warning("'silent' option is deprecated and ignored")
 
         self.logger.debug('Global variables: ' \
-                          f'{grav_const_km = }, {parsec_km = }, ' \
-                          f'{rho_crit = }')
+                          f'{const.GRAV_CONST_KM = }, {const.PARSEC_KM = }, ' \
+                          f'{const.RHO_CRIT = }.')
 
         legacy_dir = \
             os.path.realpath(os.path.dirname(__file__)+'/../legacy_fortran')
