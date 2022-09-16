@@ -14,6 +14,7 @@ from matplotlib.ticker import MaxNLocator, FixedLocator,LogLocator
 from matplotlib.ticker import NullFormatter
 import matplotlib.pyplot as plt
 from plotbin import display_pixels
+from dynamite.global_vars import *
 from dynamite import kinematics
 from dynamite import weight_solvers
 from dynamite import physical_system as physys
@@ -55,7 +56,7 @@ class Plotter():
         Parameters
         ----------
         which_chi2 : STR, optional
-            Which chi2 is used for determining the best models. If None, 
+            Which chi2 is used for determining the best models. If None,
             the setting from the configuration file will be used.
             The default is None.
         figtype : STR, optional
@@ -75,7 +76,7 @@ class Plotter():
         """
         if figtype is None:
             figtype = '.png'
-        
+
         which_chi2 = self.config.validate_chi2(which_chi2)
 
         n_models = len(self.all_models.table)
@@ -110,7 +111,7 @@ class Plotter():
         Parameters
         ----------
         which_chi2 : STR, optional
-            Which chi2 is used for determining the best models. If None, 
+            Which chi2 is used for determining the best models. If None,
             the setting from the configuration file will be used.
             The default is None.
         nexcl : integer, optional
@@ -221,7 +222,7 @@ class Plotter():
 
         size = 12+len(nofix_islog)
         fontsize = max(size-4,15)
-        
+
         fig = plt.figure(figsize=(size, size))
         for i in range(0, nnofix - 1):
             for j in range(nnofix-1, i, -1):
@@ -263,7 +264,7 @@ class Plotter():
 
                 if j==i+1:
                     ax.set_xlabel(xtit, fontsize=size)
-                    if nofix_islog[i]: 
+                    if nofix_islog[i]:
                         ax.set_xscale('log')
                         if  max(val[nofix_name[i]])/min(val[nofix_name[i]]) > 100:
                             ax.xaxis.set_major_locator(LogLocator(base=10,numticks=3))
@@ -1003,10 +1004,6 @@ class Plotter():
         #Input parameters: NFW dark matter concentration and fraction,
         #and stellar mass
 
-        grav_const_km = 6.67428e-11*1.98892e30/1e9
-        parsec_km = 1.4959787068e8*(648.000e3/np.pi)
-        rho_crit = (3.*((7.3000e-5)/parsec_km)**2)/(8.*np.pi*grav_const_km)
-
         rhoc = (200./3.)*rho_crit*cc**3/(np.log(1.+cc) - cc/(1.+cc))
         rc = (3./(800.*np.pi*rho_crit*cc**3)*dmfrac*mstars)**(1./3.)
         darkmass = (800./3.)*np.pi*rho_crit*(rc*cc)**3
@@ -1135,7 +1132,7 @@ class Plotter():
         Parameters
         ----------
         which_chi2 : STR, optional
-            Which chi2 is used for determining the best models. If None, 
+            Which chi2 is used for determining the best models. If None,
             the setting from the configuration file will be used.
             The default is None.
         Rmax_arcs : numerical value
@@ -1901,7 +1898,7 @@ class Plotter():
         Parameters
         ----------
         which_chi2 : STR, optional
-            Which chi2 is used for determining the best models. If None, 
+            Which chi2 is used for determining the best models. If None,
             the setting from the configuration file will be used.
             The default is None.
         Rmax_arcs : numerical value
@@ -2142,7 +2139,7 @@ class Plotter():
         Parameters
         ----------
         which_chi2 : STR, optional
-           Which chi2 is used for determining the best models. If None, 
+           Which chi2 is used for determining the best models. If None,
             the setting from the configuration file will be used.
             The default is None.
         Rmax_arcs : numerical value
