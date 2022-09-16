@@ -57,6 +57,7 @@ The following pages give all the information needed to get started,
   getting_started/code_overview.rst
   getting_started/configuration.rst
   getting_started/getting_help.rst
+  how_to_cite.rst
 
 The tutorials also show an example of running DYNAMITE from start to finish - this could also be a great place to start getting acquainted with the code. Further sections show other API-documentation for specific classes and methods, and other miscellaneous information.
 
