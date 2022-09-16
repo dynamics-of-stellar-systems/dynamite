@@ -1,7 +1,6 @@
 #!/bin/bash
 
-#FORTRAN=/opt/sw/spack-0.12.1/opt/spack/linux-centos7-x86_64/gcc-4.8.5/gcc-9.1.0-mj7s6dgfnhgi2n42fyxgmitnuslcyol3/bin/gfortran
-#HSLARCHIVE=hslarchive-galahad-3.00000.0.tar.gz
+GALAHADTYPE=pc.lnx.gfo
 
 [ -v DYNAMITE ] || { echo Need to set DYNAMITE environment variable, i.e. path where you unpacked dynamite ; exit 1 ; }
 [ -v FORTRAN ] || { echo Need to set FORTRAN environment variable, e.g. /usr/bin/gfortran ; exit 1 ; }
@@ -38,8 +37,6 @@ fi
 export CUTEST=${DYNAMITE}/legacy_fortran/cutest
 export ARCHDEFS=${DYNAMITE}/legacy_fortran/archdefs
 export GALAHAD=${DYNAMITE}/legacy_fortran/galahad
-
-VERSION=pc.lnx.gfo
 
 mkdir -p ${CUTEST}/makefiles
 mkdir -p ${CUTEST}/modules/${VERSION}/{double,single}
