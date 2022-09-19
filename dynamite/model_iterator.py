@@ -14,8 +14,8 @@ class ModelIterator(object):
     Creating this ``ModelIterator`` object will (i) generate parameters sets,
     (ii) run models for those parameters, (iii) check stopping criteria, and
     iterate this procedure till a stopping criterion is met. This is implemented
-    by created a ``ModelInnerIterator`` object whose ``run_iteration`` method is
-    called a number of times.
+    by creating a ``ModelInnerIterator`` object whose ``run_iteration`` method
+    is called a number of times.
 
     Parameters
     ----------
@@ -278,7 +278,7 @@ class ModelInnerIterator(object):
         Models indexed by rows_ml:
         These models re-use an existing orbit library. Hence, their directory
         strings re-use an existing orblib_xxx_yyy part and get augmented with
-        the appropriate /mlz.zz.
+        the appropriate /mlzz.zz.
 
         Parameters
         ----------
@@ -348,7 +348,7 @@ class ModelInnerIterator(object):
         Returns
         -------
         tuple
-            all the output for this model, bundles up in a tuple
+            all the output for this model, bundled up in a tuple
 
         """
         if len(data_input) == 2:
