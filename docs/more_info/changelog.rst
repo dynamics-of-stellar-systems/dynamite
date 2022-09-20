@@ -4,6 +4,8 @@
 Change Log
 ****************
 
+- Improvement: Dynamite will no longer crash upon Legacy Fortran errors, but issue warnings and assign nan to the affected chi2 values
+- Improvement: When executing a dummy run (do_dummy_run==True), model_iterator will set both kinchi2 and kinmapchi2 to nan (instead of zero)
 - Improvement: DYNAMITE will retrofit existing all_models tables with the new column kinmapchi2 and calculate its values for existing models whenever possible
 - New feature: chi2 can now be directly calculated from the kinematic maps when using the LegacyWeightSolver via which_chi2: "kinmapchi2"
 - Improvement: when instantiating the Configuration object, the user can now specify the name of the logfile (several options), avoiding log conflicts with multiple DYNAMITE runs in the same directory
