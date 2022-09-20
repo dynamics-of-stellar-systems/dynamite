@@ -767,8 +767,8 @@ class Plotter():
         sy = float(lines[2][1])
         sy = sy + miny
         angle_deg = float(lines[3][0])
-        nx = np.int(lines[4][0])
-        ny = np.int(lines[4][1])
+        nx = int(lines[4][0])
+        ny = int(lines[4][1])
         dx = sx / nx
 
         self.logger.debug(f"Pixel grid dimension is dx={dx},nx={nx},ny={ny}")
@@ -971,33 +971,6 @@ class Plotter():
         return res
 
 #############################################################################
-
-    '''
-    def NFW_getpar(self, mstars=None, cc=None, dmfrac=None):
-
-        #Computes density scale, radial scale and total mass in
-        #the NFW profile used in the model.
-        #Input parameters: NFW dark matter concentration and fraction,
-        #and stellar mass
-
-        rhoc = (200./3.)*const.RHO_CRIT*cc**3/(np.log(1.+cc) - cc/(1.+cc))
-        rc = (3./(800.*np.pi*const.RHO_CRIT*cc**3)*dmfrac*mstars)**(1./3.)
-        darkmass = (800./3.)*np.pi*const.RHO_CRIT*(rc*cc)**3
-
-        return rhoc, rc, darkmass
-
-#############################################################################
-
-    def NFW_enclosemass(self, rho=None, Rs=None, R=None):
-
-        #Computes cumulative mass of the NWF dark matter halo
-        #Input parameters: density scale  and radial scale, and
-        #array of radial positions where to compute the mass.
-
-        M = 4. * np.pi * rho * Rs**3 * (np.log((Rs + R)/Rs) - R/(Rs + R))
-
-        return M
-    '''
     
     def NFW_enclosemass(self, mstars=None, cc=None, dmfrac=None, R=None):
 
@@ -1178,7 +1151,7 @@ class Plotter():
         chlim = np.sqrt(self.config.get_2n_obs())
 
         # select the models within 1 sigma confidence level
-        n = len(np.ravel(np.where(val[which_chi2] <=  chi2pmin + chlim*3)))
+        n = len(np.ravel(np.where(val[which_chi2] <= chi2pmin + chlim*3)))
         if n < 3:
             n = 3
 
@@ -1302,51 +1275,6 @@ class Plotter():
 ######## Routines from schw_orbit.py, necessary for orbit_plot ##############
 #############################################################################
 
-    def readorbclass(self, file=None, nrow=None, ncol=None):
-
-        #read in 'datfil/orblib.dat_orbclass.out'
-        #which stores the information of all the orbits stored in the orbit library
-
-        #norb = nE * nI2 * nI3 * ndithing^3
-        #for each orbit, the time averaged values are stored:
-
-        #lx, ly ,lz, r = sum(sqrt( average(r^2) )), Vrms^2 = average(vx^2 + vy^2 + vz^2 + 2vx*vy + 2vxvz + 2vxvy)
-
-        #The file was stored by the fortran code orblib_f.f90 integrator_find_orbtype
-
-        data=[]
-        lines = [line.rstrip('\n').split() for line in open(file)]
-        i = 0
-        while i < len(lines):
-            for x in lines[i]:
-                data.append(np.double(x))
-            i += 1
-        data=np.array(data)
-        data=data.reshape((int(5),int(ncol),int(nrow)), order='F')
-        return data
-
-#############################################################################
-
-    def readorbout(self, filename=None):
-
-        #read in 'mlxxx/nn_orb.out' of one model
-
-        nrow=data=np.genfromtxt(filename,max_rows=1)
-        nrow=int(nrow)
-        data=np.genfromtxt(filename, skip_header=1,max_rows=nrow)
-        n=np.array(data[:,0],dtype=int)
-        ener=np.array(data[:,1],dtype=int)
-        i2=np.array(data[:,2],dtype=int)
-        i3=np.array(data[:,3],dtype=int)
-        regul=np.array(data[:,4],dtype=float)
-        orbtype=np.array(data[:,5],dtype=float)
-        orbw=np.array(data[:,6],dtype=float)
-        lcut=np.array(data[:,7],dtype=float)
-        ntot=int(nrow)
-        return n, ener,i2, i3, regul, orbtype,orbw,lcut,ntot
-
-#############################################################################
-
     def orbit_plot(self, model=None, Rmax_arcs=None, figtype =None):
         """
         Generates an orbit plot for the selected model
@@ -1421,17 +1349,20 @@ class Plotter():
         ndither = self.settings.orblib_settings['dithering']
 
         norb = int(nre*nrth*nrrad)
-        orbclass1 = self.readorbclass(file=file2, nrow=norb, ncol=ndither**3)
-        orbclass2 = self.readorbclass(file=file3, nrow=norb, ncol=ndither**3)
+        ncol=int(ndither**3)
+        orbclass1 = np.genfromtxt(file2).T
+        orbclass1 = orbclass1.reshape((5,ncol,norb), order='F')
+        orbclass2 = np.genfromtxt(file3).T
+        orbclass2 = orbclass1.reshape((5,ncol,norb), order='F')
 
         # norbout, ener, i2, i3, regul, orbtype, orbw, lcut, ntot = self.readorbout(filename=file4)
-        orbw = self.readorbout(filename=file4)[6]
+        orbw = np.genfromtxt(file4, skip_header=1, usecols=(6))
 
         orbclass=np.dstack((orbclass1,orbclass1,orbclass2))
         orbclass1a=np.copy(orbclass1)
         orbclass1a[0:3,:,:] *= -1     # the reverse rotating orbits of orbclass
 
-        for i in range(int(0), norb):
+        for i in range(0, norb):
             orbclass[:,:,i*2]=orbclass1[:, :, i]
             orbclass[:,:,i*2 + 1]=orbclass1a[:, :, i]
 
@@ -1470,7 +1401,7 @@ class Plotter():
 
         weight=orbw[s]
 
-        for i in range(int(0), len(f1[0, :])):
+        for i in range(0, len(f1[0, :])):
             # RIL, xedges, yedges = np.histogram2d(f1[:,i], f2[:,i], bins=nbins, range=range_bin)
             RIL = np.histogram2d(f1[:,i], f2[:,i], bins=nbins,
                                  range=range_bin)[0]
@@ -1577,13 +1508,13 @@ class Plotter():
 ######## Routines from schw_anisotropy.py, necessary for beta_plot ##########
 #############################################################################
 
-    def N_car2sph(self, x, y, z, eps=None):
+    def N_car2sph(self, x, y, z, eps):
 
         if not eps: eps=1.0e-10
         R = np.sqrt(x**2 + y**2)
-        rr = np.sqrt(x**2 + y**2 + z**2)
+        rr = np.sqrt(R**2 + z**2)
         res = np.zeros((3,3))
-        if (R > eps and rr > eps):
+        if (min(R,rr) > eps):
             res[0,0] = x/rr
             res[0,1] = (x*z)/(R*rr)
             res[0,2] = -y/R
@@ -1621,7 +1552,7 @@ class Plotter():
         mu2sph=np.zeros((nn,3,3))
         for i in range(nn):
             # conversion matrix N = N[k,j], where j=row, k=column
-            N = self.N_car2sph(x[i], y[i], z[i], eps=eps)
+            N = self.N_car2sph(x[i], y[i], z[i], eps)
             # first moment
             mu1sph[i, :] = np.matmul(mu1car[i,:],N)
             # second moment
@@ -1633,7 +1564,7 @@ class Plotter():
 
 #############################################################################
 
-    def N_car2cyl(self, x, y, z, eps=None):
+    def N_car2cyl(self, x, y, z, eps):
 
         #Orthogonal velocity conversion matrix: N=[N_ji] (i=row,j=column)
         #<v>=N<u>, with <v> spherical and <u> Cartesian
@@ -1643,7 +1574,7 @@ class Plotter():
         R2 = x**2 + y**2
         R=np.sqrt(R2)
         res = np.zeros((3,3))
-        if (R > eps and R2 > eps):
+        if (min(R,R2) > eps):
             res[0,0] = x/R
             res[0,1] = -y/R
             res[1,0] = y/R
@@ -1667,7 +1598,7 @@ class Plotter():
         mu2sph=np.zeros((nn,3,3))
         for i in range(nn):
             # conversion matrix N = N[k,j], where j=row, k=column
-            N = self.N_car2cyl(x[i], y[i], z[i], eps=eps)
+            N = self.N_car2cyl(x[i], y[i], z[i], eps)
             # first moment
             mu1sph[i,:] = np.matmul(mu1car[i,:],N)
             # second moment
@@ -1686,28 +1617,22 @@ class Plotter():
         # 0   1   2  3  4  5  6 7 8             9  10 11 12  13  14  15   16   17   18,19,20
 
         filename_moments = file
-        mom_par1 = np.genfromtxt(filename_moments, max_rows=1, skip_header=1)
-        nmom, nph, nth, nrr = mom_par1.T
+        nmom, nph, nth, nrr = np.genfromtxt(filename_moments, max_rows=1, skip_header=1).T
+        if int(nmom) != 16: sys.exit('made for 16 moments')
         nmom = int(nmom)
         nph = int(nph)
         nth = int(nth)
         nrr = int(nrr)
-        if nmom != 16: sys.exit('made for 16 moments')
 
         ntot = nph*nth*nrr
-        phf = np.genfromtxt(filename_moments, max_rows=1, skip_header=3)
-        phf = phf.T
-        thf = np.genfromtxt(filename_moments, max_rows=1, skip_header=5)
-        thf = thf.T
-        rrf = np.genfromtxt(filename_moments, max_rows=1, skip_header=7)
-        rrf = rrf.T
         data = np.genfromtxt(filename_moments, max_rows=ntot, skip_header=10)
 
+        d = data[:,4]
         x = data[:,6]
         y = data[:,7]
         z = data[:,8]
-        r = np.sqrt(x**2 + y**2 + z**2)
-        Bigr = np.sqrt(x**2 + y**2)
+        RR = np.sqrt(x**2 + y**2)
+        r = np.sqrt(RR**2 + z**2)
 
         v1car = data[:,9:12]           #; <v_t> t=x,y,z [(km/s)]
         dum = data[:,[12,15,17,15,13,16,17,16,14]]
@@ -1716,9 +1641,9 @@ class Plotter():
         orot = 1 - (0.5*(v2sph[:,1,1] + v2sph[:,2,2]))/(v2sph[:,0,0])
         rr = np.sum(np.sum(np.reshape(r,(nrr,nth,nph),order='F'),
                     axis=2), axis=1)/(nth*nph)
-        TM = np.sum(np.sum(np.reshape(data[:,4],(nrr,nth,nph),order='F'),
+        TM = np.sum(np.sum(np.reshape(d,(nrr,nth,nph),order='F'),
                     axis=2), axis=1)
-        orotR = np.sum(np.sum(np.reshape(orot*data[:,4],(nrr,nth,nph),
+        orotR = np.sum(np.sum(np.reshape(orot*d,(nrr,nth,nph),
                     order='F'), axis=2), axis=1)/TM
 
         v1cyl, v2cyl = self.car2cyl_mu12(x, y, z, v1car, v2car)        # (v_R, v_phi, v_z)
@@ -1734,14 +1659,14 @@ class Plotter():
         vzz_r = np.zeros(nbins)
         vp_r = np.zeros(nbins)
         d = data[:,4]
-        ### Bin along bigR
+        ### Bin along RR
         for i in range(nbins):
-            ss=np.ravel(np.where((Bigr > Bint[i]) & \
-                        (Bigr < Bint[i+1]) & (np.abs(z) < 5.0)))
+            ss=np.ravel(np.where((RR > Bint[i]) & \
+                        (RR < Bint[i+1]) & (np.abs(z) < 5.0)))
                         # restrict to the disk plane with |z| < 5 arcsec
             nss=len(ss)
             if nss > 0:
-                Rad[i] = np.average(Bigr[ss])
+                Rad[i] = np.average(RR[ss])
                 vrr_r[i] = np.sum(vrr[ss]*d[ss])/np.sum(d[ss])
                 vpp_r[i] = np.sum(vpp[ss]*d[ss])/np.sum(d[ss])
                 vzz_r[i] = np.sum(vzz[ss]*d[ss])/np.sum(d[ss])
@@ -1868,11 +1793,10 @@ class Plotter():
         yrange=np.array([min(-1,min(orot_m2-orot_e2)),1])
         ax1.set_ylim(yrange)
         if yrange[1]-yrange[0]<=4:
-            yticks = np.linspace(int(yrange[0])*1.,
-                        int(yrange[1])*1.,int((yrange[1]-yrange[0])/0.5)+1)
+            Nticks = int((yrange[1]-yrange[0])/0.5)+1
         else:
-            yticks = np.linspace(int(yrange[0])*1.,
-                        int(yrange[1])*1.,int((yrange[1]-yrange[0]))+1)
+            Nticks = int((yrange[1]-yrange[0]))+1
+        yticks = np.linspace(yrange[0],yrange[1],Nticks)
         ax1.set_yticks(yticks)
         ax1.plot(RRn_m,orot_m2, '-', color='black', linewidth=3.0)
         ax1.fill_between(RRn_m, orot_m2-orot_e2,
@@ -1961,10 +1885,10 @@ class Plotter():
             Sx[i] = np.sum(sb3*np.exp(-(r[i]**2)/(2*sigintr_pc**2))) # SB at x direction
 
         #### check and replace the enlargeVector function in basic file
-        Sya = self.enlargeVector(old_vec=Sy, new_length=n*int(100))
-        Sza = self.enlargeVector(old_vec=Sz, new_length=n*int(100))
-        Sxa = self.enlargeVector(old_vec=Sx, new_length=n*int(100))
-        ra = self.enlargeVector(old_vec=r, new_length=n*int(100))
+        Sya = self.enlargeVector(old_vec=Sy, new_length=n*100)
+        Sza = self.enlargeVector(old_vec=Sz, new_length=n*100)
+        Sxa = self.enlargeVector(old_vec=Sx, new_length=n*100)
+        ra = self.enlargeVector(old_vec=r, new_length=n*100)
 
         pr = np.zeros_like(Rpc)
         qr = np.zeros_like(Rpc)
