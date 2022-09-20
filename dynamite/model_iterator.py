@@ -91,11 +91,15 @@ class ModelIterator(object):
                 iteration += 2
             status = model_inner_iterator.run_iteration()
             if plots:
-                the_plotter.make_chi2_vs_model_id_plot()
-                the_plotter.make_chi2_plot()
-                the_plotter.plot_kinematic_maps(kin_set='all',
-                                                cbar_lims='default')
-                plt.close('all') # just to make sure...
+                try:
+                    the_plotter.make_chi2_vs_model_id_plot()
+                    the_plotter.make_chi2_plot()
+                    the_plotter.plot_kinematic_maps(kin_set='all',
+                                                    cbar_lims='default')
+                    plt.close('all') # just to make sure...
+                except ValueError:
+                    self.logger.warning(f'Iteration {total_iter_count}: '
+                                        'plotting failed!')
 
     def reattempt_failed_weights(self):
         config = self.config
@@ -142,7 +146,7 @@ class ModelInnerIterator(object):
     config : a ``dyn.config_reader.Configuration`` object
     par_generator : a ``dyn.parameter_space.ParameterGenerator`` child object
     do_dummy_run : Bool
-        whether this is a dummy run - if so, dummy_chi2_funciton is executed
+        whether this is a dummy run - if so, dummy_chi2_function is executed
         instead of the model (for testing!)
     dummy_chi2_function : function
         a function of model parameters to be executed instead of the real model
@@ -367,8 +371,8 @@ class ModelInnerIterator(object):
         if self.do_dummy_run:
             parset = self.all_models.get_parset_from_row(row)
             mod.chi2 = self.dummy_chi2_function(parset)
-            mod.kinchi2 = 0.
-            mod.kinmapchi2 = 0.
+            mod.kinchi2 = np.nan
+            mod.kinmapchi2 = np.nan
         else:
             if not (get_orblib or get_weights):
                 msg = 'Nothing to run, specify get_orblib and/or get_weights'
@@ -378,15 +382,27 @@ class ModelInnerIterator(object):
             if not get_orblib and self.is_new_orblib(row) and \
                               not self.all_models.table['orblib_done'][row]:
                 msg = f'Unexpected: orbit library in row {row} not existing! ' \
-                      'Will calculate it...'
+                      'Will calculate it (beware of multiprocessing - use ' \
+                      'the restart feature or ncpus=1 in case of problems)...'
                 self.logger.warning(msg)
-            orblib = mod.get_orblib()
-            orb_done = True
-            if get_weights:
-                weight_solver = mod.get_weights(orblib)
-                wts_done = True
-            else:
-                mod.chi2, mod.kinchi2, mod.kinmapchi2 = 0, 0, 0
+            cwd = os.getcwd()
+            try:
+                orblib = mod.get_orblib()
+                orb_done = True
+                if get_weights:
+                    weight_solver = mod.get_weights(orblib)
+                    wts_done = True
+                else:
+                    mod.chi2, mod.kinchi2, mod.kinmapchi2 \
+                        = np.nan, np.nan, np.nan
+            except RuntimeError:
+                os.chdir(cwd)
+                mod.chi2, mod.kinchi2, mod.kinmapchi2 = np.nan, np.nan, np.nan
+                w_txt = f'Model {i+1} (row {row}): get_orblib ' \
+                        + ('or get_weights ' if get_weights else '')+'failed.'\
+                        + (' all chi2 values set to nan!' \
+                           if get_weights else '')
+                self.logger.warning(w_txt)
         all_done = orb_done and wts_done
         time = str(np.datetime64('now', 'ms'))
         # Build and write model_done_staging.ecsv

@@ -74,7 +74,7 @@ class AllModels(object):
         dtype = [np.float64 for n in names]
         # add the columns from legacy version
         names += ['chi2', 'kinchi2', 'kinmapchi2', 'time_modified']
-        dtype += [np.float64, np.float64, np.float64, str]
+        dtype += [np.float64, np.float64, np.float64, 'S256']
         # add extra columns
         names += ['orblib_done', 'weights_done', 'all_done']
         dtype += [bool, bool, bool]
@@ -83,7 +83,7 @@ class AllModels(object):
         dtype.append(int)
         # directory will be the model directory name in the models/ directory
         names.append('directory')
-        dtype.append('<S256') # little-endian string of max. 256 characters
+        dtype.append('S256')
         self.table = table.Table(names=names, dtype=dtype)
 
     def read_completed_model_file(self):
@@ -541,7 +541,7 @@ class AllModels(object):
 
         """
         which_chi2 = self.config.validate_chi2(which_chi2)
-        chi2_min = min(self.table[which_chi2])
+        chi2_min = np.nanmin(self.table[which_chi2])
         if delta is None:
             delta = chi2_min * 0.1
         if delta >= 0:
