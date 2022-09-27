@@ -518,7 +518,7 @@ class AllModels(object):
             The default is None.
         delta : float, optional
             The threshold value. Models with chi2 values differing
-            from the opimum by at most delta will be returned. If none,
+            from the opimum by at most delta will be returned. If None,
             models within 10% of the optimal value will be returned.
             The default is None.
 
@@ -538,6 +538,70 @@ class AllModels(object):
             delta = chi2_min * 0.1
         models = self.table[self.table[which_chi2] <= chi2_min+delta]
         return models
+
+    def make_best_models_table(self,
+                               which_chi2=None,
+                               n=None,
+                               delta=None,
+                               filename=None):
+        """Make a table of the best models and save it to disk
+
+        Parameters
+        ----------
+        which_chi2 : str, optional
+            Which chi2 is used for determining the best models. If None, the
+            setting from the configuration file will be used.
+            The default is None.
+        n : int, optional
+            How many models to get. If None, n will be ignored.
+            Default: if delta is specified, the default is none; if delta
+            is None, the default is 10.
+        delta : float, optional
+            The threshold value. Models with chi2 values differing
+            from the opimum by at most delta will be returned. If None,
+            delta will be ignored. The default is None.
+        filename : TYPE, optional
+            DESCRIPTION. The default is None.
+
+        Raises
+        ------
+        ValueError
+            If both n and delta are specified (i.e., both are not None).
+
+        Returns
+        -------
+        int
+            The number of models in the best models table.
+
+        """
+        if n is not None and delta is not None:
+            text = 'Cannot specify both n and delta - choose one...'
+            self.logger.error(text)
+            raise ValueError(text)
+        elif n is None and delta is None:
+            n = 10
+            self.logger.info('No parameters specified - making table with '
+                             '10 best models')
+        if filename is None:
+            path_noext, ext = os.path.splitext(self.filename)
+            filename = path_noext + '_best' + ext
+        else:
+            filename = self.config.settings.io_settings['output_directory'] + \
+                       filename
+        if os.path.exists(filename):
+            path_noext, ext = os.path.splitext(filename)
+            backup_filename = path_noext + '_backup' + ext
+            shutil.copy2(filename, backup_filename)
+            self.logger.warning(f'File {filename} will be overwritten, '
+                                f'backup {backup_filename} created.')
+        if n is not None:
+            table_best = self.get_best_n_models(which_chi2=which_chi2, n=n)
+        else:
+            table_best=self.get_mods_within_chi2_thresh(which_chi2=which_chi2,
+                                                        delta=delta)
+        table_best.write(filename, format='ascii.ecsv', overwrite=True)
+        self.logger.info(f'Table of best models written to file {filename}.')
+        return len(table_best)
 
 
 class Model(object):
