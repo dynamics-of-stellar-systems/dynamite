@@ -560,8 +560,13 @@ class AllModels(object):
             The threshold value. Models with chi2 values differing
             from the opimum by at most delta will be returned. If None,
             delta will be ignored. The default is None.
-        filename : TYPE, optional
-            DESCRIPTION. The default is None.
+        filename : str, optional
+            File name of the best models table. The file is written into the
+            output directory specified in the config file. If None, the name
+            is the same as for the all models table but with '_best' added
+            to the base file name. If the file already exists, a warning
+            is logged, the existing file is backed up ('_backup' added),
+            and then overwritten. The default is None.
 
         Raises
         ------
