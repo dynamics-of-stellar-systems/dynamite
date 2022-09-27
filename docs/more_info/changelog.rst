@@ -4,6 +4,7 @@
 Change Log
 ****************
 
+- New feature: Added a new method AllModels.make_best_models_table() that creates a table of the best models (best n models or models within a chi2-threshold of the best) and saves it to disk
 - Improvement: Dynamite will no longer crash upon Legacy Fortran errors, but issue warnings and assign nan to the affected chi2 values
 - Improvement: When executing a dummy run (do_dummy_run==True), model_iterator will set both kinchi2 and kinmapchi2 to nan (instead of zero)
 - Improvement: DYNAMITE will retrofit existing all_models tables with the new column kinmapchi2 and calculate its values for existing models whenever possible
