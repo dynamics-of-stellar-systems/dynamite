@@ -12,6 +12,7 @@ system_attributes:
     distMPc: 39.96
     name: "NGC6278"
     position_angle: 97.69
+    r_eff: False # r_eff, will be calculated by DYNAMITE if False or missing
 
 system_components:
 
