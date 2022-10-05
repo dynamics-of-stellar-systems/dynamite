@@ -129,6 +129,7 @@ class ModelIterator(object):
     def get_missing_weights(self, row):
         self.logger.debug(f'Reattempting weight solving for model {row}.')
         mod = self.config.all_models.get_model_from_row(row)
+        mod.setup_directories()
         orblib = mod.get_orblib()
         weight_solver = mod.get_weights(orblib)
         time = str(np.datetime64('now', 'ms'))
