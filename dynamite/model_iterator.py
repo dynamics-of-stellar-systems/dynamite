@@ -98,7 +98,7 @@ class ModelIterator(object):
                                                     cbar_lims='default')
                     plt.close('all') # just to make sure...
                 except ValueError:
-                    self.logger.warning(f'Iteration {total_iter_count}: '
+                    self.logger.warning(f'Iteration {total_iter}: '
                                         'plotting failed!')
 
     def reattempt_failed_weights(self):
