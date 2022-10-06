@@ -32,6 +32,7 @@ class AllModels(object):
         self.config = config
         self.system = config.system
         self.set_filename(config.settings.io_settings['all_models_file'])
+        self.make_empty_table()
         if from_file and os.path.isfile(self.filename):
             self.logger.info('Previous models have been found: '
                         f'Reading {self.filename} into '
@@ -40,8 +41,7 @@ class AllModels(object):
         else:
             self.logger.info(f'No previous models (file {self.filename}) '
                         'have been found: '
-                        f'Making an empty table in {__class__.__name__}.table')
-            self.make_empty_table()
+                        f'Made an empty table in {__class__.__name__}.table')
 
     def set_filename(self, filename):
         """Set the name (including path) for this model
@@ -74,7 +74,7 @@ class AllModels(object):
         dtype = [np.float64 for n in names]
         # add the columns from legacy version
         names += ['chi2', 'kinchi2', 'kinmapchi2', 'time_modified']
-        dtype += [np.float64, np.float64, np.float64, 'S256']
+        dtype += [np.float64, np.float64, np.float64, 'U256']
         # add extra columns
         names += ['orblib_done', 'weights_done', 'all_done']
         dtype += [bool, bool, bool]
@@ -83,7 +83,7 @@ class AllModels(object):
         dtype.append(int)
         # directory will be the model directory name in the models/ directory
         names.append('directory')
-        dtype.append('S256')
+        dtype.append('U256')
         self.table = table.Table(names=names, dtype=dtype)
 
     def read_completed_model_file(self):
@@ -110,7 +110,10 @@ class AllModels(object):
             sets ``self.table``
 
         """
-        self.table = ascii.read(self.filename)
+        table_read = ascii.read(self.filename)
+        self.table = table.vstack((self.table, table_read),
+                                  join_type='outer',
+                                  metadata_conflicts='error')
         self.logger.debug(f'{len(self.table)} models read '
                           f'from file {self.filename}')
 
