@@ -4,6 +4,7 @@
 Change Log
 ****************
 
+- Bugfix: Fixed a bug related to a nonexistent model directory if a crash occurs between the parameter generator adding a model and starting to solve it
 - Improvement: Dynamite will no longer crash upon Legacy Fortran errors, but issue warnings and assign nan to the affected chi2 values
 - Improvement: When executing a dummy run (do_dummy_run==True), model_iterator will set both kinchi2 and kinmapchi2 to nan (instead of zero)
 - Improvement: DYNAMITE will retrofit existing all_models tables with the new column kinmapchi2 and calculate its values for existing models whenever possible
