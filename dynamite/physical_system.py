@@ -479,7 +479,7 @@ class TriaxialVisibleComponent(VisibleComponent):
         par = ['q', 'p', 'u']
         super().validate(par=par)
         self.qobs = np.amin(self.mge_pot.data['q'])
-        if np.isnan(self.qobs):
+        if self.qobs is np.nan:
             raise ValueError(f'{self.__class__.__name__}.qobs is np.nan')
 
     def validate_parset(self, par):

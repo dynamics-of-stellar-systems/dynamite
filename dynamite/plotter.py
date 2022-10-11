@@ -207,7 +207,7 @@ class Plotter():
 
         ## 1 sigma confidence level
         chlim = np.sqrt(self.config.get_2n_obs())
-        chi2pmin=np.nanmin(val[which_chi2])
+        chi2pmin=np.min(val[which_chi2])
         chi2t = val[which_chi2] - chi2pmin
         val.add_column(chi2t, name='chi2t')
         val.sort(['chi2t'])
@@ -431,7 +431,7 @@ class Plotter():
                     **kwargs)
             else:
                 self.logger.info(f'Gauss Hermite kinematic maps can only be '
-                                 'plotted if LegacyWeightSolver is used')
+                                 'plot if LegacyWeightSolver is used')
                 fig = plt.figure(figsize=(27, 12))
         elif kin_type is kinematics.BayesLOSVD:
             if cbar_lims=='default':
