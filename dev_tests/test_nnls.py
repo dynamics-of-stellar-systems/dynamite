@@ -14,10 +14,13 @@ matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 from astropy import table
 import dynamite as dyn
-import dynamite.constants as const
 
 def run_user_test(make_comp=False):
 
+    logger = logging.getLogger()
+    logger.info(f'Using DYNAMITE version: {dyn.__version__}')
+    logger.info(f'Located at: {dyn.__path__}')
+    # print to console anyway...
     print('Using DYNAMITE version:', dyn.__version__)
     print('Located at:', dyn.__path__)
 
@@ -40,8 +43,6 @@ def run_user_test(make_comp=False):
     # c.backup_config_file(keep=3, delete_other=True)
     # c.remove_existing_plots()
 
-    print(f'{const.GRAV_CONST_KM=}, {const.PARSEC_KM=}, {const.RHO_CRIT=}.')
-
     which_chi2 = c.settings.parameter_space_settings['which_chi2']
 
     plotdir = c.settings.io_settings['plot_directory']
@@ -57,11 +58,13 @@ def run_user_test(make_comp=False):
                     f"{c.settings.orblib_settings['nE']}" \
                     f"{c.settings.orblib_settings['nI2']}" \
                     f"{c.settings.orblib_settings['nI3']}.dat"
-    print(f'Comparing results to {compare_file}.')
+    logger.debug(f'Comparing results to {compare_file}.')
     # "run" the models
     t = time.perf_counter()
     smi = dyn.model_iterator.ModelIterator(c)
     delt = time.perf_counter()-t
+    logger.info(f'Computation time: {delt} seconds = {delt/60} minutes')
+    # print to console regardless of logging level
     print(f'Computation time: {delt} seconds = {delt/60} minutes')
 
     # print all model results
@@ -103,6 +106,12 @@ def run_user_test(make_comp=False):
         plt.ylabel(which_chi2)
         plt.savefig(plotfile_chi2)
 
+        logger.info(f'Look at {plotfile_ml} and {plotfile_chi2}')
+        chi2stat = ''
+        for s in chi2_compare.pformat(max_lines=-1, max_width=-1):
+            chi2stat += '\n'+s
+        logger.info(f'{which_chi2} comparison data: {chi2stat}')
+        # print to console anyway...
         print(f'Look at {plotfile_ml} and {plotfile_chi2}')
         print(f'{which_chi2} comparison data:\n')
         chi2_compare.pprint(max_lines=-1, max_width=-1)
