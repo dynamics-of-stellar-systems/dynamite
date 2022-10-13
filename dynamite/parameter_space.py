@@ -1,6 +1,7 @@
 import sys
 import copy
 import logging
+import itertools
 import numpy as np
 from astropy.table import Table
 from dynamite import parameter_space as parspace
@@ -1210,5 +1211,125 @@ class FullGrid(ParameterGenerator):
         if paridx < self.par_space.n_par - 1:
             self.grid(center=center, par=self.par_space[paridx+1])
 
+
+class SpecificModels(ParameterGenerator):
+    """
+    Create specific models.
+
+    Creates models with parameter values according to the entries in the
+    lists ``fixed_values`` in a single iteration. If any parameter's
+    ``fixed_values`` entry is missing, its ``value`` entry will be used.
+    ``parspace_settings[mode]`` determines how models are constructed:
+    ``list``: selects parameter values element-wise. All parameters'
+    ``fixed_values`` lists must be of equal length (or zero length if their
+    respective ``value`` entry is to be used).
+    ``cartesian``: Cartesian product of fixed parameter values.
+    ``fixed_values`` lists don't need to be of equal length. May result
+    in a high number of models.
+
+    Note that this parameter generator ignores ``step``, ``minstep``,
+    ``lo``, and ``high``. Also, ``fixed`` will be ignored if ``fixed_values``
+    is specified.
+
+    Parameters
+    ----------
+    par_space : ``dyn.parameter_space.ParameterSpace`` object
+    parspace_settings : dict
+
+    """
+    # edit from here on...
+    def __init__(self,
+                 par_space=[],
+                 parspace_settings=None):
+        super().__init__(par_space=par_space,
+                         parspace_settings=parspace_settings,
+                         name='SpecificModels')
+        self.logger = logging.getLogger(f'{__name__}.{__class__.__name__}')
+        try:
+            self.mode = self.parspace_settings['generator_settings']\
+                                              ['SpecificModels_mode'].lower()
+        except:
+            text = 'Need SpecificModels_mode setting in generator_settings.'
+            self.logger.error(text)
+            raise ValueError(text)
+        if self.mode not in ('list', 'cartesian'):
+            text = 'Mode must either be "list" or "cartesian".'
+            self.logger.error(text)
+            raise ValueError(text)
+
+    def specific_generate_method(self, **kwargs):
+        """
+        Generates new models
+
+        Starts at the initial point. Start the iteration: (i) find all models
+        with :math:`|\chi^2 - \chi_\mathrm{min}^2|` within the specified
+        threshold, (ii) for each model within the threshold, seed new models by
+        independently take a step :math:`\pm 1` of size ``step``. If no new
+        models are seeded at the end of an iteration, then divide all parameter
+        stepsizes by two till their specified ``minstep`` are reached.
+
+        Parameters
+        ----------
+        None.
+
+        Returns
+        -------
+        None.
+            sets ``self.model_list`` is the list of new models.
+
+        """
+        self.model_list = []
+        par_list_idx = \
+          [i for i in range(len(self.par_space))
+             if self.par_space[i].par_generator_settings
+             if 'fixed_values' in self.par_space[i].par_generator_settings]
+        if len(par_list_idx) == 0: # nothing to do really...
+            self.model_list.append([copy.deepcopy(p) for p in self.par_space])
+            self.logger.info('Found ONE individual model.')
+            return ###########################################################
+
+        lengths = \
+            [len(self.par_space[i].par_generator_settings['fixed_values'])
+             for i in par_list_idx]
+        if self.mode == 'list':
+            if len(set(lengths)) > 1:
+                text = 'For a simple list of new models all fixed_values ' \
+                       'lists must be of equal length.'
+                self.logger.error(text)
+                raise ValueError(text)
+            n_mod = lengths[0]
+        else:
+            n_mod = np.prod(lengths)
+        self.logger.info(f'Adding {n_mod} individual models.')
+
+        fixed_values=[self.par_space[i].par_generator_settings['fixed_values']
+                      for i in par_list_idx]
+        if self.mode == 'list':
+            for i in range(n_mod):
+                new_parset = [copy.deepcopy(p) for p in self.par_space]
+                for idx in par_list_idx:
+                    new_parset[idx].raw_value = fixed_values[idx][i]
+                self.model_list.append([copy.deepcopy(p) for p in new_parset])
+        else:
+            for val in itertools.product(*fixed_values):
+                new_parset = [copy.deepcopy(p) for p in self.par_space]
+                for idx in par_list_idx:
+                    new_parset[idx].raw_value = val[idx]
+                self.model_list.append([copy.deepcopy(p) for p in new_parset])
+
+        return
+
+    def check_specific_stopping_critera(self):
+        """The specific stopping critera
+
+        Will always stop after creating all specific models.
+
+        Returns
+        -------
+        None
+            sets ``self.status['min_delta_chi2_reached']`` to ``True``
+
+        """
+        self.status['min_delta_chi2_reached'] = True
 
 # end
