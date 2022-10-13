@@ -173,8 +173,16 @@ class AllModels(object):
                              'unique orblibs.')
             for directory in dirs_to_delete:
                 try:
-                    shutil.rmtree(directory)
-                    self.logger.info(f'Model directory {directory} removed.')
+                    # Only remove orblib directories that are not used by
+                    # already completed models
+                    if directory in set(self.table[np.where(
+                                        self.table['all_done'])]['directory']):
+                        self.logger.info(f'Orblib directory {directory} in '
+                                         'use by existing model - untouched.')
+                    else:
+                        shutil.rmtree(directory)
+                        self.logger.info(f'Orblib directory {directory} '
+                                         'removed.')
                 except:
                     self.logger.warning(f'Cannot remove orblib in {directory},'
                         ' perhaps it has already been removed before.')
