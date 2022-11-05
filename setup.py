@@ -1,4 +1,5 @@
 import setuptools
+import numpy.distutils.core
 
 # this loads the version number from the dynamite/version.py module
 version = open("dynamite/_version.py")
@@ -12,7 +13,13 @@ with open("README.md", "r") as fh:
 with open("requirements.txt", "r") as fp:
     required = fp.read().splitlines()
 
-setuptools.setup(
+ext = numpy.distutils.core.Extension(name='dynamite.pyfort_GaussHerm',
+                 sources=['dynamite/pygausherm.f'],
+                 f2py_options=['--quiet'],
+                )
+
+# setuptools.setup(
+numpy.distutils.core.setup(
     name="dynamite",
     version=version,
     author="Prashin Jethwa, Sabine Thater, Thomas Maindl",
@@ -53,4 +60,5 @@ setuptools.setup(
             "../legacy_fortran/triaxnnls_noCRcut",
         ]
     },
+    ext_modules=[ext]
 )
