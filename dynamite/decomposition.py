@@ -9,7 +9,7 @@ import matplotlib.pyplot as plt
 #import glob
 from lmfit import minimize, Parameters
 from scipy.io import FortranFile
-#import dynamite as dyn
+import dynamite as dyn
 
 from plotbin.display_pixels import display_pixels
 #from matplotlib.patches import Ellipse
@@ -17,186 +17,6 @@ from plotbin.display_pixels import display_pixels
 #import plotbin.display_pixels as dp
 #import plotbin.display_bins_generators as dbg
 #from scipy import special, stats
-
-def triaxreadparameters(w_dir=None):
-    """
-    read in all the parameters in parameters.in
-
-    """
-
-    filename = w_dir + 'infil/parameters.in'
-    header = np.genfromtxt(filename, max_rows=1)
-    #nmge = int(header[0])  # MGE gaussians
-    nmge = int(header)  # MGE gaussians
-    mgepar = np.genfromtxt(filename, max_rows=nmge, skip_header=1)
-    mgepar = mgepar.T  # MGE parameters
-
-    distance = np.genfromtxt(filename, max_rows=1, skip_header=nmge + 1)
-    distance = np.double(distance)  # distance [Mpc]
-
-    view_ang = np.genfromtxt(filename, max_rows=1, skip_header=nmge + 2)
-    th_view = np.double(view_ang[0]);
-    ph_view = np.double(view_ang[1]);
-    psi_view = np.double(view_ang[2])
-
-    ml = np.genfromtxt(filename, max_rows=1, skip_header=nmge + 3)
-    ml = np.double(ml)  # M/L [M_sun/L-sun]
-
-    bhmass = np.genfromtxt(filename, max_rows=1, skip_header=nmge + 4)
-    bhmass = np.double(bhmass)  # BH mass [M_sun]
-
-    softlen = np.genfromtxt(filename, max_rows=1, skip_header=nmge + 5)
-    softlen = np.double(softlen)  # softening length
-
-    nrell = np.genfromtxt(filename, max_rows=1, skip_header=nmge + 6)
-    nre = np.double(nrell[0]);
-    lrmin = np.double(nrell[1]);
-    lrmax = np.double(nrell[2])  # E, minmax log(r) [arcsec]
-
-    nrth = np.genfromtxt(filename, max_rows=1, skip_header=nmge + 7)
-    nrth = np.int(nrth)  # theta [# I2]
-
-    nrrad = np.genfromtxt(filename, max_rows=1, skip_header=nmge + 8)
-    nrrad = np.int(nrrad)  # phi [# I3]
-
-    ndither = np.genfromtxt(filename, max_rows=1, skip_header=nmge + 9)
-    ndither = np.int(ndither)  # dithering dimension
-
-    vv1 = np.genfromtxt(filename, max_rows=1, skip_header=nmge + 10)
-    vv1_1 = np.int(vv1[0]);
-    vv1_2 = np.int(vv1[1])
-
-    dmm = np.genfromtxt(filename, max_rows=1, skip_header=nmge + 11)
-    dm1 = np.double(dmm[0]);
-    dm2 = np.double(dmm[1])
-
-    conversion_factor = distance * 1.0e6 * 1.49598e8
-    grav_const_km = 6.67428e-11 * 1.98892e30 / 1e9
-    parsec_km = 1.4959787068e8 * (648.000e3 /np.pi)
-    rho_crit = (3.0 * ((7.3000e-5)/parsec_km) ** 2) /(8.0 * np.pi * grav_const_km)
-
-    return mgepar, distance, th_view, ph_view, psi_view, ml, bhmass,           softlen, nre, lrmin, lrmax, nrth, nrrad, ndither, vv1_1, vv1_2,dm1, dm2,           conversion_factor,grav_const_km,parsec_km,rho_crit
-
-
-
-
-class Histogram(object):
-    """LOSVD histograms
-
-    Parameters
-    ----------
-    xedg : array (n_bins+1,)
-        histogram bin edges
-    y : (n_orbits, n_bins+1, n_apertures)
-        histogram values
-    normalise : bool, default=True
-        whether to normalise to pdf
-
-    Attributes
-    ----------
-    x : array (n_bins,)
-        bin centers
-    dx : array (n_bins,)
-        bin widths
-    normalised : bool
-        whether or not has been normalised to pdf
-
-    """
-    def __init__(self, xedg=None, y=None, normalise=False):
-        self.xedg = xedg
-        self.x = (xedg[:-1] + xedg[1:])/2.
-        self.dx = xedg[1:] - xedg[:-1]
-        self.y = y
-        if normalise:
-            self.normalise()
-
-    def get_normalisation(self):
-        """Get the normalsition
-
-        Calculates ``Sum_i losvd_i * dv_i``
-
-        Returns
-        -------
-        float
-            the normalisation
-
-        """
-        na = np.newaxis
-        norm = np.sum(self.y*self.dx[na,:,na], axis=1)
-        return norm
-
-    def normalise(self):
-        """normalises the LOSVDs
-
-        Returns
-        -------
-        None
-            resets ``self.y`` to a normalised version
-
-        """
-        norm = self.get_normalisation()
-        na = np.newaxis
-        tmp = self.y/norm[:,na,:]
-        # where norm=0, tmp=nan. Fix this:
-        idx = np.where(norm==0.)
-        tmp[idx[0],:,idx[1]] = 0.
-        # replace self.y with normalised y
-        self.y = tmp
-
-    def scale_x_values(self, scale_factor):
-        """scale the velocity array
-
-        scales vel array, and dv
-
-        Parameters
-        ----------
-        scale_factor : float
-
-        Returns
-        -------
-        None
-            resets ``self.xedg``, ``self.x``, ``self.dx`` to rescaled versions
-
-        """
-        self.xedg *= scale_factor
-        self.x *= scale_factor
-        self.dx *= scale_factor
-
-    def get_mean(self):
-        """Get the mean velocity
-
-        Returns
-        -------
-        array shape (n_orbits, n_apertures)
-            mean velcoity of losvd
-
-        """
-        na = np.newaxis
-        mean = np.sum(self.x[na,:,na] * self.y * self.dx[na,:,na], axis=1)
-        norm = self.get_normalisation()
-        mean /= norm
-        return mean
-
-    def get_sigma(self):
-        """Get the velocity dispersions
-
-        Returns
-        -------
-        array shape (n_orbits, n_apertures)
-            velocity dispersion of losvd
-
-        """
-        na = np.newaxis
-        mean = self.get_mean()
-        v_minus_mu = self.x[na,:,na]-mean[:,na,:]
-        var = np.sum(v_minus_mu**2. * self.y * self.dx[na,:,na],
-                     axis=1)
-        norm = self.get_normalisation()
-        var /= norm
-        sigma = var**0.5
-        return sigma
-
-
 
 
 def scale_factor_find(ml_dir):
@@ -315,9 +135,9 @@ def read_orbit_base(wdir, fileroot, n_apertures):
         vedg_pos = np.arange(1, nbins_vhist+1, 2) * dvhist/2.
         vedg_neg = -vedg_pos[::-1]
         vedg = np.concatenate((vedg_neg, vedg_pos))
-        velhist = Histogram(xedg=vedg,
-                                    y=velhist,
-                                    normalise=False)
+        velhist = dyn.kinematics.Histogram(xedg=vedg,
+                                           y=velhist,
+                                           normalise=False)
         return velhist, density_3D
 
 
@@ -352,9 +172,9 @@ def duplicate_flip_and_interlace_orblib(orblib):
         new_losvd = np.zeros((2*n_orbs, n_vel_bins, n_spatial_bins))
         new_losvd[0::2] = losvd
         new_losvd[1::2, :] = reveresed_losvd
-        new_orblib = Histogram(xedg=orblib.xedg,
-                                       y=new_losvd,
-                                       normalise=False)
+        new_orblib = dyn.kinematics.Histogram(xedg=orblib.xedg,
+                                              y=new_losvd,
+                                              normalise=False)
         return new_orblib
 
 
@@ -391,9 +211,9 @@ def combine_orblibs( orblib1, orblib2):
                               n_spatial_bins1))
         new_losvd[:n_orbs1] = orblib1.y
         new_losvd[n_orbs1:] = orblib2.y
-        new_orblib = Histogram(xedg=orblib1.xedg,
-                                       y=new_losvd,
-                                       normalise=False)
+        new_orblib = dyn.kinematics.Histogram(xedg=orblib1.xedg,
+                                              y=new_losvd,
+                                              normalise=False)
         return new_orblib
 
 
@@ -445,58 +265,6 @@ def read_losvd_histograms(wdir, n_apertures,scale_factor):
         n_orbs = losvd_histograms.y.shape[0]
         projected_masses = np.sum(losvd_histograms.y, 1)
         return losvd_histograms, intrinsic_masses, n_orbs, projected_masses
-
-
-
-
-def readorbout(filename=None):
-    """
-    read in 'mlxxx/nn_orb.out' of one model
-
-    """
-
-    nrow=data=np.genfromtxt(filename,max_rows=1)
-    nrow=int(nrow)
-    data=np.genfromtxt(filename, skip_header=1,max_rows=nrow)
-    n=np.array(data[:,0],dtype=int)
-    ener=np.array(data[:,1],dtype=int)
-    i2=np.array(data[:,2],dtype=int)
-    i3=np.array(data[:,3],dtype=int)
-    regul=np.array(data[:,4],dtype=float)
-    orbtype=np.array(data[:,5],dtype=float)
-    orbw=np.array(data[:,6],dtype=float)
-    lcut=np.array(data[:,7],dtype=float)
-    ntot=int(nrow)
-    return n, ener,i2, i3, regul, orbtype,orbw,lcut,ntot
-
-
-
-
-################################################################################################
-def readorbclass(file=None,nrow=None, ncol=None):
-    """
-    read in 'datfil/orblib.dat_orbclass.out'
-    which stores the information of all the orbits stored in the orbit library
-
-    norb = nE * nI2 * nI3 * ndithing^3
-    for each orbit, the time averaged values are stored:
-
-    lx, ly ,lz, r = sum(sqrt( average(r^2) )), Vrms^2 = average(vx^2 + vy^2 + vz^2 + 2vx*vy + 2vxvz + 2vxvy)
-
-    The file was stored by the fortran code orblib_f.f90 integrator_find_orbtype
-    """
-
-    data=[]
-    lines = [line.rstrip('\n').split() for line in open(file)]
-    i = 0
-    while i < len(lines):
-        for x in lines[i]:
-            data.append(np.double(x))
-        i += 1
-    data=np.array(data)
-    data=data.reshape((int(5),int(ncol),int(nrow)), order='F')
-    return data
-
 
 
 def read_free_file(input_file, n_head_element, n_row, n_column):
@@ -566,7 +334,7 @@ def conv_fortran(vhis,histbinsize,wbin):
 
 def conv_losvd(orblib, nkin,xedg):
 
-    mod_losvd = Histogram(y=orblib[np.newaxis,:,:], xedg=xedg)
+    mod_losvd = dyn.kinematics.Histogram(y=orblib[np.newaxis,:,:], xedg=xedg)
     mod_v = mod_losvd.get_mean()
     mod_sig = mod_losvd.get_sigma()
 
@@ -590,7 +358,8 @@ def comps_aphist(w_dir, losvd_hist, comps, gal, conversion):
     print(losvd_orbs.shape)
     for k in range(len(comps)):
         file=wdir+comps[k]+'_orb_s22.out'
-        norbout, ener, i2, i3, regul, orbtype, orbw, lcut, ntot = readorbout(file)
+        norbout, ener, i2, i3, regul, orbtype, orbw, lcut, ntot \
+            = dyn.plotter.Plotter().readorbout(file)
         norm_w=np.sum(orbw)
         #print('tot orb_weight', norm_w)
         orbw=orbw
@@ -668,6 +437,7 @@ def comps_aphist(w_dir, losvd_hist, comps, gal, conversion):
 def create_orbital_component_files_giu(w_dir=None,object=None, rootname=None, diri_o=None, ml_str = None,
                    ocut=None, Rmax_arcs=None, xrange=None):
 
+    plotter = dyn.plotter.Plotter()
     if not ocut:
         ocut = [0.8, 0.25, -0.25]  #selection in lambda_z following Santucci+22
     print("cut lines are:", ocut)
@@ -686,18 +456,22 @@ def create_orbital_component_files_giu(w_dir=None,object=None, rootname=None, di
     file3_test = os.path.isfile(file3)
     if not file3_test: file3= '%s' % file2
 
-    mgepar, distance, th_view, ph_view, psi_view, ml, bhmass,softlen,    nre, lrmin, lrmax, nrth, nrrad, ndither, vv1_1, vv1_2,dm1,dm2,    conversion_factor,grav_const_km,parsec_km, rho_crit =triaxreadparameters(w_dir=wdir)
+    mgepar, distance, th_view, ph_view, psi_view, ml, bhmass,softlen, \
+        nre, lrmin, lrmax, nrth, nrrad, ndither, vv1_1, vv1_2,dm1,dm2, \
+        conversion_factor,grav_const_km,parsec_km, rho_crit \
+        = plotter.triaxreadparameters(w_dir=wdir)
 
     norb = int(nre * nrth * nrrad)
 
     nrow = norb
     ncol = ndither ** 3
     #print('norb', norb)
-    orbclass1 = readorbclass(file=file2, nrow=norb, ncol=ndither ** 3)
-    orbclass2 = readorbclass(file=file3, nrow=norb, ncol=ndither ** 3)
+    orbclass1 = plotter.readorbclass(file=file2, nrow=norb, ncol=ndither ** 3)
+    orbclass2 = plotter.readorbclass(file=file3, nrow=norb, ncol=ndither ** 3)
 
     #print('norb, ndither', np.max(norb), ndither)
-    norbout, ener, i2, i3, regul, orbtype, orbw, lcut, ntot = readorbout(filename=file4)
+    norbout, ener, i2, i3, regul, orbtype, orbw, lcut, ntot \
+        = plotter.readorbout(filename=file4)
 
     #print('ener, i2, i3', np.max(ener), np.max(i2), np.max(i3))
     #print('Maxmin and Minimum(ener)', np.max(ener), np.min(ener))
@@ -740,7 +514,8 @@ def create_orbital_component_files_giu(w_dir=None,object=None, rootname=None, di
 
     print('*******Creat nn_orb.out for different bulk of orbits***********')
 
-    norbout, ener, i2, i3, regul, orbtype, orbw, lcut, ntot=readorbout(filename=file4)
+    norbout, ener, i2, i3, regul, orbtype, orbw, lcut, ntot \
+        = plotter.readorbout(filename=file4)
 
     print('#orbs', len(norbout))
     ### COLD COMPONENT
