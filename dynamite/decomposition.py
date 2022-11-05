@@ -711,7 +711,7 @@ def plot_comps_giu(conversion, w_dir=None, gal=None, rootname=None
     #sx=50;sy=50#sx = np.float(lines[2][0]); sy = np.float(lines[2][1])
     maxx = sx + minx; sy = sy + miny
     angle_deg = float(lines[3][0])  # - 90.0 + 180
-    nx = np.int(lines[4][0]); ny = np.int(lines[4][1])
+    nx = int(lines[4][0]); ny = int(lines[4][1])
 
     dx = sx / nx
 
@@ -738,9 +738,9 @@ def plot_comps_giu(conversion, w_dir=None, gal=None, rootname=None
             if i == 0:
                 str_head.append(str(x))
             if i == 1:
-                i_var.append(np.int(x))
+                i_var.append(int(x))
             if i > 1:
-                grid.append(np.int(x))
+                grid.append(int(x))
         i += 1
     str_head = str(str_head[0])
     i_var = int(i_var[0])
