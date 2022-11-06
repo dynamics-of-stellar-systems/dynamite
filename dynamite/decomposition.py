@@ -3,28 +3,27 @@ import logging
 import subprocess
 import numpy as np
 import matplotlib.pyplot as plt
+import astropy.io
 from plotbin.display_pixels import display_pixels
 from scipy.io import FortranFile
-from astropy.io import ascii
 from lmfit import minimize, Parameters
-import pyfort_GaussHerm
 import dynamite as dyn
+from dynamite import pyfort_GaussHerm
 #from matplotlib.patches import Ellipse
 
 class Decomp:
     def __init__(self,
                  galaxy = None,
-                 r_eff = None,
                  input_directory = None,
                  output_directory = None):
+        dyn.config_reader.DynamiteLogging(logfile='Decomposition')
         self.logger = logging.getLogger(f'{__name__}.{__class__.__name__}')
         self.input_directory = input_directory
         self.output_directory = output_directory
         self.model_directory = output_directory
         self.plotter = dyn.plotter.Plotter()
         #read the orbits and create the velocity histogram
-        self.losvd_histograms, self.proj_mass = self.run_dec(gal = galaxy,
-                                                             Re = r_eff)
+        self.losvd_histograms, self.proj_mass = self.run_dec(gal = galaxy)
         self.logger.info('Orbits read and velocity histogram created.')
         self.comps = ['disk', 'thin_d', 'warm_d', 'bulge', 'all']
 
@@ -293,14 +292,14 @@ class Decomp:
         gausserr_gh = lambda p,x,y: self.gaussfunc_gh(p,x)-y
         fitout_gh=minimize(gausserr_gh,p_gh,args=(b,vhist))
 
-        fitted_p_gh = fitout_gh.params
+#unused        fitted_p_gh = fitout_gh.params
         pars_gh=[fitout_gh.params['amp'].value,
                 fitout_gh.params['center'].value,
                 fitout_gh.params['sig'].value,
                 fitout_gh.params['skew'].value,
                 fitout_gh.params['kurt'].value]
-        fit_gh=self.gaussfunc_gh(fitted_p_gh,b)
-        resid_gh=fit_gh-vhist
+#unused        fit_gh=self.gaussfunc_gh(fitted_p_gh,b)
+#unused        resid_gh=fit_gh-vhist
         return pars_gh[1], pars_gh[2]
 
     def conv_moments(self, vhis, b, dv_obs):
@@ -309,8 +308,8 @@ class Decomp:
         mu0=np.sum(L_obs_nn, dtype=np.double)*dv_obs
         mu1=np.sum(b*L_obs_nn, dtype=np.double)*dv_obs
         mu2=np.sum((b**2)*L_obs_nn, dtype=np.double)*dv_obs
-        mu3=np.sum((b**3)*L_obs_nn, dtype=np.double)*dv_obs
-        mu4=np.sum((b**4)*L_obs_nn, dtype=np.double)*dv_obs
+#unused        mu3=np.sum((b**3)*L_obs_nn, dtype=np.double)*dv_obs
+#unused        mu4=np.sum((b**4)*L_obs_nn, dtype=np.double)*dv_obs
 
         v = mu1 / mu0
         s = np.sqrt(mu0 * mu2 - mu1 ** 2) / mu0
@@ -333,25 +332,24 @@ class Decomp:
 
         return mod_v[0, nkin], mod_sig[0, nkin]
 
-    def comps_aphist(self, w_dir, losvd_hist, comps, gal, conversion):
+    def comps_aphist(self, conversion):
         wdir = self.output_directory + 'figure_nn/'
-        n_orbs, bins, k_bins=losvd_hist.y.shape
+        n_orbs, bins, k_bins = self.losvd_histograms.y.shape
         #w = int(head1[0]) #bins
         #n = int(head1[1]) #apertures
-        histbinsize =losvd_hist.dx
+        histbinsize = self.losvd_histograms.dx
         self.logger.info(f'shape histbin: {histbinsize.shape}.')
 
         b = (np.arange(bins , dtype=float) - ((bins+1)/2)) * histbinsize
 
-        comps=['disk', 'thin_d', 'warm_d', 'bulge', 'all']
-        xedg=losvd_hist.xedg
-        losvd_orbs=losvd_hist.y
+        xedg = self.losvd_histograms.xedg
+        losvd_orbs = self.losvd_histograms.y
         self.logger.info(f'{losvd_orbs.shape = }.')
-        for k in range(len(comps)):
-            file=wdir+comps[k]+'_orb_s22.out'
+        for comp in self.comps:
+            file=wdir+comp+'_orb_s22.out'
             norbout, ener, i2, i3, regul, orbtype, orbw, lcut, ntot \
                 = self.plotter.readorbout(file)
-            norm_w=np.sum(orbw)
+            # norm_w=np.sum(orbw)
             #print('tot orb_weight', norm_w)
             orb_sel=norbout
             #print('selected orbs',len(orb_sel))
@@ -407,13 +405,13 @@ class Decomp:
                 v_calculate[i] = v_i
                 s_calculate[i] = sigma_i
 
-            file_o=wdir+comps[k]+'_vs_kinem_'+conversion+'.out'
+            file_o=wdir+comp+'_vs_kinem_'+conversion+'.out'
 
             with open(file_o, 'w') as outfile:
                 outfile.write(("%13.3f" % k_bins) + ("%8i" % 2 ) + '\n')
                 for i in range(0, k_bins):
                     if i==0:
-                        self.logger.info(f'{comps[k] = }, '
+                        self.logger.info(f'{comp = }, '
                                          f'{lsb[i] = }, '
                                          f'{v_calculate[i] = }, '
                                          f'{s_calculate[i] = }.')
@@ -424,8 +422,6 @@ class Decomp:
                                   ("%15.7f" % 0.0)  + ("%15.7f" % 0.0) + ("%15.7f" % 0.1) + '\n')
 
     def create_orbital_component_files_giu(self,
-                                           w_dir = None,
-                                           object = None,
                                            rootname = None,
                                            diri_o = None,
                                            ml_str = None,
@@ -446,7 +442,7 @@ class Decomp:
         if not xrange:
             xrange = [0.0, Rmax_arcs]
 
-        dir0  = wdir+ nn
+#unused        dir0  = wdir+ nn
         file4 = wdir+ nn + '_orb.out'
         file2 = wdir+ 'datfil/orblib.dat_orbclass.out'  #orbitlibraries
         file3 = wdir+ 'datfil/orblibbox.dat_orbclass.out'
@@ -461,8 +457,8 @@ class Decomp:
 
         norb = int(nre * nrth * nrrad)
 
-        nrow = norb
-        ncol = ndither ** 3
+#unused        nrow = norb
+#unused        ncol = ndither ** 3
         #print('norb', norb)
         orbclass1 = self.plotter.readorbclass(file=file2, nrow=norb, ncol=ndither ** 3)
         orbclass2 = self.plotter.readorbclass(file=file3, nrow=norb, ncol=ndither ** 3)
@@ -485,16 +481,16 @@ class Decomp:
 
         ## define circularity of each orbit [nditcher^3, norb]
         lz = (orbclass[2, :, :] / orbclass[3, :, :] / np.sqrt(orbclass[4, :, :]))  # lambda_z = lz/(r * Vrms)
-        lx = (orbclass[0, :, :] / orbclass[3, :, :] / np.sqrt(orbclass[4, :, :]))  # lambda_x = lx/(r * Vrms)
-        l = (np.sqrt(np.sum(orbclass[0:3, :, :] ** 2, axis=0)) / orbclass[3, :, :] / np.sqrt(orbclass[4, :, :]))
-        r = (orbclass[3, :, :] / conversion_factor)  # from km to kpc
+#unused        lx = (orbclass[0, :, :] / orbclass[3, :, :] / np.sqrt(orbclass[4, :, :]))  # lambda_x = lx/(r * Vrms)
+#unused        l = (np.sqrt(np.sum(orbclass[0:3, :, :] ** 2, axis=0)) / orbclass[3, :, :] / np.sqrt(orbclass[4, :, :]))
+#unused        r = (orbclass[3, :, :] / conversion_factor)  # from km to kpc
 
         # average values for the orbits in the same bundle (ndither^3).
         # Only include the orbits within Rmax_arcs
 
         rm = np.sum(orbclass[3, :, :] / conversion_factor, axis=0) / ndither ** 3
-        lzm = np.sum(np.abs(lz), axis=0) / ndither ** 3
-        lxm=np.sum(lx, axis=0) / ndither ** 3
+#unused        lzm = np.sum(np.abs(lz), axis=0) / ndither ** 3
+#unused        lxm=np.sum(lx, axis=0) / ndither ** 3
         #print("check 1", lzm, lxm)
         #s = np.ravel(np.where((rm > xrange[0]) & (rm < xrange[1])))
 
@@ -508,7 +504,7 @@ class Decomp:
 
 
         lzm_sign= np.sum(lz, axis=0) / ndither ** 3
-        lxm_sign= np.sum(lx, axis=0) / ndither ** 3
+#unused        lxm_sign= np.sum(lx, axis=0) / ndither ** 3
         #print("check 2 - sign", lzm_sign, lxm_sign)
 
         self.logger.info('**Create nn_orb.out for different bulk of orbits**')
@@ -610,9 +606,9 @@ class Decomp:
                               ("%8i" % orbtype[i])  + ("%13.5e" % orbw_allz[i]) +
                                   ("%13.5e" % lcut[i]) +'\n')
 
-        tot_orb=np.sum(orbw_hlz[orbw_hlz!=-999])+ np.sum(orbw_wlz[orbw_wlz!=-999])+np.sum(orbw_zlz[orbw_zlz!=-999])
-        tot_orb2=np.sum(orbw_zlz[orbw_zlz!=-999])+ np.sum(orbw_dlz[orbw_dlz!=-999])
-        tot_orb_tot=np.sum(orbw_allz)
+#unused        tot_orb=np.sum(orbw_hlz[orbw_hlz!=-999])+ np.sum(orbw_wlz[orbw_wlz!=-999])+np.sum(orbw_zlz[orbw_zlz!=-999])
+#unused        tot_orb2=np.sum(orbw_zlz[orbw_zlz!=-999])+ np.sum(orbw_dlz[orbw_dlz!=-999])
+#unused        tot_orb_tot=np.sum(orbw_allz)
         #print('*************************')
         #print('total flux 1 and 2 (disk+bulge), and total', tot_orb, tot_orb2, tot_orb_tot)
         #print('*************************')
@@ -636,15 +632,12 @@ class Decomp:
         return 1
 
     def plot_comps_giu(self,
-                       w_dir=None,
                        gal=None,
-                       rootname=None,
-                       savedata=True,
+                       # savedata=True,
                        xlim=None,
                        ylim=None,
-                       Re=None,
-                       conversion=None,
-                       ext=""):
+                       # Re=None,
+                       conversion=None):
 
 
         ap_file=gal+'_aperture.dat'
@@ -662,7 +655,7 @@ class Decomp:
         weight_file = wdir + 'thin_d_orb_s22.out'
         kinem_matrix = np.genfromtxt(kinem_file, skip_header=1)
         weight_matrix = np.genfromtxt(weight_file, skip_header=1)
-        id, flux, flux_thin, vel_thin, veld, dvel, sig_thin, sigd, dsig, h3_thin, h3d, dh3, h4_thin, h4d, dh4 = kinem_matrix.T
+        ident, flux, flux_thin, vel_thin, veld, dvel, sig_thin, sigd, dsig, h3_thin, h3d, dh3, h4_thin, h4d, dh4 = kinem_matrix.T
 
         n,n1,n2,n3,n0,nc,wthin,lcutw = weight_matrix.T
 
@@ -672,18 +665,16 @@ class Decomp:
         weight_file = wdir + 'warm_d_orb_s22.out'
         kinem_matrix = np.genfromtxt(kinem_file, skip_header=1)
         weight_matrix = np.genfromtxt(weight_file, skip_header=1)
-        id, flux, flux_thick, vel_thick, veld, dvel, sig_thick, sigd, dsig, h3_thick, h3d, dh3, h4_thick, h4d, dh4 = kinem_matrix.T
+        ident, flux, flux_thick, vel_thick, veld, dvel, sig_thick, sigd, dsig, h3_thick, h3d, dh3, h4_thick, h4d, dh4 = kinem_matrix.T
         n,n1,n2,n3,n0,nc,wthick,lcutthi = weight_matrix.T
 
 
        ### CC COMPONENT
         kinem_file = wdir + 'disk_vs_kinem_'+conversion+'.out'
         weight_file = wdir + 'disk_orb_s22.out'
-
-    #
         kinem_matrix = np.genfromtxt(kinem_file, skip_header=1)
         weight_matrix = np.genfromtxt(weight_file, skip_header=1)
-        id, flux, flux_disk, vel_disk, veld, dvel, sig_disk, sigd, dsig, h3_disk, h3d, dh3, h4_disk, h4d, dh4 = kinem_matrix.T
+        ident, flux, flux_disk, vel_disk, veld, dvel, sig_disk, sigd, dsig, h3_disk, h3d, dh3, h4_disk, h4d, dh4 = kinem_matrix.T
         n,n1,n2,n3,n0,nc,wdisk,lcutdisk = weight_matrix.T
         #print('disk flux', np.sum(flux_disk))
 
@@ -692,7 +683,7 @@ class Decomp:
         weight_file = wdir + 'bulge_orb_s22.out'
         kinem_matrix = np.genfromtxt(kinem_file, skip_header=1)
         weight_matrix = np.genfromtxt(weight_file, skip_header=1)
-        id, flux, flux_bulge, vel_bulge, veld, dvel, sig_bulge, sigd, dsig, h3_bulge, h3d, dh3, h4_bulge, h4d, dh4 = kinem_matrix.T
+        ident, flux, flux_bulge, vel_bulge, veld, dvel, sig_bulge, sigd, dsig, h3_bulge, h3d, dh3, h4_bulge, h4d, dh4 = kinem_matrix.T
         n,n1,n2,n3,n0,nc,wbulge,lcutbul = weight_matrix.T
         #print('bulge flux', np.sum(flux_bulge))
 
@@ -701,7 +692,7 @@ class Decomp:
         weight_file = wdir + 'all_orb_s22.out'
         kinem_matrix = np.genfromtxt(kinem_file, skip_header=1)
         weight_matrix = np.genfromtxt(weight_file, skip_header=1)
-        id, flux, flux_all, vel_all, veld, dvel, sig_all, sigd, dsig, h3_all, h3d, dh3, h4_all, h4d, dh4 = kinem_matrix.T
+        ident, flux, flux_all, vel_all, veld, dvel, sig_all, sigd, dsig, h3_all, h3d, dh3, h4_all, h4d, dh4 = kinem_matrix.T
         n,n1,n2,n3,n0,nc,wall,lcutal = weight_matrix.T
 
         ##############################################################
@@ -709,14 +700,14 @@ class Decomp:
         # The angle that is saved in this file is measured counter clock-wise
         # from the galaxy major axis to the X-axis of the input data.
         lines = [line.rstrip('\n').split() for line in open(wwdir + ap_file)]
-        strhead = lines[0]
+#unused        strhead = lines[0]
         minx =float(lines[1][0])
         miny = float(lines[1][1])
         sx = float(lines[2][0])
         sy = float(lines[2][1])
         #minx = -24.5; miny= -24.5#np.float(lines[1][0]); miny = np.float(lines[1][1])
         #sx=50;sy=50#sx = np.float(lines[2][0]); sy = np.float(lines[2][1])
-        maxx = sx + minx
+#unused        maxx = sx + minx
         sy = sy + miny
         angle_deg = float(lines[3][0])  # - 90.0 + 180
         nx = int(lines[4][0])
@@ -736,7 +727,7 @@ class Decomp:
         yi = np.outer((xr * 0 + 1), yc)
         yt = yi.T.flatten()
 
-        radeg = 57.2958
+#unused        radeg = 57.2958
         #print('PA: ', angle_deg)
         xi=xt
         yi=yt
@@ -782,8 +773,8 @@ class Decomp:
         flux_all= flux_all / fhist
 
 
-        tx = np.zeros((nx, ny), dtype=float)
-        ty = np.zeros((nx, ny), dtype=float)
+#unused        tx = np.zeros((nx, ny), dtype=float)
+#unused        ty = np.zeros((nx, ny), dtype=float)
 
         tthin  = flux_thin[grid]
         tthick = flux_thick[grid]
@@ -821,7 +812,7 @@ class Decomp:
         #tcw=tcw/totalf
         #flux = th +  tw + tz + tc
         flux = tthin +  tthick + tbulge
-        flux2= tdisk+tbulge
+#unused        flux2= tdisk+tbulge
         #print("luminosity fractions f_thin, f_thick, f_disk, f_bulge, tot1, tot2 (disk+bulge), all")
         #print(np.sum(th),  np.sum(tw), np.sum(tz), np.sum(tc),np.sum(thc),np.sum(tcw))
         #print(np.sum(tthin),  np.sum(tthick),np.sum(tdisk), np.sum(tbulge), np.sum(flux), np.sum(flux2), np.sum(tall))
@@ -834,7 +825,7 @@ class Decomp:
        #            outfile.write(("%10.4f" % xi[s[j]])  + ("%10.4f" % yi[s[j]]) +  ("%12.3e" % th[s[j]]) +
        #                          ("%12.3e" % tw[s[j]]) + ("%12.3e" % tz[s[j]]) + ("%12.3e" % tc[s[j]]) + '\n')
 
-        hho_all = [ 'thin_d','warm_d', 'disk','bulge','all']
+#unused        hho_all = [ 'thin_d','warm_d', 'disk','bulge','all']
 
 
         ### EVALUATE VMAX and SMAX and SMIN
@@ -950,14 +941,16 @@ class Decomp:
 
         return 1
 
-    def run_dec(self, gal, Re):
+    def run_dec(self, gal):
 
 
         figdir = self.output_directory + 'figure_nn/' # path to keep figures
-        best_fit = ascii.read(figdir + gal+'_best_fit.dat',
-                              data_start=0,
-                              guess=False,
-                              delimiter=' ') #file with the bestfit values (these are also the name of the folders where the orbit libraries are)
+
+        #file with the bestfit values (these are also the name of the folders where the orbit libraries are)
+        best_fit = astropy.io.ascii.read(figdir + gal+'_best_fit.dat',
+                                         data_start=0,
+                                         guess=False,
+                                         delimiter=' ')
         #print(best_fit[0][1])
         diri_o = str(best_fit[0][0]) # the subdirectory contains the best model
         ml_str = str(best_fit[0][1]) # the ml part of the best model
@@ -969,7 +962,7 @@ class Decomp:
         aph_bf=bf_dir+'/nn_aphist.out'
 
         head1 = np.genfromtxt(aph_bf, max_rows=1)
-        w = int(head1[0]) #bins
+#unused        w = int(head1[0]) #bins
         n_apertures = int(head1[1]) #apertures (kinematic bins)
 
         ocut = [0.8, 0.25,-0.25] #cuts in lambda_z for the components (as in Santucci+22)
@@ -993,7 +986,7 @@ class Decomp:
         self.logger.info(f'norbs = {n_orbs}')
 
         self.logger.info(f'losvd shape: {losvd_histograms.y.shape}')
-        self.create_orbital_component_files_giu(w_dir=self.model_directory, object=gal, rootname=rootname, diri_o=diri_o, ml_str = ml_str,
+        self.create_orbital_component_files_giu(rootname=rootname, diri_o=diri_o, ml_str = ml_str,
                           ocut=ocut, Rmax_arcs=Rmax_arcs, xrange=xrange) #create the files with the orbits selected for each components
 
         return losvd_histograms, projected_masses
