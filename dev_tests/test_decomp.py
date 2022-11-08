@@ -5,34 +5,20 @@
 # import astropy.io
 from dynamite.decomposition import Decomp
 
-# w_dir='/Users/z5178033/Downloads/' # the working directory where you have all the galaxy catalogue
-w_dir='../../Giulia/decomposition/'
+choice = input("Enter 1 for Giulia's galaxy, 2 for NGC6278: ")
+if choice == '1':
+    in_dir = out_dir = '../../Giulia/decomposition/41059DYN/'
+    model_dir = 'bh8.75dc1.15f0.90q0.36p0.990u0.9999/ml7.91/'
+elif choice == '2':
+    in_dir = 'NGC6278_input/'
+    out_dir = 'NGC6278_output/'
+    model_dir = 'orblib_000_000/ml1.00/'
+else:
+    raise ValueError("That's not 1 and not 2...")
 
-# gal_infos=astropy.io.ascii.read(w_dir+'SAMI_gals_cat.dat')
-# gals=gal_infos['CATAID']
-
-
-gal=41059
-print('DOING GALAXY ', gal)
-
-# i = np.where(gal_infos['CATAID'] == gal)[0][0]
-# Re=gal_infos['Re[arcs]'][i]
-
-#folder where you have the galaxies folders with the data
-# w_dir1='/Users/z5178033/Downloads/test_crcut/'
-w_dir1=w_dir
-
-#TIM START
-# #read the orbits and create the velocity histrogram
-# losvd_histograms, proj_mass=run_dec(str(gal), w_dir1, Re)
-# print('Orbits read')
-# comps=['disk', 'thin_d', 'warm_d', 'bulge', 'all']
-#TIM END
-gal = str(gal)
-decomp = Decomp(galaxy = gal,
-                input_directory = w_dir1 + gal + '/',
-                output_directory = w_dir1 + gal + '/')
-
+decomp = Decomp(input_directory = in_dir,
+                output_directory = out_dir,
+                model = model_dir)
 
 for conversion in ('gh_fit', 'losvd_vsig', 'fortran', 'moments'):
     #select the components and calculate the kinematics for each
@@ -40,6 +26,6 @@ for conversion in ('gh_fit', 'losvd_vsig', 'fortran', 'moments'):
     decomp.comps_aphist(conversion)
     print('Components done')
     #plot the kinematics
-    decomp.plot_comps_giu(gal=gal, xlim=15, ylim=15, conversion=conversion)
+    decomp.plot_comps_giu(xlim=15, ylim=15, conversion=conversion)
     print('Plots done')
 print('**************************')
