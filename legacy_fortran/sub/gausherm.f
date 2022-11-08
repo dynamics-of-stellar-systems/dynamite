@@ -14,6 +14,8 @@ CCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCC
 C
       IMPLICIT REAL*8 (a-h,o-z)
       IMPLICIT INTEGER*4 (i-n)
+Cf2py intent(in) vm, sg, veltemp, Nvhist, Nvmax, dvhist, Nhermmax, gamm, ingam
+Cf2py intent(out) hh
 C
       PARAMETER (pi = 3.14159265358979323846D0)
 C
@@ -23,7 +25,6 @@ CCCCCCCCCCCCCCCCCCCC
 C
 C Initialize
 C
- 
       DO l=0,Nhermmax
         hh(l) = 0.0D0
       END DO
@@ -170,6 +171,8 @@ CCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCC
 C
       IMPLICIT REAL*8 (a-h,o-z)
       IMPLICIT INTEGER*4 (i-n) 
+Cf2py intent(in) veltemp, Nvhist, Nvmax, dvhist, NMC
+Cf2py intent(out) gam, vm, sg, h12
 C
       PARAMETER (eps = 1.0D-10    ,
      &           Nhistmax = 10000 )
@@ -451,6 +454,7 @@ C
         WRITE (*,*) 'Redraw', Ndraw
         GOTO 51
       END IF
+
 C
       END
 

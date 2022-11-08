@@ -14,7 +14,7 @@ with open("requirements.txt", "r") as fp:
     required = fp.read().splitlines()
 
 ext = numpy.distutils.core.Extension(name='dynamite.pyfort_GaussHerm',
-                 sources=['dynamite/pygausherm.f'],
+                 sources=['legacy_fortran/sub/gausherm.f'],
                  f2py_options=['--quiet'],
                 )
 
