@@ -37,17 +37,17 @@ class Plotter():
     def __init__(self, config=None):
         self.logger = logging.getLogger(f'{__name__}.{__class__.__name__}')
         if config is None:
-            text = f'{__class__.__name__} instantiated WITHOUT ' \
-                   'configuration object, only utility methods available!'
-            self.logger.info(text)
-        else:
-            self.config = config
-            self.system = config.system
-            self.settings = config.settings
-            self.all_models = config.all_models
-            self.input_directory=config.settings.io_settings['input_directory']
-            self.plotdir = config.settings.io_settings['plot_directory']
-            self.modeldir = config.settings.io_settings['model_directory']
+            text = f'{__class__.__name__} needs configuration object, ' \
+                   'None provided.'
+            self.logger.error(text)
+            raise ValueError(text)
+        self.config = config
+        self.system = config.system
+        self.settings = config.settings
+        self.all_models = config.all_models
+        self.input_directory = config.settings.io_settings['input_directory']
+        self.plotdir = config.settings.io_settings['plot_directory']
+        self.modeldir = config.settings.io_settings['model_directory']
 
     def make_chi2_vs_model_id_plot(self, which_chi2=None, figtype=None):
         """
