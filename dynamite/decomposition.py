@@ -12,44 +12,32 @@ from dynamite import pyfort_GaussHerm
 #from matplotlib.patches import Ellipse
 
 class Decomp:
-    def __init__(self,
-                 input_directory = None,
-                 output_directory = None,
-                 model = None):
-        dyn.config_reader.DynamiteLogging(logfile='Decomposition')
+    def __init__(self, config=None):
         self.logger = logging.getLogger(f'{__name__}.{__class__.__name__}')
-        self.input_directory = input_directory
-        self.output_directory = output_directory
-        self.plotter = dyn.plotter.Plotter()
+        if config is None:
+            text = f'{__class__.__name__} needs configuration object, ' \
+                   'None provided.'
+            self.logger.error(text)
+            raise ValueError(text)
+        self.config = config
+        # Select the best model for decomposition
+        best_model_idx = config.all_models.get_best_n_models_idx(n=1)[0]
+        self.model = config.all_models.get_model_from_row(best_model_idx)
+        self.results_directory = \
+            config.settings.io_settings['output_directory'] + 'figure_nn/'
+        if not os.path.exists(self.results_directory):
+            os.makedirs(self.results_directory)
+            self.logger.debug(f'Created directory {self.results_directory}')
+        else:
+            self.logger.debug('Using existing directory '
+                              f'{self.results_directory}')
+        self.plotter = dyn.plotter.Plotter(config=self.config)
         #read the orbits and create the velocity histogram
-        if model[-1] != '/':
-            model += '/'
-        self.losvd_histograms, self.proj_mass = self.run_dec(model_dir=model)
+        # if model[-1] != '/':
+        #     model += '/'
+        self.losvd_histograms, self.proj_mass = self.run_dec()
         self.logger.info('Orbits read and velocity histogram created.')
         self.comps = ['disk', 'thin_d', 'warm_d', 'bulge', 'all']
-
-    def scale_factor_find(self, ml_dir):
-        # NOTE: this docstring is WRONG! While the original ``ml`` is indeed
-        #       given in the first entry of 9th from bottom line of the file
-        #       ``infil/parameters_pot.in``, this method returns the
-        #       SCALE FACTOR =  sqrt( (M/L)_k / (M/L)_ref ) which is in the
-        #       4th-to-last line of the file nn.in
-        """Get ``ml`` of original orblib with shared parameters
-
-        The original ``ml`` is required to rescale orbit libraries for rescaled
-        potentials. This method reads it from the first entry of 9th from bottom
-        line of the file ``infil/parameters_pot.in``
-
-        Returns
-        -------
-        float
-            the original ``ml``
-
-        """
-        infile = ml_dir + '/nn.in'
-        lines = [line.rstrip('\n').split() for line in open(infile)]
-        scale_factor = float((lines[-4])[0])
-        return scale_factor
 
     def gaussfunc_gh(self, paramsin,x):
         amp=paramsin['amp'].value
@@ -67,7 +55,7 @@ class Decomp:
 
         return gaustot_gh
 
-    def read_orbit_base(self, wdir, fileroot, n_apertures):
+    def read_orbit_base(self, fileroot, n_apertures):
         #NOTE: similar yet different compared to same-named method in orblib.py!
         """
         Read orbit library from file datfil/{fileroot}.dat.bz2'
@@ -84,7 +72,7 @@ class Decomp:
 
         """
         cur_dir = os.getcwd()
-        os.chdir(wdir)
+        os.chdir(self.model.directory_noml)
         # unzip orblib to a temproary file with ml value attached
         # ml value is needed to prevent different processes clashing
 
@@ -218,7 +206,7 @@ class Decomp:
                                               normalise=False)
         return new_orblib
 
-    def read_losvd_histograms(self, wdir, n_apertures, scale_factor):
+    def read_losvd_histograms(self, n_apertures):
         #NOTE: similar yet different compared to same-named method in orblib.py!
         """Read the orbit library
 
@@ -237,11 +225,13 @@ class Decomp:
             -   ``self.n_orbs``: number of orbits in the orbit library
 
         """
+        scale_factor = \
+            self.config.all_models.get_model_velocity_scaling_factor(
+                model=self.model)
         # TODO: check if this ordering is compatible with weights read in by
         # LegacyWeightSolver.read_weights
         self.logger.info('Reading tube orbits')
-        tube_orblib, tube_density_3D = self.read_orbit_base(wdir,
-                                                            'orblib',
+        tube_orblib, tube_density_3D = self.read_orbit_base('orblib',
                                                             n_apertures)
         # tube orbits are mirrored/flipped and used twice
         self.logger.info('Duplicating tube orbits')
@@ -250,8 +240,7 @@ class Decomp:
         tube_density_3D = np.repeat(tube_density_3D, 2, axis=0)
         # read box orbits
         self.logger.info('Reading box orbits')
-        box_orblib, box_density_3D = self.read_orbit_base(wdir,
-                                                          'orblibbox',
+        box_orblib, box_density_3D = self.read_orbit_base('orblibbox',
                                                           n_apertures)
         # combine orblibs
         self.logger.info('Combining orbits')
@@ -334,7 +323,7 @@ class Decomp:
         return mod_v[0, nkin], mod_sig[0, nkin]
 
     def comps_aphist(self, conversion):
-        wdir = self.output_directory + 'figure_nn/'
+        wdir = self.results_directory
         n_orbs, bins, k_bins = self.losvd_histograms.y.shape
         #w = int(head1[0]) #bins
         #n = int(head1[1]) #apertures
@@ -368,7 +357,6 @@ class Decomp:
                     #if check==1:print('check orbit taken',losvd[orb,:,0],losvd[orb,:,1])
                 else:
                     for i in range(losvd.shape[1]):
-
                         losvd[orb,i,:]=0.0
                 check+=1
 
@@ -424,7 +412,6 @@ class Decomp:
 
     def create_orbital_component_files_giu(self,
                                            rootname = None,
-                                           model_dir = None,
                                            ocut=None,
                                            Rmax_arcs=None,
                                            xrange=None):
@@ -433,20 +420,16 @@ class Decomp:
             ocut = [0.8, 0.25, -0.25]  #selection in lambda_z following Santucci+22
         self.logger.info(f'cut lines are: {ocut}.')
 
-        # nn = ml_str + '/nn' + rootname
-        # wdir = w_dir + object + '/' + diri_o + '/' #bestfit folder
-        orblib_dir = model_dir[:model_dir[:-1].rindex('/')+1]
-        # savedir=w_dir+object+'/figure_nn/' #where to save the diles
-        savedir = self.output_directory + 'figure_nn/' #where to save the files
+        savedir = self.results_directory #where to save the files
 
         if not xrange:
             xrange = [0.0, Rmax_arcs]
 
 #unused        dir0  = wdir+ nn
         # file4 = wdir+ nn + '_orb.out'
-        file4 = model_dir + 'nn_orb.out'
-        file2 = orblib_dir+ 'datfil/orblib.dat_orbclass.out'  #orbitlibraries
-        file3 = orblib_dir+ 'datfil/orblibbox.dat_orbclass.out'
+        file4 = self.model.directory + 'nn_orb.out'
+        file2 = self.model.directory_noml + 'datfil/orblib.dat_orbclass.out'  #orbitlibraries
+        file3 = self.model.directory_noml + 'datfil/orblibbox.dat_orbclass.out'
         file3_test = os.path.isfile(file3)
         if not file3_test:
             file3= '%s' % file2
@@ -454,7 +437,7 @@ class Decomp:
         mgepar, distance, th_view, ph_view, psi_view, ml, bhmass,softlen, \
             nre, lrmin, lrmax, nrth, nrrad, ndither, vv1_1, vv1_2,dm1,dm2, \
             conversion_factor,grav_const_km,parsec_km, rho_crit \
-            = self.plotter.triaxreadparameters(w_dir=orblib_dir)
+            = self.plotter.triaxreadparameters(w_dir=self.model.directory_noml)
 
         norb = int(nre * nrth * nrrad)
 
@@ -635,7 +618,7 @@ class Decomp:
                        conversion=None):
 
 
-        wdir = self.output_directory + 'figure_nn/'
+        wdir = self.results_directory
 
         #READING KINEMATIC DATA GENERATED BY triax_makevs_from_aphist
         ##############################################################
@@ -689,12 +672,14 @@ class Decomp:
             h3_all, h3d, dh3, h4_all, h4d, dh4 = kinem_matrix.T
         n,n1,n2,n3,n0,nc,wall,lcutal = weight_matrix.T
 
+        input_directory = self.config.settings.io_settings['input_directory']
+
         ##############################################################
         # Read aperture1.dat
         # The angle that is saved in this file is measured counter clock-wise
         # from the galaxy major axis to the X-axis of the input data.
         lines = [line.rstrip('\n').split()
-                 for line in open(self.input_directory + 'aperture.dat')]
+                 for line in open(input_directory + 'aperture.dat')]
 #unused        strhead = lines[0]
         minx =float(lines[1][0])
         miny = float(lines[1][1])
@@ -724,7 +709,7 @@ class Decomp:
         ##############################################################
         # Read bins1.dat
         lines_bins = [line.rstrip('\n').split()
-                      for line in open(self.input_directory + 'bins.dat')]
+                      for line in open(input_directory + 'bins.dat')]
         i = 0
         str_head = []
         i_var = []
@@ -970,18 +955,11 @@ class Decomp:
         plt.savefig(figfile)
         plt.close()
 
-    def run_dec(self, model_dir):
-
-        model_dir = self.output_directory + 'models/' + model_dir
-        orblib_dir = model_dir[:model_dir[:-1].rindex('/')+1]
-        self.logger.info(f'{model_dir=}, {orblib_dir=}.')
+    def run_dec(self):
 
         rootname=''
-        # wdir = self.model_directory + orblib_dir
-        # bf_dir=wdir+ml_str
-        # aph_bf=bf_dir+'/nn_aphist.out'
 
-        head1 = np.genfromtxt(model_dir+'nn_aphist.out', max_rows=1)
+        head1 = np.genfromtxt(self.model.directory+'nn_aphist.out', max_rows=1)
 #unused        w = int(head1[0]) #bins
         n_apertures = int(head1[1]) #apertures (kinematic bins)
 
@@ -990,17 +968,17 @@ class Decomp:
         Rmax_arcs=15#gal_infos['Rmax[arcsec]'][i]
         xrange = None
 
-        scale_factor = self.scale_factor_find(model_dir) #read the scale factor used to rescale the orbits
-
         losvd_histograms, intrinsic_masses, n_orbs, projected_masses = \
-            self.read_losvd_histograms(orblib_dir, n_apertures, scale_factor)  #read the losvd of the orbits
+            self.read_losvd_histograms(n_apertures)  #read the losvd of the orbits
         #print('losvd_histograms, intrinsic_masses, n_orbs, projected_masses')
         #print(losvd_histograms, intrinsic_masses, n_orbs, projected_masses)
 
         self.logger.info(f'norbs = {n_orbs}')
 
         self.logger.info(f'losvd shape: {losvd_histograms.y.shape}')
-        self.create_orbital_component_files_giu(rootname=rootname, model_dir=model_dir,
-                          ocut=ocut, Rmax_arcs=Rmax_arcs, xrange=xrange) #create the files with the orbits selected for each components
+        self.create_orbital_component_files_giu(rootname=rootname,
+                                                ocut=ocut,
+                                                Rmax_arcs=Rmax_arcs,
+                                                xrange=xrange) #create the files with the orbits selected for each components
 
         return losvd_histograms, projected_masses

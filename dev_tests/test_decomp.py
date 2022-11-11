@@ -3,22 +3,15 @@
 
 # import numpy as np
 # import astropy.io
-from dynamite.decomposition import Decomp
+import dynamite as dyn
 
-choice = input("Enter 1 for Giulia's galaxy, 2 for NGC6278: ")
-if choice == '1':
-    in_dir = out_dir = '../../Giulia/decomposition/41059DYN/'
-    model_dir = 'bh8.75dc1.15f0.90q0.36p0.990u0.9999/ml7.91/'
-elif choice == '2':
-    in_dir = 'NGC6278_input/'
-    out_dir = 'NGC6278_output/'
-    model_dir = 'orblib_000_000/ml1.00/'
-else:
-    raise ValueError("That's not 1 and not 2...")
+fname = 'user_test_config_ml.yaml'
+c = dyn.config_reader.Configuration(fname,
+                                    reset_logging=True,
+                                    user_logfile='test_decomp',
+                                    reset_existing_output=False)
 
-decomp = Decomp(input_directory = in_dir,
-                output_directory = out_dir,
-                model = model_dir)
+decomp = dyn.decomposition.Decomp(c)
 
 for conversion in ('gh_fit', 'losvd_vsig', 'fortran', 'moments'):
     #select the components and calculate the kinematics for each
@@ -28,4 +21,3 @@ for conversion in ('gh_fit', 'losvd_vsig', 'fortran', 'moments'):
     #plot the kinematics
     decomp.plot_comps_giu(xlim=15, ylim=15, conversion=conversion)
     print('Plots done')
-print('**************************')
