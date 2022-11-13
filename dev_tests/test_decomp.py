@@ -11,9 +11,10 @@ c = dyn.config_reader.Configuration(fname,
                                     user_logfile='test_decomp',
                                     reset_existing_output=False)
 
-decomp = dyn.decomposition.Decomp(c)
+decomp = dyn.decomposition.Decomp(c,read_orblib='decomp')
 
-for conversion in ('gh_fit', 'losvd_vsig', 'fortran', 'moments'):
+# for conversion in ('gh_fit', 'losvd_vsig', 'fortran', 'moments'):
+for conversion in ('losvd_vsig', 'gh_fit', 'fortran', 'moments'):
     #select the components and calculate the kinematics for each
     #(this is done with the selection used in Santucci+22)
     decomp.comps_aphist(conversion)

@@ -12,7 +12,7 @@ from dynamite import pyfort_GaussHerm
 #from matplotlib.patches import Ellipse
 
 class Decomp:
-    def __init__(self, config=None):
+    def __init__(self, config=None, read_orblib='dynamite'):
         self.logger = logging.getLogger(f'{__name__}.{__class__.__name__}')
         if config is None:
             text = f'{__class__.__name__} needs configuration object, ' \
@@ -35,7 +35,7 @@ class Decomp:
         #read the orbits and create the velocity histogram
         # if model[-1] != '/':
         #     model += '/'
-        self.losvd_histograms, self.proj_mass = self.run_dec()
+        self.losvd_histograms, self.proj_mass = self.run_dec(read_orblib)
         self.logger.info('Orbits read and velocity histogram created.')
         self.comps = ['disk', 'thin_d', 'warm_d', 'bulge', 'all']
 
@@ -255,21 +255,6 @@ class Decomp:
         n_orbs = losvd_histograms.y.shape[0]
         projected_masses = np.sum(losvd_histograms.y, 1)
         return losvd_histograms, intrinsic_masses, n_orbs, projected_masses
-
-#TIM START
-    # def read_free_file(input_file, n_head_element, n_row, n_column):
-    #     arr_out=[]
-    #     with open(input_file) as f:
-    #         for line in f:
-    #             for x in line.split():
-    #                 arr_out.append(float(x))
-    #     del arr_out[0:n_head_element]
-    #     #print(len(arr_out))
-    #     arr_out=np.reshape(arr_out, (n_row, n_column))
-    #     #print(arr_out)
-    #     #print(arr_out.shape)
-    #     return arr_out
-#TIM END
 
     def conv_gh_fit(self, vhist, b):
         p_gh=Parameters()
@@ -850,7 +835,7 @@ class Decomp:
                     ("%12.3e" % sig_bulge[grid[s[j]]])+
                     ("%12.3e" % sig_all[grid[s[j]]]) +'\n')
 
-        # print ('VMAX, SMAX, SMIN are:', vmax, smax, smin)
+        self.logger.info(f'{conversion}: {vmax=}, {smax=}, {smin=}.')
         # print(np.max(th),np.min(th),np.max(tw),np.min(tw),np.max(tz),
         #       np.min(tz),np.max(tc),np.min(tc))
 
@@ -955,7 +940,7 @@ class Decomp:
         plt.savefig(figfile)
         plt.close()
 
-    def run_dec(self):
+    def run_dec(self, read_orblib):
 
         rootname=''
 
@@ -968,10 +953,21 @@ class Decomp:
         Rmax_arcs=15#gal_infos['Rmax[arcsec]'][i]
         xrange = None
 
-        losvd_histograms, intrinsic_masses, n_orbs, projected_masses = \
-            self.read_losvd_histograms(n_apertures)  #read the losvd of the orbits
-        #print('losvd_histograms, intrinsic_masses, n_orbs, projected_masses')
-        #print(losvd_histograms, intrinsic_masses, n_orbs, projected_masses)
+        if read_orblib == 'decomp':
+            losvd_histograms, intrinsic_masses, n_orbs, projected_masses = \
+                self.read_losvd_histograms(n_apertures)  #read the losvd of the orbits
+        elif read_orblib == 'dynamite':
+            orblib = self.model.get_orblib()
+            orblib.read_losvd_histograms()
+            losvd_histograms, intrinsic_masses, n_orbs, projected_masses = \
+                orblib.losvd_histograms[0], orblib.intrinsic_masses, \
+                orblib.n_orbs, orblib.projected_masses[0]
+        else:
+            raise ValueError('Unknown mode, specify dynamite or decomp.')
+        self.logger.info(f'losvd_histograms: {type(losvd_histograms)}, '
+                         f'intrinsic_masses: {type(intrinsic_masses)}, '
+                         f'n_orbs: {type(n_orbs)}, '
+                         f'projected_masses: {type(projected_masses)}.')
 
         self.logger.info(f'norbs = {n_orbs}')
 
