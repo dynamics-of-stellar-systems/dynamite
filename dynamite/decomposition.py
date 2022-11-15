@@ -32,12 +32,18 @@ class Decomp:
             self.logger.debug('Using existing directory '
                               f'{self.results_directory}')
         self.plotter = dyn.plotter.Plotter(config=self.config)
-        #read the orbits and create the velocity histogram
-        # if model[-1] != '/':
-        #     model += '/'
         self.losvd_histograms, self.proj_mass = self.run_dec(read_orblib)
         self.logger.info('Orbits read and velocity histogram created.')
         self.comps = ['disk', 'thin_d', 'warm_d', 'bulge', 'all']
+        # #diag start
+        # with open(self.results_directory + 'losvd.out', 'w') as f:
+        #     f.write(f'{self.losvd_histograms=}\n'
+        #             f'{self.losvd_histograms.y.shape=}\n'
+        #             f'{self.losvd_histograms.dx=}\n'
+        #             f'{self.losvd_histograms.xedg=}\n'
+        #             f'{list(self.losvd_histograms.y.flatten())=}\n'
+        #             f'{list(self.proj_mass.flatten())=}')
+        # #diag end
 
     def gaussfunc_gh(self, paramsin,x):
         amp=paramsin['amp'].value
@@ -351,14 +357,28 @@ class Decomp:
             lsb = np.zeros(k_bins, dtype=float)
 
             #not calculating h3 and h4 at the moment
-
+            self.logger.info(f'{conversion=}')
             for i in range(0, k_bins):
                 vhis = losvd[:, i] #losvd for each kinematic bin
+                # #diag start
+                # if i==0 or True:
+                #     with open(wdir+'vhis.out', 'a') as f:
+                #         f.write(f'{vhis}')
+                #     with open(wdir+'b.out', 'a') as f:
+                #         f.write(f'{b}')
+                # #diag end
                 dv_obs= (np.max(b)-np.min(b))/np.double(len(b))
 
                 if conversion=='gh_fit':
                     #other options are 'losvd_vsig', 'fortran', 'moments'
                     v_i, sigma_i = self.conv_gh_fit(vhis, b)
+                    # #diag start
+                    # if i==0 or True:
+                    #     with open(wdir+'v_i.out', 'a') as f:
+                    #         f.write(f'{v_i}')
+                    #     with open(wdir+'sigma_i.out', 'a') as f:
+                    #         f.write(f'{sigma_i}')
+                    # #diag end
 
                 if conversion=='losvd_vsig':
 
@@ -972,9 +992,10 @@ class Decomp:
         self.logger.info(f'norbs = {n_orbs}')
 
         self.logger.info(f'losvd shape: {losvd_histograms.y.shape}')
+        #create the files with the orbits selected for each components
         self.create_orbital_component_files_giu(rootname=rootname,
                                                 ocut=ocut,
                                                 Rmax_arcs=Rmax_arcs,
-                                                xrange=xrange) #create the files with the orbits selected for each components
+                                                xrange=xrange)
 
         return losvd_histograms, projected_masses
