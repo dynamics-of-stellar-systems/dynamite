@@ -416,7 +416,6 @@ class Decomp:
                                   ("%15.7f" % 0.0)  + ("%15.7f" % 0.0) + ("%15.7f" % 0.1) + '\n')
 
     def create_orbital_component_files_giu(self,
-                                           rootname = None,
                                            ocut=None,
                                            Rmax_arcs=None,
                                            xrange=None):
@@ -962,8 +961,6 @@ class Decomp:
 
     def run_dec(self, read_orblib):
 
-        rootname=''
-
         head1 = np.genfromtxt(self.model.directory+'nn_aphist.out', max_rows=1)
 #unused        w = int(head1[0]) #bins
         n_apertures = int(head1[1]) #apertures (kinematic bins)
@@ -993,8 +990,7 @@ class Decomp:
 
         self.logger.info(f'losvd shape: {losvd_histograms.y.shape}')
         #create the files with the orbits selected for each components
-        self.create_orbital_component_files_giu(rootname=rootname,
-                                                ocut=ocut,
+        self.create_orbital_component_files_giu(ocut=ocut,
                                                 Rmax_arcs=Rmax_arcs,
                                                 xrange=xrange)
 
