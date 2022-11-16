@@ -58,10 +58,9 @@ class Decomp:
         kurt=paramsin['kurt'].value
         g=(x-center)/sig
         gaustot_gh=amp*np.exp(-.5*g**2)*(1+skew*(c1*g+c3*g**3)+ kurt*(c5+c2*g**2+c4*(g**4)))
-
         return gaustot_gh
 
-    def read_orbit_base(self, fileroot, n_apertures):
+    def read_orbit_base(self, fileroot):
         #NOTE: similar yet different compared to same-named method in orblib.py!
         """
         Read orbit library from file datfil/{fileroot}.dat.bz2'
@@ -212,7 +211,7 @@ class Decomp:
                                               normalise=False)
         return new_orblib
 
-    def read_losvd_histograms(self, n_apertures):
+    def read_losvd_histograms(self):
         #NOTE: similar yet different compared to same-named method in orblib.py!
         """Read the orbit library
 
@@ -237,8 +236,7 @@ class Decomp:
         # TODO: check if this ordering is compatible with weights read in by
         # LegacyWeightSolver.read_weights
         self.logger.info('Reading tube orbits')
-        tube_orblib, tube_density_3D = self.read_orbit_base('orblib',
-                                                            n_apertures)
+        tube_orblib, tube_density_3D = self.read_orbit_base('orblib')
         # tube orbits are mirrored/flipped and used twice
         self.logger.info('Duplicating tube orbits')
         tube_orblib = self.duplicate_flip_and_interlace_orblib(tube_orblib)
@@ -246,8 +244,7 @@ class Decomp:
         tube_density_3D = np.repeat(tube_density_3D, 2, axis=0)
         # read box orbits
         self.logger.info('Reading box orbits')
-        box_orblib, box_density_3D = self.read_orbit_base('orblibbox',
-                                                          n_apertures)
+        box_orblib, box_density_3D = self.read_orbit_base('orblibbox')
         # combine orblibs
         self.logger.info('Combining orbits')
         orblib = self.combine_orblibs(tube_orblib, box_orblib)
@@ -284,7 +281,7 @@ class Decomp:
         return pars_gh[1], pars_gh[2]
 
     def conv_moments(self, vhis, b, dv_obs):
-        L_obs_nn = a=np.where(vhis > 0, vhis, 0.0)
+        L_obs_nn = np.where(vhis > 0, vhis, 0.0)
 
         mu0=np.sum(L_obs_nn, dtype=np.double)*dv_obs
         mu1=np.sum(b*L_obs_nn, dtype=np.double)*dv_obs
@@ -299,18 +296,12 @@ class Decomp:
     def conv_fortran(self, vhis,histbinsize,wbin):
         gamm, vmi, sgi, chi2 = pyfort_GaussHerm.gaussfit(veltemp=vhis,
                 nvhist=wbin, nvmax=wbin, dvhist=histbinsize, nmc=10)
-        HH = pyfort_GaussHerm.getgauher(vm=vmi, sg=sgi, veltemp=vhis,
-                nvhist=wbin, nvmax=wbin, dvhist=histbinsize, nhermmax=4,
-                gam=1.0, ingam=1)
-
         return vmi, sgi
 
     def conv_losvd(self, orblib, nkin,xedg):
-
         mod_losvd = dyn.kinematics.Histogram(y=orblib[np.newaxis,:,:], xedg=xedg)
         mod_v = mod_losvd.get_mean()
         mod_sig = mod_losvd.get_sigma()
-
         return mod_v[0, nkin], mod_sig[0, nkin]
 
     def comps_aphist(self, conversion):
@@ -392,7 +383,7 @@ class Decomp:
                 if conversion=='moments':
                     v_i, sigma_i = self.conv_moments(vhis, b, dv_obs)
 
-                L_obs_nn = a=np.where(vhis > 0, vhis, 0.0)
+                L_obs_nn = np.where(vhis > 0, vhis, 0.0)
                 mu0=np.sum(L_obs_nn, dtype=np.double)*dv_obs
 
                 lsb[i] = mu0
@@ -429,8 +420,6 @@ class Decomp:
         if not xrange:
             xrange = [0.0, Rmax_arcs]
 
-#unused        dir0  = wdir+ nn
-        # file4 = wdir+ nn + '_orb.out'
         file4 = self.model.directory + 'nn_orb.out'
         file2 = self.model.directory_noml + 'datfil/orblib.dat_orbclass.out'  #orbitlibraries
         file3 = self.model.directory_noml + 'datfil/orblibbox.dat_orbclass.out'
@@ -541,7 +530,6 @@ class Decomp:
                               ("%8i" % orbtype[i])  + ("%13.5e" % orbw_wlz[i]) +
                                   ("%13.5e" % lcut[i]) +'\n')
 
-
         ### HOT_noCR COMPONENT
         zlz= np.ravel(np.where((((lzm_sign) > ocut[2])) & ((lzm_sign)< ocut[1])))
 
@@ -559,7 +547,6 @@ class Decomp:
                               ("%8i" % i3[i]) + ("%8i" % regul[i])  +
                               ("%8i" % orbtype[i])  + ("%13.5e" % orbw_zlz[i]) +
                                   ("%13.5e" % lcut[i]) +'\n')
-
 
      ### DISK COMPONENT
         dlz= np.ravel(np.where(((lzm_sign)> ocut[1])))
@@ -580,7 +567,6 @@ class Decomp:
                                   ("%13.5e" % lcut[i]) +'\n')
 
       ### Whole COMPONENT
-
         orbw_allz = np.copy(orbw)
 
         self.logger.info(f'check 3 - whole comp: {len(orbw_allz)}.')
@@ -961,10 +947,6 @@ class Decomp:
 
     def run_dec(self, read_orblib):
 
-        head1 = np.genfromtxt(self.model.directory+'nn_aphist.out', max_rows=1)
-#unused        w = int(head1[0]) #bins
-        n_apertures = int(head1[1]) #apertures (kinematic bins)
-
         ocut = [0.8, 0.25,-0.25] #cuts in lambda_z for the components (as in Santucci+22)
 
         Rmax_arcs=15#gal_infos['Rmax[arcsec]'][i]
@@ -972,7 +954,7 @@ class Decomp:
 
         if read_orblib == 'decomp':
             losvd_histograms, intrinsic_masses, n_orbs, projected_masses = \
-                self.read_losvd_histograms(n_apertures)  #read the losvd of the orbits
+                self.read_losvd_histograms()  #read the losvd of the orbits
         elif read_orblib == 'dynamite':
             orblib = self.model.get_orblib()
             orblib.read_losvd_histograms()
@@ -993,5 +975,4 @@ class Decomp:
         self.create_orbital_component_files_giu(ocut=ocut,
                                                 Rmax_arcs=Rmax_arcs,
                                                 xrange=xrange)
-
         return losvd_histograms, projected_masses
