@@ -11,14 +11,13 @@ c = dyn.config_reader.Configuration(fname,
                                     user_logfile='test_decomp',
                                     reset_existing_output=False)
 
-decomp = dyn.decomposition.Decomp(c,read_orblib='decomp')
+decomp = dyn.decomposition.Decomp(c,read_orblib='dynamite')
 
-# for conversion in ('gh_fit', 'losvd_vsig', 'fortran', 'moments'):
-for conversion in ('losvd_vsig', 'gh_fit', 'fortran', 'moments'):
+for conversion in ('gh_fit_with_free_v_sigma_params',
+                   'gh_expand_around_losvd_mean_and_std_deviation',
+                   'gh_fit_with_free_v_sigma_params_fortran', 'moments'):
+#for conversion in ('gh_fit_with_free_v_sigma_params',):
     #select the components and calculate the kinematics for each
     #(this is done with the selection used in Santucci+22)
-    decomp.comps_aphist(conversion)
-    print('Components done')
-    #plot the kinematics
-    decomp.plot_comps_giu(xlim=15, ylim=15, conversion=conversion)
-    print('Plots done')
+    #and plot the kinematics
+    decomp.plot_decomp(xlim=15, ylim=15, conversion=conversion)

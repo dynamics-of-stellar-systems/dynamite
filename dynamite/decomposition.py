@@ -35,6 +35,10 @@ class Decomp:
         self.losvd_histograms, self.proj_mass = self.run_dec(read_orblib)
         self.logger.info('Orbits read and velocity histogram created.')
         self.comps = ['disk', 'thin_d', 'warm_d', 'bulge', 'all']
+        self.conversions = ['gh_fit_with_free_v_sigma_params',
+                           'gh_expand_around_losvd_mean_and_std_deviation',
+                           'gh_fit_with_free_v_sigma_params_fortran',
+                           'moments']
         # #diag start
         # with open(self.results_directory + 'losvd.out', 'w') as f:
         #     f.write(f'{self.losvd_histograms=}\n'
@@ -44,6 +48,12 @@ class Decomp:
         #             f'{list(self.losvd_histograms.y.flatten())=}\n'
         #             f'{list(self.proj_mass.flatten())=}')
         # #diag end
+
+    def plot_decomp(self,xlim, ylim, conversion):
+        self.comps_aphist(conversion)
+        self.logger.info('Components done')
+        self.plot_comps_giu(xlim=xlim, ylim=ylim, conversion=conversion)
+        self.logger.info('Plots done')
 
     def gaussfunc_gh(self, paramsin,x):
         amp=paramsin['amp'].value
@@ -259,7 +269,7 @@ class Decomp:
         projected_masses = np.sum(losvd_histograms.y, 1)
         return losvd_histograms, intrinsic_masses, n_orbs, projected_masses
 
-    def conv_gh_fit(self, vhist, b):
+    def gh_fit_with_free_v_sigma_params(self, vhist, b):
         p_gh=Parameters()
         p_gh.add('amp',value=np.max(vhist),vary=True)
         p_gh.add('center',value=np.percentile(b, 50),min=np.min(b),max=np.max(b))
@@ -293,18 +303,23 @@ class Decomp:
         s = np.sqrt(mu0 * mu2 - mu1 ** 2) / mu0
         return v, s
 
-    def conv_fortran(self, vhis,histbinsize,wbin):
+    def gh_fit_with_free_v_sigma_params_fortran(self, vhis,histbinsize,wbin):
         gamm, vmi, sgi, chi2 = pyfort_GaussHerm.gaussfit(veltemp=vhis,
                 nvhist=wbin, nvmax=wbin, dvhist=histbinsize, nmc=10)
         return vmi, sgi
 
-    def conv_losvd(self, orblib, nkin,xedg):
+    def gh_expand_around_losvd_mean_and_std_deviation(self, orblib, nkin,xedg):
         mod_losvd = dyn.kinematics.Histogram(y=orblib[np.newaxis,:,:], xedg=xedg)
         mod_v = mod_losvd.get_mean()
         mod_sig = mod_losvd.get_sigma()
         return mod_v[0, nkin], mod_sig[0, nkin]
 
     def comps_aphist(self, conversion):
+        if conversion not in self.conversions:
+            text = f'Unknown conversion {conversion}, ' \
+                   f'must be one of {self.conversions}.'
+            self.logger.error(text)
+            raise ValueError(text)
         wdir = self.results_directory
         n_orbs, bins, k_bins = self.losvd_histograms.y.shape
         #w = int(head1[0]) #bins
@@ -360,9 +375,10 @@ class Decomp:
                 # #diag end
                 dv_obs= (np.max(b)-np.min(b))/np.double(len(b))
 
-                if conversion=='gh_fit':
+                if conversion=='gh_fit_with_free_v_sigma_params':
                     #other options are 'losvd_vsig', 'fortran', 'moments'
-                    v_i, sigma_i = self.conv_gh_fit(vhis, b)
+                    v_i, sigma_i = self.gh_fit_with_free_v_sigma_params(vhis,
+                                                                        b)
                     # #diag start
                     # if i==0 or True:
                     #     with open(wdir+'v_i.out', 'a') as f:
@@ -371,14 +387,19 @@ class Decomp:
                     #         f.write(f'{sigma_i}')
                     # #diag end
 
-                if conversion=='losvd_vsig':
+                if conversion=='gh_expand_around_losvd_mean_and_std_deviation':
+                    v_i, sigma_i = \
+                        self.gh_expand_around_losvd_mean_and_std_deviation(
+                            losvd,
+                            i,
+                            xedg)
 
-                    v_i, sigma_i = self.conv_losvd(losvd, i,xedg)
-
-                if conversion=='fortran':
-                    v_i, sigma_i = self.conv_fortran(vhis,
-                                                     histbinsize,
-                                                     (bins-1)/2)
+                if conversion=='gh_fit_with_free_v_sigma_params_fortran':
+                    v_i, sigma_i = \
+                        self.gh_fit_with_free_v_sigma_params_fortran(
+                            vhis,
+                            histbinsize,
+                            (bins-1)/2)
 
                 if conversion=='moments':
                     v_i, sigma_i = self.conv_moments(vhis, b, dv_obs)
@@ -606,7 +627,11 @@ class Decomp:
                        ylim=None,
                        # Re=None,
                        conversion=None):
-
+        if conversion not in self.conversions:
+            text = f'Unknown conversion {conversion}, ' \
+                   f'must be one of {self.conversions}.'
+            self.logger.error(text)
+            raise ValueError(text)
 
         wdir = self.results_directory
 
