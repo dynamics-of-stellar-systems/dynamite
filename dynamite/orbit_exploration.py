@@ -11,7 +11,7 @@ import dynamite as dyn
 from dynamite import pyfort_GaussHerm
 #from matplotlib.patches import Ellipse
 
-class Decomp:
+class Decomposition:
     def __init__(self, config=None, read_orblib='dynamite'):
         self.logger = logging.getLogger(f'{__name__}.{__class__.__name__}')
         if config is None:
@@ -35,10 +35,10 @@ class Decomp:
         self.losvd_histograms, self.proj_mass = self.run_dec(read_orblib)
         self.logger.info('Orbits read and velocity histogram created.')
         self.comps = ['disk', 'thin_d', 'warm_d', 'bulge', 'all']
-        self.conversions = ['gh_fit_with_free_v_sigma_params',
-                           'gh_expand_around_losvd_mean_and_std_deviation',
-                           'gh_fit_with_free_v_sigma_params_fortran',
-                           'moments']
+        self.conversions = ['gh_expand_around_losvd_mean_and_std_deviation',
+                            # 'gh_fit_with_free_v_sigma_params',
+                            'gh_fit_with_free_v_sigma_params_fortran',
+                            'moments']
         # #diag start
         # with open(self.results_directory + 'losvd.out', 'w') as f:
         #     f.write(f'{self.losvd_histograms=}\n'
