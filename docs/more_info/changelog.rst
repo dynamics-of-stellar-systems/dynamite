@@ -4,6 +4,7 @@
 Change Log
 ****************
 
+- New feature: Added a new method AllModels.make_best_models_table() that creates a table of the best models (best n models or models within a chi2-threshold of the best) and saves it to disk
 - Bugfix: If reattempt_failures=False, in certain cases it could occur that orblibs of successful models were deleted
 - Bugfix: Fixed a bug related to a nonexistent model directory if a crash occurs between the parameter generator adding a model and starting to solve it
 - Improvement: Dynamite will no longer crash upon Legacy Fortran errors, but issue warnings and assign nan to the affected chi2 values
