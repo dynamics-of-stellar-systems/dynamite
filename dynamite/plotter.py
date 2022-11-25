@@ -972,7 +972,7 @@ class Plotter():
         sth = np.sin(theta)
         cth = np.cos(theta)
         sphi = np.sin(phi)
-        Qjth = (1 - sth**2) * (1 - sphi)**2 + \
+        Qjth = (1 - sth**2) * (1 - sphi**2) + \
                (1 - sth**2)*(sphi/p_pot)**2 + (sth/q_pot)**2
         arg = (rr/sig_pot_pc) * np.sqrt(Qjth/np.float(2.0))
 
