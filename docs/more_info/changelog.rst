@@ -4,6 +4,7 @@
 Change Log
 ****************
 
+- Bugfix: If reattempt_failures=False, in certain cases it could occur that orblibs of successful models were deleted
 - Bugfix: Fixed a bug related to a nonexistent model directory if a crash occurs between the parameter generator adding a model and starting to solve it
 - Improvement: Dynamite will no longer crash upon Legacy Fortran errors, but issue warnings and assign nan to the affected chi2 values
 - Improvement: When executing a dummy run (do_dummy_run==True), model_iterator will set both kinchi2 and kinmapchi2 to nan (instead of zero)
