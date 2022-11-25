@@ -1,6 +1,7 @@
 astropy>=5.0.4
 cvxopt>=1.2.6
 h5py>=3.1.0
+lmfit
 logging>=0.4.9.6
 matplotlib>=3.3.4
 numpy>=1.20.1
