@@ -43,9 +43,7 @@ class my_install_lib(distutils.command.install_lib.install_lib):
         distutils.log.info("changing mode of %s to %o", fn, mode)
         os.chmod(fn, mode)
 
-# setuptools.setup(
-numpy.distutils.core.setup(
-    cmdclass={'install_lib':my_install_lib},
+setuptools.setup(
     name="dynamite",
     version=version,
     author="Prashin Jethwa, Sabine Thater, Thomas Maindl",
@@ -66,6 +64,35 @@ numpy.distutils.core.setup(
     python_requires=">=3.7",
     # use the already parsed requirements from requirements.txt
     install_requires=required,
+    # extra requirements for testing
+    extras_require={
+        "testing": [
+            "pytest",
+            "coverage",
+        ]
+    }
+)
+
+numpy.distutils.core.setup(
+    cmdclass={'install_lib':my_install_lib},
+    name="dynamite",
+    version=version,
+    author="Prashin Jethwa, Sabine Thater, Thomas Maindl",
+    author_email="prashin.jethwa@univie.ac.at",
+    description="dynamics, age and metallicity indicators tracing evolution",
+    long_description=long_description,
+    long_description_content_type="text/markdown",
+    url="https://dynamics.univie.ac.at/dynamite_docs/index.html",
+    packages=setuptools.find_packages(),
+    classifiers=[
+        "Programming Language :: Python :: 3",
+        "Programming Language :: Python :: 3.7",
+    ],
+    project_urls={
+        "Source": "https://github.com/dynamics-of-stellar-systems/dynamite/",
+        "Documentation": "https://dynamics.univie.ac.at/dynamite_docs/index.html",
+    },
+    python_requires=">=3.7",
     # extra requirements for testing
     extras_require={
         "testing": [
