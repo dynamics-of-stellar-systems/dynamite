@@ -14,8 +14,8 @@ class ModelIterator(object):
     Creating this ``ModelIterator`` object will (i) generate parameters sets,
     (ii) run models for those parameters, (iii) check stopping criteria, and
     iterate this procedure till a stopping criterion is met. This is implemented
-    by created a ``ModelInnerIterator`` object whose ``run_iteration`` method is
-    called a number of times.
+    by creating a ``ModelInnerIterator`` object whose ``run_iteration`` method
+    is called a number of times.
 
     Parameters
     ----------
@@ -105,7 +105,9 @@ class ModelIterator(object):
         config = self.config
         rows_with_orbits_but_no_weights = \
             [i for i,t in enumerate(config.all_models.table) \
-             if t['orblib_done'] and not t['weights_done']]
+                if t['orblib_done'] \
+                    and not t['weights_done'] \
+                    and not t['all_done']]
         n_to_do = len(rows_with_orbits_but_no_weights)
         if n_to_do>0:
             self.logger.info('Reattempting weight solving for models in '
@@ -217,7 +219,7 @@ class ModelInnerIterator(object):
             self.logger.debug(f'input_list_orblib: {input_list_orblib}, '
                               f'input_list_ml: {input_list_ml}.')
             self.assign_model_directories(rows_to_do_orblib, rows_to_do_ml)
-            # save all_models here - as is useful to have directories saved
+            # save all_models here - as it is useful to have directories saved
             # now, even if the run fails and we don't reach next save
             self.all_models.save()
             with Pool(self.ncpus) as p:
@@ -273,15 +275,15 @@ class ModelInnerIterator(object):
         Assigns model directories in all_models.table.
 
         Models indexed by rows_orblib:
-        The model directories follow the pattern orblib_xxx_yyy/mlz.zz where
+        The model directories follow the pattern orblib_xxx_yyy/mlzz.zz/ where
         xxx is the iteration number, yyy a consecutive number of that
-        iteration's orbit library, and z.zz is the value of the models'
-        ml parameter in the 01.2f format (the sformat set in the System class).
+        iteration's orbit library, and zz.zz is the value of the models'
+        ml parameter in the format given in its sformat attribute.
 
         Models indexed by rows_ml:
         These models re-use an existing orbit library. Hence, their directory
         strings re-use an existing orblib_xxx_yyy part and get augmented with
-        the appropriate /mlz.zz.
+        the appropriate /mlzz.zz/.
 
         Parameters
         ----------
@@ -351,7 +353,7 @@ class ModelInnerIterator(object):
         Returns
         -------
         tuple
-            all the output for this model, bundles up in a tuple
+            all the output for this model, bundled up in a tuple
 
         """
         if len(data_input) == 2:
@@ -499,7 +501,11 @@ class SplitModelIterator(ModelInnerIterator):
         if not self.par_generator.status['stop'] and (self.do_orblib or
                                                       self.do_weights):
             if self.do_orblib:
-                rows_to_do=np.where(self.all_models.table['orblib_done']==False)
+                # note: orblib_done=False, all_done=True refers to a completed
+                # model whose orblib has been deleted from disk
+                rows_to_do=np.where(
+                    (self.all_models.table['orblib_done']==False) &
+                    (self.all_models.table['all_done'] == False))
                 rows_to_do=rows_to_do[0]
                 self.logger.debug(f'orblib rows_to_do: {rows_to_do}.')
                 self.n_to_do = len(rows_to_do)
@@ -523,8 +529,11 @@ class SplitModelIterator(ModelInnerIterator):
             if self.do_weights:
                 # rows_to_do = np.where(self.all_models.table['orblib_done']
                 #     & (self.all_models.table['weights_done']==False))
-                rows_to_do = \
-                    np.where(self.all_models.table['weights_done']==False)
+                # note: weights_done=False, all_done=True refers to a completed
+                # model whose weights have been deleted from disk
+                rows_to_do=np.where(
+                    (self.all_models.table['weights_done']==False) &
+                    (self.all_models.table['all_done']==False))
                 rows_to_do=rows_to_do[0]
                 self.logger.debug(f'weight rows_to_do: {rows_to_do}.')
                 self.n_to_do = len(rows_to_do)
