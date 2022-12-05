@@ -511,7 +511,8 @@ class AllModels(object):
 
         Returns
         -------
-        a new ``astropy.table`` object holding the best n models
+        a new ``astropy.table`` object holding the best n models, sorted by
+        which_chi2
 
         """
         which_chi2 = self.config.validate_chi2(which_chi2)
@@ -522,6 +523,26 @@ class AllModels(object):
         else:
             table = table[-n:]
         return table
+
+    def get_best_n_models_idx(self, n=10, which_chi2=None):
+        """Get the indices of the best n models so far
+
+        Parameters
+        ----------
+        which_chi2 : str, optional
+            Which chi2 is used for determining the best models. If None, the
+            setting from the configuration file will be used.
+            The default is None.
+
+        Returns
+        -------
+        list of int
+            indices in the all_models table of the n best model so far, sorted
+            by which_chi2
+
+        """
+        which_chi2 = self.config.validate_chi2(which_chi2)
+        return list(self.table.argsort(keys=which_chi2)[:n])
 
     def get_mods_within_chi2_thresh(self, which_chi2=None, delta=None):
         """Get models within or outside a delta threshold of the best
