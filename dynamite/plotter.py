@@ -774,14 +774,14 @@ class Plotter():
         aperture_fname = self.input_directory + aperture_fname
 
         lines = [line.rstrip('\n').split() for line in open(aperture_fname)]
-        minx = np.float(lines[1][0])
-        miny = np.float(lines[1][1])
-        sx = np.float(lines[2][0])
-        sy = np.float(lines[2][1])
+        minx = np.float64(lines[1][0])
+        miny = np.float64(lines[1][1])
+        sx = np.float64(lines[2][0])
+        sy = np.float64(lines[2][1])
         sy = sy + miny
-        angle_deg = np.float(lines[3][0])
-        nx = np.int(lines[4][0])
-        ny = np.int(lines[4][1])
+        angle_deg = np.float64(lines[3][0])
+        nx = np.int_(lines[4][0])
+        ny = np.int_(lines[4][1])
         dx = sx / nx
 
         self.logger.debug(f"Pixel grid dimension is dx={dx},nx={nx},ny={ny}")
@@ -813,9 +813,9 @@ class Plotter():
                 if i == 0:
                     str_head.append(str(x))
                 if i == 1:
-                    i_var.append(np.int(x))
+                    i_var.append(np.int_(x))
                 if i > 1:
-                    grid.append(np.int(x))
+                    grid.append(np.int_(x))
             i += 1
         str_head = str(str_head[0])
         i_var = int(i_var[0])
@@ -974,12 +974,12 @@ class Plotter():
         sphi = np.sin(phi)
         Qjth = (1 - sth**2) * (1 - sphi**2) + \
                (1 - sth**2)*(sphi/p_pot)**2 + (sth/q_pot)**2
-        arg = (rr/sig_pot_pc) * np.sqrt(Qjth/np.float(2.0))
+        arg = (rr/sig_pot_pc) * np.sqrt(Qjth/np.float64(2.0))
 
-        intg = np.sqrt(np.pi/np.float(2.0))*erf(arg) - \
-               np.sqrt(np.float(2.0))*arg*np.exp(-1.*arg**2)
-        res = (np.sum(den_pot_pc*sig_pot_pc**3*intg/Qjth**np.float(1.5),
-               dtype=np.float))*cth
+        intg = np.sqrt(np.pi/np.float64(2.0))*erf(arg) - \
+               np.sqrt(np.float64(2.0))*arg*np.exp(-1.*arg**2)
+        res = (np.sum(den_pot_pc*sig_pot_pc**3*intg/Qjth**np.float64(1.5),
+               dtype=np.float64))*cth
 
         return res
 
@@ -987,13 +987,13 @@ class Plotter():
 
     def PQ_Limits_l(self, x):
 
-        return np.float(0.0)
+        return np.float64(0.0)
 
 # --------------------------------------------
 
     def PQ_Limits_h(self, x):
 
-        return np.float(np.pi/np.float(2.0))
+        return np.float64(np.pi/np.float64(2.0))
 
 #############################################################################
 
@@ -1195,7 +1195,7 @@ class Plotter():
         s=np.ravel(np.where(chi2 <=  np.min(chi2)+chilev))
         n=len(s)
         if n < 3:
-            s = np.arange(3, dtype=np.int)
+            s = np.arange(3, dtype=np.int_)
             n = len(s)
 
         chi2=chi2[s]
@@ -1389,10 +1389,10 @@ class Plotter():
         ener=np.array(data[:,1],dtype=int)
         i2=np.array(data[:,2],dtype=int)
         i3=np.array(data[:,3],dtype=int)
-        regul=np.array(data[:,4],dtype=np.float)
-        orbtype=np.array(data[:,5],dtype=np.float)
-        orbw=np.array(data[:,6],dtype=np.float)
-        lcut=np.array(data[:,7],dtype=np.float)
+        regul=np.array(data[:,4],dtype=np.float64)
+        orbtype=np.array(data[:,5],dtype=np.float64)
+        orbw=np.array(data[:,6],dtype=np.float64)
+        lcut=np.array(data[:,7],dtype=np.float64)
         ntot=int(nrow)
         return n, ener,i2, i3, regul, orbtype,orbw,lcut,ntot
 
@@ -1433,17 +1433,17 @@ class Plotter():
         lrmax = np.double(nrell[2])  # E, minmax log(r) [arcsec]
 
         nrth = np.genfromtxt(filename, max_rows=1, skip_header=nmge + 7)
-        nrth = np.int(nrth)  # theta [# I2]
+        nrth = np.int_(nrth)  # theta [# I2]
 
         nrrad = np.genfromtxt(filename, max_rows=1, skip_header=nmge + 8)
-        nrrad = np.int(nrrad)  # phi [# I3]
+        nrrad = np.int_(nrrad)  # phi [# I3]
 
         ndither = np.genfromtxt(filename, max_rows=1, skip_header=nmge + 9)
-        ndither = np.int(ndither)  # dithering dimension
+        ndither = np.int_(ndither)  # dithering dimension
 
         vv1 = np.genfromtxt(filename, max_rows=1, skip_header=nmge + 10)
-        vv1_1 = np.int(vv1[0])
-        vv1_2 = np.int(vv1[1])
+        vv1_1 = np.int_(vv1[0])
+        vv1_2 = np.int_(vv1[1])
 
         dmm = np.genfromtxt(filename, max_rows=1, skip_header=nmge + 11)
         dm1 = np.double(dmm[0])
@@ -1702,7 +1702,7 @@ class Plotter():
         if not eps: eps=1.0e-10
         R = np.sqrt(x**2 + y**2)
         rr = np.sqrt(x**2 + y**2 + z**2)
-        res = np.zeros((3,3),dtype=np.float)
+        res = np.zeros((3,3),dtype=np.float64)
         if (R > eps and rr > eps):
             res[0,0] = x/rr
             res[0,1] = (x*z)/(R*rr)
@@ -1739,8 +1739,8 @@ class Plotter():
         if not eps: eps=1.0e-10
         nn=len(x)
         # print(nn)
-        mu1sph=np.zeros((nn,3), dtype=np.float)
-        mu2sph=np.zeros((nn,3,3), dtype=np.float)
+        mu1sph=np.zeros((nn,3), dtype=np.float64)
+        mu2sph=np.zeros((nn,3,3), dtype=np.float64)
         for i in range(nn):
             # conversion matrix N = N[k,j], where j=row, k=column
             N = self.N_car2sph(x[i], y[i], z[i], eps=eps)
@@ -1765,7 +1765,7 @@ class Plotter():
         if not eps: eps=1.0e-10
         R2 = x**2 + y**2
         R=np.sqrt(R2)
-        res = np.zeros((3,3),dtype=np.float)
+        res = np.zeros((3,3),dtype=np.float64)
         if (R > eps and R2 > eps):
             res[0,0] = x/R
             res[0,1] = -y/R
@@ -1791,8 +1791,8 @@ class Plotter():
         if not eps: eps=1.0e-10
         nn=len(x)
         # print(nn)
-        mu1sph=np.zeros((nn,3), dtype=np.float)
-        mu2sph=np.zeros((nn,3,3), dtype=np.float)
+        mu1sph=np.zeros((nn,3), dtype=np.float64)
+        mu2sph=np.zeros((nn,3,3), dtype=np.float64)
         for i in range(nn):
             # conversion matrix N = N[k,j], where j=row, k=column
             N = self.N_car2cyl(x[i], y[i], z[i], eps=eps)
@@ -1856,12 +1856,12 @@ class Plotter():
         vzz = v2cyl[:,2,2]
         vp = v1cyl[:,1]
         nbins = 14
-        Bint = 2**(np.arange(nbins+1, dtype=np.float)/2.5) - 1.0
-        Rad = np.zeros(nbins, dtype=np.float)
-        vrr_r = np.zeros(nbins, dtype=np.float)
-        vpp_r = np.zeros(nbins, dtype=np.float)
-        vzz_r = np.zeros(nbins, dtype=np.float)
-        vp_r = np.zeros(nbins, dtype=np.float)
+        Bint = 2**(np.arange(nbins+1, dtype=np.float64)/2.5) - 1.0
+        Rad = np.zeros(nbins, dtype=np.float64)
+        vrr_r = np.zeros(nbins, dtype=np.float64)
+        vpp_r = np.zeros(nbins, dtype=np.float64)
+        vzz_r = np.zeros(nbins, dtype=np.float64)
+        vp_r = np.zeros(nbins, dtype=np.float64)
         d = data[:,4]
         ### Bin along bigR
         for i in range(nbins):
@@ -1955,19 +1955,19 @@ class Plotter():
         s=np.ravel(np.where(chi2 <=  np.min(chi2)+chilev))
         n=len(s)
         if n < 3:
-            s = np.arange(3, dtype=np.int)
+            s = np.arange(3, dtype=np.int_)
             n = len(s)
 
         chi2=chi2[s]
 
-        RRn = np.zeros((100,n), dtype=np.float)
-        orotn = np.zeros((100,n), dtype=np.float)
-        RRnz = np.zeros((100,n), dtype=np.float)
-        orotnz = np.zeros((100,n), dtype=np.float)
-        Vz2 = np.zeros((100,n), dtype=np.float)
-        VR2 = np.zeros((100,n), dtype=np.float)
-        Vp2= np.zeros((100,n), dtype=np.float)
-        Vp = np.zeros((100,n), dtype=np.float)
+        RRn = np.zeros((100,n), dtype=np.float64)
+        orotn = np.zeros((100,n), dtype=np.float64)
+        RRnz = np.zeros((100,n), dtype=np.float64)
+        orotnz = np.zeros((100,n), dtype=np.float64)
+        Vz2 = np.zeros((100,n), dtype=np.float64)
+        VR2 = np.zeros((100,n), dtype=np.float64)
+        Vp2= np.zeros((100,n), dtype=np.float64)
+        Vp = np.zeros((100,n), dtype=np.float64)
 
         for i in range(n):
             model_id = arg[i]
@@ -1996,10 +1996,10 @@ class Plotter():
         filename1 = self.plotdir + 'anisotropy_var' + figtype
         filename2 = self.plotdir + 'betaz_var' + figtype
 
-        RRn_m = np.zeros(nrr, dtype=np.float)
-        RRn_e = np.zeros(nrr, dtype=np.float)
-        orot_m2 = np.zeros(nrr, dtype=np.float)
-        orot_e2 = np.zeros(nrr, dtype=np.float)
+        RRn_m = np.zeros(nrr, dtype=np.float64)
+        RRn_e = np.zeros(nrr, dtype=np.float64)
+        orot_m2 = np.zeros(nrr, dtype=np.float64)
+        orot_e2 = np.zeros(nrr, dtype=np.float64)
         for j in range(0, nrr):
             RRn_m[j] = np.average(RRn[j,:])
             RRn_e[j] = np.sqrt(np.var(RRn[j,:], ddof=1))
@@ -2042,10 +2042,10 @@ class Plotter():
         ax.set_ylabel(r'$\beta_{\rm z} = 1 - \sigma_{\rm z}^2/\sigma_{\rm R}^2$',
                          fontsize=9)
         ax.tick_params(labelsize=8)
-        RRn_m = np.zeros(nrad, dtype=np.float)
-        RRn_e = np.zeros(nrad, dtype=np.float)
-        orot_m2 = np.zeros(nrad, dtype=np.float)
-        orot_e2 = np.zeros(nrad, dtype=np.float)
+        RRn_m = np.zeros(nrad, dtype=np.float64)
+        RRn_e = np.zeros(nrad, dtype=np.float64)
+        orot_m2 = np.zeros(nrad, dtype=np.float64)
+        orot_e2 = np.zeros(nrad, dtype=np.float64)
         for j in range(0, nrad):
             kk = np.where(orotn[j,:] > 0.0)
             if len(kk[0])>0:
@@ -2089,7 +2089,7 @@ class Plotter():
         phi = incl[1]
         psi = incl[2]
 
-        r = np.arange(101, dtype=np.float)/100.0*max(Rpc)*1.02
+        r = np.arange(101, dtype=np.float64)/100.0*max(Rpc)*1.02
         n = len(r)
 
         pintr, qintr, uintr = self.triax_tpp2pqu(theta=theta, phi=phi,
@@ -2098,9 +2098,9 @@ class Plotter():
         sigintr_pc = sigma_pc/uintr
         sb3 = surf_pc*(2*np.pi*sigma_pc**2*qobs)/ \
               ((sigintr_pc*np.sqrt(2*np.pi))**3*pintr*qintr)
-        Sz = np.zeros(n, dtype=np.float)
-        Sy = np.zeros(n, dtype=np.float)
-        Sx = np.zeros(n, dtype=np.float)
+        Sz = np.zeros(n, dtype=np.float64)
+        Sy = np.zeros(n, dtype=np.float64)
+        Sx = np.zeros(n, dtype=np.float64)
 
         for i in range(n):
             Sz[i] = np.sum(sb3*np.exp(-(r[i]**2/qintr**2)/(2*sigintr_pc**2))) # SB at z direction
@@ -2194,17 +2194,17 @@ class Plotter():
         s=np.ravel(np.where(chi2 <=  np.min(chi2)+chilev))
         n=len(s)
         if n < 3:
-            s = np.arange(3, dtype=np.int)
+            s = np.arange(3, dtype=np.int_)
             n = len(s)
         if n > 100:
-            s = np.arange(100, dtype=np.int)
+            s = np.arange(100, dtype=np.int_)
             n = len(s)
 
         chi2=chi2[s]
 
-        q_all = np.zeros((101,n), dtype=np.float)
-        p_all = np.zeros((101,n), dtype=np.float)
-        Rarc = np.arange(101, dtype=np.float)/100.0*Rmax_arcs
+        q_all = np.zeros((101,n), dtype=np.float64)
+        p_all = np.zeros((101,n), dtype=np.float64)
+        Rarc = np.arange(101, dtype=np.float64)/100.0*Rmax_arcs
 
         for i in range(0, n):
             model_id = arg[i]
