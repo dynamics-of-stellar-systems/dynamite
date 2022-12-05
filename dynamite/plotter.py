@@ -800,9 +800,9 @@ class Plotter():
                 if i == 0:
                     str_head.append(str(x))
                 if i == 1:
-                    i_var.append(np.int(x))
+                    i_var.append(int(x))
                 if i > 1:
-                    grid.append(np.int(x))
+                    grid.append(int(x))
             i += 1
         str_head = str(str_head[0])
         i_var = int(i_var[0])
@@ -1340,7 +1340,7 @@ class Plotter():
         if not file3_test: file3= '%s' % file2
 
         xrange=[0.0,Rmax_arcs]
-        
+
         distance = self.all_models.system.distMPc
         conversion_factor = distance*1.0e6*1.49598e8
         nre = self.settings.orblib_settings['nE']

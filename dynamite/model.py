@@ -661,7 +661,7 @@ class AllModels(object):
         model_rows_del = \
             self.get_mods_within_chi2_thresh(delta=-chi2_abs_thresh)
         if len(model_rows_keep) < 3:
-            self.logger.debug('smaller than 3!')
+            self.logger.debug('Less than 3 models to keep, will keep 3 anyway.')
             model_rows_keep = self.get_best_n_models(n=3)
             model_rows_del = self.get_best_n_models(n=-3)
         self.logger.debug(f'Will remove data of {len(model_rows_del)} '
