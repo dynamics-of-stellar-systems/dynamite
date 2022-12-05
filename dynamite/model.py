@@ -71,10 +71,10 @@ class AllModels(object):
 
         """
         names = self.config.parspace.par_names.copy()
-        dtype = [np.float64 for n in names]
+        dtype = [float for n in names]
         # add the columns from legacy version
         names += ['chi2', 'kinchi2', 'kinmapchi2', 'time_modified']
-        dtype += [np.float64, np.float64, np.float64, 'U256']
+        dtype += [float, float, float, 'U256']
         # add extra columns
         names += ['orblib_done', 'weights_done', 'all_done']
         dtype += [bool, bool, bool]

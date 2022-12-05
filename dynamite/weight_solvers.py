@@ -316,7 +316,7 @@ class LegacyWeightSolver(WeightSolver):
                      'weight',
                      'lcut'] # lines 1321-1322 of triaxnnls_CRcut.f90
         # NOTE: column 'lcut' is not present if different "triaxnnls" file used
-        dtype = [int, int, int, int, int, int, np.float64, int]
+        dtype = [int, int, int, int, int, int, float, int]
         weights = np.genfromtxt(fname,
                                 skip_header=1,
                                 names=col_names,
