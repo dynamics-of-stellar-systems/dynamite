@@ -653,10 +653,6 @@ class AllModels(object):
             ``False`` if no data to delete could be identified.
 
         """
-        # if n_models_keep is not None and chi2_rel_thresh is not None:
-        #     txt = 'Do not specify both n_models_keep and chi2_rel_thresh.'
-        #     self.logger.error(txt)
-        #     raise ValueError(txt)
         which_chi2=self.config.settings.parameter_space_settings['which_chi2']
         chi2_min = min(self.table[which_chi2])
         chi2_abs_thresh = 3 * np.sqrt(self.config.get_2n_obs())
@@ -671,24 +667,6 @@ class AllModels(object):
         self.logger.debug(f'Will remove data of {len(model_rows_del)} '
                   f'models with {which_chi2} > {chi2_min+chi2_abs_thresh}, '
                   f'keep data of {len(model_rows_keep)} models.')
-        # if n_models_keep is None:
-        #     if chi2_rel_thresh is None:
-        #         chi2_rel_thresh = 0.1
-        #         self.logger.debug('No argument given, '
-        #                           f'will use {chi2_rel_thresh =}.')
-        #     chi2_abs_thresh = min(self.table[which_chi2]) * chi2_rel_thresh
-        #     model_rows_keep = \
-        #         self.get_mods_within_chi2_thresh(delta=chi2_abs_thresh)
-        #     model_rows_del = \
-        #         self.get_mods_within_chi2_thresh(delta=-chi2_abs_thresh)
-        #     self.logger.debug(f'Will remove data of {len(model_rows_del)} '
-        #                       f'models with {which_chi2} > {chi2_abs_thresh}, '
-        #                       f'keep data of {n_models_keep} models.')
-        # else:
-        #     model_rows_keep = self.get_best_n_models(n=n_models_keep)
-        #     model_rows_del = self.get_best_n_models(n=-n_models_keep)
-        #     self.logger.debug(f'Will remove data of {len(model_rows_del)} '
-        #                       f'models, keep data of {n_models_keep} models.')
 
         if len(model_rows_del) == 0:
             self.logger.info('Nothing to do.')
