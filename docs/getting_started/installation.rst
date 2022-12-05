@@ -55,7 +55,7 @@ In the following, we explain the installation of the GCC Fortran compiler via Ho
 GCC should now be listed under your homebrew packages. You can check this by typing::
 
     brew list
- 
+
 We can check if gfortran is installed by typing in the Terminal::
 
     man -k fortran
@@ -90,7 +90,7 @@ which returns something like ``/opt/local/bin/gfortran``.
 Python
 ------
 
-The user is communicating with the Fortran source code via Python. The basic requirement for DYNAMITE is therefore a reasonably current version of Python (tested with Legacy Python 2.7, Python 3.6, Python 3.7, and Python 3.8).
+The user is communicating with the Fortran source code via Python. The basic requirement for DYNAMITE is therefore a reasonably current version of Python (Python 3.8 or later).
 
 
 
@@ -116,7 +116,7 @@ Installation and Configure Procedure
 
 Download from `github <https://github.com/dynamics-of-stellar-systems/dynamite>`_, unzip and move the DYNAMITE code to the directory in which you want to install it. Make sure that your system fulfills the :ref:`software-requirements` listed above (in particular the Fortran compiler).
 
-If you encouter problems during the installation process, have a look at the section :ref:`troubleshooting`. Some of the most common issues are gathered there.  
+If you encouter problems during the installation process, have a look at the section :ref:`troubleshooting`. Some of the most common issues are gathered there.
 
 The installation of DYNAMITE consists of three steps, as detailed below.a
 
