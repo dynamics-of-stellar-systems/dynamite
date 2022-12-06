@@ -32,6 +32,7 @@ class AllModels(object):
         self.config = config
         self.system = config.system
         self.set_filename(config.settings.io_settings['all_models_file'])
+        self.make_empty_table()
         if from_file and os.path.isfile(self.filename):
             self.logger.info('Previous models have been found: '
                         f'Reading {self.filename} into '
@@ -40,8 +41,7 @@ class AllModels(object):
         else:
             self.logger.info(f'No previous models (file {self.filename}) '
                         'have been found: '
-                        f'Making an empty table in {__class__.__name__}.table')
-            self.make_empty_table()
+                        f'Made an empty table in {__class__.__name__}.table')
 
     def set_filename(self, filename):
         """Set the name (including path) for this model
@@ -71,10 +71,10 @@ class AllModels(object):
 
         """
         names = self.config.parspace.par_names.copy()
-        dtype = [np.float64 for n in names]
+        dtype = [float for n in names]
         # add the columns from legacy version
         names += ['chi2', 'kinchi2', 'kinmapchi2', 'time_modified']
-        dtype += [np.float64, np.float64, np.float64, 'S256']
+        dtype += [float, float, float, 'U256']
         # add extra columns
         names += ['orblib_done', 'weights_done', 'all_done']
         dtype += [bool, bool, bool]
@@ -83,7 +83,7 @@ class AllModels(object):
         dtype.append(int)
         # directory will be the model directory name in the models/ directory
         names.append('directory')
-        dtype.append('S256')
+        dtype.append('U256')
         self.table = table.Table(names=names, dtype=dtype)
 
     def read_completed_model_file(self):
@@ -110,7 +110,10 @@ class AllModels(object):
             sets ``self.table``
 
         """
-        self.table = ascii.read(self.filename)
+        table_read = ascii.read(self.filename)
+        self.table = table.vstack((self.table, table_read),
+                                  join_type='outer',
+                                  metadata_conflicts='error')
         self.logger.debug(f'{len(self.table)} models read '
                           f'from file {self.filename}')
 
@@ -148,7 +151,7 @@ class AllModels(object):
         # if we will reattempt weight solving, only delete models with no orblib
         if self.config.settings.weight_solver_settings['reattempt_failures']:
             for i, row in enumerate(self.table):
-                if not row['orblib_done']:
+                if (not row['orblib_done']) and (not row['all_done']):
                     to_delete.append(i)
                     self.logger.info('No orblibs calculated for model in '
                                      f'{row["directory"]} - removing row {i}.')
@@ -169,12 +172,21 @@ class AllModels(object):
                                  [d[:d[:-1].rindex('/')+1]
                                  for d in self.table[to_delete]['directory']]
                                 )
-            self.logger.info(f'Will remove {len(dirs_to_delete)} '
+            self.logger.info(f'Will try to remove {len(dirs_to_delete)} '
                              'unique orblibs.')
             for directory in dirs_to_delete:
                 try:
-                    shutil.rmtree(directory)
-                    self.logger.info(f'Model directory {directory} removed.')
+                    # Only remove orblib directories that are not used by
+                    # already completed models
+                    orblibs_keep = [d[:d[:-1].rindex('/')+1] for d in
+                     self.table[np.where(self.table['all_done'])]['directory']]
+                    if directory in set(orblibs_keep):
+                        self.logger.info(f'Orblib directory {directory} in '
+                                         'use by existing model - untouched.')
+                    else:
+                        shutil.rmtree(directory)
+                        self.logger.info(f'Orblib directory {directory} '
+                                         'removed.')
                 except:
                     self.logger.warning(f'Cannot remove orblib in {directory},'
                         ' perhaps it has already been removed before.')
@@ -480,12 +492,13 @@ class AllModels(object):
         self.logger.debug(f'Model table written to file {self.filename}')
 
     def get_best_n_models(self, n=10, which_chi2=None):
-        """Get the best n models so far
+        """Get the best n models or all but the n best models so far
 
         Parameters
         ----------
         n : int, optional
-            How many models to get. The default is 10.
+            How many models to get. If negative, all models except the
+            n best models will be returned. The default is 10.
         which_chi2 : str, optional
             Which chi2 is used for determining the best models. If None, the
             setting from the configuration file will be used.
@@ -498,17 +511,41 @@ class AllModels(object):
 
         Returns
         -------
-        a new ``astropy.table`` object holding the best n models
+        a new ``astropy.table`` object holding the best n models, sorted by
+        which_chi2
 
         """
         which_chi2 = self.config.validate_chi2(which_chi2)
         table = copy.deepcopy(self.table)
-        table.sort(which_chi2) # nan values will be sorted to the end
-        table = table[:n]
+        table.sort(which_chi2)
+        if n>=0:
+            table = table[:n]
+        else:
+            table = table[-n:]
         return table
 
+    def get_best_n_models_idx(self, n=10, which_chi2=None):
+        """Get the indices of the best n models so far
+
+        Parameters
+        ----------
+        which_chi2 : str, optional
+            Which chi2 is used for determining the best models. If None, the
+            setting from the configuration file will be used.
+            The default is None.
+
+        Returns
+        -------
+        list of int
+            indices in the all_models table of the n best model so far, sorted
+            by which_chi2
+
+        """
+        which_chi2 = self.config.validate_chi2(which_chi2)
+        return list(self.table.argsort(keys=which_chi2)[:n])
+
     def get_mods_within_chi2_thresh(self, which_chi2=None, delta=None):
-        """Get models within delta threshold of best
+        """Get models within or outside a delta threshold of the best
 
         Parameters
         ----------
@@ -518,9 +555,11 @@ class AllModels(object):
             The default is None.
         delta : float, optional
             The threshold value. Models with chi2 values differing
-            from the opimum by at most delta will be returned. If none,
-            models within 10% of the optimal value will be returned.
-            The default is None.
+            from the opimum by at most delta will be returned. If None,
+            models within 10% of the optimal value will be returned. If
+            delta is negative, models that are NOT within a delta
+            threshold of the best are returned.
+            The default is to return models within 10% of the best.
 
         Raises
         ------
@@ -530,14 +569,190 @@ class AllModels(object):
         Returns
         -------
         a new ``astropy.table`` object holding the ''delta-best'' models
+        (if delta >= 0) or holding all but the ''delta-best'' models
+        (if delta < 0), respectively.
 
         """
         which_chi2 = self.config.validate_chi2(which_chi2)
         chi2_min = np.nanmin(self.table[which_chi2])
         if delta is None:
             delta = chi2_min * 0.1
-        models = self.table[self.table[which_chi2] <= chi2_min+delta]
+        if delta >= 0:
+            models = self.table[self.table[which_chi2] <= chi2_min+delta]
+        else:
+            models = self.table[self.table[which_chi2] > chi2_min-delta]
         return models
+
+    def make_best_models_table(self,
+                               which_chi2=None,
+                               n=None,
+                               delta=None,
+                               filename=None):
+        """Make a table of the best models and save it to disk
+
+        Parameters
+        ----------
+        which_chi2 : str, optional
+            Which chi2 is used for determining the best models. If None, the
+            setting from the configuration file will be used.
+            The default is None.
+        n : int, optional
+            How many models to get. If None, n will be ignored.
+            Default: if delta is specified, the default is none; if delta
+            is None, the default is 10.
+        delta : float, optional
+            The threshold value. Models with chi2 values differing
+            from the opimum by at most delta will be returned. If None,
+            delta will be ignored. The default is None.
+        filename : str, optional
+            File name of the best models table. The file is written into the
+            output directory specified in the config file. If None, the name
+            is the same as for the all models table but with '_best' added
+            to the base file name. If the file already exists, a warning
+            is logged, the existing file is backed up ('_backup' added),
+            and then overwritten. The default is None.
+
+        Raises
+        ------
+        ValueError
+            If both n and delta are specified (i.e., both are not None).
+
+        Returns
+        -------
+        int
+            The number of models in the best models table.
+
+        """
+        if n is not None and delta is not None:
+            text = 'Cannot specify both n and delta - choose one...'
+            self.logger.error(text)
+            raise ValueError(text)
+        elif n is None and delta is None:
+            n = 10
+            self.logger.info('No parameters specified - making table with '
+                             '10 best models')
+        if filename is None:
+            path_noext, ext = os.path.splitext(self.filename)
+            filename = path_noext + '_best' + ext
+        else:
+            filename = self.config.settings.io_settings['output_directory'] + \
+                       filename
+        if os.path.exists(filename):
+            path_noext, ext = os.path.splitext(filename)
+            backup_filename = path_noext + '_backup' + ext
+            shutil.copy2(filename, backup_filename)
+            self.logger.warning(f'File {filename} will be overwritten, '
+                                f'backup {backup_filename} created.')
+        if n is not None:
+            table_best = self.get_best_n_models(which_chi2=which_chi2, n=n)
+        else:
+            table_best=self.get_mods_within_chi2_thresh(which_chi2=which_chi2,
+                                                        delta=delta)
+        table_best.write(filename, format='ascii.ecsv', overwrite=True)
+        self.logger.info(f'Table of best models written to file {filename}.')
+        return len(table_best)
+
+    def remove_unused_orblibs(self):
+        """
+        Removes orbit libraries for 'bad' models.
+
+        Frees disk space by deleting data, keeping only model data required
+        by the ``beta_plot`` and ``mass_plot`` plotting routines.
+        Keeps data of models with (kin)chi2 values less than or equal to
+        ``sqrt(2 * number of kinematic observations) * min(chi2)``, but at
+        least 3 models.
+        Will mark a deleted orbit library with ``orblib_done=False`` and
+        ``weights_done=False`` in the all_models table. If an orblib cannot
+        be deleted because it is used by another model, only the nnls
+        data will be deleted, which is marked by ``weights_done=False``
+        in the all_models table.
+
+        Returns
+        -------
+        bool
+            ``True`` if data deletion has been attempted,
+            ``False`` if no data to delete could be identified.
+
+        """
+        which_chi2=self.config.settings.parameter_space_settings['which_chi2']
+        chi2_min = min(self.table[which_chi2])
+        chi2_abs_thresh = 3 * np.sqrt(self.config.get_2n_obs())
+        model_rows_keep = \
+            self.get_mods_within_chi2_thresh(delta=chi2_abs_thresh)
+        model_rows_del = \
+            self.get_mods_within_chi2_thresh(delta=-chi2_abs_thresh)
+        if len(model_rows_keep) < 3:
+            self.logger.debug('Less than 3 models to keep, will keep 3 anyway.')
+            model_rows_keep = self.get_best_n_models(n=3)
+            model_rows_del = self.get_best_n_models(n=-3)
+        self.logger.debug(f'Will remove data of {len(model_rows_del)} '
+                  f'models with {which_chi2} > {chi2_min+chi2_abs_thresh}, '
+                  f'keep data of {len(model_rows_keep)} models.')
+
+        if len(model_rows_del) == 0:
+            self.logger.info('Nothing to do.')
+            return False
+
+        # parameters that identify an orblib
+        orblib_parameters = self.config.parspace.par_names[:]
+        ml = 'ml'
+        try:
+            orblib_parameters.remove(ml)
+        except:
+            self.logger.error(f"Parameter '{ml}' not found - check "
+                              "implementation")
+            raise
+
+        # now try to remove the data...
+        n_removed = 0
+        for model_row_del in model_rows_del:
+
+            # get model object and row id of model whose data to delete
+            parset = model_row_del[self.config.parspace.par_names]
+            model = self.get_model_from_parset(parset)
+            row_id = self.get_row_from_model(model)
+
+            # remove unused orblibs
+            delete_orblib = True
+            for model_row_keep in model_rows_keep: # orblib used by others?
+                if np.allclose(tuple(model_row_del[orblib_parameters]),
+                               tuple(model_row_keep[orblib_parameters])):
+                    delete_orblib = False
+                    self.logger.debug("Orblib of model "
+                        f"{tuple(model_row_del[orblib_parameters])} "
+                        "still in use - will delete weight solving data only.")
+                    break
+            if delete_orblib:
+                directory = model.directory_noml
+                try:
+                    shutil.rmtree(directory)
+                    self.logger.info("Orblib of model "
+                        f"{tuple(model_row_del[orblib_parameters])} "
+                        f"in {directory} removed.")
+                    n_removed += 1
+                except:
+                    self.logger.warning("Cannot remove orblib of model "
+                        f"{tuple(model_row_del[orblib_parameters])} in "
+                        f"{directory}, perhaps it was already removed before.")
+                self.table[row_id]['orblib_done'] = False
+            else:
+                # orblib must be kept, but we can delete the model's nnls data
+                directory = model.directory
+                try:
+                    shutil.rmtree(directory)
+                    self.logger.info("Weight solving data of model "
+                     f"{tuple(model_row_del[self.config.parspace.par_names])} "
+                     f"in {directory} removed.")
+                    n_removed += 1
+                except:
+                    self.logger.warning("Cannot remove weight solving data of "
+                        f"model {tuple(model_row_del[orblib_parameters])} in "
+                        f"{directory}, perhaps it was already removed before.")
+            self.table[row_id]['weights_done'] = False
+        self.save()
+        self.logger.info(f'Removed data of {n_removed} of '
+                         f'{len(model_rows_del)} identified models from disk.')
+        return True
 
 
 class Model(object):

@@ -4,8 +4,12 @@
 Change Log
 ****************
 
-
 - New feature: New parameter generator SpecificModels generates and runs a predefined list of models or models resulting from a cartesian product of parameter values
+- New feature: added a new DYNAMITE module orbit_exploration, its first class Decompostion creates decomposition plots
+- Improvement: Changed the ml directory name format to '05.2f' so all model directory names have the same length
+- New feature: Added AllModels.remove_unused_orblibs() utility method to free up disk space
+- New feature: Added a new method AllModels.make_best_models_table() that creates a table of the best models (best n models or models within a chi2-threshold of the best) and saves it to disk
+- Bugfix: If reattempt_failures=False, in certain cases it could occur that orblibs of successful models were deleted
 - Bugfix: Fixed a bug related to a nonexistent model directory if a crash occurs between the parameter generator adding a model and starting to solve it
 - Improvement: Dynamite will no longer crash upon Legacy Fortran errors, but issue warnings and assign nan to the affected chi2 values
 - Improvement: When executing a dummy run (do_dummy_run==True), model_iterator will set both kinchi2 and kinmapchi2 to nan (instead of zero)
