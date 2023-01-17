@@ -31,7 +31,7 @@ class Decomposition:
         else:
             self.logger.debug('Using existing directory '
                               f'{self.results_directory}')
-        self.plotter = dyn.plotter.Plotter(config=self.config)
+        # self.plotter = dyn.plotter.Plotter(config=self.config)
         self.losvd_histograms, self.proj_mass = self.run_dec(read_orblib)
         self.logger.info('Orbits read and velocity histogram created.')
         self.comps = ['disk', 'thin_d', 'warm_d', 'bulge', 'all']
@@ -334,8 +334,10 @@ class Decomposition:
         self.logger.info(f'{losvd_orbs.shape = }.')
         for comp in self.comps:
             file=wdir+comp+'_orb_s22.out'
-            norbout, ener, i2, i3, regul, orbtype, orbw, lcut, ntot \
-                = self.plotter.readorbout(file)
+            # norbout, ener, i2, i3, regul, orbtype, orbw, lcut, ntot \
+            #     = self.plotter.readorbout(file)
+            norbout = np.genfromtxt(file, skip_header=1, usecols=(0))
+            orbw = np.genfromtxt(file, skip_header=1, usecols=(6))
             # norm_w=np.sum(orbw)
             #print('tot orb_weight', norm_w)
             orb_sel=norbout
@@ -448,22 +450,41 @@ class Decomposition:
         if not file3_test:
             file3= '%s' % file2
 
-        mgepar, distance, th_view, ph_view, psi_view, ml, bhmass,softlen, \
-            nre, lrmin, lrmax, nrth, nrrad, ndither, vv1_1, vv1_2,dm1,dm2, \
-            conversion_factor,grav_const_km,parsec_km, rho_crit \
-            = self.plotter.triaxreadparameters(w_dir=self.model.directory_noml)
+        # mgepar, distance, th_view, ph_view, psi_view, ml, bhmass,softlen, \
+        #     nre, lrmin, lrmax, nrth, nrrad, ndither, vv1_1, vv1_2,dm1,dm2, \
+        #     conversion_factor,grav_const_km,parsec_km, rho_crit \
+            # = self.plotter.triaxreadparameters(w_dir=self.model.directory_noml)
+
+        nre = self.config.settings.orblib_settings['nE']
+        nrth = self.config.settings.orblib_settings['nI2']
+        nrrad = self.config.settings.orblib_settings['nI3']
+        ndither = self.config.settings.orblib_settings['dithering']
+        distance = self.config.all_models.system.distMPc
+        conversion_factor = distance*1.0e6*1.49598e8
 
         norb = int(nre * nrth * nrrad)
 
 #unused        nrow = norb
-#unused        ncol = ndither ** 3
+        ncol = int(ndither ** 3)
         #print('norb', norb)
-        orbclass1 = self.plotter.readorbclass(file=file2, nrow=norb, ncol=ndither ** 3)
-        orbclass2 = self.plotter.readorbclass(file=file3, nrow=norb, ncol=ndither ** 3)
+        # orbclass1 = self.plotter.readorbclass(file=file2, nrow=norb, ncol=ndither ** 3)
+        # orbclass2 = self.plotter.readorbclass(file=file3, nrow=norb, ncol=ndither ** 3)
+        orbclass1 = np.genfromtxt(file2).T
+        orbclass1 = orbclass1.reshape((5,ncol,norb), order='F')
+        orbclass2 = np.genfromtxt(file3).T
+        orbclass2 = orbclass1.reshape((5,ncol,norb), order='F')
 
         #print('norb, ndither', np.max(norb), ndither)
-        norbout, ener, i2, i3, regul, orbtype, orbw, lcut, ntot \
-            = self.plotter.readorbout(filename=file4)
+        # norbout, ener, i2, i3, regul, orbtype, orbw, lcut, ntot \
+        #     = self.plotter.readorbout(filename=file4)
+        norbout = np.genfromtxt(file4, skip_header=1, usecols=(0))
+        ener = np.genfromtxt(file4, skip_header=1, usecols=(1))
+        i2 = np.genfromtxt(file4, skip_header=1, usecols=(2))
+        i3 = np.genfromtxt(file4, skip_header=1, usecols=(3))
+        regul = np.genfromtxt(file4, skip_header=1, usecols=(4))
+        orbtype = np.genfromtxt(file4, skip_header=1, usecols=(5))
+        orbw = np.genfromtxt(file4, skip_header=1, usecols=(6))
+        lcut = np.genfromtxt(file4, skip_header=1, usecols=(7))
 
         #print('ener, i2, i3', np.max(ener), np.max(i2), np.max(i3))
         #print('Maxmin and Minimum(ener)', np.max(ener), np.min(ener))
@@ -507,8 +528,8 @@ class Decomposition:
 
         self.logger.info('**Create nn_orb.out for different bulk of orbits**')
 
-        norbout, ener, i2, i3, regul, orbtype, orbw, lcut, ntot \
-            = self.plotter.readorbout(filename=file4)
+        # norbout, ener, i2, i3, regul, orbtype, orbw, lcut, ntot \
+        #     = self.plotter.readorbout(filename=file4)
 
         self.logger.info(f'#orbs: {len(norbout)}.')
         ### COLD COMPONENT
