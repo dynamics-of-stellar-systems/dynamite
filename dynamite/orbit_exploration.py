@@ -3,13 +3,11 @@ import logging
 import subprocess
 import numpy as np
 import matplotlib.pyplot as plt
-#import astropy.io
 from plotbin.display_pixels import display_pixels
 from scipy.io import FortranFile
-from lmfit import minimize, Parameters
+import lmfit
 import dynamite as dyn
 from dynamite import pyfort_GaussHerm
-#from matplotlib.patches import Ellipse
 
 class Decomposition:
     def __init__(self, config=None, read_orblib='dynamite'):
@@ -31,7 +29,6 @@ class Decomposition:
         else:
             self.logger.debug('Using existing directory '
                               f'{self.results_directory}')
-        self.plotter = dyn.plotter.Plotter(config=self.config)
         self.losvd_histograms, self.proj_mass = self.run_dec(read_orblib)
         self.logger.info('Orbits read and velocity histogram created.')
         self.comps = ['disk', 'thin_d', 'warm_d', 'bulge', 'all']
@@ -67,7 +64,8 @@ class Decomposition:
         skew=paramsin['skew'].value
         kurt=paramsin['kurt'].value
         g=(x-center)/sig
-        gaustot_gh=amp*np.exp(-.5*g**2)*(1+skew*(c1*g+c3*g**3)+ kurt*(c5+c2*g**2+c4*(g**4)))
+        gaustot_gh = amp*np.exp(-.5*g**2)*(1+skew*(c1*g+c3*g**3) +
+                                           kurt*(c5+c2*g**2+c4*(g**4)))
         return gaustot_gh
 
     def read_orbit_base(self, fileroot):
@@ -151,76 +149,6 @@ class Decomposition:
                                            normalise=False)
         return velhist, density_3D
 
-    def duplicate_flip_and_interlace_orblib(self, orblib):
-        #NOTE: identical to same-named method in orblib.py!
-        """mirror the tube orbits
-
-        Take an orbit library, create a duplicate library with the velocity
-        signs flipped, then interlace the two i.e. so that resulting library
-        alternates between flipped/unflipped. This creates an orbit library
-        consistent with the Fortran output, enforcing the ordering created by
-        the for loops in lines 157-178 of triaxnnls_CRcut.f90
-
-        Parameters
-        ----------
-        orblib : ``dyn.kinematics.Histogram``
-
-        Returns
-        -------
-        ``dyn.kinematics.Histogram``
-            the duplicated, flipped and interlaced orblib
-
-        """
-
-        error_msg = 'velocity array must be symmetric'
-        assert np.allclose(orblib.xedg, -orblib.xedg[::-1]), error_msg
-
-        losvd = orblib.y
-        n_orbs, n_vel_bins, n_spatial_bins = losvd.shape
-        reveresed_losvd = losvd[:, ::-1, :]
-        new_losvd = np.zeros((2*n_orbs, n_vel_bins, n_spatial_bins))
-        new_losvd[0::2] = losvd
-        new_losvd[1::2, :] = reveresed_losvd
-        new_orblib = dyn.kinematics.Histogram(xedg=orblib.xedg,
-                                              y=new_losvd,
-                                              normalise=False)
-        return new_orblib
-
-    def combine_orblibs(self, orblib1, orblib2):
-        #NOTE: identical to same-named method in orblib.py!
-        """Combine two LOSVD histograms into one.
-
-        Parameters
-        ----------
-        orblib1 : ``dyn.kinematics.Histogram``
-        orblib2 : ``dyn.kinematics.Histogram``
-
-        Returns
-        -------
-        ``dyn.kinematics.Histogram``
-            the combined orbit libraries
-
-        """
-        # check orblibs are compatible
-        n_orbs1, n_vel_bins1, n_spatial_bins1 = orblib1.y.shape
-        n_orbs2, n_vel_bins2, n_spatial_bins2 = orblib2.y.shape
-
-        error_msg = 'orblibs have different number of velocity bins'
-        assert n_vel_bins1==n_vel_bins2, error_msg
-
-        error_msg = 'orblibs have different velocity arrays'
-        assert np.array_equal(orblib1.x, orblib2.x), error_msg
-        error_msg = 'orblibs have different number of spatial bins'
-        assert n_spatial_bins1==n_spatial_bins2, error_msg
-
-        new_losvd = np.zeros((n_orbs1 + n_orbs2, n_vel_bins1, n_spatial_bins1))
-        new_losvd[:n_orbs1] = orblib1.y
-        new_losvd[n_orbs1:] = orblib2.y
-        new_orblib = dyn.kinematics.Histogram(xedg=orblib1.xedg,
-                                              y=new_losvd,
-                                              normalise=False)
-        return new_orblib
-
     def read_losvd_histograms(self):
         #NOTE: similar yet different compared to same-named method in orblib.py!
         """Read the orbit library
@@ -249,7 +177,8 @@ class Decomposition:
         tube_orblib, tube_density_3D = self.read_orbit_base('orblib')
         # tube orbits are mirrored/flipped and used twice
         self.logger.info('Duplicating tube orbits')
-        tube_orblib = self.duplicate_flip_and_interlace_orblib(tube_orblib)
+        tube_orblib = \
+            dyn.OrbitLibrary.duplicate_flip_and_interlace_orblib(tube_orblib)
         # duplicate and interlace tube_density_3D array
         tube_density_3D = np.repeat(tube_density_3D, 2, axis=0)
         # read box orbits
@@ -257,7 +186,7 @@ class Decomposition:
         box_orblib, box_density_3D = self.read_orbit_base('orblibbox')
         # combine orblibs
         self.logger.info('Combining orbits')
-        orblib = self.combine_orblibs(tube_orblib, box_orblib)
+        orblib = dyn.OrbitLibrary.combine_orblibs(tube_orblib, box_orblib)
         # combine density_3D arrays
         density_3D = np.vstack((tube_density_3D, box_density_3D))
 
@@ -270,22 +199,28 @@ class Decomposition:
         return losvd_histograms, intrinsic_masses, n_orbs, projected_masses
 
     def gh_fit_with_free_v_sigma_params(self, vhist, b):
-        p_gh=Parameters()
-        p_gh.add('amp',value=np.max(vhist),vary=True)
-        p_gh.add('center',value=np.percentile(b, 50),min=np.min(b),max=np.max(b))
+        p_gh = lmfit.Parameters()
+        p_gh.add('amp', value=np.max(vhist), vary=True)
+        p_gh.add('center',
+                 value=np.percentile(b, 50),
+                 min=np.min(b),
+                 max=np.max(b))
         #p_gh.add('sig',value=(b[w]-np.min(b))/2,min=b[w]-np.min(b),max=np.max(b)-b[w]);
-        p_gh.add('sig',value=np.abs(np.percentile(b,68)-np.percentile(b, 50)),min=0,max=700)
-        p_gh.add('skew',value=0,vary=True,min=None,max=None)
-        p_gh.add('kurt',value=0,vary=True,min=None,max=None)
+        p_gh.add('sig',
+                 value=np.abs(np.percentile(b,68)-np.percentile(b, 50)),
+                 min=0,
+                 max=700)
+        p_gh.add('skew', value=0, vary=True, min=None, max=None)
+        p_gh.add('kurt', value=0, vary=True, min=None, max=None)
         gausserr_gh = lambda p,x,y: self.gaussfunc_gh(p,x)-y
-        fitout_gh=minimize(gausserr_gh,p_gh,args=(b,vhist))
+        fitout_gh = lmfit.minimize(gausserr_gh, p_gh, args=(b,vhist))
 
 #unused        fitted_p_gh = fitout_gh.params
-        pars_gh=[fitout_gh.params['amp'].value,
-                fitout_gh.params['center'].value,
-                fitout_gh.params['sig'].value,
-                fitout_gh.params['skew'].value,
-                fitout_gh.params['kurt'].value]
+        pars_gh = [fitout_gh.params['amp'].value,
+                   fitout_gh.params['center'].value,
+                   fitout_gh.params['sig'].value,
+                   fitout_gh.params['skew'].value,
+                   fitout_gh.params['kurt'].value]
 #unused        fit_gh=self.gaussfunc_gh(fitted_p_gh,b)
 #unused        resid_gh=fit_gh-vhist
         return pars_gh[1], pars_gh[2]
@@ -309,7 +244,7 @@ class Decomposition:
         return vmi, sgi
 
     def gh_expand_around_losvd_mean_and_std_deviation(self, orblib, nkin,xedg):
-        mod_losvd = dyn.kinematics.Histogram(y=orblib[np.newaxis,:,:], xedg=xedg)
+        mod_losvd=dyn.kinematics.Histogram(y=orblib[np.newaxis,:,:], xedg=xedg)
         mod_v = mod_losvd.get_mean()
         mod_sig = mod_losvd.get_sigma()
         return mod_v[0, nkin], mod_sig[0, nkin]
@@ -334,8 +269,10 @@ class Decomposition:
         self.logger.info(f'{losvd_orbs.shape = }.')
         for comp in self.comps:
             file=wdir+comp+'_orb_s22.out'
-            norbout, ener, i2, i3, regul, orbtype, orbw, lcut, ntot \
-                = self.plotter.readorbout(file)
+            norbout, orbw = np.genfromtxt(file,
+                                          skip_header=1,
+                                          usecols=(0,6),
+                                          unpack=True)
             # norm_w=np.sum(orbw)
             #print('tot orb_weight', norm_w)
             orb_sel=norbout
@@ -436,8 +373,6 @@ class Decomposition:
             ocut = [0.8, 0.25, -0.25]  #selection in lambda_z following Santucci+22
         self.logger.info(f'cut lines are: {ocut}.')
 
-        savedir = self.results_directory #where to save the files
-
         if not xrange:
             xrange = [0.0, Rmax_arcs]
 
@@ -448,22 +383,29 @@ class Decomposition:
         if not file3_test:
             file3= '%s' % file2
 
-        mgepar, distance, th_view, ph_view, psi_view, ml, bhmass,softlen, \
-            nre, lrmin, lrmax, nrth, nrrad, ndither, vv1_1, vv1_2,dm1,dm2, \
-            conversion_factor,grav_const_km,parsec_km, rho_crit \
-            = self.plotter.triaxreadparameters(w_dir=self.model.directory_noml)
+        nre = self.config.settings.orblib_settings['nE']
+        nrth = self.config.settings.orblib_settings['nI2']
+        nrrad = self.config.settings.orblib_settings['nI3']
+        ndither = self.config.settings.orblib_settings['dithering']
+        distance = self.config.all_models.system.distMPc
+        conversion_factor = distance*1.0e6*1.49598e8
 
         norb = int(nre * nrth * nrrad)
 
 #unused        nrow = norb
-#unused        ncol = ndither ** 3
+        ncol = int(ndither ** 3)
         #print('norb', norb)
-        orbclass1 = self.plotter.readorbclass(file=file2, nrow=norb, ncol=ndither ** 3)
-        orbclass2 = self.plotter.readorbclass(file=file3, nrow=norb, ncol=ndither ** 3)
+        orbclass1 = np.genfromtxt(file2).T
+        orbclass1 = orbclass1.reshape((5,ncol,norb), order='F')
+        orbclass2 = np.genfromtxt(file3).T
+        orbclass2 = orbclass1.reshape((5,ncol,norb), order='F')
 
         #print('norb, ndither', np.max(norb), ndither)
-        norbout, ener, i2, i3, regul, orbtype, orbw, lcut, ntot \
-            = self.plotter.readorbout(filename=file4)
+        norbout, ener, i2, i3, regul, orbtype, orbw, lcut = \
+            np.genfromtxt(file4,
+                          skip_header=1,
+                          usecols=(0,1,2,3,4,5,6,7),
+                          unpack=True)
 
         #print('ener, i2, i3', np.max(ener), np.max(i2), np.max(i3))
         #print('Maxmin and Minimum(ener)', np.max(ener), np.min(ener))
@@ -500,15 +442,11 @@ class Decomposition:
         if np.sum(np.sum(lz[:, k], axis=0) / (ndither ** 3) * orbw[k]) < 0:
             lz *= -1.0
 
-
         lzm_sign= np.sum(lz, axis=0) / ndither ** 3
 #unused        lxm_sign= np.sum(lx, axis=0) / ndither ** 3
         #print("check 2 - sign", lzm_sign, lxm_sign)
 
         self.logger.info('**Create nn_orb.out for different bulk of orbits**')
-
-        norbout, ener, i2, i3, regul, orbtype, orbw, lcut, ntot \
-            = self.plotter.readorbout(filename=file4)
 
         self.logger.info(f'#orbs: {len(norbout)}.')
         ### COLD COMPONENT
@@ -525,7 +463,7 @@ class Decomposition:
             nohlz=np.ravel(np.where((lzm_sign) < ocut[0]))
         orbw_hlz[nohlz] = -999
 
-        with open(savedir + 'thin_d' + '_orb_s22.out', 'w') as outfile:
+        with open(self.results_directory+'thin_d_orb_s22.out', 'w') as outfile:
             norbw = len(orbw)
             outfile.write(("%12i" % len(hlz)) + '\n')
             for i in range(0, norbw):
@@ -541,7 +479,7 @@ class Decomposition:
         nowlz= np.ravel(np.where(((lzm_sign) > ocut[0]) | ((lzm_sign) <= ocut[1])))
         orbw_wlz[nowlz] = -999
         self.logger.info(f'check 3 - warm comp: {len(wlz)}.')
-        with open(savedir + 'warm_d' + '_orb_s22.out', 'w') as outfile:
+        with open(self.results_directory+'warm_d_orb_s22.out', 'w') as outfile:
             norbw = len(orbw)
             outfile.write(("%12i" % len(wlz)) + '\n')
             for i in range(0, norbw):
@@ -559,7 +497,7 @@ class Decomposition:
         nozlz= np.ravel(np.where(((lzm_sign) > ocut[1]) | ((lzm_sign) <= ocut[2])))
         orbw_zlz[nozlz] = -999
         self.logger.info(f'check 3 - hot comp: {len(zlz)}.')
-        with open(savedir + 'bulge' + '_orb_s22.out', 'w') as outfile:
+        with open(self.results_directory+'bulge_orb_s22.out', 'w') as outfile:
             norbw = len(orbw)
             outfile.write(("%12i" % len(zlz)) + '\n')
             for i in range(0, norbw):
@@ -577,7 +515,7 @@ class Decomposition:
         orbw_dlz[nodlz] = -999
         self.logger.info(f'check 3 - disk comp: {len(dlz)}.')
 
-        with open(savedir + 'disk' + '_orb_s22.out', 'w') as outfile:
+        with open(self.results_directory + 'disk_orb_s22.out', 'w') as outfile:
             norbw = len(orbw)
             outfile.write(("%12i" % len(dlz)) + '\n')
             for i in range(0, norbw):
@@ -591,7 +529,7 @@ class Decomposition:
         orbw_allz = np.copy(orbw)
 
         self.logger.info(f'check 3 - whole comp: {len(orbw_allz)}.')
-        with open(savedir + 'all' + '_orb_s22.out', 'w') as outfile:
+        with open(self.results_directory + 'all_orb_s22.out', 'w') as outfile:
             norbw = len(orbw)
             outfile.write(("%12i" % len(orbw)) + '\n')
             for i in range(0, norbw):
