@@ -149,76 +149,6 @@ class Decomposition:
                                            normalise=False)
         return velhist, density_3D
 
-    def duplicate_flip_and_interlace_orblib(self, orblib):
-        #NOTE: identical to same-named method in orblib.py!
-        """mirror the tube orbits
-
-        Take an orbit library, create a duplicate library with the velocity
-        signs flipped, then interlace the two i.e. so that resulting library
-        alternates between flipped/unflipped. This creates an orbit library
-        consistent with the Fortran output, enforcing the ordering created by
-        the for loops in lines 157-178 of triaxnnls_CRcut.f90
-
-        Parameters
-        ----------
-        orblib : ``dyn.kinematics.Histogram``
-
-        Returns
-        -------
-        ``dyn.kinematics.Histogram``
-            the duplicated, flipped and interlaced orblib
-
-        """
-
-        error_msg = 'velocity array must be symmetric'
-        assert np.allclose(orblib.xedg, -orblib.xedg[::-1]), error_msg
-
-        losvd = orblib.y
-        n_orbs, n_vel_bins, n_spatial_bins = losvd.shape
-        reveresed_losvd = losvd[:, ::-1, :]
-        new_losvd = np.zeros((2*n_orbs, n_vel_bins, n_spatial_bins))
-        new_losvd[0::2] = losvd
-        new_losvd[1::2, :] = reveresed_losvd
-        new_orblib = dyn.kinematics.Histogram(xedg=orblib.xedg,
-                                              y=new_losvd,
-                                              normalise=False)
-        return new_orblib
-
-    def combine_orblibs(self, orblib1, orblib2):
-        #NOTE: identical to same-named method in orblib.py!
-        """Combine two LOSVD histograms into one.
-
-        Parameters
-        ----------
-        orblib1 : ``dyn.kinematics.Histogram``
-        orblib2 : ``dyn.kinematics.Histogram``
-
-        Returns
-        -------
-        ``dyn.kinematics.Histogram``
-            the combined orbit libraries
-
-        """
-        # check orblibs are compatible
-        n_orbs1, n_vel_bins1, n_spatial_bins1 = orblib1.y.shape
-        n_orbs2, n_vel_bins2, n_spatial_bins2 = orblib2.y.shape
-
-        error_msg = 'orblibs have different number of velocity bins'
-        assert n_vel_bins1==n_vel_bins2, error_msg
-
-        error_msg = 'orblibs have different velocity arrays'
-        assert np.array_equal(orblib1.x, orblib2.x), error_msg
-        error_msg = 'orblibs have different number of spatial bins'
-        assert n_spatial_bins1==n_spatial_bins2, error_msg
-
-        new_losvd = np.zeros((n_orbs1 + n_orbs2, n_vel_bins1, n_spatial_bins1))
-        new_losvd[:n_orbs1] = orblib1.y
-        new_losvd[n_orbs1:] = orblib2.y
-        new_orblib = dyn.kinematics.Histogram(xedg=orblib1.xedg,
-                                              y=new_losvd,
-                                              normalise=False)
-        return new_orblib
-
     def read_losvd_histograms(self):
         #NOTE: similar yet different compared to same-named method in orblib.py!
         """Read the orbit library
@@ -247,7 +177,8 @@ class Decomposition:
         tube_orblib, tube_density_3D = self.read_orbit_base('orblib')
         # tube orbits are mirrored/flipped and used twice
         self.logger.info('Duplicating tube orbits')
-        tube_orblib = self.duplicate_flip_and_interlace_orblib(tube_orblib)
+        tube_orblib = \
+            dyn.OrbitLibrary.duplicate_flip_and_interlace_orblib(tube_orblib)
         # duplicate and interlace tube_density_3D array
         tube_density_3D = np.repeat(tube_density_3D, 2, axis=0)
         # read box orbits
@@ -255,7 +186,7 @@ class Decomposition:
         box_orblib, box_density_3D = self.read_orbit_base('orblibbox')
         # combine orblibs
         self.logger.info('Combining orbits')
-        orblib = self.combine_orblibs(tube_orblib, box_orblib)
+        orblib = dyn.OrbitLibrary.combine_orblibs(tube_orblib, box_orblib)
         # combine density_3D arrays
         density_3D = np.vstack((tube_density_3D, box_density_3D))
 
