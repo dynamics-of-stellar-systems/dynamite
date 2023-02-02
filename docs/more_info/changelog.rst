@@ -4,6 +4,7 @@
 Change Log
 ****************
 
+- Bugfix: fixed a bug that under certain circumstances prevented the staging files from being deleted after a successful iteration
 - Bugfix: removed logging from the list of requirements because it is in the Python standard library
 - New feature: added a new DYNAMITE module orbit_exploration, its first class Decompostion creates decomposition plots
 - Improvement: Changed the ml directory name format to '05.2f' so all model directory names have the same length
