@@ -6,20 +6,23 @@ import dynamite as dyn
 
 class Analysis:
 
-    def __init__(self, config, model, kin_set=0):
+    def __init__(self, config, model=None, kin_set=0):
         self.logger = logging.getLogger(f'{__name__}.{__class__.__name__}')
         if config is None:
             text = f'{__class__.__name__} needs configuration object, ' \
                    'None provided.'
             self.logger.error(text)
             raise ValueError(text)
+        if model is None:
+            model_index = config.all_models.get_best_n_models_idx(1)[0]
+            model = config.all_models.get_model_from_row(model_index)
         self.config = config
         self.model = model
         self.kin_set = kin_set
 
     def get_gh_model_kinematic_maps(self,
-                                    model,
-                                    kin_set=0,
+                                    model=None,
+                                    kin_set=None,
                                     v_sigma_option='fit'):
         """
         Generates an astropy table in the model directory that holds the
@@ -30,9 +33,11 @@ class Analysis:
 
         Parameters
         ----------
-        model : a ``dyn.model.Model`` object
+        model : a ``dyn.model.Model`` object, optional
+            The default is the Analysis object's model.
         kin_set : int, optional
-            Which kinematics set to use. The default is 0.
+            Which kinematics set to use. The default is the
+            Analysis object's kin_set.
         v_sigma_option : str, optional
             If 'fit', v and sigma are calculated based on fitting Gaussians,
             if 'moments', v and sigma are calculated directly from the
@@ -48,6 +53,10 @@ class Analysis:
         Nothing
 
         """
+        if model is None:
+            model = self.model
+        if kin_set is None:
+            kin_set = self.kin_set
         if v_sigma_option not in ['moments', 'fit']:
             txt = f"{v_sigma_option=} but must be either 'fit' or 'moments'."
             self.logger.error(txt)
