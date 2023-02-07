@@ -1,31 +1,107 @@
-
+import logging
+import numpy as np
+from scipy.optimize import curve_fit
+import astropy
+import dynamite as dyn
 
 class Analysis:
 
-    def __init__(self, config, model):
+    def __init__(self, config, model, kin_set=0):
+        self.logger = logging.getLogger(f'{__name__}.{__class__.__name__}')
+        if config is None:
+            text = f'{__class__.__name__} needs configuration object, ' \
+                   'None provided.'
+            self.logger.error(text)
+            raise ValueError(text)
+        self.config = config
+        self.model = model
+        self.kin_set = kin_set
+
+    def get_gh_model_kinematic_maps(self,
+                                    model,
+                                    kin_set=0,
+                                    v_sigma_option='fit'):
+        """
+        Generates an astropy table in the model directory that holds the
+        model's data for creating Gauss-Hermite kinematic maps:
+        v, sigma, h3 ... h<number_GH>
+        v and sigma are either directly calculated from the model's losvd
+        histograms or from fitting a Gaussian in each aperture.
+
+        Parameters
+        ----------
+        model : a ``dyn.model.Model`` object
+        kin_set : int, optional
+            Which kinematics set to use. The default is 0.
+        v_sigma_option : str, optional
+            If 'fit', v and sigma are calculated based on fitting Gaussians,
+            if 'moments', v and sigma are calculated directly from the
+            model's losvd hisograms. The default is 'fit'.
+
+        Raises
+        ------
+        ValueError
+            if v_sigma_option is neither 'moments' nor 'fit'.
+
+        Returns
+        -------
+        Nothing
+
+        """
+        if v_sigma_option not in ['moments', 'fit']:
+            txt = f"{v_sigma_option=} but must be either 'fit' or 'moments'."
+            self.logger.error(txt)
+            raise ValueError(txt)
+        orblib = model.get_orblib()
+        _ = model.get_weights(orblib)
+        weights = model.weights
+        orblib.read_losvd_histograms()
+        # get all orbits' losvds; orbits_losvd.shape = n_orb,n_vbin,n_aperture
+        orbits_losvd = orblib.losvd_histograms[kin_set].y[:,:,]
+        # weighted sum of orbits_losvd; model_losvd.shape = 1,n_vbin,n_aperture
+        model_losvd = np.dot(orbits_losvd.T, weights).T[np.newaxis,:]
+        #model_losvd /= np.sum(model_losvd, 0) # normalisation not necessary
+        # calculate v_dist and sigma_dist from the losvd histogram
+        # also needed as initial conditions if v_sigma_option=='fit'
+        model_losvd_hist = \
+            dyn.kinematics.Histogram(xedg=orblib.losvd_histograms[0].xedg,
+                                     y=model_losvd,
+                                     normalise=False)
+        v_dist = np.squeeze(model_losvd_hist.get_mean()) # v from distribution
+        sigma_dist = np.squeeze(model_losvd_hist.get_sigma()) # sigma from dist
+        if v_sigma_option == 'fit': # fit a gaussian in each aperture
+            def gauss(x, a, mean, sigma):
+                return a*np.exp(-(x-mean)**2/(2.*sigma**2))
+            v_fit, sigma_fit = [], []
+            for aperture in range(model_losvd.shape[-1]):
+                p_initial = [1., v_dist[aperture], sigma_dist[aperture]]
+                p_opt, _ = curve_fit(gauss,
+                                     orblib.losvd_histograms[0].x,
+                                     model_losvd[0,:,aperture],
+                                     p0=p_initial)
+                v_fit.append(p_opt[1])
+                sigma_fit.append(p_opt[2])
+        # calculate the model's gh expansion coefficients
+        n_gh = self.config.settings.weight_solver_settings['number_GH']
+        gh = dyn.kinematics.GaussHermite()
+        model_gh_coefficients = gh.get_gh_expansion_coefficients(
+            v_mu=v_fit,
+            v_sig=sigma_fit,
+            vel_hist=model_losvd_hist,
+            max_order=n_gh)
+        # put the coefficients into an astropy table
+        col_names = ['v', 'sigma']
+        tab_data = [v_fit, sigma_fit] if v_sigma_option=='fit' else \
+                   [v_dist, sigma_dist]
+        if n_gh > 2:
+            col_names += [f'h{i}' for i in range(3,n_gh+1)]
+            tab_data += list(np.squeeze(model_gh_coefficients)[:,3:].T)
+        gh_table = astropy.table.Table(tab_data, names=col_names)
+        f_name = f'{model.directory}gh_kinematics_{v_sigma_option}.ecsv'
+        gh_table.write(f_name, format='ascii.ecsv', overwrite=True)
+
+    def get_projection_tensor_for_orbit_distributions(self):
         pass
 
-    def get_gh_model_kinematic_maps(self, ..., v_sigma_option='fit'):
-        if v_sigma_option = 'fit':
-            v, sigma = ...
-            # for each spatial bin, do some scipy.optimize to fit a Gaussian 
-            # to the LOSVD in that bin
-         if v_sigma_option = 'moments':
-            # extract the orblib from the model
-            v = orblib.get_mean_v()
-            sigma = orblib.get_sigma_v()
-        # extract gh kinematic object
-        gh_kins = kinematics.get_gh_coeffs( ... )
-        # methods are in https://dynamics.univie.ac.at/dynamite_docs/tutorial_notebooks/6_orbits_and_weights.html
-        table = ... # [v, sigma, h3, h4, ...]
-        if v_sigma_option = 'fit':
-            filename = ...
-        if v_sigma_option = 'moments':
-            filename = ...
-        astropy.save(table, filename)
-
-    def get_projection_tensor_for_orbit_distributions():
-        pass
-
-    def get_orbit_distributions():
+    def get_orbit_distributions(self):
         pass
