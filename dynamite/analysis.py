@@ -39,9 +39,9 @@ class Analysis:
             Which kinematics set to use. The default is the
             Analysis object's kin_set.
         v_sigma_option : str, optional
-            If 'fit', v and sigma are calculated based on fitting Gaussians,
-            if 'moments', v and sigma are calculated directly from the
-            model's losvd hisograms. The default is 'fit'.
+            If 'fit', v_mean and v_sigma are calculated based on fitting
+            Gaussians, if 'moments', v_mean and v_sigma are calculated
+            directly from the model's losvd histograms. The default is 'fit'.
 
         Raises
         ------
@@ -70,42 +70,42 @@ class Analysis:
         # weighted sum of orbits_losvd; model_losvd.shape = 1,n_vbin,n_aperture
         model_losvd = np.dot(orbits_losvd.T, weights).T[np.newaxis,:]
         #model_losvd /= np.sum(model_losvd, 0) # normalisation not necessary
-        # calculate v_dist and sigma_dist from the losvd histogram
+        # calculate v_mean and v_sigma values from the losvd histograms
         # also needed as initial conditions if v_sigma_option=='fit'
         model_losvd_hist = \
             dyn.kinematics.Histogram(xedg=orblib.losvd_histograms[kin_set].xedg,
                                      y=model_losvd,
                                      normalise=False)
-        v_dist = np.squeeze(model_losvd_hist.get_mean()) # v from distribution
-        sigma_dist = np.squeeze(model_losvd_hist.get_sigma()) # sigma from dist
+        v_mean = np.squeeze(model_losvd_hist.get_mean()) # v from distribution
+        v_sigma = np.squeeze(model_losvd_hist.get_sigma()) # sigma from distr.
         if v_sigma_option == 'fit': # fit a gaussian in each aperture
             def gauss(x, a, mean, sigma):
                 return a*np.exp(-(x-mean)**2/(2.*sigma**2))
-            v_fit, sigma_fit = [], []
             for aperture in range(model_losvd.shape[-1]):
-                p_initial = [1., v_dist[aperture], sigma_dist[aperture]]
+                p_initial = [1., v_mean[aperture], v_sigma[aperture]]
                 p_opt, _ = curve_fit(gauss,
                                      orblib.losvd_histograms[kin_set].x,
                                      model_losvd[0,:,aperture],
                                      p0=p_initial)
-                v_fit.append(p_opt[1])
-                sigma_fit.append(p_opt[2])
+                v_mean[aperture] = p_opt[1] # overwrite v_mean from distr
+                v_sigma[aperture] = p_opt[2] # overwrite v_sigma from distr
         # calculate the model's gh expansion coefficients
         n_gh = self.config.settings.weight_solver_settings['number_GH']
         gh = dyn.kinematics.GaussHermite()
         model_gh_coefficients = gh.get_gh_expansion_coefficients(
-            v_mu=v_fit,
-            v_sig=sigma_fit,
+            v_mu=v_mean,
+            v_sig=v_sigma,
             vel_hist=model_losvd_hist,
             max_order=n_gh)
         # put the coefficients into an astropy table
         col_names = ['v', 'sigma']
-        tab_data = [v_fit, sigma_fit] if v_sigma_option=='fit' else \
-                   [v_dist, sigma_dist]
+        tab_data = [v_mean, v_sigma]
         if n_gh > 2:
             col_names += [f'h{i}' for i in range(3,n_gh+1)]
             tab_data += list(np.squeeze(model_gh_coefficients)[:,3:].T)
-        gh_table = astropy.table.Table(tab_data, names=col_names)
+        gh_table = astropy.table.Table(tab_data,
+                                       names=col_names,
+                                       meta={'v_sigma_option': v_sigma_option})
         f_name = f'{model.directory}gh_kinematics_{v_sigma_option}.ecsv'
         gh_table.write(f_name, format='ascii.ecsv', overwrite=True)
 
