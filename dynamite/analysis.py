@@ -73,7 +73,7 @@ class Analysis:
         # calculate v_dist and sigma_dist from the losvd histogram
         # also needed as initial conditions if v_sigma_option=='fit'
         model_losvd_hist = \
-            dyn.kinematics.Histogram(xedg=orblib.losvd_histograms[0].xedg,
+            dyn.kinematics.Histogram(xedg=orblib.losvd_histograms[kin_set].xedg,
                                      y=model_losvd,
                                      normalise=False)
         v_dist = np.squeeze(model_losvd_hist.get_mean()) # v from distribution
@@ -85,7 +85,7 @@ class Analysis:
             for aperture in range(model_losvd.shape[-1]):
                 p_initial = [1., v_dist[aperture], sigma_dist[aperture]]
                 p_opt, _ = curve_fit(gauss,
-                                     orblib.losvd_histograms[0].x,
+                                     orblib.losvd_histograms[kin_set].x,
                                      model_losvd[0,:,aperture],
                                      p0=p_initial)
                 v_fit.append(p_opt[1])
