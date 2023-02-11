@@ -64,12 +64,15 @@ class Analysis:
         orblib = model.get_orblib()
         _ = model.get_weights(orblib)
         weights = model.weights
+        # get losvd_histograms and projected masses:
         orblib.read_losvd_histograms()
         # get all orbits' losvds; orbits_losvd.shape = n_orb,n_vbin,n_aperture
         orbits_losvd = orblib.losvd_histograms[kin_set].y[:,:,]
         # weighted sum of orbits_losvd; model_losvd.shape = 1,n_vbin,n_aperture
         model_losvd = np.dot(orbits_losvd.T, weights).T[np.newaxis,:]
         #model_losvd /= np.sum(model_losvd, 0) # normalisation not necessary
+        model_proj_masses = np.dot(orblib.projected_masses[kin_set].T,
+                                   weights) # .shape = n_aperture
         # calculate v_mean and v_sigma values from the losvd histograms
         # also needed as initial conditions if v_sigma_option=='fit'
         model_losvd_hist = \
@@ -93,13 +96,13 @@ class Analysis:
         n_gh = self.config.settings.weight_solver_settings['number_GH']
         gh = dyn.kinematics.GaussHermite()
         model_gh_coefficients = gh.get_gh_expansion_coefficients(
-            v_mu=v_mean,
-            v_sig=v_sigma,
-            vel_hist=model_losvd_hist,
-            max_order=n_gh)
+                                                    v_mu=v_mean,
+                                                    v_sig=v_sigma,
+                                                    vel_hist=model_losvd_hist,
+                                                    max_order=n_gh)
         # put the coefficients into an astropy table
-        col_names = ['v', 'sigma']
-        tab_data = [v_mean, v_sigma]
+        col_names = ['flux', 'v', 'sigma']
+        tab_data = [model_proj_masses, v_mean, v_sigma]
         if n_gh > 2:
             col_names += [f'h{i}' for i in range(3,n_gh+1)]
             tab_data += list(np.squeeze(model_gh_coefficients)[:,3:].T)
