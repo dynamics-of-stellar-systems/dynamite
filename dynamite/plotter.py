@@ -1,23 +1,21 @@
 import logging
 import subprocess
 import sys
-import numpy as np
 import os
+from copy import deepcopy
+import numpy as np
 import scipy.integrate
 from scipy.special import erf
 from scipy.interpolate import UnivariateSpline
 from scipy.sparse import csr_matrix
 from scipy.sparse.csgraph import maximum_bipartite_matching
-from copy import deepcopy
 import matplotlib as mpl
 from matplotlib.ticker import MaxNLocator, FixedLocator,LogLocator
 from matplotlib.ticker import NullFormatter
 import matplotlib.pyplot as plt
 import astropy
 from plotbin import display_pixels
-from dynamite import constants as const
 from dynamite import kinematics
-from dynamite import weight_solvers
 from dynamite import physical_system as physys
 from dynamite import analysis
 import cmasher as cmr
@@ -424,23 +422,23 @@ class Plotter():
         ws_type = self.settings.weight_solver_settings['type']
 
         if kin_type is kinematics.GaussHermite:
+            if cbar_lims=='default':
+                cbar_lims = 'data'
+            fig = self._plot_kinematic_maps_gaussherm_new(
+                model,
+                kin_set,
+                cbar_lims=cbar_lims,
+                **kwargs)
             if ws_type == 'LegacyWeightSolver':
-                if cbar_lims=='default':
-                    cbar_lims = 'data'
-                fig = self._plot_kinematic_maps_gaussherm_new(
-                    model,
-                    kin_set,
-                    cbar_lims=cbar_lims,
-                    **kwargs)
                 figold = self._plot_kinematic_maps_gaussherm_old(
                     model,
                     kin_set,
                     cbar_lims=cbar_lims,
                     **kwargs)
             else:
-                self.logger.info(f'Gauss Hermite kinematic maps can only be '
-                                 'plotted if LegacyWeightSolver is used')
-                fig = plt.figure(figsize=(27, 12))
+                self.logger.info('Legacy Gauss Hermite kinematic maps can only'
+                                 'be plotted if LegacyWeightSolver is used')
+                figold = plt.figure(figsize=(27, 12))
         elif kin_type is kinematics.BayesLOSVD:
             if cbar_lims=='default':
                 cbar_lims = [0,3]
@@ -451,9 +449,10 @@ class Plotter():
                 **kwargs)
 
         figname = self.plotdir + f'kinematic_map_{kin_name}' + figtype
-        oldfigname = self.plotdir + f'kinematic_map_{kin_name}old' + figtype
         fig.savefig(figname, dpi=300)
-        figold.savefig(oldfigname, dpi=300)
+        if kin_type is kinematics.GaussHermite:
+            fignameold = self.plotdir+f'kinematic_map_{kin_name}old'+figtype
+            figold.savefig(fignameold, dpi=300)
         return fig
 
     def _plot_kinematic_maps_bayeslosvd(self,
@@ -745,11 +744,10 @@ class Plotter():
             dh[i] = np.array(kinematics_data[f'dh{i}'])
             hm[i] = np.array(model_gh_coef[f'h{i}'])
 
-
         #still ToDO: Add the kinematic map plots for h5 and h6 below
 
         text = '`cbar_lims` must be one of `model`, `data` or `combined`'
-        if not cbar_lims in ['model', 'data', 'combined']:
+        if cbar_lims not in ['model', 'data', 'combined']:
             self.logger.error(text)
             raise AssertionError(text)
         if cbar_lims=='model':
@@ -776,67 +774,21 @@ class Plotter():
         else:
             self.logger.error('unknown choice of `cbar_lims`')
 
-        # Read aperture.dat
-        # The angle that is saved in this file is measured counter clock-wise
-        # from the galaxy major axis to the X-axis of the input data.
+        # get aperture and bin data
 
-        aperture_fname = stars.kinematic_data[kin_set].aperturefile
-        aperture_fname = self.input_directory + aperture_fname
-
-        lines = [line.rstrip('\n').split() for line in open(aperture_fname)]
-        minx = float(lines[1][0])
-        miny = float(lines[1][1])
-        sx = float(lines[2][0])
-        sy = float(lines[2][1])
-        sy = sy + miny
-        angle_deg = float(lines[3][0])
-        nx = int(lines[4][0])
-        ny = int(lines[4][1])
-        dx = sx / nx
-
-        self.logger.debug(f"Pixel grid dimension is dx={dx},nx={nx},ny={ny}")
-        grid = np.zeros((nx, ny), dtype=int)
-
-        xr = np.arange(nx, dtype=float) * dx + minx + 0.5 * dx
-        yc = np.arange(ny, dtype=float) * dx + miny + 0.5 * dx
-
-        xi = np.outer(xr, (yc * 0 + 1))
-        xt = xi.T.flatten()
-        yi = np.outer((xr * 0 + 1), yc)
-        yt = yi.T.flatten()
-
+        dp_args = stars.kinematic_data[kin_set].dp_args
+        x = dp_args['x']
+        y = dp_args['y']
+        dx = dp_args['dx']
+        grid = dp_args['idx_bin_to_pix']
+        angle_deg = dp_args['angle']
+        self.logger.debug(f"Pixel grid dimension is {dx=}, "
+                          f"{len(x)=}, {len(y)=}.")
         self.logger.debug(f'PA: {angle_deg}')
-        xi = xt
-        yi = yt
 
-        # read bins.dat
-
-        bin_fname = stars.kinematic_data[kin_set].binfile
-        bin_fname = self.input_directory + bin_fname
-        lines_bins = [line.rstrip('\n').split() for line in open(bin_fname)]
-        i = 0
-        str_head = []
-        i_var = []
-        grid = []
-        while i < len(lines_bins):
-            for x in lines_bins[i]:
-                if i == 0:
-                    str_head.append(str(x))
-                if i == 1:
-                    i_var.append(int(x))
-                if i > 1:
-                    grid.append(int(x))
-            i += 1
-        str_head = str(str_head[0])
-        i_var = int(i_var[0])
-        grid = np.ravel(np.array(grid))
-
-        # bins start counting at 1 in fortran and at 0 in idl:
-        grid = grid - 1
-
-        # Only select the pixels that have a bin associated with them.
+        # # Only select the pixels that have a bin associated with them.
         s = np.ravel(np.where((grid >= 0)))
-        fhist, fbinedge = np.histogram(grid[s], bins=len(flux))
+        fhist, _ = np.histogram(grid[s], bins=len(flux))
         flux = flux / fhist
         fluxm = fluxm / fhist
 
@@ -872,7 +824,6 @@ class Plotter():
                                  nticks=7,
                                  #cmap='sauron')
                                  cmap=map2)
-        x, y = xi[s], yi[s]
 
         ### PLOT THE REAL DATA
         ax1 = plt.subplot(3, 5, 1)
