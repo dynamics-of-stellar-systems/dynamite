@@ -50,7 +50,9 @@ class Analysis:
 
         Returns
         -------
-        Nothing
+        f_name : str
+            The file name of the astropy table holding the model's gh
+            kinematics.
 
         """
         if model is None:
@@ -61,6 +63,7 @@ class Analysis:
             txt = f"{v_sigma_option=} but must be either 'fit' or 'moments'."
             self.logger.error(txt)
             raise ValueError(txt)
+        self.logger.debug('Getting model projected masses and losvds.')
         orblib = model.get_orblib()
         _ = model.get_weights(orblib)
         weights = model.weights
@@ -92,25 +95,34 @@ class Analysis:
                                      p0=p_initial)
                 v_mean[aperture] = p_opt[1] # overwrite v_mean from distr
                 v_sigma[aperture] = p_opt[2] # overwrite v_sigma from distr
-        # calculate the model's gh expansion coefficients
-        n_gh = self.config.settings.weight_solver_settings['number_GH']
-        gh = dyn.kinematics.GaussHermite()
-        model_gh_coefficients = gh.get_gh_expansion_coefficients(
-                                                    v_mu=v_mean,
-                                                    v_sig=v_sigma,
-                                                    vel_hist=model_losvd_hist,
-                                                    max_order=n_gh)
-        # put the coefficients into an astropy table
-        col_names = ['flux', 'v', 'sigma']
-        tab_data = [model_proj_masses, v_mean, v_sigma]
-        if n_gh > 2:
-            col_names += [f'h{i}' for i in range(3,n_gh+1)]
-            tab_data += list(np.squeeze(model_gh_coefficients)[:,3:].T)
-        gh_table = astropy.table.Table(tab_data,
-                                       names=col_names,
+            v_sig_text = 'fitted Gaussians'
+        else:
+            v_sig_text = 'losvd moments'
+        self.logger.debug(f'Calculated v_mean and v_sigma from {v_sig_text} '
+                          f'for {len(v_mean)} apertures.')
+        gh_table = astropy.table.Table([model_proj_masses, v_mean, v_sigma],
+                                       names = ['flux', 'v', 'sigma'],
                                        meta={'v_sigma_option': v_sigma_option})
+        weight_solver_settings = self.config.settings.weight_solver_settings
+        n_gh = weight_solver_settings['number_GH']
+        if n_gh > 2:
+            # calculate the model's gh expansion coefficients
+            gh = dyn.kinematics.GaussHermite()
+            gh.data = gh_table
+            model_gh_coefficients = gh.transform_orblib_to_observables(
+                            losvd_histograms=model_losvd_hist,
+                            weight_solver_settings=weight_solver_settings)
+            # unscale by projected masses (see weight solver)
+            model_gh_coefficients = \
+                (np.squeeze(model_gh_coefficients).T / model_proj_masses).T
+            # add the gh coefficients to the astropy table
+            col_names = [f'h{i}' for i in range(3,n_gh+1)]
+            tab_data = list(model_gh_coefficients[:,2:].T)
+            gh_table.add_columns(tab_data, names=col_names)
         f_name = f'{model.directory}gh_kinematics_{v_sigma_option}.ecsv'
         gh_table.write(f_name, format='ascii.ecsv', overwrite=True)
+        self.logger.info(f'Model gh kinematics {f_name} written, {n_gh=}.')
+        return f_name
 
     def get_projection_tensor_for_orbit_distributions(self):
         pass
