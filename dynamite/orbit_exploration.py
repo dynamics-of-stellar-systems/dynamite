@@ -1,16 +1,14 @@
 import os
 import logging
-import subprocess
 import numpy as np
 import matplotlib.pyplot as plt
 from plotbin.display_pixels import display_pixels
-from scipy.io import FortranFile
 import lmfit
 import dynamite as dyn
 from dynamite import pyfort_GaussHerm
 
 class Decomposition:
-    def __init__(self, config=None, read_orblib='dynamite'):
+    def __init__(self, config=None):
         self.logger = logging.getLogger(f'{__name__}.{__class__.__name__}')
         if config is None:
             text = f'{__class__.__name__} needs configuration object, ' \
@@ -29,7 +27,7 @@ class Decomposition:
         else:
             self.logger.debug('Using existing directory '
                               f'{self.results_directory}')
-        self.losvd_histograms, self.proj_mass = self.run_dec(read_orblib)
+        self.losvd_histograms, self.proj_mass = self.run_dec()
         self.logger.info('Orbits read and velocity histogram created.')
         self.comps = ['disk', 'thin_d', 'warm_d', 'bulge', 'all']
         self.conversions = ['gh_expand_around_losvd_mean_and_std_deviation',
@@ -67,136 +65,6 @@ class Decomposition:
         gaustot_gh = amp*np.exp(-.5*g**2)*(1+skew*(c1*g+c3*g**3) +
                                            kurt*(c5+c2*g**2+c4*(g**4)))
         return gaustot_gh
-
-    def read_orbit_base(self, fileroot):
-        #NOTE: similar yet different compared to same-named method in orblib.py!
-        """
-        Read orbit library from file datfil/{fileroot}.dat.bz2'
-
-        Parameters
-        ----------
-        fileroot : string
-            this will probably be either 'orblib' or 'orblibbox'
-
-        Returns
-        -------
-        Histogram
-            the orbit library stored in a Histogram object
-
-        """
-        cur_dir = os.getcwd()
-        os.chdir(self.model.directory_noml)
-        # unzip orblib to a temproary file with ml value attached
-        # ml value is needed to prevent different processes clashing
-
-        aaa = subprocess.run(['bunzip2', '-c', f'datfil/{fileroot}.dat.bz2'],
-                             stdout=subprocess.PIPE)
-        tmpfname = f'datfil/{fileroot}.dat'
-        tmpf = open(tmpfname, "wb")
-        tmpf.write(aaa.stdout)
-        tmpf.close()
-        # read the fortran file
-        orblibf = FortranFile(tmpfname, 'r')
-        # remove temproary file
-        subprocess.call(['rm', tmpfname])
-        # read size of orbit library
-        # from integrator_setup_write, lines 506 - 5129:
-
-        tmp = orblibf.read_ints(np.int32)
-        norb, t2, t3, t4, ndith = tmp
-        # from qgrid_setup_write, lines 2339-1350:
-        quad_light_grid_sizes = orblibf.read_ints(np.int32)
-        size_ql, size_qph, size_qth, size_qlr = quad_light_grid_sizes
-        quad_lr = orblibf.read_reals(float)
-        quad_lth = orblibf.read_reals(float)
-        quad_lph = orblibf.read_reals(float)
-        # from histogram_setup_write, lines 1917-1926:
-        tmp = orblibf.read_record(np.int32, np.int32, float)
-        nconstr = tmp[0][0]
-        nvhist = tmp[1][0]
-        dvhist = tmp[2][0]
-        # Next read the histograms themselves.
-        orbtypes = np.zeros((norb, ndith**3), dtype=int)
-        nbins_vhist = 2*nvhist + 1
-        velhist = np.zeros((norb, nbins_vhist, nconstr))
-        density_3D = np.zeros((norb, size_qlr, size_qth, size_qph))
-        for j in range(norb):
-            t1,t2,t3,t4,t5 = orblibf.read_ints(np.int32)
-            orbtypes[j, :] = orblibf.read_ints(np.int32)
-            quad_light = orblibf.read_reals(float)
-            quad_light = np.reshape(quad_light, quad_light_grid_sizes[::-1])
-            # quad_light stores orbit features in 3D (r,th,phi) bins.
-            # Quad_light[ir,it,ip,XXX] stores
-            # - the zeroth moment i.e. density for XXX=0,
-            # - the first moments x,y,z,vx,vy,vz for XXX=slice(1,7)
-            # - 2nd moments vx^2,vy^2,vz^2,vx*vy,vy*vz,vz*vx for XXX=slice(7,13)
-            # - an averaged orbit classification for XXX=slice(13,None)
-            # in the bin indexed by (ir,it,ip).
-            # We need to extract 3D density for use in weight solving.
-            density_3D[j] = quad_light[:,:,:,0]
-            for k in range(nconstr):
-                ivmin, ivmax = orblibf.read_ints(np.int32)
-                if ivmin <= ivmax:
-                    tmp = orblibf.read_reals(float)
-                    velhist[j, ivmin+nvhist:ivmax+nvhist+1, k] = tmp
-        orblibf.close()
-        os.chdir(cur_dir)
-        vedg_pos = np.arange(1, nbins_vhist+1, 2) * dvhist/2.
-        vedg_neg = -vedg_pos[::-1]
-        vedg = np.concatenate((vedg_neg, vedg_pos))
-        velhist = dyn.kinematics.Histogram(xedg=vedg,
-                                           y=velhist,
-                                           normalise=False)
-        return velhist, density_3D
-
-    def read_losvd_histograms(self):
-        #NOTE: similar yet different compared to same-named method in orblib.py!
-        """Read the orbit library
-
-        Read box orbits and tube orbits, mirrors the latter, and combines.
-        Rescales the velocity axis according to the ``ml`` value. Sets LOSVDs
-        and 3D grid/aperture masses of the combined orbit library.
-
-        Returns
-        -------
-        Sets the attributes:
-            -   ``self.losvd_histograms``: a list, whose i'th entry is a
-                ``dyn.kinematics.Histogram`` object holding the orbit lib LOSVDs
-                binned for the i'th kinematic set
-            -   ``self.intrinsic_masses``: 3D grid/intrinsic masses of orbit lib
-            -   ``self.projected_masses``: aperture/proj. masses of orbit lib
-            -   ``self.n_orbs``: number of orbits in the orbit library
-
-        """
-        scale_factor = \
-            self.config.all_models.get_model_velocity_scaling_factor(
-                model=self.model)
-        # TODO: check if this ordering is compatible with weights read in by
-        # LegacyWeightSolver.read_weights
-        self.logger.info('Reading tube orbits')
-        tube_orblib, tube_density_3D = self.read_orbit_base('orblib')
-        # tube orbits are mirrored/flipped and used twice
-        self.logger.info('Duplicating tube orbits')
-        tube_orblib = \
-            dyn.OrbitLibrary.duplicate_flip_and_interlace_orblib(tube_orblib)
-        # duplicate and interlace tube_density_3D array
-        tube_density_3D = np.repeat(tube_density_3D, 2, axis=0)
-        # read box orbits
-        self.logger.info('Reading box orbits')
-        box_orblib, box_density_3D = self.read_orbit_base('orblibbox')
-        # combine orblibs
-        self.logger.info('Combining orbits')
-        orblib = dyn.OrbitLibrary.combine_orblibs(tube_orblib, box_orblib)
-        # combine density_3D arrays
-        density_3D = np.vstack((tube_density_3D, box_density_3D))
-
-        self.logger.info('Scaling hists')
-        orblib.scale_x_values(scale_factor)
-        losvd_histograms = orblib
-        intrinsic_masses = density_3D
-        n_orbs = losvd_histograms.y.shape[0]
-        projected_masses = np.sum(losvd_histograms.y, 1)
-        return losvd_histograms, intrinsic_masses, n_orbs, projected_masses
 
     def gh_fit_with_free_v_sigma_params(self, vhist, b):
         p_gh = lmfit.Parameters()
@@ -908,32 +776,22 @@ class Decomposition:
         plt.savefig(figfile)
         plt.close()
 
-    def run_dec(self, read_orblib):
+    def run_dec(self):
 
         ocut = [0.8, 0.25,-0.25] #cuts in lambda_z for the components (as in Santucci+22)
 
         Rmax_arcs=15#gal_infos['Rmax[arcsec]'][i]
         xrange = None
 
-        if read_orblib == 'decomp':
-            losvd_histograms, intrinsic_masses, n_orbs, projected_masses = \
-                self.read_losvd_histograms()  #read the losvd of the orbits
-        elif read_orblib == 'dynamite':
-            orblib = self.model.get_orblib()
-            orblib.read_losvd_histograms()
-            losvd_histograms, intrinsic_masses, n_orbs, projected_masses = \
-                orblib.losvd_histograms[0], orblib.intrinsic_masses, \
-                orblib.n_orbs, orblib.projected_masses[0]
-        else:
-            raise ValueError('Unknown mode, specify dynamite or decomp.')
-        self.logger.info(f'losvd_histograms: {type(losvd_histograms)}, '
-                         f'intrinsic_masses: {type(intrinsic_masses)}, '
-                         f'n_orbs: {type(n_orbs)}, '
-                         f'projected_masses: {type(projected_masses)}.')
-
-        self.logger.info(f'norbs = {n_orbs}')
-
-        self.logger.info(f'losvd shape: {losvd_histograms.y.shape}')
+        orblib = self.model.get_orblib()
+        orblib.read_losvd_histograms()
+        losvd_histograms, _, n_orbs, projected_masses = \
+            orblib.losvd_histograms[0], orblib.intrinsic_masses, \
+            orblib.n_orbs, orblib.projected_masses[0]
+        self.logger.debug(f'{type(losvd_histograms)=}, {type(n_orbs)=}, '
+                          f'{type(projected_masses)=}, '
+                          f'{losvd_histograms.y.shape=}, '
+                          f'{projected_masses.shape=}.')
         #create the files with the orbits selected for each components
         self.create_orbital_component_files_giu(ocut=ocut,
                                                 Rmax_arcs=Rmax_arcs,
