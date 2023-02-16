@@ -8,7 +8,7 @@ import dynamite as dyn
 from dynamite import pyfort_GaussHerm
 
 class Decomposition:
-    def __init__(self, config=None):
+    def __init__(self, config=None, model=None, kin_set=0):
         self.logger = logging.getLogger(f'{__name__}.{__class__.__name__}')
         if config is None:
             text = f'{__class__.__name__} needs configuration object, ' \
@@ -16,9 +16,21 @@ class Decomposition:
             self.logger.error(text)
             raise ValueError(text)
         self.config = config
-        # Select the best model for decomposition
-        best_model_idx = config.all_models.get_best_n_models_idx(n=1)[0]
-        self.model = config.all_models.get_model_from_row(best_model_idx)
+        stars = \
+          config.system.get_component_from_class(
+                                  dyn.physical_system.TriaxialVisibleComponent)
+        n_kin = len(stars.kinematic_data)
+        if kin_set >= n_kin:
+            text = f'kin_set must be < {n_kin}, but it is {kin_set}'
+            self.logger.error(text)
+            raise ValueError(text)
+        self.kin_set = kin_set
+        self.logger.info(f'Performing decomposition for kin_set no {kin_set}: '
+                         f'{stars.kinematic_data[kin_set].name}')
+        if model is None:
+            # Select the best model for decomposition
+            best_model_idx = config.all_models.get_best_n_models_idx(n=1)[0]
+            self.model = config.all_models.get_model_from_row(best_model_idx)
         self.results_directory = \
             config.settings.io_settings['output_directory'] + 'figure_nn/'
         if not os.path.exists(self.results_directory):
@@ -677,7 +689,7 @@ class Decomposition:
 
         ### PLOT THE RESULTS
         # Plot settings
-        figfile=wdir+'comps_kin_test_s22_'+conversion+'.pdf'
+        figfile=f'{wdir}comps_kin_test_s22_{conversion}_kinset{self.kin_set}.pdf'
         plt.figure(figsize=(12, 18))
         #plt.subplots_adjust(hspace=0.7, wspace=0.01, left=0.01, bottom=0.05,
         #                    top=0.99, right=0.99)
@@ -786,8 +798,8 @@ class Decomposition:
         orblib = self.model.get_orblib()
         orblib.read_losvd_histograms()
         losvd_histograms, _, n_orbs, projected_masses = \
-            orblib.losvd_histograms[0], orblib.intrinsic_masses, \
-            orblib.n_orbs, orblib.projected_masses[0]
+            orblib.losvd_histograms[self.kin_set], orblib.intrinsic_masses, \
+            orblib.n_orbs, orblib.projected_masses[self.kin_set]
         self.logger.debug(f'{type(losvd_histograms)=}, {type(n_orbs)=}, '
                           f'{type(projected_masses)=}, '
                           f'{losvd_histograms.y.shape=}, '
