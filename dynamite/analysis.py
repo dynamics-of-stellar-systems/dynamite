@@ -63,6 +63,9 @@ class Analysis:
             txt = f"{v_sigma_option=} but must be either 'fit' or 'moments'."
             self.logger.error(txt)
             raise ValueError(txt)
+        stars = self.config.system.get_component_from_class(
+                                dyn.physical_system.TriaxialVisibleComponent)
+        kin_name = stars.kinematic_data[kin_set].name
         self.logger.debug('Getting model projected masses and losvds.')
         orblib = model.get_orblib()
         _ = model.get_weights(orblib)
@@ -103,7 +106,7 @@ class Analysis:
         gh_table = astropy.table.Table([model_proj_masses, v_mean, v_sigma],
                                        names = ['flux', 'v', 'sigma'],
                                        meta={'v_sigma_option': v_sigma_option,
-                                             'kin_set': kin_set})
+                                             'kin_set': kin_name})
         weight_solver_settings = self.config.settings.weight_solver_settings
         n_gh = weight_solver_settings['number_GH']
         if n_gh > 2:
@@ -121,9 +124,10 @@ class Analysis:
             tab_data = list(model_gh_coefficients[:,2:].T)
             gh_table.add_columns(tab_data, names=col_names)
         f_name = f'{model.directory}model_gh_kins_' + \
-                 f'kinset{kin_set}_{v_sigma_option}.ecsv'
+                 f'{kin_name}_{v_sigma_option}.ecsv'
         gh_table.write(f_name, format='ascii.ecsv', overwrite=True)
-        self.logger.info(f'Model gh kinematics {f_name} written, {n_gh=}.')
+        self.logger.info(f'Model gh kinematics {kin_name}, {n_gh=} '
+                         f'written to {f_name}.')
         return f_name
 
     def get_projection_tensor_for_orbit_distributions(self):
