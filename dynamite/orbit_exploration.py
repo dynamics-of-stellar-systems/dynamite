@@ -703,7 +703,8 @@ class Decomposition:
 
         ### PLOT THE RESULTS
         # Plot settings
-        figfile=f'{wdir}comps_kin_test_s22_{conversion}_kinset{self.kin_set}.pdf'
+        kin_name = stars.kinematic_data[self.kin_set].name
+        figfile=f'{wdir}comps_kin_test_s22_{conversion}_{kin_name}.pdf'
         plt.figure(figsize=(12, 18))
         #plt.subplots_adjust(hspace=0.7, wspace=0.01, left=0.01, bottom=0.05,
         #                    top=0.99, right=0.99)
