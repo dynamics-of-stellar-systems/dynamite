@@ -505,63 +505,77 @@ class Decomposition:
             h3_all, h3d, dh3, h4_all, h4d, dh4 = kinem_matrix.T
         n,n1,n2,n3,n0,nc,wall,lcutal = weight_matrix.T
 
-        input_directory = self.config.settings.io_settings['input_directory']
-
-        ##############################################################
-        # Read aperture1.dat
+        stars = \
+        self.config.system.get_component_from_class(
+                                dyn.physical_system.TriaxialVisibleComponent)
+        dp_args = stars.kinematic_data[self.kin_set].dp_args
+        xi = dp_args['x']
+        yi = dp_args['y']
+        dx = dp_args['dx']
+        grid = dp_args['idx_bin_to_pix']
         # The angle that is saved in this file is measured counter clock-wise
         # from the galaxy major axis to the X-axis of the input data.
-        lines = [line.rstrip('\n').split()
-                 for line in open(input_directory + 'aperture.dat')]
-#unused        strhead = lines[0]
-        minx =float(lines[1][0])
-        miny = float(lines[1][1])
-        sx = float(lines[2][0])
-        sy = float(lines[2][1])
-        sy = sy + miny
-        angle_deg = float(lines[3][0])  # - 90.0 + 180
-        nx = int(lines[4][0])
-        ny = int(lines[4][1])
+        angle_deg = dp_args['angle']
+        self.logger.debug(f'Pixel grid dimension is {dx=}, {len(xi)=}, '
+                          f'{len(yi)=}, {grid.shape}, {angle_deg=}.')
 
-        dx = sx / nx
+#         input_directory = self.config.settings.io_settings['input_directory']
 
-        self.logger.info('Pixel grid dimension is dx,nx,ny,angle: '
-                         f'{dx}, {nx}, {ny}, {angle_deg}.')
-        grid = np.zeros((nx, ny), dtype=int)
+#         ##############################################################
+#         # Read aperture1.dat
+#         # The angle that is saved in this file is measured counter clock-wise
+#         # from the galaxy major axis to the X-axis of the input data.
+#         lines = [line.rstrip('\n').split()
+#                  for line in open(input_directory + 'aperture.dat')]
+# #unused        strhead = lines[0]
+#         minx =float(lines[1][0])
+#         miny = float(lines[1][1])
+#         sx = float(lines[2][0])
+#         sy = float(lines[2][1])
+#         sy = sy + miny
+#         angle_deg = float(lines[3][0])  # - 90.0 + 180
+#         nx = int(lines[4][0])
+#         ny = int(lines[4][1])
 
-        xr = (np.arange(nx, dtype=float) * dx + minx + 0.5 * dx)
-        yc = (np.arange(ny, dtype=float) * dx + miny + 0.5 * dx)
+#         dx = sx / nx
 
-        xi = np.outer(xr, (yc * 0 + 1))
-        xt = xi.T.flatten()
-        yi = np.outer((xr * 0 + 1), yc)
-        yt = yi.T.flatten()
+#         self.logger.info('Pixel grid dimension is dx,nx,ny,angle: '
+#                          f'{dx}, {nx}, {ny}, {angle_deg}.')
+#         grid = np.zeros((nx, ny), dtype=int)
 
-        xi=xt
-        yi=yt
-        ##############################################################
-        # Read bins1.dat
-        lines_bins = [line.rstrip('\n').split()
-                      for line in open(input_directory + 'bins.dat')]
-        i = 0
-        str_head = []
-        i_var = []
-        grid = []
-        while i < len(lines_bins):
-            for x in lines_bins[i]:
-                if i == 0:
-                    str_head.append(str(x))
-                if i == 1:
-                    i_var.append(int(x))
-                if i > 1:
-                    grid.append(int(x))
-            i += 1
-        str_head = str(str_head[0])
-        i_var = int(i_var[0])
-        grid = np.ravel(np.array(grid))
-        # bins start counting at 1 in fortran and at 0 in idl:
-        grid = grid - 1
-        ##############################################################
+#         xr = (np.arange(nx, dtype=float) * dx + minx + 0.5 * dx)
+#         yc = (np.arange(ny, dtype=float) * dx + miny + 0.5 * dx)
+
+#         xi = np.outer(xr, (yc * 0 + 1))
+#         xt = xi.T.flatten()
+#         yi = np.outer((xr * 0 + 1), yc)
+#         yt = yi.T.flatten()
+
+#         xi=xt
+#         yi=yt
+#         ##############################################################
+#         # Read bins1.dat
+#         lines_bins = [line.rstrip('\n').split()
+#                       for line in open(input_directory + 'bins.dat')]
+#         i = 0
+#         str_head = []
+#         i_var = []
+#         grid = []
+#         while i < len(lines_bins):
+#             for x in lines_bins[i]:
+#                 if i == 0:
+#                     str_head.append(str(x))
+#                 if i == 1:
+#                     i_var.append(int(x))
+#                 if i > 1:
+#                     grid.append(int(x))
+#             i += 1
+#         str_head = str(str_head[0])
+#         i_var = int(i_var[0])
+#         grid = np.ravel(np.array(grid))
+#         # bins start counting at 1 in fortran and at 0 in idl:
+#         grid = grid - 1
+#         ##############################################################
 
         s = np.ravel(np.where((grid >= 0) & (np.abs(xi) <= xlim)
                               & (np.abs(yi) <= ylim)))
