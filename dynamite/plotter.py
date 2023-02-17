@@ -719,15 +719,22 @@ class Plotter():
             self.logger.error(text)
             raise ValueError(text)
 
+        # get the model's projected masses=flux and kinematic data
         a = analysis.Analysis(config=self.config, model=model, kin_set=kin_set)
         gh_file = a.get_gh_model_kinematic_maps(v_sigma_option=v_sigma_option)
         model_gh_coef = astropy.table.Table.read(f'{gh_file}')
         self.logger.debug(f"Read model's gh kinematic data from {gh_file}.")
 
+        # get the observed projected masses and kinematic data
         stars = \
           self.system.get_component_from_class(physys.TriaxialVisibleComponent)
         kinematics_data = stars.kinematic_data[kin_set].data
+        # pick out the projected masses only for this kinematic set
         flux=stars.mge_lum.get_projected_masses_from_file(model.directory_noml)
+        ap_idx_range_start = \
+            sum([len(stars.kinematic_data[i].data) for i in range(kin_set)])
+        ap_idx_range_end = ap_idx_range_start + len(kinematics_data)
+        flux = flux[ap_idx_range_start:ap_idx_range_end]
 
         fluxm = np.array(model_gh_coef['flux'])
         vel = np.array(kinematics_data['v'])
@@ -789,6 +796,7 @@ class Plotter():
         # # Only select the pixels that have a bin associated with them.
         s = np.ravel(np.where((grid >= 0)))
         fhist, _ = np.histogram(grid[s], bins=len(flux))
+        self.logger.info(f'{flux.shape=}, {fluxm.shape=}, {fhist.shape=}')
         flux = flux / fhist
         fluxm = fluxm / fhist
 
