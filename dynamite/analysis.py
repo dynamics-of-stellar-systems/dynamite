@@ -27,7 +27,7 @@ class Analysis:
         """
         Generates an astropy table in the model directory that holds the
         model's data for creating Gauss-Hermite kinematic maps:
-        v, sigma, h3 ... h<number_GH>
+        v, sigma, h3 ... h<number_GH>.
         v and sigma are either directly calculated from the model's losvd
         histograms or from fitting a Gaussian in each aperture.
 
@@ -102,7 +102,8 @@ class Analysis:
                           f'for {len(v_mean)} apertures.')
         gh_table = astropy.table.Table([model_proj_masses, v_mean, v_sigma],
                                        names = ['flux', 'v', 'sigma'],
-                                       meta={'v_sigma_option': v_sigma_option})
+                                       meta={'v_sigma_option': v_sigma_option,
+                                             'kin_set': kin_set})
         weight_solver_settings = self.config.settings.weight_solver_settings
         n_gh = weight_solver_settings['number_GH']
         if n_gh > 2:
@@ -119,7 +120,8 @@ class Analysis:
             col_names = [f'h{i}' for i in range(3,n_gh+1)]
             tab_data = list(model_gh_coefficients[:,2:].T)
             gh_table.add_columns(tab_data, names=col_names)
-        f_name = f'{model.directory}gh_kinematics_{v_sigma_option}.ecsv'
+        f_name = f'{model.directory}model_gh_kins_' + \
+                 f'kinset{kin_set}_{v_sigma_option}.ecsv'
         gh_table.write(f_name, format='ascii.ecsv', overwrite=True)
         self.logger.info(f'Model gh kinematics {f_name} written, {n_gh=}.')
         return f_name
