@@ -1365,7 +1365,6 @@ class Plotter():
             orblib = model.get_orblib()
             _ = model.get_weights(orblib)
             orbw = model.weights
-            print(orbw)
 
         orbclass=np.dstack((orbclass1,orbclass1,orbclass2))
         orbclass1a=np.copy(orbclass1)
