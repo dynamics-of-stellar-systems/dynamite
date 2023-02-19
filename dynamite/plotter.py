@@ -971,7 +971,7 @@ class Plotter():
         return res
 
 #############################################################################
-    
+
     def NFW_enclosemass(self, mstars=None, cc=None, dmfrac=None, R=None):
 
         #Computes density scale, radial scale and total mass in
@@ -985,7 +985,7 @@ class Plotter():
 
         rhoc = (200./3.)*rho_crit*cc**3/(np.log(1.+cc) - cc/(1.+cc))
         rc = (3./(800.*np.pi*rho_crit*cc**3)*dmfrac*mstars)**(1./3.)
-        
+
         #darkmass = (800./3.)*np.pi*rho_crit*(rc*cc)**3
 
         M = 4. * np.pi * rhoc * rc**3 * (np.log((rc + R)/rc) - R/(rc + R))
@@ -1275,7 +1275,7 @@ class Plotter():
 ######## Routines from schw_orbit.py, necessary for orbit_plot ##############
 #############################################################################
 
-    def orbit_plot(self, model=None, Rmax_arcs=None, figtype =None):
+    def orbit_plot(self, model=None, Rmax_arcs=None, figtype=None, test=0):
         """
         Generates an orbit plot for the selected model
 
@@ -1311,6 +1311,9 @@ class Plotter():
 
         """
 
+        weight_solver = self.config.settings.weight_solver_settings['type']
+        if test == 0 and weight_solver == 'NNLS':
+            test +=1
         if figtype is None:
             figtype = '.png'
 
@@ -1355,8 +1358,14 @@ class Plotter():
         orbclass2 = np.genfromtxt(file3).T
         orbclass2 = orbclass1.reshape((5,ncol,norb), order='F')
 
+        if test == 0:
         # norbout, ener, i2, i3, regul, orbtype, orbw, lcut, ntot = self.readorbout(filename=file4)
-        orbw = np.genfromtxt(file4, skip_header=1, usecols=(6))
+            orbw = np.genfromtxt(file4, skip_header=1, usecols=(6))
+        else:
+            orblib = model.get_orblib()
+            _ = model.get_weights(orblib)
+            orbw = model.weights
+            print(orbw)
 
         orbclass=np.dstack((orbclass1,orbclass1,orbclass2))
         orbclass1a=np.copy(orbclass1)
@@ -1412,7 +1421,9 @@ class Plotter():
 
         ### plot the orbit distribution on lambda_z vs. r ###
 
-        filename5 = self.plotdir + 'orbit_linear_only' + figtype
+        filename5 = self.plotdir + f'orbit_linear_only_{weight_solver}' + figtype
+        if test == 0:
+            filename5 = f'{self.plotdir}orbit_library_only_{weight_solver}OLD{figtype}'
         imgxrange = xbinned
         imgyrange = ybinned
         extent = [imgxrange[0], imgxrange[1], imgyrange[0], imgyrange[1]]
@@ -1446,6 +1457,12 @@ class Plotter():
         #lzm = np.sum((lz), axis=0)/ndither **3
         #angular2= np.abs(np.sum((lzm[t[0:y+1]])*orbw[t[0:y+1]])/np.sum(orbw[t[0:y+1]]))
 
+        if test == 0:
+            test += 1
+            self.orbit_plot(model=model,
+                            Rmax_arcs=Rmax_arcs,
+                            figtype=figtype,
+                            test=test)
         return fig
 
     def shiftedColorMap(self,
