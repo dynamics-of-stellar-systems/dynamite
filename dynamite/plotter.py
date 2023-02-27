@@ -1275,7 +1275,7 @@ class Plotter():
 ######## Routines from schw_orbit.py, necessary for orbit_plot ##############
 #############################################################################
 
-    def orbit_plot(self, model=None, Rmax_arcs=None, figtype=None, test=0):
+    def orbit_plot(self, model=None, Rmax_arcs=None, figtype=None):
         """
         Generates an orbit plot for the selected model
 
@@ -1311,9 +1311,6 @@ class Plotter():
 
         """
 
-        weight_solver = self.config.settings.weight_solver_settings['type']
-        if test == 0 and weight_solver == 'NNLS':
-            test +=1
         if figtype is None:
             figtype = '.png'
 
@@ -1336,11 +1333,11 @@ class Plotter():
         mdir = model.directory
         mdir_noml = mdir[:mdir[:-1].rindex('/')+1]
 
-        file4 = mdir + 'nn_orb.out'
         file2 = mdir_noml + 'datfil/orblib.dat_orbclass.out'
         file3 = mdir_noml + 'datfil/orblibbox.dat_orbclass.out'
         file3_test = os.path.isfile(file3)
-        if not file3_test: file3= '%s' % file2
+        if not file3_test:
+            file3= '%s' % file2
 
         xrange=[0.0,Rmax_arcs]
 
@@ -1358,13 +1355,9 @@ class Plotter():
         orbclass2 = np.genfromtxt(file3).T
         orbclass2 = orbclass1.reshape((5,ncol,norb), order='F')
 
-        if test == 0:
-        # norbout, ener, i2, i3, regul, orbtype, orbw, lcut, ntot = self.readorbout(filename=file4)
-            orbw = np.genfromtxt(file4, skip_header=1, usecols=(6))
-        else:
-            orblib = model.get_orblib()
-            _ = model.get_weights(orblib)
-            orbw = model.weights
+        orblib = model.get_orblib()
+        _ = model.get_weights(orblib)
+        orbw = model.weights
 
         orbclass=np.dstack((orbclass1,orbclass1,orbclass2))
         orbclass1a=np.copy(orbclass1)
@@ -1376,8 +1369,8 @@ class Plotter():
 
         ## define circularity of each orbit [nditcher^3, norb]
         lz = (orbclass[2,:,:]/orbclass[3,:,:]/np.sqrt(orbclass[4,:,:]))   # lambda_z = lz/(r * Vrms)
-        # lx = (orbclass[0,:,:]/orbclass[3,:,:]/np.sqrt(orbclass[4,:,:]))   # lambda_x = lx/(r * Vrms)
-        # l= (np.sqrt(np.sum(orbclass[0:3,:,:]**2, axis=0))/orbclass[3,:,:]/np.sqrt(orbclass[4,:,:]))
+        # lx = (orbclass[0,:,:]/orbclass[3,:,:]/np.sqrt(orbclass[4,:,:])) # lambda_x = lx/(r * Vrms)
+        # l=(np.sqrt(np.sum(orbclass[0:3,:,:]**2, axis=0))/orbclass[3,:,:]/np.sqrt(orbclass[4,:,:]))
         r = (orbclass[3,:,:]/conversion_factor)   # from km to kpc
 
         # average values for the orbits in the same bundle (ndither^3).
@@ -1420,9 +1413,7 @@ class Plotter():
 
         ### plot the orbit distribution on lambda_z vs. r ###
 
-        filename5 = self.plotdir + f'orbit_linear_only_{weight_solver}' + figtype
-        if test == 0:
-            filename5 = f'{self.plotdir}orbit_library_only_{weight_solver}OLD{figtype}'
+        filename5 = self.plotdir + 'orbit_linear_only' + figtype
         imgxrange = xbinned
         imgyrange = ybinned
         extent = [imgxrange[0], imgxrange[1], imgyrange[0], imgyrange[1]]
@@ -1456,12 +1447,6 @@ class Plotter():
         #lzm = np.sum((lz), axis=0)/ndither **3
         #angular2= np.abs(np.sum((lzm[t[0:y+1]])*orbw[t[0:y+1]])/np.sum(orbw[t[0:y+1]]))
 
-        if test == 0:
-            test += 1
-            self.orbit_plot(model=model,
-                            Rmax_arcs=Rmax_arcs,
-                            figtype=figtype,
-                            test=test)
         return fig
 
     def shiftedColorMap(self,
