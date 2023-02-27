@@ -971,7 +971,7 @@ class Plotter():
         return res
 
 #############################################################################
-    
+
     def NFW_enclosemass(self, mstars=None, cc=None, dmfrac=None, R=None):
 
         #Computes density scale, radial scale and total mass in
@@ -985,7 +985,7 @@ class Plotter():
 
         rhoc = (200./3.)*rho_crit*cc**3/(np.log(1.+cc) - cc/(1.+cc))
         rc = (3./(800.*np.pi*rho_crit*cc**3)*dmfrac*mstars)**(1./3.)
-        
+
         #darkmass = (800./3.)*np.pi*rho_crit*(rc*cc)**3
 
         M = 4. * np.pi * rhoc * rc**3 * (np.log((rc + R)/rc) - R/(rc + R))
@@ -1275,7 +1275,7 @@ class Plotter():
 ######## Routines from schw_orbit.py, necessary for orbit_plot ##############
 #############################################################################
 
-    def orbit_plot(self, model=None, Rmax_arcs=None, figtype =None):
+    def orbit_plot(self, model=None, Rmax_arcs=None, figtype=None):
         """
         Generates an orbit plot for the selected model
 
@@ -1333,11 +1333,11 @@ class Plotter():
         mdir = model.directory
         mdir_noml = mdir[:mdir[:-1].rindex('/')+1]
 
-        file4 = mdir + 'nn_orb.out'
         file2 = mdir_noml + 'datfil/orblib.dat_orbclass.out'
         file3 = mdir_noml + 'datfil/orblibbox.dat_orbclass.out'
         file3_test = os.path.isfile(file3)
-        if not file3_test: file3= '%s' % file2
+        if not file3_test:
+            file3= '%s' % file2
 
         xrange=[0.0,Rmax_arcs]
 
@@ -1355,8 +1355,9 @@ class Plotter():
         orbclass2 = np.genfromtxt(file3).T
         orbclass2 = orbclass1.reshape((5,ncol,norb), order='F')
 
-        # norbout, ener, i2, i3, regul, orbtype, orbw, lcut, ntot = self.readorbout(filename=file4)
-        orbw = np.genfromtxt(file4, skip_header=1, usecols=(6))
+        orblib = model.get_orblib()
+        _ = model.get_weights(orblib)
+        orbw = model.weights
 
         orbclass=np.dstack((orbclass1,orbclass1,orbclass2))
         orbclass1a=np.copy(orbclass1)
@@ -1368,8 +1369,8 @@ class Plotter():
 
         ## define circularity of each orbit [nditcher^3, norb]
         lz = (orbclass[2,:,:]/orbclass[3,:,:]/np.sqrt(orbclass[4,:,:]))   # lambda_z = lz/(r * Vrms)
-        # lx = (orbclass[0,:,:]/orbclass[3,:,:]/np.sqrt(orbclass[4,:,:]))   # lambda_x = lx/(r * Vrms)
-        # l= (np.sqrt(np.sum(orbclass[0:3,:,:]**2, axis=0))/orbclass[3,:,:]/np.sqrt(orbclass[4,:,:]))
+        # lx = (orbclass[0,:,:]/orbclass[3,:,:]/np.sqrt(orbclass[4,:,:])) # lambda_x = lx/(r * Vrms)
+        # l=(np.sqrt(np.sum(orbclass[0:3,:,:]**2, axis=0))/orbclass[3,:,:]/np.sqrt(orbclass[4,:,:]))
         r = (orbclass[3,:,:]/conversion_factor)   # from km to kpc
 
         # average values for the orbits in the same bundle (ndither^3).
