@@ -4,10 +4,17 @@ import numpy as np
 import matplotlib.pyplot as plt
 from plotbin.display_pixels import display_pixels
 import lmfit
+import astropy
 import dynamite as dyn
 from dynamite import pyfort_GaussHerm
 
 class Decomposition:
+    comps = ['disk', 'thin_d', 'warm_d', 'bulge', 'all']
+    conversions = ['gh_expand_around_losvd_mean_and_std_deviation',
+                        # 'gh_fit_with_free_v_sigma_params',
+                        'gh_fit_with_free_v_sigma_params_fortran',
+                        'moments']
+
     def __init__(self, config=None, model=None, kin_set=0):
         self.logger = logging.getLogger(f'{__name__}.{__class__.__name__}')
         if config is None:
@@ -39,13 +46,8 @@ class Decomposition:
         else:
             self.logger.debug('Using existing directory '
                               f'{self.results_directory}')
-        self.losvd_histograms, self.proj_mass = self.run_dec()
+        self.losvd_histograms, self.proj_mass, self.decomp = self.run_dec()
         self.logger.info('Orbits read and velocity histogram created.')
-        self.comps = ['disk', 'thin_d', 'warm_d', 'bulge', 'all']
-        self.conversions = ['gh_expand_around_losvd_mean_and_std_deviation',
-                            # 'gh_fit_with_free_v_sigma_params',
-                            'gh_fit_with_free_v_sigma_params_fortran',
-                            'moments']
         # #diag start
         # with open(self.results_directory + 'losvd.out', 'w') as f:
         #     f.write(f'{self.losvd_histograms=}\n'
@@ -256,7 +258,7 @@ class Decomposition:
         if not xrange:
             xrange = [0.0, Rmax_arcs]
 
-        file4 = self.model.directory + 'nn_orb.out'
+        # file4 = self.model.directory + 'nn_orb.out'
         file2 = self.model.directory_noml + 'datfil/orblib.dat_orbclass.out'  #orbitlibraries
         file3 = self.model.directory_noml + 'datfil/orblibbox.dat_orbclass.out'
         file3_test = os.path.isfile(file3)
@@ -281,11 +283,13 @@ class Decomposition:
         orbclass2 = orbclass1.reshape((5,ncol,norb), order='F')
 
         #print('norb, ndither', np.max(norb), ndither)
-        norbout, ener, i2, i3, regul, orbtype, orbw, lcut = \
-            np.genfromtxt(file4,
-                          skip_header=1,
-                          usecols=(0,1,2,3,4,5,6,7),
-                          unpack=True)
+        # norbout, ener, i2, i3, regul, orbtype, orbw, lcut = \
+        #     np.genfromtxt(file4,
+        #                   skip_header=1,
+        #                   usecols=(0,1,2,3,4,5,6,7),
+        #                   unpack=True)
+        orbw = self.weights
+        n_orbs = len(orbw)
 
         #print('ener, i2, i3', np.max(ener), np.max(i2), np.max(i3))
         #print('Maxmin and Minimum(ener)', np.max(ener), np.min(ener))
@@ -326,9 +330,34 @@ class Decomposition:
 #unused        lxm_sign= np.sum(lx, axis=0) / ndither ** 3
         #print("check 2 - sign", lzm_sign, lxm_sign)
 
+        self.logger.info(f'Decomposing {n_orbs} orbits...')
+        decomp = astropy.table.Table({'weights':self.weights}, dtype=[float])
+        decomp.add_columns([astropy.table.Column(data=[False]*n_orbs,
+                                                 name=c,
+                                                 dtype=bool)
+                            for c in self.comps])
+
+
+        # cold component
+        decomp['thin_d'][np.ravel(np.where(lzm_sign >= ocut[0]))] = True
+        # warm component
+        decomp['warm_d'][np.ravel(np.where((((lzm_sign) > ocut[1]))
+                                           & ((lzm_sign) < ocut[0])))] = True
+        # hot component
+        decomp['bulge'][np.ravel(np.where((((lzm_sign) > ocut[2]))
+                                          & ((lzm_sign) < ocut[1])))] = True
+        # disk component
+        decomp['disk'][np.ravel(np.where(((lzm_sign) > ocut[1])))] = True
+        # whole component
+        decomp['all'] = True
+        decomp.pprint_all()
+
+        # cold component
+        self.logger.info(f'{lzm_sign.shape=}')
+
         self.logger.info('**Create nn_orb.out for different bulk of orbits**')
 
-        self.logger.info(f'#orbs: {len(norbout)}.')
+        self.logger.info(f'#orbs: {len(orbw)}.')
         ### COLD COMPONENT
         hlz=np.ravel(np.where((lzm_sign) >= ocut[0]))
         self.logger.info(f'check 3 - cold comp: {len(hlz)}.')
@@ -343,15 +372,21 @@ class Decomposition:
             nohlz=np.ravel(np.where((lzm_sign) < ocut[0]))
         orbw_hlz[nohlz] = -999
 
+        self.logger.info(f'{hlz.shape=}, {nohlz.shape=}, {orbw_hlz.shape=}.')
+
         with open(self.results_directory+'thin_d_orb_s22.out', 'w') as outfile:
             norbw = len(orbw)
             outfile.write(("%12i" % len(hlz)) + '\n')
             for i in range(0, norbw):
                 if orbw_hlz[i]!=-999:
-                    outfile.write(("%8i" % i)  + ("%8i" % ener[i]) +  ("%8i" % i2[i]) +
-                              ("%8i" % i3[i]) + ("%8i" % regul[i])  +
-                              ("%8i" % orbtype[i])  + ("%13.5e" % orbw_hlz[i]) +
-                                  ("%13.5e" % lcut[i]) +  '\n')
+                    # outfile.write(("%8i" % i)  + ("%8i" % ener[i]) +  ("%8i" % i2[i]) +
+                    #           ("%8i" % i3[i]) + ("%8i" % regul[i])  +
+                    #           ("%8i" % orbtype[i])  + ("%13.5e" % orbw_hlz[i]) +
+                    #               ("%13.5e" % lcut[i]) +  '\n')
+                    outfile.write(("%8i" % i)  + ("%8i" % 0) +  ("%8i" % 0) +
+                              ("%8i" % 0) + ("%8i" % 0)  +
+                              ("%8i" % 0)  + ("%13.5e" % orbw_hlz[i]) +
+                                  ("%13.5e" % 0.0) +  '\n')
 
         ### WARM COMPONENT
         wlz= np.ravel(np.where((((lzm_sign) > ocut[1])) & ((lzm_sign)< ocut[0])))
@@ -364,10 +399,14 @@ class Decomposition:
             outfile.write(("%12i" % len(wlz)) + '\n')
             for i in range(0, norbw):
                 if orbw_wlz[i]!=-999:
-                    outfile.write(("%8i" % i)  + ("%8i" % ener[i]) +  ("%8i" % i2[i]) +
-                              ("%8i" % i3[i]) + ("%8i" % regul[i])  +
-                              ("%8i" % orbtype[i])  + ("%13.5e" % orbw_wlz[i]) +
-                                  ("%13.5e" % lcut[i]) +'\n')
+                    # outfile.write(("%8i" % i)  + ("%8i" % ener[i]) +  ("%8i" % i2[i]) +
+                    #           ("%8i" % i3[i]) + ("%8i" % regul[i])  +
+                    #           ("%8i" % orbtype[i])  + ("%13.5e" % orbw_wlz[i]) +
+                    #               ("%13.5e" % lcut[i]) +'\n')
+                    outfile.write(("%8i" % i)  + ("%8i" % 0) +  ("%8i" % 0) +
+                              ("%8i" % 0) + ("%8i" % 0)  +
+                              ("%8i" % 0)  + ("%13.5e" % orbw_wlz[i]) +
+                                  ("%13.5e" % 0.0) +'\n')
 
         ### HOT_noCR COMPONENT
         zlz= np.ravel(np.where((((lzm_sign) > ocut[2])) & ((lzm_sign)< ocut[1])))
@@ -382,10 +421,14 @@ class Decomposition:
             outfile.write(("%12i" % len(zlz)) + '\n')
             for i in range(0, norbw):
                 if orbw_zlz[i]!=-999:
-                    outfile.write(("%8i" % i)  + ("%8i" % ener[i]) +  ("%8i" % i2[i]) +
-                              ("%8i" % i3[i]) + ("%8i" % regul[i])  +
-                              ("%8i" % orbtype[i])  + ("%13.5e" % orbw_zlz[i]) +
-                                  ("%13.5e" % lcut[i]) +'\n')
+                    # outfile.write(("%8i" % i)  + ("%8i" % ener[i]) +  ("%8i" % i2[i]) +
+                    #           ("%8i" % i3[i]) + ("%8i" % regul[i])  +
+                    #           ("%8i" % orbtype[i])  + ("%13.5e" % orbw_zlz[i]) +
+                    #               ("%13.5e" % lcut[i]) +'\n')
+                    outfile.write(("%8i" % i)  + ("%8i" % 0) +  ("%8i" % 0) +
+                              ("%8i" % 0) + ("%8i" % 0)  +
+                              ("%8i" % 0)  + ("%13.5e" % orbw_zlz[i]) +
+                                  ("%13.5e" % 0.0) +'\n')
 
      ### DISK COMPONENT
         dlz= np.ravel(np.where(((lzm_sign)> ocut[1])))
@@ -400,10 +443,14 @@ class Decomposition:
             outfile.write(("%12i" % len(dlz)) + '\n')
             for i in range(0, norbw):
                 if orbw_dlz[i]!=-999:
-                    outfile.write(("%8i" % i)  + ("%8i" % ener[i]) +  ("%8i" % i2[i]) +
-                              ("%8i" % i3[i]) + ("%8i" % regul[i])  +
-                              ("%8i" % orbtype[i])  + ("%13.5e" % orbw_dlz[i]) +
-                                  ("%13.5e" % lcut[i]) +'\n')
+                    # outfile.write(("%8i" % i)  + ("%8i" % ener[i]) +  ("%8i" % i2[i]) +
+                    #           ("%8i" % i3[i]) + ("%8i" % regul[i])  +
+                    #           ("%8i" % orbtype[i])  + ("%13.5e" % orbw_dlz[i]) +
+                    #               ("%13.5e" % lcut[i]) +'\n')
+                    outfile.write(("%8i" % i)  + ("%8i" % 0) +  ("%8i" % 0) +
+                              ("%8i" % 0) + ("%8i" % 0)  +
+                              ("%8i" % 0)  + ("%13.5e" % orbw_dlz[i]) +
+                                  ("%13.5e" % 0.0) +'\n')
 
       ### Whole COMPONENT
         orbw_allz = np.copy(orbw)
@@ -414,10 +461,14 @@ class Decomposition:
             outfile.write(("%12i" % len(orbw)) + '\n')
             for i in range(0, norbw):
                 if orbw_allz[i]!=-999:
-                    outfile.write(("%8i" % i)  + ("%8i" % ener[i]) +  ("%8i" % i2[i]) +
-                              ("%8i" % i3[i]) + ("%8i" % regul[i])  +
-                              ("%8i" % orbtype[i])  + ("%13.5e" % orbw_allz[i]) +
-                                  ("%13.5e" % lcut[i]) +'\n')
+                    # outfile.write(("%8i" % i)  + ("%8i" % ener[i]) +  ("%8i" % i2[i]) +
+                    #           ("%8i" % i3[i]) + ("%8i" % regul[i])  +
+                    #           ("%8i" % orbtype[i])  + ("%13.5e" % orbw_allz[i]) +
+                    #               ("%13.5e" % lcut[i]) +'\n')
+                    outfile.write(("%8i" % i)  + ("%8i" % 0) +  ("%8i" % 0) +
+                              ("%8i" % 0) + ("%8i" % 0)  +
+                              ("%8i" % 0)  + ("%13.5e" % orbw_allz[i]) +
+                                  ("%13.5e" % 0.0) +'\n')
 
 #unused        tot_orb=np.sum(orbw_hlz[orbw_hlz!=-999])+ np.sum(orbw_wlz[orbw_wlz!=-999])+np.sum(orbw_zlz[orbw_zlz!=-999])
 #unused        tot_orb2=np.sum(orbw_zlz[orbw_zlz!=-999])+ np.sum(orbw_dlz[orbw_dlz!=-999])
@@ -819,8 +870,10 @@ class Decomposition:
                           f'{type(projected_masses)=}, '
                           f'{losvd_histograms.y.shape=}, '
                           f'{projected_masses.shape=}.')
+        _ = self.model.get_weights(orblib)
+        self.weights = self.model.weights
         #create the files with the orbits selected for each components
-        self.create_orbital_component_files_giu(ocut=ocut,
-                                                Rmax_arcs=Rmax_arcs,
-                                                xrange=xrange)
-        return losvd_histograms, projected_masses
+        decomp = self.create_orbital_component_files_giu(ocut=ocut,
+                                                         Rmax_arcs=Rmax_arcs,
+                                                         xrange=xrange)
+        return losvd_histograms, projected_masses, decomp
