@@ -64,9 +64,11 @@ class Decomposition:
         # #diag end
 
     def plot_decomp(self,xlim, ylim, conversion):
-        self.comps_aphist(conversion)
+        comp_kinem_moments = self.comps_aphist(conversion)
         self.logger.info('Components done')
-        self.plot_comps_giu(xlim=xlim, ylim=ylim, conversion=conversion)
+        self.plot_comps_giu(xlim=xlim,
+                            ylim=ylim,
+                            comp_kinem_moments=comp_kinem_moments)
         self.logger.info('Plots done')
 
     def gaussfunc_gh(self, paramsin,x):
@@ -142,7 +144,7 @@ class Decomposition:
                    f'must be one of {self.conversions}.'
             self.logger.error(text)
             raise ValueError(text)
-        wdir = self.results_directory
+        self.logger.info(f'{conversion=}')
         n_orbs, bins, k_bins = self.losvd_histograms.y.shape
         #w = int(head1[0]) #bins
         #n = int(head1[1]) #apertures
@@ -151,10 +153,11 @@ class Decomposition:
 
         b = (np.arange(bins , dtype=float) - ((bins+1)/2)) * histbinsize
 
-        xedg = self.losvd_histograms.xedg
-        losvd_orbs = self.losvd_histograms.y
-        self.logger.info(f'{losvd_orbs.shape = }.')
+        comp_kinem_moments = astropy.table.Table({'ap_id':range(k_bins)},
+                                                 dtype=[int],
+                                                 meta={'conversion':conversion})
         for comp in self.comps:
+            # create losvd histograms for component
             orb_sel = np.array([comp in s for s in self.decomp['component']],
                                dtype=bool)
             losvd = np.dot(self.losvd_histograms.y[orb_sel,:,:].T,
@@ -165,7 +168,6 @@ class Decomposition:
             lsb = np.zeros(k_bins, dtype=float)
 
             #not calculating h3 and h4 at the moment
-            self.logger.info(f'{conversion=}')
             for i in range(0, k_bins):
                 vhis = losvd[:, i] #losvd for each kinematic bin
                 # #diag start
@@ -194,7 +196,7 @@ class Decomposition:
                         self.gh_expand_around_losvd_mean_and_std_deviation(
                             losvd,
                             i,
-                            xedg)
+                            xedg=self.losvd_histograms.xedg)
 
                 if conversion=='gh_fit_with_free_v_sigma_params_fortran':
                     v_i, sigma_i = \
@@ -213,21 +215,11 @@ class Decomposition:
                 v_calculate[i] = v_i
                 s_calculate[i] = sigma_i
 
-            file_o=wdir+comp+'_vs_kinem_'+conversion+'.out'
-
-            with open(file_o, 'w') as outfile:
-                outfile.write(("%13.3f" % k_bins) + ("%8i" % 2 ) + '\n')
-                for i in range(0, k_bins):
-                    if i==0:
-                        self.logger.info(f'{comp = }, '
-                                         f'{lsb[i] = }, '
-                                         f'{v_calculate[i] = }, '
-                                         f'{s_calculate[i] = }.')
-                    outfile.write(("%12i" % (i+1))  + ("%15.7f" % lsb[i]) +  ("%15.7f" % lsb[i]) +
-                                  ("%15.7f" % v_calculate[i]) + ("%15.7f" % v_calculate[i])  +
-                                  ("%15.7f" % 5.0)  + ("%15.7f" % s_calculate[i]) + ("%15.7f" % s_calculate[i]) +
-                                  ("%15.7f" % 5.0)  + ("%15.7f" % 0.0) + ("%15.7f" % 0.0)+ ("%15.7f" % 0.1) +
-                                  ("%15.7f" % 0.0)  + ("%15.7f" % 0.0) + ("%15.7f" % 0.1) + '\n')
+            comp_kinem_moments.add_columns([lsb, v_calculate, s_calculate],
+                                           names=[f'{comp}_lsb',
+                                                  f'{comp}_v',
+                                                  f'{comp}_sig'])
+        return comp_kinem_moments
 
     # def create_orbital_component_files_giu(self,
     #                                        ocut=None,
@@ -341,7 +333,6 @@ class Decomposition:
             for k, comp in enumerate(self.comps):
                 if comp_map[i] & (1 << k):
                     decomp['component'][i] += f'|{comp}|'
-        decomp.pprint_all()
 
         return decomp
 
@@ -350,74 +341,48 @@ class Decomposition:
                        xlim=None,
                        ylim=None,
                        # Re=None,
-                       conversion=None):
-        if conversion not in self.conversions:
-            text = f'Unknown conversion {conversion}, ' \
-                   f'must be one of {self.conversions}.'
-            self.logger.error(text)
-            raise ValueError(text)
+                       conversion=None,
+                       comp_kinem_moments=None,
+                       figtype='.png'):
+
+        conversion = comp_kinem_moments.meta['conversion'] \
+                     if 'conversion' in comp_kinem_moments.meta.keys() else ''
+        self.logger.info(f'Plotting decomposition for {conversion=}.')
 
         wdir = self.results_directory
 
-        #READING KINEMATIC DATA GENERATED BY triax_makevs_from_aphist
-        ##############################################################
+        # read kinematic data and weights
         ## COLD COMPONENT
-        kinem_file = wdir + 'thin_d_vs_kinem_'+conversion+'.out'
-        # weight_file = wdir + 'thin_d_orb_s22.out'
-        kinem_matrix = np.genfromtxt(kinem_file, skip_header=1)
-        # weight_matrix = np.genfromtxt(weight_file, skip_header=1)
-        ident, flux, flux_thin, vel_thin, veld, dvel, sig_thin, sigd, dsig, \
-            h3_thin, h3d, dh3, h4_thin, h4d, dh4 = kinem_matrix.T
-        # n,n1,n2,n3,n0,nc,wthin,lcutw = weight_matrix.T
-
+        flux_thin = comp_kinem_moments['thin_d_lsb']
+        vel_thin = comp_kinem_moments['thin_d_v']
+        sig_thin = comp_kinem_moments['thin_d_sig']
         wthin = self.weights[['thin_d' in s for s in self.decomp['component']]]
 
         ## WARM COMPONENT
-        kinem_file = wdir + 'warm_d_vs_kinem_'+conversion+'.out'
-        # weight_file = wdir + 'warm_d_orb_s22.out'
-        kinem_matrix = np.genfromtxt(kinem_file, skip_header=1)
-        # weight_matrix = np.genfromtxt(weight_file, skip_header=1)
-        ident, flux, flux_thick, vel_thick, veld, dvel, sig_thick, sigd, dsig, \
-            h3_thick, h3d, dh3, h4_thick, h4d, dh4 = kinem_matrix.T
-        # n,n1,n2,n3,n0,nc,wthick,lcutthi = weight_matrix.T
-
+        flux_thick = comp_kinem_moments['warm_d_lsb']
+        vel_thick = comp_kinem_moments['warm_d_v']
+        sig_thick = comp_kinem_moments['warm_d_sig']
         wthick=self.weights[['warm_d' in s for s in self.decomp['component']]]
 
-       ### CC COMPONENT
-        kinem_file = wdir + 'disk_vs_kinem_'+conversion+'.out'
-        # weight_file = wdir + 'disk_orb_s22.out'
-        kinem_matrix = np.genfromtxt(kinem_file, skip_header=1)
-        # weight_matrix = np.genfromtxt(weight_file, skip_header=1)
-        ident, flux, flux_disk, vel_disk, veld, dvel, sig_disk, sigd, dsig, \
-            h3_disk, h3d, dh3, h4_disk, h4d, dh4 = kinem_matrix.T
-        # n,n1,n2,n3,n0,nc,wdisk,lcutdisk = weight_matrix.T
-        #print('disk flux', np.sum(flux_disk))
-
+        ## CC COMPONENT
+        flux_disk = comp_kinem_moments['disk_lsb']
+        vel_disk = comp_kinem_moments['disk_v']
+        sig_disk = comp_kinem_moments['disk_sig']
         wdisk = self.weights[['disk' in s for s in self.decomp['component']]]
 
         ## HOT_cr COMPONENT
-        kinem_file = wdir + 'bulge_vs_kinem_'+conversion+'.out'
-        # weight_file = wdir + 'bulge_orb_s22.out'
-        kinem_matrix = np.genfromtxt(kinem_file, skip_header=1)
-        # weight_matrix = np.genfromtxt(weight_file, skip_header=1)
-        ident, flux, flux_bulge, vel_bulge, veld, dvel, sig_bulge, sigd, dsig,\
-            h3_bulge, h3d, dh3, h4_bulge, h4d, dh4 = kinem_matrix.T
-        # n,n1,n2,n3,n0,nc,wbulge,lcutbul = weight_matrix.T
-        #print('bulge flux', np.sum(flux_bulge))
-
+        flux_bulge = comp_kinem_moments['bulge_lsb']
+        vel_bulge = comp_kinem_moments['bulge_v']
+        sig_bulge = comp_kinem_moments['bulge_sig']
         wbulge = self.weights[['bulge' in s for s in self.decomp['component']]]
 
         ###WHOLE component
-        kinem_file = wdir + 'all_vs_kinem_'+conversion+'.out'
-        # weight_file = wdir + 'all_orb_s22.out'
-        kinem_matrix = np.genfromtxt(kinem_file, skip_header=1)
-        # weight_matrix = np.genfromtxt(weight_file, skip_header=1)
-        ident, flux, flux_all, vel_all, veld, dvel, sig_all, sigd, dsig, \
-            h3_all, h3d, dh3, h4_all, h4d, dh4 = kinem_matrix.T
-        # n,n1,n2,n3,n0,nc,wall,lcutal = weight_matrix.T
-
+        flux_all = comp_kinem_moments['all_lsb']
+        vel_all = comp_kinem_moments['all_v']
+        sig_all = comp_kinem_moments['all_sig']
         wall = self.weights[['all' in s for s in self.decomp['component']]]
 
+        # read the pixel grid
         stars = \
         self.config.system.get_component_from_class(
                                 dyn.physical_system.TriaxialVisibleComponent)
@@ -530,36 +495,37 @@ class Decomposition:
         xi_t= (xi[s])
         yi_t=(yi[s])
 
-        with open(wdir+'kin_comps_test_s22_'+conversion+'.dat', 'w') as outfile:
-            outfile.write('x/arcs  y/arcs  SB_thin_disk  SB_thick_disk  '
-                          'SB_disk  SB_bulge SB_whole vel_thin_disk  '
-                          'vel_thick_disk  vel_disk  vel_bugle vel_whole '
-                          'sig_thin_disk  sig_thick_disk sig_disk  sig_bulge '
-                          'sig_whole' + '\n')
-            for j in range(0, len(s)):
-                outfile.write(("%10.4f" % xi_t[j])  + ("%10.4f" % yi_t[j]) +
-                    ("%12.3e" % tthin[s[j]]) + ("%12.3e" % tthick[s[j]]) +
-                    ("%12.3e" % tdisk[s[j]])+ ("%12.3e" % tbulge[s[j]]) +
-                    ("%12.3e" % tall[s[j]]) +
-                    ("%12.3e" % vel_thin[grid[s[j]]]) +
-                    ("%12.3e" % vel_thick[grid[s[j]]])+
-                    ("%12.3e" % vel_disk[grid[s[j]]]) +
-                    ("%12.3e" % vel_bulge[grid[s[j]]])+
-                    ("%12.3e" % vel_all[grid[s[j]]]) +
-                    ("%12.3e" % sig_thin[grid[s[j]]]) +
-                    ("%12.3e" % sig_thick[grid[s[j]]])+
-                    ("%12.3e" % sig_disk[grid[s[j]]]) +
-                    ("%12.3e" % sig_bulge[grid[s[j]]])+
-                    ("%12.3e" % sig_all[grid[s[j]]]) +'\n')
+        comps_kin = astropy.table.Table({'x/arcs':xi_t,
+                                         'y/arcs':yi_t,
+                                         'SB_thin_disk':tthin[s],
+                                         'SB_thick_disk':tthick[s],
+                                         'SB_disk':tdisk[s],
+                                         'SB_bulge':tbulge[s],
+                                         'SB_whole':tall[s],
+                                         'vel_thin_disk':vel_thin[grid[s]],
+                                         'vel_thick_disk':vel_thick[grid[s]],
+                                         'vel_disk':vel_disk[grid[s]],
+                                         'vel_bulge':vel_bulge[grid[s]],
+                                         'vel_whole':vel_all[grid[s]],
+                                         'sig_thin_disk':sig_thin[grid[s]],
+                                         'sig_thick_disk':sig_thick[grid[s]],
+                                         'sig_disk':sig_disk[grid[s]],
+                                         'sig_bulge':sig_bulge[grid[s]],
+                                         'sig_whole':sig_all[grid[s]]})
 
-        self.logger.info(f'{conversion}: {vmax=}, {smax=}, {smin=}.')
+        kin_name = stars.kinematic_data[self.kin_set].name
+        file_name = f'{wdir}comps_kin_test_s22_{conversion}_{kin_name}'
+        comps_kin.write(f'{file_name}.ecsv',
+                        format='ascii.ecsv',
+                        overwrite=True)
+        self.logger.info(f'Component kinematics written to {file_name}.ecsv.')
+
+        self.logger.debug(f'{conversion}: {vmax=}, {smax=}, {smin=}.')
         # print(np.max(th),np.min(th),np.max(tw),np.min(tw),np.max(tz),
         #       np.min(tz),np.max(tc),np.min(tc))
 
         ### PLOT THE RESULTS
         # Plot settings
-        kin_name = stars.kinematic_data[self.kin_set].name
-        figfile=f'{wdir}comps_kin_test_s22_{conversion}_{kin_name}.pdf'
         plt.figure(figsize=(12, 18))
         #plt.subplots_adjust(hspace=0.7, wspace=0.01, left=0.01, bottom=0.05,
         #                    top=0.99, right=0.99)
@@ -655,7 +621,8 @@ class Decomposition:
                        vmin=smin, vmax=smax, label=r'$\mathbf{\sigma}$')
 
         plt.tight_layout()
-        plt.savefig(figfile)
+        plt.savefig(file_name+figtype)
+        self.logger.info(f'Component plots written to {file_name}{figtype}.')
         plt.close()
 
     def run_dec(self):
