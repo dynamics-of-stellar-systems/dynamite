@@ -43,25 +43,9 @@ class Decomposition:
         self.logger.info(f'Performing decomposition into {comps} '
                          f'for kin_set no {kin_set}: '
                          f'{stars.kinematic_data[kin_set].name}')
-        self.results_directory = \
-            config.settings.io_settings['output_directory'] + 'figure_nn/'
-        if not os.path.exists(self.results_directory):
-            os.makedirs(self.results_directory)
-            self.logger.debug(f'Created directory {self.results_directory}')
-        else:
-            self.logger.debug('Using existing directory '
-                              f'{self.results_directory}')
+        self.plotdir = config.settings.io_settings['plot_directory']
         self.losvd_histograms, self.proj_mass, self.decomp = self.run_dec()
         self.logger.info('Orbits read and velocity histogram created.')
-        # #diag start
-        # with open(self.results_directory + 'losvd.out', 'w') as f:
-        #     f.write(f'{self.losvd_histograms=}\n'
-        #             f'{self.losvd_histograms.y.shape=}\n'
-        #             f'{self.losvd_histograms.dx=}\n'
-        #             f'{self.losvd_histograms.xedg=}\n'
-        #             f'{list(self.losvd_histograms.y.flatten())=}\n'
-        #             f'{list(self.proj_mass.flatten())=}')
-        # #diag end
 
     def plot_decomp(self,xlim, ylim, conversion):
         comp_kinem_moments = self.comps_aphist(conversion)
@@ -349,8 +333,6 @@ class Decomposition:
                      if 'conversion' in comp_kinem_moments.meta.keys() else ''
         self.logger.info(f'Plotting decomposition for {conversion=}.')
 
-        wdir = self.results_directory
-
         # read kinematic data and weights
         ## COLD COMPONENT
         flux_thin = comp_kinem_moments['thin_d_lsb']
@@ -514,11 +496,14 @@ class Decomposition:
                                          'sig_whole':sig_all[grid[s]]})
 
         kin_name = stars.kinematic_data[self.kin_set].name
-        file_name = f'{wdir}comps_kin_test_s22_{conversion}_{kin_name}'
-        comps_kin.write(f'{file_name}.ecsv',
+        file_name = f'comps_kin_test_s22_{conversion}_{kin_name}'
+        table_file_name = self.model.directory + file_name + '.ecsv'
+        plot_file_name = self.plotdir + file_name + figtype
+        comps_kin.write(f'{table_file_name}',
                         format='ascii.ecsv',
                         overwrite=True)
-        self.logger.info(f'Component kinematics written to {file_name}.ecsv.')
+        self.logger.info('Component grid kinematics written to '
+                         f'{table_file_name}.')
 
         self.logger.debug(f'{conversion}: {vmax=}, {smax=}, {smin=}.')
         # print(np.max(th),np.min(th),np.max(tw),np.min(tw),np.max(tz),
@@ -621,13 +606,11 @@ class Decomposition:
                        vmin=smin, vmax=smax, label=r'$\mathbf{\sigma}$')
 
         plt.tight_layout()
-        plt.savefig(file_name+figtype)
-        self.logger.info(f'Component plots written to {file_name}{figtype}.')
+        plt.savefig(plot_file_name)
+        self.logger.info(f'Component plots written to {plot_file_name}.')
         plt.close()
 
     def run_dec(self):
-
-        ocut = [0.8, 0.25,-0.25] #cuts in lambda_z for the components (as in Santucci+22)
 
         Rmax_arcs=15#gal_infos['Rmax[arcsec]'][i]
         xrange = None
@@ -637,15 +620,10 @@ class Decomposition:
         losvd_histograms, _, n_orbs, projected_masses = \
             orblib.losvd_histograms[self.kin_set], orblib.intrinsic_masses, \
             orblib.n_orbs, orblib.projected_masses[self.kin_set]
-        self.logger.debug(f'{type(losvd_histograms)=}, {type(n_orbs)=}, '
-                          f'{type(projected_masses)=}, '
-                          f'{losvd_histograms.y.shape=}, '
+        self.logger.debug(f'{type(n_orbs)=}, {losvd_histograms.y.shape=}, '
                           f'{projected_masses.shape=}.')
         _ = self.model.get_weights(orblib)
         self.weights = self.model.weights
         #create the files with the orbits selected for each components
-        decomp = \
-            self.decompose_orbits(ocut=ocut,
-                                  Rmax_arcs=Rmax_arcs,
-                                  xrange=xrange)
+        decomp = self.decompose_orbits(Rmax_arcs=Rmax_arcs, xrange=xrange)
         return losvd_histograms, projected_masses, decomp
