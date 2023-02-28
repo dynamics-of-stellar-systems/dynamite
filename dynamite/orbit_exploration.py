@@ -9,13 +9,16 @@ import dynamite as dyn
 from dynamite import pyfort_GaussHerm
 
 class Decomposition:
-    comps = ['disk', 'thin_d', 'warm_d', 'bulge', 'all']
     conversions = ['gh_expand_around_losvd_mean_and_std_deviation',
                         # 'gh_fit_with_free_v_sigma_params',
                         'gh_fit_with_free_v_sigma_params_fortran',
                         'moments']
 
-    def __init__(self, config=None, model=None, kin_set=0):
+    def __init__(self,
+                 config=None,
+                 model=None,
+                 kin_set=0,
+                 comps=['disk', 'thin_d', 'warm_d', 'bulge', 'all']):
         self.logger = logging.getLogger(f'{__name__}.{__class__.__name__}')
         if config is None:
             text = f'{__class__.__name__} needs configuration object, ' \
@@ -23,6 +26,10 @@ class Decomposition:
             self.logger.error(text)
             raise ValueError(text)
         self.config = config
+        if model is None:
+            # Select the best model for decomposition
+            best_model_idx = config.all_models.get_best_n_models_idx(n=1)[0]
+            self.model = config.all_models.get_model_from_row(best_model_idx)
         stars = \
           config.system.get_component_from_class(
                                   dyn.physical_system.TriaxialVisibleComponent)
@@ -32,12 +39,10 @@ class Decomposition:
             self.logger.error(text)
             raise ValueError(text)
         self.kin_set = kin_set
-        self.logger.info(f'Performing decomposition for kin_set no {kin_set}: '
+        self.comps = comps
+        self.logger.info(f'Performing decomposition into {comps} '
+                         f'for kin_set no {kin_set}: '
                          f'{stars.kinematic_data[kin_set].name}')
-        if model is None:
-            # Select the best model for decomposition
-            best_model_idx = config.all_models.get_best_n_models_idx(n=1)[0]
-            self.model = config.all_models.get_model_from_row(best_model_idx)
         self.results_directory = \
             config.settings.io_settings['output_directory'] + 'figure_nn/'
         if not os.path.exists(self.results_directory):
@@ -150,33 +155,11 @@ class Decomposition:
         losvd_orbs = self.losvd_histograms.y
         self.logger.info(f'{losvd_orbs.shape = }.')
         for comp in self.comps:
-            file=wdir+comp+'_orb_s22.out'
-            norbout, orbw = np.genfromtxt(file,
-                                          skip_header=1,
-                                          usecols=(0,6),
-                                          unpack=True)
-            # norm_w=np.sum(orbw)
-            #print('tot orb_weight', norm_w)
-            orb_sel=norbout
-            #print('selected orbs',len(orb_sel))
-            losvd=np.copy(losvd_orbs)
-            #print('before zeroing some orbits', np.sum(np.sum(losvd,0)))
-            check=0
-            #if k==3: print('orbs', orb_sel)
-            for orb in range(n_orbs):
+            orb_sel = np.array([comp in s for s in self.decomp['component']],
+                               dtype=bool)
+            losvd = np.dot(self.losvd_histograms.y[orb_sel,:,:].T,
+                           self.weights[orb_sel]).T
 
-                if orb in orb_sel:
-                    #print('orb #', orb)
-                    lk=np.where(norbout==orb)[0][0]
-                    for i in range(losvd.shape[1]):
-                        losvd[orb,i,:]=losvd[orb,i,:]*orbw[lk]
-                    #if check==1:print('check orbit taken',losvd[orb,:,0],losvd[orb,:,1])
-                else:
-                    for i in range(losvd.shape[1]):
-                        losvd[orb,i,:]=0.0
-                check+=1
-
-            losvd=np.sum(losvd, 0) #sum the losvd in all the orbits
             v_calculate = np.zeros(k_bins, dtype=float)
             s_calculate = np.zeros(k_bins, dtype=float)
             lsb = np.zeros(k_bins, dtype=float)
@@ -246,10 +229,11 @@ class Decomposition:
                                   ("%15.7f" % 5.0)  + ("%15.7f" % 0.0) + ("%15.7f" % 0.0)+ ("%15.7f" % 0.1) +
                                   ("%15.7f" % 0.0)  + ("%15.7f" % 0.0) + ("%15.7f" % 0.1) + '\n')
 
-    def create_orbital_component_files_giu(self,
-                                           ocut=None,
-                                           Rmax_arcs=None,
-                                           xrange=None):
+    # def create_orbital_component_files_giu(self,
+    #                                        ocut=None,
+    #                                        Rmax_arcs=None,
+    #                                        xrange=None):
+    def decompose_orbits(self, ocut=None, Rmax_arcs=None, xrange=None):
 
         if not ocut:
             ocut = [0.8, 0.25, -0.25]  #selection in lambda_z following Santucci+22
@@ -331,164 +315,35 @@ class Decomposition:
         #print("check 2 - sign", lzm_sign, lxm_sign)
 
         self.logger.info(f'Decomposing {n_orbs} orbits...')
-        decomp = astropy.table.Table({'weights':self.weights}, dtype=[float])
-        decomp.add_columns([astropy.table.Column(data=[False]*n_orbs,
-                                                 name=c,
-                                                 dtype=bool)
-                            for c in self.comps])
+        decomp = astropy.table.Table({'id':range(n_orbs),
+                                      'component':['']*n_orbs},
+                                     dtype=[int, 'U256'])
 
-
+        # map components
+        comp_map = np.zeros(n_orbs, dtype=int)
         # cold component
-        decomp['thin_d'][np.ravel(np.where(lzm_sign >= ocut[0]))] = True
+        comp_map[np.ravel(np.where(lzm_sign >= ocut[0]))] += \
+            2**self.comps.index('thin_d')
         # warm component
-        decomp['warm_d'][np.ravel(np.where((((lzm_sign) > ocut[1]))
-                                           & ((lzm_sign) < ocut[0])))] = True
+        comp_map[np.ravel(np.where((lzm_sign > ocut[1])
+                                 & (lzm_sign < ocut[0])))] += \
+            2**self.comps.index('warm_d')
         # hot component
-        decomp['bulge'][np.ravel(np.where((((lzm_sign) > ocut[2]))
-                                          & ((lzm_sign) < ocut[1])))] = True
+        comp_map[np.ravel(np.where((lzm_sign > ocut[2])
+                                 & (lzm_sign < ocut[1])))] += \
+            2**self.comps.index('bulge')
         # disk component
-        decomp['disk'][np.ravel(np.where(((lzm_sign) > ocut[1])))] = True
+        comp_map[np.ravel(np.where(lzm_sign > ocut[1]))] += \
+            2**self.comps.index('disk')
         # whole component
-        decomp['all'] = True
+        comp_map += 2**self.comps.index('all')
+        for i in np.ravel(np.where(comp_map > 0)):
+            for k, comp in enumerate(self.comps):
+                if comp_map[i] & (1 << k):
+                    decomp['component'][i] += f'|{comp}|'
         decomp.pprint_all()
 
-        # cold component
-        self.logger.info(f'{lzm_sign.shape=}')
-
-        self.logger.info('**Create nn_orb.out for different bulk of orbits**')
-
-        self.logger.info(f'#orbs: {len(orbw)}.')
-        ### COLD COMPONENT
-        hlz=np.ravel(np.where((lzm_sign) >= ocut[0]))
-        self.logger.info(f'check 3 - cold comp: {len(hlz)}.')
-        #print("and len(ocut)", len(ocut))
-
-        if len(ocut) == 1:
-            hlz=np.ravel(np.where((lzm_sign) >= ocut[0]))
-        orbw_hlz = np.copy(orbw)
-
-        nohlz= np.ravel(np.where((lzm_sign) < ocut[0]))
-        if len(ocut) == 1:
-            nohlz=np.ravel(np.where((lzm_sign) < ocut[0]))
-        orbw_hlz[nohlz] = -999
-
-        self.logger.info(f'{hlz.shape=}, {nohlz.shape=}, {orbw_hlz.shape=}.')
-
-        with open(self.results_directory+'thin_d_orb_s22.out', 'w') as outfile:
-            norbw = len(orbw)
-            outfile.write(("%12i" % len(hlz)) + '\n')
-            for i in range(0, norbw):
-                if orbw_hlz[i]!=-999:
-                    # outfile.write(("%8i" % i)  + ("%8i" % ener[i]) +  ("%8i" % i2[i]) +
-                    #           ("%8i" % i3[i]) + ("%8i" % regul[i])  +
-                    #           ("%8i" % orbtype[i])  + ("%13.5e" % orbw_hlz[i]) +
-                    #               ("%13.5e" % lcut[i]) +  '\n')
-                    outfile.write(("%8i" % i)  + ("%8i" % 0) +  ("%8i" % 0) +
-                              ("%8i" % 0) + ("%8i" % 0)  +
-                              ("%8i" % 0)  + ("%13.5e" % orbw_hlz[i]) +
-                                  ("%13.5e" % 0.0) +  '\n')
-
-        ### WARM COMPONENT
-        wlz= np.ravel(np.where((((lzm_sign) > ocut[1])) & ((lzm_sign)< ocut[0])))
-        orbw_wlz = np.copy(orbw)
-        nowlz= np.ravel(np.where(((lzm_sign) > ocut[0]) | ((lzm_sign) <= ocut[1])))
-        orbw_wlz[nowlz] = -999
-        self.logger.info(f'check 3 - warm comp: {len(wlz)}.')
-        with open(self.results_directory+'warm_d_orb_s22.out', 'w') as outfile:
-            norbw = len(orbw)
-            outfile.write(("%12i" % len(wlz)) + '\n')
-            for i in range(0, norbw):
-                if orbw_wlz[i]!=-999:
-                    # outfile.write(("%8i" % i)  + ("%8i" % ener[i]) +  ("%8i" % i2[i]) +
-                    #           ("%8i" % i3[i]) + ("%8i" % regul[i])  +
-                    #           ("%8i" % orbtype[i])  + ("%13.5e" % orbw_wlz[i]) +
-                    #               ("%13.5e" % lcut[i]) +'\n')
-                    outfile.write(("%8i" % i)  + ("%8i" % 0) +  ("%8i" % 0) +
-                              ("%8i" % 0) + ("%8i" % 0)  +
-                              ("%8i" % 0)  + ("%13.5e" % orbw_wlz[i]) +
-                                  ("%13.5e" % 0.0) +'\n')
-
-        ### HOT_noCR COMPONENT
-        zlz= np.ravel(np.where((((lzm_sign) > ocut[2])) & ((lzm_sign)< ocut[1])))
-
-        orbw_zlz = np.copy(orbw)
-
-        nozlz= np.ravel(np.where(((lzm_sign) > ocut[1]) | ((lzm_sign) <= ocut[2])))
-        orbw_zlz[nozlz] = -999
-        self.logger.info(f'check 3 - hot comp: {len(zlz)}.')
-        with open(self.results_directory+'bulge_orb_s22.out', 'w') as outfile:
-            norbw = len(orbw)
-            outfile.write(("%12i" % len(zlz)) + '\n')
-            for i in range(0, norbw):
-                if orbw_zlz[i]!=-999:
-                    # outfile.write(("%8i" % i)  + ("%8i" % ener[i]) +  ("%8i" % i2[i]) +
-                    #           ("%8i" % i3[i]) + ("%8i" % regul[i])  +
-                    #           ("%8i" % orbtype[i])  + ("%13.5e" % orbw_zlz[i]) +
-                    #               ("%13.5e" % lcut[i]) +'\n')
-                    outfile.write(("%8i" % i)  + ("%8i" % 0) +  ("%8i" % 0) +
-                              ("%8i" % 0) + ("%8i" % 0)  +
-                              ("%8i" % 0)  + ("%13.5e" % orbw_zlz[i]) +
-                                  ("%13.5e" % 0.0) +'\n')
-
-     ### DISK COMPONENT
-        dlz= np.ravel(np.where(((lzm_sign)> ocut[1])))
-        orbw_dlz = np.copy(orbw)
-
-        nodlz= np.ravel(np.where(((lzm_sign) <= ocut[1]) ))
-        orbw_dlz[nodlz] = -999
-        self.logger.info(f'check 3 - disk comp: {len(dlz)}.')
-
-        with open(self.results_directory + 'disk_orb_s22.out', 'w') as outfile:
-            norbw = len(orbw)
-            outfile.write(("%12i" % len(dlz)) + '\n')
-            for i in range(0, norbw):
-                if orbw_dlz[i]!=-999:
-                    # outfile.write(("%8i" % i)  + ("%8i" % ener[i]) +  ("%8i" % i2[i]) +
-                    #           ("%8i" % i3[i]) + ("%8i" % regul[i])  +
-                    #           ("%8i" % orbtype[i])  + ("%13.5e" % orbw_dlz[i]) +
-                    #               ("%13.5e" % lcut[i]) +'\n')
-                    outfile.write(("%8i" % i)  + ("%8i" % 0) +  ("%8i" % 0) +
-                              ("%8i" % 0) + ("%8i" % 0)  +
-                              ("%8i" % 0)  + ("%13.5e" % orbw_dlz[i]) +
-                                  ("%13.5e" % 0.0) +'\n')
-
-      ### Whole COMPONENT
-        orbw_allz = np.copy(orbw)
-
-        self.logger.info(f'check 3 - whole comp: {len(orbw_allz)}.')
-        with open(self.results_directory + 'all_orb_s22.out', 'w') as outfile:
-            norbw = len(orbw)
-            outfile.write(("%12i" % len(orbw)) + '\n')
-            for i in range(0, norbw):
-                if orbw_allz[i]!=-999:
-                    # outfile.write(("%8i" % i)  + ("%8i" % ener[i]) +  ("%8i" % i2[i]) +
-                    #           ("%8i" % i3[i]) + ("%8i" % regul[i])  +
-                    #           ("%8i" % orbtype[i])  + ("%13.5e" % orbw_allz[i]) +
-                    #               ("%13.5e" % lcut[i]) +'\n')
-                    outfile.write(("%8i" % i)  + ("%8i" % 0) +  ("%8i" % 0) +
-                              ("%8i" % 0) + ("%8i" % 0)  +
-                              ("%8i" % 0)  + ("%13.5e" % orbw_allz[i]) +
-                                  ("%13.5e" % 0.0) +'\n')
-
-#unused        tot_orb=np.sum(orbw_hlz[orbw_hlz!=-999])+ np.sum(orbw_wlz[orbw_wlz!=-999])+np.sum(orbw_zlz[orbw_zlz!=-999])
-#unused        tot_orb2=np.sum(orbw_zlz[orbw_zlz!=-999])+ np.sum(orbw_dlz[orbw_dlz!=-999])
-#unused        tot_orb_tot=np.sum(orbw_allz)
-        #print('*************************')
-        #print('total flux 1 and 2 (disk+bulge), and total', tot_orb, tot_orb2, tot_orb_tot)
-        #print('*************************')
-
-        #print('*************************')
-        #print('total weights of hlz (thin), wlz (thick), zlz (bulge), dlz (disk), whole components are:',
-        #      np.sum(orbw_hlz[orbw_hlz!=-999])/tot_orb,
-        #      np.sum(orbw_wlz[orbw_wlz!=-999])/tot_orb,
-        #      np.sum(orbw_zlz[orbw_zlz!=-999])/tot_orb,
-        #      np.sum(orbw_dlz[orbw_dlz!=-999])/tot_orb,
-        #      np.sum(orbw_allz)/tot_orb)
-        #print('************************')
-        #print('*************************')
-        #print('total weights of hlz (cold), wlz (warm), zlz (hot), clz (CC) components are:',
-        #     np.sum(orbw_hlz), np.sum(orbw_wlz),np.sum(orbw_zlz), np.sum(orbw_clz))
-        #print('************************')
+        return decomp
 
     def plot_comps_giu(self,
                        # savedata=True,
@@ -508,53 +363,60 @@ class Decomposition:
         ##############################################################
         ## COLD COMPONENT
         kinem_file = wdir + 'thin_d_vs_kinem_'+conversion+'.out'
-        weight_file = wdir + 'thin_d_orb_s22.out'
+        # weight_file = wdir + 'thin_d_orb_s22.out'
         kinem_matrix = np.genfromtxt(kinem_file, skip_header=1)
-        weight_matrix = np.genfromtxt(weight_file, skip_header=1)
+        # weight_matrix = np.genfromtxt(weight_file, skip_header=1)
         ident, flux, flux_thin, vel_thin, veld, dvel, sig_thin, sigd, dsig, \
             h3_thin, h3d, dh3, h4_thin, h4d, dh4 = kinem_matrix.T
+        # n,n1,n2,n3,n0,nc,wthin,lcutw = weight_matrix.T
 
-        n,n1,n2,n3,n0,nc,wthin,lcutw = weight_matrix.T
-
+        wthin = self.weights[['thin_d' in s for s in self.decomp['component']]]
 
         ## WARM COMPONENT
         kinem_file = wdir + 'warm_d_vs_kinem_'+conversion+'.out'
-        weight_file = wdir + 'warm_d_orb_s22.out'
+        # weight_file = wdir + 'warm_d_orb_s22.out'
         kinem_matrix = np.genfromtxt(kinem_file, skip_header=1)
-        weight_matrix = np.genfromtxt(weight_file, skip_header=1)
+        # weight_matrix = np.genfromtxt(weight_file, skip_header=1)
         ident, flux, flux_thick, vel_thick, veld, dvel, sig_thick, sigd, dsig, \
             h3_thick, h3d, dh3, h4_thick, h4d, dh4 = kinem_matrix.T
-        n,n1,n2,n3,n0,nc,wthick,lcutthi = weight_matrix.T
+        # n,n1,n2,n3,n0,nc,wthick,lcutthi = weight_matrix.T
 
+        wthick=self.weights[['warm_d' in s for s in self.decomp['component']]]
 
        ### CC COMPONENT
         kinem_file = wdir + 'disk_vs_kinem_'+conversion+'.out'
-        weight_file = wdir + 'disk_orb_s22.out'
+        # weight_file = wdir + 'disk_orb_s22.out'
         kinem_matrix = np.genfromtxt(kinem_file, skip_header=1)
-        weight_matrix = np.genfromtxt(weight_file, skip_header=1)
+        # weight_matrix = np.genfromtxt(weight_file, skip_header=1)
         ident, flux, flux_disk, vel_disk, veld, dvel, sig_disk, sigd, dsig, \
             h3_disk, h3d, dh3, h4_disk, h4d, dh4 = kinem_matrix.T
-        n,n1,n2,n3,n0,nc,wdisk,lcutdisk = weight_matrix.T
+        # n,n1,n2,n3,n0,nc,wdisk,lcutdisk = weight_matrix.T
         #print('disk flux', np.sum(flux_disk))
+
+        wdisk = self.weights[['disk' in s for s in self.decomp['component']]]
 
         ## HOT_cr COMPONENT
         kinem_file = wdir + 'bulge_vs_kinem_'+conversion+'.out'
-        weight_file = wdir + 'bulge_orb_s22.out'
+        # weight_file = wdir + 'bulge_orb_s22.out'
         kinem_matrix = np.genfromtxt(kinem_file, skip_header=1)
-        weight_matrix = np.genfromtxt(weight_file, skip_header=1)
+        # weight_matrix = np.genfromtxt(weight_file, skip_header=1)
         ident, flux, flux_bulge, vel_bulge, veld, dvel, sig_bulge, sigd, dsig,\
             h3_bulge, h3d, dh3, h4_bulge, h4d, dh4 = kinem_matrix.T
-        n,n1,n2,n3,n0,nc,wbulge,lcutbul = weight_matrix.T
+        # n,n1,n2,n3,n0,nc,wbulge,lcutbul = weight_matrix.T
         #print('bulge flux', np.sum(flux_bulge))
+
+        wbulge = self.weights[['bulge' in s for s in self.decomp['component']]]
 
         ###WHOLE component
         kinem_file = wdir + 'all_vs_kinem_'+conversion+'.out'
-        weight_file = wdir + 'all_orb_s22.out'
+        # weight_file = wdir + 'all_orb_s22.out'
         kinem_matrix = np.genfromtxt(kinem_file, skip_header=1)
-        weight_matrix = np.genfromtxt(weight_file, skip_header=1)
+        # weight_matrix = np.genfromtxt(weight_file, skip_header=1)
         ident, flux, flux_all, vel_all, veld, dvel, sig_all, sigd, dsig, \
             h3_all, h3d, dh3, h4_all, h4d, dh4 = kinem_matrix.T
-        n,n1,n2,n3,n0,nc,wall,lcutal = weight_matrix.T
+        # n,n1,n2,n3,n0,nc,wall,lcutal = weight_matrix.T
+
+        wall = self.weights[['all' in s for s in self.decomp['component']]]
 
         stars = \
         self.config.system.get_component_from_class(
@@ -569,64 +431,6 @@ class Decomposition:
         angle_deg = dp_args['angle']
         self.logger.debug(f'Pixel grid dimension is {dx=}, {len(xi)=}, '
                           f'{len(yi)=}, {grid.shape}, {angle_deg=}.')
-
-#         input_directory = self.config.settings.io_settings['input_directory']
-
-#         ##############################################################
-#         # Read aperture1.dat
-#         # The angle that is saved in this file is measured counter clock-wise
-#         # from the galaxy major axis to the X-axis of the input data.
-#         lines = [line.rstrip('\n').split()
-#                  for line in open(input_directory + 'aperture.dat')]
-# #unused        strhead = lines[0]
-#         minx =float(lines[1][0])
-#         miny = float(lines[1][1])
-#         sx = float(lines[2][0])
-#         sy = float(lines[2][1])
-#         sy = sy + miny
-#         angle_deg = float(lines[3][0])  # - 90.0 + 180
-#         nx = int(lines[4][0])
-#         ny = int(lines[4][1])
-
-#         dx = sx / nx
-
-#         self.logger.info('Pixel grid dimension is dx,nx,ny,angle: '
-#                          f'{dx}, {nx}, {ny}, {angle_deg}.')
-#         grid = np.zeros((nx, ny), dtype=int)
-
-#         xr = (np.arange(nx, dtype=float) * dx + minx + 0.5 * dx)
-#         yc = (np.arange(ny, dtype=float) * dx + miny + 0.5 * dx)
-
-#         xi = np.outer(xr, (yc * 0 + 1))
-#         xt = xi.T.flatten()
-#         yi = np.outer((xr * 0 + 1), yc)
-#         yt = yi.T.flatten()
-
-#         xi=xt
-#         yi=yt
-#         ##############################################################
-#         # Read bins1.dat
-#         lines_bins = [line.rstrip('\n').split()
-#                       for line in open(input_directory + 'bins.dat')]
-#         i = 0
-#         str_head = []
-#         i_var = []
-#         grid = []
-#         while i < len(lines_bins):
-#             for x in lines_bins[i]:
-#                 if i == 0:
-#                     str_head.append(str(x))
-#                 if i == 1:
-#                     i_var.append(int(x))
-#                 if i > 1:
-#                     grid.append(int(x))
-#             i += 1
-#         str_head = str(str_head[0])
-#         i_var = int(i_var[0])
-#         grid = np.ravel(np.array(grid))
-#         # bins start counting at 1 in fortran and at 0 in idl:
-#         grid = grid - 1
-#         ##############################################################
 
         s = np.ravel(np.where((grid >= 0) & (np.abs(xi) <= xlim)
                               & (np.abs(yi) <= ylim)))
@@ -873,7 +677,8 @@ class Decomposition:
         _ = self.model.get_weights(orblib)
         self.weights = self.model.weights
         #create the files with the orbits selected for each components
-        decomp = self.create_orbital_component_files_giu(ocut=ocut,
-                                                         Rmax_arcs=Rmax_arcs,
-                                                         xrange=xrange)
+        decomp = \
+            self.decompose_orbits(ocut=ocut,
+                                  Rmax_arcs=Rmax_arcs,
+                                  xrange=xrange)
         return losvd_histograms, projected_masses, decomp
