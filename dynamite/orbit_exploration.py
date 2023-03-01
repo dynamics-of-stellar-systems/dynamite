@@ -9,10 +9,10 @@ import dynamite as dyn
 from dynamite import pyfort_GaussHerm
 
 class Decomposition:
-    conversions = ['gh_expand_around_losvd_mean_and_std_deviation',
-                        # 'gh_fit_with_free_v_sigma_params',
-                        'gh_fit_with_free_v_sigma_params_fortran',
-                        'moments']
+    conversions = ['gh_expand_around_losvd_mean_and_std',
+                   'gh_fit_with_free_v_sigma_params',
+                   'gh_fit_with_free_v_sigma_params_fortran',
+                   'moments']
 
     def __init__(self,
                  config=None,
@@ -116,7 +116,7 @@ class Decomposition:
                 nvhist=wbin, nvmax=wbin, dvhist=histbinsize, nmc=10)
         return vmi, sgi
 
-    def gh_expand_around_losvd_mean_and_std_deviation(self, orblib, nkin,xedg):
+    def gh_expand_around_losvd_mean_and_std(self, orblib, nkin,xedg):
         mod_losvd=dyn.kinematics.Histogram(y=orblib[np.newaxis,:,:], xedg=xedg)
         mod_v = mod_losvd.get_mean()
         mod_sig = mod_losvd.get_sigma()
@@ -175,9 +175,9 @@ class Decomposition:
                     #         f.write(f'{sigma_i}')
                     # #diag end
 
-                if conversion=='gh_expand_around_losvd_mean_and_std_deviation':
+                if conversion=='gh_expand_around_losvd_mean_and_std':
                     v_i, sigma_i = \
-                        self.gh_expand_around_losvd_mean_and_std_deviation(
+                        self.gh_expand_around_losvd_mean_and_std(
                             losvd,
                             i,
                             xedg=self.losvd_histograms.xedg)
