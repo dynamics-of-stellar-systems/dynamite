@@ -1,5 +1,6 @@
 import numpy as np
 from scipy import special, stats
+from scipy.optimize import curve_fit
 from astropy import table
 import logging
 import os
@@ -733,6 +734,34 @@ class Histogram(object):
         var /= norm
         sigma = var**0.5
         return sigma
+
+    def get_mean_sigma_gaussfit(self):
+        """Get the mean velocity and velocity dispersion from fitted Gaussians
+
+        Returns
+        -------
+        array shape (n_orbits, n_apertures)
+            mean velcoity of losvd
+        array shape (n_orbits, n_apertures)
+            velocity dispersion of losvd
+
+        """
+        v_mean = self.get_mean() # starting values for fit
+        v_sigma = self.get_sigma() # starting values for fit
+        def gauss(x, a, mean, sigma):
+            return a*np.exp(-(x-mean)**2/(2.*sigma**2))
+        for orbit in range(self.y.shape[0]):
+            for aperture in range(self.y.shape[-1]):
+                p_initial = [1.,
+                             v_mean[orbit,aperture],
+                             v_sigma[orbit,aperture]]
+                p_opt, _ = curve_fit(gauss,
+                                     self.x,
+                                     self.y[orbit,:,aperture],
+                                     p0=p_initial)
+                v_mean[orbit,aperture] = p_opt[1] # overwrite v_mean
+                v_sigma[orbit,aperture] = p_opt[2] # overwrite v_sigma
+        return v_mean, v_sigma
 
 class BayesLOSVD(Kinematics, data.Integrated):
     """Bayes LOSVD kinematic data
