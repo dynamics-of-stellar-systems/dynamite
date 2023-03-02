@@ -17,14 +17,7 @@ dyn.model_iterator.ModelIterator(c) # generate models
 decomp = dyn.orbit_exploration.Decomposition(config=c,
                                              kin_set=0) # do the decomposition
 
-for conversion in (
-                   'gh_expand_around_losvd_mean_and_std',
-                   'gh_fit_with_free_v_sigma_params_fortran',
-                   'moments',
-                   'moments_old',
-                   'fit',
-                   'gh_fit_with_free_v_sigma_params'
-                   ):
+for conversion in ('moments', 'fit'):
     #select the components and calculate the kinematics for each
     #(this is done with the selection used in Santucci+22)
     #and plot the kinematics

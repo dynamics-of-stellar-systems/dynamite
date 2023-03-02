@@ -3,18 +3,11 @@ import logging
 import numpy as np
 import matplotlib.pyplot as plt
 from plotbin.display_pixels import display_pixels
-import lmfit
 import astropy
 import dynamite as dyn
-from dynamite import pyfort_GaussHerm
 
 class Decomposition:
-    conversions = ['gh_expand_around_losvd_mean_and_std',
-                   'gh_fit_with_free_v_sigma_params',
-                   'gh_fit_with_free_v_sigma_params_fortran',
-                   'moments_old',
-                   'moments',
-                   'fit']
+    conversions = ['moments', 'fit']
 
     def __init__(self,
                  config=None,
@@ -49,7 +42,7 @@ class Decomposition:
         self.losvd_histograms, self.proj_mass, self.decomp = self.run_dec()
         self.logger.info('Orbits read and velocity histogram created.')
 
-    def plot_decomp(self,xlim, ylim, conversion):
+    def plot_decomp(self, xlim, ylim, conversion):
         comp_kinem_moments = self.comps_aphist(conversion)
         self.logger.info('Components done')
         self.plot_comps_giu(xlim=xlim,
@@ -57,178 +50,50 @@ class Decomposition:
                             comp_kinem_moments=comp_kinem_moments)
         self.logger.info('Plots done')
 
-    def gaussfunc_gh(self, paramsin,x):
-        amp=paramsin['amp'].value
-        center=paramsin['center'].value
-        sig=paramsin['sig'].value
-        c1=-np.sqrt(3)
-        c2=-np.sqrt(6)
-        c3=2/np.sqrt(3)
-        c4=np.sqrt(6)/3
-        c5=np.sqrt(6)/4
-        skew=paramsin['skew'].value
-        kurt=paramsin['kurt'].value
-        g=(x-center)/sig
-        gaustot_gh = amp*np.exp(-.5*g**2)*(1+skew*(c1*g+c3*g**3) +
-                                           kurt*(c5+c2*g**2+c4*(g**4)))
-        return gaustot_gh
-
-    def gh_fit_with_free_v_sigma_params(self, vhist, b):
-        p_gh = lmfit.Parameters()
-        p_gh.add('amp', value=np.max(vhist), vary=True)
-        p_gh.add('center',
-                 value=np.percentile(b, 50),
-                 min=np.min(b),
-                 max=np.max(b))
-        #p_gh.add('sig',value=(b[w]-np.min(b))/2,min=b[w]-np.min(b),max=np.max(b)-b[w]);
-        p_gh.add('sig',
-                 value=np.abs(np.percentile(b,68)-np.percentile(b, 50)),
-                 min=0,
-                 max=700)
-        p_gh.add('skew', value=0, vary=True, min=None, max=None)
-        p_gh.add('kurt', value=0, vary=True, min=None, max=None)
-        gausserr_gh = lambda p,x,y: self.gaussfunc_gh(p,x)-y
-        fitout_gh = lmfit.minimize(gausserr_gh, p_gh, args=(b,vhist))
-
-#unused        fitted_p_gh = fitout_gh.params
-        pars_gh = [fitout_gh.params['amp'].value,
-                   fitout_gh.params['center'].value,
-                   fitout_gh.params['sig'].value,
-                   fitout_gh.params['skew'].value,
-                   fitout_gh.params['kurt'].value]
-#unused        fit_gh=self.gaussfunc_gh(fitted_p_gh,b)
-#unused        resid_gh=fit_gh-vhist
-        return pars_gh[1], pars_gh[2]
-
-    def conv_moments(self, vhis, b, dv_obs):
-        L_obs_nn = np.where(vhis > 0, vhis, 0.0)
-
-        mu0=np.sum(L_obs_nn, dtype=np.double)*dv_obs
-        mu1=np.sum(b*L_obs_nn, dtype=np.double)*dv_obs
-        mu2=np.sum((b**2)*L_obs_nn, dtype=np.double)*dv_obs
-#unused        mu3=np.sum((b**3)*L_obs_nn, dtype=np.double)*dv_obs
-#unused        mu4=np.sum((b**4)*L_obs_nn, dtype=np.double)*dv_obs
-
-        v = mu1 / mu0
-        s = np.sqrt(mu0 * mu2 - mu1 ** 2) / mu0
-        return v, s
-
-    def gh_fit_with_free_v_sigma_params_fortran(self, vhis,histbinsize,wbin):
-        gamm, vmi, sgi, chi2 = pyfort_GaussHerm.gaussfit(veltemp=vhis,
-                nvhist=wbin, nvmax=wbin, dvhist=histbinsize, nmc=10)
-        return vmi, sgi
-
-    def gh_expand_around_losvd_mean_and_std(self, orblib, nkin,xedg):
-        mod_losvd=dyn.kinematics.Histogram(y=orblib[np.newaxis,:,:], xedg=xedg)
-        mod_v = mod_losvd.get_mean()
-        mod_sig = mod_losvd.get_sigma()
-        return mod_v[0, nkin], mod_sig[0, nkin]
-
     def comps_aphist(self, conversion):
         if conversion not in self.conversions:
             text = f'Unknown conversion {conversion}, ' \
                    f'must be one of {self.conversions}.'
             self.logger.error(text)
             raise ValueError(text)
-        self.logger.info(f'{conversion=}')
-        n_orbs, bins, k_bins = self.losvd_histograms.y.shape
-        #w = int(head1[0]) #bins
-        #n = int(head1[1]) #apertures
-        histbinsize = self.losvd_histograms.dx
-        self.logger.info(f'shape histbin: {histbinsize.shape}.')
+        self.logger.info('Calculating flux, v, and sigma for components, '
+                         f'{conversion=}.')
+        n_orbs, bins, n_apertures = self.losvd_histograms.y.shape
 
-        b = (np.arange(bins , dtype=float) - ((bins+1)/2)) * histbinsize
-
-        comp_kinem_moments = astropy.table.Table({'ap_id':range(k_bins)},
-                                                 dtype=[int],
-                                                 meta={'conversion':conversion})
+        comp_flux_v_sigma = astropy.table.Table({'ap_id':range(n_apertures)},
+                                                dtype=[int],
+                                                meta={'conversion':conversion})
         for comp in self.comps:
-            # create losvd histograms for component
+            # calculate flux and losvd histograms for component
             orb_sel = np.array([comp in s for s in self.decomp['component']],
                                dtype=bool)
+            flux = np.dot(self.proj_mass[orb_sel].T, self.weights[orb_sel])
             losvd = np.dot(self.losvd_histograms.y[orb_sel,:,:].T,
                            self.weights[orb_sel]).T
-
-            v_calculate = np.zeros(k_bins, dtype=float)
-            s_calculate = np.zeros(k_bins, dtype=float)
-            lsb = np.zeros(k_bins, dtype=float)
-
-            #not calculating h3 and h4 at the moment
-            for i in range(0, k_bins):
-                vhis = losvd[:, i] #losvd for each kinematic bin
-                # #diag start
-                # if i==0 or True:
-                #     with open(wdir+'vhis.out', 'a') as f:
-                #         f.write(f'{vhis}')
-                #     with open(wdir+'b.out', 'a') as f:
-                #         f.write(f'{b}')
-                # #diag end
-                dv_obs= (np.max(b)-np.min(b))/np.double(len(b))
-
-                if conversion=='gh_fit_with_free_v_sigma_params':
-                    #other options are 'losvd_vsig', 'fortran', 'moments'
-                    v_i, sigma_i = self.gh_fit_with_free_v_sigma_params(vhis,
-                                                                        b)
-                    # #diag start
-                    # if i==0 or True:
-                    #     with open(wdir+'v_i.out', 'a') as f:
-                    #         f.write(f'{v_i}')
-                    #     with open(wdir+'sigma_i.out', 'a') as f:
-                    #         f.write(f'{sigma_i}')
-                    # #diag end
-
-                if conversion=='gh_expand_around_losvd_mean_and_std':
-                    v_i, sigma_i = \
-                        self.gh_expand_around_losvd_mean_and_std(
-                            losvd,
-                            i,
-                            xedg=self.losvd_histograms.xedg)
-
-                if conversion=='gh_fit_with_free_v_sigma_params_fortran':
-                    v_i, sigma_i = \
-                        self.gh_fit_with_free_v_sigma_params_fortran(
-                            vhis,
-                            histbinsize,
-                            (bins-1)/2)
-
-                if conversion=='moments_old':
-                    v_i, sigma_i = self.conv_moments(vhis, b, dv_obs)
-
-                L_obs_nn = np.where(vhis > 0, vhis, 0.0)
-                mu0=np.sum(L_obs_nn, dtype=np.double)*dv_obs
-
-                lsb[i] = mu0
+            losvd = losvd[np.newaxis]
+            self.logger.debug(f'{comp}: {np.count_nonzero(orb_sel)} orbits, '
+                              f'{flux.shape=}, {losvd.shape=}.')
+            losvd_hist = dyn.kinematics.Histogram(self.losvd_histograms.xedg,
+                                                  y=losvd,
+                                                  normalise=False)
+            v_mean = np.zeros(n_apertures, dtype=float)
+            v_sigma = np.zeros(n_apertures, dtype=float)
 
             if conversion=='moments':
-                losvd = losvd[np.newaxis]
-                model_losvd_hist = \
-                    dyn.kinematics.Histogram(xedg=self.losvd_histograms.xedg,
-                                             y=losvd,
-                                             normalise=False)
-                v_calculate = np.squeeze(model_losvd_hist.get_mean())
-                s_calculate = np.squeeze(model_losvd_hist.get_sigma())
-                lsb = np.dot(self.proj_mass[orb_sel].T,
-                                           self.weights[orb_sel]) # .shape = n_aperture
+                v_mean = np.squeeze(losvd_hist.get_mean())
+                v_sigma = np.squeeze(losvd_hist.get_sigma())
             elif conversion=='fit':
-                losvd = losvd[np.newaxis]
-                model_losvd_hist = \
-                    dyn.kinematics.Histogram(xedg=self.losvd_histograms.xedg,
-                                             y=losvd,
-                                             normalise=False)
-                v_calculate, s_calculate= model_losvd_hist.get_mean_sigma_gaussfit()
-                v_calculate = np.squeeze(v_calculate)
-                s_calculate = np.squeeze(s_calculate)
-                lsb = np.dot(self.proj_mass[orb_sel].T,
-                                           self.weights[orb_sel]) # .shape = n_aperture
+                v_mean, v_sigma = losvd_hist.get_mean_sigma_gaussfit()
+                v_mean = np.squeeze(v_mean)
+                v_sigma = np.squeeze(v_sigma)
             else:
-                    v_calculate[i] = v_i
-                    s_calculate[i] = sigma_i
+                pass
 
-            comp_kinem_moments.add_columns([lsb, v_calculate, s_calculate],
+            comp_flux_v_sigma.add_columns([flux, v_mean, v_sigma],
                                            names=[f'{comp}_lsb',
                                                   f'{comp}_v',
                                                   f'{comp}_sig'])
-        return comp_kinem_moments
+        return comp_flux_v_sigma
 
     # def create_orbital_component_files_giu(self,
     #                                        ocut=None,
