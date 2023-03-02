@@ -12,7 +12,9 @@ class Decomposition:
     conversions = ['gh_expand_around_losvd_mean_and_std',
                    'gh_fit_with_free_v_sigma_params',
                    'gh_fit_with_free_v_sigma_params_fortran',
-                   'moments']
+                   'moments_old',
+                   'moments',
+                   'fit']
 
     def __init__(self,
                  config=None,
@@ -189,15 +191,38 @@ class Decomposition:
                             histbinsize,
                             (bins-1)/2)
 
-                if conversion=='moments':
+                if conversion=='moments_old':
                     v_i, sigma_i = self.conv_moments(vhis, b, dv_obs)
 
                 L_obs_nn = np.where(vhis > 0, vhis, 0.0)
                 mu0=np.sum(L_obs_nn, dtype=np.double)*dv_obs
 
                 lsb[i] = mu0
-                v_calculate[i] = v_i
-                s_calculate[i] = sigma_i
+
+            if conversion=='moments':
+                losvd = losvd[np.newaxis]
+                model_losvd_hist = \
+                    dyn.kinematics.Histogram(xedg=self.losvd_histograms.xedg,
+                                             y=losvd,
+                                             normalise=False)
+                v_calculate = np.squeeze(model_losvd_hist.get_mean())
+                s_calculate = np.squeeze(model_losvd_hist.get_sigma())
+                lsb = np.dot(self.proj_mass[orb_sel].T,
+                                           self.weights[orb_sel]) # .shape = n_aperture
+            elif conversion=='fit':
+                losvd = losvd[np.newaxis]
+                model_losvd_hist = \
+                    dyn.kinematics.Histogram(xedg=self.losvd_histograms.xedg,
+                                             y=losvd,
+                                             normalise=False)
+                v_calculate, s_calculate= model_losvd_hist.get_mean_sigma_gaussfit()
+                v_calculate = np.squeeze(v_calculate)
+                s_calculate = np.squeeze(s_calculate)
+                lsb = np.dot(self.proj_mass[orb_sel].T,
+                                           self.weights[orb_sel]) # .shape = n_aperture
+            else:
+                    v_calculate[i] = v_i
+                    s_calculate[i] = sigma_i
 
             comp_kinem_moments.add_columns([lsb, v_calculate, s_calculate],
                                            names=[f'{comp}_lsb',
