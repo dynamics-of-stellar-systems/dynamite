@@ -7,7 +7,7 @@ import astropy
 import dynamite as dyn
 
 class Decomposition:
-    conversions = ['moments', 'fit']
+    v_sigma_options = ['moments', 'fit']
 
     def __init__(self,
                  config=None,
@@ -42,27 +42,28 @@ class Decomposition:
         self.losvd_histograms, self.proj_mass, self.decomp = self.run_dec()
         self.logger.info('Orbits read and velocity histogram created.')
 
-    def plot_decomp(self, xlim, ylim, conversion):
-        comp_kinem_moments = self.comps_aphist(conversion)
+    def plot_decomp(self, xlim, ylim, v_sigma_option='fit'):
+        comp_kinem_moments = self.comps_aphist(v_sigma_option)
         self.logger.info('Components done')
         self.plot_comps_giu(xlim=xlim,
                             ylim=ylim,
                             comp_kinem_moments=comp_kinem_moments)
         self.logger.info('Plots done')
 
-    def comps_aphist(self, conversion):
-        if conversion not in self.conversions:
-            text = f'Unknown conversion {conversion}, ' \
-                   f'must be one of {self.conversions}.'
+    def comps_aphist(self, v_sigma_option):
+        if v_sigma_option not in self.v_sigma_options:
+            text = f'Unknown v_sigma_option {v_sigma_option}, ' \
+                   f'must be one of {self.v_sigma_options}.'
             self.logger.error(text)
             raise ValueError(text)
         self.logger.info('Calculating flux, v, and sigma for components, '
-                         f'{conversion=}.')
+                         f'{v_sigma_option=}.')
         n_orbs, bins, n_apertures = self.losvd_histograms.y.shape
 
-        comp_flux_v_sigma = astropy.table.Table({'ap_id':range(n_apertures)},
-                                                dtype=[int],
-                                                meta={'conversion':conversion})
+        comp_flux_v_sigma = \
+            astropy.table.Table({'ap_id':range(n_apertures)},
+                                dtype=[int],
+                                meta={'v_sigma_option':v_sigma_option})
         for comp in self.comps:
             # calculate flux and losvd histograms for component
             orb_sel = np.array([comp in s for s in self.decomp['component']],
@@ -79,10 +80,10 @@ class Decomposition:
             v_mean = np.zeros(n_apertures, dtype=float)
             v_sigma = np.zeros(n_apertures, dtype=float)
 
-            if conversion=='moments':
+            if v_sigma_option=='moments':
                 v_mean = np.squeeze(losvd_hist.get_mean())
                 v_sigma = np.squeeze(losvd_hist.get_sigma())
-            elif conversion=='fit':
+            elif v_sigma_option=='fit':
                 v_mean, v_sigma = losvd_hist.get_mean_sigma_gaussfit()
                 v_mean = np.squeeze(v_mean)
                 v_sigma = np.squeeze(v_sigma)
@@ -215,13 +216,14 @@ class Decomposition:
                        xlim=None,
                        ylim=None,
                        # Re=None,
-                       conversion=None,
+                       v_sigma_option=None,
                        comp_kinem_moments=None,
                        figtype='.png'):
 
-        conversion = comp_kinem_moments.meta['conversion'] \
-                     if 'conversion' in comp_kinem_moments.meta.keys() else ''
-        self.logger.info(f'Plotting decomposition for {conversion=}.')
+        v_sigma_option = comp_kinem_moments.meta['v_sigma_option'] \
+                         if 'v_sigma_option' in comp_kinem_moments.meta.keys()\
+                         else ''
+        self.logger.info(f'Plotting decomposition for {v_sigma_option=}.')
 
         # read kinematic data and weights
         ## COLD COMPONENT
@@ -386,7 +388,7 @@ class Decomposition:
                                          'sig_whole':sig_all[grid[s]]})
 
         kin_name = stars.kinematic_data[self.kin_set].name
-        file_name = f'comps_kin_test_s22_{conversion}_{kin_name}'
+        file_name = f'comps_kin_test_s22_{v_sigma_option}_{kin_name}'
         table_file_name = self.model.directory + file_name + '.ecsv'
         plot_file_name = self.plotdir + file_name + figtype
         comps_kin.write(f'{table_file_name}',
@@ -395,7 +397,7 @@ class Decomposition:
         self.logger.info('Component grid kinematics written to '
                          f'{table_file_name}.')
 
-        self.logger.debug(f'{conversion}: {vmax=}, {smax=}, {smin=}.')
+        self.logger.debug(f'{v_sigma_option}: {vmax=}, {smax=}, {smin=}.')
         # print(np.max(th),np.min(th),np.max(tw),np.min(tw),np.max(tz),
         #       np.min(tz),np.max(tc),np.min(tc))
 
