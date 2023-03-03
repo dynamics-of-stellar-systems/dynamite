@@ -1,6 +1,5 @@
 import logging
 import numpy as np
-from scipy.optimize import curve_fit
 import astropy
 import dynamite as dyn
 
@@ -66,7 +65,7 @@ class Analysis:
         stars = self.config.system.get_component_from_class(
                                 dyn.physical_system.TriaxialVisibleComponent)
         kin_name = stars.kinematic_data[kin_set].name
-        self.logger.debug('Getting model projected masses and losvds.')
+        self.logger.info('Getting model projected masses and losvds.')
         orblib = model.get_orblib()
         _ = model.get_weights(orblib)
         weights = model.weights
@@ -75,32 +74,26 @@ class Analysis:
         # get all orbits' losvds; orbits_losvd.shape = n_orb,n_vbin,n_aperture
         orbits_losvd = orblib.losvd_histograms[kin_set].y[:,:,]
         # weighted sum of orbits_losvd; model_losvd.shape = 1,n_vbin,n_aperture
-        model_losvd = np.dot(orbits_losvd.T, weights).T[np.newaxis,:]
+        model_losvd = np.dot(orbits_losvd.T, weights).T[np.newaxis]
         #model_losvd /= np.sum(model_losvd, 0) # normalisation not necessary
         model_proj_masses = np.dot(orblib.projected_masses[kin_set].T,
                                    weights) # .shape = n_aperture
         # calculate v_mean and v_sigma values from the losvd histograms
-        # also needed as initial conditions if v_sigma_option=='fit'
         model_losvd_hist = \
             dyn.kinematics.Histogram(xedg=orblib.losvd_histograms[kin_set].xedg,
                                      y=model_losvd,
                                      normalise=False)
-        v_mean = np.squeeze(model_losvd_hist.get_mean()) # v from distribution
-        v_sigma = np.squeeze(model_losvd_hist.get_sigma()) # sigma from distr.
-        if v_sigma_option == 'fit': # fit a gaussian in each aperture
-            def gauss(x, a, mean, sigma):
-                return a*np.exp(-(x-mean)**2/(2.*sigma**2))
-            for aperture in range(model_losvd.shape[-1]):
-                p_initial = [1., v_mean[aperture], v_sigma[aperture]]
-                p_opt, _ = curve_fit(gauss,
-                                     orblib.losvd_histograms[kin_set].x,
-                                     model_losvd[0,:,aperture],
-                                     p0=p_initial)
-                v_mean[aperture] = p_opt[1] # overwrite v_mean from distr
-                v_sigma[aperture] = p_opt[2] # overwrite v_sigma from distr
+        if v_sigma_option == 'moments':
+            v_mean = np.squeeze(model_losvd_hist.get_mean()) # from distr.
+            v_sigma = np.squeeze(model_losvd_hist.get_sigma()) # from distr.
+            v_sig_text = 'losvd moments'
+        elif v_sigma_option == 'fit':
+            v_mean, v_sigma = model_losvd_hist.get_mean_sigma_gaussfit()
+            v_mean = np.squeeze(v_mean)
+            v_sigma = np.squeeze(v_sigma)
             v_sig_text = 'fitted Gaussians'
         else:
-            v_sig_text = 'losvd moments'
+            pass
         self.logger.debug(f'Calculated v_mean and v_sigma from {v_sig_text} '
                           f'for {len(v_mean)} apertures.')
         gh_table = astropy.table.Table([model_proj_masses, v_mean, v_sigma],
