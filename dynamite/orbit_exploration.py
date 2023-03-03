@@ -58,12 +58,10 @@ class Decomposition:
             raise ValueError(text)
         self.logger.info('Calculating flux, v, and sigma for components, '
                          f'{v_sigma_option=}.')
-        n_orbs, bins, n_apertures = self.losvd_histograms.y.shape
-
-        comp_flux_v_sigma = \
-            astropy.table.Table({'ap_id':range(n_apertures)},
-                                dtype=[int],
-                                meta={'v_sigma_option':v_sigma_option})
+        comp_flux_v_sigma = astropy.table.Table(
+                            {'ap_id':range(self.losvd_histograms.y.shape[-1])},
+                            dtype=[int],
+                            meta={'v_sigma_option':v_sigma_option})
         for comp in self.comps:
             # calculate flux and losvd histograms for component
             orb_sel = np.array([comp in s for s in self.decomp['component']],
@@ -77,19 +75,15 @@ class Decomposition:
             losvd_hist = dyn.kinematics.Histogram(self.losvd_histograms.xedg,
                                                   y=losvd,
                                                   normalise=False)
-            v_mean = np.zeros(n_apertures, dtype=float)
-            v_sigma = np.zeros(n_apertures, dtype=float)
-
-            if v_sigma_option=='moments':
+            if v_sigma_option == 'moments':
                 v_mean = np.squeeze(losvd_hist.get_mean())
                 v_sigma = np.squeeze(losvd_hist.get_sigma())
-            elif v_sigma_option=='fit':
+            elif v_sigma_option == 'fit':
                 v_mean, v_sigma = losvd_hist.get_mean_sigma_gaussfit()
                 v_mean = np.squeeze(v_mean)
                 v_sigma = np.squeeze(v_sigma)
             else:
                 pass
-
             comp_flux_v_sigma.add_columns([flux, v_mean, v_sigma],
                                            names=[f'{comp}_lsb',
                                                   f'{comp}_v',
