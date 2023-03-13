@@ -4,6 +4,8 @@ import shutil
 import logging
 import numpy as np
 from scipy.io import FortranFile
+from astropy import table
+import astropy.units as u
 
 from dynamite import physical_system as physys
 from dynamite import kinematics as dyn_kin
@@ -752,5 +754,44 @@ class LegacyOrbitLibrary(OrbitLibrary):
         lines = [line.rstrip('\n').split() for line in open(infile)]
         ml_original = float((lines[-9])[0])
         return ml_original
+
+    def read_orbit_property_file(self):
+        """Read the file `*orbclass.out` files
+
+        This file contains angular momenta Lx, Ly, Lz and v_rms of the orbits.
+        Results are stored in and `self.table`
+        
+        """
+        nE = self.settings['nE']
+        nI2 = self.settings['nI2']
+        nI3 = self.settings['nI3']
+        ndither = self.settings['dithering']
+        norb = int(nE*nI2*nI3)
+        ncol = ndither**3
+        nrow = norb
+        orbclass1 = np.genfromtxt(self.mod_dir+'datfil/orblib.dat_orbclass.out')
+        orbclass1 = orbclass1.ravel()
+        orbclass1 = orbclass1.reshape((5, ncol, nrow), order='F')
+        orbclass2 = np.genfromtxt(self.mod_dir+'datfil/orblibbox.dat_orbclass.out')
+        orbclass2 = orbclass2.ravel()
+        orbclass2 = orbclass1.reshape((5, ncol, nrow), order='F')
+        orbclass=np.dstack((orbclass1,orbclass1,orbclass2))
+        orbclass1a=np.copy(orbclass1)
+        orbclass1a[0:3,:,:] *= -1
+        for i in range(int(0), norb):
+            orbclass[:,:,i*2]=orbclass1[:, :, i]
+            orbclass[:,:,i*2 + 1]=orbclass1a[:, :, i]
+        orb_properties = table.QTable()
+        orb_properties['Lx'] = orbclass[0,:,:].T * u.km * u.km/u.s
+        orb_properties['Ly'] = orbclass[1,:,:].T * u.km * u.km/u.s
+        orb_properties['Lz'] = orbclass[2,:,:].T * u.km * u.km/u.s
+        orb_properties['r'] = orbclass[3,:,:].T * u.km
+        orb_properties['Vrms'] = orbclass[4,:,:].T**0.5 * u.km/u.s
+        r_vrms = orb_properties['r']*orb_properties['Vrms']
+        orb_properties['lmd_x'] = orb_properties['Lx']/r_vrms
+        orb_properties['lmd_y'] = orb_properties['Ly']/r_vrms
+        orb_properties['lmd_z'] = orb_properties['Lz']/r_vrms
+        orb_properties['r'] = orb_properties['r'].to(u.kpc)
+        self.table = orb_properties
 
 # end
