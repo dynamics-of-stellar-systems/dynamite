@@ -7,6 +7,7 @@ from scipy.io import FortranFile
 from astropy import table
 import astropy.units as u
 import matplotlib.pyplot as plt
+import sparse
 
 from dynamite import physical_system as physys
 from dynamite import kinematics as dyn_kin
@@ -905,10 +906,10 @@ class LegacyOrbitLibrary(OrbitLibrary):
         lmd_z_idx = np.digitize(orb_properties['lmd_z'].value, bins=lmd_edg)
         lmd_x_idx = np.digitize(orb_properties['lmd_x'].value, bins=lmd_edg)
         bundle_idx, orbit_idx = np.indices(r_idx.shape)
-        # make projection tensor
+        # make (sparse matrix representation of) projection tensor
         projection = []
-        for bool00 in [bool_ztish, projection_xtish, bool_box]:
-            # create sparse matrix representation
+        for str00 in ['bool_ztish', 'bool_xtish', 'bool_box']:
+            bool00 = self.orb_classification[str00]
             # decrease r_idx/L_idx by 1 so they are 0-index
             coords = np.array([bundle_idx[bool00], orbit_idx[bool00], r_idx[bool00]-1, L_idx[bool00]-1])
             # remove entries where orbit is outside bounds
