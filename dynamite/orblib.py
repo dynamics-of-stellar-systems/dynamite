@@ -757,15 +757,15 @@ class LegacyOrbitLibrary(OrbitLibrary):
         ml_original = float((lines[-9])[0])
         return ml_original
 
-    def read_orbit_property_file_base(self, file, nrow, ncol):
+    def read_orbit_property_file_base(self, file, ncol, nrow):
         """
         read in `datfil/orblib.dat_orbclass.out`
-        
+
         which stores the information of all the orbits stored in the orbit library
-        norb = nE * nI2 * nI3 * ndithing^3 
+        norb = nrow = nE * nI2 * nI3 * ndithing^3
         for each orbit, the time averaged values are stored:
         lx, ly ,lz, r = sum(sqrt( average(r^2) )), Vrms^2 = average(vx^2 + vy^2 + vz^2 + 2vx*vy + 2vxvz + 2vxvy)
-        
+
         The file was stored by the fortran code orblib_f.f90 integrator_find_orbtype
         """
         data=[]
@@ -776,7 +776,7 @@ class LegacyOrbitLibrary(OrbitLibrary):
                 data.append(np.double(x))
             i += 1
         data=np.array(data)
-        data=data.reshape((long(5),int(ncol),int(nrow)), order='F')
+        data=data.reshape((5,ncol,nrow), order='F')
         return data
 
     def read_orbit_property_file(self):
@@ -784,7 +784,7 @@ class LegacyOrbitLibrary(OrbitLibrary):
 
         This file contains angular momenta Lx, Ly, Lz and v_rms of the orbits.
         Results are stored in and `self.table`
-        
+
         """
         nE = self.settings['nE']
         nI2 = self.settings['nI2']
@@ -795,12 +795,12 @@ class LegacyOrbitLibrary(OrbitLibrary):
         nrow = norb
         orbclass1 = self.read_orbit_property_file_base(
             self.mod_dir+'datfil/orblib.dat_orbclass.out',
-            ncol,
-            nrow)
+            ncol=ncol,
+            nrow=nrow)
         orbclass2 = self.read_orbit_property_file_base(
             self.mod_dir+'datfil/orblibbox.dat_orbclass.out',
-            ncol,
-            nrow)
+            ncol=ncol,
+            nrow=nrow)
         orbclass=np.dstack((orbclass1,orbclass1,orbclass2))
         orbclass1a=np.copy(orbclass1)
         orbclass1a[0:3,:,:] *= -1
@@ -834,26 +834,26 @@ class LegacyOrbitLibrary(OrbitLibrary):
             plt.axvline(dl, ls=':', color='k')
             plt.axvline(-dl, ls=':', color='k')
         # find box orbits
-        bool_box = (    
+        bool_box = (
             (np.abs(orb_properties['Lx'].value/1e18) <= dl) &
             (np.abs(orb_properties['Ly'].value/1e18) <= dl) &
             (np.abs(orb_properties['Lz'].value/1e18) <= dl)
         )
         idx_box = np.where(bool_box)
         # find "true" tube orbits i.e. with exactly one component of L =/= 0
-        bool_xtube = (    
+        bool_xtube = (
             (np.abs(orb_properties['Lx'].value/1e18) > dl) &
             (np.abs(orb_properties['Ly'].value/1e18) <= dl) &
             (np.abs(orb_properties['Lz'].value/1e18) <= dl)
         )
         idx_xtube = np.where(bool_xtube)
-        bool_ytube = (    
+        bool_ytube = (
             (np.abs(orb_properties['Lx'].value/1e18) <= dl) &
             (np.abs(orb_properties['Ly'].value/1e18) > dl) &
             (np.abs(orb_properties['Lz'].value/1e18) <= dl)
         )
         idx_ytube = np.where(bool_ytube)
-        bool_ztube = (    
+        bool_ztube = (
             (np.abs(orb_properties['Lx'].value/1e18) <= dl) &
             (np.abs(orb_properties['Ly'].value/1e18) <= dl) &
             (np.abs(orb_properties['Lz'].value/1e18) > dl)
@@ -862,18 +862,18 @@ class LegacyOrbitLibrary(OrbitLibrary):
         # find tube-ish orbits i.e. with one component of L larger than other 2
         bool_xtish = (
             (bool_box==False)&
-            (np.abs(orb_properties['Lx']) > np.abs(orb_properties['Ly'])) & 
-            (np.abs(orb_properties['Lx']) > np.abs(orb_properties['Lz'])) 
+            (np.abs(orb_properties['Lx']) > np.abs(orb_properties['Ly'])) &
+            (np.abs(orb_properties['Lx']) > np.abs(orb_properties['Lz']))
         )
         bool_ytish = (
             (bool_box==False) &
-            (np.abs(orb_properties['Ly']) > np.abs(orb_properties['Lx'])) & 
-            (np.abs(orb_properties['Ly']) > np.abs(orb_properties['Lz'])) 
+            (np.abs(orb_properties['Ly']) > np.abs(orb_properties['Lx'])) &
+            (np.abs(orb_properties['Ly']) > np.abs(orb_properties['Lz']))
         )
         bool_ztish = (
             (bool_box==False) &
-            (np.abs(orb_properties['Lz']) > np.abs(orb_properties['Lx'])) & 
-            (np.abs(orb_properties['Lz']) > np.abs(orb_properties['Ly'])) 
+            (np.abs(orb_properties['Lz']) > np.abs(orb_properties['Lx'])) &
+            (np.abs(orb_properties['Lz']) > np.abs(orb_properties['Ly']))
         )
         # find any remaining orbits
         bool_other = (
@@ -892,14 +892,14 @@ class LegacyOrbitLibrary(OrbitLibrary):
         def percent(f):
             return str(int(100*f))
         self.logger.info('Orbit library classification:')
-        self.logger.info(f'    - {percent(n_box/n_orb_tot)}% box')    
-        self.logger.info(f'    - {percent(n_xtish/n_orb_tot)}% x-tubes')    
-        self.logger.info(f'    - {percent(n_ytish/n_orb_tot)}% y-tubes')    
-        self.logger.info(f'    - {percent(n_ztish/n_orb_tot)}% z-tubes')    
+        self.logger.info(f'    - {percent(n_box/n_orb_tot)}% box')
+        self.logger.info(f'    - {percent(n_xtish/n_orb_tot)}% x-tubes')
+        self.logger.info(f'    - {percent(n_ytish/n_orb_tot)}% y-tubes')
+        self.logger.info(f'    - {percent(n_ztish/n_orb_tot)}% z-tubes')
         self.logger.info(f'    - {percent(n_other/n_orb_tot)}% other types')
         self.logger.info('Amongst tubes, % with only one nonzero component of L:')
-        self.logger.info(f'    - {percent(n_xt_exact/n_xtish)}% of x-tubes')    
-        self.logger.info(f'    - {percent(n_yt_exact/n_ytish)}% of y-tubes')    
+        self.logger.info(f'    - {percent(n_xt_exact/n_xtish)}% of x-tubes')
+        self.logger.info(f'    - {percent(n_yt_exact/n_ytish)}% of y-tubes')
         self.logger.info(f'    - {percent(n_zt_exact/n_ztish)}% of z-tubes')
         self.logger.info('Orbit library classification DONE.')
         # save the output
