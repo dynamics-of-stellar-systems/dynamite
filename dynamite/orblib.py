@@ -889,6 +889,9 @@ class LegacyOrbitLibrary(OrbitLibrary):
         n_ztish = np.sum(bool_ztish)
         n_other = np.sum(bool_other)
         n_sum = n_box + n_xtish + n_ytish + n_ztish + n_other
+        n_xt_exact = np.sum(bool_xtube)
+        n_yt_exact = np.sum(bool_ytube)
+        n_zt_exact = np.sum(bool_ztube)
         def percent(f):
             return str(int(100*f))
         self.logger.info('Orbit library classification:')
@@ -918,6 +921,7 @@ class LegacyOrbitLibrary(OrbitLibrary):
         if maxr is None:
             maxr = np.max(orb_properties['r']).value
         if max_L is None:
+            bool_box = self.orb_classification['bool_box']
             max_L = np.percentile(orb_properties['L'][bool_box], 99)
             max_L = max_L.to(u.kpc*u.km/u.s).value
         log10_r_rng = (np.log10(minr), np.log10(maxr))
