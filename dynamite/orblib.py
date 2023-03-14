@@ -776,7 +776,7 @@ class LegacyOrbitLibrary(OrbitLibrary):
         orbclass1 = orbclass1.reshape((5, ncol, nrow), order='F')
         orbclass2 = np.genfromtxt(self.mod_dir+'datfil/orblibbox.dat_orbclass.out')
         orbclass2 = orbclass2.ravel()
-        orbclass2 = orbclass1.reshape((5, ncol, nrow), order='F')
+        orbclass2 = orbclass2.reshape((5, ncol, nrow), order='F')
         orbclass=np.dstack((orbclass1,orbclass1,orbclass2))
         orbclass1a=np.copy(orbclass1)
         orbclass1a[0:3,:,:] *= -1
@@ -877,6 +877,7 @@ class LegacyOrbitLibrary(OrbitLibrary):
         self.logger.info(f'    - {percent(n_xt_exact/n_xtish)}% of x-tubes')    
         self.logger.info(f'    - {percent(n_yt_exact/n_ytish)}% of y-tubes')    
         self.logger.info(f'    - {percent(n_zt_exact/n_ztish)}% of z-tubes')
+        self.logger.info('Orbit library classification DONE.')
         # save the output
         orb_classification = {
             'bool_box':bool_box,
