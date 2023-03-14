@@ -757,6 +757,28 @@ class LegacyOrbitLibrary(OrbitLibrary):
         ml_original = float((lines[-9])[0])
         return ml_original
 
+    def read_orbit_property_file_base(self, file, nrow, ncol):
+        """
+        read in `datfil/orblib.dat_orbclass.out`
+        
+        which stores the information of all the orbits stored in the orbit library
+        norb = nE * nI2 * nI3 * ndithing^3 
+        for each orbit, the time averaged values are stored:
+        lx, ly ,lz, r = sum(sqrt( average(r^2) )), Vrms^2 = average(vx^2 + vy^2 + vz^2 + 2vx*vy + 2vxvz + 2vxvy)
+        
+        The file was stored by the fortran code orblib_f.f90 integrator_find_orbtype
+        """
+        data=[]
+        lines = [line.rstrip('\n').split() for line in open(file)]
+        i = 0
+        while i < len(lines):
+            for x in lines[i]:
+                data.append(np.double(x))
+            i += 1
+        data=np.array(data)
+        data=data.reshape((long(5),int(ncol),int(nrow)), order='F')
+        return data
+
     def read_orbit_property_file(self):
         """Read the file `*orbclass.out` files
 
@@ -771,12 +793,14 @@ class LegacyOrbitLibrary(OrbitLibrary):
         norb = int(nE*nI2*nI3)
         ncol = ndither**3
         nrow = norb
-        orbclass1 = np.genfromtxt(self.mod_dir+'datfil/orblib.dat_orbclass.out')
-        orbclass1 = orbclass1.ravel()
-        orbclass1 = orbclass1.reshape((5, ncol, nrow), order='F')
-        orbclass2 = np.genfromtxt(self.mod_dir+'datfil/orblibbox.dat_orbclass.out')
-        orbclass2 = orbclass2.ravel()
-        orbclass2 = orbclass2.reshape((5, ncol, nrow), order='F')
+        orbclass1 = self.read_orbit_property_file_base(
+            self.mod_dir+'datfil/orblib.dat_orbclass.out',
+            ncol,
+            nrow)
+        orbclass2 = self.read_orbit_property_file_base(
+            self.mod_dir+'datfil/orblibbox.dat_orbclass.out',
+            ncol,
+            nrow)
         orbclass=np.dstack((orbclass1,orbclass1,orbclass2))
         orbclass1a=np.copy(orbclass1)
         orbclass1a[0:3,:,:] *= -1
