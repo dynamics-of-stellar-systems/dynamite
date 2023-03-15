@@ -902,18 +902,18 @@ class LegacyOrbitLibrary(OrbitLibrary):
         n_xt_exact = np.sum(bool_xtube)
         n_yt_exact = np.sum(bool_ytube)
         n_zt_exact = np.sum(bool_ztube)
-        def percent(f):
-            return str(int(100*f))
+        def percent(x):
+            return f'{100.*x:.1f}%'
         self.logger.info('Orbit library classification:')
-        self.logger.info(f'    - {percent(n_box/n_orb_tot)}% box')
-        self.logger.info(f'    - {percent(n_xtish/n_orb_tot)}% x-tubes')
-        self.logger.info(f'    - {percent(n_ytish/n_orb_tot)}% y-tubes')
-        self.logger.info(f'    - {percent(n_ztish/n_orb_tot)}% z-tubes')
-        self.logger.info(f'    - {percent(n_other/n_orb_tot)}% other types')
+        self.logger.info(f'    - {percent(n_box/n_orb_tot)} box')
+        self.logger.info(f'    - {percent(n_xtish/n_orb_tot)} x-tubes')
+        self.logger.info(f'    - {percent(n_ytish/n_orb_tot)} y-tubes')
+        self.logger.info(f'    - {percent(n_ztish/n_orb_tot)} z-tubes')
+        self.logger.info(f'    - {percent(n_other/n_orb_tot)} other types')
         self.logger.info('Amongst tubes, % with only one nonzero component of L:')
-        self.logger.info(f'    - {percent(n_xt_exact/n_xtish)}% of x-tubes')
-        self.logger.info(f'    - {percent(n_yt_exact/n_ytish)}% of y-tubes')
-        self.logger.info(f'    - {percent(n_zt_exact/n_ztish)}% of z-tubes')
+        self.logger.info(f'    - {percent(n_xt_exact/n_xtish)} of x-tubes')
+        self.logger.info(f'    - {percent(n_yt_exact/n_ytish)} of y-tubes')
+        self.logger.info(f'    - {percent(n_zt_exact/n_ztish)} of z-tubes')
         self.logger.info('Orbit library classification DONE.')
         # save the output
         orb_classification = {
