@@ -2086,8 +2086,8 @@ class Plotter():
             weights = np.ones(n_bundles)/n_bundles
         else:
             weight_solver = model.get_weights(orblib)
-            weights, _, _, _ = weight_solver.solve()
-        mod_orb_dists = orblib.projection_tensor(weights)
+            weights, _, _, _ = weight_solver.solve(orblib)
+        mod_orb_dists = projection_tensor.dot(weights)
         mod_orbclass_fracs = np.sum(mod_orb_dists, (1,2))
         # plotting utilities
         def frac_to_pc_str(x):
