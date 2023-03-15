@@ -818,12 +818,14 @@ class LegacyOrbitLibrary(OrbitLibrary):
         orb_properties['lmd_y'] = orb_properties['Ly']/r_vrms
         orb_properties['lmd_z'] = orb_properties['Lz']/r_vrms
         orb_properties['r'] = orb_properties['r'].to(u.kpc)
-        orb_properties['L'] = (orb_properties['Lx']**2 + orb_properties['Ly']**2 + orb_properties['Lz']**2)**0.5
-        orb_properties['lmd'] = (orb_properties['L']/orb_properties['r']/orb_properties['Vrms']).to(u.dimensionless_unscaled)
+        orb_properties['L'] = (
+            orb_properties['Lx']**2 + 
+            orb_properties['Ly']**2 + 
+            orb_properties['Lz']**2)**0.5
+        orb_properties['lmd'] = (orb_properties['L']/r_vrms).to(u.dimensionless_unscaled)
         self.orb_properties = orb_properties
 
-    def classify_orbits(self, make_diagnostic_plots=False):
-        orb_properties = self.orb_properties
+    def find_threshold_angular_momentum(self, make_diagnostic_plots=False):
         dl = np.linspace(-1, 1, 12)[6]
         dl *= 1.
         if make_diagnostic_plots:
@@ -833,6 +835,13 @@ class LegacyOrbitLibrary(OrbitLibrary):
             _ = plt.hist(np.ravel(orb_properties['Lz'].value/1e18), **kw_hist)
             plt.axvline(dl, ls=':', color='k')
             plt.axvline(-dl, ls=':', color='k')
+        return dl
+
+    def classify_orbits(self, make_diagnostic_plots=False):
+        orb_properties = self.orb_properties
+        dl = self.find_threshold_angular_momentum(
+            make_diagnostic_plots=make_diagnostic_plots
+            )
         # find box orbits
         bool_box = (
             (np.abs(orb_properties['Lx'].value/1e18) <= dl) &
@@ -910,6 +919,7 @@ class LegacyOrbitLibrary(OrbitLibrary):
             'bool_box':bool_box,
             'bool_xtish':bool_xtish,
             'bool_ytish':bool_ytish,
+            'bool_ztish':bool_ztish,
             'bool_other':bool_other
         }
         self.orb_classification = orb_classification
@@ -937,7 +947,7 @@ class LegacyOrbitLibrary(OrbitLibrary):
         bundle_idx, orbit_idx = np.indices(r_idx.shape)
         # make (sparse matrix representation of) projection tensor
         projection = []
-        for str00 in ['bool_ztish', 'bool_xtish', 'bool_box']:
+        for str00 in ['bool_ztish', 'bool_xtish', 'bool_ytish', 'bool_box']:
             bool00 = self.orb_classification[str00]
             # decrease r_idx/L_idx by 1 so they are 0-index
             coords = np.array([bundle_idx[bool00], orbit_idx[bool00], r_idx[bool00]-1, L_idx[bool00]-1])
