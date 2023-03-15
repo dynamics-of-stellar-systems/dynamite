@@ -826,6 +826,7 @@ class LegacyOrbitLibrary(OrbitLibrary):
         self.orb_properties = orb_properties
 
     def find_threshold_angular_momentum(self, make_diagnostic_plots=False):
+        orb_properties = self.orb_properties
         dl = np.linspace(-1, 1, 12)[6]
         dl *= 1.
         if make_diagnostic_plots:
@@ -924,35 +925,62 @@ class LegacyOrbitLibrary(OrbitLibrary):
         }
         self.orb_classification = orb_classification
 
-    def get_projection_tensor(self, minr=None, maxr=None, max_L=None, nr=50, nl=61):
+    def get_projection_tensor(self, minr=None, maxr=None, nr=50, nl=61):
+        # skip if this method has been run before with the same input
+        projection_tensor_pars = {'minr':minr, 
+                                  'maxr':maxr, 
+                                  'nr':nr,
+                                  'nl':nl}
+        if hasattr(self, 'projection_tensor_pars'):
+            if self.projection_tensor_pars == projection_tensor_pars:
+                return
+            else:
+                self.projection_tensor_pars = projection_tensor_pars
+        # otherwise, continue...
+        if hasattr(self, 'orb_properties') == False:
+            self.read_orbit_property_file()
         orb_properties = self.orb_properties
+        if hasattr(self, 'orb_classification') == False:
+            self.classify_orbits()
         if minr is None:
             minr = np.max(orb_properties['r']).value
         if maxr is None:
             maxr = np.max(orb_properties['r']).value
-        if max_L is None:
-            bool_box = self.orb_classification['bool_box']
-            max_L = np.percentile(orb_properties['L'][bool_box], 99)
-            max_L = max_L.to(u.kpc*u.km/u.s).value
         log10_r_rng = (np.log10(minr), np.log10(maxr))
         lmd_rng = (-1, 1)
-        L_rng = (0, max_L)
+        tot_lmd_rng = (0, 1)
+        # store ranges for use in plots
+        self.projection_tensor_rng = {
+            'log10_r_rng':log10_r_rng,
+            'lmd_rng':lmd_rng,
+            'tot_lmd_rng':tot_lmd_rng,
+        }
+        # store ranges for use in plots
         log10_r_edg = np.linspace(*log10_r_rng, nr+1)
         lmd_edg = np.linspace(*lmd_rng, nl+1)
-        L_edg = np.linspace(*L_rng, nl+1)
+        tot_lmd_edg = np.linspace(*tot_lmd_rng, nl+1)
         r_idx = np.digitize(np.log10(orb_properties['r'].value), bins=log10_r_edg)
-        L_idx = np.digitize(orb_properties['L'].to(u.kpc*u.km/u.s).value, bins=L_edg)
-        lmd_z_idx = np.digitize(orb_properties['lmd_z'].value, bins=lmd_edg)
         lmd_x_idx = np.digitize(orb_properties['lmd_x'].value, bins=lmd_edg)
+        lmd_y_idx = np.digitize(orb_properties['lmd_y'].value, bins=lmd_edg)
+        lmd_z_idx = np.digitize(orb_properties['lmd_z'].value, bins=lmd_edg)
+        tot_lmd_idx = np.digitize(orb_properties['lmd'].value, bins=tot_lmd_edg)
         bundle_idx, orbit_idx = np.indices(r_idx.shape)
         # make (sparse matrix representation of) projection tensor
         projection = []
-        for str00 in ['bool_ztish', 'bool_xtish', 'bool_ytish', 'bool_box']:
+        orbtypes = ['xtish', 'ytish', 'ztish', 'box']
+        ang_mom_indixes = [lmd_x_idx, lmd_y_idx, lmd_z_idx, tot_lmd_idx]
+        for (orbtype00, l_idx00) in zip(orbtypes, ang_mom_indixes):
+            str00 = f'bool_{orbtype00}'
             bool00 = self.orb_classification[str00]
             # decrease r_idx/L_idx by 1 so they are 0-index
-            coords = np.array([bundle_idx[bool00], orbit_idx[bool00], r_idx[bool00]-1, L_idx[bool00]-1])
+            coords = np.array([bundle_idx[bool00], 
+                               orbit_idx[bool00], 
+                               r_idx[bool00]-1, 
+                               l_idx00[bool00]-1])
             # remove entries where orbit is outside bounds
-            idx_keep = np.where((coords[2,:]>-1) & (coords[3,:]>-1) & (coords[2,:]<nr) & (coords[3,:]<nl))
+            idx_keep = np.where(
+                (coords[2,:]>-1) & (coords[3,:]>-1) & (coords[2,:]<nr) & (coords[3,:]<nl)
+                )
             coords = coords[:, idx_keep[0]]
             # create binary sparse matrix, with 1 entry per particle per bundle
             projection00 = sparse.COO(coords, 1, shape=r_idx.shape+(nr,nl))

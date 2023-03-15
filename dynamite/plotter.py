@@ -2061,3 +2061,65 @@ class Plotter():
             shell=True, check=True).stdout.decode('utf-8'). \
             split(sep='\n')[0].split()[-1]
         return v
+
+#############################################################################
+########################   More Plotting Routines  ##########################
+#############################################################################
+
+    def orbit_distribution(self, 
+                           model=None, 
+                           minr=None,
+                           maxr=None,
+                           max_L=None,
+                           nr=50,
+                           nl=61,
+                           equal_weighted_orbits=False,
+                           orientation='horizontal',
+                           figtype='.png'):
+        if model is None:
+            model_id = self.all_models.get_best_n_models_idx(n=1)[0]
+            model = self.all_models.get_model_from_row(model_id)
+        orblib = model.get_orblib()
+        orblib.get_projection_tensor(minr=minr, maxr=maxr, nr=nr, nl=nl)
+        if equal_weighted_orbits:
+            n_bundles = orblib.projection_tensor.shape[-1]
+            weights = np.ones(n_bundles)/n_bundles
+        else:
+            weight_solver = model.get_weights(orblib)
+            weights, _, _, _ = weight_solver.solve()
+        mod_orb_dists = orblib.projection_tensor(weights)
+        mod_orbclass_fracs = np.sum(mod_orb_dists, (1,2))
+        # plotting utilities
+        def frac_to_pc_str(x):
+            return f'{100.*x:.1f}%'
+        kwimshow = {'aspect':'auto', 'cmap':'magma_r', 'interpolation':'none'}
+        ranges = orblib.projection_tensor_rng
+        log10_r_rng = ranges['log10_r_rng']
+        lmd_rng = ranges['lmd_rng']
+        tot_lmd_rng = ranges['tot_lmd_rng']
+        # make plot
+        if orientation != 'horizontal':
+            # TO-DO: implement vertical option w/ radius on x-axis, lambda on y
+            raise NotImplementedError
+        fig, ax = plt.subplots(1, 4, figsize=(12, 4), sharey=True)
+        ax[0].imshow(np.flipud(mod_orb_dists[0]), extent=lmd_rng+log10_r_rng, **kwimshow)
+        ax[1].imshow(np.flipud(mod_orb_dists[1]), extent=lmd_rng+log10_r_rng, **kwimshow)
+        ax[2].imshow(np.flipud(mod_orb_dists[2]), extent=lmd_rng+log10_r_rng, **kwimshow)
+        ax[3].imshow(np.flipud(mod_orb_dists[3]), extent=tot_lmd_rng+log10_r_rng, **kwimshow)
+        # axis labels
+        ax[0].set_ylabel('$\log_{10} (r/\mathrm{kpc})$')
+        ax[0].set_xlabel('$\lambda_x$')
+        ax[1].set_xlabel('$\lambda_y$')
+        ax[2].set_xlabel('$\lambda_z$')
+        ax[3].set_xlabel('$\lambda_\mathrm{tot}$')
+        # add total orbit fractions
+        ax[0].set_title(f'Long axis tubes: {frac_to_pc_str(mod_orbclass_fracs[0])}')
+        ax[1].set_title(f'Int. axis tubes: {frac_to_pc_str(mod_orbclass_fracs[1])}')
+        ax[2].set_title(f'Short axis tubes: {frac_to_pc_str(mod_orbclass_fracs[2])}')
+        ax[3].set_title(f'Box: {frac_to_pc_str(mod_orbclass_fracs[3])}')
+        # format and save
+        fig.tight_layout()
+        figname = self.plotdir + 'orbit_distribution' + figtype
+        fig.savefig(figname)
+        self.logger.info(f'Plot {figname} saved in {self.plotdir}')
+        return fig
