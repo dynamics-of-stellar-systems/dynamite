@@ -943,7 +943,7 @@ class LegacyOrbitLibrary(OrbitLibrary):
         if hasattr(self, 'orb_classification') == False:
             self.classify_orbits()
         if minr is None:
-            minr = np.max(orb_properties['r']).value
+            minr = np.min(orb_properties['r']).value
         if maxr is None:
             maxr = np.max(orb_properties['r']).value
         log10_r_rng = (np.log10(minr), np.log10(maxr))
