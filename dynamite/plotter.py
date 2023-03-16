@@ -2066,8 +2066,8 @@ class Plotter():
 ########################   More Plotting Routines  ##########################
 #############################################################################
 
-    def orbit_distribution(self, 
-                           model=None, 
+    def orbit_distribution(self,
+                           model=None,
                            minr=None,
                            maxr=None,
                            max_L=None,
@@ -2087,7 +2087,7 @@ class Plotter():
         else:
             weight_solver = model.get_weights(orblib)
             weights, _, _, _ = weight_solver.solve(orblib)
-        mod_orb_dists = projection_tensor.dot(weights)
+        mod_orb_dists = orblib.projection_tensor.dot(weights)
         mod_orbclass_fracs = np.sum(mod_orb_dists, (1,2))
         # plotting utilities
         def frac_to_pc_str(x):
