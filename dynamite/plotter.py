@@ -2075,10 +2075,14 @@ class Plotter():
                            nl=61,
                            equal_weighted_orbits=False,
                            orientation='horizontal',
-                           figtype='.png'):
+                           figtype='.png',
+                           subset='all'):
         if model is None:
             model_id = self.all_models.get_best_n_models_idx(n=1)[0]
             model = self.all_models.get_model_from_row(model_id)
+        if orientation not in ['horizontal', 'vertical']:
+            raise NotImplementedError(f"Unknown orientation {orientation}, "
+                                      f"must be 'horizontal' or 'vertical'.")
         orblib = model.get_orblib()
         orblib.get_projection_tensor(minr=minr, maxr=maxr, nr=nr, nl=nl)
         if equal_weighted_orbits:
@@ -2088,46 +2092,79 @@ class Plotter():
             weight_solver = model.get_weights(orblib)
             weights, _, _, _ = weight_solver.solve(orblib)
         mod_orb_dists = orblib.projection_tensor.dot(weights)
-        # self.logger.info(f'{orblib.projection_tensor.shape=}, {mod_orb_dists.shape=}')
         mod_orbclass_fracs = np.sum(mod_orb_dists, (1,2))
-        # plotting utilities
+        # get orbit classes to plot
         def frac_to_pc_str(x):
             return f'{100.*x:.1f}%'
+        orb_classes = [{'name':'long',
+                        'plot':True,
+                        'label':'$\lambda_x$',
+                        'title':f'Long axis tubes: {frac_to_pc_str(mod_orbclass_fracs[0])}'},
+                       {'name':'intermediate',
+                        'plot':True,
+                        'label':'$\lambda_y$',
+                        'title':f'Int. axis tubes: {frac_to_pc_str(mod_orbclass_fracs[1])}'},
+                       {'name':'short',
+                        'plot':True,
+                        'label':'$\lambda_z$',
+                        'title':f'Short axis tubes: {frac_to_pc_str(mod_orbclass_fracs[2])}'},
+                       {'name':'box',
+                        'plot':True,
+                        'label':'$\lambda_\mathrm{tot}$',
+                        'title':f'Box: {frac_to_pc_str(mod_orbclass_fracs[3])}'}]
+        if len(orb_classes) != mod_orb_dists.shape[0]:
+            raise ValueError('Orbit class mismatch with projection tensor.')
+        elif not all(subset_class in [oc['name'] for oc in orb_classes]+['all']
+                     for subset_class in subset.split(sep='+')):
+            raise ValueError('Orbit class subset mismatch.')
+        if subset != 'all':
+            for orb_class in orb_classes:
+                if orb_class['name'] not in subset.split(sep='+'):
+                    orb_class['plot'] = False
+        self.logger.info('Plotting orbit distribution for orbit '
+                         f'classes {subset}.')
+        n_plots = sum(orb_class['plot'] for orb_class in orb_classes)
+        # plotting utilities
         kwimshow = {'aspect':'auto', 'cmap':'magma_r', 'interpolation':'none'}
         ranges = orblib.projection_tensor_rng
         log10_r_rng = ranges['log10_r_rng']
         lmd_rng = ranges['lmd_rng']
         tot_lmd_rng = ranges['tot_lmd_rng']
         # make plot
-        orbtype_labels = ['$\lambda_x$', '$\lambda_y$', '$\lambda_z$',
-                          '$\lambda_\mathrm{tot}$']
         r_label = '$\log_{10} (r/\mathrm{kpc})$'
+        fig,ax=plt.subplots(1, n_plots,
+                            figsize=(12, 4),
+                            sharey=True if orientation=='horizontal' else False)
         if orientation == 'horizontal':
-            fig, ax = plt.subplots(1, 4, figsize=(12, 4), sharey=True)
-            ax[0].imshow(np.flipud(mod_orb_dists[0]), extent=lmd_rng+log10_r_rng, **kwimshow)
-            ax[1].imshow(np.flipud(mod_orb_dists[1]), extent=lmd_rng+log10_r_rng, **kwimshow)
-            ax[2].imshow(np.flipud(mod_orb_dists[2]), extent=lmd_rng+log10_r_rng, **kwimshow)
-            ax[3].imshow(np.flipud(mod_orb_dists[3]), extent=tot_lmd_rng+log10_r_rng, **kwimshow)
-            # axis labels
             ax[0].set_ylabel(r_label)
-            for axis_idx, axis in enumerate(ax):
-                axis.set_xlabel(orbtype_labels[axis_idx])
+            plot_idx = 0
+            for orb_class_idx, orb_class in enumerate(orb_classes):
+                if orb_class['plot']:
+                    plot_data = np.flipud(mod_orb_dists[orb_class_idx])
+                    if orb_class['name'] == 'box':
+                        extent = tot_lmd_rng+log10_r_rng
+                    else:
+                        extent = lmd_rng+log10_r_rng
+                    ax[plot_idx].imshow(plot_data, extent=extent, **kwimshow)
+                    ax[plot_idx].set_xlabel(orb_class['label'])
+                    ax[plot_idx].set_title(orb_class['title'])
+                    plot_idx += 1
         elif orientation == 'vertical':
-            fig, ax = plt.subplots(1, 4, figsize=(12, 4), sharey=False)
-            ax[1].imshow(np.flipud(mod_orb_dists[1].T), extent=log10_r_rng+lmd_rng, **kwimshow)
-            ax[0].imshow(np.flipud(mod_orb_dists[0].T), extent=log10_r_rng+lmd_rng, **kwimshow)
-            ax[2].imshow(np.flipud(mod_orb_dists[2].T), extent=log10_r_rng+lmd_rng, **kwimshow)
-            ax[3].imshow(np.flipud(mod_orb_dists[3].T), extent=log10_r_rng+tot_lmd_rng, **kwimshow)
-            # axis labels
-            for axis_idx, axis in enumerate(ax):
-                axis.set_xlabel(r_label)
-                axis.set_ylabel(orbtype_labels[axis_idx])
+            plot_idx = 0
+            for orb_class_idx, orb_class in enumerate(orb_classes):
+                if orb_class['plot']:
+                    plot_data = np.flipud(mod_orb_dists[orb_class_idx].T)
+                    if orb_class['name'] == 'box':
+                        extent = log10_r_rng+tot_lmd_rng
+                    else:
+                        extent = log10_r_rng+lmd_rng
+                    ax[plot_idx].imshow(plot_data, extent=extent, **kwimshow)
+                    ax[plot_idx].set_xlabel(r_label)
+                    ax[plot_idx].set_ylabel(orb_class['label'])
+                    ax[plot_idx].set_title(orb_class['title'])
+                    plot_idx += 1
         else:
             raise NotImplementedError(f'Unknown orientation {orientation}.')
-        ax[0].set_title(f'Long axis tubes: {frac_to_pc_str(mod_orbclass_fracs[0])}')
-        ax[1].set_title(f'Int. axis tubes: {frac_to_pc_str(mod_orbclass_fracs[1])}')
-        ax[2].set_title(f'Short axis tubes: {frac_to_pc_str(mod_orbclass_fracs[2])}')
-        ax[3].set_title(f'Box: {frac_to_pc_str(mod_orbclass_fracs[3])}')
         # format and save
         fig.tight_layout()
         figname = self.plotdir + 'orbit_distribution' + figtype
