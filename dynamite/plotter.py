@@ -2088,6 +2088,7 @@ class Plotter():
             weight_solver = model.get_weights(orblib)
             weights, _, _, _ = weight_solver.solve(orblib)
         mod_orb_dists = orblib.projection_tensor.dot(weights)
+        # self.logger.info(f'{orblib.projection_tensor.shape=}, {mod_orb_dists.shape=}')
         mod_orbclass_fracs = np.sum(mod_orb_dists, (1,2))
         # plotting utilities
         def frac_to_pc_str(x):
@@ -2098,21 +2099,31 @@ class Plotter():
         lmd_rng = ranges['lmd_rng']
         tot_lmd_rng = ranges['tot_lmd_rng']
         # make plot
-        if orientation != 'horizontal':
-            # TO-DO: implement vertical option w/ radius on x-axis, lambda on y
-            raise NotImplementedError
-        fig, ax = plt.subplots(1, 4, figsize=(12, 4), sharey=True)
-        ax[0].imshow(np.flipud(mod_orb_dists[0]), extent=lmd_rng+log10_r_rng, **kwimshow)
-        ax[1].imshow(np.flipud(mod_orb_dists[1]), extent=lmd_rng+log10_r_rng, **kwimshow)
-        ax[2].imshow(np.flipud(mod_orb_dists[2]), extent=lmd_rng+log10_r_rng, **kwimshow)
-        ax[3].imshow(np.flipud(mod_orb_dists[3]), extent=tot_lmd_rng+log10_r_rng, **kwimshow)
-        # axis labels
-        ax[0].set_ylabel('$\log_{10} (r/\mathrm{kpc})$')
-        ax[0].set_xlabel('$\lambda_x$')
-        ax[1].set_xlabel('$\lambda_y$')
-        ax[2].set_xlabel('$\lambda_z$')
-        ax[3].set_xlabel('$\lambda_\mathrm{tot}$')
-        # add total orbit fractions
+        orbtype_labels = ['$\lambda_x$', '$\lambda_y$', '$\lambda_z$',
+                          '$\lambda_\mathrm{tot}$']
+        r_label = '$\log_{10} (r/\mathrm{kpc})$'
+        if orientation == 'horizontal':
+            fig, ax = plt.subplots(1, 4, figsize=(12, 4), sharey=True)
+            ax[0].imshow(np.flipud(mod_orb_dists[0]), extent=lmd_rng+log10_r_rng, **kwimshow)
+            ax[1].imshow(np.flipud(mod_orb_dists[1]), extent=lmd_rng+log10_r_rng, **kwimshow)
+            ax[2].imshow(np.flipud(mod_orb_dists[2]), extent=lmd_rng+log10_r_rng, **kwimshow)
+            ax[3].imshow(np.flipud(mod_orb_dists[3]), extent=tot_lmd_rng+log10_r_rng, **kwimshow)
+            # axis labels
+            ax[0].set_ylabel(r_label)
+            for axis_idx, axis in enumerate(ax):
+                axis.set_xlabel(orbtype_labels[axis_idx])
+        elif orientation == 'vertical':
+            fig, ax = plt.subplots(1, 4, figsize=(12, 4), sharey=False)
+            ax[1].imshow(np.flipud(mod_orb_dists[1].T), extent=log10_r_rng+lmd_rng, **kwimshow)
+            ax[0].imshow(np.flipud(mod_orb_dists[0].T), extent=log10_r_rng+lmd_rng, **kwimshow)
+            ax[2].imshow(np.flipud(mod_orb_dists[2].T), extent=log10_r_rng+lmd_rng, **kwimshow)
+            ax[3].imshow(np.flipud(mod_orb_dists[3].T), extent=log10_r_rng+tot_lmd_rng, **kwimshow)
+            # axis labels
+            for axis_idx, axis in enumerate(ax):
+                axis.set_xlabel(r_label)
+                axis.set_ylabel(orbtype_labels[axis_idx])
+        else:
+            raise NotImplementedError(f'Unknown orientation {orientation}.')
         ax[0].set_title(f'Long axis tubes: {frac_to_pc_str(mod_orbclass_fracs[0])}')
         ax[1].set_title(f'Int. axis tubes: {frac_to_pc_str(mod_orbclass_fracs[1])}')
         ax[2].set_title(f'Short axis tubes: {frac_to_pc_str(mod_orbclass_fracs[2])}')
