@@ -2094,6 +2094,8 @@ class Plotter():
         mod_orb_dists = orblib.projection_tensor.dot(weights)
         mod_orbclass_fracs = np.sum(mod_orb_dists, (1,2))
         # get orbit classes to plot
+        # Note: the order of the orbit classes in orb_classes below must match
+        # the order in the projection_tensor and mod_orb_dists!
         def frac_to_pc_str(x):
             return f'{100.*x:.1f}%'
         orb_classes = [{'name':'long',
@@ -2121,21 +2123,30 @@ class Plotter():
             for orb_class in orb_classes:
                 if orb_class['name'] not in subset.split(sep='+'):
                     orb_class['plot'] = False
-        self.logger.info('Plotting orbit distribution for orbit '
-                         f'classes {subset}.')
         n_plots = sum(orb_class['plot'] for orb_class in orb_classes)
+        self.logger.info('Plotting orbit distribution for orbit '
+                         f'classes {subset}: {n_plots} subplot(s).')
         # plotting utilities
-        kwimshow = {'aspect':'auto', 'cmap':'magma_r', 'interpolation':'none'}
+        vmax = max(np.amax(mod_orb_dists[i]) for i in range(len(orb_classes))
+                                             if orb_classes[i]['plot'])
+        kwimshow = {'aspect':'auto',
+                    'cmap':'magma_r',
+                    'interpolation':'none',
+                    'vmax':vmax}
         ranges = orblib.projection_tensor_rng
         log10_r_rng = ranges['log10_r_rng']
         lmd_rng = ranges['lmd_rng']
         tot_lmd_rng = ranges['tot_lmd_rng']
         # make plot
         r_label = '$\log_{10} (r/\mathrm{kpc})$'
-        fig,ax=plt.subplots(1, n_plots,
-                            figsize=(12, 4),
-                            sharey=True if orientation=='horizontal' else False)
+        fig_size = 15 * n_plots/len(orb_classes)
+        self.logger.info(f'{fig_size=}.')
         if orientation == 'horizontal':
+            fig, ax = plt.subplots(1, n_plots,
+                                   figsize=(fig_size+1, 5),
+                                   sharey=True)
+            if n_plots == 1:
+                ax = [ax]
             ax[0].set_ylabel(r_label)
             plot_idx = 0
             for orb_class_idx, orb_class in enumerate(orb_classes):
@@ -2145,11 +2156,21 @@ class Plotter():
                         extent = tot_lmd_rng+log10_r_rng
                     else:
                         extent = lmd_rng+log10_r_rng
-                    ax[plot_idx].imshow(plot_data, extent=extent, **kwimshow)
+                    cax = ax[plot_idx].imshow(plot_data,
+                                              extent=extent,
+                                              **kwimshow)
                     ax[plot_idx].set_xlabel(orb_class['label'])
                     ax[plot_idx].set_title(orb_class['title'])
                     plot_idx += 1
+            fig.tight_layout()
+            fig.colorbar(cax, ax=ax, orientation='vertical', pad=0.03)
         elif orientation == 'vertical':
+            fig, ax = plt.subplots(n_plots, 1,
+                                   figsize=(5, fig_size+1),
+                                   sharex=True)
+            if n_plots == 1:
+                ax = [ax]
+            ax[-1].set_xlabel(r_label)
             plot_idx = 0
             for orb_class_idx, orb_class in enumerate(orb_classes):
                 if orb_class['plot']:
@@ -2158,15 +2179,18 @@ class Plotter():
                         extent = log10_r_rng+tot_lmd_rng
                     else:
                         extent = log10_r_rng+lmd_rng
-                    ax[plot_idx].imshow(plot_data, extent=extent, **kwimshow)
-                    ax[plot_idx].set_xlabel(r_label)
+                    cax = ax[plot_idx].imshow(plot_data,
+                                              extent=extent,
+                                              **kwimshow)
+                    # ax[plot_idx].set_xlabel(r_label)
                     ax[plot_idx].set_ylabel(orb_class['label'])
                     ax[plot_idx].set_title(orb_class['title'])
                     plot_idx += 1
+            fig.tight_layout()
+            fig.colorbar(cax, ax=ax, orientation='horizontal', pad=0.15/n_plots)
         else:
             raise NotImplementedError(f'Unknown orientation {orientation}.')
         # format and save
-        fig.tight_layout()
         figname = self.plotdir + 'orbit_distribution' + figtype
         fig.savefig(figname)
         self.logger.info(f'Plot {figname} saved in {self.plotdir}')
