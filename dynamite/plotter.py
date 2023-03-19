@@ -1455,13 +1455,13 @@ class Plotter():
                         midpoint=0.5,
                         stop=1.0,
                         name='shiftedcmap'):
-        '''
+        """
         Function to offset the "center" of a colormap. Useful for
         data with a negative min and positive max and you want the
         middle of the colormap's dynamic range to be at zero.
 
-        Input
-        -----
+        Parameters
+        ----------
           cmap : The matplotlib colormap to be altered
           start : Offset from lowest point in the colormap's range.
               Defaults to 0.0 (no lower offset). Should be between
@@ -1475,7 +1475,13 @@ class Plotter():
           stop : Offset from highest point in the colormap's range.
               Defaults to 1.0 (no upper offset). Should be between
               `midpoint` and 1.0.
-        '''
+          name : The name of the new colormap, the default is 'shiftedcmap'.
+
+        Returns
+        -------
+        newcmap : The new colormap.
+
+        """
         cdict = {
             'red': [],
             'green': [],
