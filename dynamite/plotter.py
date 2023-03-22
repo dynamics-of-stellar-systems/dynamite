@@ -2077,7 +2077,7 @@ class Plotter():
                            orientation='horizontal',
                            figtype='.png',
                            subset='all',
-                           getdata='False'):
+                           getdata=False):
         if model is None:
             model_id = self.all_models.get_best_n_models_idx(n=1)[0]
             model = self.all_models.get_model_from_row(model_id)
@@ -2195,7 +2195,7 @@ class Plotter():
         figname = self.plotdir + 'orbit_distribution' + figtype
         fig.savefig(figname)
         self.logger.info(f'Plot {figname} saved in {self.plotdir}')
-        if getdata==True:
+        if getdata:
             return mod_orb_dists, fig
         else: 
             return fig
