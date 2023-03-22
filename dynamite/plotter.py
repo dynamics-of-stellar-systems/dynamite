@@ -2093,7 +2093,8 @@ class Plotter():
             weight_solver = model.get_weights(orblib)
             weights, _, _, _ = weight_solver.solve(orblib)
         mod_orb_dists = orblib.projection_tensor.dot(weights)
-        mod_orbclass_fracs = np.sum(mod_orb_dists, (1,2))/np.sum(np.sum(mod_orb_dists, (1,2)))
+        mod_orbclass_fracs = np.sum(mod_orb_dists, (1,2))
+        mod_orbclass_fracs = mod_orbclass_fracs/np.sum(mod_orbclass_fracs)
         # get orbit classes to plot
         # Note: the order of the orbit classes in orb_classes below must match
         # the order in the projection_tensor and mod_orb_dists!
