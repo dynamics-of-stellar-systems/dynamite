@@ -2076,7 +2076,8 @@ class Plotter():
                            equal_weighted_orbits=False,
                            orientation='horizontal',
                            figtype='.png',
-                           subset='all'):
+                           subset='all',
+                           getdata='False'):
         if model is None:
             model_id = self.all_models.get_best_n_models_idx(n=1)[0]
             model = self.all_models.get_model_from_row(model_id)
@@ -2092,7 +2093,7 @@ class Plotter():
             weight_solver = model.get_weights(orblib)
             weights, _, _, _ = weight_solver.solve(orblib)
         mod_orb_dists = orblib.projection_tensor.dot(weights)
-        mod_orbclass_fracs = np.sum(mod_orb_dists, (1,2))
+        mod_orbclass_fracs = np.sum(mod_orb_dists, (1,2))/np.sum(np.sum(mod_orb_dists, (1,2)))
         # get orbit classes to plot
         # Note: the order of the orbit classes in orb_classes below must match
         # the order in the projection_tensor and mod_orb_dists!
@@ -2194,4 +2195,7 @@ class Plotter():
         figname = self.plotdir + 'orbit_distribution' + figtype
         fig.savefig(figname)
         self.logger.info(f'Plot {figname} saved in {self.plotdir}')
-        return fig
+        if getdata==True:
+            return mod_orb_dists, fig
+        else: 
+            return fig
