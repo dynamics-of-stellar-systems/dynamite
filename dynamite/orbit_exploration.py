@@ -13,7 +13,7 @@ class Decomposition:
                  config=None,
                  model=None,
                  kin_set=0,
-                 comps=['disk', 'thin_d', 'warm_d', 'bulge', 'all']):
+                 comps=['thin_d', 'warm_d', 'disk', 'bulge', 'all']):
         self.logger = logging.getLogger(f'{__name__}.{__class__.__name__}')
         if config is None:
             text = f'{__class__.__name__} needs configuration object, ' \
@@ -48,6 +48,9 @@ class Decomposition:
         self.plot_comps_giu(xlim=xlim,
                             ylim=ylim,
                             comp_kinem_moments=comp_kinem_moments)
+        self.plot_comps(xlim=xlim,
+                        ylim=ylim,
+                        comp_kinem_moments=comp_kinem_moments)
         self.logger.info('Plots done')
 
     def comps_aphist(self, v_sigma_option):
@@ -85,7 +88,7 @@ class Decomposition:
             else:
                 pass
             comp_flux_v_sigma.add_columns([flux, v_mean, v_sigma],
-                                           names=[f'{comp}_lsb',
+                                           names=[f'{comp}_flux',
                                                   f'{comp}_v',
                                                   f'{comp}_sig'])
         return comp_flux_v_sigma
@@ -221,31 +224,31 @@ class Decomposition:
 
         # read kinematic data and weights
         ## COLD COMPONENT
-        flux_thin = comp_kinem_moments['thin_d_lsb']
+        flux_thin = comp_kinem_moments['thin_d_flux']
         vel_thin = comp_kinem_moments['thin_d_v']
         sig_thin = comp_kinem_moments['thin_d_sig']
         wthin = self.weights[['thin_d' in s for s in self.decomp['component']]]
 
         ## WARM COMPONENT
-        flux_thick = comp_kinem_moments['warm_d_lsb']
+        flux_thick = comp_kinem_moments['warm_d_flux']
         vel_thick = comp_kinem_moments['warm_d_v']
         sig_thick = comp_kinem_moments['warm_d_sig']
         wthick=self.weights[['warm_d' in s for s in self.decomp['component']]]
 
         ## CC COMPONENT
-        flux_disk = comp_kinem_moments['disk_lsb']
+        flux_disk = comp_kinem_moments['disk_flux']
         vel_disk = comp_kinem_moments['disk_v']
         sig_disk = comp_kinem_moments['disk_sig']
         wdisk = self.weights[['disk' in s for s in self.decomp['component']]]
 
         ## HOT_cr COMPONENT
-        flux_bulge = comp_kinem_moments['bulge_lsb']
+        flux_bulge = comp_kinem_moments['bulge_flux']
         vel_bulge = comp_kinem_moments['bulge_v']
         sig_bulge = comp_kinem_moments['bulge_sig']
         wbulge = self.weights[['bulge' in s for s in self.decomp['component']]]
 
         ###WHOLE component
-        flux_all = comp_kinem_moments['all_lsb']
+        flux_all = comp_kinem_moments['all_flux']
         vel_all = comp_kinem_moments['all_v']
         sig_all = comp_kinem_moments['all_sig']
         wall = self.weights[['all' in s for s in self.decomp['component']]]
@@ -366,19 +369,19 @@ class Decomposition:
         comps_kin = astropy.table.Table({'x/arcs':xi_t,
                                          'y/arcs':yi_t,
                                          'SB_thin_disk':tthin[s],
-                                         'SB_thick_disk':tthick[s],
-                                         'SB_disk':tdisk[s],
-                                         'SB_bulge':tbulge[s],
-                                         'SB_whole':tall[s],
                                          'vel_thin_disk':vel_thin[grid[s]],
-                                         'vel_thick_disk':vel_thick[grid[s]],
-                                         'vel_disk':vel_disk[grid[s]],
-                                         'vel_bulge':vel_bulge[grid[s]],
-                                         'vel_whole':vel_all[grid[s]],
                                          'sig_thin_disk':sig_thin[grid[s]],
+                                         'SB_thick_disk':tthick[s],
+                                         'vel_thick_disk':vel_thick[grid[s]],
                                          'sig_thick_disk':sig_thick[grid[s]],
+                                         'SB_disk':tdisk[s],
+                                         'vel_disk':vel_disk[grid[s]],
                                          'sig_disk':sig_disk[grid[s]],
+                                         'SB_bulge':tbulge[s],
+                                         'vel_bulge':vel_bulge[grid[s]],
                                          'sig_bulge':sig_bulge[grid[s]],
+                                         'SB_whole':tall[s],
+                                         'vel_whole':vel_all[grid[s]],
                                          'sig_whole':sig_all[grid[s]]})
 
         kin_name = stars.kinematic_data[self.kin_set].name
@@ -513,3 +516,124 @@ class Decomposition:
         #create the files with the orbits selected for each components
         decomp = self.decompose_orbits(Rmax_arcs=Rmax_arcs, xrange=xrange)
         return losvd_histograms, projected_masses, decomp
+
+    def plot_comps(self,
+                   xlim=None,
+                   ylim=None,
+                   v_sigma_option=None,
+                   comp_kinem_moments=None,
+                   figtype='.png'):
+        
+        v_sigma_option = comp_kinem_moments.meta['v_sigma_option'] \
+                         if 'v_sigma_option' in comp_kinem_moments.meta.keys()\
+                         else ''
+        self.logger.info(f'Plotting decomposition for {v_sigma_option=}.')
+
+        # read the pixel grid
+        stars = \
+        self.config.system.get_component_from_class(
+                                dyn.physical_system.TriaxialVisibleComponent)
+        dp_args = stars.kinematic_data[self.kin_set].dp_args
+        xi = dp_args['x']
+        yi = dp_args['y']
+        dx = dp_args['dx']
+        grid = dp_args['idx_bin_to_pix']
+        # The angle that is saved in this file is measured counter clock-wise
+        # from the galaxy major axis to the X-axis of the input data.
+        angle_deg = dp_args['angle']
+        self.logger.debug(f'Pixel grid dimension is {dx=}, {len(xi)=}, '
+                          f'{len(yi)=}, {grid.shape}, {angle_deg=}.')
+
+        s = np.ravel(np.where((grid >= 0) & (np.abs(xi) <= xlim)
+                              & (np.abs(yi) <= ylim)))
+        s_wide = np.ravel(np.where(grid >= 0))
+
+        # Read kinematic data and weights
+        ### comps=['disk', 'thin_d', 'warm_d', 'bulge', 'all']) ---> self.comps
+
+        quant = ['_flux', '_v', '_sig']
+        vel = []
+        sig = []
+        t = []
+        totalf = 0
+        for i in range(len(self.comps)):
+                labels = [self.comps[i] + qq for qq in quant]
+                flux = comp_kinem_moments[labels[0]]
+                w = self.weights[[self.comps[i] in s for s in self.decomp['component']]]
+                fhist, fbinedge = np.histogram(grid[s_wide], bins=len(flux))
+                flux = flux / fhist
+                tt = flux[grid]*1.
+                tt = tt * np.sum(w)/np.sum(tt)
+                t.append(tt.copy())
+                if self.comps[i] in ['thin_d', 'warm_d', 'bulge']:
+                    totalf += np.sum(tt)
+                    if self.comps[i] == 'thin_d':
+                        fluxtot = tt
+                    else:
+                        fluxtot += tt                
+                vel.append(comp_kinem_moments[labels[1]])
+                sig.append(comp_kinem_moments[labels[2]])
+
+        t = t/totalf
+
+        vmax = np.nanmax(vel)
+        sig_t = np.array(sig)
+
+        smax = np.nanmax(sig_t[sig_t > 0])
+        smin = np.nanmin(sig_t[sig_t > 0])
+
+        minf=np.nanmin(-2.5 * np.log10(fluxtot))
+        maxf=np.nanmax(-2.5 * np.log10(fluxtot[fluxtot !=0]))
+        xi_t=(xi[s])
+        yi_t=(yi[s])
+
+        # COMMENTS 17 March 2023 - Alice and Thomas hack session
+        # - code has been updated, check new version before continuing!
+
+        table = {'x/arcs':xi_t,'y/arcs':yi_t}
+        for i in range(len(self.comps)):
+                labels = [self.comps[i] + qq for qq in quant]
+                table.update({labels[0]:t[i][s],
+                             labels[1]:vel[i][grid[s]],
+                             labels[2]:sig[i][grid[s]]})
+        comps_kin = astropy.table.Table(table)
+
+        kin_name = stars.kinematic_data[self.kin_set].name
+        file_name = f'comps_kin_test_s22_{v_sigma_option}_{kin_name}_ALI'
+        table_file_name = self.model.directory + file_name + '.ecsv'
+        plot_file_name = self.plotdir + file_name + figtype
+        comps_kin.write(f'{table_file_name}',
+                        format='ascii.ecsv',
+                        overwrite=True)
+        self.logger.info('Component grid kinematics written to '
+                         f'{table_file_name}.')
+
+        self.logger.debug(f'{v_sigma_option}: {vmax=}, {smax=}, {smin=}.')
+
+        ### PLOT THE RESULTS
+        LL = len(self.comps)
+        plt.figure(figsize=(12, (LL+1)*3))
+        plt.subplots_adjust(hspace=0.4, wspace=0.02, left=0.01, bottom=0.05,
+                            top=0.99, right=0.99)
+
+        for ii in range(len(self.comps)):
+            plt.subplot(LL, 3, 3*ii+1)
+            display_pixels(xi_t, yi_t, -2.5 * np.log10(t[ii][s]) , pixelsize=dx,
+                            colorbar=True, nticks=7, cmap='YlOrRd_r',
+                            label='-2.5 log10(flux)', vmin=minf, vmax=maxf)
+
+            plt.subplot(LL, 3, 3*ii+2)
+            plt.title(self.comps[ii])
+            display_pixels(xi_t, yi_t, vel[ii][grid[s]], pixelsize=dx,
+                        colorbar=True, nticks=7, cmap='RdYlBu_r',
+                        vmin=-1.0 * vmax, vmax=vmax, label='Velocity')
+
+            plt.subplot(LL, 3, 3*ii+3)
+            display_pixels(xi_t, yi_t, sig[ii][grid[s]], pixelsize=dx,
+                        colorbar=True, nticks=7, cmap='YlOrRd',
+                        vmin=smin, vmax=smax, label=r'$\mathbf{\sigma}$')
+
+        plt.tight_layout()
+        plt.savefig(plot_file_name)
+        self.logger.info(f'Component plots written to {plot_file_name}.')
+        plt.close()
