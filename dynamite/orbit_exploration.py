@@ -7,13 +7,36 @@ import astropy
 import dynamite as dyn
 
 class Decomposition:
-    v_sigma_options = ['moments', 'fit']
+    """
+    Class for decomposition.
 
-    def __init__(self,
-                 config=None,
-                 model=None,
-                 kin_set=0,
-                 comps=['thin_d', 'warm_d', 'disk', 'bulge', 'all']):
+    Upon instatiating, the orbits are decomposed by the method
+    ``decompose_orbits`` and the results stored in astropy table
+    ``self.decomp``. The components' flux and moments (currently mean velocity
+    and velocity dispersion only) are plotted by calling ``self.plot_decomp``
+    which also writes the plotted data into the model directory.
+
+    Parameters
+    ----------
+    config : a ``dyn.config_reader.Configuration`` object, mandatory
+    model : a ``dyn.model.Model`` object, optional
+        Determines which model is used.
+        If model = None, the model corresponding to the minimum
+        chisquare (so far) is used; the setting in the configuration
+        file's parameter settings is used to determine which chisquare
+        to consider. The default is None.
+    kin_set : int, optional
+        Determines which kinematic set to use.
+        The value of this parameter is the index of the data
+        set (e.g. kin_set=0 , kin_set=1). The default is 0.
+
+    Raises
+    ------
+    ValueError
+        if no config object is given or the kin_set does not exist.
+
+    """
+    def __init__(self, config=None, model=None, kin_set=0):
         self.logger = logging.getLogger(f'{__name__}.{__class__.__name__}')
         if config is None:
             text = f'{__class__.__name__} needs configuration object, ' \
@@ -34,44 +57,95 @@ class Decomposition:
             self.logger.error(text)
             raise ValueError(text)
         self.kin_set = kin_set
-        self.comps = comps
-        self.logger.info(f'Performing decomposition into {comps} '
-                         f'for kin_set no {kin_set}: '
+        self.logger.info(f'Performing decomposition for kin_set no {kin_set}: '
                          f'{stars.kinematic_data[kin_set].name}')
-        self.plotdir = config.settings.io_settings['plot_directory']
-        self.losvd_histograms, self.proj_mass, self.decomp = self.run_dec()
+        # Get losvd_histograms and projected_masses
+        orblib = self.model.get_orblib()
+        orblib.read_losvd_histograms()
+        self.losvd_histograms = orblib.losvd_histograms[self.kin_set]
+        self.proj_mass = orblib.projected_masses[self.kin_set]
+        self.logger.debug(f'{self.losvd_histograms.y.shape=}, '
+                          f'{self.proj_mass.shape=}.')
+        # Get orbit weights and store them in self.model.weights
+        _ = self.model.get_weights(orblib)
+        # Do the decomposition
+        self.decomp = self.decompose_orbits()
+        # self.losvd_histograms, self.proj_mass, self.decomp = self.run_dec()
         self.logger.info('Orbits read and velocity histogram created.')
 
     def plot_decomp(self, xlim, ylim, v_sigma_option='fit'):
+        """ Generate decomposition plots.
+
+        Parameters
+        ----------
+        xlim : float
+            restricts plot x-coordinates to abs(x) <= xlim.
+        ylim : float
+            restricts plot y-coordinates to abs(y) <= ylim.
+        v_sigma_option : str, optional
+            If 'fit', v_mean and v_sigma are calculated based on fitting
+            Gaussians, if 'moments', v_mean and v_sigma are calculated
+            directly from the model's losvd histograms. The default is 'fit'.
+
+        Returns
+        -------
+        None.
+
+        """
         comp_kinem_moments = self.comps_aphist(v_sigma_option)
-        self.logger.info('Components done')
+        self.logger.info('Component data done.')
         self.plot_comps_giu(xlim=xlim,
                             ylim=ylim,
                             comp_kinem_moments=comp_kinem_moments)
         self.plot_comps(xlim=xlim,
-                        ylim=ylim,
-                        comp_kinem_moments=comp_kinem_moments)
-        self.logger.info('Plots done')
+                            ylim=ylim,
+                            comp_kinem_moments=comp_kinem_moments)
+        self.logger.info('Plots done.')
 
-    def comps_aphist(self, v_sigma_option):
-        if v_sigma_option not in self.v_sigma_options:
+    def comps_aphist(self, v_sigma_option='fit'):
+        """Calculate components' flux, mean velocity, and veolocity dispersion.
+
+
+        Parameters
+        ----------
+        v_sigma_option : str, optional
+            If 'fit', v_mean and v_sigma are calculated based on fitting
+            Gaussians, if 'moments', v_mean and v_sigma are calculated
+            directly from the model's losvd histograms. The default is 'fit'.
+
+        Raises
+        ------
+        ValueError
+            if v_sigma_option is neither 'moments' nor 'fit'.
+
+        Returns
+        -------
+        comp_flux_v_sigma : astropy table
+            The table columns are: aperture index (starting with 0), followed
+            by three columns per component holding the flux, mean velocity,
+            and velocity dispersion.
+            The chosen v_sigma_option is in the table meta data.
+
+        """
+        v_sigma_options = ['moments', 'fit']
+        if v_sigma_option not in v_sigma_options:
             text = f'Unknown v_sigma_option {v_sigma_option}, ' \
-                   f'must be one of {self.v_sigma_options}.'
+                   f'must be one of {v_sigma_options}.'
             self.logger.error(text)
             raise ValueError(text)
-        self.logger.info('Calculating flux, v, and sigma for components, '
-                         f'{v_sigma_option=}.')
+        self.logger.info('Calculating flux, v, and sigma for components '
+                         f'{self.decomp.meta["comps"]}, {v_sigma_option=}.')
         comp_flux_v_sigma = astropy.table.Table(
                             {'ap_id':range(self.losvd_histograms.y.shape[-1])},
                             dtype=[int],
                             meta={'v_sigma_option':v_sigma_option})
-        for comp in self.comps:
+        for comp in self.decomp.meta['comps']:
             # calculate flux and losvd histograms for component
             orb_sel = np.array([comp in s for s in self.decomp['component']],
                                dtype=bool)
-            flux = np.dot(self.proj_mass[orb_sel].T, self.weights[orb_sel])
+            flux=np.dot(self.proj_mass[orb_sel].T, self.model.weights[orb_sel])
             losvd = np.dot(self.losvd_histograms.y[orb_sel,:,:].T,
-                           self.weights[orb_sel]).T
+                           self.model.weights[orb_sel]).T
             losvd = losvd[np.newaxis]
             self.logger.debug(f'{comp}: {np.count_nonzero(orb_sel)} orbits, '
                               f'{flux.shape=}, {losvd.shape=}.')
@@ -88,81 +162,85 @@ class Decomposition:
             else:
                 pass
             comp_flux_v_sigma.add_columns([flux, v_mean, v_sigma],
-                                           names=[f'{comp}_flux',
+                                           names=[f'{comp}_lsb',
                                                   f'{comp}_v',
                                                   f'{comp}_sig'])
         return comp_flux_v_sigma
 
-    # def create_orbital_component_files_giu(self,
-    #                                        ocut=None,
-    #                                        Rmax_arcs=None,
-    #                                        xrange=None):
-    def decompose_orbits(self, ocut=None, Rmax_arcs=None, xrange=None):
+    def decompose_orbits(self, ocut=None):
+        """Decompose orbits based on lambda_z.
 
-        if not ocut:
-            ocut = [0.8, 0.25, -0.25]  #selection in lambda_z following Santucci+22
-        self.logger.info(f'cut lines are: {ocut}.')
 
-        if not xrange:
-            xrange = [0.0, Rmax_arcs]
+        Parameters
+        ----------
+        ocut : list of floats, optional
+            The cuts in lambda_z. The default is None, which translates to
+            ocut=[0.8, 0.25, -0.25], the selection in lambda_z
+            following Santucci+22.
 
-        # file4 = self.model.directory + 'nn_orb.out'
+        Returns
+        -------
+        decomp : astropy table
+            The table has two columns, ``id`` and ``component``. The former is
+            the orbit id (starting with 0), ``component`` is a string
+            describing the component(s) an orbit belongs to. Note that an
+            orbit can belong to multiple components. In that case, the
+            component strings are concatenated. For easier parsing later, the
+            component descriptors are surrounded by pipe symbols ``|``.
+                                         meta={'comps':comps})
+            The table columns are: aperture index (starting with 0), followed
+            by three columns per component holding the flux, mean velocity,
+            and velocity dispersion.
+            The table's meta data ``comps`` holds a list of all components.
+
+        """
+        if ocut is None:
+            ocut = [0.8, 0.25, -0.25]
+        self.logger.debug(f'Cut lines are: {ocut}.')
         file2 = self.model.directory_noml + 'datfil/orblib.dat_orbclass.out'  #orbitlibraries
         file3 = self.model.directory_noml + 'datfil/orblibbox.dat_orbclass.out'
         file3_test = os.path.isfile(file3)
         if not file3_test:
-            file3= '%s' % file2
+            file3 = '%s' % file2
 
-        nre = self.config.settings.orblib_settings['nE']
-        nrth = self.config.settings.orblib_settings['nI2']
-        nrrad = self.config.settings.orblib_settings['nI3']
-        ndither = self.config.settings.orblib_settings['dithering']
-        distance = self.config.all_models.system.distMPc
-        conversion_factor = distance*1.0e6*1.49598e8
-
-        norb = int(nre * nrth * nrrad)
+        n_orb = self.config.settings.orblib_settings['nE'] * \
+                self.config.settings.orblib_settings['nI2'] * \
+                self.config.settings.orblib_settings['nI3']
+        n_dither = self.config.settings.orblib_settings['dithering']
+        conversion_factor=self.config.all_models.system.distMPc*1.0e6*1.49598e8
 
 #unused        nrow = norb
-        ncol = int(ndither ** 3)
-        #print('norb', norb)
+        ncol = n_dither ** 3
         orbclass1 = np.genfromtxt(file2).T
-        orbclass1 = orbclass1.reshape((5,ncol,norb), order='F')
+        orbclass1 = orbclass1.reshape((5,ncol,n_orb), order='F')
         orbclass2 = np.genfromtxt(file3).T
-        orbclass2 = orbclass1.reshape((5,ncol,norb), order='F')
+        orbclass2 = orbclass1.reshape((5,ncol,n_orb), order='F')
 
-        #print('norb, ndither', np.max(norb), ndither)
-        # norbout, ener, i2, i3, regul, orbtype, orbw, lcut = \
-        #     np.genfromtxt(file4,
-        #                   skip_header=1,
-        #                   usecols=(0,1,2,3,4,5,6,7),
-        #                   unpack=True)
-        orbw = self.weights
+        orbw = self.model.weights
         n_orbs = len(orbw)
-
-        #print('ener, i2, i3', np.max(ener), np.max(i2), np.max(i3))
-        #print('Maxmin and Minimum(ener)', np.max(ener), np.min(ener))
+        self.logger.debug(f'{n_orb=}, {n_orbs=}.')
 
         orbclass = np.dstack((orbclass1, orbclass1, orbclass2))
-        self.logger.info(f'{len(orbclass) = }.')
+        self.logger.debug(f'{len(orbclass) = }.')
         orbclass1a = np.copy(orbclass1)
         orbclass1a[0:3, :, :] *= -1  # the reverse rotating orbits of orbclass
 
-        for i in range(int(0), norb):
+        for i in range(n_orb):
             orbclass[:, :, i * 2] = orbclass1[:, :, i]
             orbclass[:, :, i * 2 + 1] = orbclass1a[:, :, i]
 
-        ## define circularity of each orbit [nditcher^3, norb]
+        ## define circularity of each orbit [nditcher^3, n_orb]
         lz = (orbclass[2, :, :] / orbclass[3, :, :] / np.sqrt(orbclass[4, :, :]))  # lambda_z = lz/(r * Vrms)
 #unused        lx = (orbclass[0, :, :] / orbclass[3, :, :] / np.sqrt(orbclass[4, :, :]))  # lambda_x = lx/(r * Vrms)
 #unused        l = (np.sqrt(np.sum(orbclass[0:3, :, :] ** 2, axis=0)) / orbclass[3, :, :] / np.sqrt(orbclass[4, :, :]))
 #unused        r = (orbclass[3, :, :] / conversion_factor)  # from km to kpc
 
-        # average values for the orbits in the same bundle (ndither^3).
+        # average values for the orbits in the same bundle (n_dither^3).
         # Only include the orbits within Rmax_arcs
 
-        rm = np.sum(orbclass[3, :, :] / conversion_factor, axis=0) / ndither ** 3
-#unused        lzm = np.sum(np.abs(lz), axis=0) / ndither ** 3
-#unused        lxm=np.sum(lx, axis=0) / ndither ** 3
+        rm = np.sum(orbclass[3, :, :]/conversion_factor, axis=0) / n_dither**3
+#unused        lzm = np.sum(np.abs(lz), axis=0) / n_dither ** 3
+#unused        lxm=np.sum(lx, axis=0) / n_dither ** 3
         #print("check 1", lzm, lxm)
         #s = np.ravel(np.where((rm > xrange[0]) & (rm < xrange[1])))
 
@@ -171,41 +249,41 @@ class Decomposition:
 
         yy = np.max(np.ravel(np.where(np.cumsum(orbw[t]) <= 0.5)))
         k = t[0:yy]
-        if np.sum(np.sum(lz[:, k], axis=0) / (ndither ** 3) * orbw[k]) < 0:
+        if np.sum(np.sum(lz[:, k], axis=0) / (n_dither ** 3) * orbw[k]) < 0:
             lz *= -1.0
 
-        lzm_sign= np.sum(lz, axis=0) / ndither ** 3
-#unused        lxm_sign= np.sum(lx, axis=0) / ndither ** 3
+        lzm_sign= np.sum(lz, axis=0) / n_dither ** 3
+#unused        lxm_sign= np.sum(lx, axis=0) / n_dither ** 3
         #print("check 2 - sign", lzm_sign, lxm_sign)
 
-        self.logger.info(f'Decomposing {n_orbs} orbits...')
+        comps=['disk', 'thin_d', 'warm_d', 'bulge', 'all']
+        self.logger.info(f'Decomposing {n_orbs} orbits into {comps=}...')
         decomp = astropy.table.Table({'id':range(n_orbs),
                                       'component':['']*n_orbs},
-                                     dtype=[int, 'U256'])
-
+                                     dtype=[int, 'U256'],
+                                     meta={'comps':comps})
         # map components
         comp_map = np.zeros(n_orbs, dtype=int)
         # cold component
         comp_map[np.ravel(np.where(lzm_sign >= ocut[0]))] += \
-            2**self.comps.index('thin_d')
+            2**comps.index('thin_d')
         # warm component
         comp_map[np.ravel(np.where((lzm_sign > ocut[1])
                                  & (lzm_sign < ocut[0])))] += \
-            2**self.comps.index('warm_d')
+            2**comps.index('warm_d')
         # hot component
         comp_map[np.ravel(np.where((lzm_sign > ocut[2])
-                                 & (lzm_sign < ocut[1])))] += \
-            2**self.comps.index('bulge')
+                                 & (lzm_sign <= ocut[1])))] += \
+            2**comps.index('bulge') # was lzm_sign<ocut[1]
         # disk component
         comp_map[np.ravel(np.where(lzm_sign > ocut[1]))] += \
-            2**self.comps.index('disk')
+            2**comps.index('disk')
         # whole component
-        comp_map += 2**self.comps.index('all')
+        comp_map += 2**comps.index('all')
         for i in np.ravel(np.where(comp_map > 0)):
-            for k, comp in enumerate(self.comps):
+            for k, comp in enumerate(comps):
                 if comp_map[i] & (1 << k):
                     decomp['component'][i] += f'|{comp}|'
-
         return decomp
 
     def plot_comps_giu(self,
@@ -223,35 +301,36 @@ class Decomposition:
         self.logger.info(f'Plotting decomposition for {v_sigma_option=}.')
 
         # read kinematic data and weights
+        weights = self.model.weights
         ## COLD COMPONENT
-        flux_thin = comp_kinem_moments['thin_d_flux']
+        flux_thin = comp_kinem_moments['thin_d_lsb']
         vel_thin = comp_kinem_moments['thin_d_v']
         sig_thin = comp_kinem_moments['thin_d_sig']
-        wthin = self.weights[['thin_d' in s for s in self.decomp['component']]]
+        wthin = weights[['thin_d' in s for s in self.decomp['component']]]
 
         ## WARM COMPONENT
-        flux_thick = comp_kinem_moments['warm_d_flux']
+        flux_thick = comp_kinem_moments['warm_d_lsb']
         vel_thick = comp_kinem_moments['warm_d_v']
         sig_thick = comp_kinem_moments['warm_d_sig']
-        wthick=self.weights[['warm_d' in s for s in self.decomp['component']]]
+        wthick = weights[['warm_d' in s for s in self.decomp['component']]]
 
         ## CC COMPONENT
-        flux_disk = comp_kinem_moments['disk_flux']
+        flux_disk = comp_kinem_moments['disk_lsb']
         vel_disk = comp_kinem_moments['disk_v']
         sig_disk = comp_kinem_moments['disk_sig']
-        wdisk = self.weights[['disk' in s for s in self.decomp['component']]]
+        wdisk = weights[['disk' in s for s in self.decomp['component']]]
 
         ## HOT_cr COMPONENT
-        flux_bulge = comp_kinem_moments['bulge_flux']
+        flux_bulge = comp_kinem_moments['bulge_lsb']
         vel_bulge = comp_kinem_moments['bulge_v']
         sig_bulge = comp_kinem_moments['bulge_sig']
-        wbulge = self.weights[['bulge' in s for s in self.decomp['component']]]
+        wbulge = weights[['bulge' in s for s in self.decomp['component']]]
 
         ###WHOLE component
-        flux_all = comp_kinem_moments['all_flux']
+        flux_all = comp_kinem_moments['all_lsb']
         vel_all = comp_kinem_moments['all_v']
         sig_all = comp_kinem_moments['all_sig']
-        wall = self.weights[['all' in s for s in self.decomp['component']]]
+        wall = weights[['all' in s for s in self.decomp['component']]]
 
         # read the pixel grid
         stars = \
@@ -387,7 +466,9 @@ class Decomposition:
         kin_name = stars.kinematic_data[self.kin_set].name
         file_name = f'comps_kin_test_s22_{v_sigma_option}_{kin_name}'
         table_file_name = self.model.directory + file_name + '.ecsv'
-        plot_file_name = self.plotdir + file_name + figtype
+        plot_file_name = self.config.settings.io_settings['plot_directory'] \
+                         + file_name \
+                         + figtype
         comps_kin.write(f'{table_file_name}',
                         format='ascii.ecsv',
                         overwrite=True)
@@ -499,24 +580,6 @@ class Decomposition:
         self.logger.info(f'Component plots written to {plot_file_name}.')
         plt.close()
 
-    def run_dec(self):
-
-        Rmax_arcs=15#gal_infos['Rmax[arcsec]'][i]
-        xrange = None
-
-        orblib = self.model.get_orblib()
-        orblib.read_losvd_histograms()
-        losvd_histograms, _, n_orbs, projected_masses = \
-            orblib.losvd_histograms[self.kin_set], orblib.intrinsic_masses, \
-            orblib.n_orbs, orblib.projected_masses[self.kin_set]
-        self.logger.debug(f'{type(n_orbs)=}, {losvd_histograms.y.shape=}, '
-                          f'{projected_masses.shape=}.')
-        _ = self.model.get_weights(orblib)
-        self.weights = self.model.weights
-        #create the files with the orbits selected for each components
-        decomp = self.decompose_orbits(Rmax_arcs=Rmax_arcs, xrange=xrange)
-        return losvd_histograms, projected_masses, decomp
-
     def plot_comps(self,
                    xlim=None,
                    ylim=None,
@@ -528,6 +591,9 @@ class Decomposition:
                          if 'v_sigma_option' in comp_kinem_moments.meta.keys()\
                          else ''
         self.logger.info(f'Plotting decomposition for {v_sigma_option=}.')
+
+        weights = self.model.weights
+        comps = ['thin_d', 'warm_d', 'disk', 'bulge', 'all']
 
         # read the pixel grid
         stars = \
@@ -551,23 +617,23 @@ class Decomposition:
         # Read kinematic data and weights
         ### comps=['disk', 'thin_d', 'warm_d', 'bulge', 'all']) ---> self.comps
 
-        quant = ['_flux', '_v', '_sig']
+        quant = ['_lsb', '_v', '_sig']
         vel = []
         sig = []
         t = []
         totalf = 0
-        for i in range(len(self.comps)):
-                labels = [self.comps[i] + qq for qq in quant]
+        for i in range(len(comps)):
+                labels = [comps[i] + qq for qq in quant]
                 flux = comp_kinem_moments[labels[0]]
-                w = self.weights[[self.comps[i] in s for s in self.decomp['component']]]
+                w = weights[[comps[i] in s for s in self.decomp['component']]]
                 fhist, fbinedge = np.histogram(grid[s_wide], bins=len(flux))
                 flux = flux / fhist
                 tt = flux[grid]*1.
                 tt = tt * np.sum(w)/np.sum(tt)
                 t.append(tt.copy())
-                if self.comps[i] in ['thin_d', 'warm_d', 'bulge']:
+                if comps[i] in ['thin_d', 'warm_d', 'bulge']:
                     totalf += np.sum(tt)
-                    if self.comps[i] == 'thin_d':
+                    if comps[i] == 'thin_d':
                         fluxtot = tt
                     else:
                         fluxtot += tt                
@@ -591,8 +657,8 @@ class Decomposition:
         # - code has been updated, check new version before continuing!
 
         table = {'x/arcs':xi_t,'y/arcs':yi_t}
-        for i in range(len(self.comps)):
-                labels = [self.comps[i] + qq for qq in quant]
+        for i in range(len(comps)):
+                labels = [comps[i] + qq for qq in quant]
                 table.update({labels[0]:t[i][s],
                              labels[1]:vel[i][grid[s]],
                              labels[2]:sig[i][grid[s]]})
@@ -601,7 +667,9 @@ class Decomposition:
         kin_name = stars.kinematic_data[self.kin_set].name
         file_name = f'comps_kin_test_s22_{v_sigma_option}_{kin_name}_ALI'
         table_file_name = self.model.directory + file_name + '.ecsv'
-        plot_file_name = self.plotdir + file_name + figtype
+        plot_file_name = self.config.settings.io_settings['plot_directory'] \
+                         + file_name \
+                         + figtype
         comps_kin.write(f'{table_file_name}',
                         format='ascii.ecsv',
                         overwrite=True)
@@ -611,19 +679,19 @@ class Decomposition:
         self.logger.debug(f'{v_sigma_option}: {vmax=}, {smax=}, {smin=}.')
 
         ### PLOT THE RESULTS
-        LL = len(self.comps)
+        LL = len(comps)
         plt.figure(figsize=(12, (LL+1)*3))
         plt.subplots_adjust(hspace=0.4, wspace=0.02, left=0.01, bottom=0.05,
                             top=0.99, right=0.99)
 
-        for ii in range(len(self.comps)):
+        for ii in range(len(comps)):
             plt.subplot(LL, 3, 3*ii+1)
             display_pixels(xi_t, yi_t, -2.5 * np.log10(t[ii][s]) , pixelsize=dx,
                             colorbar=True, nticks=7, cmap='YlOrRd_r',
                             label='-2.5 log10(flux)', vmin=minf, vmax=maxf)
 
             plt.subplot(LL, 3, 3*ii+2)
-            plt.title(self.comps[ii])
+            plt.title(comps[ii])
             display_pixels(xi_t, yi_t, vel[ii][grid[s]], pixelsize=dx,
                         colorbar=True, nticks=7, cmap='RdYlBu_r',
                         vmin=-1.0 * vmax, vmax=vmax, label='Velocity')
