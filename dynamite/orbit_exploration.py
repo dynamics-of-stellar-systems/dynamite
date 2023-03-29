@@ -209,7 +209,6 @@ class Decomposition:
         n_dither = self.config.settings.orblib_settings['dithering']
         conversion_factor=self.config.all_models.system.distMPc*1.0e6*1.49598e8
 
-#unused        nrow = norb
         ncol = n_dither ** 3
         orbclass1 = np.genfromtxt(file2).T
         orbclass1 = orbclass1.reshape((5,ncol,n_orb), order='F')
@@ -230,19 +229,11 @@ class Decomposition:
             orbclass[:, :, i * 2 + 1] = orbclass1a[:, :, i]
 
         ## define circularity of each orbit [nditcher^3, n_orb]
-        lz = (orbclass[2, :, :] / orbclass[3, :, :] / np.sqrt(orbclass[4, :, :]))  # lambda_z = lz/(r * Vrms)
-#unused        lx = (orbclass[0, :, :] / orbclass[3, :, :] / np.sqrt(orbclass[4, :, :]))  # lambda_x = lx/(r * Vrms)
-#unused        l = (np.sqrt(np.sum(orbclass[0:3, :, :] ** 2, axis=0)) / orbclass[3, :, :] / np.sqrt(orbclass[4, :, :]))
-#unused        r = (orbclass[3, :, :] / conversion_factor)  # from km to kpc
+        lz = (orbclass[2, :, :] / orbclass[3, :, :] / np.sqrt(orbclass[4, :, :])) 
 
-        # average values for the orbits in the same bundle (n_dither^3).
+        # Average values for the orbits in the same bundle (n_dither^3).
         # Only include the orbits within Rmax_arcs
-
         rm = np.sum(orbclass[3, :, :]/conversion_factor, axis=0) / n_dither**3
-#unused        lzm = np.sum(np.abs(lz), axis=0) / n_dither ** 3
-#unused        lxm=np.sum(lx, axis=0) / n_dither ** 3
-        #print("check 1", lzm, lxm)
-        #s = np.ravel(np.where((rm > xrange[0]) & (rm < xrange[1])))
 
         # flip the sign of lz to confirm total(lz) > 0
         t = np.ravel(np.argsort(rm))
@@ -253,10 +244,8 @@ class Decomposition:
             lz *= -1.0
 
         lzm_sign= np.sum(lz, axis=0) / n_dither ** 3
-#unused        lxm_sign= np.sum(lx, axis=0) / n_dither ** 3
-        #print("check 2 - sign", lzm_sign, lxm_sign)
 
-        comps=['disk', 'thin_d', 'warm_d', 'bulge', 'all']
+        comps=['thin_d', 'warm_d', 'disk', 'bulge', 'all']
         self.logger.info(f'Decomposing {n_orbs} orbits into {comps=}...')
         decomp = astropy.table.Table({'id':range(n_orbs),
                                       'component':['']*n_orbs},
@@ -355,91 +344,37 @@ class Decomposition:
         flux_thin = flux_thin / fhist
         fhist, fbinedge = np.histogram(grid[s_wide], bins=len(flux_thick))
         flux_thick = flux_thick / fhist
-
         fhist, fbinedge = np.histogram(grid[s_wide], bins=len(flux_disk))
         flux_disk = flux_disk / fhist
-
         fhist, fbinedge = np.histogram(grid[s_wide], bins=len(flux_bulge))
         flux_bulge = flux_bulge / fhist
-
         fhist, fbinedge = np.histogram(grid[s_wide], bins=len(flux_all))
         flux_all= flux_all / fhist
 
         tthin  = flux_thin[grid]
         tthick = flux_thick[grid]
-
         tdisk  = flux_disk[grid]
         tbulge =flux_bulge[grid]
         tall =flux_all[grid]
 
-        #print('before normalization th  tw  tz tc thc tcw are:', np.sum(th),
-        #      np.sum(tw), np.sum(tz), np.sum(tc), np.sum(thc),np.sum(tcw))
-        #print('before normalization tthin, tthick,tdisk,tbulge, all:',
-        #      np.sum(tthin),  np.sum(tthick),  np.sum(tdisk), np.sum(tbulge),
-        #      np.sum(tall))
-
         tthin =tthin *np.sum(wthin)/np.sum(tthin)
         tthick=tthick*np.sum(wthick)/np.sum(tthick)
-
         tdisk =tdisk *np.sum(wdisk)/np.sum(tdisk)
         tbulge=tbulge*np.sum(wbulge)/np.sum(tbulge)
         tall =tall *np.sum(wall)/np.sum(tall)
 
-        #print('after normalization th  tw  tz tc thc tcware:', np.sum(th),
-        #      np.sum(tw), np.sum(tz), np.sum(tc), np.sum(thc), np.sum(tcw))
-        #print('after normalization tthin, tthick,tdisk,tbulge:',
-        #      np.sum(tthin),  np.sum(tthick),  np.sum(tdisk), np.sum(tbulge),
-        #      np.sum(tall))
-
-        #totalf = np.sum(th) + np.sum(tw) + np.sum(tz)+ np.sum(tc)
-
-        ###if you want to check that the sum of the flux of the components is
-        #the same as the total, uncomment the two extra totalf and print them
         totalf = np.sum(tthin) + np.sum(tthick) + np.sum(tbulge)
-        #totalf2 = np.sum(tdisk)+ np.sum(tbulge)
-        #totalf3=np.sum (tall)
-        #print('total fluxes with thin thick bulge', totalf,
-        #      ' and with disk bulge',totalf2, ' and tot', totalf3 )
         tthin =tthin /totalf
         tthick=tthick/totalf
-
         tdisk =tdisk /totalf
         tbulge=tbulge/totalf
         tall=tall/totalf
-        #tcw=tcw/totalf
-        #flux = th +  tw + tz + tc
         flux = tthin +  tthick + tbulge
-        #flux2= tdisk+tbulge
-        #print("luminosity fractions f_thin, f_thick, f_disk, f_bulge, tot1, "
-        #      "tot2 (disk+bulge), all")
-        #print(np.sum(th), np.sum(tw), np.sum(tz), np.sum(tc), np.sum(thc),
-        #      np.sum(tcw))
-        #print(np.sum(tthin),  np.sum(tthick),np.sum(tdisk), np.sum(tbulge),
-        #      np.sum(flux), np.sum(flux2), np.sum(tall))
-
-        ### SAVE DATA TO A FILE
-       # if savedata:
-       #     with open(figdir + 'SB_hmz.dat', 'w') as outfile:
-       #          outfile.write('x/arcs,  y/arcs,  SB thin disk,  SB warm disk,'
-       #                        '  SB bulge, SB counter_rot' + '\n')
-       #         for j in range(0, len(s)):
-       #             outfile.write(("%10.4f" % xi[s[j]]) + ("%10.4f" % yi[s[j]])
-       #                           +  ("%12.3e" % th[s[j]]) +
-       #                           ("%12.3e" % tw[s[j]]) + ("%12.3e" % tz[s[j]])
-       #                           + ("%12.3e" % tc[s[j]]) + '\n')
-
-        ### EVALUATE VMAX and SMAX and SMIN
 
         vmax = np.nanmax([vel_thin,vel_thick, vel_disk, vel_bulge, vel_all])
         sig_t = np.array((sig_thin,sig_thick,sig_disk,sig_bulge, sig_all))
-        #vmax = 79
-
-
         smax = np.nanmax(sig_t[sig_t > 0])
         smin = np.nanmin(sig_t[sig_t > 0])
-        #smax =346
-        #smin =161
-
         minf=min(-2.5 * np.log10(flux))
         maxf=max(-2.5 * np.log10(flux[flux !=0]))
         xi_t= (xi[s])
@@ -476,14 +411,10 @@ class Decomposition:
                          f'{table_file_name}.')
 
         self.logger.debug(f'{v_sigma_option}: {vmax=}, {smax=}, {smin=}.')
-        # print(np.max(th),np.min(th),np.max(tw),np.min(tw),np.max(tz),
-        #       np.min(tz),np.max(tc),np.min(tc))
 
         ### PLOT THE RESULTS
         # Plot settings
         plt.figure(figsize=(12, 18))
-        #plt.subplots_adjust(hspace=0.7, wspace=0.01, left=0.01, bottom=0.05,
-        #                    top=0.99, right=0.99)
         plt.subplots_adjust(hspace=0.4, wspace=0.02, left=0.01, bottom=0.05,
                             top=0.99, right=0.99)
 
@@ -493,26 +424,15 @@ class Decomposition:
         display_pixels(xi[s], yi[s], -2.5 * np.log10(tthin[s]) , pixelsize=dx,
                         colorbar=True, nticks=7, cmap='YlOrRd_r',
                         label='-2.5 log10(flux)', vmin=minf, vmax=maxf)
-        #ellipse = Ellipse((0, 0),width=Re * 2,height=semi_min * 2,
-        #                  facecolor='none', edgecolor = 'black')
-       # ax1.add_patch(ellipse)
         ax2=plt.subplot(5, 3, 2)
         plt.title("THIN DISK COMPONENT")
         display_pixels(xi[s], yi[s], vel_thin[grid[s]], pixelsize=dx,
                        colorbar=True, nticks=7, cmap='RdYlBu_r',
                        vmin=-1.0 * vmax, vmax=vmax, label='Velocity')
-
-        #ellipse = Ellipse((0, 0),width=Re * 2,height=semi_min * 2,
-        #                  facecolor='none', edgecolor = 'black')
-        #ax2.add_patch(ellipse)
-
         ax3=plt.subplot(5, 3, 3)
         display_pixels(xi[s], yi[s], sig_thin[grid[s]], pixelsize=dx,
                        colorbar=True, nticks=7, cmap='YlOrRd',
                        vmin=smin, vmax=smax, label=r'$\mathbf{\sigma}$')
-        #ellipse = Ellipse((0, 0),width=Re * 2,height=semi_min * 2,
-        #                  facecolor='none', edgecolor = 'black')
-        #ax3.add_patch(ellipse)
         ## WARM
         plt.subplot(5, 3, 4)
         display_pixels(xi[s], yi[s], -2.5 * np.log10(tthick[s]) , pixelsize=dx,
@@ -528,13 +448,12 @@ class Decomposition:
                        colorbar=True, nticks=7, cmap='YlOrRd',
                        vmin=smin, vmax=smax, label=r'$\mathbf{\sigma}$')
 
-          #HOT+CR
+        #HOT+CR
         plt.subplot(5, 3, 7)
         display_pixels(xi[s], yi[s], -2.5 * np.log10(tdisk[s]) , pixelsize=dx,
                        colorbar=True, nticks=7, cmap='YlOrRd_r',
                        label='-2.5 log10(flux)', vmin=minf, vmax=maxf)
         plt.subplot(5, 3, 8)
-        #plt.title("HOT + C.R. COMPONENT")
         plt.title("DISK COMPONENT")
         display_pixels(xi[s], yi[s], vel_disk[grid[s]], pixelsize=dx,
                        colorbar=True, nticks=7, cmap='RdYlBu_r',
@@ -544,13 +463,11 @@ class Decomposition:
                        colorbar=True, nticks=7, cmap='YlOrRd',
                        vmin=smin, vmax=smax, label=r'$\mathbf{\sigma}$')
 
-
         plt.subplot(5, 3, 10)
         display_pixels(xi[s], yi[s], -2.5 * np.log10(tbulge[s]) , pixelsize=dx,
                        colorbar=True, nticks=7, cmap='YlOrRd_r',
                        label='-2.5 log10(flux)', vmin=minf, vmax=maxf)
         plt.subplot(5, 3, 11)
-        #plt.title("HOT + C.R. COMPONENT")
         plt.title("BULGE COMPONENT")
         display_pixels(xi[s], yi[s], vel_bulge[grid[s]], pixelsize=dx,
                        colorbar=True, nticks=7, cmap='RdYlBu_r',
@@ -559,13 +476,12 @@ class Decomposition:
         display_pixels(xi[s], yi[s], sig_bulge[grid[s]], pixelsize=dx,
                        colorbar=True, nticks=7, cmap='YlOrRd',
                        vmin=smin, vmax=smax, label=r'$\mathbf{\sigma}$')
-        #########all
+        
         plt.subplot(5, 3, 13)
         display_pixels(xi[s], yi[s], -2.5 * np.log10(tall[s]) , pixelsize=dx,
                        colorbar=True, nticks=7, cmap='YlOrRd_r',
                        label='-2.5 log10(flux)', vmin=minf, vmax=maxf)
         plt.subplot(5, 3, 14)
-        #plt.title("HOT + C.R. COMPONENT")
         plt.title("WHOLE COMPONENT")
         display_pixels(xi[s], yi[s], vel_all[grid[s]], pixelsize=dx,
                        colorbar=True, nticks=7, cmap='RdYlBu_r',
@@ -593,7 +509,7 @@ class Decomposition:
         self.logger.info(f'Plotting decomposition for {v_sigma_option=}.')
 
         weights = self.model.weights
-        comps = ['thin_d', 'warm_d', 'disk', 'bulge', 'all']
+        comps = self.decomp.meta["comps"]
 
         # read the pixel grid
         stars = \
@@ -613,9 +529,6 @@ class Decomposition:
         s = np.ravel(np.where((grid >= 0) & (np.abs(xi) <= xlim)
                               & (np.abs(yi) <= ylim)))
         s_wide = np.ravel(np.where(grid >= 0))
-
-        # Read kinematic data and weights
-        ### comps=['disk', 'thin_d', 'warm_d', 'bulge', 'all']) ---> self.comps
 
         quant = ['_lsb', '_v', '_sig']
         vel = []
@@ -653,9 +566,6 @@ class Decomposition:
         xi_t=(xi[s])
         yi_t=(yi[s])
 
-        # COMMENTS 17 March 2023 - Alice and Thomas hack session
-        # - code has been updated, check new version before continuing!
-
         table = {'x/arcs':xi_t,'y/arcs':yi_t}
         for i in range(len(comps)):
                 labels = [comps[i] + qq for qq in quant]
@@ -680,6 +590,9 @@ class Decomposition:
 
         ### PLOT THE RESULTS
         LL = len(comps)
+        titles = ['THIN DISK COMPONENT', 'THICK DISK COMPONENT',
+                  'DISK COMPONENT','BULGE COMPONENT','ALL']
+        compon = np.array(['thin_d', 'warm_d', 'disk', 'bulge', 'all'])
         plt.figure(figsize=(12, (LL+1)*3))
         plt.subplots_adjust(hspace=0.4, wspace=0.02, left=0.01, bottom=0.05,
                             top=0.99, right=0.99)
@@ -691,7 +604,7 @@ class Decomposition:
                             label='-2.5 log10(flux)', vmin=minf, vmax=maxf)
 
             plt.subplot(LL, 3, 3*ii+2)
-            plt.title(comps[ii])
+            plt.title(titles[np.where(compon==comps[ii])[0][0]])
             display_pixels(xi_t, yi_t, vel[ii][grid[s]], pixelsize=dx,
                         colorbar=True, nticks=7, cmap='RdYlBu_r',
                         vmin=-1.0 * vmax, vmax=vmax, label='Velocity')
