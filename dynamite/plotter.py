@@ -2081,66 +2081,65 @@ class Plotter():
 
         Plots a model's orbit distribution in (radius, circularity) space.
         Orbits are split by type: [long, short, intermediate]-axis tubes and
-        box orbits (classification is handled by `orblib.classify_orbits`).
-        Each orbit only contributes to the appropriate distribution e.g. box
+        box orbits (classification is handled by ``orblib.classify_orbits``).
+        Each orbit only contributes to the appropriate distribution, e.g. box
         orbits *only* appear in the box-orbit panel. Compared to older versions
         of orbit distibution plots, this means that there is now no "stripe" at
-        lmd_z=0, since any non short-axis tubes have been moved to their own 
-        panel. The fraction of orbits in each type is added as title. Note that 
-        individual orbits now contribute a point to the distibution, rather 
-        than a single point per orbit-bundle. This means that - if dithering>1 
-        - the orbit distributions are better sampled vs previous versions.
+        ``lmd_z=0``, since any non short-axis tubes have been moved to their own
+        panel. The fraction of orbits in each type is added as title. Note that
+        individual orbits now contribute a point to the distibution, rather
+        than a single point per orbit-bundle. This means that - if
+        ``dithering>1`` - the orbit distributions are sampled better compared
+        to previous versions.
 
         Parameters
         ----------
-        model : optional, a `dynamite.model.Model` object
-            Determines which model is used for the plot. If `None`, the 
+        model : optional, a dynamite.model.Model object
+            Determines which model is used for the plot. If ``None``, the
             minimum chi^2 model is used (the setting in the configuration
-            file's parameter settings is used to determine which chi^2 is used.
+            file's parameter settings is used to determine which chi^2 is used).
         minr : float, optional
-            the minimum radius [kpc] to show in the plot. If `None`, this is 
+            the minimum radius [kpc] to show in the plot. If ``None``, this is
             set to the minimum radius of the orbit library
         maxr : float, optional
-            the maximum radius [kpc] to show in the plot. If `None`, this is 
+            the maximum radius [kpc] to show in the plot. If ``None``, this is
             set to the minimum radius of the orbit library
         nr : int, optional
             number of radial bins, by default 50
         nl : int, optional
             number of circularity bins, by default 61
         equal_weighted_orbits : bool, optional
-           weight all orbit bundels equally, instead of using the model's 
-           best-fitting weights. Useful to see the distributiuon of the full 
-           orbit libary, by default False
+           weight all orbit bundels equally, instead of using the model's
+           best-fitting weights. Useful to see the distributiuon of the full
+           orbit libary, by default ``False``
         orientation : str, optional
-            arrange panels 'horizontal' or 'vertical', by default 'horizontal'
+            arrange panels ``'horizontal'`` or ``'vertical'``,
+            by default ``'horizontal'``
         figtype : str, optional
-            file type extension to save the plot, by default '.png'
+            file type extension to save the plot, by default ``'.png'``
         subset : str, optional
-            either 'all' or any combination of ['long', 'short', 'intermediate',
-            'box'] separated by '+' e.g. 'long+box', 'box+short+intermediate'.
-            Any order works, but the order does not affect the order of plots.
-            By default 'all'
+            either ``'all'`` or any combination of ``['long', 'short',
+            'intermediate', 'box']`` separated by ``'+'`` e.g. ``'long+box'``,
+            ``'box+short+intermediate'``. Any order works, but the order does
+            not affect the order of plots. By default ``'all'``
         getdata : bool, optional
-            whether to return the orbit distribtuion data plotted in the plot, 
-            by default False
+            whether to return the orbit distribtuion data plotted in the plot,
+            by default ``False``
 
         Returns
         -------
-        `mpl.Figure` or a tuple (`mpl.Figure`, np.array) if `getdata=True`
-            the figure object, and (if `getdata=True`) a 3D array where the 1st
-            dimension indexes over 4 orbit types (long, int., short, box), 2nd
-            over radii, 3rd over circularities.
+        `mpl.Figure` or a tuple (`mpl.Figure`, np.array) if ``getdata=True``
+            the figure object, and (if ``getdata=True``) a 3D array where the
+            1st dimension indexes over 4 orbit types (long, int., short, box),
+            2nd over radii, 3rd over circularities.
 
         Raises
         ------
         NotImplementedError
-            _description_
+            if ``orientation`` is invalid
         ValueError
-            _description_
-        ValueError
-            _description_
-        NotImplementedError
-            _description_
+            if orbit classes don't match the projection tensor or orbit class
+            names are invalid
         """
         if model is None:
             model_id = self.all_models.get_best_n_models_idx(n=1)[0]
@@ -2262,5 +2261,5 @@ class Plotter():
         self.logger.info(f'Plot {figname} saved in {self.plotdir}')
         if getdata:
             return mod_orb_dists, fig
-        else: 
+        else:
             return fig

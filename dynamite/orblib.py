@@ -758,19 +758,20 @@ class LegacyOrbitLibrary(OrbitLibrary):
         return ml_original
 
     def read_orbit_property_file_base(self, file, ncol, nrow):
-        """
-        base method to read in `*orbclass.out` files
+        """Base method to read in ``*orbclass.out`` files
 
-        which stores the information of all the orbits stored in the orbit library
-        norb = nrow = nE * nI2 * nI3 * ndithing^3
-        for each orbit, the time averaged values are stored:
-        lx, ly ,lz, r = sum(sqrt( average(r^2) )), 
-        Vrms^2 = average(vx^2 + vy^2 + vz^2 + 2vx*vy + 2vxvz + 2vxvy)
-        The file was stored by the fortran code orblib_f.f90 integrator_find_orbtype.
+        ...which hold the information of all the orbits stored in the orbit
+        library. The number of orbits is
+        ``norb = nrow = nE * nI2 * nI3 * dithering^3``.
+        For each orbit, the time averaged values are stored:
+        ``lx, ly ,lz, r = sum(sqrt( average(r^2) ))``,
+        ``Vrms^2 = average(vx^2 + vy^2 + vz^2 + 2vx*vy + 2vxvz + 2vxvy)``.
+        The files were originally stored by the fortran code ``orblib_f.f90``,
+        ``integrator_find_orbtype``.
 
-        *** Do not try to replace this with numpy (e.g. `np.genfromtext`) since
-        the output files are sometimes written in non-standard arrays (in a 
-        seeming system dependent way). **
+        *** Do not try to replace this with numpy (e.g.** ``np.genfromtext`` **)
+        since the output files are sometimes written in non-standard arrays
+        (in a seemingly system dependent way). ***
 
         """
         data=[]
@@ -785,16 +786,18 @@ class LegacyOrbitLibrary(OrbitLibrary):
         return data
 
     def read_orbit_property_file(self):
-        """Read the file `*orbclass.out` files
+        """Read the ``*orbclass.out`` files
 
-        This file contains time-averaged properties of individual orbits within
-        a bundle. Results are stored in `self.orb_properties`, an astropy table 
-        with columns [r, Vrms, L, Lx, Ly, Lz, lmd_x, lmd_y, lmd_z, lmd] i.e. 
-        the time-averaged value of (i) radius, (ii) V_rms = 
-        (vx^2 + vy^2 + vz^2 + 2(vxvy + vxvz + vyvz)), (iii) total angular 
-        momentum L, (iv) Lx, (v) Ly, (vi) Lz, and circularities (vii) 
-        lmd = L/V_rms, (ix) lmd_x=Lx/V_rms, (x) lmd_y, (xi) lmd_z. Each column
-        of the table is an array of shape [N_bundle, N_orbit].
+        These filen contain time-averaged properties of individual orbits within
+        a bundle. Results are stored in ``self.orb_properties``, an astropy
+        table with columns ``[r, Vrms, L, Lx, Ly, Lz, lmd, lmd_x, lmd_y,
+        lmd_z]`` i.e.
+        the time-averaged value of (i) radius ``r``, (ii) ``V_rms =
+        (vx^2 + vy^2 + vz^2 + 2(vxvy + vxvz + vyvz))``, (iii) total angular
+        momentum ``L``, (iv) ``Lx``, (v) ``Ly``, (vi) ``Lz``, and
+        circularities (vii) ``lmd = L/V_rms``, (ix) ``lmd_x=Lx/V_rms``,
+        (x) ``lmd_y``, (xi) ``lmd_z``. Each column
+        of the table is an array of shape ``[N_bundle, N_orbit]``.
 
         """
         nE = self.settings['nE']
@@ -830,27 +833,28 @@ class LegacyOrbitLibrary(OrbitLibrary):
         orb_properties['lmd_z'] = orb_properties['Lz']/r_vrms
         orb_properties['r'] = orb_properties['r'].to(u.kpc)
         orb_properties['L'] = (
-            orb_properties['Lx']**2 + 
-            orb_properties['Ly']**2 + 
+            orb_properties['Lx']**2 +
+            orb_properties['Ly']**2 +
             orb_properties['Lz']**2)**0.5
         orb_properties['lmd'] = (orb_properties['L']/r_vrms).to(u.dimensionless_unscaled)
         self.orb_properties = orb_properties
 
     def find_threshold_angular_momentum(self, make_diagnostic_plots=False):
-        """Find threshold angular momentum dL for use in orbit classification
+        """Find threshold angular momentum ``dL`` for use in orbit classification
 
-        Currently uses a hard coded value of 0.090909 * 10^18 km km/s.
-        TODO: generalise this to automatically select dL based on the orblib.
+        Currently uses a hard coded value of ``0.090909 * 10^18 km km/s``.
+        TODO: generalise this to automatically select ``dL`` based on the orblib.
 
         Parameters
         ----------
         make_diagnostic_plots : bool, optional
-            whether, by default False
+            If ``True``, plot diagnostic angular momentum histograms. The
+            default is ``False``.
 
         Returns
         -------
-        float
-            dL, the thr
+        dl : float
+            The threshold angular momentum ``dL``.
         """
         orb_properties = self.orb_properties
         dl = np.linspace(-1, 1, 12)[6]
@@ -867,37 +871,41 @@ class LegacyOrbitLibrary(OrbitLibrary):
     def classify_orbits(self, make_diagnostic_plots=False):
         """ Perform orbit classification.
 
-        Orbits are classified in 3D angular momenta space (Lx, Ly, Lz) 
-        according to a threshold angular momdentum dL. Ideally we would 
-        classify follows:
-        - |Lx|,|Ly|,|Lz|<dL --> box
-        - |Lx|>dL, |Ly|,|Lz|<dL --> x-axis tube
-        - |Ly|>dL, |Lx|,|Lz|<dL --> y-axis tube (theoretically unstable)
-        - |Lz|>dL, |Lx|,|Ly|<dL --> z-axis tube
+        Orbits are classified in 3D angular momentum space ``(Lx, Ly, Lz)``
+        according to a threshold angular momdentum ``dL``. Ideally, we would
+        classify as follows:
+
+        - ``|Lx|,|Ly|,|Lz|<dL`` --> box
+        - ``|Lx|>dL``, ``|Ly|,|Lz|<dL`` --> x-axis tube
+        - ``|Ly|>dL``, ``|Lx|,|Lz|<dL`` --> y-axis tube (theoretically unstable)
+        - ``|Lz|>dL``, ``|Lx|,|Ly|<dL`` --> z-axis tube
+
         This "exact" classification leaves many orbits unclassified. Instead we
         classify tube orbits using the less strict criteria:
-        - not a box, |Lx|>|Ly|, |Lx|>|Lz| --> x-axis tube "-ish"
-        - not a box, |Ly|>|Lz|, |Ly|>|Lz| --> y-axis tube "-ish"
-        - not a box, |Lz|>|Lx|, |Lz|>|Ly| --> z-axis tube "-ish"
+
+        - not a box, ``|Lx|>|Ly|``, ``|Lx|>|Lz|`` --> x-axis tube "-ish"
+        - not a box, ``|Ly|>|Lz|``, ``|Ly|>|Lz|`` --> y-axis tube "-ish"
+        - not a box, ``|Lz|>|Lx|``, ``|Lz|>|Ly|`` --> z-axis tube "-ish"
+
         The method logs the fraction of all orbits in each classification, and
         the fraction of each type which are "exact" according to the stricter
-        criteria. The results saved in `self.orb_classification` are for the
+        criteria. The results saved in ``self.orb_classification`` are for the
         less strict criteria.
 
         Parameters
         ----------
         make_diagnostic_plots : bool, optional
-            whether to make diagnostic plot in find_threshold_angular_momentum, 
-            by default False
+            whether to make diagnostic plot in
+            ``find_threshold_angular_momentum``, by default ``False``.
 
         Returns
         -------
         None
-            sets result to `self.orb_classification`, a dictionary containing
-            5 keys `bool_{box,xtish,ytish,ztish,other}` where e.g. `bool_box`
-            is a boolean array with shape [N_bundles, N_orbits] set to `True` 
-            at the location of box orbits. `bool_other` should be False 
-            everywhere.
+            sets result to ``self.orb_classification``, a dictionary containing
+            5 keys ``bool_{box,xtish,ytish,ztish,other}`` where e.g.
+            ``bool_box`` is a boolean array with shape ``[N_bundles, N_orbits]``
+            set to ``True`` at the location of box orbits.
+            ``bool_other`` should be ``False`` everywhere.
 
         """
         orb_properties = self.orb_properties
@@ -988,8 +996,8 @@ class LegacyOrbitLibrary(OrbitLibrary):
 
     def get_projection_tensor(self, minr=None, maxr=None, nr=50, nl=61):
         # skip if this method has been run before with the same input
-        projection_tensor_pars = {'minr':minr, 
-                                  'maxr':maxr, 
+        projection_tensor_pars = {'minr':minr,
+                                  'maxr':maxr,
                                   'nr':nr,
                                   'nl':nl}
         if hasattr(self, 'projection_tensor_pars'):
@@ -1034,9 +1042,9 @@ class LegacyOrbitLibrary(OrbitLibrary):
             str00 = f'bool_{orbtype00}'
             bool00 = self.orb_classification[str00]
             # decrease r_idx/L_idx by 1 so they are 0-index
-            coords = np.array([bundle_idx[bool00], 
-                               orbit_idx[bool00], 
-                               r_idx[bool00]-1, 
+            coords = np.array([bundle_idx[bool00],
+                               orbit_idx[bool00],
+                               r_idx[bool00]-1,
                                l_idx00[bool00]-1])
             # remove entries where orbit is outside bounds
             idx_keep = np.where(
