@@ -971,7 +971,7 @@ class Plotter():
         return res
 
 #############################################################################
-    
+
     def NFW_enclosemass(self, mstars=None, cc=None, dmfrac=None, R=None):
 
         #Computes density scale, radial scale and total mass in
@@ -985,7 +985,7 @@ class Plotter():
 
         rhoc = (200./3.)*rho_crit*cc**3/(np.log(1.+cc) - cc/(1.+cc))
         rc = (3./(800.*np.pi*rho_crit*cc**3)*dmfrac*mstars)**(1./3.)
-        
+
         #darkmass = (800./3.)*np.pi*rho_crit*(rc*cc)**3
 
         M = 4. * np.pi * rhoc * rc**3 * (np.log((rc + R)/rc) - R/(rc + R))
@@ -1275,7 +1275,7 @@ class Plotter():
 ######## Routines from schw_orbit.py, necessary for orbit_plot ##############
 #############################################################################
 
-    def orbit_plot(self, model=None, Rmax_arcs=None, figtype =None):
+    def orbit_plot(self, model=None, Rmax_arcs=None, figtype=None):
         """
         Generates an orbit plot for the selected model
 
@@ -1333,11 +1333,11 @@ class Plotter():
         mdir = model.directory
         mdir_noml = mdir[:mdir[:-1].rindex('/')+1]
 
-        file4 = mdir + 'nn_orb.out'
         file2 = mdir_noml + 'datfil/orblib.dat_orbclass.out'
         file3 = mdir_noml + 'datfil/orblibbox.dat_orbclass.out'
         file3_test = os.path.isfile(file3)
-        if not file3_test: file3= '%s' % file2
+        if not file3_test:
+            file3= '%s' % file2
 
         xrange=[0.0,Rmax_arcs]
 
@@ -1355,8 +1355,9 @@ class Plotter():
         orbclass2 = np.genfromtxt(file3).T
         orbclass2 = orbclass1.reshape((5,ncol,norb), order='F')
 
-        # norbout, ener, i2, i3, regul, orbtype, orbw, lcut, ntot = self.readorbout(filename=file4)
-        orbw = np.genfromtxt(file4, skip_header=1, usecols=(6))
+        orblib = model.get_orblib()
+        _ = model.get_weights(orblib)
+        orbw = model.weights
 
         orbclass=np.dstack((orbclass1,orbclass1,orbclass2))
         orbclass1a=np.copy(orbclass1)
@@ -1368,8 +1369,8 @@ class Plotter():
 
         ## define circularity of each orbit [nditcher^3, norb]
         lz = (orbclass[2,:,:]/orbclass[3,:,:]/np.sqrt(orbclass[4,:,:]))   # lambda_z = lz/(r * Vrms)
-        # lx = (orbclass[0,:,:]/orbclass[3,:,:]/np.sqrt(orbclass[4,:,:]))   # lambda_x = lx/(r * Vrms)
-        # l= (np.sqrt(np.sum(orbclass[0:3,:,:]**2, axis=0))/orbclass[3,:,:]/np.sqrt(orbclass[4,:,:]))
+        # lx = (orbclass[0,:,:]/orbclass[3,:,:]/np.sqrt(orbclass[4,:,:])) # lambda_x = lx/(r * Vrms)
+        # l=(np.sqrt(np.sum(orbclass[0:3,:,:]**2, axis=0))/orbclass[3,:,:]/np.sqrt(orbclass[4,:,:]))
         r = (orbclass[3,:,:]/conversion_factor)   # from km to kpc
 
         # average values for the orbits in the same bundle (ndither^3).
@@ -2060,3 +2061,205 @@ class Plotter():
             shell=True, check=True).stdout.decode('utf-8'). \
             split(sep='\n')[0].split()[-1]
         return v
+
+#############################################################################
+########################   More Plotting Routines  ##########################
+#############################################################################
+
+    def orbit_distribution(self,
+                           model=None,
+                           minr=None,
+                           maxr=None,
+                           nr=50,
+                           nl=61,
+                           equal_weighted_orbits=False,
+                           orientation='horizontal',
+                           figtype='.png',
+                           subset='all',
+                           getdata=False):
+        """Make the orbit distibution plot
+
+        Plots a model's orbit distribution in (radius, circularity) space.
+        Orbits are split by type: [long, short, intermediate]-axis tubes and
+        box orbits (classification is handled by ``orblib.classify_orbits``).
+        Each orbit only contributes to the appropriate distribution, e.g. box
+        orbits *only* appear in the box-orbit panel. Compared to older versions
+        of orbit distibution plots, this means that there is now no "stripe" at
+        ``lmd_z=0``, since any non short-axis tubes have been moved to their own
+        panel. The fraction of orbits in each type is added as title. Note that
+        individual orbits now contribute a point to the distibution, rather
+        than a single point per orbit-bundle. This means that - if
+        ``dithering>1`` - the orbit distributions are sampled better compared
+        to previous versions.
+
+        Parameters
+        ----------
+        model : optional, a dynamite.model.Model object
+            Determines which model is used for the plot. If ``None``, the
+            minimum chi^2 model is used (the setting in the configuration
+            file's parameter settings is used to determine which chi^2 is used).
+        minr : float, optional
+            the minimum radius [kpc] to show in the plot. If ``None``, this is
+            set to the minimum radius of the orbit library
+        maxr : float, optional
+            the maximum radius [kpc] to show in the plot. If ``None``, this is
+            set to the minimum radius of the orbit library
+        nr : int, optional
+            number of radial bins, by default 50
+        nl : int, optional
+            number of circularity bins, by default 61
+        equal_weighted_orbits : bool, optional
+           weight all orbit bundels equally, instead of using the model's
+           best-fitting weights. Useful to see the distributiuon of the full
+           orbit libary, by default ``False``
+        orientation : str, optional
+            arrange panels ``'horizontal'`` or ``'vertical'``,
+            by default ``'horizontal'``
+        figtype : str, optional
+            file type extension to save the plot, by default ``'.png'``
+        subset : str, optional
+            either ``'all'`` or any combination of ``['long', 'short',
+            'intermediate', 'box']`` separated by ``'+'`` e.g. ``'long+box'``,
+            ``'box+short+intermediate'``. Any order works, but the order does
+            not affect the order of plots. By default ``'all'``
+        getdata : bool, optional
+            whether to return the orbit distribtuion data plotted in the plot,
+            by default ``False``
+
+        Returns
+        -------
+        `mpl.Figure` or a tuple (`mpl.Figure`, np.array) if ``getdata=True``
+            the figure object, and (if ``getdata=True``) a 3D array where the
+            1st dimension indexes over 4 orbit types (long, int., short, box),
+            2nd over radii, 3rd over circularities.
+
+        Raises
+        ------
+        NotImplementedError
+            if ``orientation`` is invalid
+        ValueError
+            if orbit classes don't match the projection tensor or orbit class
+            names are invalid
+        """
+        if model is None:
+            model_id = self.all_models.get_best_n_models_idx(n=1)[0]
+            model = self.all_models.get_model_from_row(model_id)
+        if orientation not in ['horizontal', 'vertical']:
+            raise NotImplementedError(f"Unknown orientation {orientation}, "
+                                      f"must be 'horizontal' or 'vertical'.")
+        orblib = model.get_orblib()
+        orblib.get_projection_tensor(minr=minr, maxr=maxr, nr=nr, nl=nl)
+        if equal_weighted_orbits:
+            n_bundles = orblib.projection_tensor.shape[-1]
+            weights = np.ones(n_bundles)/n_bundles
+        else:
+            weight_solver = model.get_weights(orblib)
+            weights, _, _, _ = weight_solver.solve(orblib)
+        mod_orb_dists = orblib.projection_tensor.dot(weights)
+        mod_orbclass_fracs = np.sum(mod_orb_dists, (1,2))
+        mod_orbclass_fracs = mod_orbclass_fracs/np.sum(mod_orbclass_fracs)
+        # get orbit classes to plot
+        # Note: the order of the orbit classes in orb_classes below must match
+        # the order in the projection_tensor and mod_orb_dists!
+        def frac_to_pc_str(x):
+            return f'{100.*x:.1f}%'
+        orb_classes = [{'name':'long',
+                        'plot':True,
+                        'label':'$\lambda_x$',
+                        'title':f'Long axis tubes: {frac_to_pc_str(mod_orbclass_fracs[0])}'},
+                       {'name':'intermediate',
+                        'plot':True,
+                        'label':'$\lambda_y$',
+                        'title':f'Int. axis tubes: {frac_to_pc_str(mod_orbclass_fracs[1])}'},
+                       {'name':'short',
+                        'plot':True,
+                        'label':'$\lambda_z$',
+                        'title':f'Short axis tubes: {frac_to_pc_str(mod_orbclass_fracs[2])}'},
+                       {'name':'box',
+                        'plot':True,
+                        'label':'$\lambda_\mathrm{tot}$',
+                        'title':f'Box: {frac_to_pc_str(mod_orbclass_fracs[3])}'}]
+        if len(orb_classes) != mod_orb_dists.shape[0]:
+            raise ValueError('Orbit class mismatch with projection tensor.')
+        elif not all(subset_class in [oc['name'] for oc in orb_classes]+['all']
+                     for subset_class in subset.split(sep='+')):
+            raise ValueError('Orbit class subset mismatch.')
+        if subset != 'all':
+            for orb_class in orb_classes:
+                if orb_class['name'] not in subset.split(sep='+'):
+                    orb_class['plot'] = False
+        n_plots = sum(orb_class['plot'] for orb_class in orb_classes)
+        self.logger.info('Plotting orbit distribution for orbit '
+                         f'classes {subset}: {n_plots} subplot(s).')
+        # plotting utilities
+        vmax = max(np.amax(mod_orb_dists[i]) for i in range(len(orb_classes))
+                                             if orb_classes[i]['plot'])
+        kwimshow = {'aspect':'auto',
+                    'cmap':'magma_r',
+                    'interpolation':'none',
+                    'vmax':vmax}
+        ranges = orblib.projection_tensor_rng
+        log10_r_rng = ranges['log10_r_rng']
+        lmd_rng = ranges['lmd_rng']
+        tot_lmd_rng = ranges['tot_lmd_rng']
+        # make plot
+        r_label = '$\log_{10} (r/\mathrm{kpc})$'
+        fig_size = 15 * n_plots/len(orb_classes)
+        self.logger.info(f'{fig_size=}.')
+        if orientation == 'horizontal':
+            fig, ax = plt.subplots(1, n_plots,
+                                   figsize=(fig_size+1, 5),
+                                   sharey=True)
+            if n_plots == 1:
+                ax = [ax]
+            ax[0].set_ylabel(r_label)
+            plot_idx = 0
+            for orb_class_idx, orb_class in enumerate(orb_classes):
+                if orb_class['plot']:
+                    plot_data = np.flipud(mod_orb_dists[orb_class_idx])
+                    if orb_class['name'] == 'box':
+                        extent = tot_lmd_rng+log10_r_rng
+                    else:
+                        extent = lmd_rng+log10_r_rng
+                    cax = ax[plot_idx].imshow(plot_data,
+                                              extent=extent,
+                                              **kwimshow)
+                    ax[plot_idx].set_xlabel(orb_class['label'])
+                    ax[plot_idx].set_title(orb_class['title'])
+                    plot_idx += 1
+            fig.tight_layout()
+            fig.colorbar(cax, ax=ax, orientation='vertical', pad=0.03)
+        elif orientation == 'vertical':
+            fig, ax = plt.subplots(n_plots, 1,
+                                   figsize=(5, fig_size+1),
+                                   sharex=True)
+            if n_plots == 1:
+                ax = [ax]
+            ax[-1].set_xlabel(r_label)
+            plot_idx = 0
+            for orb_class_idx, orb_class in enumerate(orb_classes):
+                if orb_class['plot']:
+                    plot_data = np.flipud(mod_orb_dists[orb_class_idx].T)
+                    if orb_class['name'] == 'box':
+                        extent = log10_r_rng+tot_lmd_rng
+                    else:
+                        extent = log10_r_rng+lmd_rng
+                    cax = ax[plot_idx].imshow(plot_data,
+                                              extent=extent,
+                                              **kwimshow)
+                    # ax[plot_idx].set_xlabel(r_label)
+                    ax[plot_idx].set_ylabel(orb_class['label'])
+                    ax[plot_idx].set_title(orb_class['title'])
+                    plot_idx += 1
+            fig.tight_layout()
+            fig.colorbar(cax, ax=ax, orientation='horizontal', pad=0.15/n_plots)
+        else:
+            raise NotImplementedError(f'Unknown orientation {orientation}.')
+        # format and save
+        figname = self.plotdir + 'orbit_distribution' + figtype
+        fig.savefig(figname)
+        self.logger.info(f'Plot {figname} saved in {self.plotdir}')
+        if getdata:
+            return mod_orb_dists, fig
+        else:
+            return fig

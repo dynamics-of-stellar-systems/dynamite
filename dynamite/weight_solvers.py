@@ -677,7 +677,7 @@ class NNLS(WeightSolver):
         Returns
         -------
         tuple
-            (weights, chi2_all, chi2_kin) where:
+            (weights, chi2_all, chi2_kin, chi2_kinmap) where:
                 -   weights : array, of orbit weights
                 -   chi2_all : float, sum of squared residuals for intrinsic
                     masses, projected_masses and GH coefficients from h_1 to h_n
