@@ -237,7 +237,7 @@ class Plotter():
                 ax = plt.subplot(nnofix-1, nnofix-1, pltnum)
 
                 plt.plot(val[nofix_name[i]],val[nofix_name[j]], 'D',
-                         color='black', markersize=4)
+                         color='gray', markersize=4)
 
                 for k in range(nf - 1, -1, -1):
                     if val['chi2t'][k]/chlim<=3: #only significant chi2 values
