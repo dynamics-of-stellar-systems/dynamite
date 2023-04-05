@@ -53,7 +53,7 @@ system_components:
                     step: 0.5
                     minstep: 0.1
                 logarithmic: True
-                fixed: False
+                fixed: True
                 value: 1.0
                 LaTeX: "$M_{200}/M_*$"
         type: NFW
@@ -109,7 +109,7 @@ system_parameters:
             hi: 9.
             step: 4.0
             minstep: 0.5
-        fixed: False
+        fixed: True
         value: 5.
         LaTeX: "$Y_{r}$"
 

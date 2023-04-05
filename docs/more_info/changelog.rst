@@ -4,6 +4,7 @@
 Change Log
 ****************
 
+- Improvement: updated tutorial notebooks
 - Improvement: the orbit plot (Plotter.orbit_plot) now works for all implemented weight solvers
 - Bugfix: fixed a bug that under certain circumstances prevented the staging files from being deleted after a successful iteration
 - Bugfix: removed logging from the list of requirements because it is in the Python standard library
