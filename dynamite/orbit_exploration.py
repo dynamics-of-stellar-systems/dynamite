@@ -100,7 +100,7 @@ class Decomposition:
         self.logger.info('Plots done.')
 
     def comps_aphist(self, v_sigma_option='fit'):
-        """Calculate components' flux, mean velocity, and veolocity dispersion.
+        """Calculate components' flux, mean velocity, and velocity dispersion.
 
 
         Parameters
@@ -184,10 +184,6 @@ class Decomposition:
             orbit can belong to multiple components. In that case, the
             component strings are concatenated. For easier parsing later, the
             component descriptors are surrounded by pipe symbols ``|``.
-                                         meta={'comps':comps})
-            The table columns are: aperture index (starting with 0), followed
-            by three columns per component holding the flux, mean velocity,
-            and velocity dispersion.
             The table's meta data ``comps`` holds a list of all components.
 
         """
