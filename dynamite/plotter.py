@@ -237,7 +237,7 @@ class Plotter():
                 ax = plt.subplot(nnofix-1, nnofix-1, pltnum)
 
                 plt.plot(val[nofix_name[i]],val[nofix_name[j]], 'D',
-                         color='black', markersize=4)
+                         color='gray', markersize=4)
 
                 for k in range(nf - 1, -1, -1):
                     if val['chi2t'][k]/chlim<=3: #only significant chi2 values
@@ -280,6 +280,14 @@ class Plotter():
                     if nofix_islog[j]:
                         ax.set_yscale('log')
                 else:
+                    if nofix_islog[i]:
+                        ax.set_xscale('log')
+                        if  max(val[nofix_name[i]])/min(val[nofix_name[i]]) > 100:
+                            ax.xaxis.set_major_locator(LogLocator(base=10,numticks=3))
+                        else:
+                            ax.xaxis.set_major_locator(MaxNLocator(nbins=3, prune='lower'))                        
+                    if nofix_islog[j]:
+                        ax.set_yscale('log')
                     ax.xaxis.set_major_formatter(NullFormatter())
 
                 if i==0:
@@ -300,6 +308,10 @@ class Plotter():
                         ax.set_yticklabels([label_format.format(x).replace('e+0','e') for x in ticks_loc],fontsize=fontsize)
                     ax.yaxis.set_tick_params(labelsize=fontsize)
                 else:
+                    if nofix_islog[i]:
+                        ax.set_xscale('log')
+                    if nofix_islog[j]:
+                        ax.set_yscale('log')
                     ax.yaxis.set_major_formatter(NullFormatter())
 
                 ax.xaxis.set_minor_formatter(NullFormatter())
