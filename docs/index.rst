@@ -72,7 +72,7 @@ Each page is an ipython notebook which you can either view in the browser, or do
    :maxdepth: 1
    :caption: Tutorials:
 
-   tutorial_notebooks/1_data_prep_for_gauss_hermites.ipynb
+   tutorial_notebooks/1_data_prep_for_gauss_hermite.ipynb
    tutorial_notebooks/2_quickstart.ipynb
    tutorial_notebooks/3_model_iterations_and_plots.ipynb
    tutorial_notebooks/4_BayesLOSVD.ipynb
