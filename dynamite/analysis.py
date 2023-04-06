@@ -22,7 +22,8 @@ class Analysis:
     def get_gh_model_kinematic_maps(self,
                                     model=None,
                                     kin_set=None,
-                                    v_sigma_option='fit'):
+                                    v_sigma_option='fit',
+                                    kinematics_as='table'):
         """
         Generates an astropy table in the model directory that holds the
         model's data for creating Gauss-Hermite kinematic maps:
@@ -41,17 +42,26 @@ class Analysis:
             If 'fit', v_mean and v_sigma are calculated based on fitting
             Gaussians, if 'moments', v_mean and v_sigma are calculated
             directly from the model's losvd histograms. The default is 'fit'.
+        kinematics_as : str, optional
+            If 'table', return ``gh_table``, the model's kinematics as an
+            astropy table, if 'file', write the table to disk in ascii.ecsv
+            format and return its full path ``f_name``, if 'both', write the
+            table to disk and return a tuple ``(gh_table, f_name)``.
+            The default is 'table'.
 
         Raises
         ------
         ValueError
-            if v_sigma_option is neither 'moments' nor 'fit'.
+            if v_sigma_option or kinematics_as are invalid.
 
         Returns
         -------
-        f_name : str
-            The file name of the astropy table holding the model's gh
-            kinematics.
+        gh_table : astropy table (if kinematics_as='table')
+            The astropy table holding the model's gh kinematics.
+        f_name : str (if kinematics_as='file')
+            The file name (full path) of the astropy table holding the model's
+            gh kinematics.
+        (gh_table, f_name) : tuple  (if kinematics_as='both')
 
         """
         if model is None:
@@ -60,6 +70,11 @@ class Analysis:
             kin_set = self.kin_set
         if v_sigma_option not in ['moments', 'fit']:
             txt = f"{v_sigma_option=} but must be either 'fit' or 'moments'."
+            self.logger.error(txt)
+            raise ValueError(txt)
+        if kinematics_as not in ['table', 'file', 'both']:
+            txt = f"{kinematics_as=} but must be either 'table', 'file', or " \
+                   "'both'."
             self.logger.error(txt)
             raise ValueError(txt)
         stars = self.config.system.get_component_from_class(
@@ -116,15 +131,13 @@ class Analysis:
             col_names = [f'h{i}' for i in range(3,n_gh+1)]
             tab_data = list(model_gh_coefficients[:,2:].T)
             gh_table.add_columns(tab_data, names=col_names)
+        if kinematics_as == 'table':
+            return gh_table
         f_name = f'{model.directory}model_gh_kins_' + \
                  f'{kin_name}_{v_sigma_option}.ecsv'
         gh_table.write(f_name, format='ascii.ecsv', overwrite=True)
         self.logger.info(f'Model gh kinematics {kin_name}, {n_gh=} '
                          f'written to {f_name}.')
-        return f_name
-
-    def get_projection_tensor_for_orbit_distributions(self):
-        pass
-
-    def get_orbit_distributions(self):
-        pass
+        if kinematics_as == 'file':
+            return f_name
+        return (gh_table, f_name)

@@ -721,9 +721,8 @@ class Plotter():
 
         # get the model's projected masses=flux and kinematic data
         a = analysis.Analysis(config=self.config, model=model, kin_set=kin_set)
-        gh_file = a.get_gh_model_kinematic_maps(v_sigma_option=v_sigma_option)
-        model_gh_coef = astropy.table.Table.read(f'{gh_file}')
-        self.logger.debug(f"Read model's gh kinematic data from {gh_file}.")
+        model_gh_coef = \
+            a.get_gh_model_kinematic_maps(v_sigma_option=v_sigma_option)
 
         # get the observed projected masses and kinematic data
         stars = \
