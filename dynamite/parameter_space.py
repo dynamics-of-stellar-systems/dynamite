@@ -1231,13 +1231,16 @@ class SpecificModels(ParameterGenerator):
     ``lo``, and ``high``. Also, ``fixed`` will be ignored if ``fixed_values``
     is specified.
 
+    Further, all models are run in a single iteration and the
+    ``stopping_criteria`` section in the configuration file's
+    ``parameter_space_settings`` will be ignored.
+
     Parameters
     ----------
     par_space : ``dyn.parameter_space.ParameterSpace`` object
     parspace_settings : dict
 
     """
-    # edit from here on...
     def __init__(self,
                  par_space=[],
                  parspace_settings=None):
@@ -1259,14 +1262,7 @@ class SpecificModels(ParameterGenerator):
 
     def specific_generate_method(self, **kwargs):
         """
-        Generates new models
-
-        Starts at the initial point. Start the iteration: (i) find all models
-        with :math:`|\chi^2 - \chi_\mathrm{min}^2|` within the specified
-        threshold, (ii) for each model within the threshold, seed new models by
-        independently take a step :math:`\pm 1` of size ``step``. If no new
-        models are seeded at the end of an iteration, then divide all parameter
-        stepsizes by two till their specified ``minstep`` are reached.
+        Generates the specific models
 
         Parameters
         ----------
