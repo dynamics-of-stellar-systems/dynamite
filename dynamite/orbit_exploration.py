@@ -16,6 +16,9 @@ class Decomposition:
     and velocity dispersion only) are plotted by calling ``self.plot_decomp``
     which also writes the plotted data into the model directory.
 
+    The methodology in this class has been contributed by Giulia Santucci.
+    Please cite Santucci+22, ApJ 930, 2, 153 if used.
+
     Parameters
     ----------
     config : a ``dyn.config_reader.Configuration`` object, mandatory
