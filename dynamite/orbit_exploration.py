@@ -140,6 +140,7 @@ class Decomposition:
                             dtype=[int],
                             meta={'v_sigma_option':v_sigma_option})
         for comp in self.decomp.meta['comps']:
+            self.logger.info(f'Component {comp}...')
             # calculate flux and losvd histograms for component
             orb_sel = np.array([comp in s for s in self.decomp['component']],
                                dtype=bool)
@@ -151,7 +152,7 @@ class Decomposition:
                               f'{flux.shape=}, {losvd.shape=}.')
             losvd_hist = dyn.kinematics.Histogram(self.losvd_histograms.xedg,
                                                   y=losvd,
-                                                  normalise=False)
+                                                  normalise=True)
             if v_sigma_option == 'moments':
                 v_mean = np.squeeze(losvd_hist.get_mean())
                 v_sigma = np.squeeze(losvd_hist.get_sigma())
