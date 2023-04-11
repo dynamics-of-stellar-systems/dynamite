@@ -103,6 +103,7 @@ The API overview may be a useful starting point.
    api_docs/weight_solver
    api_docs/model_iterator
    api_docs/plotting
+   api_docs/analysis
 
 More Information
 ================

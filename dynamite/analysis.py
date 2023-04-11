@@ -4,6 +4,18 @@ import astropy
 import dynamite as dyn
 
 class Analysis:
+    """Class to hold results' analysis methods.
+
+    This class contains methods that help analyzing DYANMITE results and can
+    be called, e.g. by plotting routines.
+
+    Parameters
+    ----------
+    config : a ``dyn.config_reader.Configuration`` object
+    model : a ``dyn.model.Model`` object, optional, default: best model so far
+    kin_set : int, optional, default: 0
+
+    """
 
     def __init__(self, config, model=None, kin_set=0):
         self.logger = logging.getLogger(f'{__name__}.{__class__.__name__}')
