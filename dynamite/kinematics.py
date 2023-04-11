@@ -642,6 +642,7 @@ class Histogram(object):
 
     """
     def __init__(self, xedg=None, y=None, normalise=False):
+        self.logger = logging.getLogger(f'{__name__}.{__class__.__name__}')
         self.xedg = xedg
         self.x = (xedg[:-1] + xedg[1:])/2.
         self.dx = xedg[1:] - xedg[:-1]
@@ -741,7 +742,7 @@ class Histogram(object):
         Returns
         -------
         array shape (n_orbits, n_apertures)
-            mean velcoity of losvd
+            mean velocity of losvd
         array shape (n_orbits, n_apertures)
             velocity dispersion of losvd
 
@@ -752,16 +753,30 @@ class Histogram(object):
             return a*np.exp(-(x-mean)**2/(2.*sigma**2))
         for orbit in range(self.y.shape[0]):
             for aperture in range(self.y.shape[-1]):
-                p_initial = [1.,
-                             v_mean[orbit,aperture],
-                             v_sigma[orbit,aperture]]
-                p_opt, _ = curve_fit(gauss,
-                                     self.x,
-                                     self.y[orbit,:,aperture],
-                                     p0=p_initial,
-                                     full_output=False)
-                v_mean[orbit,aperture] = p_opt[1] # overwrite v_mean
-                v_sigma[orbit,aperture] = p_opt[2] # overwrite v_sigma
+                err_msg=f'{orbit=}, {aperture=}: both mean and sigma are nan.'
+                if not (np.isnan(v_mean[orbit,aperture]) or
+                        np.isnan(v_sigma[orbit,aperture])): # nan?
+                    p_initial = [1/(v_sigma[orbit,aperture]*np.sqrt(2*np.pi)),
+                                 v_mean[orbit,aperture],
+                                 v_sigma[orbit,aperture]]
+                    try:
+                        p_opt, _ = curve_fit(gauss,
+                                             self.x,
+                                             self.y[orbit,:,aperture],
+                                             p0=p_initial,
+                                             method='trf')
+                    except:
+                        self.logger.warning(f'{err_msg} Gaussfit failed. '
+                            'Check data. Histogram moments '
+                            f'suggested mean={v_mean[orbit,aperture]}, '
+                            f'sigma={v_sigma[orbit,aperture]}.')
+                        v_mean[orbit,aperture] = np.nan # overwrite v_mean
+                        v_sigma[orbit,aperture] = np.nan # overwrite v_sigma
+                    else:
+                        v_mean[orbit,aperture] = p_opt[1] # overwrite v_mean
+                        v_sigma[orbit,aperture] = p_opt[2] # overwrite v_sigma
+                else:
+                    self.logger.info(f'{err_msg}')
         return v_mean, v_sigma
 
 class BayesLOSVD(Kinematics, data.Integrated):

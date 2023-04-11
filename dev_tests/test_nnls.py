@@ -2,7 +2,6 @@
 # -*- coding: utf-8 -*-
 
 import os
-import logging
 import time
 
 # Set matplotlib backend to 'Agg' (compatible when X11 is not running
@@ -28,8 +27,8 @@ def run_user_test(make_comp=False):
             os.chdir(file_dir)
     else:
         file_dir = None
-    # fname = 'user_test_config_ml.yaml'
-    fname = 'FCC047_2kin/FCC047_config.yaml'
+    fname = 'user_test_config_ml.yaml'
+    # fname = 'FCC047_2kin/FCC047_config.yaml'
     c = dyn.config_reader.Configuration(fname,
                                         reset_logging=True,
                                         user_logfile='test_nnls',
