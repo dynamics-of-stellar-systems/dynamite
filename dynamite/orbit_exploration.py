@@ -29,7 +29,7 @@ class Decomposition:
     kin_set : int, optional
         Determines which kinematic set to use.
         The value of this parameter is the index of the data
-        set (e.g. kin_set=0 , kin_set=1). The default is 0.
+        set (e.g. kin_set=0, kin_set=1). The default is 0.
 
     Raises
     ------
@@ -191,7 +191,7 @@ class Decomposition:
         if ocut is None:
             ocut = [0.8, 0.25, -0.25]
         self.logger.debug(f'Cut lines are: {ocut}.')
-        file2 = self.model.directory_noml + 'datfil/orblib.dat_orbclass.out' 
+        file2 = self.model.directory_noml + 'datfil/orblib.dat_orbclass.out'
         file3 = self.model.directory_noml + 'datfil/orblibbox.dat_orbclass.out'
         file3_test = os.path.isfile(file3)
         if not file3_test:
@@ -223,7 +223,7 @@ class Decomposition:
             orbclass[:, :, i * 2 + 1] = orbclass1a[:, :, i]
 
         ## define circularity of each orbit [nditcher^3, n_orb]
-        lz = (orbclass[2, :, :] / orbclass[3, :, :] / np.sqrt(orbclass[4, :, :])) 
+        lz = (orbclass[2, :, :] / orbclass[3, :, :] / np.sqrt(orbclass[4, :, :]))
 
         # Average values for the orbits in the same bundle (n_dither^3).
         # Only include the orbits within Rmax_arcs
@@ -270,12 +270,10 @@ class Decomposition:
         return decomp
 
     def plot_comps(self,
-                   xlim=None,
-                   ylim=None,
-                   v_sigma_option=None,
-                   comp_kinem_moments=None,
+                   xlim,
+                   ylim,
+                   comp_kinem_moments,
                    figtype='.png'):
-        
         """ Generate decomposition plots.
 
         Parameters
@@ -284,10 +282,14 @@ class Decomposition:
             restricts plot x-coordinates to abs(x) <= xlim.
         ylim : float
             restricts plot y-coordinates to abs(y) <= ylim.
-        v_sigma_option : str, optional
-            If 'fit', v_mean and v_sigma are calculated based on fitting
-            Gaussians, if 'moments', v_mean and v_sigma are calculated
-            directly from the model's losvd histograms. The default is 'fit'.
+        comp_kinem_moments : astropy table
+            The table columns are: aperture index (starting with 0), followed
+            by three columns per component holding the flux, mean velocity,
+            and velocity dispersion.
+            The chosen v_sigma_option is in the table meta data.
+        figtype : str, optional
+            Determines the file format and extension to use when saving the
+            figure. The default is '.png'.
 
         Returns
         -------
@@ -340,7 +342,7 @@ class Decomposition:
                     if comps[i] == 'thin_d':
                         fluxtot = tt
                     else:
-                        fluxtot += tt                
+                        fluxtot += tt
                 vel.append(comp_kinem_moments[labels[1]])
                 sig.append(comp_kinem_moments[labels[2]])
 
@@ -385,20 +387,20 @@ class Decomposition:
         titles = ['THIN DISK','THICK DISK','DISK','BULGE','ALL']
         compon = np.array(['thin_d','warm_d','disk','bulge','all'])
         kwtext = dict(size=20, ha='center', va='center', rotation=90.)
-        kw_display1 = dict(pixelsize=dx, colorbar=True,  
+        kw_display1 = dict(pixelsize=dx, colorbar=True,
                                   nticks=7, cmap=map1)
-        kw_display2 = dict(pixelsize=dx, colorbar=True,  
+        kw_display2 = dict(pixelsize=dx, colorbar=True,
                                   nticks=7, cmap=map2)
 
         plt.figure(figsize=(16, int((LL+2)*3)*ylim/xlim))
-        plt.subplots_adjust(hspace=0.7, wspace=0.01, left=0.01, 
+        plt.subplots_adjust(hspace=0.7, wspace=0.01, left=0.01,
                             bottom=0.05, top=0.99, right=0.99)
 
         for ii in range(len(comps)):
             ax = plt.subplot(LL, 3, 3*ii+1)
             if ii == 0:
                 ax.set_title('surface brightness (log)',fontsize=20,pad=20)
-            display_pixels(xi_t, yi_t, np.log10(t[ii][s])-maxf, 
+            display_pixels(xi_t, yi_t, np.log10(t[ii][s])-maxf,
                            vmin=minf-maxf, vmax=0, **kw_display1)
             ax.text(-0.2, 0.5, titles[np.where(compon==comps[ii])[0][0]],
                     **kwtext, transform=ax.transAxes)
@@ -406,13 +408,13 @@ class Decomposition:
             plt.subplot(LL, 3, 3*ii+2)
             if ii == 0:
                 plt.title('velocity',fontsize=20,pad=20)
-            display_pixels(xi_t, yi_t, vel[ii][grid[s]], 
+            display_pixels(xi_t, yi_t, vel[ii][grid[s]],
                            vmin=-1.0*vmax, vmax=vmax, **kw_display2)
 
             plt.subplot(LL, 3, 3*ii+3)
             if ii == 0:
                 plt.title('velocity dispersion',fontsize=20,pad=20)
-            display_pixels(xi_t, yi_t, sig[ii][grid[s]], 
+            display_pixels(xi_t, yi_t, sig[ii][grid[s]],
                            vmin=smin, vmax=smax, **kw_display1)
 
         plt.tight_layout()
