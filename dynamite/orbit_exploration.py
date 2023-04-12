@@ -5,6 +5,7 @@ import matplotlib.pyplot as plt
 from plotbin.display_pixels import display_pixels
 import astropy
 import dynamite as dyn
+import cmasher as cmr
 
 class Decomposition:
     """
@@ -45,7 +46,6 @@ class Decomposition:
             raise ValueError(text)
         self.config = config
         if model is None:
-            # Select the best model for decomposition
             best_model_idx = config.all_models.get_best_n_models_idx(n=1)[0]
             self.model = config.all_models.get_model_from_row(best_model_idx)
         stars = \
@@ -94,17 +94,12 @@ class Decomposition:
         """
         comp_kinem_moments = self.comps_aphist(v_sigma_option)
         self.logger.info('Component data done.')
-        self.plot_comps_giu(xlim=xlim,
-                            ylim=ylim,
-                            comp_kinem_moments=comp_kinem_moments)
-        self.plot_comps(xlim=xlim,
-                            ylim=ylim,
-                            comp_kinem_moments=comp_kinem_moments)
+        self.plot_comps(xlim=xlim, ylim=ylim,
+                        comp_kinem_moments=comp_kinem_moments)
         self.logger.info('Plots done.')
 
     def comps_aphist(self, v_sigma_option='fit'):
-        """Calculate components' flux, mean velocity, and veolocity dispersion.
-
+        """Calculate components' flux, mean velocity, and velocity dispersion.
 
         Parameters
         ----------
@@ -170,7 +165,6 @@ class Decomposition:
     def decompose_orbits(self, ocut=None):
         """Decompose orbits based on lambda_z.
 
-
         Parameters
         ----------
         ocut : list of floats, optional
@@ -197,7 +191,7 @@ class Decomposition:
         if ocut is None:
             ocut = [0.8, 0.25, -0.25]
         self.logger.debug(f'Cut lines are: {ocut}.')
-        file2 = self.model.directory_noml + 'datfil/orblib.dat_orbclass.out'  #orbitlibraries
+        file2 = self.model.directory_noml + 'datfil/orblib.dat_orbclass.out' 
         file3 = self.model.directory_noml + 'datfil/orblibbox.dat_orbclass.out'
         file3_test = os.path.isfile(file3)
         if not file3_test:
@@ -275,227 +269,6 @@ class Decomposition:
                     decomp['component'][i] += f'|{comp}|'
         return decomp
 
-    def plot_comps_giu(self,
-                       # savedata=True,
-                       xlim=None,
-                       ylim=None,
-                       # Re=None,
-                       v_sigma_option=None,
-                       comp_kinem_moments=None,
-                       figtype='.png'):
-
-        v_sigma_option = comp_kinem_moments.meta['v_sigma_option'] \
-                         if 'v_sigma_option' in comp_kinem_moments.meta.keys()\
-                         else ''
-        self.logger.info(f'Plotting decomposition for {v_sigma_option=}.')
-
-        # read kinematic data and weights
-        weights = self.model.weights
-        ## COLD COMPONENT
-        flux_thin = comp_kinem_moments['thin_d_lsb']
-        vel_thin = comp_kinem_moments['thin_d_v']
-        sig_thin = comp_kinem_moments['thin_d_sig']
-        wthin = weights[['thin_d' in s for s in self.decomp['component']]]
-
-        ## WARM COMPONENT
-        flux_thick = comp_kinem_moments['warm_d_lsb']
-        vel_thick = comp_kinem_moments['warm_d_v']
-        sig_thick = comp_kinem_moments['warm_d_sig']
-        wthick = weights[['warm_d' in s for s in self.decomp['component']]]
-
-        ## CC COMPONENT
-        flux_disk = comp_kinem_moments['disk_lsb']
-        vel_disk = comp_kinem_moments['disk_v']
-        sig_disk = comp_kinem_moments['disk_sig']
-        wdisk = weights[['disk' in s for s in self.decomp['component']]]
-
-        ## HOT_cr COMPONENT
-        flux_bulge = comp_kinem_moments['bulge_lsb']
-        vel_bulge = comp_kinem_moments['bulge_v']
-        sig_bulge = comp_kinem_moments['bulge_sig']
-        wbulge = weights[['bulge' in s for s in self.decomp['component']]]
-
-        ###WHOLE component
-        flux_all = comp_kinem_moments['all_lsb']
-        vel_all = comp_kinem_moments['all_v']
-        sig_all = comp_kinem_moments['all_sig']
-        wall = weights[['all' in s for s in self.decomp['component']]]
-
-        # read the pixel grid
-        stars = \
-        self.config.system.get_component_from_class(
-                                dyn.physical_system.TriaxialVisibleComponent)
-        dp_args = stars.kinematic_data[self.kin_set].dp_args
-        xi = dp_args['x']
-        yi = dp_args['y']
-        dx = dp_args['dx']
-        grid = dp_args['idx_bin_to_pix']
-        # The angle that is saved in this file is measured counter clock-wise
-        # from the galaxy major axis to the X-axis of the input data.
-        angle_deg = dp_args['angle']
-        self.logger.debug(f'Pixel grid dimension is {dx=}, {len(xi)=}, '
-                          f'{len(yi)=}, {grid.shape}, {angle_deg=}.')
-
-        s = np.ravel(np.where((grid >= 0) & (np.abs(xi) <= xlim)
-                              & (np.abs(yi) <= ylim)))
-        s_wide = np.ravel(np.where(grid >= 0))
-        #normalise flux
-        fhist, fbinedge = np.histogram(grid[s_wide], bins=len(flux_thin))
-        flux_thin = flux_thin / fhist
-        fhist, fbinedge = np.histogram(grid[s_wide], bins=len(flux_thick))
-        flux_thick = flux_thick / fhist
-        fhist, fbinedge = np.histogram(grid[s_wide], bins=len(flux_disk))
-        flux_disk = flux_disk / fhist
-        fhist, fbinedge = np.histogram(grid[s_wide], bins=len(flux_bulge))
-        flux_bulge = flux_bulge / fhist
-        fhist, fbinedge = np.histogram(grid[s_wide], bins=len(flux_all))
-        flux_all= flux_all / fhist
-
-        tthin  = flux_thin[grid]
-        tthick = flux_thick[grid]
-        tdisk  = flux_disk[grid]
-        tbulge =flux_bulge[grid]
-        tall =flux_all[grid]
-
-        tthin =tthin *np.sum(wthin)/np.sum(tthin)
-        tthick=tthick*np.sum(wthick)/np.sum(tthick)
-        tdisk =tdisk *np.sum(wdisk)/np.sum(tdisk)
-        tbulge=tbulge*np.sum(wbulge)/np.sum(tbulge)
-        tall =tall *np.sum(wall)/np.sum(tall)
-
-        totalf = np.sum(tthin) + np.sum(tthick) + np.sum(tbulge)
-        tthin =tthin /totalf
-        tthick=tthick/totalf
-        tdisk =tdisk /totalf
-        tbulge=tbulge/totalf
-        tall=tall/totalf
-        flux = tthin +  tthick + tbulge
-
-        vmax = np.nanmax([vel_thin,vel_thick, vel_disk, vel_bulge, vel_all])
-        sig_t = np.array((sig_thin,sig_thick,sig_disk,sig_bulge, sig_all))
-        smax = np.nanmax(sig_t[sig_t > 0])
-        smin = np.nanmin(sig_t[sig_t > 0])
-        minf=min(-2.5 * np.log10(flux))
-        maxf=max(-2.5 * np.log10(flux[flux !=0]))
-        xi_t= (xi[s])
-        yi_t=(yi[s])
-
-        comps_kin = astropy.table.Table({'x/arcs':xi_t,
-                                         'y/arcs':yi_t,
-                                         'SB_thin_disk':tthin[s],
-                                         'vel_thin_disk':vel_thin[grid[s]],
-                                         'sig_thin_disk':sig_thin[grid[s]],
-                                         'SB_thick_disk':tthick[s],
-                                         'vel_thick_disk':vel_thick[grid[s]],
-                                         'sig_thick_disk':sig_thick[grid[s]],
-                                         'SB_disk':tdisk[s],
-                                         'vel_disk':vel_disk[grid[s]],
-                                         'sig_disk':sig_disk[grid[s]],
-                                         'SB_bulge':tbulge[s],
-                                         'vel_bulge':vel_bulge[grid[s]],
-                                         'sig_bulge':sig_bulge[grid[s]],
-                                         'SB_whole':tall[s],
-                                         'vel_whole':vel_all[grid[s]],
-                                         'sig_whole':sig_all[grid[s]]})
-
-        kin_name = stars.kinematic_data[self.kin_set].name
-        file_name = f'comps_kin_test_s22_{v_sigma_option}_{kin_name}'
-        table_file_name = self.model.directory + file_name + '.ecsv'
-        plot_file_name = self.config.settings.io_settings['plot_directory'] \
-                         + file_name \
-                         + figtype
-        comps_kin.write(f'{table_file_name}',
-                        format='ascii.ecsv',
-                        overwrite=True)
-        self.logger.info('Component grid kinematics written to '
-                         f'{table_file_name}.')
-
-        self.logger.debug(f'{v_sigma_option}: {vmax=}, {smax=}, {smin=}.')
-
-        ### PLOT THE RESULTS
-        # Plot settings
-        plt.figure(figsize=(12, 18))
-        plt.subplots_adjust(hspace=0.4, wspace=0.02, left=0.01, bottom=0.05,
-                            top=0.99, right=0.99)
-
-        ### PLOT THE COMPONENTS
-        ## COLD
-        ax1=plt.subplot(5, 3, 1)
-        display_pixels(xi[s], yi[s], -2.5 * np.log10(tthin[s]) , pixelsize=dx,
-                        colorbar=True, nticks=7, cmap='YlOrRd_r',
-                        label='-2.5 log10(flux)', vmin=minf, vmax=maxf)
-        ax2=plt.subplot(5, 3, 2)
-        plt.title("THIN DISK COMPONENT")
-        display_pixels(xi[s], yi[s], vel_thin[grid[s]], pixelsize=dx,
-                       colorbar=True, nticks=7, cmap='RdYlBu_r',
-                       vmin=-1.0 * vmax, vmax=vmax, label='Velocity')
-        ax3=plt.subplot(5, 3, 3)
-        display_pixels(xi[s], yi[s], sig_thin[grid[s]], pixelsize=dx,
-                       colorbar=True, nticks=7, cmap='YlOrRd',
-                       vmin=smin, vmax=smax, label=r'$\mathbf{\sigma}$')
-        ## WARM
-        plt.subplot(5, 3, 4)
-        display_pixels(xi[s], yi[s], -2.5 * np.log10(tthick[s]) , pixelsize=dx,
-                       colorbar=True, nticks=7, cmap='YlOrRd_r',
-                       label='-2.5 log10(flux)', vmin=minf, vmax=maxf)
-        plt.subplot(5, 3, 5)
-        plt.title("THICK DISK COMPONENT")
-        display_pixels(xi[s], yi[s], vel_thick[grid[s]], pixelsize=dx,
-                       colorbar=True, nticks=7, cmap='RdYlBu_r',
-                       vmin=-1.0 * vmax, vmax=vmax, label='Velocity')
-        plt.subplot(5, 3, 6)
-        display_pixels(xi[s], yi[s], sig_thick[grid[s]], pixelsize=dx,
-                       colorbar=True, nticks=7, cmap='YlOrRd',
-                       vmin=smin, vmax=smax, label=r'$\mathbf{\sigma}$')
-
-        #HOT+CR
-        plt.subplot(5, 3, 7)
-        display_pixels(xi[s], yi[s], -2.5 * np.log10(tdisk[s]) , pixelsize=dx,
-                       colorbar=True, nticks=7, cmap='YlOrRd_r',
-                       label='-2.5 log10(flux)', vmin=minf, vmax=maxf)
-        plt.subplot(5, 3, 8)
-        plt.title("DISK COMPONENT")
-        display_pixels(xi[s], yi[s], vel_disk[grid[s]], pixelsize=dx,
-                       colorbar=True, nticks=7, cmap='RdYlBu_r',
-                       vmin=-1.0 * vmax, vmax=vmax, label='Velocity')
-        plt.subplot(5, 3, 9)
-        display_pixels(xi[s], yi[s], sig_disk[grid[s]], pixelsize=dx,
-                       colorbar=True, nticks=7, cmap='YlOrRd',
-                       vmin=smin, vmax=smax, label=r'$\mathbf{\sigma}$')
-
-        plt.subplot(5, 3, 10)
-        display_pixels(xi[s], yi[s], -2.5 * np.log10(tbulge[s]) , pixelsize=dx,
-                       colorbar=True, nticks=7, cmap='YlOrRd_r',
-                       label='-2.5 log10(flux)', vmin=minf, vmax=maxf)
-        plt.subplot(5, 3, 11)
-        plt.title("BULGE COMPONENT")
-        display_pixels(xi[s], yi[s], vel_bulge[grid[s]], pixelsize=dx,
-                       colorbar=True, nticks=7, cmap='RdYlBu_r',
-                       vmin=-1.0 * vmax, vmax=vmax, label='Velocity')
-        plt.subplot(5, 3, 12)
-        display_pixels(xi[s], yi[s], sig_bulge[grid[s]], pixelsize=dx,
-                       colorbar=True, nticks=7, cmap='YlOrRd',
-                       vmin=smin, vmax=smax, label=r'$\mathbf{\sigma}$')
-        
-        plt.subplot(5, 3, 13)
-        display_pixels(xi[s], yi[s], -2.5 * np.log10(tall[s]) , pixelsize=dx,
-                       colorbar=True, nticks=7, cmap='YlOrRd_r',
-                       label='-2.5 log10(flux)', vmin=minf, vmax=maxf)
-        plt.subplot(5, 3, 14)
-        plt.title("WHOLE COMPONENT")
-        display_pixels(xi[s], yi[s], vel_all[grid[s]], pixelsize=dx,
-                       colorbar=True, nticks=7, cmap='RdYlBu_r',
-                       vmin=-1.0 * vmax, vmax=vmax, label='Velocity')
-        plt.subplot(5, 3, 15)
-        display_pixels(xi[s], yi[s], sig_all[grid[s]], pixelsize=dx,
-                       colorbar=True, nticks=7, cmap='YlOrRd',
-                       vmin=smin, vmax=smax, label=r'$\mathbf{\sigma}$')
-
-        plt.tight_layout()
-        plt.savefig(plot_file_name)
-        self.logger.info(f'Component plots written to {plot_file_name}.')
-        plt.close()
-
     def plot_comps(self,
                    xlim=None,
                    ylim=None,
@@ -503,6 +276,25 @@ class Decomposition:
                    comp_kinem_moments=None,
                    figtype='.png'):
         
+        """ Generate decomposition plots.
+
+        Parameters
+        ----------
+        xlim : float
+            restricts plot x-coordinates to abs(x) <= xlim.
+        ylim : float
+            restricts plot y-coordinates to abs(y) <= ylim.
+        v_sigma_option : str, optional
+            If 'fit', v_mean and v_sigma are calculated based on fitting
+            Gaussians, if 'moments', v_mean and v_sigma are calculated
+            directly from the model's losvd histograms. The default is 'fit'.
+
+        Returns
+        -------
+        None.
+
+        """
+
         v_sigma_option = comp_kinem_moments.meta['v_sigma_option'] \
                          if 'v_sigma_option' in comp_kinem_moments.meta.keys()\
                          else ''
@@ -511,7 +303,6 @@ class Decomposition:
         weights = self.model.weights
         comps = self.decomp.meta["comps"]
 
-        # read the pixel grid
         stars = \
         self.config.system.get_component_from_class(
                                 dyn.physical_system.TriaxialVisibleComponent)
@@ -561,8 +352,8 @@ class Decomposition:
         smax = np.nanmax(sig_t[sig_t > 0])
         smin = np.nanmin(sig_t[sig_t > 0])
 
-        minf=np.nanmin(-2.5 * np.log10(fluxtot))
-        maxf=np.nanmax(-2.5 * np.log10(fluxtot[fluxtot !=0]))
+        minf=np.nanmin(np.log10(fluxtot))
+        maxf=np.nanmax(np.log10(fluxtot[fluxtot !=0]))
         xi_t=(xi[s])
         yi_t=(yi[s])
 
@@ -575,7 +366,7 @@ class Decomposition:
         comps_kin = astropy.table.Table(table)
 
         kin_name = stars.kinematic_data[self.kin_set].name
-        file_name = f'comps_kin_test_s22_{v_sigma_option}_{kin_name}_ALI'
+        file_name = f'comps_kin_{v_sigma_option}_{kin_name}'
         table_file_name = self.model.directory + file_name + '.ecsv'
         plot_file_name = self.config.settings.io_settings['plot_directory'] \
                          + file_name \
@@ -588,31 +379,41 @@ class Decomposition:
 
         self.logger.debug(f'{v_sigma_option}: {vmax=}, {smax=}, {smin=}.')
 
-        ### PLOT THE RESULTS
         LL = len(comps)
-        titles = ['THIN DISK COMPONENT', 'THICK DISK COMPONENT',
-                  'DISK COMPONENT','BULGE COMPONENT','ALL']
-        compon = np.array(['thin_d', 'warm_d', 'disk', 'bulge', 'all'])
-        plt.figure(figsize=(12, (LL+1)*3))
-        plt.subplots_adjust(hspace=0.4, wspace=0.02, left=0.01, bottom=0.05,
-                            top=0.99, right=0.99)
+        map1 = cmr.get_sub_cmap('twilight_shifted', 0.05, 0.6)
+        map2 = cmr.get_sub_cmap('twilight_shifted', 0.05, 0.95)
+        titles = ['THIN DISK','THICK DISK','DISK','BULGE','ALL']
+        compon = np.array(['thin_d','warm_d','disk','bulge','all'])
+        kwtext = dict(size=20, ha='center', va='center', rotation=90.)
+        kw_display1 = dict(pixelsize=dx, colorbar=True,  
+                                  nticks=7, cmap=map1)
+        kw_display2 = dict(pixelsize=dx, colorbar=True,  
+                                  nticks=7, cmap=map2)
+
+        plt.figure(figsize=(16, int((LL+2)*3)*ylim/xlim))
+        plt.subplots_adjust(hspace=0.7, wspace=0.01, left=0.01, 
+                            bottom=0.05, top=0.99, right=0.99)
 
         for ii in range(len(comps)):
-            plt.subplot(LL, 3, 3*ii+1)
-            display_pixels(xi_t, yi_t, -2.5 * np.log10(t[ii][s]) , pixelsize=dx,
-                            colorbar=True, nticks=7, cmap='YlOrRd_r',
-                            label='-2.5 log10(flux)', vmin=minf, vmax=maxf)
+            ax = plt.subplot(LL, 3, 3*ii+1)
+            if ii == 0:
+                ax.set_title('surface brightness (log)',fontsize=20,pad=20)
+            display_pixels(xi_t, yi_t, np.log10(t[ii][s])-maxf, 
+                           vmin=minf-maxf, vmax=0, **kw_display1)
+            ax.text(-0.2, 0.5, titles[np.where(compon==comps[ii])[0][0]],
+                    **kwtext, transform=ax.transAxes)
 
             plt.subplot(LL, 3, 3*ii+2)
-            plt.title(titles[np.where(compon==comps[ii])[0][0]])
-            display_pixels(xi_t, yi_t, vel[ii][grid[s]], pixelsize=dx,
-                        colorbar=True, nticks=7, cmap='RdYlBu_r',
-                        vmin=-1.0 * vmax, vmax=vmax, label='Velocity')
+            if ii == 0:
+                plt.title('velocity',fontsize=20,pad=20)
+            display_pixels(xi_t, yi_t, vel[ii][grid[s]], 
+                           vmin=-1.0*vmax, vmax=vmax, **kw_display2)
 
             plt.subplot(LL, 3, 3*ii+3)
-            display_pixels(xi_t, yi_t, sig[ii][grid[s]], pixelsize=dx,
-                        colorbar=True, nticks=7, cmap='YlOrRd',
-                        vmin=smin, vmax=smax, label=r'$\mathbf{\sigma}$')
+            if ii == 0:
+                plt.title('velocity dispersion',fontsize=20,pad=20)
+            display_pixels(xi_t, yi_t, sig[ii][grid[s]], 
+                           vmin=smin, vmax=smax, **kw_display1)
 
         plt.tight_layout()
         plt.savefig(plot_file_name)
