@@ -14,8 +14,7 @@ c = dyn.config_reader.Configuration(fname,
 
 dyn.model_iterator.ModelIterator(c) # generate models
 
-decomp = dyn.orbit_exploration.Decomposition(config=c,
-                                             kin_set=0) # do the decomposition
+decomp = dyn.analysis.Decomposition(config=c, kin_set=0) # do the decomposition
 
 for v_sigma_option in ('moments', 'fit'):
     #select the components and calculate the kinematics for each
