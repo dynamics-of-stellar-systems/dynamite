@@ -152,7 +152,7 @@ class Decomposition:
                               f'{flux.shape=}, {losvd.shape=}.')
             losvd_hist = dyn.kinematics.Histogram(self.losvd_histograms.xedg,
                                                   y=losvd,
-                                                  normalise=True)
+                                                  normalise=False)
             if v_sigma_option == 'moments':
                 v_mean = np.squeeze(losvd_hist.get_mean())
                 v_sigma = np.squeeze(losvd_hist.get_sigma())
