@@ -17,6 +17,9 @@ class Decomposition:
     and velocity dispersion only) are plotted by calling ``self.plot_decomp``
     which also writes the plotted data into the model directory.
 
+    The methodology in this class has been contributed by Giulia Santucci.
+    Please cite Santucci+22, ApJ 930, 2, 153 if used.
+
     Parameters
     ----------
     config : a ``dyn.config_reader.Configuration`` object, mandatory
@@ -135,6 +138,7 @@ class Decomposition:
                             dtype=[int],
                             meta={'v_sigma_option':v_sigma_option})
         for comp in self.decomp.meta['comps']:
+            self.logger.info(f'Component {comp}...')
             # calculate flux and losvd histograms for component
             orb_sel = np.array([comp in s for s in self.decomp['component']],
                                dtype=bool)
@@ -181,10 +185,6 @@ class Decomposition:
             orbit can belong to multiple components. In that case, the
             component strings are concatenated. For easier parsing later, the
             component descriptors are surrounded by pipe symbols ``|``.
-                                         meta={'comps':comps})
-            The table columns are: aperture index (starting with 0), followed
-            by three columns per component holding the flux, mean velocity,
-            and velocity dispersion.
             The table's meta data ``comps`` holds a list of all components.
 
         """
