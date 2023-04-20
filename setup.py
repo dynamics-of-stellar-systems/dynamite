@@ -46,6 +46,9 @@ setuptools.setup(
     python_requires=">=3.7",
     # use the already parsed requirements from requirements.txt
     install_requires=required,
+    package_data={
+        "dynamite": legacy_fortran
+    },
     # extra requirements for testing
     extras_require={
         "testing": [
