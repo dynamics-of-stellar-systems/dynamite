@@ -119,7 +119,7 @@ class Integrated(Data):
 
         Returns
         -------
-        Sets the attribute ``self.dp_arg``
+        Sets the attribute ``self.dp_args``
 
         """
         # read aperture file
@@ -174,7 +174,9 @@ class Integrated(Data):
                    'y':y,
                    'dx':dx,
                    'idx_bin_to_pix':grid[s],
-                   'angle':angle_deg}
+                   'angle':angle_deg} # Angle in degrees measured counter
+                                      # clockwise from the galaxy major axis
+                                      # to the X-axis of the input data
         self.dp_args = dp_args
 
     def get_map_plotter(self):
