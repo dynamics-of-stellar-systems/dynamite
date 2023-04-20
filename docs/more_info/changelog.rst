@@ -4,6 +4,7 @@
 Change Log
 ****************
 
+- Improvement: Eliminated unused position_angle system attribute from the configuration file (the angle is read from aperture.dat)
 - New feature: New parameter generator SpecificModels generates and runs a predefined list of models or models resulting from a cartesian product of parameter values
 - Improvement: the orbit plot (Plotter.orbit_plot) now works for all implemented weight solvers
 - Bugfix: fixed a bug that under certain circumstances prevented the staging files from being deleted after a successful iteration
