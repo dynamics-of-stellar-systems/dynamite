@@ -1,7 +1,7 @@
 import os
+import logging
 import numpy as np
 from astropy import table
-import logging
 from pathos.multiprocessing import Pool
 import matplotlib.pyplot as plt
 
@@ -231,16 +231,37 @@ class ModelInnerIterator(object):
                                                   output_orblib)
             self.write_output_to_all_models_table(rows_to_do_ml, output_ml)
             self.all_models.save() # save all_models table once models are run
-            # delete all staging files
-            for row in rows_to_do:
-                f_name = self.all_models.get_model_from_row(row).directory + \
-                    'model_done_staging.ecsv'
-                if os.path.isfile(f_name):
-                    os.remove(f_name)
-                else:
-                    self.logger.warning(f'Strange: {f_name} does not exist.')
-            self.logger.info('Iteration done, staging files deleted.')
+            self.logger.info('Iteration done, '
+                             f'{self.n_to_do} model(s) calculated.')
+            self.delete_staging_files(rows_to_do) # delete all staging files
         return self.par_generator.status
+
+    def delete_staging_files(self, rows):
+        """
+        Deletes staging files.
+
+        Parameters
+        ----------
+        rows : iterable of ints
+            The all_models table rows indicating models whose staging files
+            are to be deleted.
+
+        Returns
+        -------
+        n_files : int
+            Number of staging files deleted.
+
+        """
+        for row in rows:
+            f_name = self.all_models.get_model_from_row(row).directory + \
+                'model_done_staging.ecsv'
+            if os.path.isfile(f_name):
+                os.remove(f_name)
+            else:
+                self.logger.warning(f'Strange: {f_name} does not exist.')
+        n_files = len(rows)
+        self.logger.info(f'{n_files} staging file(s) deleted.')
+        return n_files
 
     def is_new_orblib(self, row_idx):
         """
@@ -518,14 +539,16 @@ class SplitModelIterator(ModelInnerIterator):
                 self.all_models.save() # save all_models table
                 input_list = [i + (True,False)
                               for i in enumerate(rows_to_do_orblib)]
-                self.logger.debug(f'{len(input_list)} unique new '
-                                  f'orlibs: {input_list}.')
-                if len(input_list) > 0:
+                n_orblibs = len(input_list)
+                self.logger.debug(f'{n_orblibs} unique new '
+                                  f'orlib(s): {input_list}.')
+                if n_orblibs > 0:
                     with Pool(self.ncpus) as p:
                         output = p.map(self.create_and_run_model, input_list)
                     self.write_output_to_all_models_table(rows_to_do_orblib,
                                                           output)
                     self.all_models.save() # save all_models table
+                    self.logger.info(f'{n_orblibs} orblib(s) calculated.')
             if self.do_weights:
                 # rows_to_do = np.where(self.all_models.table['orblib_done']
                 #     & (self.all_models.table['weights_done']==False))
@@ -539,9 +562,9 @@ class SplitModelIterator(ModelInnerIterator):
                 self.n_to_do = len(rows_to_do)
                 input_list = [i + (False,True)
                               for i in enumerate(rows_to_do)]
-                self.logger.debug(f'{len(input_list)} weight solves: '
+                self.logger.debug(f'{self.n_to_do} weight solve(s): '
                                   f'{input_list}.')
-                if len(input_list) > 0:
+                if self.n_to_do > 0:
                     # model directory already assigned if it is a 'new' orblib
                     no_dir = ''
                     new_dir_idx = [i for i in rows_to_do
@@ -553,6 +576,9 @@ class SplitModelIterator(ModelInnerIterator):
                         output = p.map(self.create_and_run_model, input_list)
                     self.write_output_to_all_models_table(rows_to_do, output)
                     self.all_models.save() # save all_models table
+                    self.logger.info(f'{self.n_to_do} orblibs\' '
+                                     'weights calculated.')
+                    self.delete_staging_files(rows_to_do) #delete staging files
             else:
                 self.logger.debug('Nothing to do...')
         return self.par_generator.status
