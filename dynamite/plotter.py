@@ -285,7 +285,7 @@ class Plotter():
                         if  max(val[nofix_name[i]])/min(val[nofix_name[i]]) > 100:
                             ax.xaxis.set_major_locator(LogLocator(base=10,numticks=3))
                         else:
-                            ax.xaxis.set_major_locator(MaxNLocator(nbins=3, prune='lower'))                        
+                            ax.xaxis.set_major_locator(MaxNLocator(nbins=3, prune='lower'))
                     if nofix_islog[j]:
                         ax.set_yscale('log')
                     ax.xaxis.set_major_formatter(NullFormatter())
@@ -436,21 +436,11 @@ class Plotter():
         if kin_type is kinematics.GaussHermite:
             if cbar_lims=='default':
                 cbar_lims = 'data'
-            fig = self._plot_kinematic_maps_gaussherm_new(
+            fig = self._plot_kinematic_maps_gaussherm(
                 model,
                 kin_set,
                 cbar_lims=cbar_lims,
                 **kwargs)
-            if ws_type == 'LegacyWeightSolver':
-                figold = self._plot_kinematic_maps_gaussherm_old(
-                    model,
-                    kin_set,
-                    cbar_lims=cbar_lims,
-                    **kwargs)
-            else:
-                self.logger.info('Legacy Gauss Hermite kinematic maps can only'
-                                 'be plotted if LegacyWeightSolver is used')
-                figold = plt.figure(figsize=(27, 12))
         elif kin_type is kinematics.BayesLOSVD:
             if cbar_lims=='default':
                 cbar_lims = [0,3]
@@ -462,9 +452,7 @@ class Plotter():
 
         figname = self.plotdir + f'kinematic_map_{kin_name}' + figtype
         fig.savefig(figname, dpi=300)
-        if kin_type is kinematics.GaussHermite:
-            fignameold = self.plotdir+f'kinematic_map_{kin_name}old'+figtype
-            figold.savefig(fignameold, dpi=300)
+        self.logger.info(f'Kinematic map written to {figname}.')
         return fig
 
     def _plot_kinematic_maps_bayeslosvd(self,
@@ -719,11 +707,11 @@ class Plotter():
                    ncol=2)
         return fig
 
-    def _plot_kinematic_maps_gaussherm_new(self,
-                                           model,
-                                           kin_set,
-                                           v_sigma_option='fit',
-                                           cbar_lims='data'):
+    def _plot_kinematic_maps_gaussherm(self,
+                                       model,
+                                       kin_set,
+                                       v_sigma_option='fit',
+                                       cbar_lims='data'):
         v_sigma_options = ['moments', 'fit']
         if v_sigma_option not in v_sigma_options:
             text = 'v_sigma_option must be in {v_sigma_options}, ' \
@@ -807,7 +795,7 @@ class Plotter():
         # # Only select the pixels that have a bin associated with them.
         s = np.ravel(np.where((grid >= 0)))
         fhist, _ = np.histogram(grid[s], bins=len(flux))
-        self.logger.info(f'{flux.shape=}, {fluxm.shape=}, {fhist.shape=}')
+        self.logger.debug(f'{flux.shape=}, {fluxm.shape=}, {fhist.shape=}')
         flux = flux / fhist
         fluxm = fluxm / fhist
 
@@ -925,251 +913,6 @@ class Plotter():
                                           **kw_display_pixels)
         plt.subplot(3, 5, 15)
         c = (hm[4][grid[s]] - h[4][grid[s]]) / dh[4][grid[s]]
-        display_pixels.display_pixels(x, y, c,
-                                          vmin=-10, vmax=10,
-                                          **kw_display_pixels)
-        fig.subplots_adjust(left=0.04, wspace=0.3,
-                            hspace=0.01, right=0.97)
-        kwtext = dict(size=20, ha='center', va='center', rotation=90.)
-        fig.text(0.015, 0.83, 'data', **kwtext)
-        fig.text(0.015, 0.53, 'model', **kwtext)
-        fig.text(0.015, 0.2, 'residual', **kwtext)
-
-        return fig
-
-    def _plot_kinematic_maps_gaussherm_old(self, model, kin_set, cbar_lims='data'):
-        stars = \
-          self.system.get_component_from_class(physys.TriaxialVisibleComponent)
-        kinem_fname = model.directory + 'nn_kinem.out'
-        body_kinem = np.genfromtxt(kinem_fname, skip_header=1)
-
-        first_bin = sum(k.n_apertures for k in stars.kinematic_data[:kin_set])
-        n_bins = stars.kinematic_data[kin_set].n_apertures
-        body_kinem = body_kinem[first_bin:first_bin+n_bins]
-        self.logger.debug(f'kin_set={kin_set}, plotting bins '
-                          f'{first_bin} through {first_bin+n_bins-1}')
-
-        if self.settings.weight_solver_settings['number_GH'] == 2:
-            id_num, flux, fluxm, velm, vel, dvel, sigm, sig, dsig = body_kinem.T
-
-            #to not need to change the plotting routine below, higher moments are set to 0
-            h3m, h3, dh3, h4m, h4, dh4 = vel*0, vel*0, vel*0+0.4, vel*0, vel*0, vel*0+0.4
-
-        if self.settings.weight_solver_settings['number_GH'] == 4:
-            id_num, flux, fluxm, velm, vel, dvel, sigm, sig, dsig, h3m, h3, dh3, h4m, h4, dh4 = body_kinem.T
-
-        if self.settings.weight_solver_settings['number_GH'] == 6:
-            id_num, flux, fluxm, velm, vel, dvel, sigm, sig, dsig, h3m, h3, dh3, h4m, h4, dh4, h5m, h5, dh5, h6m, h6, dh6 = body_kinem.T
-
-            #still ToDO: Add the kinematic map plots for h5 and h6
-
-        text = '`cbar_lims` must be one of `model`, `data` or `combined`'
-        if not cbar_lims in ['model', 'data', 'combined']:
-            self.logger.error(text)
-            raise AssertionError(text)
-        if cbar_lims=='model':
-            vmax = np.max(np.abs(velm))
-            smax, smin = np.max(sigm), np.min(sigm)
-            h3max, h3min = 0.15, -0.15
-            h4max, h4min = 0.15, -0.15
-        elif cbar_lims=='data':
-            vmax = np.max(np.abs(vel))
-            smax, smin = np.max(sig), np.min(sig)
-            h3max, h3min = 0.15, -0.15
-            h4max, h4min = 0.15, -0.15
-            if h4max == h4min:
-                h4max, h4min = np.max(h4m), np.min(h4m)
-        elif cbar_lims=='combined':
-            tmp = np.hstack((velm, vel))
-            vmax = np.max(np.abs(tmp))
-            tmp = np.hstack((sigm, sig))
-            smax, smin = np.max(tmp), np.min(tmp)
-            tmp = np.hstack((h3m, h3))
-            h3max, h3min = np.max(tmp), np.min(tmp)
-            tmp = np.hstack((h4m, h4))
-            h4max, h4min = np.max(tmp), np.min(tmp)
-        else:
-            self.logger.error('unknown choice of `cbar_lims`')
-
-        # Read aperture.dat
-        # The angle that is saved in this file is measured counter clock-wise
-        # from the galaxy major axis to the X-axis of the input data.
-
-        aperture_fname = stars.kinematic_data[kin_set].aperturefile
-        aperture_fname = self.input_directory + aperture_fname
-
-        lines = [line.rstrip('\n').split() for line in open(aperture_fname)]
-        minx = float(lines[1][0])
-        miny = float(lines[1][1])
-        sx = float(lines[2][0])
-        sy = float(lines[2][1])
-        sy = sy + miny
-        angle_deg = float(lines[3][0])
-        nx = int(lines[4][0])
-        ny = int(lines[4][1])
-        dx = sx / nx
-
-        self.logger.debug(f"Pixel grid dimension is dx={dx},nx={nx},ny={ny}")
-        grid = np.zeros((nx, ny), dtype=int)
-
-        xr = np.arange(nx, dtype=float) * dx + minx + 0.5 * dx
-        yc = np.arange(ny, dtype=float) * dx + miny + 0.5 * dx
-
-        xi = np.outer(xr, (yc * 0 + 1))
-        xt = xi.T.flatten()
-        yi = np.outer((xr * 0 + 1), yc)
-        yt = yi.T.flatten()
-
-        self.logger.debug(f'PA: {angle_deg}')
-        xi = xt
-        yi = yt
-
-        # read bins.dat
-
-        bin_fname = stars.kinematic_data[kin_set].binfile
-        bin_fname = self.input_directory + bin_fname
-        lines_bins = [line.rstrip('\n').split() for line in open(bin_fname)]
-        i = 0
-        str_head = []
-        i_var = []
-        grid = []
-        while i < len(lines_bins):
-            for x in lines_bins[i]:
-                if i == 0:
-                    str_head.append(str(x))
-                if i == 1:
-                    i_var.append(int(x))
-                if i > 1:
-                    grid.append(int(x))
-            i += 1
-        str_head = str(str_head[0])
-        i_var = int(i_var[0])
-        grid = np.ravel(np.array(grid))
-
-        # bins start counting at 1 in fortran and at 0 in idl:
-        grid = grid - 1
-
-        # Only select the pixels that have a bin associated with them.
-        s = np.ravel(np.where((grid >= 0)))
-        fhist, fbinedge = np.histogram(grid[s], bins=len(flux))
-        flux = flux / fhist
-        fluxm = fluxm / fhist
-
-        ### plot settings
-
-        minf = min(np.array(list(map(np.log10, flux[grid[s]] / max(flux)))))
-        maxf = max(np.array(list(map(np.log10, flux[grid[s]] / max(flux)))))
-        minfm = min(np.array(list(map(np.log10, fluxm[grid[s]] / max(fluxm)))))
-        maxfm = max(np.array(list(map(np.log10, fluxm[grid[s]] / max(fluxm)))))
-        minsb = min(minf,minfm)
-        maxsb = max(maxf,maxfm)
-
-        # The galaxy has NOT already rotated with PA to make major axis aligned with x
-
-        fig = plt.figure(figsize=(27, 12))
-        plt.subplots_adjust(hspace=0.7,
-                            wspace=0.01,
-                            left=0.01,
-                            bottom=0.05,
-                            top=0.99,
-                            right=0.99)
-        map1 = cmr.get_sub_cmap('twilight_shifted', 0.05, 0.6)
-        map2 = cmr.get_sub_cmap('twilight_shifted', 0.05, 0.95)
-        kw_display_pixels1 = dict(pixelsize=dx,
-                                 angle=angle_deg,
-                                 colorbar=True,
-                                 nticks=7,
-                                 #cmap='sauron')
-                                 cmap=map1)
-        kw_display_pixels = dict(pixelsize=dx,
-                                 angle=angle_deg,
-                                 colorbar=True,
-                                 nticks=7,
-                                 #cmap='sauron')
-                                 cmap=map2)
-        x, y = xi[s], yi[s]
-
-        ### PLOT THE REAL DATA
-        ax1 = plt.subplot(3, 5, 1)
-        c = np.array(list(map(np.log10, flux[grid[s]] / max(flux))))
-        display_pixels.display_pixels(x, y, c,
-                                          vmin=minsb, vmax=maxsb,
-                                          **kw_display_pixels1)
-        ax1.set_title('surface brightness (log)',fontsize=20, pad=20)
-        ax2 = plt.subplot(3, 5, 2)
-        display_pixels.display_pixels(x, y, vel[grid[s]],
-                                          vmin=-1.0 * vmax, vmax=vmax,
-                                          **kw_display_pixels)
-        ax2.set_title('velocity',fontsize=20, pad=20)
-        ax3 = plt.subplot(3, 5, 3)
-        display_pixels.display_pixels(x, y, sig[grid[s]],
-                                          vmin=smin, vmax=smax,
-                                          **kw_display_pixels1)
-        ax3.set_title('velocity dispersion',fontsize=20, pad=20)
-        ax4 = plt.subplot(3, 5, 4)
-        display_pixels.display_pixels(x, y, h3[grid[s]],
-                                          vmin=h3min, vmax=h3max,
-                                          **kw_display_pixels)
-        ax4.set_title(r'$h_{3}$ moment',fontsize=20, pad=20)
-        ax5 = plt.subplot(3, 5, 5)
-        display_pixels.display_pixels(x, y, h4[grid[s]],
-                                          vmin=h4min, vmax=h4max,
-                                          **kw_display_pixels)
-        ax5.set_title(r'$h_{4}$ moment',fontsize=20, pad=20)
-
-        ### PLOT THE MODEL DATA
-        plt.subplot(3, 5, 6)
-        c = np.array(list(map(np.log10, fluxm[grid[s]] / max(fluxm))))
-        display_pixels.display_pixels(x, y, c,
-                                          vmin=minsb, vmax=maxsb,
-                                          **kw_display_pixels1)
-        plt.subplot(3, 5, 7)
-        display_pixels.display_pixels(x, y, velm[grid[s]],
-                                          vmin=-1.0 * vmax, vmax=vmax,
-                                          **kw_display_pixels)
-        plt.subplot(3, 5, 8)
-        display_pixels.display_pixels(x, y, sigm[grid[s]],
-                                          vmin=smin, vmax=smax,
-                                          **kw_display_pixels1)
-        plt.subplot(3, 5, 9)
-        display_pixels.display_pixels(x, y, h3m[grid[s]],
-                                          vmin=h3min, vmax=h3max,
-                                          **kw_display_pixels)
-        plt.subplot(3, 5, 10)
-        display_pixels.display_pixels(x, y, h4m[grid[s]],
-                                          vmin=h4min, vmax=h4max,
-                                          **kw_display_pixels)
-
-
-        kw_display_pixels = dict(pixelsize=dx,
-                                 angle=angle_deg,
-                                 colorbar=True,
-                                 nticks=7,
-                                 cmap=map2)
-
-        ### PLOT THE ERROR NORMALISED RESIDUALS
-        plt.subplot(3, 5, 11)
-        c = (fluxm[grid[s]] - flux[grid[s]]) / flux[grid[s]]
-        display_pixels.display_pixels(x, y, c,
-                                          vmin=-0.05, vmax=0.05,
-                                          **kw_display_pixels)
-        plt.subplot(3, 5, 12)
-        c = (velm[grid[s]] - vel[grid[s]]) / dvel[grid[s]]
-        display_pixels.display_pixels(x, y, c,
-                                          vmin=-10, vmax=10,
-                                          **kw_display_pixels)
-        plt.subplot(3, 5, 13)
-        c = (sigm[grid[s]] - sig[grid[s]]) / dsig[grid[s]]
-        display_pixels.display_pixels(x, y, c,
-                                          vmin=-10, vmax=10,
-                                          **kw_display_pixels)
-        plt.subplot(3, 5, 14)
-        c = (h3m[grid[s]] - h3[grid[s]]) / dh3[grid[s]]
-        display_pixels.display_pixels(x, y, c,
-                                          vmin=-10, vmax=10,
-                                          **kw_display_pixels)
-        plt.subplot(3, 5, 15)
-        c = (h4m[grid[s]] - h4[grid[s]]) / dh4[grid[s]]
         display_pixels.display_pixels(x, y, c,
                                           vmin=-10, vmax=10,
                                           **kw_display_pixels)
