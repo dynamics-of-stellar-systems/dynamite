@@ -905,7 +905,7 @@ class Model(object):
                     config=self.config,
                     directory_with_ml=self.directory)
         else:
-            raise ValueError('Unknown WeightSolver type')
+            raise ValueError(f'Unknown WeightSolver type {ws_type}.')
         weights, chi2_tot, chi2_kin, chi2_kinmap = weight_solver.solve(orblib)
         self.chi2 = chi2_tot # instrinsic/projected mass + GH coeeficients 1-Ngh
         self.kinchi2 = chi2_kin # GH coeeficients 1-Ngh

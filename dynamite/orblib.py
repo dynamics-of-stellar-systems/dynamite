@@ -326,10 +326,16 @@ class LegacyOrbitLibrary(OrbitLibrary):
             self.logger.info(f'...done - {cmdstr} exit code {p.returncode}. '
                              f'{log_file}')
         else:
-            text = f'{cmdstr} exit code {p.returncode}. ERROR. ' \
-                   f'Message: {p.stdout.decode("UTF-8")}{log_file}'
-            self.logger.error(text)
-            raise RuntimeError(text)
+            text = f'...failed! {cmdstr} exit code {p.returncode}. ' \
+                   f'Message: {p.stdout.decode("UTF-8")}'
+            if p.returncode == 127: # command not found
+                text += 'Check DYNAMITE legacy_fortran executables.'
+                self.logger.error(text)
+                raise FileNotFoundError(text)
+            else:
+                text += f'{log_file} Be wary: DYNAMITE may crash...'
+                self.logger.warning(text)
+                raise RuntimeError(text)
         os.chdir(cur_dir)
 
     def write_executable_for_ics(self):
@@ -366,10 +372,16 @@ class LegacyOrbitLibrary(OrbitLibrary):
             self.logger.info(f'...done - {cmdstr} exit code '
                              f'{p.returncode}. {log_files}')
         else:
-            text=f'{cmdstr} exit code {p.returncode}. ERROR. ' \
-                 f'Message: {p.stdout.decode("UTF-8")}{log_files}'
-            self.logger.error(text)
-            raise RuntimeError(text)
+            text=f'...failed! {cmdstr} exit code {p.returncode}. ' \
+                 f'Message: {p.stdout.decode("UTF-8")}'
+            if p.returncode == 127: # command not found
+                text += 'Check DYNAMITE legacy_fortran executables.'
+                self.logger.error(text)
+                raise FileNotFoundError(text)
+            else:
+                text += f'{log_files} Be wary: DYNAMITE may crash...'
+                self.logger.warning(text)
+                raise RuntimeError(text)
         # move back to original directory
         os.chdir(cur_dir)
 
@@ -393,10 +405,16 @@ class LegacyOrbitLibrary(OrbitLibrary):
             self.logger.info(f'...done - {cmdstr_tube} exit code '
                              f'{p.returncode}. {log_files}')
         else:
-            text=f'{cmdstr_tube} exit code {p.returncode}. ERROR. ' \
-                 f'Message: {p.stdout.decode("UTF-8")}{log_files}'
-            self.logger.error(text)
-            raise RuntimeError(text)
+            text=f'...failed! {cmdstr_tube} exit code {p.returncode}. ' \
+                 f'Message: {p.stdout.decode("UTF-8")}'
+            if p.returncode == 127: # command not found
+                text += 'Check DYNAMITE legacy_fortran executables.'
+                self.logger.error(text)
+                raise FileNotFoundError(text)
+            else:
+                text += f'{log_files} Be wary: DYNAMITE may crash...'
+                self.logger.warning(text)
+                raise RuntimeError(text)
         self.logger.info('Integrating orbit library box orbits')
         # p = subprocess.call('bash '+cmdstr_box, shell=True)
         p = subprocess.run('bash '+cmdstr_box,
@@ -408,10 +426,16 @@ class LegacyOrbitLibrary(OrbitLibrary):
             self.logger.info(f'...done - {cmdstr_box} exit code '
                              f'{p.returncode}. {log_file}')
         else:
-            text = f'{cmdstr_box} exit code {p.returncode}. ERROR. ' \
-                   f'Message: {p.stdout.decode("UTF-8")}{log_file}'
-            self.logger.error(text)
-            raise RuntimeError(text)
+            text = f'...failed! {cmdstr_box} exit code {p.returncode}. ' \
+                   f'Message: {p.stdout.decode("UTF-8")}'
+            if p.returncode == 127: # command not found
+                text += 'Check DYNAMITE legacy_fortran executables.'
+                self.logger.error(text)
+                raise FileNotFoundError(text)
+            else:
+                text += f'{log_file} Be wary: DYNAMITE may crash...'
+                self.logger.warning(text)
+                raise RuntimeError(text)
         # move back to original directory
         os.chdir(cur_dir)
 
