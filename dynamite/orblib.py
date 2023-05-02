@@ -449,6 +449,11 @@ class LegacyOrbitLibrary(OrbitLibrary):
         cmd_string = 'cmd_tube_box_orbs'
         txt_file = open(cmd_string, "w")
         txt_file.write('#!/bin/bash\n')
+        txt_file.write('# first, check whether executables exist\n')
+        for f_name in orb_prgrm, 'triaxmass', 'triaxmassbin':
+            txt_file.write(f'test -e {self.legacy_directory}/{f_name} || ' +
+                           f'{{ echo "File {self.legacy_directory}/{f_name} ' +
+                           'not found." && exit 127; }\n')
         txt_file.write('(rm -f datfil/orblib.dat.tmp datfil/orblib.dat\n')
         txt_file.write(f'{self.legacy_directory}/{orb_prgrm} < infil/orblib.in '
                         '>> datfil/orblib.log\n')
@@ -485,6 +490,11 @@ class LegacyOrbitLibrary(OrbitLibrary):
         cmdstr_tube = 'cmd_tube_orbs'
         txt_file = open(cmdstr_tube, "w")
         txt_file.write('#!/bin/bash\n')
+        txt_file.write('# first, check whether executables exist\n')
+        for f_name in orb_prgrm, 'triaxmass', 'triaxmassbin':
+            txt_file.write(f'test -e {self.legacy_directory}/{f_name} || ' +
+                           f'{{ echo "File {self.legacy_directory}/{f_name} ' +
+                           'not found." && exit 127; }\n')
         txt_file.write('rm -f datfil/orblib.dat.tmp datfil/orblib.dat '
                        'datfil/orblib.dat.bz2\n')
         txt_file.write(f'{self.legacy_directory}/{orb_prgrm} < infil/orblib.in '
@@ -504,6 +514,10 @@ class LegacyOrbitLibrary(OrbitLibrary):
         cmdstr_box = 'cmd_box_orbs'
         txt_file = open(cmdstr_box, "w")
         txt_file.write('#!/bin/bash\n')
+        txt_file.write('# first, check whether executable exists\n')
+        txt_file.write(f'test -e {self.legacy_directory}/{orb_prgrm} || ' +
+                       f'{{ echo "File {self.legacy_directory}/{orb_prgrm} ' +
+                       'not found." && exit 127; }\n')
         txt_file.write('rm -f datfil/orblibbox.dat.tmp datfil/orblibbox.dat '
                        'datfil/orblibbox.dat.bz2\n')
         txt_file.write(f'{self.legacy_directory}/{orb_prgrm} '
