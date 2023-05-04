@@ -5,10 +5,12 @@ Change Log
 ****************
 
 - Improvement: updated tutorial notebooks
+- Improvement: plotting gh kinematic maps is more efficient and now works for all weight solvers
+- New feature: New parameter generator SpecificModels generates and runs a predefined list of models or models resulting from a cartesian product of parameter values
 - Improvement: the orbit plot (Plotter.orbit_plot) now works for all implemented weight solvers
 - Bugfix: fixed a bug that under certain circumstances prevented the staging files from being deleted after a successful iteration
 - Bugfix: removed logging from the list of requirements because it is in the Python standard library
-- New feature: added a new DYNAMITE module orbit_exploration, its first class Decompostion creates decomposition plots
+- New feature: added a new DYNAMITE module analysis, its class Decompostion creates decomposition plots
 - Improvement: Changed the ml directory name format to '05.2f' so all model directory names have the same length
 - New feature: Added AllModels.remove_unused_orblibs() utility method to free up disk space
 - New feature: Added a new method AllModels.make_best_models_table() that creates a table of the best models (best n models or models within a chi2-threshold of the best) and saves it to disk

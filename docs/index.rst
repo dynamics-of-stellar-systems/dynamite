@@ -14,6 +14,8 @@ How to cite
 If you use DYNAMITE, please cite our `ASCL entry <http://www.ascl.net/code/v/2684>`_ using the following `BibTeX citation <https://ui.adsabs.harvard.edu/abs/2020ascl.soft11007J/exportcitation>`_.
 Moreover, please cite the paper presenting the original code, `van den Bosch et al. 2008 (BibTeX) <https://ui.adsabs.harvard.edu/abs/2008MNRAS.385..647V/exportcitation>`_, and our most recent contribution, `Thater et al. 2022 (BibTeX) <https://ui.adsabs.harvard.edu/abs/2022A%26A...667A..51T/exportcitation>`_.
 
+If you use the ``dynamite.analysis.Decomposition`` class, please cite the paper describing its methodology, `Santucci et al. 2022 <https://ui.adsabs.harvard.edu/abs/2022ApJ...930..153S/exportcitation>`_.
+
 ===================
 Orbit mirroring bug
 ===================
@@ -103,6 +105,7 @@ The API overview may be a useful starting point.
    api_docs/weight_solver
    api_docs/model_iterator
    api_docs/plotting
+   api_docs/analysis
 
 More Information
 ================
