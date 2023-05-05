@@ -90,7 +90,7 @@ class ModelIterator(object):
                 self.logger.info(f'{par_generator_type}: iterations 0 and 1')
                 iteration += 2
             status = model_inner_iterator.run_iteration()
-            if plots:
+            if plots and not status['last_iter_added_no_new_models']:
                 try:
                     the_plotter.make_chi2_vs_model_id_plot()
                     the_plotter.make_chi2_plot()
