@@ -15,6 +15,7 @@ from matplotlib.ticker import NullFormatter
 import matplotlib.pyplot as plt
 import astropy
 from plotbin import display_pixels
+import dynamite
 from dynamite import kinematics
 from dynamite import physical_system as physys
 from dynamite import analysis
@@ -1311,11 +1312,8 @@ class Plotter():
             model_id = t.loc_indices[min_chi2]
             model = self.all_models.get_model_from_row(model_id)
 
-        mdir = model.directory
-        mdir_noml = mdir[:mdir[:-1].rindex('/')+1]
-
-        file2 = mdir_noml + 'datfil/orblib.dat_orbclass.out'
-        file3 = mdir_noml + 'datfil/orblibbox.dat_orbclass.out'
+        file2 = model.directory_noml + 'datfil/orblib.dat_orbclass.out'
+        file3 = model.directory_noml + 'datfil/orblibbox.dat_orbclass.out'
         file3_test = os.path.isfile(file3)
         if not file3_test:
             file3= '%s' % file2
@@ -1331,10 +1329,16 @@ class Plotter():
 
         norb = int(nre*nrth*nrrad)
         ncol=int(ndither**3)
-        orbclass1 = np.genfromtxt(file2).T
-        orbclass1 = orbclass1.reshape((5,ncol,norb), order='F')
-        orbclass2 = np.genfromtxt(file3).T
-        orbclass2 = orbclass1.reshape((5,ncol,norb), order='F')
+        # orbclass1 = np.genfromtxt(file2).T
+        # orbclass1 = orbclass1.reshape((5,ncol,norb), order='F')
+        # orbclass2 = np.genfromtxt(file3).T
+        # orbclass2 = orbclass1.reshape((5,ncol,norb), order='F')
+        orbclass1 = dynamite.orblib.read_orbit_property_file_base(file2,
+                                                                  ncol,
+                                                                  norb)
+        orbclass2 = dynamite.orblib.read_orbit_property_file_base(file2,
+                                                                  ncol,
+                                                                  norb)
 
         orblib = model.get_orblib()
         _ = model.get_weights(orblib)

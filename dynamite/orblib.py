@@ -757,7 +757,8 @@ class LegacyOrbitLibrary(OrbitLibrary):
         ml_original = float((lines[-9])[0])
         return ml_original
 
-    def read_orbit_property_file_base(self, file, ncol, nrow):
+    @staticmethod
+    def read_orbit_property_file_base(file, ncol, nrow):
         """Base method to read in ``*orbclass.out`` files
 
         ...which hold the information of all the orbits stored in the orbit
