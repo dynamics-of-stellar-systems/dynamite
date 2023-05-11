@@ -1336,7 +1336,7 @@ class Plotter():
         orbclass1 = dynamite.orblib.read_orbit_property_file_base(file2,
                                                                   ncol,
                                                                   norb)
-        orbclass2 = dynamite.orblib.read_orbit_property_file_base(file2,
+        orbclass2 = dynamite.orblib.read_orbit_property_file_base(file3,
                                                                   ncol,
                                                                   norb)
 
