@@ -1,8 +1,9 @@
 import setuptools
 
 # this loads the version number from the dynamite/version.py module
-version = open("dynamite/_version.py")
-version = version.readlines()[-1].split()[-1].strip("\"'")
+ver_file = open("dynamite/_version.py")
+version = ver_file.readlines()[-1].split()[-1].strip("\"'")
+ver_file.close()
 
 # load the readme as long description
 with open("README.md", "r") as fh:
@@ -11,6 +12,18 @@ with open("README.md", "r") as fh:
 # load the package requirements from requirements.txt
 with open("requirements.txt", "r") as fp:
     required = fp.read().splitlines()
+
+legacy_fortran = [
+    "../legacy_fortran/modelgen",
+    "../legacy_fortran/orbitstart",
+    "../legacy_fortran/orblib",
+    "../legacy_fortran/orblib_new_mirror",
+    "../legacy_fortran/partgen",
+    "../legacy_fortran/triaxmass",
+    "../legacy_fortran/triaxmassbin",
+    "../legacy_fortran/triaxnnls_CRcut",
+    "../legacy_fortran/triaxnnls_noCRcut",
+]
 
 setuptools.setup(
     name="dynamite",
@@ -33,24 +46,14 @@ setuptools.setup(
     python_requires=">=3.7",
     # use the already parsed requirements from requirements.txt
     install_requires=required,
+    package_data={
+        "dynamite": legacy_fortran
+    },
     # extra requirements for testing
     extras_require={
         "testing": [
             "pytest",
             "coverage",
         ]
-    },
-    package_data={
-        "dynamite": [
-            "../legacy_fortran/modelgen",
-            "../legacy_fortran/orbitstart",
-            "../legacy_fortran/orblib",
-            "../legacy_fortran/orblib_new_mirror",
-            "../legacy_fortran/partgen",
-            "../legacy_fortran/triaxmass",
-            "../legacy_fortran/triaxmassbin",
-            "../legacy_fortran/triaxnnls_CRcut",
-            "../legacy_fortran/triaxnnls_noCRcut",
-        ]
-    },
+    }
 )

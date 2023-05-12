@@ -4,6 +4,10 @@ import shutil
 import logging
 import numpy as np
 from scipy.io import FortranFile
+from astropy import table
+import astropy.units as u
+import matplotlib.pyplot as plt
+import sparse
 
 from dynamite import physical_system as physys
 from dynamite import kinematics as dyn_kin
@@ -752,5 +756,308 @@ class LegacyOrbitLibrary(OrbitLibrary):
         lines = [line.rstrip('\n').split() for line in open(infile)]
         ml_original = float((lines[-9])[0])
         return ml_original
+
+    def read_orbit_property_file_base(self, file, ncol, nrow):
+        """Base method to read in ``*orbclass.out`` files
+
+        ...which hold the information of all the orbits stored in the orbit
+        library. The number of orbits is
+        ``norb = nrow = nE * nI2 * nI3 * dithering^3``.
+        For each orbit, the time averaged values are stored:
+        ``lx, ly ,lz, r = sum(sqrt( average(r^2) ))``,
+        ``Vrms^2 = average(vx^2 + vy^2 + vz^2 + 2vx*vy + 2vxvz + 2vxvy)``.
+        The files were originally stored by the fortran code ``orblib_f.f90``,
+        ``integrator_find_orbtype``.
+
+        *** Do not try to replace this with numpy (e.g.** ``np.genfromtext`` **)
+        since the output files are sometimes written in non-standard arrays
+        (in a seemingly system dependent way). ***
+
+        """
+        data=[]
+        lines = [line.rstrip('\n').split() for line in open(file)]
+        i = 0
+        while i < len(lines):
+            for x in lines[i]:
+                data.append(np.double(x))
+            i += 1
+        data=np.array(data)
+        data=data.reshape((5,ncol,nrow), order='F')
+        return data
+
+    def read_orbit_property_file(self):
+        """Read the ``*orbclass.out`` files
+
+        These filen contain time-averaged properties of individual orbits within
+        a bundle. Results are stored in ``self.orb_properties``, an astropy
+        table with columns ``[r, Vrms, L, Lx, Ly, Lz, lmd, lmd_x, lmd_y,
+        lmd_z]`` i.e.
+        the time-averaged value of (i) radius ``r``, (ii) ``V_rms =
+        (vx^2 + vy^2 + vz^2 + 2(vxvy + vxvz + vyvz))``, (iii) total angular
+        momentum ``L``, (iv) ``Lx``, (v) ``Ly``, (vi) ``Lz``, and
+        circularities (vii) ``lmd = L/V_rms``, (ix) ``lmd_x=Lx/V_rms``,
+        (x) ``lmd_y``, (xi) ``lmd_z``. Each column
+        of the table is an array of shape ``[N_bundle, N_orbit]``.
+
+        """
+        nE = self.settings['nE']
+        nI2 = self.settings['nI2']
+        nI3 = self.settings['nI3']
+        ndither = self.settings['dithering']
+        norb = int(nE*nI2*nI3)
+        ncol = ndither**3
+        nrow = norb
+        orbclass1 = self.read_orbit_property_file_base(
+            self.mod_dir+'datfil/orblib.dat_orbclass.out',
+            ncol=ncol,
+            nrow=nrow)
+        orbclass2 = self.read_orbit_property_file_base(
+            self.mod_dir+'datfil/orblibbox.dat_orbclass.out',
+            ncol=ncol,
+            nrow=nrow)
+        orbclass=np.dstack((orbclass1,orbclass1,orbclass2))
+        orbclass1a=np.copy(orbclass1)
+        orbclass1a[0:3,:,:] *= -1
+        for i in range(int(0), norb):
+            orbclass[:,:,i*2]=orbclass1[:, :, i]
+            orbclass[:,:,i*2 + 1]=orbclass1a[:, :, i]
+        orb_properties = table.QTable()
+        orb_properties['Lx'] = orbclass[0,:,:].T * u.km * u.km/u.s
+        orb_properties['Ly'] = orbclass[1,:,:].T * u.km * u.km/u.s
+        orb_properties['Lz'] = orbclass[2,:,:].T * u.km * u.km/u.s
+        orb_properties['r'] = orbclass[3,:,:].T * u.km
+        orb_properties['Vrms'] = orbclass[4,:,:].T**0.5 * u.km/u.s
+        r_vrms = orb_properties['r']*orb_properties['Vrms']
+        orb_properties['lmd_x'] = orb_properties['Lx']/r_vrms
+        orb_properties['lmd_y'] = orb_properties['Ly']/r_vrms
+        orb_properties['lmd_z'] = orb_properties['Lz']/r_vrms
+        orb_properties['r'] = orb_properties['r'].to(u.kpc)
+        orb_properties['L'] = (
+            orb_properties['Lx']**2 +
+            orb_properties['Ly']**2 +
+            orb_properties['Lz']**2)**0.5
+        orb_properties['lmd'] = (orb_properties['L']/r_vrms).to(u.dimensionless_unscaled)
+        self.orb_properties = orb_properties
+
+    def find_threshold_angular_momentum(self, make_diagnostic_plots=False):
+        """Find threshold angular momentum ``dL`` for use in orbit classification
+
+        Currently uses a hard coded value of ``0.090909 * 10^18 km km/s``.
+        TODO: generalise this to automatically select ``dL`` based on the orblib.
+
+        Parameters
+        ----------
+        make_diagnostic_plots : bool, optional
+            If ``True``, plot diagnostic angular momentum histograms. The
+            default is ``False``.
+
+        Returns
+        -------
+        dl : float
+            The threshold angular momentum ``dL``.
+        """
+        orb_properties = self.orb_properties
+        dl = np.linspace(-1, 1, 12)[6]
+        dl *= 1.
+        if make_diagnostic_plots:
+            kw_hist = {'range':(-1,1), 'bins':11, 'alpha':0.3}
+            _ = plt.hist(np.ravel(orb_properties['Lx'].value/1e18), **kw_hist)
+            _ = plt.hist(np.ravel(orb_properties['Ly'].value/1e18), **kw_hist)
+            _ = plt.hist(np.ravel(orb_properties['Lz'].value/1e18), **kw_hist)
+            plt.axvline(dl, ls=':', color='k')
+            plt.axvline(-dl, ls=':', color='k')
+        return dl
+
+    def classify_orbits(self, make_diagnostic_plots=False):
+        """ Perform orbit classification.
+
+        Orbits are classified in 3D angular momentum space ``(Lx, Ly, Lz)``
+        according to a threshold angular momdentum ``dL``. Ideally, we would
+        classify as follows:
+
+        - ``|Lx|,|Ly|,|Lz|<dL`` --> box
+        - ``|Lx|>dL``, ``|Ly|,|Lz|<dL`` --> x-axis tube
+        - ``|Ly|>dL``, ``|Lx|,|Lz|<dL`` --> y-axis tube (theoretically unstable)
+        - ``|Lz|>dL``, ``|Lx|,|Ly|<dL`` --> z-axis tube
+
+        This "exact" classification leaves many orbits unclassified. Instead we
+        classify tube orbits using the less strict criteria:
+
+        - not a box, ``|Lx|>|Ly|``, ``|Lx|>|Lz|`` --> x-axis tube "-ish"
+        - not a box, ``|Ly|>|Lz|``, ``|Ly|>|Lz|`` --> y-axis tube "-ish"
+        - not a box, ``|Lz|>|Lx|``, ``|Lz|>|Ly|`` --> z-axis tube "-ish"
+
+        The method logs the fraction of all orbits in each classification, and
+        the fraction of each type which are "exact" according to the stricter
+        criteria. The results saved in ``self.orb_classification`` are for the
+        less strict criteria.
+
+        Parameters
+        ----------
+        make_diagnostic_plots : bool, optional
+            whether to make diagnostic plot in
+            ``find_threshold_angular_momentum``, by default ``False``.
+
+        Returns
+        -------
+        None
+            sets result to ``self.orb_classification``, a dictionary containing
+            5 keys ``bool_{box,xtish,ytish,ztish,other}`` where e.g.
+            ``bool_box`` is a boolean array with shape ``[N_bundles, N_orbits]``
+            set to ``True`` at the location of box orbits.
+            ``bool_other`` should be ``False`` everywhere.
+
+        """
+        orb_properties = self.orb_properties
+        dl = self.find_threshold_angular_momentum(
+            make_diagnostic_plots=make_diagnostic_plots
+            )
+        # find box orbits
+        bool_box = (
+            (np.abs(orb_properties['Lx'].value/1e18) <= dl) &
+            (np.abs(orb_properties['Ly'].value/1e18) <= dl) &
+            (np.abs(orb_properties['Lz'].value/1e18) <= dl)
+        )
+        idx_box = np.where(bool_box)
+        # find "true" tube orbits i.e. with exactly one component of L =/= 0
+        bool_xtube = (
+            (np.abs(orb_properties['Lx'].value/1e18) > dl) &
+            (np.abs(orb_properties['Ly'].value/1e18) <= dl) &
+            (np.abs(orb_properties['Lz'].value/1e18) <= dl)
+        )
+        idx_xtube = np.where(bool_xtube)
+        bool_ytube = (
+            (np.abs(orb_properties['Lx'].value/1e18) <= dl) &
+            (np.abs(orb_properties['Ly'].value/1e18) > dl) &
+            (np.abs(orb_properties['Lz'].value/1e18) <= dl)
+        )
+        idx_ytube = np.where(bool_ytube)
+        bool_ztube = (
+            (np.abs(orb_properties['Lx'].value/1e18) <= dl) &
+            (np.abs(orb_properties['Ly'].value/1e18) <= dl) &
+            (np.abs(orb_properties['Lz'].value/1e18) > dl)
+        )
+        idx_ztube = np.where(bool_ztube)
+        # find tube-ish orbits i.e. with one component of L larger than other 2
+        bool_xtish = (
+            (bool_box==False)&
+            (np.abs(orb_properties['Lx']) > np.abs(orb_properties['Ly'])) &
+            (np.abs(orb_properties['Lx']) > np.abs(orb_properties['Lz']))
+        )
+        bool_ytish = (
+            (bool_box==False) &
+            (np.abs(orb_properties['Ly']) > np.abs(orb_properties['Lx'])) &
+            (np.abs(orb_properties['Ly']) > np.abs(orb_properties['Lz']))
+        )
+        bool_ztish = (
+            (bool_box==False) &
+            (np.abs(orb_properties['Lz']) > np.abs(orb_properties['Lx'])) &
+            (np.abs(orb_properties['Lz']) > np.abs(orb_properties['Ly']))
+        )
+        # find any remaining orbits
+        bool_other = (
+            (bool_box==False) &
+            (bool_xtish==False) &
+            (bool_ytish==False) &
+            (bool_ztish==False))
+        # log
+        n_orb_tot = bool_box.size
+        n_box = np.sum(bool_box)
+        n_xtish = np.sum(bool_xtish)
+        n_ytish = np.sum(bool_ytish)
+        n_ztish = np.sum(bool_ztish)
+        n_other = np.sum(bool_other)
+        n_sum = n_box + n_xtish + n_ytish + n_ztish + n_other
+        n_xt_exact = np.sum(bool_xtube)
+        n_yt_exact = np.sum(bool_ytube)
+        n_zt_exact = np.sum(bool_ztube)
+        def percent(x):
+            return f'{100.*x:.1f}%'
+        self.logger.info('Orbit library classification:')
+        self.logger.info(f'    - {percent(n_box/n_orb_tot)} box')
+        self.logger.info(f'    - {percent(n_xtish/n_orb_tot)} x-tubes')
+        self.logger.info(f'    - {percent(n_ytish/n_orb_tot)} y-tubes')
+        self.logger.info(f'    - {percent(n_ztish/n_orb_tot)} z-tubes')
+        self.logger.info(f'    - {percent(n_other/n_orb_tot)} other types')
+        self.logger.info('Amongst tubes, % with only one nonzero component of L:')
+        self.logger.info(f'    - {percent(n_xt_exact/n_xtish)} of x-tubes')
+        self.logger.info(f'    - {percent(n_yt_exact/n_ytish)} of y-tubes')
+        self.logger.info(f'    - {percent(n_zt_exact/n_ztish)} of z-tubes')
+        self.logger.info('Orbit library classification DONE.')
+        # save the output
+        orb_classification = {
+            'bool_box':bool_box,
+            'bool_xtish':bool_xtish,
+            'bool_ytish':bool_ytish,
+            'bool_ztish':bool_ztish,
+            'bool_other':bool_other
+        }
+        self.orb_classification = orb_classification
+
+    def get_projection_tensor(self, minr=None, maxr=None, nr=50, nl=61):
+        # skip if this method has been run before with the same input
+        projection_tensor_pars = {'minr':minr,
+                                  'maxr':maxr,
+                                  'nr':nr,
+                                  'nl':nl}
+        if hasattr(self, 'projection_tensor_pars'):
+            if self.projection_tensor_pars == projection_tensor_pars:
+                return
+            else:
+                self.projection_tensor_pars = projection_tensor_pars
+        # otherwise, continue...
+        if hasattr(self, 'orb_properties') == False:
+            self.read_orbit_property_file()
+        orb_properties = self.orb_properties
+        if hasattr(self, 'orb_classification') == False:
+            self.classify_orbits()
+        if minr is None:
+            minr = np.min(orb_properties['r']).value
+        if maxr is None:
+            maxr = np.max(orb_properties['r']).value
+        log10_r_rng = (np.log10(minr), np.log10(maxr))
+        lmd_rng = (-1, 1)
+        tot_lmd_rng = (0, 1)
+        # store ranges for use in plots
+        self.projection_tensor_rng = {
+            'log10_r_rng':log10_r_rng,
+            'lmd_rng':lmd_rng,
+            'tot_lmd_rng':tot_lmd_rng,
+        }
+        # store ranges for use in plots
+        log10_r_edg = np.linspace(*log10_r_rng, nr+1)
+        lmd_edg = np.linspace(*lmd_rng, nl+1)
+        tot_lmd_edg = np.linspace(*tot_lmd_rng, nl+1)
+        r_idx = np.digitize(np.log10(orb_properties['r'].value), bins=log10_r_edg)
+        lmd_x_idx = np.digitize(orb_properties['lmd_x'].value, bins=lmd_edg)
+        lmd_y_idx = np.digitize(orb_properties['lmd_y'].value, bins=lmd_edg)
+        lmd_z_idx = np.digitize(orb_properties['lmd_z'].value, bins=lmd_edg)
+        tot_lmd_idx = np.digitize(orb_properties['lmd'].value, bins=tot_lmd_edg)
+        bundle_idx, orbit_idx = np.indices(r_idx.shape)
+        # make (sparse matrix representation of) projection tensor
+        projection = []
+        orbtypes = ['xtish', 'ytish', 'ztish', 'box']
+        ang_mom_indixes = [lmd_x_idx, lmd_y_idx, lmd_z_idx, tot_lmd_idx]
+        for (orbtype00, l_idx00) in zip(orbtypes, ang_mom_indixes):
+            str00 = f'bool_{orbtype00}'
+            bool00 = self.orb_classification[str00]
+            # decrease r_idx/L_idx by 1 so they are 0-index
+            coords = np.array([bundle_idx[bool00],
+                               orbit_idx[bool00],
+                               r_idx[bool00]-1,
+                               l_idx00[bool00]-1])
+            # remove entries where orbit is outside bounds
+            idx_keep = np.where(
+                (coords[2,:]>-1) & (coords[3,:]>-1) & (coords[2,:]<nr) & (coords[3,:]<nl)
+                )
+            coords = coords[:, idx_keep[0]]
+            # create binary sparse matrix, with 1 entry per particle per bundle
+            projection00 = sparse.COO(coords, 1, shape=r_idx.shape+(nr,nl))
+            # average over individual orbits in a bundle
+            projection00 = np.mean(projection00, 1)
+            projection += [projection00]
+        projection = np.stack(projection)
+        projection = np.moveaxis(projection, 1, 3)
+        self.projection_tensor = projection
 
 # end

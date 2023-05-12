@@ -921,7 +921,10 @@ class Configuration(object):
                     raise ValueError(text)
 
         gen_type = self.settings.parameter_space_settings["generator_type"]
-        allowed_types = ['GridWalk', 'LegacyGridSearch', 'FullGrid']
+        allowed_types = ['GridWalk',
+                         'LegacyGridSearch',
+                         'FullGrid',
+                         'SpecificModels']
         if gen_type not in allowed_types:
             text = f'Legacy mode: parameter space generator_type ' \
                    f'must be in {allowed_types}'

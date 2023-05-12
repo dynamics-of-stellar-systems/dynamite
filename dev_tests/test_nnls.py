@@ -2,7 +2,6 @@
 # -*- coding: utf-8 -*-
 
 import os
-import logging
 import time
 
 # Set matplotlib backend to 'Agg' (compatible when X11 is not running
@@ -29,6 +28,8 @@ def run_user_test(make_comp=False):
     else:
         file_dir = None
     fname = 'user_test_config_ml.yaml'
+    # fname = 'FCC047_2kin/FCC047_config.yaml'
+    # fname = 'user_test_config_fixedvalues.yaml'
     c = dyn.config_reader.Configuration(fname,
                                         reset_logging=True,
                                         user_logfile='test_nnls',
@@ -109,9 +110,12 @@ def run_user_test(make_comp=False):
         print('The best 2 models:')
         c.all_models.get_best_n_models(n=2).pprint(max_lines=-1, max_width=-1)
 
-    return c.all_models.table, \
-        compare_file, \
-        c.settings.parameter_space_settings['stopping_criteria']['n_max_mods']
+    if make_comp:
+        return c.all_models.table, \
+          compare_file, \
+          c.settings.parameter_space_settings['stopping_criteria']['n_max_mods']
+    else:
+        return c
 
 def create_comparison_data():
 
@@ -128,6 +132,6 @@ def create_comparison_data():
 
 if __name__ == '__main__':
     # create_comparison_data()
-    run_user_test()
+    c = run_user_test()
 
 # end

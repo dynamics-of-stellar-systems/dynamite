@@ -11,15 +11,18 @@ Welcome to DYNAMITE's documentation!
 How to cite
 ================
 
-If you use DYNAMITE, please cite our `ASCL entry <http://www.ascl.net/code/v/2684>`_ using the following `BibTex citation <https://ui.adsabs.harvard.edu/abs/2020ascl.soft11007J/exportcitation>`_
+If you use DYNAMITE, please cite our `ASCL entry <http://www.ascl.net/code/v/2684>`_ using the following `BibTex citation <https://ui.adsabs.harvard.edu/abs/2020ascl.soft11007J/exportcitation>`_.
+Moreover, please cite the paper presenting the original code, `van den Bosch et al. 2008 <https://ui.adsabs.harvard.edu/abs/2008MNRAS.385..647V/exportcitation>`_, and our most recent contribution, `Thater et al. 2022 <https://ui.adsabs.harvard.edu/abs/2022A%26A...667A..51T/exportcitation>`_.
+
+If you use the ``dynamite.analysis.Decomposition`` class, please cite the paper describing its methodology, `Santucci et al. 2022 <https://ui.adsabs.harvard.edu/abs/2022ApJ...930..153S/exportcitation>`_.
 
 ===================
 Orbit mirroring bug
 ===================
 
-`Quenneville et al. 2022 <https://iopscience.iop.org/article/10.3847/1538-4357/ac3e68>`_ reported a bug in the orbit calculation of the original `van den Bosch et al. 2008 <https://academic.oup.com/mnras/article/385/2/647/1068433>`_ code that is used in DYNAMITE. We corrected the old mirroring in DYNAMITE, starting from version 3.0.0. From this version on, the default DYNAMITE run uses the correct mirrroring. We caution the user to not use the old orbit calculation routine.
+`Quenneville et al. 2022 <https://ui.adsabs.harvard.edu/abs/2022ApJ...926...30Q/abstract>`_ reported a bug in the orbit calculation of the original `van den Bosch et al. 2008 <https://ui.adsabs.harvard.edu/abs/2008MNRAS.385..647V/abstract>`_ code that is used in DYNAMITE. We corrected the old mirroring in DYNAMITE, starting from version 3.0.0. From this version on, the default DYNAMITE run uses the correct mirrroring. We caution the user to not use the old orbit calculation routine.
 
-In `Thater et al. 2022 <https://ucloud.univie.ac.at/index.php/s/t8atbqqJ7LW2cpH>`_, our team provides a thorough quantification of how this bug has affected the results of dynamical analyses performed with previous versions of the code. Focusing on the typical scientific applications of the Schwarzschild triaxial code, in all our tests we find that differences are negligible with respect to the statistical and systematic uncertainties.
+In `Thater et al. 2022 <https://ui.adsabs.harvard.edu/abs/2022A%26A...667A..51T/abstract>`_, our team provides a thorough quantification of how this bug has affected the results of dynamical analyses performed with previous versions of the code. Focusing on the typical scientific applications of the Schwarzschild triaxial code, in all our tests we find that differences are negligible with respect to the statistical and systematic uncertainties.
 
 The bug occurred in the orbit calculation (legacy-fortran/orblib_f.f90), where a few velocity components needed a different sign (as reported in Table 1 of Quenneville et al. 2022). The corrected orbit calculation is found in (legacy-fortran/orblib_f_new_mirror.f90).
 
@@ -57,6 +60,7 @@ The following pages give all the information needed to get started,
   getting_started/code_overview.rst
   getting_started/configuration.rst
   getting_started/getting_help.rst
+  how_to_cite.rst
 
 The tutorials also show an example of running DYNAMITE from start to finish - this could also be a great place to start getting acquainted with the code. Further sections show other API-documentation for specific classes and methods, and other miscellaneous information.
 
@@ -101,6 +105,7 @@ The API overview may be a useful starting point.
    api_docs/weight_solver
    api_docs/model_iterator
    api_docs/plotting
+   api_docs/analysis
 
 More Information
 ================

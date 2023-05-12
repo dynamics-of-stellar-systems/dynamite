@@ -1,23 +1,23 @@
 import logging
 import subprocess
 import sys
-import numpy as np
 import os
+from copy import deepcopy
+import numpy as np
 import scipy.integrate
 from scipy.special import erf
 from scipy.interpolate import UnivariateSpline
 from scipy.sparse import csr_matrix
 from scipy.sparse.csgraph import maximum_bipartite_matching
-from copy import deepcopy
 import matplotlib as mpl
 from matplotlib.ticker import MaxNLocator, FixedLocator,LogLocator
 from matplotlib.ticker import NullFormatter
 import matplotlib.pyplot as plt
+import astropy
 from plotbin import display_pixels
-from dynamite import constants as const
 from dynamite import kinematics
-from dynamite import weight_solvers
 from dynamite import physical_system as physys
+from dynamite import analysis
 import cmasher as cmr
 class ReorderLOSVDError(Exception):
     pass
@@ -237,7 +237,7 @@ class Plotter():
                 ax = plt.subplot(nnofix-1, nnofix-1, pltnum)
 
                 plt.plot(val[nofix_name[i]],val[nofix_name[j]], 'D',
-                         color='black', markersize=4)
+                         color='gray', markersize=4)
 
                 for k in range(nf - 1, -1, -1):
                     if val['chi2t'][k]/chlim<=3: #only significant chi2 values
@@ -280,6 +280,14 @@ class Plotter():
                     if nofix_islog[j]:
                         ax.set_yscale('log')
                 else:
+                    if nofix_islog[i]:
+                        ax.set_xscale('log')
+                        if  max(val[nofix_name[i]])/min(val[nofix_name[i]]) > 100:
+                            ax.xaxis.set_major_locator(LogLocator(base=10,numticks=3))
+                        else:
+                            ax.xaxis.set_major_locator(MaxNLocator(nbins=3, prune='lower'))
+                    if nofix_islog[j]:
+                        ax.set_yscale('log')
                     ax.xaxis.set_major_formatter(NullFormatter())
 
                 if i==0:
@@ -300,6 +308,10 @@ class Plotter():
                         ax.set_yticklabels([label_format.format(x).replace('e+0','e') for x in ticks_loc],fontsize=fontsize)
                     ax.yaxis.set_tick_params(labelsize=fontsize)
                 else:
+                    if nofix_islog[i]:
+                        ax.set_xscale('log')
+                    if nofix_islog[j]:
+                        ax.set_yscale('log')
                     ax.yaxis.set_major_formatter(NullFormatter())
 
                 ax.xaxis.set_minor_formatter(NullFormatter())
@@ -334,7 +346,7 @@ class Plotter():
         Generates a kinematic map of a model with v, sigma, h3, h4...
 
         Maps of the surface brightness, mean line-of-sight velocity,
-        velocity dispersion, and higher order Gauss–Hermite moments
+        velocity dispersion, and higher order Gauss-Hermite moments
         are shown. The first row are data, the second row the best-fit
         model, and the third row the residuals.
 
@@ -422,18 +434,13 @@ class Plotter():
         ws_type = self.settings.weight_solver_settings['type']
 
         if kin_type is kinematics.GaussHermite:
-            if ws_type == 'LegacyWeightSolver':
-                if cbar_lims=='default':
-                    cbar_lims = 'data'
-                fig = self._plot_kinematic_maps_gaussherm(
-                    model,
-                    kin_set,
-                    cbar_lims=cbar_lims,
-                    **kwargs)
-            else:
-                self.logger.info(f'Gauss Hermite kinematic maps can only be '
-                                 'plotted if LegacyWeightSolver is used')
-                fig = plt.figure(figsize=(27, 12))
+            if cbar_lims=='default':
+                cbar_lims = 'data'
+            fig = self._plot_kinematic_maps_gaussherm(
+                model,
+                kin_set,
+                cbar_lims=cbar_lims,
+                **kwargs)
         elif kin_type is kinematics.BayesLOSVD:
             if cbar_lims=='default':
                 cbar_lims = [0,3]
@@ -445,6 +452,7 @@ class Plotter():
 
         figname = self.plotdir + f'kinematic_map_{kin_name}' + figtype
         fig.savefig(figname, dpi=300)
+        self.logger.info(f'Kinematic map written to {figname}.')
         return fig
 
     def _plot_kinematic_maps_bayeslosvd(self,
@@ -699,47 +707,53 @@ class Plotter():
                    ncol=2)
         return fig
 
-    def _plot_kinematic_maps_gaussherm(self, model, kin_set, cbar_lims='data'):
+    def _plot_kinematic_maps_gaussherm(self,
+                                       model,
+                                       kin_set,
+                                       v_sigma_option='fit',
+                                       cbar_lims='data'):
+        v_sigma_options = ['moments', 'fit']
+        if v_sigma_option not in v_sigma_options:
+            text = 'v_sigma_option must be in {v_sigma_options}, ' \
+                   f'not {v_sigma_option}.'
+            self.logger.error(text)
+            raise ValueError(text)
+
+        # get the model's projected masses=flux and kinematic data
+        a = analysis.Analysis(config=self.config, model=model, kin_set=kin_set)
+        model_gh_coef = \
+            a.get_gh_model_kinematic_maps(v_sigma_option=v_sigma_option)
+
+        # get the observed projected masses and kinematic data
         stars = \
           self.system.get_component_from_class(physys.TriaxialVisibleComponent)
-        kinem_fname = model.directory + 'nn_kinem.out'
-        body_kinem = np.genfromtxt(kinem_fname, skip_header=1)
+        kinematics_data = stars.kinematic_data[kin_set].data
+        # pick out the projected masses only for this kinematic set
+        flux=stars.mge_lum.get_projected_masses_from_file(model.directory_noml)
+        ap_idx_range_start = \
+            sum([len(stars.kinematic_data[i].data) for i in range(kin_set)])
+        ap_idx_range_end = ap_idx_range_start + len(kinematics_data)
+        flux = flux[ap_idx_range_start:ap_idx_range_end]
 
-        first_bin = sum(k.n_apertures for k in stars.kinematic_data[:kin_set])
-        n_bins = stars.kinematic_data[kin_set].n_apertures
-        body_kinem = body_kinem[first_bin:first_bin+n_bins]
-        self.logger.debug(f'kin_set={kin_set}, plotting bins '
-                          f'{first_bin} through {first_bin+n_bins-1}')
-        # if kin_set==0:
-        #     n_bins=stars.kinematic_data[0].n_apertures
-        #     body_kinem=body_kinem[0:n_bins,:]
-        #     self.logger.info(f'first_bin=0, last_bin={n_bins}')
-        # elif kin_set==1:
-        #     n_bins1=stars.kinematic_data[0].n_apertures
-        #     n_bins2=stars.kinematic_data[1].n_apertures
-        #     body_kinem=body_kinem[n_bins1:n_bins1+n_bins2,:]
-        #     self.logger.info(f'first_bin={n_bins1}, last_bin={n_bins1+n_bins2}')
-        # else:
-        #     text = f'kin_set must be 0 or 1, not {kin_set}'
-        #     self.logger.error(text)
-        #     raise ValueError(text)
+        fluxm = np.array(model_gh_coef['flux'])
+        vel = np.array(kinematics_data['v'])
+        dvel = np.array(kinematics_data['dv'])
+        velm = np.array(model_gh_coef['v'])
+        sig = np.array(kinematics_data['sigma'])
+        dsig = np.array(kinematics_data['dsigma'])
+        sigm = np.array(model_gh_coef['sigma'])
+        h = {}
+        dh = {}
+        hm = {}
+        for i in range(3,self.settings.weight_solver_settings['number_GH']+1):
+            h[i] = np.array(kinematics_data[f'h{i}'])
+            dh[i] = np.array(kinematics_data[f'dh{i}'])
+            hm[i] = np.array(model_gh_coef[f'h{i}'])
 
-        if self.settings.weight_solver_settings['number_GH'] == 2:
-            id_num, flux, fluxm, velm, vel, dvel, sigm, sig, dsig = body_kinem.T
-
-            #to not need to change the plotting routine below, higher moments are set to 0
-            h3m, h3, dh3, h4m, h4, dh4 = vel*0, vel*0, vel*0+0.4, vel*0, vel*0, vel*0+0.4
-
-        if self.settings.weight_solver_settings['number_GH'] == 4:
-            id_num, flux, fluxm, velm, vel, dvel, sigm, sig, dsig, h3m, h3, dh3, h4m, h4, dh4 = body_kinem.T
-
-        if self.settings.weight_solver_settings['number_GH'] == 6:
-            id_num, flux, fluxm, velm, vel, dvel, sigm, sig, dsig, h3m, h3, dh3, h4m, h4, dh4, h5m, h5, dh5, h6m, h6, dh6 = body_kinem.T
-
-            #still ToDO: Add the kinematic map plots for h5 and h6
+        #still ToDO: Add the kinematic map plots for h5 and h6 below
 
         text = '`cbar_lims` must be one of `model`, `data` or `combined`'
-        if not cbar_lims in ['model', 'data', 'combined']:
+        if cbar_lims not in ['model', 'data', 'combined']:
             self.logger.error(text)
             raise AssertionError(text)
         if cbar_lims=='model':
@@ -753,80 +767,35 @@ class Plotter():
             h3max, h3min = 0.15, -0.15
             h4max, h4min = 0.15, -0.15
             if h4max == h4min:
-                h4max, h4min = np.max(h4m), np.min(h4m)
+                h4max, h4min = np.max(hm[4]), np.min(hm[4])
         elif cbar_lims=='combined':
             tmp = np.hstack((velm, vel))
             vmax = np.max(np.abs(tmp))
             tmp = np.hstack((sigm, sig))
             smax, smin = np.max(tmp), np.min(tmp)
-            tmp = np.hstack((h3m, h3))
+            tmp = np.hstack((hm[3], h[3]))
             h3max, h3min = np.max(tmp), np.min(tmp)
-            tmp = np.hstack((h4m, h4))
+            tmp = np.hstack((hm[4], h[4]))
             h4max, h4min = np.max(tmp), np.min(tmp)
         else:
             self.logger.error('unknown choice of `cbar_lims`')
 
-        # Read aperture.dat
-        # The angle that is saved in this file is measured counter clock-wise
-        # from the galaxy major axis to the X-axis of the input data.
+        # get aperture and bin data
 
-        aperture_fname = stars.kinematic_data[kin_set].aperturefile
-        aperture_fname = self.input_directory + aperture_fname
-
-        lines = [line.rstrip('\n').split() for line in open(aperture_fname)]
-        minx = np.float(lines[1][0])
-        miny = np.float(lines[1][1])
-        sx = np.float(lines[2][0])
-        sy = np.float(lines[2][1])
-        sy = sy + miny
-        angle_deg = np.float(lines[3][0])
-        nx = np.int(lines[4][0])
-        ny = np.int(lines[4][1])
-        dx = sx / nx
-
-        self.logger.debug(f"Pixel grid dimension is dx={dx},nx={nx},ny={ny}")
-        grid = np.zeros((nx, ny), dtype=int)
-
-        xr = np.arange(nx, dtype=float) * dx + minx + 0.5 * dx
-        yc = np.arange(ny, dtype=float) * dx + miny + 0.5 * dx
-
-        xi = np.outer(xr, (yc * 0 + 1))
-        xt = xi.T.flatten()
-        yi = np.outer((xr * 0 + 1), yc)
-        yt = yi.T.flatten()
-
+        dp_args = stars.kinematic_data[kin_set].dp_args
+        x = dp_args['x']
+        y = dp_args['y']
+        dx = dp_args['dx']
+        grid = dp_args['idx_bin_to_pix']
+        angle_deg = dp_args['angle']
+        self.logger.debug(f"Pixel grid dimension is {dx=}, "
+                          f"{len(x)=}, {len(y)=}.")
         self.logger.debug(f'PA: {angle_deg}')
-        xi = xt
-        yi = yt
 
-        # read bins.dat
-
-        bin_fname = stars.kinematic_data[kin_set].binfile
-        bin_fname = self.input_directory + bin_fname
-        lines_bins = [line.rstrip('\n').split() for line in open(bin_fname)]
-        i = 0
-        str_head = []
-        i_var = []
-        grid = []
-        while i < len(lines_bins):
-            for x in lines_bins[i]:
-                if i == 0:
-                    str_head.append(str(x))
-                if i == 1:
-                    i_var.append(np.int(x))
-                if i > 1:
-                    grid.append(np.int(x))
-            i += 1
-        str_head = str(str_head[0])
-        i_var = int(i_var[0])
-        grid = np.ravel(np.array(grid))
-
-        # bins start counting at 1 in fortran and at 0 in idl:
-        grid = grid - 1
-
-        # Only select the pixels that have a bin associated with them.
+        # # Only select the pixels that have a bin associated with them.
         s = np.ravel(np.where((grid >= 0)))
-        fhist, fbinedge = np.histogram(grid[s], bins=len(flux))
+        fhist, _ = np.histogram(grid[s], bins=len(flux))
+        self.logger.debug(f'{flux.shape=}, {fluxm.shape=}, {fhist.shape=}')
         flux = flux / fhist
         fluxm = fluxm / fhist
 
@@ -862,7 +831,6 @@ class Plotter():
                                  nticks=7,
                                  #cmap='sauron')
                                  cmap=map2)
-        x, y = xi[s], yi[s]
 
         ### PLOT THE REAL DATA
         ax1 = plt.subplot(3, 5, 1)
@@ -882,12 +850,12 @@ class Plotter():
                                           **kw_display_pixels1)
         ax3.set_title('velocity dispersion',fontsize=20, pad=20)
         ax4 = plt.subplot(3, 5, 4)
-        display_pixels.display_pixels(x, y, h3[grid[s]],
+        display_pixels.display_pixels(x, y, h[3][grid[s]],
                                           vmin=h3min, vmax=h3max,
                                           **kw_display_pixels)
         ax4.set_title(r'$h_{3}$ moment',fontsize=20, pad=20)
         ax5 = plt.subplot(3, 5, 5)
-        display_pixels.display_pixels(x, y, h4[grid[s]],
+        display_pixels.display_pixels(x, y, h[4][grid[s]],
                                           vmin=h4min, vmax=h4max,
                                           **kw_display_pixels)
         ax5.set_title(r'$h_{4}$ moment',fontsize=20, pad=20)
@@ -907,11 +875,11 @@ class Plotter():
                                           vmin=smin, vmax=smax,
                                           **kw_display_pixels1)
         plt.subplot(3, 5, 9)
-        display_pixels.display_pixels(x, y, h3m[grid[s]],
+        display_pixels.display_pixels(x, y, hm[3][grid[s]],
                                           vmin=h3min, vmax=h3max,
                                           **kw_display_pixels)
         plt.subplot(3, 5, 10)
-        display_pixels.display_pixels(x, y, h4m[grid[s]],
+        display_pixels.display_pixels(x, y, hm[4][grid[s]],
                                           vmin=h4min, vmax=h4max,
                                           **kw_display_pixels)
 
@@ -939,12 +907,12 @@ class Plotter():
                                           vmin=-10, vmax=10,
                                           **kw_display_pixels)
         plt.subplot(3, 5, 14)
-        c = (h3m[grid[s]] - h3[grid[s]]) / dh3[grid[s]]
+        c = (hm[3][grid[s]] - h[3][grid[s]]) / dh[3][grid[s]]
         display_pixels.display_pixels(x, y, c,
                                           vmin=-10, vmax=10,
                                           **kw_display_pixels)
         plt.subplot(3, 5, 15)
-        c = (h4m[grid[s]] - h4[grid[s]]) / dh4[grid[s]]
+        c = (hm[4][grid[s]] - h[4][grid[s]]) / dh[4][grid[s]]
         display_pixels.display_pixels(x, y, c,
                                           vmin=-10, vmax=10,
                                           **kw_display_pixels)
@@ -972,53 +940,36 @@ class Plotter():
         sth = np.sin(theta)
         cth = np.cos(theta)
         sphi = np.sin(phi)
-        Qjth = (1 - sth**2) * (1 - sphi)**2 + \
+        Qjth = (1 - sth**2) * (1 - sphi**2) + \
                (1 - sth**2)*(sphi/p_pot)**2 + (sth/q_pot)**2
-        arg = (rr/sig_pot_pc) * np.sqrt(Qjth/np.float(2.0))
+        arg = (rr/sig_pot_pc) * np.sqrt(Qjth/2.0)
 
-        intg = np.sqrt(np.pi/np.float(2.0))*erf(arg) - \
-               np.sqrt(np.float(2.0))*arg*np.exp(-1.*arg**2)
-        res = (np.sum(den_pot_pc*sig_pot_pc**3*intg/Qjth**np.float(1.5),
-               dtype=np.float))*cth
+        intg = np.sqrt(np.pi/2.0)*erf(arg) - \
+               np.sqrt(2.0)*arg*np.exp(-1.*arg**2)
+        res = (np.sum(den_pot_pc*sig_pot_pc**3*intg/Qjth**(1.5),
+               dtype=float))*cth
 
         return res
 
-# --------------------------------------------
-
-    def PQ_Limits_l(self, x):
-
-        return np.float(0.0)
-
-# --------------------------------------------
-
-    def PQ_Limits_h(self, x):
-
-        return np.float(np.pi/np.float(2.0))
-
 #############################################################################
 
-    def NFW_getpar(self, mstars=None, cc=None, dmfrac=None):
+    def NFW_enclosemass(self, mstars=None, cc=None, dmfrac=None, R=None):
 
         #Computes density scale, radial scale and total mass in
         #the NFW profile used in the model.
         #Input parameters: NFW dark matter concentration and fraction,
         #and stellar mass
 
-        rhoc = (200./3.)*const.RHO_CRIT*cc**3/(np.log(1.+cc) - cc/(1.+cc))
-        rc = (3./(800.*np.pi*const.RHO_CRIT*cc**3)*dmfrac*mstars)**(1./3.)
-        darkmass = (800./3.)*np.pi*const.RHO_CRIT*(rc*cc)**3
+        grav_const_km = 6.67428e-11*1.98892e30/1e9
+        parsec_km = 1.4959787068e8*(648.000e3/np.pi)
+        rho_crit = (3.*((7.3000e-5)/parsec_km)**2)/(8.*np.pi*grav_const_km)
 
-        return rhoc, rc, darkmass
+        rhoc = (200./3.)*rho_crit*cc**3/(np.log(1.+cc) - cc/(1.+cc))
+        rc = (3./(800.*np.pi*rho_crit*cc**3)*dmfrac*mstars)**(1./3.)
 
-#############################################################################
+        #darkmass = (800./3.)*np.pi*rho_crit*(rc*cc)**3
 
-    def NFW_enclosemass(self, rho=None, Rs=None, R=None):
-
-        #Computes cumulative mass of the NWF dark matter halo
-        #Input parameters: density scale  and radial scale, and
-        #array of radial positions where to compute the mass.
-
-        M = 4. * np.pi * rho * Rs**3 * (np.log((Rs + R)/Rs) - R/(Rs + R))
+        M = 4. * np.pi * rhoc * rc**3 * (np.log((rc + R)/rc) - R/(rc + R))
 
         return M
 
@@ -1052,7 +1003,7 @@ class Plotter():
                                p_pot.T, np.zeros(ng) + Ri))
             mi2=scipy.integrate.dblquad(self.intg2_trimge_intrmass,
                                         0.0, np.pi/2.0,
-                                        self.PQ_Limits_l ,self.PQ_Limits_h,
+                                        0.0, np.pi/2.0, # self.PQ_Limits_l ,self.PQ_Limits_h,
                                         args=[Fxyparm],epsrel=1.00)[0]
             res[i] = mi2*8
 
@@ -1155,11 +1106,6 @@ class Plotter():
 
         """
 
-        # schw_mass.py
-        # Chi^2 < chilev =>
-        #   normalized chi^2: chi^2/chi2pmin < chlim: sqrt(2*Nobs * NGH)
-        # getallnfw_out copied from schw_mass.py in this function!
-
         if figtype is None:
             figtype = '.png'
 
@@ -1170,10 +1116,6 @@ class Plotter():
             self.logger.error(text)
             raise ValueError(text)
 
-        val = deepcopy(self.all_models.table)
-        val.sort(which_chi2)
-        chi2pmin = val[which_chi2][0]
-
         stars = \
             self.system.get_component_from_class(physys.TriaxialVisibleComponent)
         dh = self.system.get_all_dark_non_plummer_components()
@@ -1183,22 +1125,16 @@ class Plotter():
         self.logger.debug('...checks ok.')
         dh = dh[0]  # extract the one and only dm component
 
+        val0 = deepcopy(self.all_models.table)
+        arg = np.argsort(np.array(val0[which_chi2]))
+        val = val0[arg]
+        chi2pmin = val[which_chi2][0]
         chlim = np.sqrt(self.config.get_2n_obs())
-        chi2 = val[which_chi2]
-        chi2 -= chi2pmin
-        chilev = chlim * chi2pmin
-
-        s = np.ravel(np.argsort(chi2))
-        chi2=chi2[s]
 
         # select the models within 1 sigma confidence level
-        s=np.ravel(np.where(chi2 <=  np.min(chi2)+chilev))
-        n=len(s)
+        n = len(np.ravel(np.where(val[which_chi2] <= chi2pmin + chlim*3)))
         if n < 3:
-            s = np.arange(3, dtype=np.int)
-            n = len(s)
-
-        chi2=chi2[s]
+            n = 3
 
         print('Selecting ',n,' models')
 
@@ -1250,9 +1186,11 @@ class Plotter():
                 dmconc = dh.get_c200(system=self.system, parset=val[i])
             else:
                 raise ValueError(f'Unsupported dh halo type {type(dh)}')
-            rhoc, rc = self.NFW_getpar(mstars=Mstarstot, cc=dmconc,
-                                       dmfrac=dmR)[:2]
-            mdm = self.NFW_enclosemass(rho=rhoc, Rs=rc, R=r_pc*parsec_km)
+            #rhoc, rc = self.NFW_getpar(mstars=Mstarstot, cc=dmconc,
+            #                           dmfrac=dmR)[:2]
+            #mdm = self.NFW_enclosemass(rho=rhoc, Rs=rc, R=r_pc*parsec_km)
+            mdm = self.NFW_enclosemass(mstars=Mstarstot, cc=dmconc,
+                                       dmfrac=dmR, R=r_pc*parsec_km)
 
             mbh = val['m-bh'][i]
 
@@ -1268,43 +1206,8 @@ class Plotter():
 
             np.isfinite(1)
 
-        arctpc = distance *np.pi / 0.648
         mm = np.sum(mass, axis=2)
         maxmass = (int(np.max(mm/10**10.)) + 1.)*10**10.
-
-        '''
-        snn = np.ravel(np.where((np.isfinite(phi_a)) & (np.isfinite(psi_a))))
-        mmmin = np.min(mm, axis=1)
-        mmmax = np.max(mm, axis=1)
-        m0min = np.min(mass[:,:,0], axis = 1)
-        m0max = np.max(mass[:,:,0], axis = 1)
-        m1min = np.min(mass[:,:,1], axis = 1)
-        m1max = np.max(mass[:,:,1], axis = 1)
-
-        with open(plotdir + 'cumulative_mass.dat', 'w') as outfile:
-            outfile.write(str(distance) + '   # distance\n')
-            outfile.write(str(np.average(mlstellar))+'  '+
-                          str(np.sqrt(np.var(mlstellar, ddof=1))) +
-                          '   # stellar m/l, error\n')
-            outfile.write(str(np.average(incl_a[snn]))+' '+
-                          str(np.average(phi_a[snn]))+'  '+
-                          str(np.average(psi_a[snn]))+'  # incl\n')
-            outfile.write(str(np.sqrt(np.var(incl_a[snn], ddof=1)))+'  '+
-                          str(np.sqrt(np.var(phi_a[snn], ddof=1)))+'  '+
-                          str(np.sqrt(np.var(psi_a[snn], ddof=1)))+
-                          ' # incl error\n')
-            # mtot, mstellar, mdm
-            for i in range(nm):
-                outfile.write(("%7.3f" % R[i])+ '  '+("%10.4e" % mm[i,0])+ '  '+
-                              ("%10.4e" % mmmin[i]) + '  '+
-                              ("%10.4e" % mmmax[i]) + '  '+
-                              ("%10.4e" % mass[i,0,0]) + '  '+
-                              ("%10.4e" % m0min[i]) + '  '+
-                              ("%10.4e" % m0max[i]) + '  '+
-                              ("%10.4e" % mass[i,0,1]) + '  '+
-                              ("%10.4e" % m1min[i]) + '  '+
-                              ("%10.4e" % m1max[i])+ '\n')
-        '''
 
         ## plot in linear scale
         xrange = np.array([0.1, Rmax_arcs])
@@ -1353,115 +1256,7 @@ class Plotter():
 ######## Routines from schw_orbit.py, necessary for orbit_plot ##############
 #############################################################################
 
-    def readorbclass(self, file=None, nrow=None, ncol=None):
-
-        #read in 'datfil/orblib.dat_orbclass.out'
-        #which stores the information of all the orbits stored in the orbit library
-
-        #norb = nE * nI2 * nI3 * ndithing^3
-        #for each orbit, the time averaged values are stored:
-
-        #lx, ly ,lz, r = sum(sqrt( average(r^2) )), Vrms^2 = average(vx^2 + vy^2 + vz^2 + 2vx*vy + 2vxvz + 2vxvy)
-
-        #The file was stored by the fortran code orblib_f.f90 integrator_find_orbtype
-
-        data=[]
-        lines = [line.rstrip('\n').split() for line in open(file)]
-        i = 0
-        while i < len(lines):
-            for x in lines[i]:
-                data.append(np.double(x))
-            i += 1
-        data=np.array(data)
-        data=data.reshape((int(5),int(ncol),int(nrow)), order='F')
-        return data
-
-#############################################################################
-
-    def readorbout(self, filename=None):
-
-        #read in 'mlxxx/nn_orb.out' of one model
-
-        nrow=data=np.genfromtxt(filename,max_rows=1)
-        nrow=int(nrow)
-        data=np.genfromtxt(filename, skip_header=1,max_rows=nrow)
-        n=np.array(data[:,0],dtype=int)
-        ener=np.array(data[:,1],dtype=int)
-        i2=np.array(data[:,2],dtype=int)
-        i3=np.array(data[:,3],dtype=int)
-        regul=np.array(data[:,4],dtype=np.float)
-        orbtype=np.array(data[:,5],dtype=np.float)
-        orbw=np.array(data[:,6],dtype=np.float)
-        lcut=np.array(data[:,7],dtype=np.float)
-        ntot=int(nrow)
-        return n, ener,i2, i3, regul, orbtype,orbw,lcut,ntot
-
-#############################################################################
-
-    def triaxreadparameters(self, w_dir=None):
-
-        #read in all the parameters in parameters.in
-
-        filename = w_dir + 'infil/parameters_pot.in'
-
-        header = np.genfromtxt(filename, max_rows=1)
-        #nmge = int(header[0])  # MGE gaussians
-        nmge = int(header)  # MGE gaussians
-        mgepar = np.genfromtxt(filename, max_rows=nmge, skip_header=1)
-        mgepar = mgepar.T  # MGE parameters
-
-        distance = np.genfromtxt(filename, max_rows=1, skip_header=nmge + 1)
-        distance = np.double(distance)  # distance [Mpc]
-
-        view_ang = np.genfromtxt(filename, max_rows=1, skip_header=nmge + 2)
-        th_view = np.double(view_ang[0])
-        ph_view = np.double(view_ang[1])
-        psi_view = np.double(view_ang[2])
-
-        ml = np.genfromtxt(filename, max_rows=1, skip_header=nmge + 3)
-        ml = np.double(ml)  # M/L [M_sun/L-sun]
-
-        bhmass = np.genfromtxt(filename, max_rows=1, skip_header=nmge + 4)
-        bhmass = np.double(bhmass)  # BH mass [M_sun]
-
-        softlen = np.genfromtxt(filename, max_rows=1, skip_header=nmge + 5)
-        softlen = np.double(softlen)  # softening length
-
-        nrell = np.genfromtxt(filename, max_rows=1, skip_header=nmge + 6)
-        nre = np.double(nrell[0])
-        lrmin = np.double(nrell[1])
-        lrmax = np.double(nrell[2])  # E, minmax log(r) [arcsec]
-
-        nrth = np.genfromtxt(filename, max_rows=1, skip_header=nmge + 7)
-        nrth = np.int(nrth)  # theta [# I2]
-
-        nrrad = np.genfromtxt(filename, max_rows=1, skip_header=nmge + 8)
-        nrrad = np.int(nrrad)  # phi [# I3]
-
-        ndither = np.genfromtxt(filename, max_rows=1, skip_header=nmge + 9)
-        ndither = np.int(ndither)  # dithering dimension
-
-        vv1 = np.genfromtxt(filename, max_rows=1, skip_header=nmge + 10)
-        vv1_1 = np.int(vv1[0])
-        vv1_2 = np.int(vv1[1])
-
-        dmm = np.genfromtxt(filename, max_rows=1, skip_header=nmge + 11)
-        dm1 = np.double(dmm[0])
-        dm2 = np.double(dmm[1])
-
-        conversion_factor = distance*1.0e6*1.49598e8
-        grav_const_km = 6.67428e-11*1.98892e30/1e9
-        parsec_km = 1.4959787068e8*(648.000e3/np.pi)
-        rho_crit = (3.0*((7.3000e-5)/parsec_km)**2)/(8.0*np.pi*grav_const_km)
-
-        return mgepar, distance, th_view, ph_view, psi_view, ml, \
-            bhmass,softlen, nre, lrmin, lrmax, nrth, nrrad, \
-            ndither, vv1_1, vv1_2,dm1, dm2, conversion_factor, \
-            grav_const_km, parsec_km, rho_crit
-
-#############################################################################
-
-    def orbit_plot(self, model=None, Rmax_arcs=None, figtype =None):
+    def orbit_plot(self, model=None, Rmax_arcs=None, figtype=None):
         """
         Generates an orbit plot for the selected model
 
@@ -1497,8 +1292,6 @@ class Plotter():
 
         """
 
-        # schw_orbit.py
-
         if figtype is None:
             figtype = '.png'
 
@@ -1521,44 +1314,44 @@ class Plotter():
         mdir = model.directory
         mdir_noml = mdir[:mdir[:-1].rindex('/')+1]
 
-        file4 = mdir + 'nn_orb.out'
         file2 = mdir_noml + 'datfil/orblib.dat_orbclass.out'
         file3 = mdir_noml + 'datfil/orblibbox.dat_orbclass.out'
         file3_test = os.path.isfile(file3)
-        if not file3_test: file3= '%s' % file2
+        if not file3_test:
+            file3= '%s' % file2
 
         xrange=[0.0,Rmax_arcs]
 
-        triaxreadparameters = self.triaxreadparameters(w_dir=mdir_noml)
-        #distance = triaxreadparameters[1]
-        nre = triaxreadparameters[8]
-        nrth, nrrad, ndither = triaxreadparameters[11:14]
-        conversion_factor = triaxreadparameters[18]
-
-        #mgepar, distance, th_view, ph_view, psi_view, ml, bhmass,\
-        #softlen,nre, lrmin, lrmax, nrth, nrrad, ndither, vv1_1, \
-        #vv1_2,dm1,dm2,conversion_factor,grav_const_km,parsec_km, \
-        #rho_crit = self.triaxreadparameters(w_dir=mdir_noml)
+        distance = self.all_models.system.distMPc
+        conversion_factor = distance*1.0e6*1.49598e8
+        nre = self.settings.orblib_settings['nE']
+        nrth = self.settings.orblib_settings['nI2']
+        nrrad = self.settings.orblib_settings['nI3']
+        ndither = self.settings.orblib_settings['dithering']
 
         norb = int(nre*nrth*nrrad)
-        orbclass1 = self.readorbclass(file=file2, nrow=norb, ncol=ndither**3)
-        orbclass2 = self.readorbclass(file=file3, nrow=norb, ncol=ndither**3)
+        ncol=int(ndither**3)
+        orbclass1 = np.genfromtxt(file2).T
+        orbclass1 = orbclass1.reshape((5,ncol,norb), order='F')
+        orbclass2 = np.genfromtxt(file3).T
+        orbclass2 = orbclass1.reshape((5,ncol,norb), order='F')
 
-        # norbout, ener, i2, i3, regul, orbtype, orbw, lcut, ntot = self.readorbout(filename=file4)
-        orbw = self.readorbout(filename=file4)[6]
+        orblib = model.get_orblib()
+        _ = model.get_weights(orblib)
+        orbw = model.weights
 
         orbclass=np.dstack((orbclass1,orbclass1,orbclass2))
         orbclass1a=np.copy(orbclass1)
         orbclass1a[0:3,:,:] *= -1     # the reverse rotating orbits of orbclass
 
-        for i in range(int(0), norb):
+        for i in range(0, norb):
             orbclass[:,:,i*2]=orbclass1[:, :, i]
             orbclass[:,:,i*2 + 1]=orbclass1a[:, :, i]
 
         ## define circularity of each orbit [nditcher^3, norb]
         lz = (orbclass[2,:,:]/orbclass[3,:,:]/np.sqrt(orbclass[4,:,:]))   # lambda_z = lz/(r * Vrms)
-        # lx = (orbclass[0,:,:]/orbclass[3,:,:]/np.sqrt(orbclass[4,:,:]))   # lambda_x = lx/(r * Vrms)
-        # l= (np.sqrt(np.sum(orbclass[0:3,:,:]**2, axis=0))/orbclass[3,:,:]/np.sqrt(orbclass[4,:,:]))
+        # lx = (orbclass[0,:,:]/orbclass[3,:,:]/np.sqrt(orbclass[4,:,:])) # lambda_x = lx/(r * Vrms)
+        # l=(np.sqrt(np.sum(orbclass[0:3,:,:]**2, axis=0))/orbclass[3,:,:]/np.sqrt(orbclass[4,:,:]))
         r = (orbclass[3,:,:]/conversion_factor)   # from km to kpc
 
         # average values for the orbits in the same bundle (ndither^3).
@@ -1583,14 +1376,14 @@ class Plotter():
         ynbin=nybin
         xbinned = [np.min(f1), np.max(f1)]
         # ybinned = [np.min(f2), np.max(f2)]
-        ybinned = [-1.00000, 1.0000]
+        ybinned = [-1., 1.]
         nbins = np.array([xnbin, ynbin])
         range_bin=[[np.min(f1),np.max(f1)],[np.min(f2),np.max(f2)]]
         R = np.zeros((xnbin, ynbin))
 
         weight=orbw[s]
 
-        for i in range(int(0), len(f1[0, :])):
+        for i in range(0, len(f1[0, :])):
             # RIL, xedges, yedges = np.histogram2d(f1[:,i], f2[:,i], bins=nbins, range=range_bin)
             RIL = np.histogram2d(f1[:,i], f2[:,i], bins=nbins,
                                  range=range_bin)[0]
@@ -1697,13 +1490,13 @@ class Plotter():
 ######## Routines from schw_anisotropy.py, necessary for beta_plot ##########
 #############################################################################
 
-    def N_car2sph(self, x, y, z, eps=None):
+    def N_car2sph(self, x, y, z, eps):
 
         if not eps: eps=1.0e-10
         R = np.sqrt(x**2 + y**2)
-        rr = np.sqrt(x**2 + y**2 + z**2)
-        res = np.zeros((3,3),dtype=np.float)
-        if (R > eps and rr > eps):
+        rr = np.sqrt(R**2 + z**2)
+        res = np.zeros((3,3))
+        if (min(R,rr) > eps):
             res[0,0] = x/rr
             res[0,1] = (x*z)/(R*rr)
             res[0,2] = -y/R
@@ -1712,7 +1505,6 @@ class Plotter():
             res[1,2] = x/R
             res[2,0] = z/rr
             res[2,1] = -R/rr
-            res[2,2] = 0.0
         return res
 
 #############################################################################
@@ -1738,12 +1530,11 @@ class Plotter():
 
         if not eps: eps=1.0e-10
         nn=len(x)
-        # print(nn)
-        mu1sph=np.zeros((nn,3), dtype=np.float)
-        mu2sph=np.zeros((nn,3,3), dtype=np.float)
+        mu1sph=np.zeros((nn,3))
+        mu2sph=np.zeros((nn,3,3))
         for i in range(nn):
             # conversion matrix N = N[k,j], where j=row, k=column
-            N = self.N_car2sph(x[i], y[i], z[i], eps=eps)
+            N = self.N_car2sph(x[i], y[i], z[i], eps)
             # first moment
             mu1sph[i, :] = np.matmul(mu1car[i,:],N)
             # second moment
@@ -1755,9 +1546,8 @@ class Plotter():
 
 #############################################################################
 
-    def N_car2cyl(self, x, y, z, eps=None):
+    def N_car2cyl(self, x, y, z, eps):
 
-        #Orthogonal velocity conversion matrix: N=[N_ji] (i=row,j=column)
         #Orthogonal velocity conversion matrix: N=[N_ji] (i=row,j=column)
         #<v>=N<u>, with <v> spherical and <u> Cartesian
         #from http://en.wikipedia.org/wiki/List_of_canonical_coordinate_transformations
@@ -1765,16 +1555,12 @@ class Plotter():
         if not eps: eps=1.0e-10
         R2 = x**2 + y**2
         R=np.sqrt(R2)
-        res = np.zeros((3,3),dtype=np.float)
-        if (R > eps and R2 > eps):
+        res = np.zeros((3,3))
+        if (min(R,R2) > eps):
             res[0,0] = x/R
             res[0,1] = -y/R
-            res[0,2] = 0.0
             res[1,0] = y/R
             res[1,1] = x/R
-            res[1,2] = 0.0
-            res[2,0] = 0.0
-            res[2,1] = 0.0
             res[2,2] = 1.0
         return res
 
@@ -1790,12 +1576,11 @@ class Plotter():
 
         if not eps: eps=1.0e-10
         nn=len(x)
-        # print(nn)
-        mu1sph=np.zeros((nn,3), dtype=np.float)
-        mu2sph=np.zeros((nn,3,3), dtype=np.float)
+        mu1sph=np.zeros((nn,3))
+        mu2sph=np.zeros((nn,3,3))
         for i in range(nn):
             # conversion matrix N = N[k,j], where j=row, k=column
-            N = self.N_car2cyl(x[i], y[i], z[i], eps=eps)
+            N = self.N_car2cyl(x[i], y[i], z[i], eps)
             # first moment
             mu1sph[i,:] = np.matmul(mu1car[i,:],N)
             # second moment
@@ -1814,40 +1599,33 @@ class Plotter():
         # 0   1   2  3  4  5  6 7 8             9  10 11 12  13  14  15   16   17   18,19,20
 
         filename_moments = file
-        mom_par1 = np.genfromtxt(filename_moments, max_rows=1, skip_header=1)
-        nmom, nph, nth, nrr = mom_par1.T
+        nmom, nph, nth, nrr = np.genfromtxt(filename_moments, max_rows=1, skip_header=1).T
+        if int(nmom) != 16: sys.exit('made for 16 moments')
         nmom = int(nmom)
         nph = int(nph)
         nth = int(nth)
         nrr = int(nrr)
-        if nmom != 16: sys.exit('made for 16 moments')
 
         ntot = nph*nth*nrr
-        phf = np.genfromtxt(filename_moments, max_rows=1, skip_header=3)
-        phf = phf.T
-        thf = np.genfromtxt(filename_moments, max_rows=1, skip_header=5)
-        thf = thf.T
-        rrf = np.genfromtxt(filename_moments, max_rows=1, skip_header=7)
-        rrf = rrf.T
         data = np.genfromtxt(filename_moments, max_rows=ntot, skip_header=10)
 
+        d = data[:,4]
         x = data[:,6]
         y = data[:,7]
         z = data[:,8]
-        r = np.sqrt(x**2 + y**2 + z**2)
-        Bigr = np.sqrt(x**2 + y**2)
+        RR = np.sqrt(x**2 + y**2)
+        r = np.sqrt(RR**2 + z**2)
 
         v1car = data[:,9:12]           #; <v_t> t=x,y,z [(km/s)]
         dum = data[:,[12,15,17,15,13,16,17,16,14]]
         v2car = np.reshape(dum[:,:], (ntot,3,3), order='F')  # < v_s * v_t > s, t = x, y, z[(km / s) ^ 2]
-        # v1sph, v2sph = self.car2sph_mu12(x, y, z, v1car, v2car)  # (v_r, v_phi, v_theta)
         v2sph = self.car2sph_mu12(x, y, z, v1car, v2car)[1]  # (v_r, v_phi, v_theta)
         orot = 1 - (0.5*(v2sph[:,1,1] + v2sph[:,2,2]))/(v2sph[:,0,0])
         rr = np.sum(np.sum(np.reshape(r,(nrr,nth,nph),order='F'),
                     axis=2), axis=1)/(nth*nph)
-        TM = np.sum(np.sum(np.reshape(data[:,4],(nrr,nth,nph),order='F'),
+        TM = np.sum(np.sum(np.reshape(d,(nrr,nth,nph),order='F'),
                     axis=2), axis=1)
-        orotR = np.sum(np.sum(np.reshape(orot*data[:,4],(nrr,nth,nph),
+        orotR = np.sum(np.sum(np.reshape(orot*d,(nrr,nth,nph),
                     order='F'), axis=2), axis=1)/TM
 
         v1cyl, v2cyl = self.car2cyl_mu12(x, y, z, v1car, v2car)        # (v_R, v_phi, v_z)
@@ -1856,21 +1634,21 @@ class Plotter():
         vzz = v2cyl[:,2,2]
         vp = v1cyl[:,1]
         nbins = 14
-        Bint = 2**(np.arange(nbins+1, dtype=np.float)/2.5) - 1.0
-        Rad = np.zeros(nbins, dtype=np.float)
-        vrr_r = np.zeros(nbins, dtype=np.float)
-        vpp_r = np.zeros(nbins, dtype=np.float)
-        vzz_r = np.zeros(nbins, dtype=np.float)
-        vp_r = np.zeros(nbins, dtype=np.float)
+        Bint = 2**(np.arange(nbins+1, dtype=float)/2.5) - 1.0
+        Rad = np.zeros(nbins)
+        vrr_r = np.zeros(nbins)
+        vpp_r = np.zeros(nbins)
+        vzz_r = np.zeros(nbins)
+        vp_r = np.zeros(nbins)
         d = data[:,4]
-        ### Bin along bigR
+        ### Bin along RR
         for i in range(nbins):
-            ss=np.ravel(np.where((Bigr > Bint[i]) & \
-                        (Bigr < Bint[i+1]) & (np.abs(z) < 5.0)))
+            ss=np.ravel(np.where((RR > Bint[i]) & \
+                        (RR < Bint[i+1]) & (np.abs(z) < 5.0)))
                         # restrict to the disk plane with |z| < 5 arcsec
             nss=len(ss)
             if nss > 0:
-                Rad[i] = np.average(Bigr[ss])
+                Rad[i] = np.average(RR[ss])
                 vrr_r[i] = np.sum(vrr[ss]*d[ss])/np.sum(d[ss])
                 vpp_r[i] = np.sum(vpp[ss]*d[ss])/np.sum(d[ss])
                 vzz_r[i] = np.sum(vzz[ss]*d[ss])/np.sum(d[ss])
@@ -1923,8 +1701,6 @@ class Plotter():
 
         """
 
-        # schw_anisotropy.py
-
         modeldir = self.modeldir
 
         if figtype is None:
@@ -1937,44 +1713,28 @@ class Plotter():
             self.logger.error(text)
             raise ValueError(text)
 
-        val = deepcopy(self.all_models.table)
-        arg = np.argsort(np.array(val[which_chi2]))
-        val.sort(which_chi2)
+        val0 = deepcopy(self.all_models.table)
+        arg = np.argsort(np.array(val0[which_chi2]))
+        val = val0[arg]
         chi2pmin = val[which_chi2][0]
-
         chlim = np.sqrt(self.config.get_2n_obs())
 
-        chi2 = val[which_chi2]
-        chi2 -= chi2pmin
-        chilev = chlim * chi2pmin
-
-        s = np.ravel(np.argsort(chi2))
-        chi2=chi2[s]
-
         # select the models within 1 sigma confidence level
-        s=np.ravel(np.where(chi2 <=  np.min(chi2)+chilev))
-        n=len(s)
+        n = len(np.ravel(np.where(val[which_chi2] <= chi2pmin + chlim*3)))
         if n < 3:
-            s = np.arange(3, dtype=np.int)
-            n = len(s)
+            n = 3
 
-        chi2=chi2[s]
-
-        RRn = np.zeros((100,n), dtype=np.float)
-        orotn = np.zeros((100,n), dtype=np.float)
-        RRnz = np.zeros((100,n), dtype=np.float)
-        orotnz = np.zeros((100,n), dtype=np.float)
-        Vz2 = np.zeros((100,n), dtype=np.float)
-        VR2 = np.zeros((100,n), dtype=np.float)
-        Vp2= np.zeros((100,n), dtype=np.float)
-        Vp = np.zeros((100,n), dtype=np.float)
+        RRn = np.zeros((100,n))
+        orotn = np.zeros((100,n))
+        RRnz = np.zeros((100,n))
+        orotnz = np.zeros((100,n))
+        Vz2 = np.zeros((100,n))
+        VR2 = np.zeros((100,n))
+        Vp2= np.zeros((100,n))
+        Vp = np.zeros((100,n))
 
         for i in range(n):
-            model_id = arg[i]
-            model = self.all_models.get_model_from_row(model_id)
-            mdir = modeldir + val['directory'][model_id]
-
-            filei = mdir + 'nn_intrinsic_moments.out'
+            filei = modeldir + val['directory'][i] + 'nn_intrinsic_moments.out'
 
             rr, orotR, Rad, vzz_r, vrr_r, vpp_r, \
                 vp_r = self.anisotropy_single(file=filei)
@@ -1996,10 +1756,10 @@ class Plotter():
         filename1 = self.plotdir + 'anisotropy_var' + figtype
         filename2 = self.plotdir + 'betaz_var' + figtype
 
-        RRn_m = np.zeros(nrr, dtype=np.float)
-        RRn_e = np.zeros(nrr, dtype=np.float)
-        orot_m2 = np.zeros(nrr, dtype=np.float)
-        orot_e2 = np.zeros(nrr, dtype=np.float)
+        RRn_m = np.zeros(nrr)
+        RRn_e = np.zeros(nrr)
+        orot_m2 = np.zeros(nrr)
+        orot_e2 = np.zeros(nrr)
         for j in range(0, nrr):
             RRn_m[j] = np.average(RRn[j,:])
             RRn_e[j] = np.sqrt(np.var(RRn[j,:], ddof=1))
@@ -2015,11 +1775,10 @@ class Plotter():
         yrange=np.array([min(-1,min(orot_m2-orot_e2)),1])
         ax1.set_ylim(yrange)
         if yrange[1]-yrange[0]<=4:
-            yticks = np.linspace(int(yrange[0])*1.,
-                        int(yrange[1])*1.,int((yrange[1]-yrange[0])/0.5)+1)
+            Nticks = int((yrange[1]-yrange[0])/0.5)+1
         else:
-            yticks = np.linspace(int(yrange[0])*1.,
-                        int(yrange[1])*1.,int((yrange[1]-yrange[0]))+1)
+            Nticks = int((yrange[1]-yrange[0]))+1
+        yticks = np.linspace(yrange[0],yrange[1],Nticks)
         ax1.set_yticks(yticks)
         ax1.plot(RRn_m,orot_m2, '-', color='black', linewidth=3.0)
         ax1.fill_between(RRn_m, orot_m2-orot_e2,
@@ -2042,10 +1801,10 @@ class Plotter():
         ax.set_ylabel(r'$\beta_{\rm z} = 1 - \sigma_{\rm z}^2/\sigma_{\rm R}^2$',
                          fontsize=9)
         ax.tick_params(labelsize=8)
-        RRn_m = np.zeros(nrad, dtype=np.float)
-        RRn_e = np.zeros(nrad, dtype=np.float)
-        orot_m2 = np.zeros(nrad, dtype=np.float)
-        orot_e2 = np.zeros(nrad, dtype=np.float)
+        RRn_m = np.zeros(nrad)
+        RRn_e = np.zeros(nrad)
+        orot_m2 = np.zeros(nrad)
+        orot_e2 = np.zeros(nrad)
         for j in range(0, nrad):
             kk = np.where(orotn[j,:] > 0.0)
             if len(kk[0])>0:
@@ -2089,7 +1848,7 @@ class Plotter():
         phi = incl[1]
         psi = incl[2]
 
-        r = np.arange(101, dtype=np.float)/100.0*max(Rpc)*1.02
+        r = np.arange(101, dtype=float)/100.0*max(Rpc)*1.02
         n = len(r)
 
         pintr, qintr, uintr = self.triax_tpp2pqu(theta=theta, phi=phi,
@@ -2098,9 +1857,9 @@ class Plotter():
         sigintr_pc = sigma_pc/uintr
         sb3 = surf_pc*(2*np.pi*sigma_pc**2*qobs)/ \
               ((sigintr_pc*np.sqrt(2*np.pi))**3*pintr*qintr)
-        Sz = np.zeros(n, dtype=np.float)
-        Sy = np.zeros(n, dtype=np.float)
-        Sx = np.zeros(n, dtype=np.float)
+        Sz = np.zeros(n)
+        Sy = np.zeros(n)
+        Sx = np.zeros(n)
 
         for i in range(n):
             Sz[i] = np.sum(sb3*np.exp(-(r[i]**2/qintr**2)/(2*sigintr_pc**2))) # SB at z direction
@@ -2108,10 +1867,10 @@ class Plotter():
             Sx[i] = np.sum(sb3*np.exp(-(r[i]**2)/(2*sigintr_pc**2))) # SB at x direction
 
         #### check and replace the enlargeVector function in basic file
-        Sya = self.enlargeVector(old_vec=Sy, new_length=n*int(100))
-        Sza = self.enlargeVector(old_vec=Sz, new_length=n*int(100))
-        Sxa = self.enlargeVector(old_vec=Sx, new_length=n*int(100))
-        ra = self.enlargeVector(old_vec=r, new_length=n*int(100))
+        Sya = self.enlargeVector(old_vec=Sy, new_length=n*100)
+        Sza = self.enlargeVector(old_vec=Sz, new_length=n*100)
+        Sxa = self.enlargeVector(old_vec=Sx, new_length=n*100)
+        ra = self.enlargeVector(old_vec=r, new_length=n*100)
 
         pr = np.zeros_like(Rpc)
         qr = np.zeros_like(Rpc)
@@ -2162,10 +1921,6 @@ class Plotter():
 
         """
 
-        # schw_qpu.py
-
-        modeldir = self.modeldir
-
         if figtype is None:
             figtype = '.png'
 
@@ -2176,58 +1931,41 @@ class Plotter():
             self.logger.error(text)
             raise ValueError(text)
 
-        val = deepcopy(self.all_models.table)
-        arg = np.argsort(np.array(val[which_chi2]))
-        val.sort(which_chi2)
+        val0 = deepcopy(self.all_models.table)
+        arg = np.argsort(np.array(val0[which_chi2]))
+        val = val0[arg]
         chi2pmin = val[which_chi2][0]
-
         chlim = np.sqrt(self.config.get_2n_obs())
 
-        chi2 = val[which_chi2]
-        chi2 -= chi2pmin
-        chilev = chlim * chi2pmin
-
-        s = np.ravel(np.argsort(chi2))
-        chi2=chi2[s]
-
-        # select the models within 1 sigma confidence level
-        s=np.ravel(np.where(chi2 <=  np.min(chi2)+chilev))
-        n=len(s)
+        n = len(np.ravel(np.where(val[which_chi2] <= chi2pmin + chlim*3)))
         if n < 3:
-            s = np.arange(3, dtype=np.int)
-            n = len(s)
-        if n > 100:
-            s = np.arange(100, dtype=np.int)
-            n = len(s)
+            n = 3
 
-        chi2=chi2[s]
+        q_all = np.zeros((101,n))
+        p_all = np.zeros((101,n))
+        Rarc = np.arange(101, dtype=float)/100.0*Rmax_arcs
 
-        q_all = np.zeros((101,n), dtype=np.float)
-        p_all = np.zeros((101,n), dtype=np.float)
-        Rarc = np.arange(101, dtype=np.float)/100.0*Rmax_arcs
+        stars = \
+          self.system.get_component_from_class(physys.TriaxialVisibleComponent)
+
+        distance = self.all_models.system.distMPc
+        arctpc = distance*np.pi/0.648
+        mgepar = stars.mge_pot.data
+        mgeI = mgepar['I']
+        mgesigma = mgepar['sigma']
+        mgeq = mgepar['q']
+        mgePAtwist = mgepar['PA_twist']
+        Rpc = Rarc*arctpc
+        sigobs_pc = mgesigma*arctpc
 
         for i in range(0, n):
-            model_id = arg[i]
-            model = self.all_models.get_model_from_row(model_id)
-            mdir = modeldir + val['directory'][model_id]
-            mdir_noml = mdir[:mdir[:-1].rindex('/')+1]
-
-            #mgepar, distance, th_view, ph_view, psi_view, ml, \
-            #bhmass, softlen, nre, lrmin, lrmax, nrth, nrrad, ndither, \
-            #vv1_1, vv1_2, dm1, dm2, conversion_factor, grav_const_km, \
-            #parsec_km, rho_crit = self.triaxreadparameters(w_dir=mdir_noml)
-
-            mgepar, distance, th_view, ph_view, \
-            psi_view = self.triaxreadparameters(w_dir=mdir_noml)[:5]
-
-            arctpc = distance*np.pi/0.648
-            Rpc = Rarc*arctpc
-            surf_pc = mgepar[0,:]
-            sigobs_pc = mgepar[1,:]*arctpc
-            qobs = mgepar[2,:]
-            p_k, q_k = self.pqintr_mge_v2(Rpc=Rpc, surf_pc=surf_pc, \
-                                    sigma_pc=sigobs_pc, qobs=qobs, \
-                                    psi_off=mgepar[3,:], \
+            q = val['q-stars'][i]
+            p = val['p-stars'][i]
+            u = val['u-stars'][i]
+            th_view, psi_view, ph_view = stars.triax_pqu2tpp(p,q,u)
+            p_k, q_k = self.pqintr_mge_v2(Rpc=Rpc, surf_pc=mgeI, \
+                                    sigma_pc=sigobs_pc, qobs=mgeq, \
+                                    psi_off=mgePAtwist, \
                                     incl=[th_view, ph_view, psi_view])
             p_all[:,i] = p_k
             q_all[:,i] = q_k
@@ -2263,7 +2001,6 @@ class Plotter():
         ax = fig.add_subplot(1,1,1)
         ax.set_xlim(np.array([0,Rmax_arcs]))
         ax.set_ylim(np.array([0.0,1.1]))
-        #ax.plot(Rpc[cc]/arctpc, q_m[cc], 'x', color='black', markersize=1)
         ax.set_xlabel(r'$r$ [arcsec]', fontsize=9)
         ax.set_ylabel(r'$p$ | $q$ | $T = (1-p^2)/(1-q^2)$', fontsize=9)
         ax.tick_params(labelsize=8)
@@ -2305,3 +2042,205 @@ class Plotter():
             shell=True, check=True).stdout.decode('utf-8'). \
             split(sep='\n')[0].split()[-1]
         return v
+
+#############################################################################
+########################   More Plotting Routines  ##########################
+#############################################################################
+
+    def orbit_distribution(self,
+                           model=None,
+                           minr=None,
+                           maxr=None,
+                           nr=50,
+                           nl=61,
+                           equal_weighted_orbits=False,
+                           orientation='horizontal',
+                           figtype='.png',
+                           subset='all',
+                           getdata=False):
+        """Make the orbit distibution plot
+
+        Plots a model's orbit distribution in (radius, circularity) space.
+        Orbits are split by type: [long, short, intermediate]-axis tubes and
+        box orbits (classification is handled by ``orblib.classify_orbits``).
+        Each orbit only contributes to the appropriate distribution, e.g. box
+        orbits *only* appear in the box-orbit panel. Compared to older versions
+        of orbit distibution plots, this means that there is now no "stripe" at
+        ``lmd_z=0``, since any non short-axis tubes have been moved to their own
+        panel. The fraction of orbits in each type is added as title. Note that
+        individual orbits now contribute a point to the distibution, rather
+        than a single point per orbit-bundle. This means that - if
+        ``dithering>1`` - the orbit distributions are sampled better compared
+        to previous versions.
+
+        Parameters
+        ----------
+        model : optional, a dynamite.model.Model object
+            Determines which model is used for the plot. If ``None``, the
+            minimum chi^2 model is used (the setting in the configuration
+            file's parameter settings is used to determine which chi^2 is used).
+        minr : float, optional
+            the minimum radius [kpc] to show in the plot. If ``None``, this is
+            set to the minimum radius of the orbit library
+        maxr : float, optional
+            the maximum radius [kpc] to show in the plot. If ``None``, this is
+            set to the minimum radius of the orbit library
+        nr : int, optional
+            number of radial bins, by default 50
+        nl : int, optional
+            number of circularity bins, by default 61
+        equal_weighted_orbits : bool, optional
+           weight all orbit bundels equally, instead of using the model's
+           best-fitting weights. Useful to see the distributiuon of the full
+           orbit libary, by default ``False``
+        orientation : str, optional
+            arrange panels ``'horizontal'`` or ``'vertical'``,
+            by default ``'horizontal'``
+        figtype : str, optional
+            file type extension to save the plot, by default ``'.png'``
+        subset : str, optional
+            either ``'all'`` or any combination of ``['long', 'short',
+            'intermediate', 'box']`` separated by ``'+'`` e.g. ``'long+box'``,
+            ``'box+short+intermediate'``. Any order works, but the order does
+            not affect the order of plots. By default ``'all'``
+        getdata : bool, optional
+            whether to return the orbit distribtuion data plotted in the plot,
+            by default ``False``
+
+        Returns
+        -------
+        `mpl.Figure` or a tuple (`mpl.Figure`, np.array) if ``getdata=True``
+            the figure object, and (if ``getdata=True``) a 3D array where the
+            1st dimension indexes over 4 orbit types (long, int., short, box),
+            2nd over radii, 3rd over circularities.
+
+        Raises
+        ------
+        NotImplementedError
+            if ``orientation`` is invalid
+        ValueError
+            if orbit classes don't match the projection tensor or orbit class
+            names are invalid
+        """
+        if model is None:
+            model_id = self.all_models.get_best_n_models_idx(n=1)[0]
+            model = self.all_models.get_model_from_row(model_id)
+        if orientation not in ['horizontal', 'vertical']:
+            raise NotImplementedError(f"Unknown orientation {orientation}, "
+                                      f"must be 'horizontal' or 'vertical'.")
+        orblib = model.get_orblib()
+        orblib.get_projection_tensor(minr=minr, maxr=maxr, nr=nr, nl=nl)
+        if equal_weighted_orbits:
+            n_bundles = orblib.projection_tensor.shape[-1]
+            weights = np.ones(n_bundles)/n_bundles
+        else:
+            weight_solver = model.get_weights(orblib)
+            weights, _, _, _ = weight_solver.solve(orblib)
+        mod_orb_dists = orblib.projection_tensor.dot(weights)
+        mod_orbclass_fracs = np.sum(mod_orb_dists, (1,2))
+        mod_orbclass_fracs = mod_orbclass_fracs/np.sum(mod_orbclass_fracs)
+        # get orbit classes to plot
+        # Note: the order of the orbit classes in orb_classes below must match
+        # the order in the projection_tensor and mod_orb_dists!
+        def frac_to_pc_str(x):
+            return f'{100.*x:.1f}%'
+        orb_classes = [{'name':'long',
+                        'plot':True,
+                        'label':'$\lambda_x$',
+                        'title':f'Long axis tubes: {frac_to_pc_str(mod_orbclass_fracs[0])}'},
+                       {'name':'intermediate',
+                        'plot':True,
+                        'label':'$\lambda_y$',
+                        'title':f'Int. axis tubes: {frac_to_pc_str(mod_orbclass_fracs[1])}'},
+                       {'name':'short',
+                        'plot':True,
+                        'label':'$\lambda_z$',
+                        'title':f'Short axis tubes: {frac_to_pc_str(mod_orbclass_fracs[2])}'},
+                       {'name':'box',
+                        'plot':True,
+                        'label':'$\lambda_\mathrm{tot}$',
+                        'title':f'Box: {frac_to_pc_str(mod_orbclass_fracs[3])}'}]
+        if len(orb_classes) != mod_orb_dists.shape[0]:
+            raise ValueError('Orbit class mismatch with projection tensor.')
+        elif not all(subset_class in [oc['name'] for oc in orb_classes]+['all']
+                     for subset_class in subset.split(sep='+')):
+            raise ValueError('Orbit class subset mismatch.')
+        if subset != 'all':
+            for orb_class in orb_classes:
+                if orb_class['name'] not in subset.split(sep='+'):
+                    orb_class['plot'] = False
+        n_plots = sum(orb_class['plot'] for orb_class in orb_classes)
+        self.logger.info('Plotting orbit distribution for orbit '
+                         f'classes {subset}: {n_plots} subplot(s).')
+        # plotting utilities
+        vmax = max(np.amax(mod_orb_dists[i]) for i in range(len(orb_classes))
+                                             if orb_classes[i]['plot'])
+        kwimshow = {'aspect':'auto',
+                    'cmap':'magma_r',
+                    'interpolation':'none',
+                    'vmax':vmax}
+        ranges = orblib.projection_tensor_rng
+        log10_r_rng = ranges['log10_r_rng']
+        lmd_rng = ranges['lmd_rng']
+        tot_lmd_rng = ranges['tot_lmd_rng']
+        # make plot
+        r_label = '$\log_{10} (r/\mathrm{kpc})$'
+        fig_size = 15 * n_plots/len(orb_classes)
+        self.logger.info(f'{fig_size=}.')
+        if orientation == 'horizontal':
+            fig, ax = plt.subplots(1, n_plots,
+                                   figsize=(fig_size+1, 5),
+                                   sharey=True)
+            if n_plots == 1:
+                ax = [ax]
+            ax[0].set_ylabel(r_label)
+            plot_idx = 0
+            for orb_class_idx, orb_class in enumerate(orb_classes):
+                if orb_class['plot']:
+                    plot_data = np.flipud(mod_orb_dists[orb_class_idx])
+                    if orb_class['name'] == 'box':
+                        extent = tot_lmd_rng+log10_r_rng
+                    else:
+                        extent = lmd_rng+log10_r_rng
+                    cax = ax[plot_idx].imshow(plot_data,
+                                              extent=extent,
+                                              **kwimshow)
+                    ax[plot_idx].set_xlabel(orb_class['label'])
+                    ax[plot_idx].set_title(orb_class['title'])
+                    plot_idx += 1
+            fig.tight_layout()
+            fig.colorbar(cax, ax=ax, orientation='vertical', pad=0.03)
+        elif orientation == 'vertical':
+            fig, ax = plt.subplots(n_plots, 1,
+                                   figsize=(5, fig_size+1),
+                                   sharex=True)
+            if n_plots == 1:
+                ax = [ax]
+            ax[-1].set_xlabel(r_label)
+            plot_idx = 0
+            for orb_class_idx, orb_class in enumerate(orb_classes):
+                if orb_class['plot']:
+                    plot_data = np.flipud(mod_orb_dists[orb_class_idx].T)
+                    if orb_class['name'] == 'box':
+                        extent = log10_r_rng+tot_lmd_rng
+                    else:
+                        extent = log10_r_rng+lmd_rng
+                    cax = ax[plot_idx].imshow(plot_data,
+                                              extent=extent,
+                                              **kwimshow)
+                    # ax[plot_idx].set_xlabel(r_label)
+                    ax[plot_idx].set_ylabel(orb_class['label'])
+                    ax[plot_idx].set_title(orb_class['title'])
+                    plot_idx += 1
+            fig.tight_layout()
+            fig.colorbar(cax, ax=ax, orientation='horizontal', pad=0.15/n_plots)
+        else:
+            raise NotImplementedError(f'Unknown orientation {orientation}.')
+        # format and save
+        figname = self.plotdir + 'orbit_distribution' + figtype
+        fig.savefig(figname)
+        self.logger.info(f'Plot {figname} saved in {self.plotdir}')
+        if getdata:
+            return mod_orb_dists, fig
+        else:
+            return fig

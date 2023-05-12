@@ -24,11 +24,12 @@ The following pages contain the API documentation for this procedure, and each p
   weight_solver
   model_iterator
   plotting
+  analysis
 
 Inheritance Diagram
 ===================
 
 The inheritance diagram showing class relations between all DYNAMITE classes:
 
-.. inheritance-diagram:: parameter_space model_iterator model populations weight_solvers orblib kinematics data physical_system config_reader
+.. inheritance-diagram:: parameter_space model_iterator model populations weight_solvers orblib kinematics data physical_system config_reader plotter analysis
   :parts: 1

@@ -1,7 +1,7 @@
 import os
+import logging
 import numpy as np
 from astropy import table
-import logging
 from pathos.multiprocessing import Pool
 import matplotlib.pyplot as plt
 
@@ -14,8 +14,8 @@ class ModelIterator(object):
     Creating this ``ModelIterator`` object will (i) generate parameters sets,
     (ii) run models for those parameters, (iii) check stopping criteria, and
     iterate this procedure till a stopping criterion is met. This is implemented
-    by created a ``ModelInnerIterator`` object whose ``run_iteration`` method is
-    called a number of times.
+    by creating a ``ModelInnerIterator`` object whose ``run_iteration`` method
+    is called a number of times.
 
     Parameters
     ----------
@@ -98,14 +98,16 @@ class ModelIterator(object):
                                                     cbar_lims='default')
                     plt.close('all') # just to make sure...
                 except ValueError:
-                    self.logger.warning(f'Iteration {total_iter_count}: '
+                    self.logger.warning(f'Iteration {total_iter}: '
                                         'plotting failed!')
 
     def reattempt_failed_weights(self):
         config = self.config
         rows_with_orbits_but_no_weights = \
             [i for i,t in enumerate(config.all_models.table) \
-             if t['orblib_done'] and not t['weights_done']]
+                if t['orblib_done'] \
+                    and not t['weights_done'] \
+                    and not t['all_done']]
         n_to_do = len(rows_with_orbits_but_no_weights)
         if n_to_do>0:
             self.logger.info('Reattempting weight solving for models in '
@@ -129,6 +131,7 @@ class ModelIterator(object):
     def get_missing_weights(self, row):
         self.logger.debug(f'Reattempting weight solving for model {row}.')
         mod = self.config.all_models.get_model_from_row(row)
+        mod.setup_directories()
         orblib = mod.get_orblib()
         weight_solver = mod.get_weights(orblib)
         time = str(np.datetime64('now', 'ms'))
@@ -216,7 +219,7 @@ class ModelInnerIterator(object):
             self.logger.debug(f'input_list_orblib: {input_list_orblib}, '
                               f'input_list_ml: {input_list_ml}.')
             self.assign_model_directories(rows_to_do_orblib, rows_to_do_ml)
-            # save all_models here - as is useful to have directories saved
+            # save all_models here - as it is useful to have directories saved
             # now, even if the run fails and we don't reach next save
             self.all_models.save()
             with Pool(self.ncpus) as p:
@@ -228,16 +231,37 @@ class ModelInnerIterator(object):
                                                   output_orblib)
             self.write_output_to_all_models_table(rows_to_do_ml, output_ml)
             self.all_models.save() # save all_models table once models are run
-            # delete all staging files
-            for row in rows_to_do:
-                f_name = self.all_models.get_model_from_row(row).directory + \
-                    'model_done_staging.ecsv'
-                if os.path.isfile(f_name):
-                    os.remove(f_name)
-                else:
-                    self.logger.warning(f'Strange: {f_name} does not exist.')
-            self.logger.info('Iteration done, staging files deleted.')
+            self.logger.info('Iteration done, '
+                             f'{self.n_to_do} model(s) calculated.')
+            self.delete_staging_files(rows_to_do) # delete all staging files
         return self.par_generator.status
+
+    def delete_staging_files(self, rows):
+        """
+        Deletes staging files.
+
+        Parameters
+        ----------
+        rows : iterable of ints
+            The all_models table rows indicating models whose staging files
+            are to be deleted.
+
+        Returns
+        -------
+        n_files : int
+            Number of staging files deleted.
+
+        """
+        for row in rows:
+            f_name = self.all_models.get_model_from_row(row).directory + \
+                'model_done_staging.ecsv'
+            if os.path.isfile(f_name):
+                os.remove(f_name)
+            else:
+                self.logger.warning(f'Strange: {f_name} does not exist.')
+        n_files = len(rows)
+        self.logger.info(f'{n_files} staging file(s) deleted.')
+        return n_files
 
     def is_new_orblib(self, row_idx):
         """
@@ -272,15 +296,15 @@ class ModelInnerIterator(object):
         Assigns model directories in all_models.table.
 
         Models indexed by rows_orblib:
-        The model directories follow the pattern orblib_xxx_yyy/mlz.zz where
+        The model directories follow the pattern orblib_xxx_yyy/mlzz.zz/ where
         xxx is the iteration number, yyy a consecutive number of that
-        iteration's orbit library, and z.zz is the value of the models'
-        ml parameter in the 01.2f format (the sformat set in the System class).
+        iteration's orbit library, and zz.zz is the value of the models'
+        ml parameter in the format given in its sformat attribute.
 
         Models indexed by rows_ml:
         These models re-use an existing orbit library. Hence, their directory
         strings re-use an existing orblib_xxx_yyy part and get augmented with
-        the appropriate /mlz.zz.
+        the appropriate /mlzz.zz/.
 
         Parameters
         ----------
@@ -350,7 +374,7 @@ class ModelInnerIterator(object):
         Returns
         -------
         tuple
-            all the output for this model, bundles up in a tuple
+            all the output for this model, bundled up in a tuple
 
         """
         if len(data_input) == 2:
@@ -498,7 +522,11 @@ class SplitModelIterator(ModelInnerIterator):
         if not self.par_generator.status['stop'] and (self.do_orblib or
                                                       self.do_weights):
             if self.do_orblib:
-                rows_to_do=np.where(self.all_models.table['orblib_done']==False)
+                # note: orblib_done=False, all_done=True refers to a completed
+                # model whose orblib has been deleted from disk
+                rows_to_do=np.where(
+                    (self.all_models.table['orblib_done']==False) &
+                    (self.all_models.table['all_done'] == False))
                 rows_to_do=rows_to_do[0]
                 self.logger.debug(f'orblib rows_to_do: {rows_to_do}.')
                 self.n_to_do = len(rows_to_do)
@@ -511,27 +539,32 @@ class SplitModelIterator(ModelInnerIterator):
                 self.all_models.save() # save all_models table
                 input_list = [i + (True,False)
                               for i in enumerate(rows_to_do_orblib)]
-                self.logger.debug(f'{len(input_list)} unique new '
-                                  f'orlibs: {input_list}.')
-                if len(input_list) > 0:
+                n_orblibs = len(input_list)
+                self.logger.debug(f'{n_orblibs} unique new '
+                                  f'orlib(s): {input_list}.')
+                if n_orblibs > 0:
                     with Pool(self.ncpus) as p:
                         output = p.map(self.create_and_run_model, input_list)
                     self.write_output_to_all_models_table(rows_to_do_orblib,
                                                           output)
                     self.all_models.save() # save all_models table
+                    self.logger.info(f'{n_orblibs} orblib(s) calculated.')
             if self.do_weights:
                 # rows_to_do = np.where(self.all_models.table['orblib_done']
                 #     & (self.all_models.table['weights_done']==False))
-                rows_to_do = \
-                    np.where(self.all_models.table['weights_done']==False)
+                # note: weights_done=False, all_done=True refers to a completed
+                # model whose weights have been deleted from disk
+                rows_to_do=np.where(
+                    (self.all_models.table['weights_done']==False) &
+                    (self.all_models.table['all_done']==False))
                 rows_to_do=rows_to_do[0]
                 self.logger.debug(f'weight rows_to_do: {rows_to_do}.')
                 self.n_to_do = len(rows_to_do)
                 input_list = [i + (False,True)
                               for i in enumerate(rows_to_do)]
-                self.logger.debug(f'{len(input_list)} weight solves: '
+                self.logger.debug(f'{self.n_to_do} weight solve(s): '
                                   f'{input_list}.')
-                if len(input_list) > 0:
+                if self.n_to_do > 0:
                     # model directory already assigned if it is a 'new' orblib
                     no_dir = ''
                     new_dir_idx = [i for i in rows_to_do
@@ -543,6 +576,9 @@ class SplitModelIterator(ModelInnerIterator):
                         output = p.map(self.create_and_run_model, input_list)
                     self.write_output_to_all_models_table(rows_to_do, output)
                     self.all_models.save() # save all_models table
+                    self.logger.info(f'{self.n_to_do} orblibs\' '
+                                     'weights calculated.')
+                    self.delete_staging_files(rows_to_do) #delete staging files
             else:
                 self.logger.debug('Nothing to do...')
         return self.par_generator.status

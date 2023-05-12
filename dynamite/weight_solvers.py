@@ -316,7 +316,7 @@ class LegacyWeightSolver(WeightSolver):
                      'weight',
                      'lcut'] # lines 1321-1322 of triaxnnls_CRcut.f90
         # NOTE: column 'lcut' is not present if different "triaxnnls" file used
-        dtype = [int, int, int, int, int, int, np.float64, int]
+        dtype = [int, int, int, int, int, int, float, int]
         weights = np.genfromtxt(fname,
                                 skip_header=1,
                                 names=col_names,
@@ -490,7 +490,8 @@ class NNLS(WeightSolver):
         self.system = config.system
         self.settings = config.settings.weight_solver_settings
         self.direc_with_ml = directory_with_ml
-        self.direc_no_ml = directory_with_ml[:-7]
+        self.direc_no_ml \
+            = directory_with_ml[:directory_with_ml[:-1].rindex('/')+1]
         if nnls_solver is None:
             nnls_solver = self.settings['nnls_solver']
         assert nnls_solver in ['scipy', 'cvxopt'], 'Unknown nnls_solver'
@@ -676,7 +677,7 @@ class NNLS(WeightSolver):
         Returns
         -------
         tuple
-            (weights, chi2_all, chi2_kin) where:
+            (weights, chi2_all, chi2_kin, chi2_kinmap) where:
                 -   weights : array, of orbit weights
                 -   chi2_all : float, sum of squared residuals for intrinsic
                     masses, projected_masses and GH coefficients from h_1 to h_n

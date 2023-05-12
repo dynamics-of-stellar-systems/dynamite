@@ -4,7 +4,7 @@
 Publications on the DYNAMITE methods
 ************************************
 
-Thater S., Jethwa P., Tahmasebzadeh B., Zhu L., den Brok M., Santucci G., Ding Y., Poci A., Lilley E., de Zeeuw P.T., Zocchi A., Maindl T.I., Rigamonti F., van de Ven G., Yang M., Fahrion K., 2022, A&A, (submitted), `On the robustness of triaxial Schwarzschild modelling: The effects of correcting the orbit mirroring <https://doi.org/10.48550/arXiv.2205.04165>`_
+Thater S., Jethwa P., Tahmasebzadeh B., Zhu L., den Brok M., Santucci G., Ding Y., Poci A., Lilley E., de Zeeuw P.T., Zocchi A., Maindl T.I., Rigamonti F., van de Ven G., Yang M., Fahrion K., 2022, A&A, 667, A51, `Testing the robustness of DYNAMITE triaxial Schwarzschild modelling: The effects of correcting the orbit mirroring <https://ui.adsabs.harvard.edu/abs/2022A%26A...667A..51T/abstract>`_
 
 Zhu L., van de Ven G., Leaman R., Grand R.J.J., Falcón-Barroso J., Jethwa P., Watkins L.L., Mao S., Poci A., McDermid R.M., Xu D., Nelson D., 2020, MNRAS, 496,1579, `Disentangling the formation history of galaxies via population-orbit superposition: method validation <https://ui.adsabs.harvard.edu/abs/2020MNRAS.496.1579Z/abstract>`_
 

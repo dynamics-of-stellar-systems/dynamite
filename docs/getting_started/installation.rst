@@ -40,57 +40,64 @@ Fortran compiler
 
 The current version of DYNAMITE is based on routines which were written in Fortran. It is therefore necessary to have a pre-installed Fortran compiler. The best-suited Fortran compiler differs with different operation systems.
 
-If you are using Linux, you will need ``ifort`` or ``gcc-gfortran``.
+If you are using Linux, you will need ``ifort`` or ``gfortran`` (gcc/GNU Fortran).
 
-If you are using macOS, you will need ``gfortran``, which can be installed in a number of different ways.
+If you are using macOS, you will need ``gfortran`` (gcc/GNU Fortran), which can be installed in a number of different ways.
+
+We recommend a current version of the Fortran compiler. For ``gfortran``, ::
+
+    gfortran --version
+
+displays the version. We recommend version 10.4 or later.
 
 macOS
 ^^^^^
 
-In the following, we explain the installation of the GCC Fortran compiler via Homebrew and via MacPorts. **Homebrew** can be used to install the latest GCC and all additional libraries in the following way::
+In the following, we explain the installation of the GNU Fortran compiler via Homebrew and via MacPorts. **Homebrew** can be used to install the latest ``gcc`` and all additional libraries in the following way::
 
     brew update
-    brew install gcc@9
+    brew install gcc
 
-GCC should now be listed under your homebrew packages. You can check this by typing::
+``gcc`` should now be listed under your homebrew packages. You can check this by typing::
 
     brew list
- 
-We can check if gfortran is installed by typing in the Terminal::
+
+We can check if ``gfortran`` is installed by typing in the Terminal::
 
     man -k fortran
 
-with the output: ``gfortran(1) - GNU Fortran compiler``. The command ::
+with the output: ``gfortran(1) - GNU Fortran compiler`` (please ignore any lines starting with ``makewhatis:...``). The command ::
 
     which gfortran
 
 returns its location, for example: ``/usr/local/bin/gfortran``.
 
-Alternatively, you can also install GCC with **MacPorts**. The installation is then a bit different::
+Alternatively, you can also install ``gcc`` with **MacPorts**. The installation is then a bit different::
 
     sudo port selfupdate
-    sudo upgrade outdated
+    sudo port upgrade outdated
     port search --name --line --glob 'gcc*'
 
-lists the available GCC version. For example, having as the latest one gcc9, one should then proceed as follows::
+lists the available ``gcc`` version. For example, having as the latest one ``gcc12``, install it with::
 
-    sudo port install gcc9
-    sudo port select --set gcc mp-gcc9
+    sudo port install gcc12
 
-to install it and make it the default version (including gfortran). Check and display the path with::
+In rare cases you may get an error complaining about failing to build/upgrade ``cctools`` In that case, clean and reinstall ``cctools`` by issuing the commands ``sudo port clean cctools`` and ``sudo port -v install cctools`` before trying to install ``gcc`` again. Finally, ::
 
-    gfortran -v
-    ...
+    sudo port select --set gcc mp-gcc12
+
+makes the newly installed ``gcc`` the default version (including ``gfortran``). ::
+
     which gfortran
 
-which returns something like ``/opt/local/bin/gfortran``.
+returns its location, something like ``/opt/local/bin/gfortran``.
 
 
 
 Python
 ------
 
-The user is communicating with the Fortran source code via Python. The basic requirement for DYNAMITE is therefore a reasonably current version of Python (tested with Legacy Python 2.7, Python 3.6, Python 3.7, and Python 3.8).
+The user is communicating with the Fortran source code via Python. The basic requirement for DYNAMITE is therefore a reasonably current version of Python (Python 3.8 or later).
 
 
 
@@ -116,7 +123,7 @@ Installation and Configure Procedure
 
 Download from `github <https://github.com/dynamics-of-stellar-systems/dynamite>`_, unzip and move the DYNAMITE code to the directory in which you want to install it. Make sure that your system fulfills the :ref:`software-requirements` listed above (in particular the Fortran compiler).
 
-If you encouter problems during the installation process, have a look at the section :ref:`troubleshooting`. Some of the most common issues are gathered there.  
+If you encouter problems during the installation process, have a look at the section :ref:`troubleshooting`. Some of the most common issues are gathered there.
 
 The installation of DYNAMITE consists of three steps, as detailed below.a
 
@@ -313,7 +320,6 @@ Your terminal will likely express several warnings again, but these are not crit
 * modelgen
 * orbitstart
 * orblib
-* partgen
 * triaxmass
 * triaxmassbin
 * triaxnnls_CRcut
@@ -326,6 +332,10 @@ If all these files are there, you can proceed with the installation, by going ba
 
     python setup.py install
 
+On systems you don't have root privileges on (such as a cluster), you can choose to install into your user directory by adding the ``--user`` flag::
+
+    python setup.py install --user
+
 To make uninstalling easier, it is useful to record the files which have been created when you install the package. This can be done by::
 
     python setup.py install --record list_of_created_files.txt
@@ -337,6 +347,8 @@ Several Python packages are installed in this way (if they are not already), inc
       * PyYAML
       * numpy
       * matplotlib
+
+(please refer to the file ``requirements.txt`` in the setup directory for a complete list, including the required respective versions).
 
 DYNAMITE should now be installed and ready to be run! You can now try the examples proposed in :ref:`test-run`.
 
