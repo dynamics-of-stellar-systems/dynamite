@@ -1333,10 +1333,10 @@ class Plotter():
         # orbclass1 = orbclass1.reshape((5,ncol,norb), order='F')
         # orbclass2 = np.genfromtxt(file3).T
         # orbclass2 = orbclass1.reshape((5,ncol,norb), order='F')
-        orbclass1 = dynamite.orblib.read_orbit_property_file_base(file2,
+        orbclass1 = dynamite.orblib.LegacyOrbitLibrary.read_orbit_property_file_base(file2,
                                                                   ncol,
                                                                   norb)
-        orbclass2 = dynamite.orblib.read_orbit_property_file_base(file3,
+        orbclass2 = dynamite.orblib.LegacyOrbitLibrary.read_orbit_property_file_base(file3,
                                                                   ncol,
                                                                   norb)
 
