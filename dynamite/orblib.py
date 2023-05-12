@@ -496,7 +496,7 @@ class LegacyOrbitLibrary(OrbitLibrary):
         # ...
         pass
 
-    def read_orbit_base(self, fileroot):
+    def read_orbit_base(self, fileroot, return_instrisic_moments=False):
         """
         Read orbit library from file datfil/{fileroot}.dat.bz2'
 
@@ -575,6 +575,8 @@ class LegacyOrbitLibrary(OrbitLibrary):
         nbins_vhist = 2*nvhist + 1
         velhist = np.zeros((norb, nbins_vhist, nconstr))
         density_3D = np.zeros((norb, size_qlr, size_qth, size_qph))
+        if return_instrisic_moments:
+            intrinsic_moms = np.zeros((norb, size_qlr, size_qth, size_qph, 16))
         for j in range(norb):
             t1,t2,t3,t4,t5 = orblibf.read_ints(np.int32)
             orbtypes[j, :] = orblibf.read_ints(np.int32)
@@ -599,6 +601,8 @@ class LegacyOrbitLibrary(OrbitLibrary):
                     nv0 = int(nv0)
                     tmp = orblibf.read_reals(float)
                     velhist0[kin_idx][j, ivmin+nv0:ivmax+nv0+1, i_ap0] = tmp
+            if return_instrisic_moments:
+                intrinsic_moms[j] = quad_light
         orblibf.close()
         os.chdir(cur_dir)
         velhists = []
@@ -618,7 +622,10 @@ class LegacyOrbitLibrary(OrbitLibrary):
                                     y=velhist0[i],
                                     normalise=False)
             velhists += [vvv]
-        return velhists, density_3D
+        if return_instrisic_moments:
+            return intrinsic_moms
+        else:
+            return velhists, density_3D
 
     def duplicate_flip_and_interlace_orblib(self, orblib):
         """mirror the tube orbits
@@ -738,6 +745,11 @@ class LegacyOrbitLibrary(OrbitLibrary):
         self.n_orbs = self.losvd_histograms[0].y.shape[0]
         proj_mass = [np.sum(self.losvd_histograms[i].y,1) for i in range(nkins)]
         self.projected_masses = proj_mass
+
+    def read_orbit_intrinsic_moments(self):
+        """Read orbit library intrinsic moments
+        """
+
 
     def get_ml_of_original_orblib(self):
         """Get ``ml`` of original orblib with shared parameters
