@@ -30,6 +30,7 @@ class System(object):
         self.distMPc = None
         self.name = None
         self.position_angle = None
+        self.r_eff = None
         for component in args:
             self.add_component(component)
 
@@ -79,6 +80,11 @@ class System(object):
             text = 'System needs distMPc, name, and position_angle attributes'
             self.logger.error(text)
             raise ValueError(text)
+        if not self.r_eff:
+            self.r_eff = None
+        if self.r_eff is None:
+            self.logger.info('System attribute r_eff is None, will be '
+                             'calculated.')
         if not self.cmp_list:
             text = 'System has no components'
             self.logger.error(text)
