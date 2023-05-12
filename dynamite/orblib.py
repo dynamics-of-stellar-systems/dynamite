@@ -628,7 +628,7 @@ class LegacyOrbitLibrary(OrbitLibrary):
             return velhists, density_3D
 
     def duplicate_flip_and_interlace_orblib(self, orblib):
-        """mirror the tube orbits
+        """flip the tube orbits
 
         Take an orbit library, create a duplicate library with the velocity
         signs flipped, then interlace the two i.e. so that resulting library
@@ -661,6 +661,20 @@ class LegacyOrbitLibrary(OrbitLibrary):
                                        normalise=False)
         return new_orblib
 
+    def duplicate_flip_and_interlace_intmoms(self, intmom):
+        """equiv of `duplicate_flip_and_interlace_orblib` for intrinsic moments
+        """
+        new_shape = (intmom.shape[0]*2,) + intmom.shape[1:]
+        new_intmom = np.zeros(new_shape)
+        new_intmom[0::2] = intmom
+        reversed_intmom = 1.* intmom # hack to make a copy
+        # flip sign of...
+        reversed_intmom[:,:,:,:,4] *= -1. # ... vx
+        reversed_intmom[:,:,:,:,5] *= -1. # ... vy
+        reversed_intmom[:,:,:,:,6] *= -1. # ... vz
+        new_intmom[1::2, :] = reversed_intmom
+        return new_intmom
+    
     def combine_orblibs(self, orblib1, orblib2):
         """Combine two LOSVD histograms into one.
 
@@ -749,7 +763,15 @@ class LegacyOrbitLibrary(OrbitLibrary):
     def read_orbit_intrinsic_moments(self):
         """Read orbit library intrinsic moments
         """
-
+        intmom_tubes = self.read_orbit_base(
+            'orblib', 
+            return_instrisic_moments=True)
+        intmom_tubes = self.duplicate_flip_and_interlace_intmoms(intmom_tubes)
+        intmom_boxes = self.read_orbit_base(
+            'orblibbox',
+            return_instrisic_moments=True)
+        intmoms = np.concatenate((intmom_tubes, intmom_boxes), 0)
+        return intmoms
 
     def get_ml_of_original_orblib(self):
         """Get ``ml`` of original orblib with shared parameters
