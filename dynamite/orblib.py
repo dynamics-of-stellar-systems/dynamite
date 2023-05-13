@@ -762,8 +762,8 @@ class LegacyOrbitLibrary(OrbitLibrary):
         """Base method to read in ``*orbclass.out`` files
 
         ...which hold the information of all the orbits stored in the orbit
-        library. The number of orbits is
-        ``norb = nrow = nE * nI2 * nI3 * dithering^3``.
+        library. The number of orbits is ``nE * nI2 * nI3 * dithering^3``,
+        ``ncol = dithering^3`` and ``nrow = nE * nI2 * nI3``.
         For each orbit, the time averaged values are stored:
         ``lx, ly ,lz, r = sum(sqrt( average(r^2) ))``,
         ``Vrms^2 = average(vx^2 + vy^2 + vz^2 + 2vx*vy + 2vxvz + 2vxvy)``.

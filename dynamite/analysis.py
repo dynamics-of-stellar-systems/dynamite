@@ -204,16 +204,10 @@ class Decomposition:
         conversion_factor=self.config.all_models.system.distMPc*1.0e6*1.49598e8
 
         ncol = n_dither ** 3
-        # orbclass1 = np.genfromtxt(file2).T
-        # orbclass1 = orbclass1.reshape((5,ncol,n_orb), order='F')
-        # orbclass2 = np.genfromtxt(file3).T
-        # orbclass2 = orbclass1.reshape((5,ncol,n_orb), order='F')
-        orbclass1 = dyn.orblib.read_orbit_property_file_base(file2,
-                                                             ncol,
-                                                             n_orb)
-        orbclass2 = dyn.orblib.read_orbit_property_file_base(file3,
-                                                             ncol,
-                                                             n_orb)
+        read_orbit_property_file_base = \
+            dyn.orblib.LegacyOrbitLibrary.read_orbit_property_file_base
+        orbclass1 = read_orbit_property_file_base(file2, ncol, n_orb)
+        orbclass2 = read_orbit_property_file_base(file3, ncol, n_orb)
 
         orbw = self.model.weights
         n_orbs = len(orbw)
