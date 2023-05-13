@@ -1311,6 +1311,7 @@ class Plotter():
             t.add_index(which_chi2)
             model_id = t.loc_indices[min_chi2]
             model = self.all_models.get_model_from_row(model_id)
+            self.logger.debug(f'Using model {model_id} in {model.directory}.')
 
         file2 = model.directory_noml + 'datfil/orblib.dat_orbclass.out'
         file3 = model.directory_noml + 'datfil/orblibbox.dat_orbclass.out'
@@ -2123,6 +2124,7 @@ class Plotter():
         if model is None:
             model_id = self.all_models.get_best_n_models_idx(n=1)[0]
             model = self.all_models.get_model_from_row(model_id)
+            self.logger.debug(f'Using model {model_id} in {model.directory}.')
         if orientation not in ['horizontal', 'vertical']:
             raise NotImplementedError(f"Unknown orientation {orientation}, "
                                       f"must be 'horizontal' or 'vertical'.")
