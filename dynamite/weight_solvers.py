@@ -254,7 +254,7 @@ class LegacyWeightSolver(WeightSolver):
             #into model directory
             self.config.copy_config_file(self.directory_with_ml)
         else:
-            self.logger.info("NNLS solution read from existing output")
+            self.logger.info("Reading NNLS solution from existing output.")
         wts, chi2_tot, chi2_kin = self.get_weights_and_chi2_from_orbmat_file()
         return wts, chi2_tot, chi2_kin, self.chi2_kinmap()
 
@@ -692,8 +692,8 @@ class NNLS(WeightSolver):
         orblib.read_losvd_histograms()
         weight_file = f'{self.direc_with_ml}orbit_weights.ecsv'
         if os.path.isfile(weight_file):
-            self.logger.info("NNLS solution read from existing output")
             result = ascii.read(weight_file, format='ecsv')
+            self.logger.info("NNLS solution read from existing output")
             weights = result['weights']
             chi2_tot = result.meta['chi2_tot']
             chi2_kin = result.meta['chi2_kin']
