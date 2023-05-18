@@ -1313,6 +1313,10 @@ class Plotter():
             model = self.all_models.get_model_from_row(model_id)
             self.logger.debug(f'Using model {model_id} in {model.directory}.')
 
+        orblib = model.get_orblib()
+        _ = model.get_weights(orblib)
+        orbw = model.weights
+
         file2 = model.directory_noml + 'datfil/orblib.dat_orbclass.out'
         file3 = model.directory_noml + 'datfil/orblibbox.dat_orbclass.out'
         file3_test = os.path.isfile(file3)
@@ -1330,14 +1334,8 @@ class Plotter():
 
         norb = int(nre*nrth*nrrad)
         ncol=int(ndither**3)
-        read_orbit_property_file_base = \
-            dynamite.orblib.LegacyOrbitLibrary.read_orbit_property_file_base
-        orbclass1 = read_orbit_property_file_base(file2, ncol, norb)
-        orbclass2 = read_orbit_property_file_base(file3, ncol, norb)
-
-        orblib = model.get_orblib()
-        _ = model.get_weights(orblib)
-        orbw = model.weights
+        orbclass1 = orblib.read_orbit_property_file_base(file2, ncol, norb)
+        orbclass2 = orblib.read_orbit_property_file_base(file3, ncol, norb)
 
         orbclass=np.dstack((orbclass1,orbclass1,orbclass2))
         orbclass1a=np.copy(orbclass1)
