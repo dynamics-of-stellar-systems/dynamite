@@ -19,7 +19,7 @@ sys.path.insert(0, os.path.abspath('../dynamite/'))
 # -- Project information -----------------------------------------------------
 
 project = 'DYNAMITE'
-copyright = f'2020-2022, Stellar Dynamics Group in Vienna'
+copyright = f'2020-2023, Stellar Dynamics Group in Vienna'
 author = 'Stellar Dynamics Group in Vienna'
 
 # The full version, including alpha/beta/rc tags
