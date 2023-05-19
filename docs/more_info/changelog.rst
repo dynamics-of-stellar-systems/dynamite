@@ -4,6 +4,7 @@
 Change Log
 ****************
 
+- Improvement: Eliminated unused position_angle system attribute from the configuration file (the angle is read from aperture.dat)
 - Improvement: DYNAMITE can now be built without GALAHAD (LegacyWeightSolver will not be available then)
 - Improvement: plotting gh kinematic maps is more efficient and now works for all weight solvers
 - New feature: New parameter generator SpecificModels generates and runs a predefined list of models or models resulting from a cartesian product of parameter values

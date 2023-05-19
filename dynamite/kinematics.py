@@ -1052,8 +1052,6 @@ class BayesLOSVD(Kinematics, data.Integrated):
         aperture_file.write(string)
         string = '\t{0}\t{1} \n'.format(nx, ny)
         aperture_file.write(string)
-        string = ' aperture = -(hst_pa) + 90 \n'
-        aperture_file.write(string)
         aperture_file.close()
         # Write bins.dat file
         ix = np.digitize(x, x_edg)

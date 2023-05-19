@@ -81,7 +81,6 @@ This section lists the following attributes of the system::
   system_attributes:
       distMPc: ...        # distance in MPc
       name:  ...          # name for your galaxy
-      position_angle:     # in degrees
 
 ``system_components``
 =====================

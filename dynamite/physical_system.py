@@ -29,7 +29,6 @@ class System(object):
         self.parameters = None
         self.distMPc = None
         self.name = None
-        self.position_angle = None
         for component in args:
             self.add_component(component)
 
@@ -74,9 +73,8 @@ class System(object):
         """
         if len(self.cmp_list) != len(set(self.cmp_list)):
             raise ValueError('No duplicate component names allowed')
-        if (self.distMPc is None) or (self.name is None) \
-           or (self.position_angle is None):
-            text = 'System needs distMPc, name, and position_angle attributes'
+        if (self.distMPc is None) or (self.name is None):
+            text = 'System needs distMPc and name attributes'
             self.logger.error(text)
             raise ValueError(text)
         if not self.cmp_list:
