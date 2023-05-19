@@ -22,7 +22,6 @@ legacy_fortran = [
     "../legacy_fortran/triaxmassbin",
 ]
 additional_ex = ["../legacy_fortran/modelgen",
-                 "../legacy_fortran/partgen",
                  "../legacy_fortran/triaxnnls_CRcut",
                  "../legacy_fortran/triaxnnls_noCRcut"]
 legacy_fortran.extend([e for e in additional_ex if os.path.isfile(e)])
