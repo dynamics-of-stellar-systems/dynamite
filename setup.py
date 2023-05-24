@@ -1,3 +1,4 @@
+import os
 import setuptools
 
 # this loads the version number from the dynamite/version.py module
@@ -14,16 +15,16 @@ with open("requirements.txt", "r") as fp:
     required = fp.read().splitlines()
 
 legacy_fortran = [
-    "../legacy_fortran/modelgen",
     "../legacy_fortran/orbitstart",
     "../legacy_fortran/orblib",
     "../legacy_fortran/orblib_new_mirror",
-    "../legacy_fortran/partgen",
     "../legacy_fortran/triaxmass",
     "../legacy_fortran/triaxmassbin",
-    "../legacy_fortran/triaxnnls_CRcut",
-    "../legacy_fortran/triaxnnls_noCRcut",
 ]
+additional_ex = ["../legacy_fortran/modelgen",
+                 "../legacy_fortran/triaxnnls_CRcut",
+                 "../legacy_fortran/triaxnnls_noCRcut"]
+legacy_fortran.extend([e for e in additional_ex if os.path.isfile(e)])
 
 setuptools.setup(
     name="dynamite",

@@ -15,6 +15,7 @@ from matplotlib.ticker import NullFormatter
 import matplotlib.pyplot as plt
 import astropy
 from plotbin import display_pixels
+import dynamite
 from dynamite import kinematics
 from dynamite import physical_system as physys
 from dynamite import analysis
@@ -1310,12 +1311,14 @@ class Plotter():
             t.add_index(which_chi2)
             model_id = t.loc_indices[min_chi2]
             model = self.all_models.get_model_from_row(model_id)
+            self.logger.debug(f'Using model {model_id} in {model.directory}.')
 
-        mdir = model.directory
-        mdir_noml = mdir[:mdir[:-1].rindex('/')+1]
+        orblib = model.get_orblib()
+        _ = model.get_weights(orblib)
+        orbw = model.weights
 
-        file2 = mdir_noml + 'datfil/orblib.dat_orbclass.out'
-        file3 = mdir_noml + 'datfil/orblibbox.dat_orbclass.out'
+        file2 = model.directory_noml + 'datfil/orblib.dat_orbclass.out'
+        file3 = model.directory_noml + 'datfil/orblibbox.dat_orbclass.out'
         file3_test = os.path.isfile(file3)
         if not file3_test:
             file3= '%s' % file2
@@ -1331,14 +1334,8 @@ class Plotter():
 
         norb = int(nre*nrth*nrrad)
         ncol=int(ndither**3)
-        orbclass1 = np.genfromtxt(file2).T
-        orbclass1 = orbclass1.reshape((5,ncol,norb), order='F')
-        orbclass2 = np.genfromtxt(file3).T
-        orbclass2 = orbclass1.reshape((5,ncol,norb), order='F')
-
-        orblib = model.get_orblib()
-        _ = model.get_weights(orblib)
-        orbw = model.weights
+        orbclass1 = orblib.read_orbit_property_file_base(file2, ncol, norb)
+        orbclass2 = orblib.read_orbit_property_file_base(file3, ncol, norb)
 
         orbclass=np.dstack((orbclass1,orbclass1,orbclass2))
         orbclass1a=np.copy(orbclass1)
@@ -2125,6 +2122,7 @@ class Plotter():
         if model is None:
             model_id = self.all_models.get_best_n_models_idx(n=1)[0]
             model = self.all_models.get_model_from_row(model_id)
+            self.logger.debug(f'Using model {model_id} in {model.directory}.')
         if orientation not in ['horizontal', 'vertical']:
             raise NotImplementedError(f"Unknown orientation {orientation}, "
                                       f"must be 'horizontal' or 'vertical'.")

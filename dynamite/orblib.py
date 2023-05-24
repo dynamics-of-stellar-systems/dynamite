@@ -836,8 +836,8 @@ class LegacyOrbitLibrary(OrbitLibrary):
         """Base method to read in ``*orbclass.out`` files
 
         ...which hold the information of all the orbits stored in the orbit
-        library. The number of orbits is
-        ``norb = nrow = nE * nI2 * nI3 * dithering^3``.
+        library. The number of orbits is ``nE * nI2 * nI3 * dithering^3``,
+        ``ncol = dithering^3`` and ``nrow = nE * nI2 * nI3``.
         For each orbit, the time averaged values are stored:
         ``lx, ly ,lz, r = sum(sqrt( average(r^2) ))``,
         ``Vrms^2 = average(vx^2 + vy^2 + vz^2 + 2vx*vy + 2vxvz + 2vxvy)``.
@@ -857,13 +857,18 @@ class LegacyOrbitLibrary(OrbitLibrary):
                 data.append(np.double(x))
             i += 1
         data=np.array(data)
+        if len(data) != 5*ncol*nrow:
+            txt = f'{file} length mismatch - found {len(data)} entries, ' \
+                  f'expected: {5*ncol*nrow}. Correct configuration file used?'
+            self.logger.error(txt)
+            raise ValueError(txt)
         data=data.reshape((5,ncol,nrow), order='F')
         return data
 
     def read_orbit_property_file(self):
         """Read the ``*orbclass.out`` files
 
-        These filen contain time-averaged properties of individual orbits within
+        These files contain time-averaged properties of individual orbits within
         a bundle. Results are stored in ``self.orb_properties``, an astropy
         table with columns ``[r, Vrms, L, Lx, Ly, Lz, lmd, lmd_x, lmd_y,
         lmd_z]`` i.e.

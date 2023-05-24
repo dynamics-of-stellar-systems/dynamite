@@ -63,14 +63,14 @@ class Decomposition:
         self.logger.info(f'Performing decomposition for kin_set no {kin_set}: '
                          f'{stars.kinematic_data[kin_set].name}')
         # Get losvd_histograms and projected_masses
-        orblib = self.model.get_orblib()
-        orblib.read_losvd_histograms()
-        self.losvd_histograms = orblib.losvd_histograms[self.kin_set]
-        self.proj_mass = orblib.projected_masses[self.kin_set]
+        self.orblib = self.model.get_orblib()
+        self.orblib.read_losvd_histograms()
+        self.losvd_histograms = self.orblib.losvd_histograms[self.kin_set]
+        self.proj_mass = self.orblib.projected_masses[self.kin_set]
         self.logger.debug(f'{self.losvd_histograms.y.shape=}, '
                           f'{self.proj_mass.shape=}.')
         # Get orbit weights and store them in self.model.weights
-        _ = self.model.get_weights(orblib)
+        _ = self.model.get_weights(self.orblib)
         # Do the decomposition
         self.decomp = self.decompose_orbits()
         # self.losvd_histograms, self.proj_mass, self.decomp = self.run_dec()
@@ -204,10 +204,8 @@ class Decomposition:
         conversion_factor=self.config.all_models.system.distMPc*1.0e6*1.49598e8
 
         ncol = n_dither ** 3
-        orbclass1 = np.genfromtxt(file2).T
-        orbclass1 = orbclass1.reshape((5,ncol,n_orb), order='F')
-        orbclass2 = np.genfromtxt(file3).T
-        orbclass2 = orbclass1.reshape((5,ncol,n_orb), order='F')
+        orbclass1=self.orblib.read_orbit_property_file_base(file2, ncol, n_orb)
+        orbclass2=self.orblib.read_orbit_property_file_base(file3, ncol, n_orb)
 
         orbw = self.model.weights
         n_orbs = len(orbw)
