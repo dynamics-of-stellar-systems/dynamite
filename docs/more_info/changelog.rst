@@ -4,6 +4,7 @@
 Change Log
 ****************
 
+- New feature: added support for getting intrinsic model moments for both Gauss Hermite and a BayesLOSVD models
 - Improvement: plotting gh kinematic maps is more efficient and now works for all weight solvers
 - New feature: New parameter generator SpecificModels generates and runs a predefined list of models or models resulting from a cartesian product of parameter values
 - Improvement: the orbit plot (Plotter.orbit_plot) now works for all implemented weight solvers
