@@ -11,6 +11,7 @@ import sparse
 
 from dynamite import physical_system as physys
 from dynamite import kinematics as dyn_kin
+from dynamite.constants import PARSEC_KM
 
 class OrbitLibrary(object):
     """An abstract class for orbit libraries.
@@ -496,7 +497,7 @@ class LegacyOrbitLibrary(OrbitLibrary):
         # ...
         pass
 
-    def read_orbit_base(self, fileroot):
+    def read_orbit_base(self, fileroot, return_instrisic_moments=False):
         """
         Read orbit library from file datfil/{fileroot}.dat.bz2'
 
@@ -504,11 +505,18 @@ class LegacyOrbitLibrary(OrbitLibrary):
         ----------
         fileroot : string
             this will probably be either 'orblib' or 'orblibbox'
+        return_instrisic_moments: boolean
+            whether to return_instrisic_moments of the orblib
 
         Returns
         -------
-        Histogram
-            the orbit library stored in a Histogram object
+        if return_instrisic_moments is False, this returns a tuple of type
+        (Histogram, array) where the orbit library LOSVDs are stored in the 
+        Histogram object, and the 3D density of the orbits are stored in the 
+        array object.
+        if return_instrisic_moments is True, returns a tuple 
+        (array, list) where the array stores the intrinsic momenmts of the 
+        orblib and the list contains the bin edges of the 3D grid.
 
         """
         cur_dir = os.getcwd()
@@ -536,6 +544,8 @@ class LegacyOrbitLibrary(OrbitLibrary):
         quad_lr = orblibf.read_reals(float)
         quad_lth = orblibf.read_reals(float)
         quad_lph = orblibf.read_reals(float)
+        if return_instrisic_moments:
+            instrisic_grid = [quad_lr, quad_lth, quad_lph]
         # from histogram_setup_write, lines 1917-1926:
         tmp = orblibf.read_record(np.int32, np.int32, float)
         nconstr = tmp[0][0] # = total number of apertures for ALL kinematics
@@ -575,6 +585,8 @@ class LegacyOrbitLibrary(OrbitLibrary):
         nbins_vhist = 2*nvhist + 1
         velhist = np.zeros((norb, nbins_vhist, nconstr))
         density_3D = np.zeros((norb, size_qlr, size_qth, size_qph))
+        if return_instrisic_moments:
+            intrinsic_moms = np.zeros((norb, size_qlr, size_qth, size_qph, 16))
         for j in range(norb):
             t1,t2,t3,t4,t5 = orblibf.read_ints(np.int32)
             orbtypes[j, :] = orblibf.read_ints(np.int32)
@@ -599,6 +611,8 @@ class LegacyOrbitLibrary(OrbitLibrary):
                     nv0 = int(nv0)
                     tmp = orblibf.read_reals(float)
                     velhist0[kin_idx][j, ivmin+nv0:ivmax+nv0+1, i_ap0] = tmp
+            if return_instrisic_moments:
+                intrinsic_moms[j] = quad_light
         orblibf.close()
         os.chdir(cur_dir)
         velhists = []
@@ -618,10 +632,13 @@ class LegacyOrbitLibrary(OrbitLibrary):
                                     y=velhist0[i],
                                     normalise=False)
             velhists += [vvv]
-        return velhists, density_3D
+        if return_instrisic_moments:
+            return intrinsic_moms, instrisic_grid
+        else:
+            return velhists, density_3D
 
     def duplicate_flip_and_interlace_orblib(self, orblib):
-        """mirror the tube orbits
+        """flip the tube orbits
 
         Take an orbit library, create a duplicate library with the velocity
         signs flipped, then interlace the two i.e. so that resulting library
@@ -654,6 +671,20 @@ class LegacyOrbitLibrary(OrbitLibrary):
                                        normalise=False)
         return new_orblib
 
+    def duplicate_flip_and_interlace_intmoms(self, intmom):
+        """equiv of `duplicate_flip_and_interlace_orblib` for intrinsic moments
+        """
+        new_shape = (intmom.shape[0]*2,) + intmom.shape[1:]
+        new_intmom = np.zeros(new_shape)
+        new_intmom[0::2] = intmom
+        reversed_intmom = 1.* intmom # hack to make a copy
+        # flip sign of...
+        reversed_intmom[:,:,:,:,4] *= -1. # ... vx
+        reversed_intmom[:,:,:,:,5] *= -1. # ... vy
+        reversed_intmom[:,:,:,:,6] *= -1. # ... vz
+        new_intmom[1::2, :] = reversed_intmom
+        return new_intmom
+    
     def combine_orblibs(self, orblib1, orblib2):
         """Combine two LOSVD histograms into one.
 
@@ -738,6 +769,50 @@ class LegacyOrbitLibrary(OrbitLibrary):
         self.n_orbs = self.losvd_histograms[0].y.shape[0]
         proj_mass = [np.sum(self.losvd_histograms[i].y,1) for i in range(nkins)]
         self.projected_masses = proj_mass
+
+    def read_orbit_intrinsic_moments(self):
+        """Read the intrinsic moments of the orbit library.
+
+        Moments stored in 3D grid over spherical co-ords (r,theta,phi). This
+        function reads the data from files, formats them correctly, and coverts
+        to physical units. 
+
+        Returns
+        -------
+        (array, list)
+            array shape = (n_orb, nr, nth, nph, 16). Final dimension indexes
+            over: density,x,y,z,vx,vy,vz,vx^2,vy^2,vz^2,vx*vy,vy*vz,vz*vx, and 
+            the final three indices (13,14,15) are some type of orbit
+            classification (not understood - recommend not to use!). The list 
+            contains grid bin edges over spherical (r, theta, phi). 
+
+        """  
+        intmom_tubes, int_grid = self.read_orbit_base(
+            'orblib', 
+            return_instrisic_moments=True)
+        intmom_tubes = self.duplicate_flip_and_interlace_intmoms(intmom_tubes)
+        intmom_boxes, _ = self.read_orbit_base(
+            'orblibbox',
+            return_instrisic_moments=True)
+        intmoms = np.concatenate((intmom_tubes, intmom_boxes), 0)
+        ml_current = self.parset['ml']
+        ml_original = self.get_ml_of_original_orblib()
+        velscale = np.sqrt(ml_current/ml_original)
+        conversion_factor = self.system.distMPc * 1e6 * np.tan(np.pi/648000.0) * PARSEC_KM
+        intmoms[:,:,:,:,1] /= conversion_factor # kpc -> arcsec
+        intmoms[:,:,:,:,2] /= conversion_factor
+        intmoms[:,:,:,:,3] /= conversion_factor
+        intmoms[:,:,:,:,4] *= velscale # for velocity stretching due to M/L
+        intmoms[:,:,:,:,5] *= velscale
+        intmoms[:,:,:,:,6] *= velscale
+        intmoms[:,:,:,:,7] *= velscale**2.
+        intmoms[:,:,:,:,8] *= velscale**2.
+        intmoms[:,:,:,:,9] *= velscale**2.
+        intmoms[:,:,:,:,10] *= velscale**2.
+        intmoms[:,:,:,:,11] *= velscale**2.
+        intmoms[:,:,:,:,12] *= velscale**2.
+        int_grid[0] /= conversion_factor # kpc -> arcsec
+        return intmoms, int_grid
 
     def get_ml_of_original_orblib(self):
         """Get ``ml`` of original orblib with shared parameters
@@ -1064,5 +1139,45 @@ class LegacyOrbitLibrary(OrbitLibrary):
         projection = np.stack(projection)
         projection = np.moveaxis(projection, 1, 3)
         self.projection_tensor = projection
+
+    def get_model_intrinsic_moment_constructor(self):
+        """Get a function to constrcut the model's intrinsic moments in 3D grid
+
+        Returns a function and a list. The function takes weights and returns
+        intrinsic model moments in a 3D grid. The list contains the bin edges
+        of the 3D grid. Example usage:
+
+        ```
+        moment_constructor, bin_edges = orblib.get_model_intrinsic_moment_constructor()
+        moments = moment_constructor(weights)
+        ```
+
+        Returns
+        -------
+        (callable, list) 
+            the callable = function which takes weights and returns 3D moments.
+            The list contains grid bin edges over spherical (r, theta, phi). 
+            Moments returned by the callable are stored in a grid of size 
+            (nr, nth, nph, 13). Final dimension indexes over: density,x,y,z,vx,
+            vy,vz,vx^2,vy^2,vz^2,vx*vy,vy*vz,vz*vx. Density is normalised to 1,
+            spatial moments in arcseconds, velocities in km/s.
+
+        """        
+        intmoms, int_grid = self.read_orbit_intrinsic_moments()
+        density = intmoms[:,:,:,:,0]
+        kinmoms = intmoms[:,:,:,:,1:13]
+        def model_intrinsic_moment_constructor(weights):
+            mod_density = (density.T * weights).T
+            # normalise density so model sums to 1 in each (r,th,ph) bin
+            mod_dens_nrm = mod_density/np.sum(mod_density, 0)
+            mod_kinmoms = np.einsum('ijklm,ijkl->jklm', kinmoms, mod_dens_nrm)
+            # normalise density that model sums over (r,th,ph) bins to give 1
+            mod_density = np.sum(mod_density, 0)
+            mod_density /= np.sum(mod_density)
+            mod_moments = np.concatenate(
+                (mod_density[...,np.newaxis], mod_kinmoms), 
+                axis=-1)
+            return mod_moments
+        return model_intrinsic_moment_constructor, int_grid
 
 # end

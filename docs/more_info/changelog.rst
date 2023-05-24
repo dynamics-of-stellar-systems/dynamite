@@ -4,6 +4,7 @@
 Change Log
 ****************
 
+- New feature: added support for getting intrinsic model moments for both Gauss Hermite and a BayesLOSVD models
 - Improvement: Eliminated unused position_angle system attribute from the configuration file (the angle is read from aperture.dat)
 - Improvement: DYNAMITE can now be built without GALAHAD (LegacyWeightSolver will not be available then)
 - Improvement: plotting gh kinematic maps is more efficient and now works for all weight solvers
