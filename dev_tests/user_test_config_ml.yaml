@@ -143,7 +143,7 @@ orblib_settings:
     logrmax: 1.99123
     nI2: 5        # must be >= 4
     nI3: 4
-    dithering: 3
+    dithering: 1
     #the following values should usually not be changed
     orbital_periods: 200
     sampling: 50000
@@ -192,8 +192,8 @@ io_settings: # paths can be given with or without trailing slash
     all_models_file: "all_models.ecsv"
 
 multiprocessing_settings:
-    ncpus: 4 # integer or 'all_available' for multiprocessing
-    #ncpus_weights: 'all_available' # integer or 'all_available', optional, defaults to ncpus (not used by all iterators)
+    ncpus: 'all_available' # integer or 'all_available' for multiprocessing
+    ncpus_weights: 'all_available' # integer or 'all_available', optional, defaults to ncpus (not used by all iterators)
     modeliterator: 'SplitModelIterator' # optional, default 'ModelInnerIterator'
     orblibs_in_parallel: True
 
