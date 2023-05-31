@@ -806,13 +806,13 @@ class Model(object):
 
     def validate_config_file(self):
         """
-        validate the content of the config file against the model's config file
+        Validate the content of the config file against the model's config file
 
         Upon solving a model, DYNAMITE creates a backup of the config file in
         the model directory. Instantiating a model later (e.g., for plotting)
         using a config file that is incompatible with the one used to create
         the model can lead to problems (e.g., differently sized orbit library).
-        This method validates the "global" config file to the one in the
+        This method validates the "global" config file against the one in the
         model directory (if existing).
 
         Differing config files may be ok and intended (e.g., due to expanding
