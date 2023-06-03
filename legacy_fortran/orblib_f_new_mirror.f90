@@ -730,11 +730,11 @@ module projection
     ! stop projection module
     public :: projection_stop
 
-    ! Project pos(3,:),vel(3,:) to proj(2,:),lofvel(:)
+    ! Project pos(3,:),vel(3,:) to proj(2,:),lofvel(:),velx(:),vely(:)
     ! Using the n'th projection
     private :: project_n
 
-    ! Project pos(3,:),vel(3,:) to proj(2,:),lofvel(:)
+    ! Project pos(3,:),vel(3,:) to proj(2,:),lofvel(:),velx(:),vely(:)
     !Done is set to .true. if all projections are finished
     public :: project
 
@@ -794,7 +794,7 @@ contains
     end subroutine projection_stop
 
     !++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-    subroutine project_n(type, pos, vel, proj, losvel, n)
+    subroutine project_n(type, pos, vel, proj, losvel, velx, vely, n)
         ! use initial_parameters, only : theta_view, phi_view
         ! pos( :, (r,z) )
         real(kind=dp), intent(in), dimension(:, :)   :: pos
@@ -804,6 +804,8 @@ contains
         real(kind=dp), intent(out), dimension(size(pos, 1), 2)           :: proj
         ! losvd (:)
         real(kind=dp), intent(out), dimension(size(pos, 1))             :: losvel
+        ! velx(:), vely(:)
+        real(kind=dp), intent(out), dimension(size(pos, 1))             :: velx, vely
         integer(kind=i4b), intent(in)                       :: type, n
         !----------------------------------------------------------------------
         real(kind=dp)              :: t1, t2, t3, theta, phi
@@ -859,6 +861,10 @@ contains
         t3 = cos(theta)*vsgn(3, n, type)
         losvel(:) = t1*vel(:, 1) + t2*vel(:, 2) + t3*vel(:, 3)
 
+        ! TODO: enter proper projection here...
+        velx(:) = losvel(:)*0.5
+        vely(:) = losvel(:)*0.8
+
         !xaa = (-sin(phi)*x+cos(phi)*y)*sin(psi)-(-cos(theta)*cos(phi)*x-cos(theta)*sin(phi)*y+sin(theta)*z)*cos(psi);
         !yaa = (-sin(phi)*x+cos(phi)*y)*cos(psi)+(-cos(theta)*cos(phi)*x-cos(theta)*sin(phi)*y+sin(theta)*z)*sin(psi);
 
@@ -879,14 +885,14 @@ contains
     end subroutine project_n
 
     !++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-    subroutine project(type, pos, vel, proj, lofvel, done, first)
+    subroutine project(type, pos, vel, proj, lofvel, velx, vely, done, first)
         integer(kind=i4b), intent(in)                        :: type
         real(kind=dp), intent(in), dimension(:, :) :: pos
         real(kind=dp), intent(in), dimension(size(pos, 1), 3) :: vel
         real(kind=dp), intent(out), dimension(size(pos, 1)*projection_symmetry, 2) &
              & :: proj
         real(kind=dp), intent(out), dimension(size(pos, 1)*projection_symmetry) &
-             & :: lofvel
+             & :: lofvel, velx, vely
         logical, intent(out)                          :: done
         logical, intent(in)                          :: first
         !----------------------------------------------------------------------
@@ -898,12 +904,14 @@ contains
         done = .false.
 
         if (count <= proj_number) then
-            call project_n(type, pos, vel, proj, lofvel, count)
+            call project_n(type, pos, vel, proj, lofvel, velx, vely, count)
         else
             count = proj_number + 1
             done = .true.
             proj(:, :) = 0.0_dp
             lofvel(:) = 0.0_dp
+            velx(:) = 0.0_dp
+            vely(:) = 0.0_dp
         end if
 
     end subroutine project
@@ -1874,6 +1882,7 @@ module histograms
 
     ! histogram data (aperture,vel)
     real(kind=dp), Dimension(:, :), private, allocatable  :: histogram
+    real(kind=dp), Dimension(:, :), private, allocatable  :: histogramx, histogramy
     ! hist_basic(n,i) n=aperture number, i=width,center,#bins
     real(kind=dp), Dimension(:, :), public, allocatable  :: hist_basic
     ! Are the velocity bins all the same?
@@ -1916,6 +1925,8 @@ contains
     subroutine histogram_reset()
         !----------------------------------------------------------------------
         histogram(:, :) = 0.0_dp
+        histogramx(:, :) = 0.0_dp
+        histogramy(:, :) = 0.0_dp
         h_n_stored(:) = 0.0_dp
 
     end subroutine histogram_reset
@@ -1962,6 +1973,20 @@ contains
             !conversion normalizing
             histogram(bg:ed, 1:h_bin(i)) = h_n_stored(i)*histogram(bg:ed, 1:h_bin(i))
             call histogram_write_compat_sparse(handle, histogram(bg:ed, 1:h_bin(i)))
+
+            ed = h_blocks(i) + h_start(i) - 1
+            call binning_bin(i, histogramx(bg:ed, 1:h_bin(i)), ed)
+            ed = h_start(i) - 1 + ed
+            !conversion normalizing
+            histogramx(bg:ed, 1:h_bin(i)) = h_n_stored(i)*histogramx(bg:ed, 1:h_bin(i))
+            call histogram_write_compat_sparse(handle, histogramx(bg:ed, 1:h_bin(i)))
+
+            ed = h_blocks(i) + h_start(i) - 1
+            call binning_bin(i, histogramy(bg:ed, 1:h_bin(i)), ed)
+            ed = h_start(i) - 1 + ed
+            !conversion normalizing
+            histogramy(bg:ed, 1:h_bin(i)) = h_n_stored(i)*histogramy(bg:ed, 1:h_bin(i))
+            call histogram_write_compat_sparse(handle, histogramy(bg:ed, 1:h_bin(i)))
         end do
     end subroutine histogram_write
 
@@ -2031,11 +2056,11 @@ contains
     end subroutine histogram_velbin
 
     !++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-    subroutine histogram_store(ap, n, velb, tot)
+    subroutine histogram_store(ap, n, velb, velbx, velby, tot)
         integer(kind=i4b), intent(in)  :: ap
         integer(kind=i4b)                                   :: i, k, v
         integer(kind=i4b), dimension(:), intent(in)  :: n
-        integer(kind=i4b), dimension(size(n, 1)), intent(in)  :: velb
+        integer(kind=i4b), dimension(size(n, 1)), intent(in)  :: velb, velbx, velby
         integer(kind=i4b), intent(in)  :: tot
         !----------------------------------------------------------------------
         !update number of points stored (including points not stored)
@@ -2048,6 +2073,10 @@ contains
                 k = k + h_start(ap) - 1
                 v = velb(i)
                 histogram(k, v) = histogram(k, v) + 1.0_dp
+                v = velbx(i)
+                histogramx(k, v) = histogramx(k, v) + 1.0_dp
+                v = velby(i)
+                histogramy(k, v) = histogramy(k, v) + 1.0_dp
             end if
         end do
 
@@ -2059,6 +2088,7 @@ contains
         !----------------------------------------------------------------------
         if (allocated(h_bin)) then
             deallocate (hist_basic, h_beg, h_end, h_bin, h_width, h_start, histogram)
+            deallocate (histogramx, histogramy)
         end if
         call binning_stop()
 
@@ -2100,6 +2130,8 @@ contains
         h_width(:) = hist_basic(:, 1)/hist_basic(:, 3)
 
         allocate (histogram(sum(aperture_size(:)), maxval(h_bin(:))))
+        allocate (histogramx(sum(aperture_size(:)), maxval(h_bin(:))))
+        allocate (histogramy(sum(aperture_size(:)), maxval(h_bin(:))))
         print *, "  * Histogram size : ", size(histogram), "=", size(histogram, 1), "*",&
              & size(histogram, 2)
 
@@ -2641,8 +2673,8 @@ contains
         real(kind=dp), dimension(integrator_points, 3) :: pos
         real(kind=dp), dimension(integrator_points, 3) :: vel
         real(kind=dp), dimension(integrator_points*projection_symmetry, 2):: proj, vec_gauss
-        real(kind=dp), dimension(integrator_points*projection_symmetry):: losvel
-        integer(kind=i4b), dimension(integrator_points*projection_symmetry):: velb, poly
+        real(kind=dp), dimension(integrator_points*projection_symmetry):: losvel, velx, vely
+        integer(kind=i4b), dimension(integrator_points*projection_symmetry):: velb, velbx, velby, poly
         integer(kind=i4b)                                          :: ap, i, pf
 
         integer(kind=i4b) :: type
@@ -2664,18 +2696,26 @@ contains
                 call qgrid_store(pos(:, :), vel(:, :), type)
                 first = .true.
                 do ! for all projections
-                    call project(type, pos, vel, proj, losvel, done, first)
+                    call project(type, pos, vel, proj, losvel, velx, vely, done, first)
                     if (done) exit
                     first = .false.
 
-                    if (hist_thesame) call histogram_velbin(1, losvel, velb)
+                    if (hist_thesame) then
+                        call histogram_velbin(1, losvel, velb)
+                        call histogram_velbin(1, velx, velbx)
+                        call histogram_velbin(1, vely, velby)
+                    end if
                     do i = 1, psf_n
-                        if (.not. hist_thesame) call histogram_velbin(i, losvel, velb)
+                        if (.not. hist_thesame) then
+                            call histogram_velbin(i, losvel, velb)
+                            call histogram_velbin(i, velx, velbx)
+                            call histogram_velbin(i, vely, velby)
+                        end if
                         call psf_gaussian(i, proj, vec_gauss)
                         do ap = 1, aperture_n
                             if (i == aperture_psf(ap)) then
                                 call aperture_find(ap, vec_gauss, poly)
-                                call histogram_store(ap, poly, velb, size(proj, 1))
+                                call histogram_store(ap, poly, velb, velbx, velby, size(proj, 1))
                             end if
                         end do
                     end do

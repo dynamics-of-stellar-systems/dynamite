@@ -511,11 +511,11 @@ class LegacyOrbitLibrary(OrbitLibrary):
         Returns
         -------
         if return_instrisic_moments is False, this returns a tuple of type
-        (Histogram, array) where the orbit library LOSVDs are stored in the 
-        Histogram object, and the 3D density of the orbits are stored in the 
+        (Histogram, array) where the orbit library LOSVDs are stored in the
+        Histogram object, and the 3D density of the orbits are stored in the
         array object.
-        if return_instrisic_moments is True, returns a tuple 
-        (array, list) where the array stores the intrinsic momenmts of the 
+        if return_instrisic_moments is True, returns a tuple
+        (array, list) where the array stores the intrinsic momenmts of the
         orblib and the list contains the bin edges of the 3D grid.
 
         """
@@ -583,7 +583,7 @@ class LegacyOrbitLibrary(OrbitLibrary):
         # Next read the histograms themselves.
         orbtypes = np.zeros((norb, ndith**3), dtype=int)
         nbins_vhist = 2*nvhist + 1
-        velhist = np.zeros((norb, nbins_vhist, nconstr))
+        # velhist = np.zeros((norb, nbins_vhist, nconstr))
         density_3D = np.zeros((norb, size_qlr, size_qth, size_qph))
         if return_instrisic_moments:
             intrinsic_moms = np.zeros((norb, size_qlr, size_qth, size_qph, 16))
@@ -611,6 +611,24 @@ class LegacyOrbitLibrary(OrbitLibrary):
                     nv0 = int(nv0)
                     tmp = orblibf.read_reals(float)
                     velhist0[kin_idx][j, ivmin+nv0:ivmax+nv0+1, i_ap0] = tmp
+                # READ PROPER MOTION HISTOGRAMS START
+                velhistx = [np.zeros((norb, nv, na)) for (nv, na) in zip(hist_bins,n_apertures)]
+                ivmin, ivmax = orblibf.read_ints(np.int32)
+                if ivmin <= ivmax:
+                    nv0 = (hist_bins[kin_idx]-1)/2
+                    # ^--- this is an integer since hist_bins is odd
+                    nv0 = int(nv0)
+                    tmp = orblibf.read_reals(float)
+                    velhistx[kin_idx][j, ivmin+nv0:ivmax+nv0+1, i_ap0] = tmp
+                velhisty = [np.zeros((norb, nv, na)) for (nv, na) in zip(hist_bins,n_apertures)]
+                ivmin, ivmax = orblibf.read_ints(np.int32)
+                if ivmin <= ivmax:
+                    nv0 = (hist_bins[kin_idx]-1)/2
+                    # ^--- this is an integer since hist_bins is odd
+                    nv0 = int(nv0)
+                    tmp = orblibf.read_reals(float)
+                    velhisty[kin_idx][j, ivmin+nv0:ivmax+nv0+1, i_ap0] = tmp
+                # READ PROPER MOTION HISTOGRAMS END
             if return_instrisic_moments:
                 intrinsic_moms[j] = quad_light
         orblibf.close()
@@ -684,7 +702,7 @@ class LegacyOrbitLibrary(OrbitLibrary):
         reversed_intmom[:,:,:,:,6] *= -1. # ... vz
         new_intmom[1::2, :] = reversed_intmom
         return new_intmom
-    
+
     def combine_orblibs(self, orblib1, orblib2):
         """Combine two LOSVD histograms into one.
 
@@ -775,20 +793,20 @@ class LegacyOrbitLibrary(OrbitLibrary):
 
         Moments stored in 3D grid over spherical co-ords (r,theta,phi). This
         function reads the data from files, formats them correctly, and coverts
-        to physical units. 
+        to physical units.
 
         Returns
         -------
         (array, list)
             array shape = (n_orb, nr, nth, nph, 16). Final dimension indexes
-            over: density,x,y,z,vx,vy,vz,vx^2,vy^2,vz^2,vx*vy,vy*vz,vz*vx, and 
+            over: density,x,y,z,vx,vy,vz,vx^2,vy^2,vz^2,vx*vy,vy*vz,vz*vx, and
             the final three indices (13,14,15) are some type of orbit
-            classification (not understood - recommend not to use!). The list 
-            contains grid bin edges over spherical (r, theta, phi). 
+            classification (not understood - recommend not to use!). The list
+            contains grid bin edges over spherical (r, theta, phi).
 
-        """  
+        """
         intmom_tubes, int_grid = self.read_orbit_base(
-            'orblib', 
+            'orblib',
             return_instrisic_moments=True)
         intmom_tubes = self.duplicate_flip_and_interlace_intmoms(intmom_tubes)
         intmom_boxes, _ = self.read_orbit_base(
@@ -1154,15 +1172,15 @@ class LegacyOrbitLibrary(OrbitLibrary):
 
         Returns
         -------
-        (callable, list) 
+        (callable, list)
             the callable = function which takes weights and returns 3D moments.
-            The list contains grid bin edges over spherical (r, theta, phi). 
-            Moments returned by the callable are stored in a grid of size 
+            The list contains grid bin edges over spherical (r, theta, phi).
+            Moments returned by the callable are stored in a grid of size
             (nr, nth, nph, 13). Final dimension indexes over: density,x,y,z,vx,
             vy,vz,vx^2,vy^2,vz^2,vx*vy,vy*vz,vz*vx. Density is normalised to 1,
             spatial moments in arcseconds, velocities in km/s.
 
-        """        
+        """
         intmoms, int_grid = self.read_orbit_intrinsic_moments()
         density = intmoms[:,:,:,:,0]
         kinmoms = intmoms[:,:,:,:,1:13]
@@ -1175,7 +1193,7 @@ class LegacyOrbitLibrary(OrbitLibrary):
             mod_density = np.sum(mod_density, 0)
             mod_density /= np.sum(mod_density)
             mod_moments = np.concatenate(
-                (mod_density[...,np.newaxis], mod_kinmoms), 
+                (mod_density[...,np.newaxis], mod_kinmoms),
                 axis=-1)
             return mod_moments
         return model_intrinsic_moment_constructor, int_grid
