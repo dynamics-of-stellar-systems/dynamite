@@ -580,8 +580,10 @@ class LegacyOrbitLibrary(OrbitLibrary):
         # set up a list of arrays to hold the results
         tmp = zip(hist_bins,n_apertures)
         velhist0 = [np.zeros((norb, nv, na)) for (nv,na) in tmp]
-        velhistx = [np.zeros((norb, nv, na)) for (nv, na) in tmp]
-        velhisty = [np.zeros((norb, nv, na)) for (nv, na) in tmp]
+        tmp = zip(hist_bins,n_apertures)
+        velhistx = [np.zeros((norb, nv, na)) for (nv,na) in tmp]
+        tmp = zip(hist_bins,n_apertures)
+        velhisty = [np.zeros((norb, nv, na)) for (nv,na) in tmp]
         # Next read the histograms themselves.
         orbtypes = np.zeros((norb, ndith**3), dtype=int)
         nbins_vhist = 2*nvhist + 1
@@ -606,26 +608,19 @@ class LegacyOrbitLibrary(OrbitLibrary):
             for i_ap in range(nconstr):
                 kin_idx = kin_idx_per_ap[i_ap]
                 i_ap0 = i_ap - idx_ap_reset[kin_idx]
+                nv0 = int((hist_bins[kin_idx]-1)/2)
                 ivmin, ivmax = orblibf.read_ints(np.int32)
+                # ^--- this is an integer since hist_bins is odd
                 if ivmin <= ivmax:
-                    nv0 = (hist_bins[kin_idx]-1)/2
-                    # ^--- this is an integer since hist_bins is odd
-                    nv0 = int(nv0)
                     tmp = orblibf.read_reals(float)
                     velhist0[kin_idx][j, ivmin+nv0:ivmax+nv0+1, i_ap0] = tmp
                 # READ PROPER MOTION HISTOGRAMS START
                 ivmin, ivmax = orblibf.read_ints(np.int32)
                 if ivmin <= ivmax:
-                    nv0 = (hist_bins[kin_idx]-1)/2
-                    # ^--- this is an integer since hist_bins is odd
-                    nv0 = int(nv0)
                     tmp = orblibf.read_reals(float)
                     velhistx[kin_idx][j, ivmin+nv0:ivmax+nv0+1, i_ap0] = tmp
                 ivmin, ivmax = orblibf.read_ints(np.int32)
                 if ivmin <= ivmax:
-                    nv0 = (hist_bins[kin_idx]-1)/2
-                    # ^--- this is an integer since hist_bins is odd
-                    nv0 = int(nv0)
                     tmp = orblibf.read_reals(float)
                     velhisty[kin_idx][j, ivmin+nv0:ivmax+nv0+1, i_ap0] = tmp
                 # READ PROPER MOTION HISTOGRAMS END
