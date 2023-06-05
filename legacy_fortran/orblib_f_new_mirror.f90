@@ -861,9 +861,16 @@ contains
         t3 = cos(theta)*vsgn(3, n, type)
         losvel(:) = t1*vel(:, 1) + t2*vel(:, 2) + t3*vel(:, 3)
 
-        ! TODO: enter proper projection here...
-        velx(:) = losvel(:)*0.5
-        vely(:) = losvel(:)*0.8
+        ! pm_x
+        t1 = -sin(phi)*vsgn(1, n, type)
+        t2 = cos(phi)*vsgn(2, n, type)
+        velx(:) = t1*vel(:, 1) + t2*vel(:, 2)
+
+        ! pm_y
+        t1 = -cos(theta)*cos(phi)*vsgn(1, n, type)
+        t2 = -cos(theta)*sin(phi)*vsgn(2, n, type)
+        t3 = sin(theta)*vsgn(3, n, type)
+        vely(:) = t1*vel(:, 1) + t2*vel(:, 2) + t3*vel(:, 3)
 
         !xaa = (-sin(phi)*x+cos(phi)*y)*sin(psi)-(-cos(theta)*cos(phi)*x-cos(theta)*sin(phi)*y+sin(theta)*z)*cos(psi);
         !yaa = (-sin(phi)*x+cos(phi)*y)*cos(psi)+(-cos(theta)*cos(phi)*x-cos(theta)*sin(phi)*y+sin(theta)*z)*sin(psi);
