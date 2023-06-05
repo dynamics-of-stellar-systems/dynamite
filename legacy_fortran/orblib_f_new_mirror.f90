@@ -730,11 +730,11 @@ module projection
     ! stop projection module
     public :: projection_stop
 
-    ! Project pos(3,:),vel(3,:) to proj(2,:),lofvel(:),velx(:),vely(:)
+    ! Project pos(3,:),vel(3,:) to proj(2,:),losvel(:),velx(:),vely(:)
     ! Using the n'th projection
     private :: project_n
 
-    ! Project pos(3,:),vel(3,:) to proj(2,:),lofvel(:),velx(:),vely(:)
+    ! Project pos(3,:),vel(3,:) to proj(2,:),losvel(:),velx(:),vely(:)
     !Done is set to .true. if all projections are finished
     public :: project
 
@@ -892,14 +892,14 @@ contains
     end subroutine project_n
 
     !++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-    subroutine project(type, pos, vel, proj, lofvel, velx, vely, done, first)
+    subroutine project(type, pos, vel, proj, losvel, velx, vely, done, first)
         integer(kind=i4b), intent(in)                        :: type
         real(kind=dp), intent(in), dimension(:, :) :: pos
         real(kind=dp), intent(in), dimension(size(pos, 1), 3) :: vel
         real(kind=dp), intent(out), dimension(size(pos, 1)*projection_symmetry, 2) &
              & :: proj
         real(kind=dp), intent(out), dimension(size(pos, 1)*projection_symmetry) &
-             & :: lofvel, velx, vely
+             & :: losvel, velx, vely
         logical, intent(out)                          :: done
         logical, intent(in)                          :: first
         !----------------------------------------------------------------------
@@ -911,12 +911,12 @@ contains
         done = .false.
 
         if (count <= proj_number) then
-            call project_n(type, pos, vel, proj, lofvel, velx, vely, count)
+            call project_n(type, pos, vel, proj, losvel, velx, vely, count)
         else
             count = proj_number + 1
             done = .true.
             proj(:, :) = 0.0_dp
-            lofvel(:) = 0.0_dp
+            losvel(:) = 0.0_dp
             velx(:) = 0.0_dp
             vely(:) = 0.0_dp
         end if

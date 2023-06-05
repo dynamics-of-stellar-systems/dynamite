@@ -580,6 +580,8 @@ class LegacyOrbitLibrary(OrbitLibrary):
         # set up a list of arrays to hold the results
         tmp = zip(hist_bins,n_apertures)
         velhist0 = [np.zeros((norb, nv, na)) for (nv,na) in tmp]
+        velhistx = [np.zeros((norb, nv, na)) for (nv, na) in tmp]
+        velhisty = [np.zeros((norb, nv, na)) for (nv, na) in tmp]
         # Next read the histograms themselves.
         orbtypes = np.zeros((norb, ndith**3), dtype=int)
         nbins_vhist = 2*nvhist + 1
@@ -612,7 +614,6 @@ class LegacyOrbitLibrary(OrbitLibrary):
                     tmp = orblibf.read_reals(float)
                     velhist0[kin_idx][j, ivmin+nv0:ivmax+nv0+1, i_ap0] = tmp
                 # READ PROPER MOTION HISTOGRAMS START
-                velhistx = [np.zeros((norb, nv, na)) for (nv, na) in zip(hist_bins,n_apertures)]
                 ivmin, ivmax = orblibf.read_ints(np.int32)
                 if ivmin <= ivmax:
                     nv0 = (hist_bins[kin_idx]-1)/2
@@ -620,7 +621,6 @@ class LegacyOrbitLibrary(OrbitLibrary):
                     nv0 = int(nv0)
                     tmp = orblibf.read_reals(float)
                     velhistx[kin_idx][j, ivmin+nv0:ivmax+nv0+1, i_ap0] = tmp
-                velhisty = [np.zeros((norb, nv, na)) for (nv, na) in zip(hist_bins,n_apertures)]
                 ivmin, ivmax = orblibf.read_ints(np.int32)
                 if ivmin <= ivmax:
                     nv0 = (hist_bins[kin_idx]-1)/2
