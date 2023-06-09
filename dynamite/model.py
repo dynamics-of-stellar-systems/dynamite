@@ -353,6 +353,37 @@ class AllModels(object):
             raise ValueError(text)
         return mod
 
+    def get_model_from_directory(self, directory):
+        """Get the ``Model`` from a model directory
+
+        Parameters
+        ----------
+        directory : str
+            The directory string needs to start with the output directory
+            defined in ``config.settings.io_settings['output_directory']``
+
+        Raises
+        ------
+        ValueError
+            If the directory does not exist in the all_models table.
+
+        Returns
+        -------
+        mod : a ``dyn.model.Model`` object
+
+        """
+        for idx, dir_table in enumerate(self.table['directory']):
+            if self.config.settings.io_settings['output_directory'] \
+                                        + 'models/' + dir_table == directory:
+                mod = self.get_model_from_row(idx)
+                break
+        else:
+            text = f'Directory {directory} not in all_models table. ' \
+                   f'all_models table: {self.table}'
+            self.logger.error(text)
+            raise ValueError(text)
+        return mod
+
     def get_model_from_row(self, row_id):
         """Get a ``Model`` given a table row
 

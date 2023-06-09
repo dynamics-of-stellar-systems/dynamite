@@ -8,8 +8,10 @@ import logging
 from scipy import optimize
 import cvxopt
 
+from dynamite import analysis
 from dynamite import physical_system as physys
 from dynamite import kinematics as dyn_kin
+
 
 class WeightSolver(object):
     """Generic WeightSolver class
@@ -17,10 +19,29 @@ class WeightSolver(object):
     Specific implementations are defined as sub-classes. Each one should
     have a main method `solve`
 
+    Parameters
+    ----------
+    config : a ``dyn.config_reader.Configuration`` object
+    directory_with_ml : string
+        model directory with the ml extension
+    CRcut : Bool, default False
+        whether to use the `CRcut` solution for the counter-rotating orbit
+        problem. See Zhu et al. 2018 for more.
+
     """
-    def __init__(self):
+
+    def __init__(self, config, directory_with_ml, CRcut=False):
         self.logger = logging.getLogger(f'{__name__}.{__class__.__name__}')
-        pass
+        self.config = config
+        self.system = config.system
+        self.settings = config.settings.weight_solver_settings
+        self.direc_with_ml = directory_with_ml
+        self.direc_no_ml \
+            = directory_with_ml[:directory_with_ml[:-1].rindex('/')+1]
+        if 'CRcut' in self.settings.keys():
+            CRcut = self.settings['CRcut']
+        self.CRcut = CRcut
+        self.weight_file = f'{self.direc_with_ml}orbit_weights.ecsv'
 
     def solve(self, orblib):
         """Template solve method
@@ -53,20 +74,68 @@ class WeightSolver(object):
         # ...
         return weights, chi2_tot, chi2_kin, chi2_kinmap
 
+    # def chi2_kinmap(self):
+    #     """
+    #     Template chi2_kinmap method
+
+    #     Returns the chi2 directly calculated from the kinematic maps.
+    #     Specific implementations should override this.
+
+    #     Returns
+    #     -------
+    #     chi2_kinmap : float
+    #         chi2 directly calculated from the kinematic maps.
+
+    #     """
+    #     return float('nan')
+
     def chi2_kinmap(self):
         """
-        Template chi2_kinmap method
-
         Returns the chi2 directly calculated from the kinematic maps.
-        Specific implementations should override this.
 
         Returns
         -------
         chi2_kinmap : float
-            chi2 directly calculated from the kinematic maps.
+            chi2 directly calculated from the kinematic maps: sum of
+            squared residuals of V, sigma, and GH coefficients from h_3 to h_N
 
         """
-        return float('nan')
+        if not self.weights_exist():
+            self.logger.info('Non-existing weights file(s) for model in '
+                             f'{self.direc_with_ml}, kinmapchi2 set to nan.')
+            return float('nan')  # #######################################
+        n_gh = self.settings['number_GH']
+        stars = \
+          self.system.get_component_from_class(physys.TriaxialVisibleComponent)
+        mod=self.config.all_models.get_model_from_directory(self.direc_with_ml)
+        chi2_kinmap = 0.
+        coefs = ['v', 'sigma'] + [f'h{i}' for i in range(3, n_gh+1)]
+        for kin_set in range(len(stars.kinematic_data)):
+            # get the model's projected masses=flux (unused) and kinematic data
+            a=analysis.Analysis(config=self.config, model=mod, kin_set=kin_set)
+            model_gh_coef = \
+                a.get_gh_model_kinematic_maps(v_sigma_option='fit')
+            # get the observed projected masses (unused) and kinematic data
+            kinematics_data = stars.kinematic_data[kin_set].data
+            for coef in coefs:
+                obs_val = np.array(kinematics_data[coef])
+                mod_val = np.array(model_gh_coef[coef])
+                err_val = np.array(kinematics_data['d'+coef])
+                chi2_kinmap += sum(np.square((obs_val-mod_val)/err_val))
+        return chi2_kinmap
+
+    def weights_exist(self):
+        """Check whether the file(s) holding the current model's weights exist.
+
+        Depends on weight solver type, needs to be implemented by sub-classes.
+
+        Returns
+        -------
+        bool
+            True if weight solving data exists, False otherwise.
+
+        """
+        return True
 
 
 class LegacyWeightSolver(WeightSolver):
@@ -76,33 +145,17 @@ class LegacyWeightSolver(WeightSolver):
     ```triaxnnls_noCRcut.f90``. Uses Lawson and Hanson non-negative
     least-squares algorithm.
 
-    Parameters
-    ----------
-    config : a ``dyn.config_reader.Configuration`` object
-    directory_with_ml : string
-        model directory with the ml extension
-    CRcut : Bool, default False
-        whether to use the `CRcut` solution for the counter-rotating orbit
-        problem. See Zhu et al. 2018 for more.
-
     """
-    def __init__(self, config, directory_with_ml, CRcut=False):
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
         self.logger = logging.getLogger(f'{__name__}.{__class__.__name__}')
-        self.config = config
-        self.system = config.system
-        self.directory_with_ml = directory_with_ml
-        self.settings = config.settings.weight_solver_settings
-        self.legacy_directory = config.settings.legacy_settings['directory']
+        self.legacy_directory=self.config.settings.legacy_settings['directory']
         self.sformat = self.system.parameters[0].sformat # this is ml's format
-        ml_idx = self.directory_with_ml.rindex('/ml')
-        self.direc_no_ml = directory_with_ml[:ml_idx+1]
-        ml_str = self.directory_with_ml[ml_idx+3:]
+        ml_idx = self.direc_with_ml.rindex('/ml')
+        ml_str = self.direc_with_ml[ml_idx+3:]
         self.ml = float(ml_str[:-1]) if ml_str[-1] == '/' else float(ml_str)
-        self.fname_nn_kinem = self.directory_with_ml + 'nn_kinem.out'
-        self.fname_nn_nnls = self.directory_with_ml + 'nn_nnls.out'
-        if 'CRcut' in self.settings.keys():
-            CRcut = self.settings['CRcut']
-        self.CRcut = CRcut
+        self.fname_nn_kinem = self.direc_with_ml + 'nn_kinem.out'
+        self.fname_nn_nnls = self.direc_with_ml + 'nn_nnls.out'
         # prepare fortran input file for nnls
         self.copy_kinematic_data()
         self.create_fortran_input_nnls(self.direc_no_ml, self.ml)
@@ -193,6 +246,20 @@ class LegacyWeightSolver(WeightSolver):
         nn_file.write(text)
         nn_file.close()
 
+    def weights_exist(self):
+        """Check whether the file(s) holding the current model's weights exist.
+
+        Returns
+        -------
+        bool
+            True if weight solving data exists, False otherwise.
+
+        """
+        check1 = os.path.isfile(self.fname_nn_kinem)
+        check2 = os.path.isfile(self.fname_nn_nnls)
+        check3 = os.path.isfile(self.direc_with_ml + 'nn_orbmat.out')
+        return bool(check1 and check2 and check3)
+
     def solve(self, orblib=None):
         """Main method to solve NNLS problem.
 
@@ -206,7 +273,7 @@ class LegacyWeightSolver(WeightSolver):
         Returns
         -------
         tuple
-            (weights, chi2_all, chi2_kin) where:
+            (weights, chi2_all, chi2_kin, chi2_kinmap) where:
                 -   weights : array, of orbit weights
                 -   chi2_all : float, sum of squared residuals for intrinsic
                     masses, projected_masses and GH coefficients from h_1 to h_n
@@ -217,10 +284,12 @@ class LegacyWeightSolver(WeightSolver):
 
         """
         self.logger.info(f"Using WeightSolver: {__class__.__name__}")
-        check1 = os.path.isfile(self.fname_nn_kinem)
-        check2 = os.path.isfile(self.fname_nn_nnls)
-        check3 = os.path.isfile(self.directory_with_ml + 'nn_orbmat.out')
-        if not check1 or not check2 or not check3:
+        weight_file = self.weight_file
+        # check1 = os.path.isfile(self.fname_nn_kinem)
+        # check2 = os.path.isfile(self.fname_nn_nnls)
+        # check3 = os.path.isfile(self.direc_with_ml + 'nn_orbmat.out')
+        # if not check1 or not check2 or not check3:
+        if not self.weights_exist():
             # set the current directory to the directory in which
             # the models are computed
             cur_dir = os.getcwd()
@@ -233,7 +302,7 @@ class LegacyWeightSolver(WeightSolver):
                         j = line.find('.log')
                         logfile = line[i+3:j+4]
                         break
-            self.logger.info("Fitting orbit library to the kinematic " + \
+            self.logger.info("Fitting orbit library to the kinematic " +
                              f"data: {logfile[:logfile.rindex('/')]}")
             p = subprocess.run('bash '+cmdstr,
                                stdout=subprocess.PIPE,
@@ -250,13 +319,27 @@ class LegacyWeightSolver(WeightSolver):
                 raise RuntimeError(text)
             #set the current directory to the dynamite directory
             os.chdir(cur_dir)
+            weights, chi2_tot, chi2_kin = \
+                self.get_weights_and_chi2_from_orbmat_file()
+            # save the output
+            meta = {'chi2_tot': chi2_tot, 'chi2_kin': chi2_kin}
+            results = table.Table(meta=meta)
+            results['weights'] = weights
+            results.write(weight_file, format='ascii.ecsv', overwrite=True)
+            chi2_kinmap = self.chi2_kinmap()
+            results.meta['chi2_kinmap'] = chi2_kinmap
+            results.write(weight_file, format='ascii.ecsv', overwrite=True)  # yes, write again...
             #delete existing .yaml files and copy current config file
             #into model directory
-            self.config.copy_config_file(self.directory_with_ml)
+            self.config.copy_config_file(self.direc_with_ml)
         else:
             self.logger.info("Reading NNLS solution from existing output.")
-        wts, chi2_tot, chi2_kin = self.get_weights_and_chi2_from_orbmat_file()
-        return wts, chi2_tot, chi2_kin, self.chi2_kinmap()
+            results = ascii.read(weight_file)
+            weights = results['weights']
+            chi2_tot = results.meta['chi2_tot']
+            chi2_kin = results.meta['chi2_kin']
+            chi2_kinmap = results.meta.get('chi2_kinmap', float('nan'))
+        return weights, chi2_tot, chi2_kin, chi2_kinmap
 
     def write_executable_for_weight_solver(self, ml):
         """write executable bash script file
@@ -306,7 +389,7 @@ class LegacyWeightSolver(WeightSolver):
             the orbital weights
 
         """
-        fname = self.directory_with_ml + 'nn_orb.out'
+        fname = self.direc_with_ml + 'nn_orb.out'
         col_names = ['orb_idx',
                      'E_idx',
                      'I2_idx',
@@ -336,7 +419,7 @@ class LegacyWeightSolver(WeightSolver):
             (orbmat, rhs, solution)
 
         """
-        fname = self.directory_with_ml + 'nn_orbmat.out'
+        fname = self.direc_with_ml + 'nn_orbmat.out'
         orbmat_shape = np.loadtxt(fname, max_rows=1, dtype=int)
         orbmat_size = np.product(orbmat_shape)
         tmp = np.loadtxt(fname, skiprows=1)
@@ -378,18 +461,18 @@ class LegacyWeightSolver(WeightSolver):
         chi2_kin = np.sum(chi2_vector[1+n_intrinsic+n_apertures:])
         return weights, chi2_tot, chi2_kin
 
-    def chi2_kinmap(self):
-        """
-        Returns the chi2 directly calculated from the kinematic maps.
+    # def chi2_kinmap(self):
+    #     """
+    #     Returns the chi2 directly calculated from the kinematic maps.
 
-        Returns
-        -------
-        chi2_kinmap : float
-            chi2 directly calculated from the kinematic maps.
+    #     Returns
+    #     -------
+    #     chi2_kinmap : float
+    #         chi2 directly calculated from the kinematic maps.
 
-        """
-        _, chi2_kinmap = self.read_chi2()
-        return chi2_kinmap
+    #     """
+    #     _, chi2_kinmap = self.read_chi2()
+    #     return chi2_kinmap
 
     def read_chi2(self):
         """Read chi2 values from `nn_kinem.out`
@@ -470,35 +553,19 @@ class NNLS(WeightSolver):
 
     Parameters
     ----------
-    config : a ``dyn.config_reader.Configuration`` object
-    directory_with_ml : string
-        model directory with the ml extension
-    CRcut : Bool, default False
-        whether to use the `CRcut` solution for the counter-rotating orbit
-        problem. See Zhu et al. 2018 for more.
     nnls_solver : string
         either ``scipy`` or ``cvxopt``
 
     """
     def __init__(self,
-                 config,
-                 directory_with_ml,
-                 CRcut=False,
-                 nnls_solver=None):
+                 nnls_solver=None,
+                 **kwargs):
+        super().__init__(**kwargs)
         self.logger = logging.getLogger(f'{__name__}.{__class__.__name__}')
-        self.config = config
-        self.system = config.system
-        self.settings = config.settings.weight_solver_settings
-        self.direc_with_ml = directory_with_ml
-        self.direc_no_ml \
-            = directory_with_ml[:directory_with_ml[:-1].rindex('/')+1]
         if nnls_solver is None:
             nnls_solver = self.settings['nnls_solver']
         assert nnls_solver in ['scipy', 'cvxopt'], 'Unknown nnls_solver'
         self.nnls_solver = nnls_solver
-        if 'CRcut' in self.settings.keys():
-            CRcut = self.settings['CRcut']
-        self.CRcut = CRcut
         self.get_observed_mass_constraints()
 
     def get_observed_mass_constraints(self):
@@ -662,6 +729,17 @@ class NNLS(WeightSolver):
         orb_gh[idx_cut[0], idx_cut[1], 0] = 3./dvhist
         return orb_gh
 
+    def weights_exist(self):
+        """Check whether the file(s) holding the current model's weights exist.
+
+        Returns
+        -------
+        bool
+            True if weight solving data exists, False otherwise.
+
+        """
+        return bool(os.path.isfile(self.weight_file))
+
     def solve(self, orblib):
         """Solve for orbit weights
 
@@ -684,19 +762,20 @@ class NNLS(WeightSolver):
                 -   chi2_kin : float sum of squared residuals for GH
                     coefficients h_1 to h_n
                 -   chi2_kinmap : directly calculates the chi2 from the
-                    kinematic maps NOT CURRENTLY IMPLEMENTED, RETURNS nan!
+                    kinematic maps
 
         """
         self.logger.info(f"Using WeightSolver: {__class__.__name__}/"
                          f"{self.nnls_solver}")
+        weight_file = self.weight_file
         orblib.read_losvd_histograms()
-        weight_file = f'{self.direc_with_ml}orbit_weights.ecsv'
         if os.path.isfile(weight_file):
-            result = ascii.read(weight_file, format='ecsv')
+            results = ascii.read(weight_file, format='ecsv')
             self.logger.info("NNLS solution read from existing output")
-            weights = result['weights']
-            chi2_tot = result.meta['chi2_tot']
-            chi2_kin = result.meta['chi2_kin']
+            weights = results['weights']
+            chi2_tot = results.meta['chi2_tot']
+            chi2_kin = results.meta['chi2_kin']
+            chi2_kinmap = results.meta.get('chi2_kinmap', float('nan'))
         else:
             A, b = self.construct_nnls_matrix_and_rhs(orblib)
             if self.nnls_solver=='scipy':
@@ -724,10 +803,13 @@ class NNLS(WeightSolver):
             meta = {'chi2_tot':chi2_tot, 'chi2_kin':chi2_kin}
             results = table.Table(results, meta=meta)
             results.write(weight_file, format='ascii.ecsv', overwrite=True)
+            chi2_kinmap = self.chi2_kinmap()
+            results.meta['chi2_kinmap'] = chi2_kinmap
+            results.write(weight_file, format='ascii.ecsv', overwrite=True)
             #delete existing .yaml files and copy current config file
             #into model directory
             self.config.copy_config_file(self.direc_with_ml)
-        return weights, chi2_tot, chi2_kin, self.chi2_kinmap()
+        return weights, chi2_tot, chi2_kin, chi2_kinmap
 
 
 class CvxoptNonNegSolver():
