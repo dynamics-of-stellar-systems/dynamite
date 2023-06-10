@@ -89,9 +89,14 @@ class WeightSolver(object):
     #     """
     #     return float('nan')
 
-    def chi2_kinmap(self):
+    def chi2_kinmap(self, weights):
         """
         Returns the chi2 directly calculated from the kinematic maps.
+
+        Parameters
+        ----------
+        weights : ``numpy.array`` like
+            The model's orbital weights.
 
         Returns
         -------
@@ -113,8 +118,8 @@ class WeightSolver(object):
         for kin_set in range(len(stars.kinematic_data)):
             # get the model's projected masses=flux (unused) and kinematic data
             a=analysis.Analysis(config=self.config, model=mod, kin_set=kin_set)
-            model_gh_coef = \
-                a.get_gh_model_kinematic_maps(v_sigma_option='fit')
+            model_gh_coef = a.get_gh_model_kinematic_maps(v_sigma_option='fit',
+                                                          weights=weights)
             # get the observed projected masses (unused) and kinematic data
             kinematics_data = stars.kinematic_data[kin_set].data
             for coef in coefs:
@@ -258,7 +263,8 @@ class LegacyWeightSolver(WeightSolver):
         check1 = os.path.isfile(self.fname_nn_kinem)
         check2 = os.path.isfile(self.fname_nn_nnls)
         check3 = os.path.isfile(self.direc_with_ml + 'nn_orbmat.out')
-        return bool(check1 and check2 and check3)
+        check4 = os.path.isfile(self.weight_file)
+        return bool(check1 and check2 and check3 and check4)
 
     def solve(self, orblib=None):
         """Main method to solve NNLS problem.
@@ -317,20 +323,20 @@ class LegacyWeightSolver(WeightSolver):
                        f'Message: {p.stdout.decode("UTF-8")}{log_file}'
                 self.logger.error(text)
                 raise RuntimeError(text)
-            #set the current directory to the dynamite directory
+            # set the current directory to the dynamite directory
             os.chdir(cur_dir)
             weights, chi2_tot, chi2_kin = \
                 self.get_weights_and_chi2_from_orbmat_file()
+            chi2_kinmap = self.chi2_kinmap(weights)
             # save the output
-            meta = {'chi2_tot': chi2_tot, 'chi2_kin': chi2_kin}
-            results = table.Table(meta=meta)
+            results = table.Table()
             results['weights'] = weights
+            results.meta = {'chi2_tot': chi2_tot,
+                            'chi2_kin': chi2_kin,
+                            'chi2_kinmap': chi2_kinmap}
             results.write(weight_file, format='ascii.ecsv', overwrite=True)
-            chi2_kinmap = self.chi2_kinmap()
-            results.meta['chi2_kinmap'] = chi2_kinmap
-            results.write(weight_file, format='ascii.ecsv', overwrite=True)  # yes, write again...
-            #delete existing .yaml files and copy current config file
-            #into model directory
+            # delete existing .yaml files and copy current config file
+            # into model directory
             self.config.copy_config_file(self.direc_with_ml)
         else:
             self.logger.info("Reading NNLS solution from existing output.")
@@ -338,7 +344,7 @@ class LegacyWeightSolver(WeightSolver):
             weights = results['weights']
             chi2_tot = results.meta['chi2_tot']
             chi2_kin = results.meta['chi2_kin']
-            chi2_kinmap = results.meta.get('chi2_kinmap', float('nan'))
+            chi2_kinmap = results.meta['chi2_kinmap']
         return weights, chi2_tot, chi2_kin, chi2_kinmap
 
     def write_executable_for_weight_solver(self, ml):
@@ -775,7 +781,7 @@ class NNLS(WeightSolver):
             weights = results['weights']
             chi2_tot = results.meta['chi2_tot']
             chi2_kin = results.meta['chi2_kin']
-            chi2_kinmap = results.meta.get('chi2_kinmap', float('nan'))
+            chi2_kinmap = results.meta['chi2_kinmap']
         else:
             A, b = self.construct_nnls_matrix_and_rhs(orblib)
             if self.nnls_solver=='scipy':
@@ -796,18 +802,17 @@ class NNLS(WeightSolver):
             chi2_vector = (np.dot(A, weights) - b)**2.
             chi2_tot = np.sum(chi2_vector)
             chi2_kin = np.sum(chi2_vector[self.n_mass_constraints:])
+            chi2_kinmap = self.chi2_kinmap(weights)
             # save the output
             results = table.Table()
             results['weights'] = weights
             # add chi2 to meta data
-            meta = {'chi2_tot':chi2_tot, 'chi2_kin':chi2_kin}
-            results = table.Table(results, meta=meta)
+            results.meta = {'chi2_tot': chi2_tot,
+                            'chi2_kin': chi2_kin,
+                            'chi2_kinmap': chi2_kinmap}
             results.write(weight_file, format='ascii.ecsv', overwrite=True)
-            chi2_kinmap = self.chi2_kinmap()
-            results.meta['chi2_kinmap'] = chi2_kinmap
-            results.write(weight_file, format='ascii.ecsv', overwrite=True)
-            #delete existing .yaml files and copy current config file
-            #into model directory
+            # delete existing .yaml files and copy current config file
+            # into model directory
             self.config.copy_config_file(self.direc_with_ml)
         return weights, chi2_tot, chi2_kin, chi2_kinmap
 
