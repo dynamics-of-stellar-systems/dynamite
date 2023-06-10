@@ -91,7 +91,7 @@ class WeightSolver(object):
 
     def chi2_kinmap(self, weights):
         """
-        Returns the chi2 directly calculated from the kinematic maps.
+        Returns the chi2 directly calculated from the gh kinematic maps.
 
         Parameters
         ----------
@@ -105,13 +105,13 @@ class WeightSolver(object):
             squared residuals of V, sigma, and GH coefficients from h_3 to h_N
 
         """
-        if not self.weights_exist():
-            self.logger.info('Non-existing weights file(s) for model in '
-                             f'{self.direc_with_ml}, kinmapchi2 set to nan.')
-            return float('nan')  # #######################################
-        n_gh = self.settings['number_GH']
         stars = \
           self.system.get_component_from_class(physys.TriaxialVisibleComponent)
+        if any(k.type != 'GaussHermite' for k in stars.kinematic_data):
+            self.logger.info("'GaussHermite' kinematics required for "
+                             "kinmapchi2. Value set to nan.")
+            return float('nan')  # #######################################
+        n_gh = self.settings['number_GH']
         mod=self.config.all_models.get_model_from_directory(self.direc_with_ml)
         chi2_kinmap = 0.
         coefs = ['v', 'sigma'] + [f'h{i}' for i in range(3, n_gh+1)]
@@ -132,7 +132,7 @@ class WeightSolver(object):
     def weights_exist(self):
         """Check whether the file(s) holding the current model's weights exist.
 
-        Depends on weight solver type, needs to be implemented by sub-classes.
+        May be re-implemented by sub-classes.
 
         Returns
         -------
@@ -140,7 +140,7 @@ class WeightSolver(object):
             True if weight solving data exists, False otherwise.
 
         """
-        return True
+        return os.path.isfile(self.weight_file)
 
 
 class LegacyWeightSolver(WeightSolver):
@@ -250,21 +250,6 @@ class LegacyWeightSolver(WeightSolver):
         nn_file= open(path+f'ml{ml:{self.sformat}}/nn.in',"w")
         nn_file.write(text)
         nn_file.close()
-
-    def weights_exist(self):
-        """Check whether the file(s) holding the current model's weights exist.
-
-        Returns
-        -------
-        bool
-            True if weight solving data exists, False otherwise.
-
-        """
-        check1 = os.path.isfile(self.fname_nn_kinem)
-        check2 = os.path.isfile(self.fname_nn_nnls)
-        check3 = os.path.isfile(self.direc_with_ml + 'nn_orbmat.out')
-        check4 = os.path.isfile(self.weight_file)
-        return bool(check1 and check2 and check3 and check4)
 
     def solve(self, orblib=None):
         """Main method to solve NNLS problem.
@@ -734,17 +719,6 @@ class NNLS(WeightSolver):
         dvhist = np.max(dvhist)
         orb_gh[idx_cut[0], idx_cut[1], 0] = 3./dvhist
         return orb_gh
-
-    def weights_exist(self):
-        """Check whether the file(s) holding the current model's weights exist.
-
-        Returns
-        -------
-        bool
-            True if weight solving data exists, False otherwise.
-
-        """
-        return bool(os.path.isfile(self.weight_file))
 
     def solve(self, orblib):
         """Solve for orbit weights
