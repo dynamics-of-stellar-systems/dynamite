@@ -977,12 +977,7 @@ class Configuration(object):
                 for k in stars.kinematic_data:
                     k.hist_bins = max_bins
         self.settings.validate()
-
-        which_chi2 = self.validate_chi2()
-        # if which_chi2 == 'kinmapchi2' and ws_type != 'LegacyWeightSolver':
-        #     msg = 'kinmapchi2 is only allowed with LegacyWeightSolver'
-        #     self.logger.error(msg)
-        #     raise ValueError(msg)
+        _ = self.validate_chi2()
 
     def validate_chi2(self, which_chi2=None):
         """
