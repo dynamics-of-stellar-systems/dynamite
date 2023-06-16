@@ -979,10 +979,10 @@ class Configuration(object):
         self.settings.validate()
 
         which_chi2 = self.validate_chi2()
-        if which_chi2 == 'kinmapchi2' and ws_type != 'LegacyWeightSolver':
-            msg = 'kinmapchi2 is only allowed with LegacyWeightSolver'
-            self.logger.error(msg)
-            raise ValueError(msg)
+        # if which_chi2 == 'kinmapchi2' and ws_type != 'LegacyWeightSolver':
+        #     msg = 'kinmapchi2 is only allowed with LegacyWeightSolver'
+        #     self.logger.error(msg)
+        #     raise ValueError(msg)
 
     def validate_chi2(self, which_chi2=None):
         """
