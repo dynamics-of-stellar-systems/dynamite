@@ -101,7 +101,16 @@ class LegacyOrbitLibrary(OrbitLibrary):
                 shutil.copyfile(binfile,
                             self.mod_dir+'infil/'+ kinematics[i].binfile)
             # calculate orbit libary
-            self.get_orbit_ics()
+            file1 = 'begin.dat'
+            file2 = 'beginbox.dat'
+            check1 = os.path.isfile(self.mod_dir + f'datfil/{file1}')
+            check2 = os.path.isfile(self.mod_dir + f'datfil/{file2}')
+            if check1 + check2 != 2:
+                if check1:
+                    os.remove(self.mod_dir + f'datfil/{file1}')
+                if check2:
+                    os.remove(self.mod_dir + f'datfil/{file2}')
+                self.get_orbit_ics()
             if self.orblibs_in_parallel:
                 self.get_orbit_library_par()
             else:
