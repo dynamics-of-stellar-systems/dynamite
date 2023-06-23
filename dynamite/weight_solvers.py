@@ -239,15 +239,21 @@ class LegacyWeightSolver(WeightSolver):
                                stdout=subprocess.PIPE,
                                stderr=subprocess.STDOUT,
                                shell=True)
-            log_file = f'Logfile: {self.direc_no_ml+logfile}'
+            log_file = f'Logfile: {self.direc_no_ml+logfile}.'
             if not p.stdout.decode("UTF-8"):
                 self.logger.info(f'...done, NNLS problem solved -  {cmdstr} '
                                  f'exit code {p.returncode}. {log_file}')
             else:
-                text = f'{cmdstr} exit code {p.returncode}. ERROR. ' \
-                       f'Message: {p.stdout.decode("UTF-8")}{log_file}'
-                self.logger.error(text)
-                raise RuntimeError(text)
+                text = f'...failed! {cmdstr} exit code {p.returncode}. ' \
+                       f'Message: {p.stdout.decode("UTF-8")}'
+                if p.returncode == 127: # command not found
+                    text += 'Check DYNAMITE legacy_fortran executables.'
+                    self.logger.error(text)
+                    raise FileNotFoundError(text)
+                else:
+                    text += f'{log_file} Be wary: DYNAMITE may crash...'
+                    self.logger.warning(text)
+                    raise RuntimeError(text)
             #set the current directory to the dynamite directory
             os.chdir(cur_dir)
             #delete existing .yaml files and copy current config file
@@ -279,12 +285,17 @@ class LegacyWeightSolver(WeightSolver):
         txt_file.write('# if the gzipped orbit library exist unzip it' + '\n')
         txt_file.write(f'test -e datfil/orblib_{ml}.dat || bunzip2 -c  datfil/orblib.dat.bz2 > datfil/orblib_{ml}.dat' + '\n')
         txt_file.write(f'test -e datfil/orblibbox_{ml}.dat || bunzip2 -c  datfil/orblibbox.dat.bz2 > datfil/orblibbox_{ml}.dat' + '\n')
+        txt_file.write('# check whether executable exists\n')
         if self.CRcut is True:
+            txt_file.write(f'test -e {self.legacy_directory}/triaxnnls_CRcut' +
+                           f' || {{ echo "File {self.legacy_directory}/triaxnnls_CRcut not found." && exit 127; }}\n')
             txt_file.write('test -e ' + str(nn) + '_kinem.out || ' +
                            self.legacy_directory +
                            f'/triaxnnls_CRcut < {nn}.in >> {nn}ls.log '
                            '|| exit 1\n')
         else:
+            txt_file.write(f'test -e {self.legacy_directory}/triaxnnls_noCRcut' +
+                           f' || {{ echo "File {self.legacy_directory}/triaxnnls_noCRcut not found." && exit 127; }}\n')
             txt_file.write('test -e ' + str(nn) + '_kinem.out || ' +
                            self.legacy_directory +
                            f'/triaxnnls_noCRcut < {nn}.in >> {nn}ls.log '
