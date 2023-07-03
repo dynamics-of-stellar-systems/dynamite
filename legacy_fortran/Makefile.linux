@@ -93,10 +93,6 @@ ifeq ($(compilername),gfortran)
 #  link = gfortran $(flags) -o
 endif
 
-# define local Galahad directory --> need to be changed for your system
-#GALAHADDIR =/Users/pjethwa/Astro/Science/dynamite/dynamite_repo/legacy_fortran/galahad-2.3
-#GALAHADDIR =/home/alice/old_home/Work/Vienna/DYNAMITE/dynamite/legacy_fortran/galahad-2.3
-
 # Define galahad compiled libary choice (platform dependant)
 
 # linux, ifort
@@ -105,7 +101,7 @@ GALAHADTYPE= pc.lnx.gfo/double
 
 ##########################################################
 
-all : orbitstart orblib orblib_new_mirror triaxmass triaxmassbin triaxnnls_CRcut triaxnnls_noCRcut modelgen
+all : orbitstart orbitstart_bar orblib orblib_new_mirror triaxmass triaxmassbin triaxnnls_CRcut triaxnnls_noCRcut triaxnnls_new_lingcut modelgen
 
 #########################################################
 #
@@ -245,8 +241,14 @@ orblib_new_mirror : $(ORBLIBNMOBJ) orblibprogram.f90
 modelgen : $(ORBLIBOBJ) modelgen.f90
 	$(link) modelgen  $(ORBLIBOBJ) modelgen.f90
 
+orbitstart_f.o : $(ORBLIBOBJ) orbitstart_f.f90
+	$(fortran90) orbitstart_f.f90
+
 orbitstart : $(ORBLIBOBJ) orbitstart.f90
-	$(link) orbitstart  $(ORBLIBOBJ) orbitstart.f90
+	$(link) orbitstart  $(ORBLIBOBJ) orbitstart_f.o orbitstart.f90
+
+orbitstart_bar : $(ORBLIBOBJ) orbitstart_bar.f90
+	$(link) orbitstart_bar  $(ORBLIBOBJ) orbitstart_f.o orbitstart_bar.f90
 
 ##############################################################
 #
@@ -278,6 +280,19 @@ triaxnnls_scratch_nosave.o : triaxnnls_scratch_nosave.f90 numeric_kinds_f.o inip
 	$(fortran90) triaxnnls_scratch_nosave.f90  -I$(GALAHADDIR)/modules/$(GALAHADTYPE)  -L$(GALAHADDIR)/objects/$(GALAHADTYPE)
 
 ##############################################################
+
+OBJECTS5_out_nl = nnls95.o iniparam_f.o numeric_kinds_f.o gausherm.o triaxnnls_new_lingcut.o
+
+triaxnnls_new_lingcut : $(OBJECTS5_out_nl)  
+#	$(link) triaxnnls_new_lingcut $(OBJECTS5_out_nl)   -I$(GALAHADDIR)/modules/$(GALAHADTYPE)  -L$(GALAHADDIR)/objects/$(GALAHADTYPE)  -lgalahad  -lgalahad_hsl -lgalahad_metis -lgalahad_lapack -lgalahad_blas
+	$(link) triaxnnls_new_lingcut $(OBJECTS5_out_nl)   -I$(GALAHADDIR)/modules/$(GALAHADTYPE)  -L$(GALAHADDIR)/objects/$(GALAHADTYPE)  -lgalahad  -lgalahad_hsl -lgalahad_metis -lgalahad_lapack -lgalahad_blas -lgalahad_pardiso -lgalahad_mkl_pardiso -lgalahad_wsmp -lgalahad_spral -lgomp
+
+triaxnnls_new_lingcut.o : triaxnnls_new_lingcut.f90 numeric_kinds_f.o iniparam_f.o 
+	$(fortran90) triaxnnls_new_lingcut.f90  -I$(GALAHADDIR)/modules/$(GALAHADTYPE)  -L$(GALAHADDIR)/objects/$(GALAHADTYPE)
+
+
+
+
 
 ##############################################################
 #

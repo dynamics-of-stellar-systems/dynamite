@@ -16,6 +16,7 @@ with open("requirements.txt", "r") as fp:
 legacy_fortran = [
     "../legacy_fortran/modelgen",
     "../legacy_fortran/orbitstart",
+    "../legacy_fortran/orbitstart_bar",
     "../legacy_fortran/orblib",
     "../legacy_fortran/orblib_new_mirror",
     "../legacy_fortran/partgen",
