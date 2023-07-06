@@ -83,8 +83,9 @@ class System(object):
             text = 'System has no components'
             self.logger.error(text)
             raise ValueError(text)
-        if len(self.parameters) != 1 and self.parameters[0].name != 'ml':
-            text = 'System needs ml as its sole parameter'
+        #if len(self.parameters) != 1 and self.parameters[0].name != 'ml':
+        if self.parameters[0].name != 'ml':
+            text = 'System needs ml as its first parameter'
             self.logger.error(text)
             raise ValueError(text)
         ml = self.parameters[0]
@@ -97,7 +98,13 @@ class System(object):
                        f"setting minstep=step={generator_settings['step']}."
                 self.logger.warning(text)
                 generator_settings['minstep'] = generator_settings['step']
-
+        if len(self.parameters) > 1:
+            omega = self.parameters[1]
+            if self.parameters[1].name != 'omega':
+                text = 'System needs omega as its second parameter'
+                self.logger.error(text)
+                raise ValueError(text)
+        
     def validate_parset(self, par):
         """
         Validates the system's parameter values
@@ -182,6 +189,66 @@ class System(object):
         self.logger.debug('...check ok.')
         return component
 
+    def get_all_mge_components(self):
+        """Get all components which are normal (non-rotating) MGEs
+
+        Returns
+        -------
+        list
+            a list of Component objects, keeping only the non-rotating MGE components
+
+        """
+        mge_cmp = [c for c in self.cmp_list if isinstance(c, TriaxialVisibleComponent) and not isinstance(c, BarComponent)]
+        return mge_cmp
+
+    def get_unique_triaxial_visible_component(self):
+        """Return the unique non-bar MGE component (raises an error if there are zero or multiple such components)
+
+        Returns
+        -------
+            a ``dyn.physical_system.TriaxialVisibleComponent`` object
+
+        """
+        mges = self.get_all_mge_components()
+        if len(mges) > 1:
+            self.logger.error('Found more than one triaxial visible component')
+            raise ValueError('Found more than one triaxial visible component')
+        if len(mges) == 0:
+            self.logger.error('Found zero triaxial visible components')
+            raise ValueError('Found zero triaxial visible components')
+        return mges[0]
+        
+
+    def get_all_bar_components(self):
+        """Get all components which are rotating MGEs (i.e. bars)
+
+        Returns
+        -------
+        list
+            a list of Component objects, keeping only the rotating MGE components
+
+        """
+        bar_cmp = [c for c in self.cmp_list if isinstance(c, BarComponent)]
+        return bar_cmp
+
+    def get_unique_bar_component(self):
+        """Return the unique rotating bar component (raises an error if there are zero or multiple such components)
+
+        Returns
+        -------
+            a ``dyn.physical_system.BarComponent`` object
+
+        """
+        bars = self.get_all_bar_components()
+        if len(bars) > 1:
+            self.logger.error('Found more than one bar component')
+            raise ValueError('Found more than one bar component')
+        if len(bars) == 0:
+            self.logger.error('Found zero bar components')
+            raise ValueError('Found zero bar components')
+        return bars[0]
+
+
     def get_all_dark_components(self):
         """Get all components which are Dark
 
@@ -225,7 +292,28 @@ class System(object):
         all_kinematics = []
         for component in self.cmp_list:
             all_kinematics += component.kinematic_data
-        return all_kinematics
+            return all_kinematics
+
+    def is_bar_disk_system(self):
+        """is_bar_disk_system
+
+        Check if the system contains at least one bar component and at least one disk component.
+
+        Returns
+        -------
+        isbardisk : Bool
+            System contains a bar and a disk.
+        """
+        mges = self.get_all_mge_components()
+        bars = self.get_all_bar_components()
+        isbardisk = (len(mges) > 0 and len(bars) > 0)
+        return isbardisk
+
+    def number_of_visible_components(self):
+        return sum(1 for i in self.cmp_list if isinstance(i, VisibleComponent))
+
+    def number_of_bar_components(self):
+        return sum(1 for i in self.cmp_list if isinstance(i, BarComponent))
 
 class Component(object):
     """A component of the physical system
@@ -657,6 +745,17 @@ class TriaxialVisibleComponent(VisibleComponent):
             text += f'\t\t minstep : {minstep:.2f}\n'
             text += f'\t\t value : {val:.2f}\n'
         return text
+
+class BarComponent(TriaxialVisibleComponent):
+    """Rotating triaxial component with a MGE projected density (i.e. a bar)
+
+    Note: all bar components are constrained to have the same omega.
+
+    """
+    def __init__(self, **kwds):
+        super().__init__(**kwds)
+        self.logger = logging.getLogger(f'{__name__}.{__class__.__name__}')
+        self.qobs = np.nan
 
 
 class DarkComponent(Component):

@@ -88,8 +88,9 @@ class LegacyOrbitLibrary(OrbitLibrary):
         if not check1 or not check2:
             # prepare the fortran input files for orblib
             self.create_fortran_input_orblib(self.mod_dir+'infil/')
-            stars = self.system.get_component_from_class( \
-                                            physys.TriaxialVisibleComponent)
+            stars = self.system.get_unique_triaxial_visible_component()
+            # Currently not supporting separate kinematic data for bar
+            # bars = self.system.get_component_from_class(physys.BarComponent)
             kinematics = stars.kinematic_data
             # create the kinematic input files for each kinematic dataset
             for i in np.arange(len(kinematics)):
@@ -129,8 +130,9 @@ class LegacyOrbitLibrary(OrbitLibrary):
         #---------------------------------------------
         #write parameters_pot.in and parameters_lum.in
         #---------------------------------------------
-        stars = \
-          self.system.get_component_from_class(physys.TriaxialVisibleComponent)
+        stars = self.system.get_unique_triaxial_visible_component()
+        if self.system.is_bar_disk_system():
+            bars = self.system.get_unique_bar_component()
         bh = self.system.get_component_from_class(physys.Plummer)
         # used to derive the viewing angles
         q = self.parset[f'q-{stars.name}']
@@ -167,17 +169,31 @@ class LegacyOrbitLibrary(OrbitLibrary):
         text += f"{settngs['dithering']}\n"
         text += f"{dm_specs}\n"
         text += f"{dm_par_vals}"
+        if self.system.is_bar_disk_system():
+            len_bar_pot = len(bars.mge_pot.data)
+            header_string_pot = str(len_mge_pot + len_bar_pot) + " 1 " + str(len_bar_pot) + " " + str(len_mge_pot)
+            len_bar_lum = len(bars.mge_lum.data)
+            header_string_lum = str(len_mge_lum + len_bar_lum) + " 1 " + str(len_bar_lum) + " " + str(len_mge_lum)
+            text += f"\n{self.parset['omega']}"
+            mge_pot = bars.mge_pot + stars.mge_pot
+            mge_lum = bars.mge_lum + stars.mge_lum
+        else:
+            header_string_pot = str(len_mge_pot)
+            header_string_lum = str(len_mge_lum)
+            mge_pot = stars.mge_pot
+            mge_lum = stars.mge_lum
+
         # parameters_pot.in
         np.savetxt(path + 'parameters_pot.in',
-                   stars.mge_pot.data,
-                   header=str(len_mge_pot),
+                   mge_pot.data,
+                   header=header_string_pot,
                    footer=text,
                    comments='',
                    fmt=['%10.2f','%10.5f','%10.5f','%10.2f'])
         # parameters_lum.in
         np.savetxt(path + 'parameters_lum.in',
-                   stars.mge_lum.data,
-                   header=str(len_mge_lum),
+                   mge_lum.data,
+                   header=header_string_lum,
                    footer=text,
                    comments='',
                    fmt=['%10.2f','%10.5f','%10.5f','%10.2f'])
@@ -339,7 +355,10 @@ class LegacyOrbitLibrary(OrbitLibrary):
         #create the fortran executable
         txt_file = open(cmdstr, "w")
         txt_file.write('#!/bin/bash' + '\n')
-        tmp = '/orbitstart < infil/orbstart.in >> datfil/orbstart.log\n'
+        if (self.system.is_bar_disk_system()):
+            tmp = '/orbitstart_bar < infil/orbstart.in >> datfil/orbstart.log\n'
+        else:
+            tmp = '/orbitstart < infil/orbstart.in >> datfil/orbstart.log\n'
         txt_file.write(f'{self.legacy_directory}{tmp}')
         txt_file.close()
         # the name of the executable must be returned to use in subprocess.call
@@ -545,9 +564,7 @@ class LegacyOrbitLibrary(OrbitLibrary):
         # however, orbit are stored N times where N = number of kinematic sets
         # histogram settings for other N-1 sets may be different from the first
         # these aren't stored in orblib.dat so must read from kinematics objects
-        stars = self.system.get_component_from_class(
-            physys.TriaxialVisibleComponent
-            )
+        stars = self.system.get_unique_triaxial_visible_component()
         n_kins = len(stars.kinematic_data)
         hist_widths = [k.hist_width for k in stars.kinematic_data]
         hist_centers = [k.hist_center for k in stars.kinematic_data]
