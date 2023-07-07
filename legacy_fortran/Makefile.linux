@@ -101,7 +101,7 @@ GALAHADTYPE= pc.lnx.gfo/double
 
 ##########################################################
 
-all : orbitstart orbitstart_bar orblib orblib_new_mirror triaxmass triaxmassbin triaxnnls_CRcut triaxnnls_noCRcut triaxnnls_new_lingcut modelgen
+all : orbitstart orbitstart_bar orblib orblib_new_mirror triaxmass triaxmass_bar triaxmassbin triaxnnls_CRcut triaxnnls_noCRcut triaxnnls_new_lingcut modelgen
 
 #########################################################
 #
@@ -142,6 +142,12 @@ iniparam_f.o: iniparam_f.f90 numeric_kinds_f.o
 
 triaxpotent.o : triaxpotent.f90 ellipint.o numeric_kinds_f.o iniparam_f.o
 	$(fortran90) triaxpotent.f90
+
+triaxmass_f.o : nag.o triaxpotent.f90
+	$(fortran90) triaxmass_f.f90
+
+triaxmassbin_f.o : nag.o triaxpotent.f90
+	$(fortran90) triaxmassbin_f.f90
 
 dmpotent.o : dmpotent.f90 triaxpotent.o numeric_kinds_f.o iniparam_f.o
 	$(fortran90) dmpotent.f90
@@ -197,8 +203,11 @@ specfunc_beta.o : ./sub/specfunc_beta.f90
 #
 ###################################################
 
-triaxmass: $(MGEOBJ) nag.o  triaxmass.f90
-	$(link) triaxmass $(MGEOBJ) nag.o triaxmass.f90
+triaxmass: $(MGEOBJ) nag.o  triaxmass_f.f90 triaxmass.f90
+	$(link) triaxmass $(MGEOBJ) triaxmass_f.o nag.o triaxmass.f90
+
+triaxmass_bar: $(MGEOBJ) nag.o  triaxmass_f.f90 triaxmass_bar.f90
+	$(link) triaxmass_bar $(MGEOBJ) triaxmass_f.o nag.o triaxmass_bar.f90
 
 ####################################################
 #
@@ -206,9 +215,11 @@ triaxmass: $(MGEOBJ) nag.o  triaxmass.f90
 #
 ###################################################
 
-triaxmassbin: $(MGEOBJ) triaxmassbin.f90
-	$(link) triaxmassbin $(MGEOBJ) triaxmassbin.f90
+triaxmassbin: $(MGEOBJ) triaxmassbin_f.f90 triaxmassbin.f90
+	$(link) triaxmassbin $(MGEOBJ) triaxmassbin_f.o triaxmassbin.f90
 
+triaxmassbin_bar: $(MGEOBJ) triaxmassbin_f.f90 triaxmassbin_bar.f90
+	$(link) triaxmassbin_bar $(MGEOBJ) triaxmassbin_f.o triaxmassbin_bar.f90
 
 ######################################################
 #
@@ -237,6 +248,9 @@ orblib_f_new_mirror.o : orblib_f_new_mirror.f90 $(MGEOBJ) numrec_arloc.o $(DOPOB
 
 orblib_new_mirror : $(ORBLIBNMOBJ) orblibprogram.f90
 	$(link) orblib_new_mirror  $(ORBLIBNMOBJ) orblibprogram.f90
+
+orblib_bar : $(ORBLIBNMOBJ) orblibprogram_bar.f90
+	$(link) orblib_bar  $(ORBLIBNMOBJ) orblibprogram_bar.f90
 
 modelgen : $(ORBLIBOBJ) modelgen.f90
 	$(link) modelgen  $(ORBLIBOBJ) modelgen.f90

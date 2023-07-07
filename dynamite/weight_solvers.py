@@ -517,8 +517,7 @@ class NNLS(WeightSolver):
                     and ``self.n_mass_constraints``
 
         """
-        stars = \
-          self.system.get_component_from_class(physys.TriaxialVisibleComponent)
+        stars = self.system.get_unique_triaxial_visible_component()
         mge = stars.mge_lum
         # intrinsic mass
         intrinsic_masses = mge.get_intrinsic_masses_from_file(self.direc_no_ml)

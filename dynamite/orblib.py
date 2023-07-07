@@ -159,7 +159,10 @@ class LegacyOrbitLibrary(OrbitLibrary):
         len_mge_lum = len(stars.mge_lum.data)
         settngs = self.settings
         text = f'{self.system.distMPc}\n'
-        text += f'{theta:06.9f} {phi:06.9f} {psi:06.9f}\n'
+        if self.system.is_bar_disk_system():
+            text += f'{theta:06.9f} {-phi:06.9f} {psi:06.9f}\n' # ?!?!
+        else:
+            text += f'{theta:06.9f} {phi:06.9f} {psi:06.9f}\n'
         text += f"{self.parset['ml']}\n"
         text += f"{self.parset[f'm-{bh.name}']}\n"
         text += f"{self.parset[f'a-{bh.name}']}\n"
@@ -437,7 +440,9 @@ class LegacyOrbitLibrary(OrbitLibrary):
     def write_executable_for_integrate_orbits_par(self):
         """Write the bash script to calculate orbit libraries
         """
-        if self.settings['use_new_mirroring']:
+        if self.system.is_bar_disk_system():
+            orb_prgrm = 'orblib_bar'
+        elif self.settings['use_new_mirroring']:
             orb_prgrm = 'orblib_new_mirror'
         else:
             orb_prgrm = 'orblib'
@@ -449,10 +454,18 @@ class LegacyOrbitLibrary(OrbitLibrary):
                         '>> datfil/orblib.log\n')
         txt_file.write('rm -f datfil/mass_qgrid.dat datfil/mass_radmass.dat '
                         'datfil/mass_aper.dat\n')
-        txt_file.write(f'{self.legacy_directory}/triaxmass '
-                        '< infil/triaxmass.in >> datfil/triaxmass.log\n')
-        txt_file.write(f'{self.legacy_directory}/triaxmassbin '
-                        '< infil/triaxmassbin.in >> datfil/triaxmassbin.log\n')
+
+        if self.system.is_bar_disk_system():
+            txt_file.write(f'{self.legacy_directory}/triaxmass_bar '
+                           '< infil/triaxmass.in >> datfil/triaxmass.log\n')
+            txt_file.write(f'{self.legacy_directory}/triaxmassbin_bar '
+                           '< infil/triaxmassbin.in >> datfil/triaxmassbin.log\n')
+        else:
+            txt_file.write(f'{self.legacy_directory}/triaxmass '
+                           '< infil/triaxmass.in >> datfil/triaxmass.log\n')
+            txt_file.write(f'{self.legacy_directory}/triaxmassbin '
+                           '< infil/triaxmassbin.in >> datfil/triaxmassbin.log\n')
+
         txt_file.write('rm -f datfil/orblib.dat.bz2 '
                         '&& bzip2 -k datfil/orblib.dat\n')
         txt_file.write('rm datfil/orblib.dat) &\n')
@@ -472,7 +485,9 @@ class LegacyOrbitLibrary(OrbitLibrary):
     def write_executable_for_integrate_orbits(self):
         """Write the bash script to calculate orbit libraries
         """
-        if self.settings['use_new_mirroring']:
+        if self.system.is_bar_disk_system():
+            orb_prgrm = 'orblib_bar'
+        elif self.settings['use_new_mirroring']:
             orb_prgrm = 'orblib_new_mirror'
         else:
             orb_prgrm = 'orblib'

@@ -126,7 +126,7 @@ module integrator
 
     public  :: integrator_integrate
 
-    public  :: integrator_setup, integrator_set_current
+    public  :: integrator_setup, integrator_set_current, integrator_setup_bar
 
     public  :: integrator_stop, integrator_find_orbtype
 
@@ -207,6 +207,7 @@ contains
         print *, "  ** Setting up integrator module"
         print *, "  * Calling MGE setup"
         call iniparam()
+        print *, "  * Calling ip_setup"
         call ip_setup()
         call ini_integ()
         print *, "  * How many orbits should be integrated?"
@@ -244,6 +245,55 @@ contains
         print *, "  ** integrator module setup finished"
 
     end subroutine integrator_setup
+
+    !++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+    subroutine integrator_setup_bar()
+        use initial_parameters, only: iniparam_bar, orbit_dithering, Omega
+        !use triaxpotent, only : tp_setup
+        use interpolpot, only: ip_setup_bar
+        !----------------------------------------------------------------------
+        integer(kind=i4b) :: ndith3
+        print *, "  ** Setting up integrator module"
+        print *, "  * Calling MGE setup"
+        call iniparam_bar()
+        print *, "  * Calling ip_setup_bar"
+        call ip_setup_bar()
+        call ini_integ()
+        print *, "  * How many orbits should be integrated?"
+        read *, integrator_n_orbits
+        print *, "    ", integrator_n_orbits
+        if (integrator_n_orbits < 1) stop " Too few orbits"
+        print *, "  * How many points should be generated per starting point?"
+        read *, integrator_points
+        print *, "    ", integrator_points
+        integrator_dithering = orbit_dithering
+        ndith3 = integrator_dithering**3
+        allocate (integrator_orbittypes(ndith3))
+        allocate (integrator_moments(5, ndith3))
+        if (integrator_points < 1) stop " Too few points"
+        print *, "  * At which starting point should be started?"
+        read *, integrator_start
+        print *, "    ", integrator_start
+        call integrator_set_current(integrator_start - 1)
+        print *, "  * How many starting points should be integrated?"
+        read *, integrator_number
+        print *, "    ", integrator_number
+        if (integrator_number == -1) integrator_number = &
+            (nEner*nI2*nI3/integrator_dithering**3)
+
+        if (integrator_number < 1) stop " To few starting points"
+        if (integrator_number > &
+            (nEner*nI2*nI3/integrator_dithering**3)) &
+            & stop " Too many orbits in total"
+        print *, "  * How great should te accuracy be of the integrator?"
+        read *, integrator_accuracy
+        print *, "    ", integrator_accuracy
+        if (integrator_accuracy < 0 .or. 0.5 < integrator_accuracy) &
+          & stop " wrong accuracy"
+
+        print *, "  ** integrator module setup finished"
+
+    end subroutine integrator_setup_bar
 
     !++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
     subroutine integrator_stop()
@@ -2748,7 +2798,7 @@ module high_level
     private
 
     ! setup/run/stop the program.
-    public :: setup, run, stob
+    public :: setup, setup_bar, run, stob
 
 contains
 
@@ -2783,6 +2833,38 @@ contains
         print *, "  ** Setup Finished"
 
     end subroutine setup
+
+    !++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+    subroutine setup_bar()
+        use integrator, only: integrator_setup_bar
+        use projection, only: projection_setup
+        use quadrantgrid, only: qgrid_setup
+        use aperture_routines, only: aperture_setup
+        use histograms, only: histogram_setup
+        use psf, only: psf_setup
+        use output, only: output_setup
+        !----------------------------------------------------------------------
+        character(len=80) :: string
+        print *, "  ** Start Setup"
+        print *, "  * Give setup version info: [U for unspecified]"
+        read *, string
+        if (string == "#counterrotation_setupfile_version_1" .or. string == "U") then
+            print *, "  * Setupfile is Version 1"
+            call integrator_setup_bar()
+            call projection_setup()
+            call qgrid_setup()
+            call psf_setup()
+            call aperture_setup()
+            call histogram_setup()
+            call output_setup()
+        else
+            print *, "This version is not understood by this program"
+            STOP "program terminated in high_level:setup"
+        end if
+
+        print *, "  ** Setup Finished"
+
+    end subroutine setup_bar
 
     !++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
     subroutine run()

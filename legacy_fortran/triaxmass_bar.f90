@@ -5,12 +5,12 @@ program triaxmass
     use numeric_kinds
     implicit none
 
-    call iniparam()
+    call iniparam_bar()
 
     print *, "Give the filename of the orbit library"
     read (unit=*, fmt="(a512)"), orblib_filename
 
-    call tp_setup()
+    call tp_setup_bar()
 
     call intrin_radii()
     call intrin_spher()

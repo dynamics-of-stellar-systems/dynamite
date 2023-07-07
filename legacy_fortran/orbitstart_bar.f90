@@ -23,7 +23,7 @@ program orbitstart_bar_run
     end if
 
     call iniparam_bar()
-    call ip_setup()
+    call ip_setup_bar()
     call runorbitstart()
     call ip_stop()
 end program orbitstart_bar_run
