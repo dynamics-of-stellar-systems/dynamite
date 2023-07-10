@@ -218,7 +218,6 @@ class System(object):
             raise ValueError('Found zero triaxial visible components')
         return mges[0]
         
-
     def get_all_bar_components(self):
         """Get all components which are rotating MGEs (i.e. bars)
 
@@ -247,7 +246,6 @@ class System(object):
             self.logger.error('Found zero bar components')
             raise ValueError('Found zero bar components')
         return bars[0]
-
 
     def get_all_dark_components(self):
         """Get all components which are Dark
@@ -756,7 +754,6 @@ class BarComponent(TriaxialVisibleComponent):
         super().__init__(**kwds)
         self.logger = logging.getLogger(f'{__name__}.{__class__.__name__}')
         self.qobs = np.nan
-
 
 class DarkComponent(Component):
     """Any dark component of the sytem, with no observed MGE or kinemtics
