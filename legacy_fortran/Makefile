@@ -100,7 +100,7 @@ GALAHADTYPE= mac.osx.gfo/double/
 #GALAHADTYPE= pc.lnx.gfo/double
 ##########################################################
 
-all : orbitstart orblib orblib_new_mirror triaxmass triaxmassbin triaxnnls_CRcut triaxnnls_noCRcut modelgen
+all : orbitstart orbitstart_bar orblib orblib_new_mirror orblib_bar triaxmass triaxmass_bar triaxmassbin triaxmassbin_bar triaxnnls_CRcut triaxnnls_noCRcut triaxnnls_new_lingcut modelgen
 
 #########################################################
 #
@@ -199,6 +199,9 @@ specfunc_beta.o : ./sub/specfunc_beta.f90
 triaxmass: $(MGEOBJ) nag.o  triaxmass.f90
 	$(link) triaxmass $(MGEOBJ) nag.o triaxmass.f90
 
+triaxmass_bar: $(MGEOBJ) nag.o  triaxmass_f.o triaxmass_bar.f90
+	$(link) triaxmass_bar $(MGEOBJ) triaxmass_f.o nag.o triaxmass_bar.f90
+
 ####################################################
 #
 # triaxmassbin
@@ -208,6 +211,8 @@ triaxmass: $(MGEOBJ) nag.o  triaxmass.f90
 triaxmassbin: $(MGEOBJ) triaxmassbin.f90
 	$(link) triaxmassbin $(MGEOBJ) triaxmassbin.f90
 
+triaxmassbin_bar: $(MGEOBJ) triaxmassbin_f.o triaxmassbin_bar.f90
+	$(link) triaxmassbin_bar $(MGEOBJ) triaxmassbin_f.o triaxmassbin_bar.f90
 
 ######################################################
 #
@@ -237,11 +242,20 @@ orblib_f_new_mirror.o : orblib_f_new_mirror.f90 $(MGEOBJ) numrec_arloc.o $(DOPOB
 orblib_new_mirror : $(ORBLIBNMOBJ) orblibprogram.f90
 	$(link) orblib_new_mirror  $(ORBLIBNMOBJ) orblibprogram.f90
 
+orblib_bar : $(ORBLIBNMOBJ) orblibprogram_bar.f90
+	$(link) orblib_bar  $(ORBLIBNMOBJ) orblibprogram_bar.f90
+
 modelgen : $(ORBLIBOBJ) modelgen.f90
 	$(link) modelgen  $(ORBLIBOBJ) modelgen.f90
 
-orbitstart : $(ORBLIBOBJ) orbitstart.f90
-	$(link) orbitstart  $(ORBLIBOBJ) orbitstart.f90
+orbitstart_f.o : $(ORBLIBOBJ) orbitstart_f.f90
+	$(fortran90) orbitstart_f.f90
+
+orbitstart : $(ORBLIBOBJ) orbitstart_f.o orbitstart.f90
+	$(link) orbitstart  $(ORBLIBOBJ) orbitstart_f.o orbitstart.f90
+
+orbitstart_bar : $(ORBLIBOBJ) orbitstart_f.o orbitstart_bar.f90
+	$(link) orbitstart_bar  $(ORBLIBOBJ) orbitstart_f.o orbitstart_bar.f90
 
 ##############################################################
 #
@@ -293,7 +307,7 @@ triaxnnls_noCRcut.o : triaxnnls_noCRcut.f90 numeric_kinds_f.o iniparam_f.o
 ##########################################
 
 distclean:
-	rm -f *.o *.il *.mod *.dyn work.* *.d *.exe ifc* *.dpi *.spi gmon.out orbitstart orblib orblib_new_mirror triaxmass triaxmassbin triaxnnls_CRcut triaxnnls_noCRcut modelgen
+	rm -f *.o *.il *.mod *.dyn work.* *.d *.exe ifc* *.dpi *.spi gmon.out orbitstart orbitstart_bar orblib orblib_new_mirror orblib_bar triaxmass triaxmass_bar triaxmassbin triaxmassbin_bar triaxnnls_CRcut triaxnnls_noCRcut modelgen
 
 clean:
 	rm -f *.o *.il *.mod work.* *.d ifc*
