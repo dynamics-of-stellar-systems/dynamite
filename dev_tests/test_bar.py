@@ -70,53 +70,55 @@ def run_user_test(make_comp=False):
 #    c.all_models.table.pprint_all() # This only works in astropy 3.2 or later
     c.all_models.table.pprint(max_lines=-1, max_width=-1)
 
-    if not make_comp:
-        # plot the models
-        plt.figure()
-        plt.scatter(c.all_models.table['which_iter'],
-                    c.all_models.table['ml'],
-                    c=c.all_models.table[which_chi2],
-                    cmap=plt.cm.viridis_r,
-                    s=200)
-        cb=plt.colorbar()
-        cb.set_label(which_chi2, y=1.1, labelpad=-40, rotation=0)
-        plt.gca().set_title('all iterations')
-        # plt.gca().set_yscale('log')
-        plt.xlabel('iteration')
-        plt.xticks(range(0,max(c.all_models.table['which_iter'])+1))
-        plt.ylabel('ml')
-        plt.savefig(plotfile_ml)
+    return c
 
-        # compare to chi2 in compare_file
-        chi2_compare = table.Table.read(compare_file, format='ascii')
-        plt.figure()
-        plt.scatter(chi2_compare['model_id'],
-                    chi2_compare[which_chi2],
-                    s=2000,
-                    facecolors='none',
-                    edgecolors='black')
-        plt.plot(range(len(c.all_models.table)),
-                  c.all_models.table[which_chi2],
-                  'rx')
-        plt.gca().set_title(f'calculated {which_chi2} (red) vs '
-                            'should-be range (black circles)')
-        plt.xlabel('model_id')
-        plt.xticks(range(len(c.all_models.table)))
-        plt.ylabel(which_chi2)
-        plt.savefig(plotfile_chi2)
-
-        print(f'Look at {plotfile_ml} and {plotfile_chi2}')
-        print(f'{which_chi2} comparison data:\n')
-        chi2_compare.pprint(max_lines=-1, max_width=-1)
-        print('The best 2 models:')
-        c.all_models.get_best_n_models(n=2).pprint(max_lines=-1, max_width=-1)
-
-    if make_comp:
-        return c.all_models.table, \
-          compare_file, \
-          c.settings.parameter_space_settings['stopping_criteria']['n_max_mods']
-    else:
-        return c
+#    if not make_comp:
+#        # plot the models
+#        plt.figure()
+#        plt.scatter(c.all_models.table['which_iter'],
+#                    c.all_models.table['ml'],
+#                    c=c.all_models.table[which_chi2],
+#                    cmap=plt.cm.viridis_r,
+#                    s=200)
+#        cb=plt.colorbar()
+#        cb.set_label(which_chi2, y=1.1, labelpad=-40, rotation=0)
+#        plt.gca().set_title('all iterations')
+#        # plt.gca().set_yscale('log')
+#        plt.xlabel('iteration')
+#        plt.xticks(range(0,max(c.all_models.table['which_iter'])+1))
+#        plt.ylabel('ml')
+#        plt.savefig(plotfile_ml)
+#
+#        # compare to chi2 in compare_file
+#        chi2_compare = table.Table.read(compare_file, format='ascii')
+#        plt.figure()
+#        plt.scatter(chi2_compare['model_id'],
+#                    chi2_compare[which_chi2],
+#                    s=2000,
+#                    facecolors='none',
+#                    edgecolors='black')
+#        plt.plot(range(len(c.all_models.table)),
+#                  c.all_models.table[which_chi2],
+#                  'rx')
+#        plt.gca().set_title(f'calculated {which_chi2} (red) vs '
+#                            'should-be range (black circles)')
+#        plt.xlabel('model_id')
+#        plt.xticks(range(len(c.all_models.table)))
+#        plt.ylabel(which_chi2)
+#        plt.savefig(plotfile_chi2)
+#
+#        print(f'Look at {plotfile_ml} and {plotfile_chi2}')
+#        print(f'{which_chi2} comparison data:\n')
+#        chi2_compare.pprint(max_lines=-1, max_width=-1)
+#        print('The best 2 models:')
+#        c.all_models.get_best_n_models(n=2).pprint(max_lines=-1, max_width=-1)
+#
+#    if make_comp:
+#        return c.all_models.table, \
+#          compare_file, \
+#          c.settings.parameter_space_settings['stopping_criteria']['n_max_mods']
+#    else:
+#        return c
 
 def create_comparison_data():
 
