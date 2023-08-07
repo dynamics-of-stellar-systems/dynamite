@@ -92,7 +92,12 @@ The file ``aperture.dat`` file contains the spatial extent in arcseconds, the an
 
 while ``bins.dat`` encodes the spatial (e.g. Voronoi) binning: specifically, one header line with the total number of pixels in the grid, followed by the bin ID of each pixel in the grid.
 
-It is possible to simultaneously fit multiple sets of kinematics in DYNAMITE. In this case, all input files should be placed in this directory::
+Comments on kinematics
+----------------------
+
+LegacyWeightSolver can't be used with BayesLOSVD - use weight-solver type NNLS.
+
+It is possible to simultaneously fit multiple sets of kinematics in DYNAMITE. This is only supported for Gauss Hermite kinematics. In this case, all input files should be placed in this directory::
 
   | main_directory
   | ├── input_files
@@ -106,6 +111,7 @@ It is possible to simultaneously fit multiple sets of kinematics in DYNAMITE. In
   |
 
 The specific names of the files given here are just examples - you can specify the names you would like to use in the configuration file.
+The individual kinematics' tables need to have the same number of expansion coefficients. In case your kinematics have different numbers of Gauss Hermite expansion coefficients, we recommend to augment the respecive tables with zero values for the additional coefficients and set the respective coefficients' errors to a large number (e.g., 0.3 or 0.5).
 
 Configuration File
 ===================

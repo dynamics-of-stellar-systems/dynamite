@@ -1,5 +1,7 @@
 import os
 import copy
+import glob
+import difflib
 import logging
 import shutil
 import numpy as np
@@ -831,6 +833,78 @@ class Model(object):
         self.directory_noml=self.directory[:self.directory[:-1].rindex('/')+1]
         self.logger.debug('Model directory string up to ml: '
                           f'{self.directory_noml}')
+        self.validate_config_file()
+
+    def validate_config_file(self):
+        """
+        Validate the content of the config file against the model's config file
+
+        Upon solving a model, DYNAMITE creates a backup of the config file in
+        the model directory. Instantiating a model later (e.g., for plotting)
+        using a config file that is incompatible with the one used to create
+        the model can lead to problems (e.g., differently sized orbit library).
+        This method validates the "global" config file against the one in the
+        model directory (if existing).
+
+        Differing config files may be ok and intended (e.g., due to expanding
+        the parameter space). Therefore, the main purpose of this method is to
+        add warnings to the log to alert the user.
+
+        Raises
+        ------
+        FileNotFoundError
+            If the "global" config file cannot be found.
+
+        Returns
+        -------
+        bool
+            ``False`` if a config file backup is successfully found in the
+            model directory and it differs from the "global" config file.
+            ``True`` otherwise (no config file backup could be identified or
+            the config file backup is identical to the global config file).
+
+        """
+        if not os.path.isfile(self.config.config_file_name):
+            txt = f'Unexpected: config file {self.config.config_file_name}' + \
+                  'not found.'
+            self.logger.error(txt)
+            raise FileNotFoundError(txt)
+        model_yaml_files = glob.glob(self.directory+'*.yaml')
+        n_yaml_files = len(model_yaml_files)
+        if n_yaml_files == 0:
+            self.logger.debug(f'No config file backup in {self.directory} '
+                              'found - probably a new model.')
+            return True  # ####################
+        if n_yaml_files == 1:
+            f_i = 0
+        else:
+            try:
+                f_i = model_yaml_files.index(self.directory +
+                                             self.config.config_file_name)
+            except ValueError:
+                self.logger.warning('More than one .yaml file found in '
+                                    f'{self.directory}, no file name match'
+                                    'with the config file, no check possible.')
+                return True  # ####################
+        model_config_file_name = model_yaml_files[f_i]
+        with open(self.config.config_file_name) as c_f:
+            config_file = c_f.readlines()
+        with open(model_config_file_name) as c_f:
+            model_config_file = c_f.readlines()
+        c_diff = difflib.unified_diff(config_file,
+                                      model_config_file,
+                                      fromfile=self.config.config_file_name,
+                                      tofile=model_config_file_name)
+        c_diff = list(c_diff)
+        if len(c_diff) > 0:
+            self.logger.warning('ACTION REQUIRED, PLEASE CHECK: '
+                                'The current config file '
+                                f'{self.config.config_file_name} differs from '
+                                f'the config file {model_config_file_name} '
+                                'backup in the model directory. Diff output:\n'
+                                f'{"".join(c_diff)}.')
+            return False  # ####################
+        return True
 
     def get_model_directory(self):
         """get the name of this model's output directory
@@ -936,7 +1010,7 @@ class Model(object):
                     config=self.config,
                     directory_with_ml=self.directory)
         else:
-            raise ValueError('Unknown WeightSolver type')
+            raise ValueError(f'Unknown WeightSolver type {ws_type}.')
         weights, chi2_tot, chi2_kin, chi2_kinmap = weight_solver.solve(orblib)
         self.chi2 = chi2_tot # instrinsic/projected mass + GH coeeficients 1-Ngh
         self.kinchi2 = chi2_kin # GH coeeficients 1-Ngh

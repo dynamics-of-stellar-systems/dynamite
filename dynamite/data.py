@@ -72,11 +72,21 @@ class Integrated(Data):
         self.aperturefile = aperturefile
         self.binfile = binfile
         super().__init__(**kwargs)
+        self.logger = logging.getLogger(f'{__name__}.{__class__.__name__}')
         if hasattr(self, 'data'):
             self.PSF = self.data.meta['PSF']
+            if abs(sum(self.PSF['weight'])-1.0) > 1e-8:
+                txt = f"PSF weights add up to {sum(self.PSF['weight'])}, " + \
+                      "not 1.0."
+                if hasattr(self, 'datafile'):
+                    txt += ' Check input data in '
+                    if hasattr(self, 'input_directory'):
+                        txt += f'{self.input_directory}'
+                    txt += f'{self.datafile}.'
+                self.logger.error(txt)
+                raise ValueError(txt)
         if self.aperturefile is not None and self.binfile is not None:
             self.read_aperture_and_bin_files()
-        self.logger = logging.getLogger(f'{__name__}.{__class__.__name__}')
 
     def add_psf_to_datafile(self,
                             sigma=[1.],

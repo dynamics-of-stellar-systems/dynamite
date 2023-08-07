@@ -753,7 +753,7 @@ class Histogram(object):
             return a*np.exp(-(x-mean)**2/(2.*sigma**2))
         for orbit in range(self.y.shape[0]):
             for aperture in range(self.y.shape[-1]):
-                err_msg=f'{orbit=}, {aperture=}: both mean and sigma are nan.'
+                err_msg=f'{orbit=}, {aperture=}: mean or sigma is nan.'
                 if not (np.isnan(v_mean[orbit,aperture]) or
                         np.isnan(v_sigma[orbit,aperture])): # nan?
                     p_initial = [1/(v_sigma[orbit,aperture]*np.sqrt(2*np.pi)),
