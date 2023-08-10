@@ -480,9 +480,8 @@ class Analysis:
             table to disk and return a tuple ``(gh_table, f_name)``.
             The default is 'table'.
         weights : ``numpy.array`` like, optional
-            Orbital weights to use. This is optional and experimental. The
-            default is ``None`` and will determine the weights via
-            ``model.get_orblib()`` and  ``model.get_weights(orblib)``.
+            Orbital weights to use. The default is ``None`` and will
+            determine the weights via ``model.get_weights(orblib)``.
 
         Raises
         ------
