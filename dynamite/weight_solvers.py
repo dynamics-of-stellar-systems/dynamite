@@ -115,7 +115,7 @@ class WeightSolver(object):
                 chi2_kinmap += sum(np.square((obs_val - mod_val) / err_val))
         return chi2_kinmap
 
-    def weights_exist(self):
+    def weight_file_exists(self):
         """Check whether the file(s) holding the current model's weights exist.
 
         May be re-implemented by sub-classes.
@@ -263,50 +263,65 @@ class LegacyWeightSolver(WeightSolver):
 
         """
         self.logger.info(f"Using WeightSolver: {__class__.__name__}")
-        # check1 = os.path.isfile(self.fname_nn_kinem)
-        # check2 = os.path.isfile(self.fname_nn_nnls)
-        # check3 = os.path.isfile(self.direc_with_ml + 'nn_orbmat.out')
-        # if not check1 or not check2 or not check3:
-        if not self.weights_exist():
-            # set the current directory to the directory in which
-            # the models are computed
-            cur_dir = os.getcwd()
-            os.chdir(self.direc_no_ml)
-            cmdstr = self.write_executable_for_weight_solver()
-            with open(cmdstr) as f:
-                for line in f:
-                    i = line.find('>>')
-                    if i >= 0:
-                        j = line.find('.log')
-                        logfile = line[i+3:j+4]
-                        break
-            self.logger.info("Fitting orbit library to the kinematic " +
-                             f"data: {logfile[:logfile.rindex('/')]}")
-            p = subprocess.run('bash '+cmdstr,
-                               stdout=subprocess.PIPE,
-                               stderr=subprocess.STDOUT,
-                               shell=True)
-            log_file = f'Logfile: {self.direc_no_ml+logfile}.'
-            if not p.stdout.decode("UTF-8"):
-                self.logger.info(f'...done, NNLS problem solved -  {cmdstr} '
-                                 f'exit code {p.returncode}. {log_file}')
-            else:
-                text = f'...failed! {cmdstr} exit code {p.returncode}. ' \
-                       f'Message: {p.stdout.decode("UTF-8")}'
-                if p.returncode == 127: # command not found
-                    text += 'Check DYNAMITE legacy_fortran executables.'
-                    self.logger.error(text)
-                    raise FileNotFoundError(text)
+        if self.weight_file_exists():
+            self.logger.info("Reading NNLS solution from existing output.")
+            results = ascii.read(self.weight_file)
+            weights = results['weights']
+            chi2_tot = results.meta['chi2_tot']
+            chi2_kin = results.meta['chi2_kin']
+            chi2_kinmap = results.meta['chi2_kinmap']
+        else:
+            # If legacy result files do not exist, run weight solving.
+            check1 = os.path.isfile(self.fname_nn_kinem)
+            check2 = os.path.isfile(self.fname_nn_nnls)
+            check3 = os.path.isfile(self.direc_with_ml + 'nn_orbmat.out')
+            if not check1 or not check2 or not check3:
+                # set the current directory to the directory in which
+                # the models are computed
+                cur_dir = os.getcwd()
+                os.chdir(self.direc_no_ml)
+                cmdstr = self.write_executable_for_weight_solver()
+                with open(cmdstr) as f:
+                    for line in f:
+                        i = line.find('>>')
+                        if i >= 0:
+                            j = line.find('.log')
+                            logfile = line[i+3:j+4]
+                            break
+                self.logger.info("Fitting orbit library to the kinematic " +
+                                 f"data: {logfile[:logfile.rindex('/')]}")
+                p = subprocess.run('bash '+cmdstr,
+                                   stdout=subprocess.PIPE,
+                                   stderr=subprocess.STDOUT,
+                                   shell=True)
+                log_file = f'Logfile: {self.direc_no_ml+logfile}.'
+                if not p.stdout.decode("UTF-8"):
+                    self.logger.info(f'...done, NNLS problem solved - {cmdstr}'
+                                     f' exit code {p.returncode}. {log_file}')
                 else:
-                    text += f'{log_file} Be wary: DYNAMITE may crash...'
-                    self.logger.warning(text)
-                    raise RuntimeError(text)
-            # set the current directory to the dynamite directory
-            os.chdir(cur_dir)
+                    text = f'...failed! {cmdstr} exit code {p.returncode}. ' \
+                           f'Message: {p.stdout.decode("UTF-8")}'
+                    if p.returncode == 127: # command not found
+                        text += 'Check DYNAMITE legacy_fortran executables.'
+                        self.logger.error(text)
+                        raise FileNotFoundError(text)
+                    else:
+                        text += f'{log_file} Be wary: DYNAMITE may crash...'
+                        self.logger.warning(text)
+                        raise RuntimeError(text)
+                # set the current directory to the dynamite directory
+                os.chdir(cur_dir)
+                # delete existing .yaml files and copy current config file
+                # into model directory
+                self.config.copy_config_file(self.direc_with_ml)
+            else:
+                self.logger.info("Reading NNLS solution from existing legacy "
+                                 "output and converting to weights file.")
+            # Now the legacy result files exist -> read, calculate
+            # kinmapchi2, and save to the weight file.
             weights, chi2_tot, chi2_kin = \
                 self.get_weights_and_chi2_from_orbmat_file()
             chi2_kinmap = self.chi2_kinmap(weights)
-            # save the output
             results = table.Table()
             results['weights'] = weights
             results.meta = {'chi2_tot': chi2_tot,
@@ -315,16 +330,6 @@ class LegacyWeightSolver(WeightSolver):
             results.write(self.weight_file,
                           format='ascii.ecsv',
                           overwrite=True)
-            # delete existing .yaml files and copy current config file
-            # into model directory
-            self.config.copy_config_file(self.direc_with_ml)
-        else:
-            self.logger.info("Reading NNLS solution from existing output.")
-            results = ascii.read(self.weight_file)
-            weights = results['weights']
-            chi2_tot = results.meta['chi2_tot']
-            chi2_kin = results.meta['chi2_kin']
-            chi2_kinmap = results.meta['chi2_kinmap']
         return weights, chi2_tot, chi2_kin, chi2_kinmap
 
     def write_executable_for_weight_solver(self):
@@ -747,7 +752,7 @@ class NNLS(WeightSolver):
         self.logger.info(f"Using WeightSolver: {__class__.__name__}/"
                          f"{self.nnls_solver}")
         orblib.read_losvd_histograms()
-        if self.weights_exist():
+        if self.weight_file_exists():
             results = ascii.read(self.weight_file, format='ecsv')
             self.logger.info("NNLS solution read from existing output")
             weights = results['weights']
