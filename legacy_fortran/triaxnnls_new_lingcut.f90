@@ -351,7 +351,7 @@ contains
   end subroutine readorblibs
 
 subroutine readobservations()
-  use initial_parameters , only : iniparam,nEner,nI2,nI3,orbit_dithering
+  use initial_parameters , only : iniparam_bar,nEner,nI2,nI3,orbit_dithering
   character (len=256) :: infile
   integer (kind=i4b) :: ios,Nmass1,nmass2,nmass3,i,j,k,tmp,ntemp,nherm
   integer (kind=i4b) :: cmin,cmax,iherm
@@ -361,7 +361,7 @@ subroutine readobservations()
   real(kind=dp),dimension(:,:,:),allocatable :: tmass
 
   print*,"  * Read parameters.in"
-  call iniparam()
+  call iniparam_bar()
 
   print*," Give the regularization strenght"
   read (unit=*,fmt=*) reguldelta
@@ -1226,11 +1226,40 @@ subroutine donnls_nosave()
       orbmat(it,:) = orbmat(it,:) / econ(it)
    end do
 
+   ! --- save NNLS matrix to *_orbmat.out ---
+   open (unit=36, file=trim(outroot)//"_orbmat.out", status="replace", action="write", form="formatted")
+   print *, "Storing nonzero ORBMAT elements on file..."
+   write (unit=36, fmt=*) orbitsinfit, size(con)
+   len = 0
+   do k = 1, orbitsinfit
+      do j = 1, size(con)
+         if (orbmat(j, k) /= 0.0_dp) then
+            len = len + 1
+         end if
+         write (unit=36, fmt=*) orbmat(j, k)
+      end do
+   end do
+   
+   ! --- save NNLS rhs vector to *_orbmat.out file ---
+   do j = 1, size(con)
+      write (unit=36, fmt=*) b(j)
+   end do
+   
+   print *, "Nonzero elements (%):", len*100.0_sp/(orbitsinfit*size(con))
+
+
    print*, "doing NNLS fit ..."
    print*, " "
    
    call nnls(orbmat(:,1:orbitsinfit),size(con),size(con),orbitsinfit,&
         b,orbweight,rmsresid,w,zz,index,mode)
+
+   ! --- save NNLS solution to *_orbmat.out file ---
+   do k = 1, orbitsinfit
+      write (unit=36, fmt=*) orbweight(k)
+   end do
+   close (unit=36, STATUS='KEEP')
+
 
    ! write some info to screen
    print*, "NNLS fit performed"

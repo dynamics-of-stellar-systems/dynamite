@@ -322,6 +322,15 @@ class Configuration(object):
                         c.mge_lum = mge.MGE(input_directory=path,
                                         datafile=data_comp['mge_lum'])
 
+                    if 'disk_pot' in data_comp:
+                        path = self.settings.io_settings['input_directory']
+                        c.disk_pot = mge.MGE(input_directory=path,
+                                             datafile=data_comp['disk_pot'])
+                    if 'disk_lum' in data_comp:
+                        path = self.settings.io_settings['input_directory']
+                        c.disk_lum = mge.MGE(input_directory=path,
+                                             datafile=data_comp['disk_pot'])
+
                     # add component to system
                     c.validate()
                     parset = {c.get_parname(p.name):p.raw_value \
@@ -854,11 +863,8 @@ class Configuration(object):
 
         if self.system.is_bar_disk_system():
             if self.system.number_of_bar_components() != 1:
-                self.logger.error('Bar/disk system needs to have exactly one BarComponent object')
-                raise ValueError('Bar/disk system needs to have exactly one BarComponent object')
-            if self.system.number_of_visible_components() != 2:
-                self.logger.error('Bar/disk system needs to have exactly two VisibleComponent objects')
-                raise ValueError('Bar/disk system needs to have exactly one VisibleComponent objects')
+                self.logger.error('Bar/disk system needs to have exactly one BarDiskComponent object')
+                raise ValueError('Bar/disk system needs to have exactly one BarDiskComponent object')
         else:
             if self.system.number_of_visible_components() != 1:
                 self.logger.error('System needs to have exactly one '
@@ -884,7 +890,7 @@ class Configuration(object):
 
         for c in self.system.cmp_list:
             if issubclass(type(c), physys.VisibleComponent) \
-               and not issubclass(type(c), physys.BarComponent): # Check vis. comp.
+               and not issubclass(type(c), physys.BarDiskComponent): # Check vis. comp.
                 if c.kinematic_data:
                     for kin_data in c.kinematic_data:
                         check_gh = (kin_data.type == 'GaussHermite')

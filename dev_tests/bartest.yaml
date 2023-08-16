@@ -19,13 +19,13 @@ system_components:
         parameters:
             m: # log(BHmass)
                 par_generator_settings:
-                    lo: 1.0
+                    lo: 0.0
                     hi: 10.0
                     step: 1.
                     minstep: 0.
                 fixed: True
-                value: 5.0
-                logarithmic: True
+                value: 0.0
+                logarithmic: False
                 LaTeX: "$M_{BH}$"
             a: # scale length
                 fixed: True
@@ -40,22 +40,22 @@ system_components:
             c: # NFW Darkmatter concentration
                 par_generator_settings:
                     lo: 2.0
-                    hi: 4.0
+                    hi: 10.0
                     step: 1.0
                     minstep: 0.1
-                logarithmic: True
+                logarithmic: False
                 fixed: True
-                value: 3.0
+                value: 7.8
                 LaTeX: "$log(C)$"
             f: # NFW Darkmatter fraction
                 par_generator_settings:
                     lo: 0.0
-                    hi: 2.0
+                    hi: 1000.0
                     step: 0.5
                     minstep: 0.1
-                logarithmic: True
+                logarithmic: False
                 fixed: True
-                value: 1.0
+                value: 200.0
                 LaTeX: "$log(M_{200}/M_{star})$"
         type: NFW
         include: True
@@ -77,38 +77,75 @@ system_components:
     #     include: True
     #     contributes_to_potential: True
 
-    stars:
+#    stars:
+#        parameters:
+#            p: # intrinsic B/A
+#                par_generator_settings:
+#                    lo: 0.01
+#                    hi: 0.999
+#                    step: 0.02
+#                    minstep: 0.01
+#                fixed: True
+#                value: 0.94
+#                LaTeX: "$p_{min}$"
+#            q: # intrinsic flattening (C/A)
+#                par_generator_settings:
+#                    lo: 0.01
+#                    hi: 0.99
+#                    step: 0.04
+#                    minstep: 0.02
+#                fixed: True
+#                value: 0.27
+#                LaTeX: "$q_{min}$"
+#            u: # sigma_obs / sigma_intrinsic
+#                par_generator_settings:
+#                    lo: 0.02
+#                    hi: 1.0
+#                    step: 0.01
+#                    minstep: 0.01
+#                fixed: True
+#                value: 0.97
+#                LaTeX: "$u_{min}$"
+#        type: "TriaxialVisibleComponent" # class name
+#        mge_pot: "mge.ecsv"
+#        mge_lum: "mge.ecsv"
+#        include: True
+#        contributes_to_potential: True
+
+    bardisk:
         parameters:
-            p: # intrinsic B/A
+            theta:
                 par_generator_settings:
-                    lo: 0.01
-                    hi: 0.999
-                    step: 0.02
-                    minstep: 0.01
+                    lo: 56.0
+                    hi: 70.0
+                    step: 2.0
+                    minstep: 1.0
                 fixed: True
-                value: 0.94
-                LaTeX: "$p_{min}$"
-            q: # intrinsic flattening (C/A)
+                value: 58.0
+                LaTeX: "$\\theta$"
+            phi:
                 par_generator_settings:
-                    lo: 0.01
-                    hi: 0.99
-                    step: 0.04
-                    minstep: 0.02
+                    lo: -47.0
+                    hi: -25.0
+                    step: 2.0
+                    minstep: 1.0
                 fixed: True
-                value: 0.27
-                LaTeX: "$q_{min}$"
-            u: # sigma_obs / sigma_intrinsic
+                value: -41.0
+                LaTeX: "$\\phi$"
+            psi:
                 par_generator_settings:
-                    lo: 0.02
-                    hi: 1.0
-                    step: 0.01
-                    minstep: 0.01
+                    lo: 87.0
+                    hi: 94.0
+                    step: 3.0
+                    minstep: 1.0
                 fixed: True
-                value: 0.97
-                LaTeX: "$u_{min}$"
-        type: "TriaxialVisibleComponent" # class name
-        mge_pot: "mge.ecsv"
-        mge_lum: "mge.ecsv"
+                value: 90.0
+                LaTeX: "$\\psi$"
+        type: "BarDiskComponentAngles" # class name
+        mge_pot: "bar_mge.ecsv"
+        mge_lum: "bar_mge.ecsv"
+        disk_pot: "disk_mge.ecsv"
+        disk_lum: "disk_mge.ecsv"
         include: True
         contributes_to_potential: True
         kinematics: # optional, only specified for components with kinematics
@@ -122,41 +159,6 @@ system_components:
                 aperturefile: "aperture.dat" # integrated only
                 binfile: "bins.dat"          # integrated only
 
-    bar:
-        parameters:
-            p: # intrinsic B/A
-                par_generator_settings:
-                    lo: 0.01
-                    hi: 0.999
-                    step: 0.02
-                    minstep: 0.01
-                fixed: True
-                value: 0.63
-                LaTeX: "$p_{min}$"
-            q: # intrinsic flattening (C/A)
-                par_generator_settings:
-                    lo: 0.05
-                    hi: 0.99
-                    step: 0.04
-                    minstep: 0.02
-                fixed: True
-                value: 0.40
-                LaTeX: "$q_{min}$"
-            u: # sigma_obs / sigma_intrinsic
-                par_generator_settings:
-                    lo: 0.02
-                    hi: 1.0
-                    step: 0.01
-                    minstep: 0.01
-                fixed: True
-                value: 0.88
-                LaTeX: "$u_{min}$"
-        type: "BarComponent" # class name
-        mge_pot: "bar_mge.ecsv"
-        mge_lum: "bar_mge.ecsv"
-        include: True
-        contributes_to_potential: True
-
 
 system_parameters:
     ml: # M/L
@@ -165,8 +167,8 @@ system_parameters:
             hi: 9.
             step: 4.0
             minstep: 0.5
-        fixed: False
-        value: 5.
+        fixed: True
+        value: 1.0
         LaTeX: "$Y_{r}$"
     omega:
         par_generator_settings:
@@ -174,8 +176,8 @@ system_parameters:
           hi: 1000.0
           step: 1.0
           minstep: 0.01
-        fixed: False
-        value: 39.0
+        fixed: True
+        value: 20.0
         LaTeX: "$\\Omega$"
 
 ###############################################################################
@@ -184,12 +186,12 @@ system_parameters:
 ###############################################################################
 
 orblib_settings:
-    nE: 6
+    nE: 10
     logrmin: -0.101275
     logrmax: 1.99123
-    nI2: 5        # must be >= 4
-    nI3: 4
-    dithering: 1
+    nI2: 7        # must be >= 4
+    nI3: 5
+    dithering: 3
     #the following values should usually not be changed
     orbital_periods: 200
     sampling: 50000

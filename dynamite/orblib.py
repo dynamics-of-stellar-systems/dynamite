@@ -88,9 +88,10 @@ class LegacyOrbitLibrary(OrbitLibrary):
         if not check1 or not check2:
             # prepare the fortran input files for orblib
             self.create_fortran_input_orblib(self.mod_dir+'infil/')
-            stars = self.system.get_unique_triaxial_visible_component()
-            # Currently not supporting separate kinematic data for bar
-            # bars = self.system.get_component_from_class(physys.BarComponent)
+            if self.system.is_bar_disk_system():
+                stars = self.system.get_unique_bar_component()
+            else:
+                stars = self.system.get_unique_triaxial_visible_component()
             kinematics = stars.kinematic_data
             # create the kinematic input files for each kinematic dataset
             for i in np.arange(len(kinematics)):
@@ -101,7 +102,7 @@ class LegacyOrbitLibrary(OrbitLibrary):
                 binfile = self.in_dir + kinematics[i].binfile
                 shutil.copyfile(binfile,
                             self.mod_dir+'infil/'+ kinematics[i].binfile)
-            # calculate orbit libary
+            # calculate orbit library
             self.get_orbit_ics()
             if self.orblibs_in_parallel:
                 self.get_orbit_library_par()
@@ -130,15 +131,29 @@ class LegacyOrbitLibrary(OrbitLibrary):
         #---------------------------------------------
         #write parameters_pot.in and parameters_lum.in
         #---------------------------------------------
-        stars = self.system.get_unique_triaxial_visible_component()
         if self.system.is_bar_disk_system():
-            bars = self.system.get_unique_bar_component()
+            stars = self.system.get_unique_bar_component()
+        else:
+            stars = self.system.get_unique_triaxial_visible_component()
         bh = self.system.get_component_from_class(physys.Plummer)
         # used to derive the viewing angles
-        q = self.parset[f'q-{stars.name}']
-        p = self.parset[f'p-{stars.name}']
-        u = self.parset[f'u-{stars.name}']
-        theta, psi, phi = stars.triax_pqu2tpp(p,q,u)
+        if self.system.is_bar_disk_system():
+            if self.system.is_bar_disk_system_with_angles():
+                theta = self.parset[f'theta-{stars.name}']
+                phi = self.parset[f'phi-{stars.name}']
+                psi = self.parset[f'psi-{stars.name}']
+            else:
+                q = self.parset[f'q-{stars.name}']
+                p = self.parset[f'p-{stars.name}']
+                u = self.parset[f'u-{stars.name}']
+                qdisk = self.parset[f'qdisk-{stars.name}']
+                theta, psi, phi = stars.triax_pqu2tpp_bar(p,q,u,qdisk)
+                phi = -phi ## FIX ME
+        else:
+            q = self.parset[f'q-{stars.name}']
+            p = self.parset[f'p-{stars.name}']
+            u = self.parset[f'u-{stars.name}']
+            theta, psi, phi = stars.triax_pqu2tpp(p,q,u)
         # get dark halo
         dh = self.system.get_all_dark_non_plummer_components()
         self.logger.debug('Checking number of non-plummer dark components')
@@ -159,10 +174,7 @@ class LegacyOrbitLibrary(OrbitLibrary):
         len_mge_lum = len(stars.mge_lum.data)
         settngs = self.settings
         text = f'{self.system.distMPc}\n'
-        if self.system.is_bar_disk_system():
-            text += f'{theta:06.9f} {-phi:06.9f} {psi:06.9f}\n' # ?!?!
-        else:
-            text += f'{theta:06.9f} {phi:06.9f} {psi:06.9f}\n'
+        text += f'{theta:06.9f} {phi:06.9f} {psi:06.9f}\n'
         text += f"{self.parset['ml']}\n"
         text += f"{self.parset[f'm-{bh.name}']}\n"
         text += f"{self.parset[f'a-{bh.name}']}\n"
@@ -173,13 +185,13 @@ class LegacyOrbitLibrary(OrbitLibrary):
         text += f"{dm_specs}\n"
         text += f"{dm_par_vals}"
         if self.system.is_bar_disk_system():
-            len_bar_pot = len(bars.mge_pot.data)
-            header_string_pot = str(len_mge_pot + len_bar_pot) + " 1 " + str(len_bar_pot) + " " + str(len_mge_pot)
-            len_bar_lum = len(bars.mge_lum.data)
-            header_string_lum = str(len_mge_lum + len_bar_lum) + " 1 " + str(len_bar_lum) + " " + str(len_mge_lum)
+            len_disk_pot = len(stars.disk_pot.data)
+            header_string_pot = str(len_mge_pot + len_disk_pot) + " 1 " + str(len_mge_pot) + " " + str(len_disk_pot)
+            len_disk_lum = len(stars.disk_lum.data)
+            header_string_lum = str(len_mge_lum + len_disk_lum) + " 1 " + str(len_mge_lum) + " " + str(len_disk_lum)
             text += f"\n{self.parset['omega']}"
-            mge_pot = bars.mge_pot + stars.mge_pot
-            mge_lum = bars.mge_lum + stars.mge_lum
+            mge_pot = stars.mge_pot + stars.disk_pot
+            mge_lum = stars.mge_lum + stars.disk_lum
         else:
             header_string_pot = str(len_mge_pot)
             header_string_lum = str(len_mge_lum)
@@ -786,7 +798,10 @@ class LegacyOrbitLibrary(OrbitLibrary):
         """
         infile = self.mod_dir + 'infil/parameters_pot.in'
         lines = [line.rstrip('\n').split() for line in open(infile)]
-        ml_original = float((lines[-9])[0])
+        if self.is_bar_disk_system():
+            ml_original = float((lines[-10])[0])
+        else:
+            ml_original = float((lines[-9])[0])
         return ml_original
 
     def read_orbit_property_file_base(self, file, ncol, nrow):
