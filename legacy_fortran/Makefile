@@ -203,8 +203,8 @@ specfunc_beta.o : ./sub/specfunc_beta.f90
 #
 ###################################################
 
-triaxmass: $(MGEOBJ) nag.o  triaxmass.f90
-	$(link) triaxmass $(MGEOBJ) nag.o triaxmass.f90
+triaxmass: $(MGEOBJ) nag.o triaxmass_f.o triaxmass.f90
+	$(link) triaxmass $(MGEOBJ) triaxmass_f.o nag.o triaxmass.f90
 
 triaxmass_bar: $(MGEOBJ) nag.o  triaxmass_f.o triaxmass_bar.f90
 	$(link) triaxmass_bar $(MGEOBJ) triaxmass_f.o nag.o triaxmass_bar.f90
@@ -215,8 +215,8 @@ triaxmass_bar: $(MGEOBJ) nag.o  triaxmass_f.o triaxmass_bar.f90
 #
 ###################################################
 
-triaxmassbin: $(MGEOBJ) triaxmassbin.f90
-	$(link) triaxmassbin $(MGEOBJ) triaxmassbin.f90
+triaxmassbin: $(MGEOBJ) triaxmassbin_f.o triaxmassbin.f90
+	$(link) triaxmassbin $(MGEOBJ) triaxmassbin_f.o triaxmassbin.f90
 
 triaxmassbin_bar: $(MGEOBJ) triaxmassbin_f.o triaxmassbin_bar.f90
 	$(link) triaxmassbin_bar $(MGEOBJ) triaxmassbin_f.o triaxmassbin_bar.f90
