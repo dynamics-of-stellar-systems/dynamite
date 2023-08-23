@@ -143,6 +143,12 @@ iniparam_f.o: iniparam_f.f90 numeric_kinds_f.o
 triaxpotent.o : triaxpotent.f90 ellipint.o numeric_kinds_f.o iniparam_f.o
 	$(fortran90) triaxpotent.f90
 
+triaxmass_f.o : nag.o triaxpotent.f90
+	$(fortran90) triaxmass_f.f90
+
+triaxmassbin_f.o : nag.o triaxpotent.f90
+	$(fortran90) triaxmassbin_f.f90
+
 dmpotent.o : dmpotent.f90 triaxpotent.o numeric_kinds_f.o iniparam_f.o
 	$(fortran90) dmpotent.f90
 
