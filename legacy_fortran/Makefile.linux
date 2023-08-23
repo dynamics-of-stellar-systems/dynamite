@@ -256,7 +256,7 @@ orblib_bar : $(ORBLIBNMOBJ) orblibprogram_bar.f90
 modelgen : $(ORBLIBOBJ) modelgen.f90
 	$(link) modelgen  $(ORBLIBOBJ) modelgen.f90
 
-orbitstart_f.o : $(ORBLIBOBJ) orbitstart_f.f90
+orbitstart_f.o : $(ORBLIBOBJ) $(MGEOBJ) orbitstart_f.f90
 	$(fortran90) orbitstart_f.f90
 
 orbitstart : $(ORBLIBOBJ) orbitstart_f.o orbitstart.f90
