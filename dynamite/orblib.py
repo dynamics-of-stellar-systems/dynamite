@@ -11,6 +11,7 @@ import sparse
 
 from dynamite import physical_system as physys
 from dynamite import kinematics as dyn_kin
+from dynamite.constants import PARSEC_KM
 
 class OrbitLibrary(object):
     """An abstract class for orbit libraries.
@@ -102,8 +103,17 @@ class LegacyOrbitLibrary(OrbitLibrary):
                 binfile = self.in_dir + kinematics[i].binfile
                 shutil.copyfile(binfile,
                             self.mod_dir+'infil/'+ kinematics[i].binfile)
-            # calculate orbit library
-            self.get_orbit_ics()
+            # calculate orbit libary
+            file1 = 'begin.dat'
+            file2 = 'beginbox.dat'
+            check1 = os.path.isfile(self.mod_dir + f'datfil/{file1}')
+            check2 = os.path.isfile(self.mod_dir + f'datfil/{file2}')
+            if check1 + check2 != 2:
+                if check1:
+                    os.remove(self.mod_dir + f'datfil/{file1}')
+                if check2:
+                    os.remove(self.mod_dir + f'datfil/{file2}')
+                self.get_orbit_ics()
             if self.orblibs_in_parallel:
                 self.get_orbit_library_par()
             else:
@@ -357,10 +367,16 @@ class LegacyOrbitLibrary(OrbitLibrary):
             self.logger.info(f'...done - {cmdstr} exit code {p.returncode}. '
                              f'{log_file}')
         else:
-            text = f'{cmdstr} exit code {p.returncode}. ERROR. ' \
-                   f'Message: {p.stdout.decode("UTF-8")}{log_file}'
-            self.logger.error(text)
-            raise RuntimeError(text)
+            text = f'...failed! {cmdstr} exit code {p.returncode}. ' \
+                   f'Message: {p.stdout.decode("UTF-8")}'
+            if p.returncode == 127: # command not found
+                text += 'Check DYNAMITE legacy_fortran executables.'
+                self.logger.error(text)
+                raise FileNotFoundError(text)
+            else:
+                text += f'{log_file} Be wary: DYNAMITE may crash...'
+                self.logger.warning(text)
+                raise RuntimeError(text)
         os.chdir(cur_dir)
 
     def write_executable_for_ics(self):
@@ -400,10 +416,16 @@ class LegacyOrbitLibrary(OrbitLibrary):
             self.logger.info(f'...done - {cmdstr} exit code '
                              f'{p.returncode}. {log_files}')
         else:
-            text=f'{cmdstr} exit code {p.returncode}. ERROR. ' \
-                 f'Message: {p.stdout.decode("UTF-8")}{log_files}'
-            self.logger.error(text)
-            raise RuntimeError(text)
+            text=f'...failed! {cmdstr} exit code {p.returncode}. ' \
+                 f'Message: {p.stdout.decode("UTF-8")}'
+            if p.returncode == 127: # command not found
+                text += 'Check DYNAMITE legacy_fortran executables.'
+                self.logger.error(text)
+                raise FileNotFoundError(text)
+            else:
+                text += f'{log_files} Be wary: DYNAMITE may crash...'
+                self.logger.warning(text)
+                raise RuntimeError(text)
         # move back to original directory
         os.chdir(cur_dir)
 
@@ -427,10 +449,16 @@ class LegacyOrbitLibrary(OrbitLibrary):
             self.logger.info(f'...done - {cmdstr_tube} exit code '
                              f'{p.returncode}. {log_files}')
         else:
-            text=f'{cmdstr_tube} exit code {p.returncode}. ERROR. ' \
-                 f'Message: {p.stdout.decode("UTF-8")}{log_files}'
-            self.logger.error(text)
-            raise RuntimeError(text)
+            text=f'...failed! {cmdstr_tube} exit code {p.returncode}. ' \
+                 f'Message: {p.stdout.decode("UTF-8")}'
+            if p.returncode == 127: # command not found
+                text += 'Check DYNAMITE legacy_fortran executables.'
+                self.logger.error(text)
+                raise FileNotFoundError(text)
+            else:
+                text += f'{log_files} Be wary: DYNAMITE may crash...'
+                self.logger.warning(text)
+                raise RuntimeError(text)
         self.logger.info('Integrating orbit library box orbits')
         # p = subprocess.call('bash '+cmdstr_box, shell=True)
         p = subprocess.run('bash '+cmdstr_box,
@@ -442,10 +470,16 @@ class LegacyOrbitLibrary(OrbitLibrary):
             self.logger.info(f'...done - {cmdstr_box} exit code '
                              f'{p.returncode}. {log_file}')
         else:
-            text = f'{cmdstr_box} exit code {p.returncode}. ERROR. ' \
-                   f'Message: {p.stdout.decode("UTF-8")}{log_file}'
-            self.logger.error(text)
-            raise RuntimeError(text)
+            text = f'...failed! {cmdstr_box} exit code {p.returncode}. ' \
+                   f'Message: {p.stdout.decode("UTF-8")}'
+            if p.returncode == 127: # command not found
+                text += 'Check DYNAMITE legacy_fortran executables.'
+                self.logger.error(text)
+                raise FileNotFoundError(text)
+            else:
+                text += f'{log_file} Be wary: DYNAMITE may crash...'
+                self.logger.warning(text)
+                raise RuntimeError(text)
         # move back to original directory
         os.chdir(cur_dir)
 
@@ -461,6 +495,11 @@ class LegacyOrbitLibrary(OrbitLibrary):
         cmd_string = 'cmd_tube_box_orbs'
         txt_file = open(cmd_string, "w")
         txt_file.write('#!/bin/bash\n')
+        txt_file.write('# first, check whether executables exist\n')
+        for f_name in orb_prgrm, 'triaxmass', 'triaxmassbin':
+            txt_file.write(f'test -e {self.legacy_directory}/{f_name} || ' +
+                           f'{{ echo "File {self.legacy_directory}/{f_name} ' +
+                           'not found." && exit 127; }\n')
         txt_file.write('(rm -f datfil/orblib.dat.tmp datfil/orblib.dat\n')
         txt_file.write(f'{self.legacy_directory}/{orb_prgrm} < infil/orblib.in '
                         '>> datfil/orblib.log\n')
@@ -507,6 +546,11 @@ class LegacyOrbitLibrary(OrbitLibrary):
         cmdstr_tube = 'cmd_tube_orbs'
         txt_file = open(cmdstr_tube, "w")
         txt_file.write('#!/bin/bash\n')
+        txt_file.write('# first, check whether executables exist\n')
+        for f_name in orb_prgrm, 'triaxmass', 'triaxmassbin':
+            txt_file.write(f'test -e {self.legacy_directory}/{f_name} || ' +
+                           f'{{ echo "File {self.legacy_directory}/{f_name} ' +
+                           'not found." && exit 127; }\n')
         txt_file.write('rm -f datfil/orblib.dat.tmp datfil/orblib.dat '
                        'datfil/orblib.dat.bz2\n')
         txt_file.write(f'{self.legacy_directory}/{orb_prgrm} < infil/orblib.in '
@@ -526,6 +570,10 @@ class LegacyOrbitLibrary(OrbitLibrary):
         cmdstr_box = 'cmd_box_orbs'
         txt_file = open(cmdstr_box, "w")
         txt_file.write('#!/bin/bash\n')
+        txt_file.write('# first, check whether executable exists\n')
+        txt_file.write(f'test -e {self.legacy_directory}/{orb_prgrm} || ' +
+                       f'{{ echo "File {self.legacy_directory}/{orb_prgrm} ' +
+                       'not found." && exit 127; }\n')
         txt_file.write('rm -f datfil/orblibbox.dat.tmp datfil/orblibbox.dat '
                        'datfil/orblibbox.dat.bz2\n')
         txt_file.write(f'{self.legacy_directory}/{orb_prgrm} '
@@ -542,7 +590,7 @@ class LegacyOrbitLibrary(OrbitLibrary):
         # ...
         pass
 
-    def read_orbit_base(self, fileroot):
+    def read_orbit_base(self, fileroot, return_instrisic_moments=False):
         """
         Read orbit library from file datfil/{fileroot}.dat.bz2'
 
@@ -550,11 +598,18 @@ class LegacyOrbitLibrary(OrbitLibrary):
         ----------
         fileroot : string
             this will probably be either 'orblib' or 'orblibbox'
+        return_instrisic_moments: boolean
+            whether to return_instrisic_moments of the orblib
 
         Returns
         -------
-        Histogram
-            the orbit library stored in a Histogram object
+        if return_instrisic_moments is False, this returns a tuple of type
+        (Histogram, array) where the orbit library LOSVDs are stored in the 
+        Histogram object, and the 3D density of the orbits are stored in the 
+        array object.
+        if return_instrisic_moments is True, returns a tuple 
+        (array, list) where the array stores the intrinsic momenmts of the 
+        orblib and the list contains the bin edges of the 3D grid.
 
         """
         cur_dir = os.getcwd()
@@ -582,6 +637,8 @@ class LegacyOrbitLibrary(OrbitLibrary):
         quad_lr = orblibf.read_reals(float)
         quad_lth = orblibf.read_reals(float)
         quad_lph = orblibf.read_reals(float)
+        if return_instrisic_moments:
+            instrisic_grid = [quad_lr, quad_lth, quad_lph]
         # from histogram_setup_write, lines 1917-1926:
         tmp = orblibf.read_record(np.int32, np.int32, float)
         nconstr = tmp[0][0] # = total number of apertures for ALL kinematics
@@ -619,6 +676,8 @@ class LegacyOrbitLibrary(OrbitLibrary):
         nbins_vhist = 2*nvhist + 1
         velhist = np.zeros((norb, nbins_vhist, nconstr))
         density_3D = np.zeros((norb, size_qlr, size_qth, size_qph))
+        if return_instrisic_moments:
+            intrinsic_moms = np.zeros((norb, size_qlr, size_qth, size_qph, 16))
         for j in range(norb):
             t1,t2,t3,t4,t5 = orblibf.read_ints(np.int32)
             orbtypes[j, :] = orblibf.read_ints(np.int32)
@@ -643,6 +702,8 @@ class LegacyOrbitLibrary(OrbitLibrary):
                     nv0 = int(nv0)
                     tmp = orblibf.read_reals(float)
                     velhist0[kin_idx][j, ivmin+nv0:ivmax+nv0+1, i_ap0] = tmp
+            if return_instrisic_moments:
+                intrinsic_moms[j] = quad_light
         orblibf.close()
         os.chdir(cur_dir)
         velhists = []
@@ -662,10 +723,13 @@ class LegacyOrbitLibrary(OrbitLibrary):
                                     y=velhist0[i],
                                     normalise=False)
             velhists += [vvv]
-        return velhists, density_3D
+        if return_instrisic_moments:
+            return intrinsic_moms, instrisic_grid
+        else:
+            return velhists, density_3D
 
     def duplicate_flip_and_interlace_orblib(self, orblib):
-        """mirror the tube orbits
+        """flip the tube orbits
 
         Take an orbit library, create a duplicate library with the velocity
         signs flipped, then interlace the two i.e. so that resulting library
@@ -698,6 +762,20 @@ class LegacyOrbitLibrary(OrbitLibrary):
                                        normalise=False)
         return new_orblib
 
+    def duplicate_flip_and_interlace_intmoms(self, intmom):
+        """equiv of `duplicate_flip_and_interlace_orblib` for intrinsic moments
+        """
+        new_shape = (intmom.shape[0]*2,) + intmom.shape[1:]
+        new_intmom = np.zeros(new_shape)
+        new_intmom[0::2] = intmom
+        reversed_intmom = 1.* intmom # hack to make a copy
+        # flip sign of...
+        reversed_intmom[:,:,:,:,4] *= -1. # ... vx
+        reversed_intmom[:,:,:,:,5] *= -1. # ... vy
+        reversed_intmom[:,:,:,:,6] *= -1. # ... vz
+        new_intmom[1::2, :] = reversed_intmom
+        return new_intmom
+    
     def combine_orblibs(self, orblib1, orblib2):
         """Combine two LOSVD histograms into one.
 
@@ -786,6 +864,50 @@ class LegacyOrbitLibrary(OrbitLibrary):
         proj_mass = [np.sum(self.losvd_histograms[i].y,1) for i in range(nkins)]
         self.projected_masses = proj_mass
 
+    def read_orbit_intrinsic_moments(self):
+        """Read the intrinsic moments of the orbit library.
+
+        Moments stored in 3D grid over spherical co-ords (r,theta,phi). This
+        function reads the data from files, formats them correctly, and coverts
+        to physical units. 
+
+        Returns
+        -------
+        (array, list)
+            array shape = (n_orb, nr, nth, nph, 16). Final dimension indexes
+            over: density,x,y,z,vx,vy,vz,vx^2,vy^2,vz^2,vx*vy,vy*vz,vz*vx, and 
+            the final three indices (13,14,15) are some type of orbit
+            classification (not understood - recommend not to use!). The list 
+            contains grid bin edges over spherical (r, theta, phi). 
+
+        """  
+        intmom_tubes, int_grid = self.read_orbit_base(
+            'orblib', 
+            return_instrisic_moments=True)
+        intmom_tubes = self.duplicate_flip_and_interlace_intmoms(intmom_tubes)
+        intmom_boxes, _ = self.read_orbit_base(
+            'orblibbox',
+            return_instrisic_moments=True)
+        intmoms = np.concatenate((intmom_tubes, intmom_boxes), 0)
+        ml_current = self.parset['ml']
+        ml_original = self.get_ml_of_original_orblib()
+        velscale = np.sqrt(ml_current/ml_original)
+        conversion_factor = self.system.distMPc * 1e6 * np.tan(np.pi/648000.0) * PARSEC_KM
+        intmoms[:,:,:,:,1] /= conversion_factor # kpc -> arcsec
+        intmoms[:,:,:,:,2] /= conversion_factor
+        intmoms[:,:,:,:,3] /= conversion_factor
+        intmoms[:,:,:,:,4] *= velscale # for velocity stretching due to M/L
+        intmoms[:,:,:,:,5] *= velscale
+        intmoms[:,:,:,:,6] *= velscale
+        intmoms[:,:,:,:,7] *= velscale**2.
+        intmoms[:,:,:,:,8] *= velscale**2.
+        intmoms[:,:,:,:,9] *= velscale**2.
+        intmoms[:,:,:,:,10] *= velscale**2.
+        intmoms[:,:,:,:,11] *= velscale**2.
+        intmoms[:,:,:,:,12] *= velscale**2.
+        int_grid[0] /= conversion_factor # kpc -> arcsec
+        return intmoms, int_grid
+
     def get_ml_of_original_orblib(self):
         """Get ``ml`` of original orblib with shared parameters
 
@@ -811,8 +933,8 @@ class LegacyOrbitLibrary(OrbitLibrary):
         """Base method to read in ``*orbclass.out`` files
 
         ...which hold the information of all the orbits stored in the orbit
-        library. The number of orbits is
-        ``norb = nrow = nE * nI2 * nI3 * dithering^3``.
+        library. The number of orbits is ``nE * nI2 * nI3 * dithering^3``,
+        ``ncol = dithering^3`` and ``nrow = nE * nI2 * nI3``.
         For each orbit, the time averaged values are stored:
         ``lx, ly ,lz, r = sum(sqrt( average(r^2) ))``,
         ``Vrms^2 = average(vx^2 + vy^2 + vz^2 + 2vx*vy + 2vxvz + 2vxvy)``.
@@ -832,13 +954,18 @@ class LegacyOrbitLibrary(OrbitLibrary):
                 data.append(np.double(x))
             i += 1
         data=np.array(data)
+        if len(data) != 5*ncol*nrow:
+            txt = f'{file} length mismatch - found {len(data)} entries, ' \
+                  f'expected: {5*ncol*nrow}. Correct configuration file used?'
+            self.logger.error(txt)
+            raise ValueError(txt)
         data=data.reshape((5,ncol,nrow), order='F')
         return data
 
     def read_orbit_property_file(self):
         """Read the ``*orbclass.out`` files
 
-        These filen contain time-averaged properties of individual orbits within
+        These files contain time-averaged properties of individual orbits within
         a bundle. Results are stored in ``self.orb_properties``, an astropy
         table with columns ``[r, Vrms, L, Lx, Ly, Lz, lmd, lmd_x, lmd_y,
         lmd_z]`` i.e.
@@ -1109,5 +1236,45 @@ class LegacyOrbitLibrary(OrbitLibrary):
         projection = np.stack(projection)
         projection = np.moveaxis(projection, 1, 3)
         self.projection_tensor = projection
+
+    def get_model_intrinsic_moment_constructor(self):
+        """Get a function to constrcut the model's intrinsic moments in 3D grid
+
+        Returns a function and a list. The function takes weights and returns
+        intrinsic model moments in a 3D grid. The list contains the bin edges
+        of the 3D grid. Example usage:
+
+        ```
+        moment_constructor, bin_edges = orblib.get_model_intrinsic_moment_constructor()
+        moments = moment_constructor(weights)
+        ```
+
+        Returns
+        -------
+        (callable, list) 
+            the callable = function which takes weights and returns 3D moments.
+            The list contains grid bin edges over spherical (r, theta, phi). 
+            Moments returned by the callable are stored in a grid of size 
+            (nr, nth, nph, 13). Final dimension indexes over: density,x,y,z,vx,
+            vy,vz,vx^2,vy^2,vz^2,vx*vy,vy*vz,vz*vx. Density is normalised to 1,
+            spatial moments in arcseconds, velocities in km/s.
+
+        """        
+        intmoms, int_grid = self.read_orbit_intrinsic_moments()
+        density = intmoms[:,:,:,:,0]
+        kinmoms = intmoms[:,:,:,:,1:13]
+        def model_intrinsic_moment_constructor(weights):
+            mod_density = (density.T * weights).T
+            # normalise density so model sums to 1 in each (r,th,ph) bin
+            mod_dens_nrm = mod_density/np.sum(mod_density, 0)
+            mod_kinmoms = np.einsum('ijklm,ijkl->jklm', kinmoms, mod_dens_nrm)
+            # normalise density that model sums over (r,th,ph) bins to give 1
+            mod_density = np.sum(mod_density, 0)
+            mod_density /= np.sum(mod_density)
+            mod_moments = np.concatenate(
+                (mod_density[...,np.newaxis], mod_kinmoms), 
+                axis=-1)
+            return mod_moments
+        return model_intrinsic_moment_constructor, int_grid
 
 # end

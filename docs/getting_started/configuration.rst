@@ -81,7 +81,6 @@ This section lists the following attributes of the system::
   system_attributes:
       distMPc: ...        # distance in MPc
       name:  ...          # name for your galaxy
-      position_angle:     # in degrees
 
 ``system_components``
 =====================
@@ -145,6 +144,8 @@ The following types of component are available, listed with their parameters:
   - exactly one out of [``NFW``, ``NFW_m200_c``, ``Hernquist``, ``TriaxialCoredLogPotential``, ``GeneralisedNFW``]
       - representing the dark halo
 
+.. _observed_data:
+
 ``observed data``
 ^^^^^^^^^^^^^^^^^^^^
 
@@ -154,15 +155,19 @@ The ``TriaxialVisibleComponent`` represents the galaxy's stars, and therefore ha
     - ``mge_lum``: string, filename for the MGE of the projected luminosity density, with intensity units of :math:`L_\odot \mathrm{pc}^{-2}`.
     - ``mge_pot``: string, filename for the MGE of the projected mass density, with intensity units of :math:`M_\odot \mathrm{pc}^{-2}`. If you assume that stellar-mass follows stellar-light, then the files ``mge_lum`` and ``mge_pot`` will be identical.
     - ``kinematics``
-        - ``name of the kinematic set``: a descriptive name, best without spaces as it will be part of the kinematic plot file name.
+        - ``name_of_the_kinematic_set``: a descriptive name, best without spaces as it will be part of the kinematic plot file name.
             - ``type``: type of kinematics - either ``GaussHermite`` or ``BayesLOSVD``
-            - ``weight``: float, weighting applied to this kinematic set in chi2 calculation
+            - ``weight``: float, weighting applied to this kinematic set in chi2 calculation; weights don't need to add up to 1.0.
             - ``datafile``: string, filename for the kinematics ECSV data file
             - ``aperturefile``: string, filename of the aperture file for this kinematic set
             - ``binfile``: string, filename of the bin file for this kinematic set
             - ``hist_width``: *optional*, float or 'default', the width (i.e. min. to max. value) of the velocity histogram for storing orbits. The default option is a width slightly wider than that of the observed kinematics.
             - ``hist_center``: *optional*, float or 'default', the center of the velocity histogram for storing orbits. The default option is 0.
             - ``hist_bins``: *optional*, int or 'default', the number of bins in the velocity histogram for storing orbits. The default option gives about 10 times better velocity sampling than the data.
+        - ``name_of_next_kinematic_set`` (if any...)
+            - ...
+
+For more information on the input file formats, please refer to the :ref:`input_files` section of the Overview page.
 
 ``system_parameters``
 =====================

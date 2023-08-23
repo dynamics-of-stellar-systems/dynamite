@@ -6,11 +6,11 @@
 import dynamite as dyn
 
 fname = 'user_test_config_ml.yaml'
-#fname = 'FCC047_2kin/FCC047_config.yaml'
+# fname = 'FCC047_2kin/FCC047_config.yaml'
 c = dyn.config_reader.Configuration(fname,
                                     reset_logging=True,
                                     user_logfile='test_decomp',
-                                    reset_existing_output=False)
+                                    reset_existing_output=True)
 
 dyn.model_iterator.ModelIterator(c) # generate models
 
