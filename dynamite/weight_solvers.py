@@ -382,7 +382,6 @@ class LegacyWeightSolver(WeightSolver):
             stars = self.system.get_unique_triaxial_visible_component()
             mge = stars.mge_lum
 
-
         intrinsic_masses = mge.get_intrinsic_masses_from_file(self.direc_no_ml)
         projected_masses = mge.get_projected_masses_from_file(self.direc_no_ml)
         n_intrinsic = np.product(intrinsic_masses.shape)

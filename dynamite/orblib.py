@@ -756,12 +756,15 @@ class LegacyOrbitLibrary(OrbitLibrary):
         # TODO: check if this ordering is compatible with weights read in by
         # LegacyWeightSolver.read_weights
         tube_orblib, tube_density_3D = self.read_orbit_base('orblib')
-        # tube orbits are mirrored/flipped and used twice
-        tmp = []
-        for tube_orblib0 in tube_orblib:
-            tmp += [self.duplicate_flip_and_interlace_orblib(tube_orblib0)]
-        tube_orblib = tmp
-        tube_density_3D = np.repeat(tube_density_3D, 2, axis=0)
+
+        if not self.system.is_bar_disk_system():
+            # tube orbits are mirrored/flipped and used twice
+            tmp = []
+            for tube_orblib0 in tube_orblib:
+                tmp += [self.duplicate_flip_and_interlace_orblib(tube_orblib0)]
+            tube_orblib = tmp
+            tube_density_3D = np.repeat(tube_density_3D, 2, axis=0)
+
         # read box orbits
         box_orblib, box_density_3D = self.read_orbit_base('orblibbox')
         # combine orblibs
@@ -798,7 +801,7 @@ class LegacyOrbitLibrary(OrbitLibrary):
         """
         infile = self.mod_dir + 'infil/parameters_pot.in'
         lines = [line.rstrip('\n').split() for line in open(infile)]
-        if self.is_bar_disk_system():
+        if self.system.is_bar_disk_system():
             ml_original = float((lines[-10])[0])
         else:
             ml_original = float((lines[-9])[0])
