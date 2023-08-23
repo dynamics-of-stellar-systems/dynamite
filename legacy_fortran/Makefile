@@ -100,7 +100,7 @@ GALAHADTYPE= mac.osx.gfo/double/
 #GALAHADTYPE= pc.lnx.gfo/double
 ##########################################################
 
-all : orbitstart orbitstart_bar orblib orblib_new_mirror orblib_bar triaxmass triaxmass_bar triaxmassbin triaxmassbin_bar triaxnnls_CRcut triaxnnls_noCRcut triaxnnls_new_lingcut modelgen
+all : orbitstart orbitstart_bar orblib orblib_new_mirror orblib_bar triaxmass triaxmass_bar triaxmassbin triaxmassbin_bar triaxnnls_CRcut triaxnnls_noCRcut triaxnnls_bar modelgen
 
 #########################################################
 #
@@ -286,6 +286,15 @@ triaxnnls_scratch_nosave.o : triaxnnls_scratch_nosave.f90 numeric_kinds_f.o inip
 	$(fortran90) triaxnnls_scratch_nosave.f90  -I$(GALAHADDIR)/modules/$(GALAHADTYPE)  -L$(GALAHADDIR)/objects/$(GALAHADTYPE)
 
 ##############################################################
+
+OBJECTS5_out_nl = nnls95.o iniparam_f.o numeric_kinds_f.o gausherm.o triaxnnls_bar.o
+
+triaxnnls_bar : $(OBJECTS5_out_nl)  
+	$(link) triaxnnls_bar $(OBJECTS5_out_nl)   -I$(GALAHADDIR)/modules/$(GALAHADTYPE)  -L$(GALAHADDIR)/objects/$(GALAHADTYPE)  -lgalahad  -lgalahad_hsl -lgalahad_metis -lgalahad_lapack -lgalahad_blas -lgalahad_pardiso -lgalahad_mkl_pardiso -lgalahad_wsmp -lgalahad_spral -lgomp
+
+triaxnnls_bar.o : triaxnnls_bar.f90 numeric_kinds_f.o iniparam_f.o 
+	$(fortran90) triaxnnls_bar.f90  -I$(GALAHADDIR)/modules/$(GALAHADTYPE)  -L$(GALAHADDIR)/objects/$(GALAHADTYPE)
+
 
 ##############################################################
 #

@@ -282,8 +282,7 @@ class LegacyWeightSolver(WeightSolver):
         if self.system.is_bar_disk_system():
             txt_file.write('test -e ' + str(nn) + '_kinem.out || ' +
                            self.legacy_directory +
-                           f'/triaxnnls_new_lingcut < {nn}.in >> {nn}ls.log '
-#                            f'/triaxnnls_noCRcut < {nn}.in >> {nn}ls.log '
+                           f'/triaxnnls_bar < {nn}.in >> {nn}ls.log '
                            '|| exit 1\n')
         elif self.CRcut is True:
             txt_file.write('test -e ' + str(nn) + '_kinem.out || ' +

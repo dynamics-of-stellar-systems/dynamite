@@ -27,6 +27,7 @@ legacy_fortran = [
     "../legacy_fortran/triaxmassbin_bar",
     "../legacy_fortran/triaxnnls_CRcut",
     "../legacy_fortran/triaxnnls_noCRcut",
+    "../legacy_fortran/triaxnnls_bar",
 ]
 
 setuptools.setup(
