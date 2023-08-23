@@ -322,6 +322,15 @@ class Configuration(object):
                         c.mge_lum = mge.MGE(input_directory=path,
                                         datafile=data_comp['mge_lum'])
 
+                    if 'disk_pot' in data_comp:
+                        path = self.settings.io_settings['input_directory']
+                        c.disk_pot = mge.MGE(input_directory=path,
+                                             datafile=data_comp['disk_pot'])
+                    if 'disk_lum' in data_comp:
+                        path = self.settings.io_settings['input_directory']
+                        c.disk_lum = mge.MGE(input_directory=path,
+                                             datafile=data_comp['disk_pot'])
+
                     # add component to system
                     c.validate()
                     parset = {c.get_parname(p.name):p.raw_value \
@@ -530,8 +539,7 @@ class Configuration(object):
             2 * total number of kinematic observations
 
         """
-        stars = \
-          self.system.get_component_from_class(physys.TriaxialVisibleComponent)
+        stars = self.system.get_unique_triaxial_visible_component()
         n_obs = 0.
         for k in stars.kinematic_data:
             if k.type == 'GaussHermite':
@@ -852,18 +860,25 @@ class Configuration(object):
                if isinstance(i, physys.Plummer)) != 1:
             self.logger.error('System must have exactly one Plummer object')
             raise ValueError('System must have exactly one Plummer object')
-        if sum(1 for i in self.system.cmp_list \
-               if isinstance(i, physys.VisibleComponent)) != 1:
-            self.logger.error('System needs to have exactly one '
-                              'VisibleComponent object')
-            raise ValueError('System needs to have exactly one '
-                             'VisibleComponent object')
+
+        if self.system.is_bar_disk_system():
+            if self.system.number_of_bar_components() != 1:
+                self.logger.error('Bar/disk system needs to have exactly one BarDiskComponent object')
+                raise ValueError('Bar/disk system needs to have exactly one BarDiskComponent object')
+        else:
+            if self.system.number_of_visible_components() != 1:
+                self.logger.error('System needs to have exactly one '
+                                  'VisibleComponent object')
+                raise ValueError('System needs to have exactly one '
+                                 'VisibleComponent object')
+
         if sum(1 for i in self.system.cmp_list \
                if issubclass(type(i), physys.DarkComponent)
                and not isinstance(i, physys.Plummer)) > 1:
             self.logger.error('System must have zero or one DM Halo object')
             raise ValueError('System must have zero or one DM Halo object')
-        if not 1 < len(self.system.cmp_list) < 4:
+
+        if not 1 < len(self.system.cmp_list) < 5:
             self.logger.error('System needs to comprise exactly one Plummer, '
                               'one VisibleComponent, and zero or one DM Halo '
                               'object(s)')
@@ -874,7 +889,8 @@ class Configuration(object):
         ws_type = self.settings.weight_solver_settings['type']
 
         for c in self.system.cmp_list:
-            if issubclass(type(c), physys.VisibleComponent): # Check vis. comp.
+            if issubclass(type(c), physys.VisibleComponent) \
+               and not issubclass(type(c), physys.BarDiskComponent): # Check vis. comp.
                 if c.kinematic_data:
                     for kin_data in c.kinematic_data:
                         check_gh = (kin_data.type == 'GaussHermite')
@@ -946,9 +962,7 @@ class Configuration(object):
             # these requirements are not needed by orblib_f.f90, but are assumed
             # by the NNLS routine triaxnnl_*.f90 (see 2144-2145 of orblib_f.f90)
             # Therefore this check is based on WeightSolver type.
-            stars = self.system.get_component_from_class(
-                physys.TriaxialVisibleComponent
-                )
+            stars = self.system.get_unique_triaxial_visible_component()
             hist_widths = [k.hist_width for k in stars.kinematic_data]
             hist_centers = [k.hist_center for k in stars.kinematic_data]
             hist_bins = [k.hist_bins for k in stars.kinematic_data]
