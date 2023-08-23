@@ -125,10 +125,17 @@ Download from `github <https://github.com/dynamics-of-stellar-systems/dynamite>`
 
 If you encouter problems during the installation process, have a look at the section :ref:`troubleshooting`. Some of the most common issues are gathered there.
 
-The installation of DYNAMITE consists of three steps, as detailed below.a
+There are two major installation options for DYNAMITE:
+
+(A) DYNAMITE with the GALAHAD (the ``LegacyWeightSolver``) and the SciPy-based ``NNLS`` weight solvers.
+(B) DYNAMITE with just the SciPy-based ``NNLS`` weight solver.
+
+In case of installation option (A), the installation of DYNAMITE consists of three steps; in case of (B), it consists of two steps, as detailed below.
 
 1. Installation of GALAHAD
 --------------------------
+
+NOTE: this section (Installation of GALAHAD) only applies to DYNAMITE installation option (A).
 
 GALAHAD is a "library of thread-safe Fortran 90 packages for large-scale nonlinear optimization". The DYNAMITE code comes with Version 2.3.  An updated version of GALAHAD could be obtained `here <http://www.galahad.rl.ac.uk/doc.html>`_ (last updated in 2018), but the most recent version seems to not work. The GALAHAD package included in DYNAMITE can be found in the folder ``.../legacy_fortran``.
 
@@ -308,10 +315,14 @@ Update in .bashrc::
 
 Go back to ``.../legacy_fortran``. Before you proceed, it is necessary to make the following changes to the ``Makefile``:
 
-* Select the appropriate choice of ``GALAHADTYPE`` variable depending on your system (comment out the options that don't apply')
+* DYNAMITE installation option (A) only: Select the appropriate choice of ``GALAHADTYPE`` variable depending on your system (comment out the options that don't apply')
 * Look for the definition of the ``all:`` (this should be right after the definition of the ``GALAHADTYPE`` variable). Make sure that ``triaxgasnnls`` is **NOT** in the list.
 
-Proceed with the following command from the terminal::
+Proceed with the following command from the terminal, depending on your choice of the DYNAMITE installation option.
+
+DYNAMITE installation option (A)
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+::
 
     make all
 
@@ -320,9 +331,25 @@ Your terminal will likely express several warnings again, but these are not crit
 * modelgen
 * orbitstart
 * orblib
+* orblib_new_mirror
 * triaxmass
 * triaxmassbin
 * triaxnnls_CRcut
+* triaxnnls_noCRcut
+
+DYNAMITE installation option (B)
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+::
+
+    make nogal
+
+Your terminal will likely express several warnings again, but these are not critical and refer to different coding conventions in earlier Fortran versions. Now, take a look in the directory ``.../legacy_fortran`` and check that you have .f90 files and executables (no file name extension) for:
+
+* orbitstart
+* orblib
+* orblib_new_mirror
+* triaxmass
+* triaxmassbin
 
 
 3. Installing DYNAMITE

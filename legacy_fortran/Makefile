@@ -101,6 +101,7 @@ GALAHADTYPE= mac.osx.gfo/double/
 ##########################################################
 
 all : orbitstart orbitstart_bar orblib orblib_new_mirror orblib_bar triaxmass triaxmass_bar triaxmassbin triaxmassbin_bar triaxnnls_CRcut triaxnnls_noCRcut triaxnnls_bar modelgen
+nogal : orbitstart orbitstart_bar orblib orblib_new_mirror orblib_bar triaxmass triaxmassbin triaxmass_bar triaxmassbin_bar
 
 #########################################################
 #
