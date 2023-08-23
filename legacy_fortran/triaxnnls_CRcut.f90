@@ -1074,7 +1074,7 @@ contains
         !CALL PRESOLVE_apply( p, pcontrol, inform, pdata )
         IF (inform%status /= 0) STOP
 
-        CALL QPB_initialize(data, control,info )         ! Initialize control parameters
+        CALL QPB_initialize(data, control)!,info )         ! Initialize control parameters
         !   control%rho_g = 1.0_dp ; control%rho_b = 1.0_dp        ! initial penalty parameters
         control%infinity = infinity                  ! Set infinity
         control%print_level = 1
