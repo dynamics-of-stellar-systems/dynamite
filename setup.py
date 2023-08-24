@@ -35,7 +35,7 @@ legacy_fortran.extend([f'../{e}' for e in additional_ex if os.path.isfile(e)])
 setuptools.setup(
     name="dynamite",
     version=version,
-    author="Prashin Jethwa, Sabine Thater, Thomas Maindl",
+    author="Prashin Jethwa, Sabine Thater, Thomas Maindl, Alice Zocchi, Edward Lilley",
     author_email="prashin.jethwa@univie.ac.at",
     description="dynamics, age and metallicity indicators tracing evolution",
     long_description=long_description,
