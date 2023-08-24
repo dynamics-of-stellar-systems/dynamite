@@ -154,8 +154,7 @@ class LegacyWeightSolver(WeightSolver):
     def copy_kinematic_data(self):
         """Copy kin data to infil/ direc
         """
-        stars = self.system.get_component_from_class( \
-                                        physys.TriaxialVisibleComponent)
+        stars = self.system.get_unique_triaxial_visible_component()
         kinematics = stars.kinematic_data
         # convert kinematics to old format to input to fortran
         for i in np.arange(len(kinematics)):
@@ -200,18 +199,13 @@ class LegacyWeightSolver(WeightSolver):
         # When varying ml the LOSVD is scaled - no new orbits are calculated.
         # Therefore we need to know the ml that was used for the orbit library.
         # The scaling factor is sqrt(model_ml/original_orblib_ml).
-        # infile=path+'infil/parameters_pot.in'
-        # lines = [line.rstrip('\n').split() for line in open(infile)]
-        # ml_orblib=float((lines[-9])[0])
         mod=self.config.all_models.get_model_from_directory(self.direc_with_ml)
         ml_scaling_factor = \
             self.config.all_models.get_model_velocity_scaling_factor(model=mod)
-
         #-------------------
         #write nn.in
         #-------------------
-        n_kin = len(self.system.get_component_from_class( \
-                    physys.TriaxialVisibleComponent).kinematic_data)
+        n_kin = len(self.system.get_unique_triaxial_visible_component().kinematic_data)
 
         if n_kin==1:
             kin_data_file='kin_data.dat'
@@ -352,8 +346,14 @@ class LegacyWeightSolver(WeightSolver):
         txt_file.write('# if the gzipped orbit library exist unzip it' + '\n')
         txt_file.write(f'test -e datfil/orblib_{self.ml}.dat || bunzip2 -c  datfil/orblib.dat.bz2 > datfil/orblib_{self.ml}.dat' + '\n')
         txt_file.write(f'test -e datfil/orblibbox_{self.ml}.dat || bunzip2 -c  datfil/orblibbox.dat.bz2 > datfil/orblibbox_{self.ml}.dat' + '\n')
-        txt_file.write('# check whether executable exists\n')
-        if self.CRcut is True:
+        if self.system.is_bar_disk_system():
+            txt_file.write(f'test -e {self.legacy_directory}/triaxnnls_bar' +
+                           f' || {{ echo "File {self.legacy_directory}/triaxnnls_bar not found." && exit 127; }}\n')
+            txt_file.write('test -e ' + str(nn) + '_kinem.out || ' +
+                           self.legacy_directory +
+                           f'/triaxnnls_bar < {nn}.in >> {nn}ls.log '
+                           '|| exit 1\n')
+        elif self.CRcut is True:
             txt_file.write(f'test -e {self.legacy_directory}/triaxnnls_CRcut' +
                            f' || {{ echo "File {self.legacy_directory}/triaxnnls_CRcut not found." && exit 127; }}\n')
             txt_file.write('test -e ' + str(nn) + '_kinem.out || ' +
@@ -446,9 +446,14 @@ class LegacyWeightSolver(WeightSolver):
         A, b, weights = self.read_nnls_orbmat_rhs_and_solution()
         chi2_vector = (np.dot(A, weights) - b)**2.
         chi2_tot = np.sum(chi2_vector)
-        stars = \
-          self.system.get_component_from_class(physys.TriaxialVisibleComponent)
-        mge = stars.mge_lum
+
+        if self.system.is_bar_disk_system():
+            bardisk = self.system.get_unique_bar_component()
+            mge = bardisk.mge_lum + bardisk.disk_lum
+        else:
+            stars = self.system.get_unique_triaxial_visible_component()
+            mge = stars.mge_lum
+
         intrinsic_masses = mge.get_intrinsic_masses_from_file(self.direc_no_ml)
         projected_masses = mge.get_projected_masses_from_file(self.direc_no_ml)
         n_intrinsic = np.product(intrinsic_masses.shape)
@@ -579,9 +584,14 @@ class NNLS(WeightSolver):
                     and ``self.n_mass_constraints``
 
         """
-        stars = \
-          self.system.get_component_from_class(physys.TriaxialVisibleComponent)
-        mge = stars.mge_lum
+        if self.system.is_bar_disk_system():
+            bardisk = self.system.get_unique_bar_component()
+            mge = bardisk.mge_lum + bardisk.disk_lum
+        else:
+            stars = self.system.get_unique_triaxial_visible_component()
+            mge = stars.mge_lum
+
+
         # intrinsic mass
         intrinsic_masses = mge.get_intrinsic_masses_from_file(self.direc_no_ml)
         self.intrinsic_masses = intrinsic_masses
@@ -643,8 +653,7 @@ class NNLS(WeightSolver):
         econ[idx] = np.abs(self.projected_masses * self.projected_mass_error)
         orbmat[idx,:] = np.hstack(orblib.projected_masses).T
         # add kinematics to con, econ, orbmat
-        triax_component = physys.TriaxialVisibleComponent
-        stars = self.system.get_component_from_class(triax_component)
+        stars = self.system.get_unique_triaxial_visible_component()
         kins_and_orb_losvds = zip(stars.kinematic_data, orblib.losvd_histograms)
         idx_ap_start = 0
         for (kins, orb_losvd) in kins_and_orb_losvds:

@@ -5,8 +5,8 @@ program triaxmassbin
     use numeric_kinds
     implicit none
 
-    call iniparam()
-    call tp_setup()
+    call iniparam_bar()
+    call tp_setup_bar()
 
     call binmass_main()
 

@@ -1058,12 +1058,12 @@ class Plotter():
         if (np.max(qintr - pintr) > 0): res=0
         if (np.min(qintr) <= 0.0) : res=0
 
-        if (res == 1):
-            pintr2 = pintr
-            qintr2 = qintr
-            uintr2 = 1./(np.sqrt(qobs/np.sqrt((pintr*np.cos(theta_view))**2 +
-                     (qintr*np.sin(theta_view))**2*
-                     ((pintr*np.cos(phi_view))**2 + np.sin(phi_view)**2))))
+        #if (res == 1):
+        pintr2 = pintr
+        qintr2 = qintr
+        uintr2 = 1./(np.sqrt(qobs/np.sqrt((pintr*np.cos(theta_view))**2 +
+                                          (qintr*np.sin(theta_view))**2*
+                                          ((pintr*np.cos(phi_view))**2 + np.sin(phi_view)**2))))
 
         return  pintr2, qintr2, uintr2
 

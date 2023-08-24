@@ -5,6 +5,7 @@ Change Log
 ****************
 
 - New feature: kinmapchi2 (directly calculated from the kinematic maps) is now also available for the python NNLS solver
+- New feature: added support for bar/disk decomposition
 - New feature: added support for getting intrinsic model moments for both Gauss Hermite and a BayesLOSVD models
 - Improvement: Eliminated unused position_angle system attribute from the configuration file (the angle is read from aperture.dat)
 - Improvement: DYNAMITE can now be built without GALAHAD (LegacyWeightSolver will not be available then)
