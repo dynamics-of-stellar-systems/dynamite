@@ -59,6 +59,9 @@ class LegacyOrbitLibrary(OrbitLibrary):
         self.in_dir = config.settings.io_settings['input_directory']
         self.orblibs_in_parallel = \
             config.settings.multiprocessing_settings['orblibs_in_parallel']
+        mod = config.all_models.get_model_from_parset(self.parset)
+        self.velocity_scaling_factor = \
+            config.all_models.get_model_velocity_scaling_factor(model=mod)
 
     def get_orblib(self):
         """main method to calculate orbit libraries
@@ -604,11 +607,11 @@ class LegacyOrbitLibrary(OrbitLibrary):
         Returns
         -------
         if return_instrisic_moments is False, this returns a tuple of type
-        (Histogram, array) where the orbit library LOSVDs are stored in the 
-        Histogram object, and the 3D density of the orbits are stored in the 
+        (Histogram, array) where the orbit library LOSVDs are stored in the
+        Histogram object, and the 3D density of the orbits are stored in the
         array object.
-        if return_instrisic_moments is True, returns a tuple 
-        (array, list) where the array stores the intrinsic momenmts of the 
+        if return_instrisic_moments is True, returns a tuple
+        (array, list) where the array stores the intrinsic momenmts of the
         orblib and the list contains the bin edges of the 3D grid.
 
         """
@@ -775,7 +778,7 @@ class LegacyOrbitLibrary(OrbitLibrary):
         reversed_intmom[:,:,:,:,6] *= -1. # ... vz
         new_intmom[1::2, :] = reversed_intmom
         return new_intmom
-    
+
     def combine_orblibs(self, orblib1, orblib2):
         """Combine two LOSVD histograms into one.
 
@@ -852,12 +855,9 @@ class LegacyOrbitLibrary(OrbitLibrary):
             orblib += [orblib0]
         # combine density_3D arrays
         density_3D = np.vstack((tube_density_3D, box_density_3D))
-        ml_current = self.parset['ml']
-        ml_original = self.get_ml_of_original_orblib()
-        scale_factor = np.sqrt(ml_current/ml_original)
         nkins = len(orblib)
         for i in range(nkins):
-            orblib[i].scale_x_values(scale_factor)
+            orblib[i].scale_x_values(self.velocity_scaling_factor)
         self.losvd_histograms = orblib
         self.intrinsic_masses = density_3D
         self.n_orbs = self.losvd_histograms[0].y.shape[0]
@@ -869,29 +869,27 @@ class LegacyOrbitLibrary(OrbitLibrary):
 
         Moments stored in 3D grid over spherical co-ords (r,theta,phi). This
         function reads the data from files, formats them correctly, and coverts
-        to physical units. 
+        to physical units.
 
         Returns
         -------
         (array, list)
             array shape = (n_orb, nr, nth, nph, 16). Final dimension indexes
-            over: density,x,y,z,vx,vy,vz,vx^2,vy^2,vz^2,vx*vy,vy*vz,vz*vx, and 
+            over: density,x,y,z,vx,vy,vz,vx^2,vy^2,vz^2,vx*vy,vy*vz,vz*vx, and
             the final three indices (13,14,15) are some type of orbit
-            classification (not understood - recommend not to use!). The list 
-            contains grid bin edges over spherical (r, theta, phi). 
+            classification (not understood - recommend not to use!). The list
+            contains grid bin edges over spherical (r, theta, phi).
 
-        """  
+        """
         intmom_tubes, int_grid = self.read_orbit_base(
-            'orblib', 
+            'orblib',
             return_instrisic_moments=True)
         intmom_tubes = self.duplicate_flip_and_interlace_intmoms(intmom_tubes)
         intmom_boxes, _ = self.read_orbit_base(
             'orblibbox',
             return_instrisic_moments=True)
         intmoms = np.concatenate((intmom_tubes, intmom_boxes), 0)
-        ml_current = self.parset['ml']
-        ml_original = self.get_ml_of_original_orblib()
-        velscale = np.sqrt(ml_current/ml_original)
+        velscale = self.velocity_scaling_factor
         conversion_factor = self.system.distMPc * 1e6 * np.tan(np.pi/648000.0) * PARSEC_KM
         intmoms[:,:,:,:,1] /= conversion_factor # kpc -> arcsec
         intmoms[:,:,:,:,2] /= conversion_factor
@@ -907,27 +905,6 @@ class LegacyOrbitLibrary(OrbitLibrary):
         intmoms[:,:,:,:,12] *= velscale**2.
         int_grid[0] /= conversion_factor # kpc -> arcsec
         return intmoms, int_grid
-
-    def get_ml_of_original_orblib(self):
-        """Get ``ml`` of original orblib with shared parameters
-
-        The original ``ml`` is required to rescale orbit libraries for rescaled
-        potentials. This method reads it from the first entry of 9th from bottom
-        line of the file ``infil/parameters_pot.in``
-
-        Returns
-        -------
-        float
-            the original ``ml``
-
-        """
-        infile = self.mod_dir + 'infil/parameters_pot.in'
-        lines = [line.rstrip('\n').split() for line in open(infile)]
-        if self.system.is_bar_disk_system():
-            ml_original = float((lines[-10])[0])
-        else:
-            ml_original = float((lines[-9])[0])
-        return ml_original
 
     def read_orbit_property_file_base(self, file, ncol, nrow):
         """Base method to read in ``*orbclass.out`` files
@@ -1251,15 +1228,15 @@ class LegacyOrbitLibrary(OrbitLibrary):
 
         Returns
         -------
-        (callable, list) 
+        (callable, list)
             the callable = function which takes weights and returns 3D moments.
-            The list contains grid bin edges over spherical (r, theta, phi). 
-            Moments returned by the callable are stored in a grid of size 
+            The list contains grid bin edges over spherical (r, theta, phi).
+            Moments returned by the callable are stored in a grid of size
             (nr, nth, nph, 13). Final dimension indexes over: density,x,y,z,vx,
             vy,vz,vx^2,vy^2,vz^2,vx*vy,vy*vz,vz*vx. Density is normalised to 1,
             spatial moments in arcseconds, velocities in km/s.
 
-        """        
+        """
         intmoms, int_grid = self.read_orbit_intrinsic_moments()
         density = intmoms[:,:,:,:,0]
         kinmoms = intmoms[:,:,:,:,1:13]
@@ -1272,7 +1249,7 @@ class LegacyOrbitLibrary(OrbitLibrary):
             mod_density = np.sum(mod_density, 0)
             mod_density /= np.sum(mod_density)
             mod_moments = np.concatenate(
-                (mod_density[...,np.newaxis], mod_kinmoms), 
+                (mod_density[...,np.newaxis], mod_kinmoms),
                 axis=-1)
             return mod_moments
         return model_intrinsic_moment_constructor, int_grid
