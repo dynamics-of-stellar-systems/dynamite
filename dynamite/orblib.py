@@ -92,8 +92,10 @@ class LegacyOrbitLibrary(OrbitLibrary):
         if not check1 or not check2:
             # prepare the fortran input files for orblib
             self.create_fortran_input_orblib(self.mod_dir+'infil/')
-            stars = self.system.get_component_from_class( \
-                                            physys.TriaxialVisibleComponent)
+            if self.system.is_bar_disk_system():
+                stars = self.system.get_unique_bar_component()
+            else:
+                stars = self.system.get_unique_triaxial_visible_component()
             kinematics = stars.kinematic_data
             # create the kinematic input files for each kinematic dataset
             for i in np.arange(len(kinematics)):
@@ -142,14 +144,29 @@ class LegacyOrbitLibrary(OrbitLibrary):
         #---------------------------------------------
         #write parameters_pot.in and parameters_lum.in
         #---------------------------------------------
-        stars = \
-          self.system.get_component_from_class(physys.TriaxialVisibleComponent)
+        if self.system.is_bar_disk_system():
+            stars = self.system.get_unique_bar_component()
+        else:
+            stars = self.system.get_unique_triaxial_visible_component()
         bh = self.system.get_component_from_class(physys.Plummer)
         # used to derive the viewing angles
-        q = self.parset[f'q-{stars.name}']
-        p = self.parset[f'p-{stars.name}']
-        u = self.parset[f'u-{stars.name}']
-        theta, psi, phi = stars.triax_pqu2tpp(p,q,u)
+        if self.system.is_bar_disk_system():
+            if self.system.is_bar_disk_system_with_angles():
+                theta = self.parset[f'theta-{stars.name}']
+                phi = self.parset[f'phi-{stars.name}']
+                psi = self.parset[f'psi-{stars.name}']
+            else:
+                q = self.parset[f'q-{stars.name}']
+                p = self.parset[f'p-{stars.name}']
+                u = self.parset[f'u-{stars.name}']
+                qdisk = self.parset[f'qdisk-{stars.name}']
+                theta, psi, phi = stars.triax_pqu2tpp_bar(p,q,u,qdisk)
+                phi = -phi ## FIX ME
+        else:
+            q = self.parset[f'q-{stars.name}']
+            p = self.parset[f'p-{stars.name}']
+            u = self.parset[f'u-{stars.name}']
+            theta, psi, phi = stars.triax_pqu2tpp(p,q,u)
         # get dark halo
         dh = self.system.get_all_dark_non_plummer_components()
         self.logger.debug('Checking number of non-plummer dark components')
@@ -180,17 +197,31 @@ class LegacyOrbitLibrary(OrbitLibrary):
         text += f"{settngs['dithering']}\n"
         text += f"{dm_specs}\n"
         text += f"{dm_par_vals}"
+        if self.system.is_bar_disk_system():
+            len_disk_pot = len(stars.disk_pot.data)
+            header_string_pot = str(len_mge_pot + len_disk_pot) + " 1 " + str(len_mge_pot) + " " + str(len_disk_pot)
+            len_disk_lum = len(stars.disk_lum.data)
+            header_string_lum = str(len_mge_lum + len_disk_lum) + " 1 " + str(len_mge_lum) + " " + str(len_disk_lum)
+            text += f"\n{self.parset['omega']}"
+            mge_pot = stars.mge_pot + stars.disk_pot
+            mge_lum = stars.mge_lum + stars.disk_lum
+        else:
+            header_string_pot = str(len_mge_pot)
+            header_string_lum = str(len_mge_lum)
+            mge_pot = stars.mge_pot
+            mge_lum = stars.mge_lum
+
         # parameters_pot.in
         np.savetxt(path + 'parameters_pot.in',
-                   stars.mge_pot.data,
-                   header=str(len_mge_pot),
+                   mge_pot.data,
+                   header=header_string_pot,
                    footer=text,
                    comments='',
                    fmt=['%10.2f','%10.5f','%10.5f','%10.2f'])
         # parameters_lum.in
         np.savetxt(path + 'parameters_lum.in',
-                   stars.mge_lum.data,
-                   header=str(len_mge_lum),
+                   mge_lum.data,
+                   header=header_string_lum,
                    footer=text,
                    comments='',
                    fmt=['%10.2f','%10.5f','%10.5f','%10.2f'])
@@ -358,7 +389,10 @@ class LegacyOrbitLibrary(OrbitLibrary):
         #create the fortran executable
         txt_file = open(cmdstr, "w")
         txt_file.write('#!/bin/bash' + '\n')
-        tmp = '/orbitstart < infil/orbstart.in >> datfil/orbstart.log\n'
+        if (self.system.is_bar_disk_system()):
+            tmp = '/orbitstart_bar < infil/orbstart.in >> datfil/orbstart.log\n'
+        else:
+            tmp = '/orbitstart < infil/orbstart.in >> datfil/orbstart.log\n'
         txt_file.write(f'{self.legacy_directory}{tmp}')
         txt_file.close()
         # the name of the executable must be returned to use in subprocess.call
@@ -455,7 +489,9 @@ class LegacyOrbitLibrary(OrbitLibrary):
     def write_executable_for_integrate_orbits_par(self):
         """Write the bash script to calculate orbit libraries
         """
-        if self.settings['use_new_mirroring']:
+        if self.system.is_bar_disk_system():
+            orb_prgrm = 'orblib_bar'
+        elif self.settings['use_new_mirroring']:
             orb_prgrm = 'orblib_new_mirror'
         else:
             orb_prgrm = 'orblib'
@@ -472,10 +508,18 @@ class LegacyOrbitLibrary(OrbitLibrary):
                         '>> datfil/orblib.log\n')
         txt_file.write('rm -f datfil/mass_qgrid.dat datfil/mass_radmass.dat '
                         'datfil/mass_aper.dat\n')
-        txt_file.write(f'{self.legacy_directory}/triaxmass '
-                        '< infil/triaxmass.in >> datfil/triaxmass.log\n')
-        txt_file.write(f'{self.legacy_directory}/triaxmassbin '
-                        '< infil/triaxmassbin.in >> datfil/triaxmassbin.log\n')
+
+        if self.system.is_bar_disk_system():
+            txt_file.write(f'{self.legacy_directory}/triaxmass_bar '
+                           '< infil/triaxmass.in >> datfil/triaxmass.log\n')
+            txt_file.write(f'{self.legacy_directory}/triaxmassbin_bar '
+                           '< infil/triaxmassbin.in >> datfil/triaxmassbin.log\n')
+        else:
+            txt_file.write(f'{self.legacy_directory}/triaxmass '
+                           '< infil/triaxmass.in >> datfil/triaxmass.log\n')
+            txt_file.write(f'{self.legacy_directory}/triaxmassbin '
+                           '< infil/triaxmassbin.in >> datfil/triaxmassbin.log\n')
+
         txt_file.write('rm -f datfil/orblib.dat.bz2 '
                         '&& bzip2 -k datfil/orblib.dat\n')
         txt_file.write('rm datfil/orblib.dat) &\n')
@@ -495,7 +539,9 @@ class LegacyOrbitLibrary(OrbitLibrary):
     def write_executable_for_integrate_orbits(self):
         """Write the bash script to calculate orbit libraries
         """
-        if self.settings['use_new_mirroring']:
+        if self.system.is_bar_disk_system():
+            orb_prgrm = 'orblib_bar'
+        elif self.settings['use_new_mirroring']:
             orb_prgrm = 'orblib_new_mirror'
         else:
             orb_prgrm = 'orblib'
@@ -605,9 +651,7 @@ class LegacyOrbitLibrary(OrbitLibrary):
         # however, orbit are stored N times where N = number of kinematic sets
         # histogram settings for other N-1 sets may be different from the first
         # these aren't stored in orblib.dat so must read from kinematics objects
-        stars = self.system.get_component_from_class(
-            physys.TriaxialVisibleComponent
-            )
+        stars = self.system.get_unique_triaxial_visible_component()
         n_kins = len(stars.kinematic_data)
         hist_widths = [k.hist_width for k in stars.kinematic_data]
         hist_centers = [k.hist_center for k in stars.kinematic_data]
@@ -793,12 +837,15 @@ class LegacyOrbitLibrary(OrbitLibrary):
         # TODO: check if this ordering is compatible with weights read in by
         # LegacyWeightSolver.read_weights
         tube_orblib, tube_density_3D = self.read_orbit_base('orblib')
-        # tube orbits are mirrored/flipped and used twice
-        tmp = []
-        for tube_orblib0 in tube_orblib:
-            tmp += [self.duplicate_flip_and_interlace_orblib(tube_orblib0)]
-        tube_orblib = tmp
-        tube_density_3D = np.repeat(tube_density_3D, 2, axis=0)
+
+        if not self.system.is_bar_disk_system():
+            # tube orbits are mirrored/flipped and used twice
+            tmp = []
+            for tube_orblib0 in tube_orblib:
+                tmp += [self.duplicate_flip_and_interlace_orblib(tube_orblib0)]
+            tube_orblib = tmp
+            tube_density_3D = np.repeat(tube_density_3D, 2, axis=0)
+
         # read box orbits
         box_orblib, box_density_3D = self.read_orbit_base('orblibbox')
         # combine orblibs

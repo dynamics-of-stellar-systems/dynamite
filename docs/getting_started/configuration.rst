@@ -144,6 +144,8 @@ The following types of component are available, listed with their parameters:
   - exactly one out of [``NFW``, ``NFW_m200_c``, ``Hernquist``, ``TriaxialCoredLogPotential``, ``GeneralisedNFW``]
       - representing the dark halo
 
+.. _observed_data:
+
 ``observed data``
 ^^^^^^^^^^^^^^^^^^^^
 
@@ -164,6 +166,8 @@ The ``TriaxialVisibleComponent`` represents the galaxy's stars, and therefore ha
             - ``hist_bins``: *optional*, int or 'default', the number of bins in the velocity histogram for storing orbits. The default option gives about 10 times better velocity sampling than the data.
         - ``name_of_next_kinematic_set`` (if any...)
             - ...
+
+For more information on the input file formats, please refer to the :ref:`input_files` section of the Overview page.
 
 ``system_parameters``
 =====================

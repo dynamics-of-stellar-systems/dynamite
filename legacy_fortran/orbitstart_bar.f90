@@ -1,4 +1,4 @@
-program orbitstart_run
+program orbitstart_bar_run
     use orbitstart
     use initial_parameters
     use interpolpot
@@ -22,8 +22,8 @@ program orbitstart_run
         write (*, *) "Using ran1 with given seed ", r_seed
     end if
 
-    call iniparam()
-    call ip_setup()
+    call iniparam_bar()
+    call ip_setup_bar()
     call runorbitstart()
     call ip_stop()
-end program orbitstart_run
+end program orbitstart_bar_run
