@@ -4,6 +4,11 @@
 Change Log
 ****************
 
+- Bugfix: Re-enable support for directly instantiating a Model object (bypassing ModelIterator) if the all_models table is empty. Only recommended for testing.
+
+Version: 4.0
+================
+
 - New feature: kinmapchi2 (directly calculated from the kinematic maps) is now also available for the python NNLS solver
 - New feature: added support for bar/disk decomposition
 - New feature: added support for getting intrinsic model moments for both Gauss Hermite and a BayesLOSVD models
