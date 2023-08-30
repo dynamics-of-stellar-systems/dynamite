@@ -11,6 +11,8 @@ import sys
 import logging
 
 from dynamite import mges as mge
+from dynamite import constants as const
+from dynamite import orblib as orb
 
 class System(object):
     """The physical system being modelled
@@ -29,7 +31,6 @@ class System(object):
         self.parameters = None
         self.distMPc = None
         self.name = None
-        self.position_angle = None
         for component in args:
             self.add_component(component)
 
@@ -74,17 +75,17 @@ class System(object):
         """
         if len(self.cmp_list) != len(set(self.cmp_list)):
             raise ValueError('No duplicate component names allowed')
-        if (self.distMPc is None) or (self.name is None) \
-           or (self.position_angle is None):
-            text = 'System needs distMPc, name, and position_angle attributes'
+        if (self.distMPc is None) or (self.name is None):
+            text = 'System needs distMPc and name attributes'
             self.logger.error(text)
             raise ValueError(text)
         if not self.cmp_list:
             text = 'System has no components'
             self.logger.error(text)
             raise ValueError(text)
-        if len(self.parameters) != 1 and self.parameters[0].name != 'ml':
-            text = 'System needs ml as its sole parameter'
+        #if len(self.parameters) != 1 and self.parameters[0].name != 'ml':
+        if self.parameters[0].name != 'ml':
+            text = 'System needs ml as its first parameter'
             self.logger.error(text)
             raise ValueError(text)
         ml = self.parameters[0]
@@ -97,7 +98,13 @@ class System(object):
                        f"setting minstep=step={generator_settings['step']}."
                 self.logger.warning(text)
                 generator_settings['minstep'] = generator_settings['step']
-
+        if len(self.parameters) > 1:
+            omega = self.parameters[1]
+            if self.parameters[1].name != 'omega':
+                text = 'System needs omega as its second parameter'
+                self.logger.error(text)
+                raise ValueError(text)
+        
     def validate_parset(self, par):
         """
         Validates the system's parameter values
@@ -125,6 +132,24 @@ class System(object):
             self.logger.debug(f'Invalid system parameters {par}: at least '
                               'one negative non-log parameter.')
         return bool(isvalid)
+
+    def get_par_by_name(self, n):
+        """
+        Get a parameter using its name.
+
+        Parameters
+        ----------
+        n : str
+            The parameter name.
+
+        Returns
+        -------
+        p : a ``dyn.parameter_space.Parameter`` object
+            The parameter in question.
+
+        """
+        ps = self.parameters
+        return ps[[p.name for p in ps].index(n)]
 
     def __repr__(self):
         return f'{self.__class__.__name__} with {self.__dict__}'
@@ -182,6 +207,64 @@ class System(object):
         self.logger.debug('...check ok.')
         return component
 
+    def get_all_mge_components(self):
+        """Get all components which contain MGEs
+
+        Returns
+        -------
+        list
+            a list of Component objects
+
+        """
+        mge_cmp = [c for c in self.cmp_list if isinstance(c, TriaxialVisibleComponent) or isinstance(c, BarDiskComponent)]
+        return mge_cmp
+
+    def get_unique_triaxial_visible_component(self):
+        """Return the unique non-bar MGE component (raises an error if there are zero or multiple such components)
+
+        Returns
+        -------
+            a ``dyn.physical_system.TriaxialVisibleComponent`` object
+
+        """
+        mges = self.get_all_mge_components()
+        if len(mges) > 1:
+            self.logger.error('Found more than one triaxial visible component')
+            raise ValueError('Found more than one triaxial visible component')
+        if len(mges) == 0:
+            self.logger.error('Found zero triaxial visible components')
+            raise ValueError('Found zero triaxial visible components')
+        return mges[0]
+        
+    def get_all_bar_components(self):
+        """Get all components which are rotating MGEs (i.e. bars)
+
+        Returns
+        -------
+        list
+            a list of Component objects, keeping only the rotating MGE components
+
+        """
+        bar_cmp = [c for c in self.cmp_list if isinstance(c, BarDiskComponent)]
+        return bar_cmp
+
+    def get_unique_bar_component(self):
+        """Return the unique rotating bar component (raises an error if there are zero or multiple such components)
+
+        Returns
+        -------
+            a ``dyn.physical_system.BarDiskComponent`` object
+
+        """
+        bars = self.get_all_bar_components()
+        if len(bars) > 1:
+            self.logger.error('Found more than one bar component')
+            raise ValueError('Found more than one bar component')
+        if len(bars) == 0:
+            self.logger.error('Found zero bar components')
+            raise ValueError('Found zero bar components')
+        return bars[0]
+
     def get_all_dark_components(self):
         """Get all components which are Dark
 
@@ -225,7 +308,39 @@ class System(object):
         all_kinematics = []
         for component in self.cmp_list:
             all_kinematics += component.kinematic_data
-        return all_kinematics
+            return all_kinematics
+
+    def is_bar_disk_system(self):
+        """is_bar_disk_system
+
+        Check if the system contains at least one bar component and at least one disk component.
+
+        Returns
+        -------
+        isbardisk : Bool
+            System contains a bar and a disk.
+        """
+        isbardisk = len(self.get_all_bar_components()) > 0
+        return isbardisk
+
+    def is_bar_disk_system_with_angles(self):
+        """is_bar_disk_system_with_angles
+
+        Check if the system is a bar-disk with phi, psi, theta specified directly in the configuration file.
+
+        Returns
+        -------
+        hasangles : Bool
+            System is specified by angles.
+        """
+        hasangles = self.is_bar_disk_system() and (type(self.get_unique_bar_component()) is BarDiskComponentAngles)
+        return hasangles
+
+    def number_of_visible_components(self):
+        return sum(1 for i in self.cmp_list if isinstance(i, VisibleComponent))
+
+    def number_of_bar_components(self):
+        return sum(1 for i in self.cmp_list if isinstance(i, BarDiskComponent))
 
 class Component(object):
     """A component of the physical system
@@ -378,6 +493,24 @@ class Component(object):
             raise
         return pure_parname
 
+    def get_par_by_name(self, n):
+        """
+        Get a parameter using its (unsuffixed) name.
+
+        Parameters
+        ----------
+        n : str
+            The parameter name (without the component name suffix)
+
+        Returns
+        -------
+        p : a ``dyn.parameter_space.Parameter`` object
+            The parameter in question.
+
+        """
+        ps = self.parameters
+        return ps[[p.name for p in ps].index(n + '-' + self.name)]
+
     def __repr__(self):
         return (f'\n{self.__class__.__name__}({self.__dict__}\n)')
 
@@ -430,6 +563,31 @@ class VisibleComponent(Component):
 
         return 2 * np.pi * np.sum(mgeI * mgeq * sigobs_pc ** 2) * parset['ml']
 
+    def intrin_spher(self, distance, parset):
+        totalmass = self.get_M_stars_tot(distance, parset)
+        mge = self.mge_pot
+        ngauss_mge = len(mge.data)
+
+        quad_nr = 10 # size of (r, th, ph) grid, hardcoded in Fortran
+        quad_nth = 6
+        quad_nph = 6
+    
+        quad_grid = np.zeros([quad_nph, quad_nth, quad_nr])
+        quad_lr = np.zeros(quad_nr + 1)
+        quad_lth = np.zeros(quad_nth + 1)
+        quad_lph = np.zeros(quad_nph + 1)
+
+    def intrin_radii(self, distance, parset, orblib_settings):
+        totalmass = self.get_M_stars_tot(distance, parset)
+        mge = self.mge_pot
+        ngauss_mge = len(mge.data)
+        qobs = mge.data['q']
+        rlogmin = orblib_settings['logrmin']
+        rlogmax = orblib_settings['logrmax']
+        orbit_dithering = orblib_settings['dithering']
+        nener = orblib_settings['nE']
+        pintr, qintr, sigintr_km, dens = self.triax_deproj()
+        
     def validate(self, **kwds):
         super().validate(**kwds)
         if not (isinstance(self.mge_pot, mge.MGE) and \
@@ -463,6 +621,7 @@ class TriaxialVisibleComponent(VisibleComponent):
         super().__init__(symmetry='triax', **kwds)
         self.logger = logging.getLogger(f'{__name__}.{__class__.__name__}')
         self.qobs = np.nan
+        self.par = ['q', 'p', 'u']
 
     def validate(self):
         """
@@ -476,8 +635,7 @@ class TriaxialVisibleComponent(VisibleComponent):
         None.
 
         """
-        par = ['q', 'p', 'u']
-        super().validate(par=par)
+        super().validate(par=self.par)
         self.qobs = np.amin(self.mge_pot.data['q'])
         if np.isnan(self.qobs):
             raise ValueError(f'{self.__class__.__name__}.qobs is np.nan')
@@ -658,6 +816,44 @@ class TriaxialVisibleComponent(VisibleComponent):
             text += f'\t\t value : {val:.2f}\n'
         return text
 
+class BarDiskComponent(TriaxialVisibleComponent):
+    """Rotating triaxial component with a MGE projected density (i.e. a bar)
+
+    Note: all bar components are constrained to have the same omega.
+
+    """
+    def __init__(self,
+                 mge_pot=None,
+                 mge_lum=None,
+                 disk_pot=None,
+                 disk_lum=None,
+                 **kwds):
+        super().__init__(**kwds)
+        self.logger = logging.getLogger(f'{__name__}.{__class__.__name__}')
+        self.qobs = np.nan
+        self.par = ['q', 'p', 'u', 'qdisk']
+
+class BarDiskComponentAngles(BarDiskComponent):
+    """Rotating triaxial component with a MGE projected density (i.e. a bar),
+    with viewing angles specified.
+
+    Note: all bar components are constrained to have the same omega.
+
+    """
+    def __init__(self,
+                 mge_pot=None,
+                 mge_lum=None,
+                 disk_pot=None,
+                 disk_lum=None,
+                 **kwds):
+        super().__init__(**kwds)
+        self.logger = logging.getLogger(f'{__name__}.{__class__.__name__}')
+        self.qobs = np.nan
+        self.par = ['theta', 'psi', 'phi']
+
+    def validate_parset(self, par):
+        # Skip validation as we already know the angles
+        return True
 
 class DarkComponent(Component):
     """Any dark component of the sytem, with no observed MGE or kinemtics

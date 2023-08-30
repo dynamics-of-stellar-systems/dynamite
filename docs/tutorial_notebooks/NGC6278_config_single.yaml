@@ -24,7 +24,7 @@ system_components:
                     step: 1.
                     minstep: 0.
                 fixed: True
-                value: 5.0
+                value: 5.2
                 logarithmic: True
                 LaTeX: "$M_{BH}$"
             a:

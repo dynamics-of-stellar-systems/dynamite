@@ -72,11 +72,21 @@ class Integrated(Data):
         self.aperturefile = aperturefile
         self.binfile = binfile
         super().__init__(**kwargs)
+        self.logger = logging.getLogger(f'{__name__}.{__class__.__name__}')
         if hasattr(self, 'data'):
             self.PSF = self.data.meta['PSF']
+            if abs(sum(self.PSF['weight'])-1.0) > 1e-8:
+                txt = f"PSF weights add up to {sum(self.PSF['weight'])}, " + \
+                      "not 1.0."
+                if hasattr(self, 'datafile'):
+                    txt += ' Check input data in '
+                    if hasattr(self, 'input_directory'):
+                        txt += f'{self.input_directory}'
+                    txt += f'{self.datafile}.'
+                self.logger.error(txt)
+                raise ValueError(txt)
         if self.aperturefile is not None and self.binfile is not None:
             self.read_aperture_and_bin_files()
-        self.logger = logging.getLogger(f'{__name__}.{__class__.__name__}')
 
     def add_psf_to_datafile(self,
                             sigma=[1.],
@@ -119,7 +129,7 @@ class Integrated(Data):
 
         Returns
         -------
-        Sets the attribute ``self.dp_arg``
+        Sets the attribute ``self.dp_args``
 
         """
         # read aperture file
@@ -174,7 +184,9 @@ class Integrated(Data):
                    'y':y,
                    'dx':dx,
                    'idx_bin_to_pix':grid[s],
-                   'angle':angle_deg}
+                   'angle':angle_deg} # Angle in degrees measured counter
+                                      # clockwise from the galaxy major axis
+                                      # to the X-axis of the input data
         self.dp_args = dp_args
 
     def get_map_plotter(self):

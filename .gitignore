@@ -1,6 +1,7 @@
 # Compiled source #
 ###################
 .DS_Store
+.venv
 dynamite/__pycache__
 legacy_fortran/galahad-2.3/bin/sys/*
 legacy_fortran/galahad-2.3/makefiles/*

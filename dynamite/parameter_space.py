@@ -1219,13 +1219,14 @@ class SpecificModels(ParameterGenerator):
     Creates models with parameter values according to the entries in the
     lists ``fixed_values`` in a single iteration. If any parameter's
     ``fixed_values`` entry is missing, its ``value`` entry will be used.
-    ``parspace_settings[mode]`` determines how models are constructed:
+    ``parspace_settings['generator_settings']['SpecificModels_mode']``
+    determines how models are constructed:
     ``list``: selects parameter values element-wise. All parameters'
     ``fixed_values`` lists must be of equal length (or zero length if their
     respective ``value`` entry is to be used).
-    ``cartesian``: Cartesian product of fixed parameter values.
+    ``cartesian``: Cartesian product of fixed parameter values. The parameters'
     ``fixed_values`` lists don't need to be of equal length. May result
-    in a high number of models.
+    in a large number of models.
 
     Note that this parameter generator ignores ``step``, ``minstep``,
     ``lo``, and ``high``. Also, ``fixed`` will be ignored if ``fixed_values``
@@ -1271,7 +1272,7 @@ class SpecificModels(ParameterGenerator):
         Returns
         -------
         None.
-            sets ``self.model_list`` is the list of new models.
+            sets ``self.model_list``, the list of new models.
 
         """
         self.model_list = []
