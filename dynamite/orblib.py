@@ -63,6 +63,31 @@ class LegacyOrbitLibrary(OrbitLibrary):
         self.velocity_scaling_factor = \
             config.all_models.get_model_velocity_scaling_factor(model=mod)
 
+    def check_orlib_files(self):
+        """
+        Check whether legacy tube and box orbit output files exist.
+
+
+        Returns
+        -------
+        tube_done : bool
+            True if the output files from integrating the tube orbits and the
+            triaxmass and triaxmassbin output exist.
+        box_done : bool
+            True if the output files from integrating the box orbits exist.
+
+        """
+        tube_done = all(os.path.isfile(self.mod_dir + 'datfil/' + f) for f in
+                        ['orblib.dat.bz2', 'orblib.dat_orbclass.out',
+                         'mass_radmass.dat', 'mass_qgrid.dat', 'mass_aper.dat'])
+        box_done = all(os.path.isfile(self.mod_dir + 'datfil/' + f) for f in
+                       ['orblibbox.dat.bz2', 'orblibbox.dat_orbclass.out'])
+        self.logger.debug(f'{self.mod_dir}: '
+                          'tube orbits and triaxmass+triaxmassbin output '
+                          f'do {"" if tube_done else "not "}exist - '
+                          f'box orbits do {"" if box_done else "not "}exist.')
+        return tube_done, box_done
+
     def get_orblib(self):
         """main method to calculate orbit libraries
 
@@ -87,9 +112,8 @@ class LegacyOrbitLibrary(OrbitLibrary):
 
         """
         # check if orbit library was calculated already
-        check1 = os.path.isfile(self.mod_dir+'datfil/orblib.dat.bz2')
-        check2 = os.path.isfile(self.mod_dir+'datfil/orblibbox.dat.bz2')
-        if not check1 or not check2:
+        tube_done, box_done = self.check_orlib_files()
+        if not tube_done or not box_done:
             # prepare the fortran input files for orblib
             self.create_fortran_input_orblib(self.mod_dir+'infil/')
             if self.system.is_bar_disk_system():
@@ -117,10 +141,17 @@ class LegacyOrbitLibrary(OrbitLibrary):
                 if check2:
                     os.remove(self.mod_dir + f'datfil/{file2}')
                 self.get_orbit_ics()
-            if self.orblibs_in_parallel:
-                self.get_orbit_library_par()
+            # Now check for the following:
+            # not tube_done -> do tube+triaxmass+triaxmassbin+box
+            # tube_done -> do box only
+            if self.orblibs_in_parallel and not tube_done:
+                self.get_orbit_library_par()  # Tube and box in parallel
+            elif tube_done:  # tube+triaxmass+triaxmassbin done -> box only
+                self.logger.info(f'Tube orbits exist in {self.mod_dir}, '
+                                 'integrating box orbits only.')
+                self.get_orbit_library(tube=False, box=True)
             else:
-                self.get_orbit_library()
+                self.get_orbit_library()  # do tube+triaxmass+triaxmassbin+box
 
     def create_fortran_input_orblib(self, path):
         """write input files for Fortran orbit library programs
@@ -405,7 +436,8 @@ class LegacyOrbitLibrary(OrbitLibrary):
         cur_dir = os.getcwd()
         os.chdir(self.mod_dir)
         cmdstr = self.write_executable_for_integrate_orbits_par()
-        self.logger.info('Integrating orbit library tube and box orbits')
+        self.logger.info('Integrating orbit library tube and box orbits '
+                         'in parallel.')
         # p = subprocess.call('bash '+cmdstr_tube, shell=True)
         p = subprocess.run('bash '+cmdstr,
                            stdout=subprocess.PIPE,
@@ -432,57 +464,80 @@ class LegacyOrbitLibrary(OrbitLibrary):
         # move back to original directory
         os.chdir(cur_dir)
 
-    def get_orbit_library(self):
+    def get_orbit_library(self, tube=True, box=True):
         """Execute the bash script to calculate orbit libraries
+
+        Parameters
+        ----------
+        tube : bool, optional
+            If True, integrate tube orbits and calculate MGE masses.
+            The default is True.
+        box : bool, optional
+            If True, integrate box orbits. The default is True.
+
+        Raises
+        ------
+        FileNotFoundError
+            If legacy_fortran executables cannot be found.
+        RuntimeError
+            If a command script executing legacy_fortran returns with an error.
+
+        Returns
+        -------
+        None.
+
         """
         # move to model directory
         cur_dir = os.getcwd()
         os.chdir(self.mod_dir)
-        cmdstr_tube, cmdstr_box = self.write_executable_for_integrate_orbits()
-        self.logger.info('Integrating orbit library tube orbits')
-        # p = subprocess.call('bash '+cmdstr_tube, shell=True)
-        p = subprocess.run('bash '+cmdstr_tube,
-                           stdout=subprocess.PIPE,
-                           stderr=subprocess.STDOUT,
-                           shell=True)
-        log_files = f'Logfiles: {self.mod_dir}datfil/orblib.log, ' \
-                    f'{self.mod_dir}datfil/triaxmass.log, ' \
-                    f'{self.mod_dir}datfil/triaxmassbin.log.'
-        if not p.stdout.decode("UTF-8"):
-            self.logger.info(f'...done - {cmdstr_tube} exit code '
-                             f'{p.returncode}. {log_files}')
-        else:
-            text=f'...failed! {cmdstr_tube} exit code {p.returncode}. ' \
-                 f'Message: {p.stdout.decode("UTF-8")}'
-            if p.returncode == 127: # command not found
-                text += 'Check DYNAMITE legacy_fortran executables.'
-                self.logger.error(text)
-                raise FileNotFoundError(text)
+        cmdstr_tube, cmdstr_box = \
+            self.write_executable_for_integrate_orbits(tube=tube, box=box)
+        if tube:
+            self.logger.info('Integrating orbit library tube orbits')
+            # p = subprocess.call('bash '+cmdstr_tube, shell=True)
+            p = subprocess.run('bash '+cmdstr_tube,
+                               stdout=subprocess.PIPE,
+                               stderr=subprocess.STDOUT,
+                               shell=True)
+            log_files = f'Logfiles: {self.mod_dir}datfil/orblib.log, ' \
+                        f'{self.mod_dir}datfil/triaxmass.log, ' \
+                        f'{self.mod_dir}datfil/triaxmassbin.log.'
+            if not p.stdout.decode("UTF-8"):
+                self.logger.info(f'...done - {cmdstr_tube} exit code '
+                                 f'{p.returncode}. {log_files}')
             else:
-                text += f'{log_files} Be wary: DYNAMITE may crash...'
-                self.logger.warning(text)
-                raise RuntimeError(text)
-        self.logger.info('Integrating orbit library box orbits')
-        # p = subprocess.call('bash '+cmdstr_box, shell=True)
-        p = subprocess.run('bash '+cmdstr_box,
-                           stdout=subprocess.PIPE,
-                           stderr=subprocess.STDOUT,
-                           shell=True)
-        log_file = f'Logfile: {self.mod_dir}datfil/orblibbox.log.'
-        if not p.stdout.decode("UTF-8"):
-            self.logger.info(f'...done - {cmdstr_box} exit code '
-                             f'{p.returncode}. {log_file}')
-        else:
-            text = f'...failed! {cmdstr_box} exit code {p.returncode}. ' \
-                   f'Message: {p.stdout.decode("UTF-8")}'
-            if p.returncode == 127: # command not found
-                text += 'Check DYNAMITE legacy_fortran executables.'
-                self.logger.error(text)
-                raise FileNotFoundError(text)
+                text=f'...failed! {cmdstr_tube} exit code {p.returncode}. ' \
+                     f'Message: {p.stdout.decode("UTF-8")}'
+                if p.returncode == 127: # command not found
+                    text += 'Check DYNAMITE legacy_fortran executables.'
+                    self.logger.error(text)
+                    raise FileNotFoundError(text)
+                else:
+                    text += f'{log_files} Be wary: DYNAMITE may crash...'
+                    self.logger.warning(text)
+                    raise RuntimeError(text)
+        if box:
+            self.logger.info('Integrating orbit library box orbits')
+            # p = subprocess.call('bash '+cmdstr_box, shell=True)
+            p = subprocess.run('bash '+cmdstr_box,
+                               stdout=subprocess.PIPE,
+                               stderr=subprocess.STDOUT,
+                               shell=True)
+            log_file = f'Logfile: {self.mod_dir}datfil/orblibbox.log.'
+            if not p.stdout.decode("UTF-8"):
+                self.logger.info(f'...done - {cmdstr_box} exit code '
+                                 f'{p.returncode}. {log_file}')
             else:
-                text += f'{log_file} Be wary: DYNAMITE may crash...'
-                self.logger.warning(text)
-                raise RuntimeError(text)
+                text = f'...failed! {cmdstr_box} exit code {p.returncode}. ' \
+                       f'Message: {p.stdout.decode("UTF-8")}'
+                if p.returncode == 127: # command not found
+                    text += 'Check DYNAMITE legacy_fortran executables.'
+                    self.logger.error(text)
+                    raise FileNotFoundError(text)
+                else:
+                    text += f'{log_file} Be wary: DYNAMITE may crash...'
+                    self.logger.warning(text)
+                    raise RuntimeError(text)
         # move back to original directory
         os.chdir(cur_dir)
 
@@ -536,8 +591,27 @@ class LegacyOrbitLibrary(OrbitLibrary):
         # returns the name of the executables
         return cmd_string
 
-    def write_executable_for_integrate_orbits(self):
-        """Write the bash script to calculate orbit libraries
+    def write_executable_for_integrate_orbits(self, tube=True, box=True):
+        """Write the bash scripts to calculate orbit libraries
+
+
+        Parameters
+        ----------
+        tube : bool, optional
+            If True, write script to integrate tube orbits and calculate
+            MGE masses. The default is True.
+        box : bool, optional
+            If True, write script to integrate box orbits. The default is True.
+
+        Returns
+        -------
+        cmdstr_tube : str
+            Name of the bash script to integrate tube orbits and calculate
+            MGE masses if tube=True, None otherwise.
+        cmdstr_box : str
+            Name of the bash script to integrate box orbits if box=True,
+            None otherwise.
+
         """
         if self.system.is_bar_disk_system():
             orb_prgrm = 'orblib_bar'
@@ -545,48 +619,51 @@ class LegacyOrbitLibrary(OrbitLibrary):
             orb_prgrm = 'orblib_new_mirror'
         else:
             orb_prgrm = 'orblib'
+        cmdstr_tube = cmdstr_box = None
         # tubeorbits
-        cmdstr_tube = 'cmd_tube_orbs'
-        txt_file = open(cmdstr_tube, "w")
-        txt_file.write('#!/bin/bash\n')
-        txt_file.write('# first, check whether executables exist\n')
-        for f_name in orb_prgrm, 'triaxmass', 'triaxmassbin':
-            txt_file.write(f'test -e {self.legacy_directory}/{f_name} || ' +
-                           f'{{ echo "File {self.legacy_directory}/{f_name} ' +
-                           'not found." && exit 127; }\n')
-        txt_file.write('rm -f datfil/orblib.dat.tmp datfil/orblib.dat '
-                       'datfil/orblib.dat.bz2\n')
-        txt_file.write(f'{self.legacy_directory}/{orb_prgrm} < infil/orblib.in '
-                       '>> datfil/orblib.log\n')
-        txt_file.write('rm -f datfil/mass_qgrid.dat datfil/mass_radmass.dat '
-                       'datfil/mass_aper.dat\n')
-        txt_file.write(f'{self.legacy_directory}/triaxmass '
-                       '< infil/triaxmass.in >> datfil/triaxmass.log\n')
-        txt_file.write(f'{self.legacy_directory}/triaxmassbin '
-                       '< infil/triaxmassbin.in >> datfil/triaxmassbin.log\n')
-        txt_file.write(
-            'bzip2 -kc datfil/orblib.dat > datfil/orblib.dat.staging.bz2 '
-            '&& mv datfil/orblib.dat.staging.bz2 datfil/orblib.dat.bz2\n')
-        txt_file.write('rm datfil/orblib.dat\n')
-        txt_file.close()
+        if tube:
+            cmdstr_tube = 'cmd_tube_orbs'
+            txt_file = open(cmdstr_tube, "w")
+            txt_file.write('#!/bin/bash\n')
+            txt_file.write('# first, check whether executables exist\n')
+            for f_name in orb_prgrm, 'triaxmass', 'triaxmassbin':
+                txt_file.write(f'test -e {self.legacy_directory}/{f_name} || '
+                               f'{{ echo "File {self.legacy_directory}/{f_name} '
+                               'not found." && exit 127; }\n')
+            txt_file.write('rm -f datfil/orblib.dat.tmp datfil/orblib.dat '
+                           'datfil/orblib.dat.bz2\n')
+            txt_file.write(f'{self.legacy_directory}/{orb_prgrm} < infil/orblib.in '
+                           '>> datfil/orblib.log\n')
+            txt_file.write('rm -f datfil/mass_qgrid.dat datfil/mass_radmass.dat '
+                           'datfil/mass_aper.dat\n')
+            txt_file.write(f'{self.legacy_directory}/triaxmass '
+                           '< infil/triaxmass.in >> datfil/triaxmass.log\n')
+            txt_file.write(f'{self.legacy_directory}/triaxmassbin '
+                           '< infil/triaxmassbin.in >> datfil/triaxmassbin.log\n')
+            txt_file.write(
+                'bzip2 -kc datfil/orblib.dat > datfil/orblib.dat.staging.bz2 '
+                '&& mv datfil/orblib.dat.staging.bz2 datfil/orblib.dat.bz2\n')
+            txt_file.write('rm datfil/orblib.dat\n')
+            txt_file.close()
         # boxorbits
-        cmdstr_box = 'cmd_box_orbs'
-        txt_file = open(cmdstr_box, "w")
-        txt_file.write('#!/bin/bash\n')
-        txt_file.write('# first, check whether executable exists\n')
-        txt_file.write(f'test -e {self.legacy_directory}/{orb_prgrm} || ' +
-                       f'{{ echo "File {self.legacy_directory}/{orb_prgrm} ' +
-                       'not found." && exit 127; }\n')
-        txt_file.write('rm -f datfil/orblibbox.dat.tmp datfil/orblibbox.dat '
-                       'datfil/orblibbox.dat.bz2\n')
-        txt_file.write(f'{self.legacy_directory}/{orb_prgrm} '
-                       '< infil/orblibbox.in >> datfil/orblibbox.log\n')
-        txt_file.write(
-            'bzip2 -kc datfil/orblibbox.dat > datfil/orblibbox.dat.staging.bz2 '
-            '&& mv datfil/orblibbox.dat.staging.bz2 datfil/orblibbox.dat.bz2\n')
-        txt_file.write('rm datfil/orblibbox.dat\n')
-        txt_file.close()
-        # returns the name of the executables
+        if box:
+            cmdstr_box = 'cmd_box_orbs'
+            txt_file = open(cmdstr_box, "w")
+            txt_file.write('#!/bin/bash\n')
+            txt_file.write('# first, check whether executable exists\n')
+            txt_file.write(f'test -e {self.legacy_directory}/{orb_prgrm} || '
+                           f'{{ echo "File {self.legacy_directory}/{orb_prgrm} '
+                           'not found." && exit 127; }\n')
+            txt_file.write('rm -f datfil/orblibbox.dat.tmp datfil/orblibbox.dat '
+                           'datfil/orblibbox.dat.bz2\n')
+            txt_file.write(f'{self.legacy_directory}/{orb_prgrm} '
+                           '< infil/orblibbox.in >> datfil/orblibbox.log\n')
+            txt_file.write(
+                'bzip2 -kc datfil/orblibbox.dat > datfil/orblibbox.dat.staging.bz2 '
+                '&& mv datfil/orblibbox.dat.staging.bz2 datfil/orblibbox.dat.bz2\n')
+            txt_file.write('rm datfil/orblibbox.dat\n')
+            txt_file.close()
+        # return the name of the executables
         return cmdstr_tube, cmdstr_box
 
     def read_ics(self):

@@ -39,7 +39,7 @@ class AllModels(object):
             self.logger.info('Previous models have been found: '
                         f'Reading {self.filename} into '
                         f'{__class__.__name__}.table')
-            self.read_completed_model_file()
+            self.read_model_file()
         else:
             self.logger.info(f'No previous models (file {self.filename}) '
                         'have been found: '
@@ -88,23 +88,8 @@ class AllModels(object):
         dtype.append('U256')
         self.table = table.Table(names=names, dtype=dtype)
 
-    def read_completed_model_file(self):
+    def read_model_file(self):
         """Read table from file ``self.filename``
-
-        Dealing with incomplete models:
-        Models with all_done==False but an existing model_done_staging.ecsv
-        will be updated in the table and the staging file will be deleted.
-        Models with all_done==False and no existing orblib will be deleted
-        from the table and their model directory will be deleted, too.
-        The configuration setting reattempt_failures determines how partially
-        completed models with all_done==False but existing orblibs are treated:
-        If reattempt_failures==True, their orblib_done will be set to True
-        and later the ModelIterator will execute the weight solving
-        based on the existing orblibs.
-        If reattempt_failures==False, the model and its directory will be
-        deleted.
-        Note that orbit libraries on disk will not be deleted as they
-        may be in use by other models.
 
         Returns
         -------
@@ -119,19 +104,47 @@ class AllModels(object):
         self.logger.debug(f'{len(self.table)} models read '
                           f'from file {self.filename}')
 
+    def update_model_table(self):
+        """all_models table update: fix incomplete models, add kinmapchi2.
+
+        Dealing with incomplete models:
+
+        1. If the box orbits have not been integrated, but the tube orbit
+        library is finished, then orblib_done==False but the output files from
+        the box orbit integration will be in the model directory. In that case,
+        try to integrate the box orbits only.
+
+        2. Models with all_done==False but an existing model_done_staging.ecsv
+        will be updated in the table and the staging file will be deleted.
+        Models with all_done==False and no existing orblib will be deleted
+        from the table and their model directory will be deleted, too.
+        The configuration setting reattempt_failures determines how partially
+        completed models with all_done==False but existing orblibs are treated:
+        If reattempt_failures==True, their orblib_done will be set to True
+        and later the ModelIterator will execute the weight solving
+        based on the existing orblibs.
+        If reattempt_failures==False, the model and its directory will be
+        deleted.
+        Note that orbit libraries on disk will not be deleted if
+        in use by other models.
+
+        Returns
+        -------
+        None
+            updates ``self.table`` and saves it to disk
+
+        """
         table_modified = False
         for i, row in enumerate(self.table):
             if not row['all_done']:
                 table_modified = True
                 mod = self.get_model_from_row(i)
-                staging_filename = mod.directory+'model_done_staging.ecsv'
-                check1 = os.path.isfile(
-                    mod.directory_noml+'datfil/orblib.dat.bz2'
-                    )
-                check2 = os.path.isfile(
-                    mod.directory_noml+'datfil/orblibbox.dat.bz2'
-                    )
-                check_if_orblibs_present = check1 and check2
+                staging_filename = mod.directory + 'model_done_staging.ecsv'
+                # If tube and box orbits exist, mod.get_orblib() will do
+                # nothing and just return the orblib object. Otherwise, it will
+                # try to calculate the missing orbits and return the orblib.
+                orblib = mod.get_orblib()
+                check_if_orblibs_present = all(orblib.check_orlib_files())
                 if os.path.isfile(staging_filename):
                     # the model has completed but was not entered in the table
                     staging_file = ascii.read(staging_filename)
@@ -165,8 +178,7 @@ class AllModels(object):
                     self.logger.info('No finished model found in '
                                      f'{row["directory"]} - removing row {i}.')
         # do the deletion
-        # note: only models without orblibs are deleted, so we delete the
-        # entire orblibs' directories
+        # note: only delete orblibs not in use by models to keep
         if len(to_delete)>0:
             cwd = os.getcwd()
             os.chdir(self.config.settings.io_settings['model_directory'])
@@ -210,7 +222,7 @@ class AllModels(object):
                 if row['orblib_done'] and row['weights_done']:
                     # both orblib_done and weights_done being True indicates
                     # that data for kinmapchi2 is on the disk -> calculate
-                    # kinmapchi2 (not nan only for LegacyWeightSolver)
+                    # kinmapchi2
                     mod = self.get_model_from_row(row_id)
                     ws_type=self.config.settings.weight_solver_settings['type']
                     weight_solver = getattr(ws,ws_type)(
