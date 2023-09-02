@@ -493,7 +493,7 @@ class LegacyOrbitLibrary(OrbitLibrary):
         cmdstr_tube, cmdstr_box = \
             self.write_executable_for_integrate_orbits(tube=tube, box=box)
         if tube:
-            self.logger.info('Integrating orbit library tube orbits')
+            self.logger.info('Integrating orbit library tube orbits.')
             # p = subprocess.call('bash '+cmdstr_tube, shell=True)
             p = subprocess.run('bash '+cmdstr_tube,
                                stdout=subprocess.PIPE,
@@ -517,7 +517,7 @@ class LegacyOrbitLibrary(OrbitLibrary):
                     self.logger.warning(text)
                     raise RuntimeError(text)
         if box:
-            self.logger.info('Integrating orbit library box orbits')
+            self.logger.info('Integrating orbit library box orbits.')
             # p = subprocess.call('bash '+cmdstr_box, shell=True)
             p = subprocess.run('bash '+cmdstr_box,
                                stdout=subprocess.PIPE,
