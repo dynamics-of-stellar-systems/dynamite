@@ -132,6 +132,10 @@ class AllModels(object):
         * Note that orbit libraries on disk will not be deleted if
         in use by other models.
 
+        * Up to DYNAMITE 3.0 there was no kinmapchi2 column in the all_models
+        table. If possible (data exists on disk), calculate and add the values,
+        otherwise set to np.nan.
+
         Returns
         -------
         None
@@ -221,37 +225,42 @@ class AllModels(object):
                         ' perhaps it has already been removed before.')
             os.chdir(cwd)
             self.table.remove_rows(to_delete)
-
-        which_chi2 = 'kinmapchi2'
-        if which_chi2 not in self.table.colnames:
+        # Up to DYNAMITE 3.0 there was no kinmapchi2 column -> retrofit.
+        if isinstance(self.table['kinmapchi2'], table.column.MaskedColumn):
             table_modified = True
-            # a legacy all_models table does not have the kinmapchi2 column
-            # add that column to the table and initialize with nan
-            self.logger.info('Legacy all_models table read, adding and '
-                             f'updating {which_chi2} column...')
-            self.table.add_column(float('nan'),
-                                  index=self.table.colnames.index('kinchi2')+1,
-                                  name=which_chi2,
-                                  copy=True)
-            for row_id, row in enumerate(self.table):
-                if row['orblib_done'] and row['weights_done']:
-                    # both orblib_done and weights_done being True indicates
-                    # that data for kinmapchi2 is on the disk -> calculate
-                    # kinmapchi2
-                    mod = self.get_model_from_row(row_id)
-                    ws_type=self.config.settings.weight_solver_settings['type']
-                    weight_solver = getattr(ws,ws_type)(
-                                            config=self.config,
-                                            directory_with_ml=mod.directory)
-                    row[which_chi2] = weight_solver.chi2_kinmap()
-                    self.logger.info(f'Model {row_id}: {which_chi2} = '
-                                     f'{row[which_chi2]}')
-                else:
-                    self.logger.warning(f'Model {row_id}: cannot update '
-                                        f'{which_chi2} - data deleted?')
-
+            self.retrofit_kinmapchi2()
+        # If the table has been modified, save it.
         if table_modified:
             self.save()
+
+    def retrofit_kinmapchi2(self):
+        """Calculates kinmapchi2 for DYNAMITE legacy tables if possible.
+
+        Returns
+        -------
+        None.
+            updates ``self.table``
+        """
+        which_chi2 = 'kinmapchi2'
+        self.logger.info('Legacy all_models table read, updating '
+                         f'{which_chi2} column...')
+        self.table[which_chi2] = np.nan
+        for row_id, row in enumerate(self.table):
+            if row['orblib_done'] and row['weights_done']:
+                # both orblib_done==True and weights_done==True indicates
+                # that data for kinmapchi2 is on the disk -> calculate
+                # kinmapchi2
+                mod = self.get_model_from_row(row_id)
+                ws_type = self.config.settings.weight_solver_settings['type']
+                weight_solver = getattr(ws, ws_type)(
+                                        config=self.config,
+                                        directory_with_ml=mod.directory)
+                _, _, _, row[which_chi2] = weight_solver.solve()
+                self.logger.info(f'Model {row_id}: {which_chi2} = '
+                                 f'{row[which_chi2]}')
+            else:
+                self.logger.warning(f'Model {row_id}: cannot update '
+                                    f'{which_chi2} - data deleted?')
 
     def read_legacy_chi2_file(self, legacy_filename):
         """
