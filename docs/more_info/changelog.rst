@@ -4,6 +4,11 @@
 Change Log
 ****************
 
+- Improvement: better crash recovery: re-use existing tube orbits when recalculating orblib, bugfix in retrofitting kinmapchi2 in old all_models tables
+
+Version: 4.0
+================
+
 - New feature: kinmapchi2 (directly calculated from the kinematic maps) is now also available for the python NNLS solver
 - New feature: added support for bar/disk decomposition
 - New feature: added support for getting intrinsic model moments for both Gauss Hermite and a BayesLOSVD models
