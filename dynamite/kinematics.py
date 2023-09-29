@@ -555,7 +555,7 @@ class GaussHermite(Kinematics, data.Integrated):
         observed_values = np.zeros((self.n_apertures, max_gh_order))
         # h1, h2 = 0, 0
         # h3, h4, etc... are taken from the data table
-        for i in range(3, self.max_gh_order+1):
+        for i in range(3, max_gh_order+1):
             observed_values[:,i-1] = self.data[f'h{i}']
         # construct uncertainties
         uncertainties = np.zeros_like(observed_values)
@@ -563,7 +563,7 @@ class GaussHermite(Kinematics, data.Integrated):
         uncertainties[:,0] = self.data['dv']/np.sqrt(2)/self.data['sigma']
         uncertainties[:,1] = self.data['dsigma']/np.sqrt(2)/self.data['sigma']
         # uncertainties h3, h4, etc... are taken from data table
-        for i in range(3, self.max_gh_order+1):
+        for i in range(3, max_gh_order+1):
             uncertainties[:,i-1] = self.data[f'dh{i}']
         # add the systematic uncertainties
         systematics = weight_solver_settings['GH_sys_err']
