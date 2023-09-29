@@ -4,6 +4,11 @@
 Change Log
 ****************
 
+- Bugfix: fixed crash when GH coefficient number in GH file does not match config file setting when using Python nnls
+
+Version: 4.0
+================
+
 - New feature: kinmapchi2 (directly calculated from the kinematic maps) is now also available for the python NNLS solver
 - New feature: added support for bar/disk decomposition
 - New feature: added support for getting intrinsic model moments for both Gauss Hermite and a BayesLOSVD models
