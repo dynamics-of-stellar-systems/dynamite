@@ -9,15 +9,13 @@ from astropy.io import fits
 import numpy as np
 import matplotlib.pyplot as plt
 import plotbin.display_pixels as dp
-import plotbin.display_bins_generators as dbg
-import vorbin.voronoi_2d_binning as vb
 import pafit.fit_kinematic_pa as pa
 from astropy import table
+import cmasher as cmr
 
 def read_kinematics_user(file):
     #This function can be filled by the user
     return None
-
 
 def read_atlas3d(file):
     #adapted from http://www-astro.physics.ox.ac.uk/atlas3d/
@@ -26,18 +24,15 @@ def read_atlas3d(file):
     hdu = fits.open(file[0])
     spectrum = hdu[0].data
     table = hdu[2].data
-    hdr = hdu[2].header
-
-    #print(hdr)
+    #hdr = hdu[2].header #unused
 
     x = table["A"] # Coordinates of the original spaxels in arcsec
     y = table["D"]
     flux = np.mean(spectrum, 1)  #surface brightness
 
-
     hdu = fits.open(file[1])
     table = hdu[1].data
-    kin_hdr=hdu[1].header
+    #kin_hdr=hdu[1].header #unused
 
     xgen = table['XS'] # Voronoi generators
     ygen = table['YS']
@@ -50,30 +45,23 @@ def read_atlas3d(file):
     dh3=table['EH3PXF']
     dh4=table['EH4PXF']
 
-
     #perform Voronoi tesselation starting from the nodes values, adapted from axisymm Schwarzschild code
     npixels=len(x)
     binNum=np.zeros((npixels), dtype=int)
-
     for j, (xj, yj) in enumerate(zip(x, y)):
         binNum[j] = np.argmin(((xj - xgen)**2 + (yj - ygen)**2))
-
 
     return binNum,x,y,flux,vel,sig,h3,h4,dvel,dsig,dh3,dh4,xgen,ygen
     #can be switched on for a check. They should show the same. If not, something went wrong with the V. tesselation
     #plt.figure()
     #im1=dbg.display_bins_generators(xgen,ygen,vel,x,y,label='Velocity (km/s)')
-
     #plt.figure()
     #im1=dp.display_pixels(x,y,vel[binNum],label='Velocity (km/s)')
-
-
-
 
 def read_califa(file):
     hdulist = fits.open(file)
     kin_tab = hdulist[1].data
-    kin_hdr = hdulist[1].header
+    #kin_hdr = hdulist[1].header #unused
 
     s = kin_tab.BIN_ID > 0
 
@@ -112,7 +100,6 @@ def read_califa(file):
         sig[mask] = np.median(sig[sig >= 0])
         dsig[mask] = 1e5
 
-
     nbin = int(np.max(kin_tab.BIN_ID))
     xbin = np.zeros(nbin)
     ybin = np.zeros(nbin)
@@ -134,7 +121,6 @@ def create_aperture_file(dir,expr,minx,maxx,miny,maxy,angle_deg,nx,ny):
     aperture_file.write('\t{0}\t{1} \n'.format(int(nx), int(ny)))
     aperture_file.close()
 
-
 def create_bins_file(dir,expr,grid):
     #adapted from schwpy. Not very beautiful
 
@@ -147,12 +133,11 @@ def create_bins_file(dir,expr,grid):
     bins_file.write('{0}\n'.format(int(s[0]*s[1])))
 
     for line in range(num_of_lines):
-        string = '\t{0}\t{1}\t{2}\t{3}\t{4}\t{5}\t{6}\t{7}\t{8}\t{9}\n'.format(int(flattened[line*10]), int(flattened[line*10+1]), int(flattened[line*10+2]),
-                                                                               int(flattened[line*10+3]), int(
-                                                                                   flattened[line*10+4]), int(flattened[line*10+5]),
-                                                                               int(flattened[line*10+6]), int(
-                                                                                   flattened[line*10+7]), int(flattened[line*10+8]),
-                                                                               int(flattened[line*10+9]))
+        string = '\t{0}\t{1}\t{2}\t{3}\t{4}\t{5}\t{6}\t{7}\t{8}\t{9}\n'.format(int(flattened[line*10]),int(flattened[line*10+1]), 
+                                                                               int(flattened[line*10+2]),int(flattened[line*10+3]), 
+                                                                               int(flattened[line*10+4]),int(flattened[line*10+5]),
+                                                                               int(flattened[line*10+6]),int(flattened[line*10+7]),
+                                                                               int(flattened[line*10+8]),int(flattened[line*10+9]))
         bins_file.write(string)
     last_line = ''
     # number of items in last line:
@@ -162,7 +147,6 @@ def create_bins_file(dir,expr,grid):
     last_line += '\n'
     bins_file.write(last_line)
     bins_file.close()
-
 
 def kin_file(dir,expr,data):
     data.write(dir+'gauss_hermite_kins'+expr +'.ecsv', format='ascii.ecsv', overwrite=True)
@@ -197,18 +181,15 @@ def create_kin_input(object, file, dyn_model_dir, expr='', angle_deg=0, ngh=4,
     xbin=xbin+xoffset
     ybin=ybin+yoffset
 
+    map1 = cmr.get_sub_cmap('twilight_shifted', 0.05, 0.6)
+    map2 = cmr.get_sub_cmap('twilight_shifted', 0.05, 0.95)
+
     vel = vel - np.median(vel)
-
     if fit_PA:
-        angle_deg,_,vel_syst=pa.fit_kinematic_pa(xp,yp,vel[binNum])
+        angle_deg,_,vel_syst = pa.fit_kinematic_pa(xp,yp,vel[binNum],cmap=map2) 
         plt.savefig(dyn_model_dir+'pafit.pdf')
-
-
         vel=vel - vel_syst
-
-
-    vel = vel+ voffset
-
+    vel = vel + voffset
 
     # Determination of the pixel size
     npixels = len(xp)
@@ -220,11 +201,8 @@ def create_kin_input(object, file, dyn_model_dir, expr='', angle_deg=0, ngh=4,
     dx = np.sqrt(dx)
 
     print('The pixel size is {0}'.format(dx))
-
     print('PA: {0}'.format(angle_deg))
-
     angle_deg = 90 - angle_deg
-
     print('Total bins: {0}'.format(nbins))
 
     maxx = np.max(xp) + dx/2.0
@@ -242,32 +220,30 @@ def create_kin_input(object, file, dyn_model_dir, expr='', angle_deg=0, ngh=4,
 
 
     if plot is True:
-
         vmax = np.percentile(np.abs(vel), 98)
         smax = np.percentile(sig, 98)
         smin = np.percentile(sig, 2)
         print('Vels plot: {0}, {1}, {2}'.format(vmax, smin, smax))
 
-        fig, axs = plt.subplots(1, 4, figsize=(20,5))
+        fig, axs = plt.subplots(1, 4, figsize=(18,4))
         plt.subplot(1,4,1)
-        plt.title('Velocity (km/s)')
-        dp.display_pixels(xp,yp,vel[binNum],angle=angle_deg,vmin=-vmax,vmax=vmax)
+        plt.title('Velocity [km/s]')
+        dp.display_pixels(xp,yp,vel[binNum],angle=angle_deg,vmin=-vmax,vmax=vmax,cmap=map2)
 
         plt.subplot(1,4,2)
-        plt.title('Velocity dispersion (km/s)')
-        dp.display_pixels(xp,yp,sig[binNum],angle=angle_deg,vmin=smin,vmax=smax)
+        plt.title('Velocity dispersion [km/s]')
+        dp.display_pixels(xp,yp,sig[binNum],angle=angle_deg,vmin=smin,vmax=smax,cmap=map1)
 
         plt.subplot(1,4,3)
         plt.title(r'$h_{3}$ moment')
-        dp.display_pixels(xp,yp,h3[binNum],angle=angle_deg,vmin=-0.15,vmax=0.15)
-
+        dp.display_pixels(xp,yp,h3[binNum],angle=angle_deg,vmin=-0.15,vmax=0.15,cmap=map2)
 
         plt.subplot(1,4,4)
         plt.title(r'$h_{4}$ moment')
-        dp.display_pixels(xp,yp,h4[binNum],angle=angle_deg,vmin=-0.15,vmax=0.15)
+        dp.display_pixels(xp,yp,h4[binNum],angle=angle_deg,vmin=-0.15,vmax=0.15,cmap=map2)
 
+        fig.subplots_adjust(left=0.04, wspace=0.3, hspace=0.01, right=0.97)
         fig.savefig(dyn_model_dir+'kinmaps.pdf')
-
 
     data = table.Table()
     data['vbin_id']=np.arange(1,nbins+1)
@@ -284,19 +260,14 @@ def create_kin_input(object, file, dyn_model_dir, expr='', angle_deg=0, ngh=4,
         if (kin_input=='CALIFA') or ((kin_input=='ATLAS3D')):
             h5=np.full_like(h4, 0)
             h6=np.full_like(h4, 0)
-
             dh5=np.full_like(h4, 0.3)
             dh6=np.full_like(h4, 0.3)
-
         data['h5']=np.round(h5,decimals=4)
         data['dh5']=dh5
         data['h6']=np.round(h6,decimals=4)
         data['dh6']=dh6
 
     if files is True:
-
         create_aperture_file(dyn_model_dir,expr,minx,maxx,miny,maxy,angle_deg,nx,ny)
         create_bins_file(dyn_model_dir,expr,grid)
         kin_file(dyn_model_dir,expr,data)
-
-
