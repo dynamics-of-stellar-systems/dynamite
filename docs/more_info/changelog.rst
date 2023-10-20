@@ -4,6 +4,8 @@
 Change Log
 ****************
 
+- Improvement: updated tutorial notebooks
+
 - New feature: kinmapchi2 (directly calculated from the kinematic maps) is now also available for the python NNLS solver
 - New feature: added support for bar/disk decomposition
 - New feature: added support for getting intrinsic model moments for both Gauss Hermite and a BayesLOSVD models

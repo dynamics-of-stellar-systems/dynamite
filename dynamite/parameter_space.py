@@ -1232,8 +1232,8 @@ class SpecificModels(ParameterGenerator):
     ``lo``, and ``high``. Also, ``fixed`` will be ignored if ``fixed_values``
     is specified.
 
-    Further, all models are run in a single iteration and the
-    ``stopping_criteria`` section in the configuration file's
+    Further, all models are run in a single iteration and the optimality
+    tolerances in the ``stopping_criteria`` section in the configuration file's
     ``parameter_space_settings`` will be ignored.
 
     Parameters
