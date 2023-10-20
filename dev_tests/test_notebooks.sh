@@ -21,7 +21,5 @@ notebooks="1_data_prep_for_gauss_hermite.ipynb 2_quickstart.ipynb 3_model_iterat
 cd $testdir
 
 for n in $notebooks; do
-    jupyter execute $n >/dev/null 2>&1 || echo Failed on notebook: $n
+    jupyter execute $n >/dev/null 2>&1 && echo Passed on notebook: $n || echo Failed on notebook: $n
 done
-
-echo All notebooks ran successfully!
