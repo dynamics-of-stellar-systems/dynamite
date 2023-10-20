@@ -92,14 +92,36 @@ class ModelIterator(object):
             status = model_inner_iterator.run_iteration()
             if plots and not status['last_iter_added_no_new_models']:
                 try:
-                    the_plotter.make_chi2_vs_model_id_plot()
-                    the_plotter.make_chi2_plot()
-                    the_plotter.plot_kinematic_maps(kin_set='all',
-                                                    cbar_lims='default')
+                    self.chi2_vs_model_id_plot = \
+                        the_plotter.make_chi2_vs_model_id_plot()
+                    self.chi2_plot = the_plotter.make_chi2_plot()
+                    self.kinematic_maps = \
+                        the_plotter.plot_kinematic_maps(kin_set='all',
+                                                        cbar_lims='default')
                     plt.close('all') # just to make sure...
                 except ValueError:
                     self.logger.warning(f'Iteration {total_iter}: '
                                         'plotting failed!')
+
+    def get_plots(self):
+        """
+        Returns the latest iteration's plots as figure objects.
+
+        Returns
+        -------
+        tuple of matplotlib.pyplot.figure:
+            matplotlib.pyplot.figure: chi2 vs. model id plot
+            matplotlib.pyplot.figure: chisquare plot
+            (matplotlib.pyplot.figure, str):
+                kinematic maps of best model so far, kinematics name
+
+        """
+        chi2_vs_model_id_plot = self.chi2_vs_model_id_plot \
+            if hasattr(self, 'chi2_vs_model_id_plot') else None
+        chi2_plot = self.chi2_plot if hasattr(self, 'chi2_plot') else None
+        kinematic_maps = self.kinematic_maps \
+            if hasattr(self, 'kinematic_maps') else None
+        return chi2_vs_model_id_plot, chi2_plot, kinematic_maps
 
     def reattempt_failed_weights(self):
         config = self.config
