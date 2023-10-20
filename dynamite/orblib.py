@@ -59,9 +59,12 @@ class LegacyOrbitLibrary(OrbitLibrary):
         self.in_dir = config.settings.io_settings['input_directory']
         self.orblibs_in_parallel = \
             config.settings.multiprocessing_settings['orblibs_in_parallel']
-        mod = config.all_models.get_model_from_parset(self.parset)
-        self.velocity_scaling_factor = \
-            config.all_models.get_model_velocity_scaling_factor(model=mod)
+        if len(config.all_models.table) == 0:
+            self.velocity_scaling_factor = 1.0
+        else:
+            mod = config.all_models.get_model_from_parset(self.parset)
+            self.velocity_scaling_factor = \
+                config.all_models.get_model_velocity_scaling_factor(model=mod)
 
     def get_orblib(self):
         """main method to calculate orbit libraries
