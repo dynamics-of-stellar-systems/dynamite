@@ -4,7 +4,7 @@
 Change Log
 ****************
 
-- Bugfix: fixed crash when GH coefficient number in GH file does not match config file setting when using Python nnls
+- Bugfix: fixed crash when the number of GH coefficients a kinematics file does not match number_GH in config file's weight_solver_settings
 - Improvement: updated tutorial notebooks
 - Bugfix: Re-enable support for directly instantiating a Model object (bypassing ModelIterator) if the all_models table is empty. Only recommended for testing.
 

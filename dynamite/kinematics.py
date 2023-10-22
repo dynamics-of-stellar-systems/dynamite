@@ -177,7 +177,7 @@ class GaussHermite(Kinematics, data.Integrated):
                 [np.zeros(self.n_apertures) for i in cols_to_add],
                 names=cols_to_add)
             self.max_gh_order = self.get_highest_order_gh_coefficient()
-            self.logger.info(f'Added zero gh columns {cols_to_add}.')
+            self.logger.info(f'Added all-zero gh columns {cols_to_add}.')
         elif number_GH < self.max_gh_order:
             cols_to_remove = [f'{d}h{i+1}'
                               for i in range(number_GH, self.max_gh_order)
