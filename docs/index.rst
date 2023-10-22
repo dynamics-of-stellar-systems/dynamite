@@ -11,8 +11,8 @@ Welcome to DYNAMITE's documentation!
 How to cite
 ================
 
-If you use DYNAMITE, please cite our `ASCL entry <http://www.ascl.net/code/v/2684>`_ using the following `BibTex citation <https://ui.adsabs.harvard.edu/abs/2020ascl.soft11007J/exportcitation>`_.
-Moreover, please cite the paper presenting the original code, `van den Bosch et al. 2008 <https://ui.adsabs.harvard.edu/abs/2008MNRAS.385..647V/exportcitation>`_, and our most recent contribution, `Thater et al. 2022 <https://ui.adsabs.harvard.edu/abs/2022A%26A...667A..51T/exportcitation>`_.
+If you use DYNAMITE, please cite our `ASCL entry <http://www.ascl.net/code/v/2684>`_ using the following `BibTeX citation <https://ui.adsabs.harvard.edu/abs/2020ascl.soft11007J/exportcitation>`_.
+Moreover, please cite the paper presenting the original code, `van den Bosch et al. 2008 (BibTeX) <https://ui.adsabs.harvard.edu/abs/2008MNRAS.385..647V/exportcitation>`_, and our most recent contribution, `Thater et al. 2022 (BibTeX) <https://ui.adsabs.harvard.edu/abs/2022A%26A...667A..51T/exportcitation>`_.
 
 If you use the ``dynamite.analysis.Decomposition`` class, please cite the paper describing its methodology, `Santucci et al. 2022 <https://ui.adsabs.harvard.edu/abs/2022ApJ...930..153S/exportcitation>`_.
 
@@ -74,7 +74,7 @@ Each page is an ipython notebook which you can either view in the browser, or do
    :maxdepth: 1
    :caption: Tutorials:
 
-   tutorial_notebooks/1_data_prep_for_gauss_hermites.ipynb
+   tutorial_notebooks/1_data_prep_for_gauss_hermite.ipynb
    tutorial_notebooks/2_quickstart.ipynb
    tutorial_notebooks/3_model_iterations_and_plots.ipynb
    tutorial_notebooks/4_BayesLOSVD.ipynb

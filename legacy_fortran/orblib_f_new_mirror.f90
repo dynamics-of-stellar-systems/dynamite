@@ -30,7 +30,7 @@
 !++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 ! Note on rotating bar code:
 ! The modified or added lines are commented by ! (BT)
-! In this file, the modified parts are: 
+! In this file, the modified parts are:
 ! 1- Integration of orbits in a rotating frame in case of (Omega != 0).
 ! 2- Applying 4-fold symmetry instead of 8-fold symmetry mirroring and symmetrizing if (Omega != 0).
 ! 3- if (Omega != 0), Sorting information of each orbit e.g. Circularity and ... during integration.
@@ -350,24 +350,24 @@ contains
 
             ! write orbit information  in case of figure rotation (BT)
             if (Omega /= 0.0_dp ) then
-               r_mean = moments(4)*conversion_factor**-1.0_dp
-               lz2    = moments(3)*conversion_factor**-1.0_dp
+               r_mean = moments(4)*conversion_factor**(-1.0_dp)
+               lz2    = moments(3)*conversion_factor**(-1.0_dp)
                !cir = moments(3)/( SQRT(moments(5))*moments(4) )
                vca  = moments(5)
                Svr  = moments2(1)
                Svt  = moments2(2)
                Svz  = moments2(3)
-               
+
                YY(1) =  pos(1,1)
                YY(2) =  pos(1,2)
                YY(3) =  pos(1,3)
                YY(4) =  vel(1,1)
                YY(5) =  vel(1,2)
                YY(6) =  vel(1,3)
-               
+
                ! Compute and store start energy at begin point
                call computer_energy(YY,Enjo)
-               
+
                write (unit=32, fmt="(25es13.5)")  Enjo, r_mean, lz2, vca, Svr, Svt, Svz
             endif
             ! end write orbit information
@@ -666,7 +666,7 @@ contains
 
     !++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
     subroutine derivs(N, xin, yin, dydx, RPAR, IPAR)
-      use initial_parameters, only: Omega        ! (BT) 
+      use initial_parameters, only: Omega        ! (BT)
         use interpolpot, only: ip_accel
         !use triaxpotent, only : tp_accel
         integer, intent(in)              :: N
@@ -695,10 +695,10 @@ contains
            dydx(1) =  yin(4) + Omega*yin(2)  ! extra terms for integration in co-rotating frame
            dydx(2) =  yin(5) - Omega*yin(1)
            dydx(3) =  yin(6)
-           
+
            call ip_accel(yin(1),yin(2),yin(3),dydx(4),dydx(5),dydx(6))
-           
-           dydx(4) =  dydx(4) + Omega*yin(5)               
+
+           dydx(4) =  dydx(4) + Omega*yin(5)
            dydx(5) =  dydx(5) - Omega*yin(4)
            dydx(6) =  dydx(6)
         end if
@@ -805,21 +805,21 @@ contains
         vr = ( pos(:,1) * vel(:,1) +  pos(:,2) * vel(:,2) ) / sqrt(pos(:,1)**2+pos(:,2)**2)
         vt = ( pos(:,1) * vel(:,2) +  pos(:,2) * vel(:,1) ) / sqrt(pos(:,1)**2+pos(:,2)**2)
         vz = vel(:,3)
-        
+
         N = size(pos,1)
         mean_vr = sum(vr) / N
         sd_vr = sqrt(sum((vr-mean_vr)**2) / N)
-        
+
         mean_vt = sum(vt) / N
         sd_vt = sqrt(sum((vt-mean_vt)**2) / N)
-        
+
         mean_vz = sum(vz) / N
         sd_vz = sqrt(sum((vz-mean_vz)**2) / N)
-        
+
         moments2(1) =  sd_vr
         moments2(2) =  sd_vt
         moments2(3) =  sd_vz
-        
+
     end subroutine integrator_find_orbtype
 
     subroutine computer_energy(Y, E)
@@ -982,13 +982,13 @@ contains
              ! Z tubes
              1 , 1 , 1    , 1 ,1 , 1  , -1 ,-1 , 1  , -1 , -1 , 1 , &
              1 , 1 ,-1    , 1 ,1 ,-1  , -1 ,-1 ,-1  , -1 , -1 ,-1 , &
-             ! Boxed 
+             ! Boxed
              1 , 1 , 1    ,1 , 1 , 1  , -1 ,-1 , 1  ,  -1 ,-1 , 1 , &
              1 , 1 ,-1    ,1 , 1 ,-1  , -1 ,-1 ,-1  ,  -1 ,-1 ,-1 , &
              ! Stochastic
              1 , 1 , 1    ,1 , 1 , 1  , -1 ,-1 , 1  ,  -1 ,-1 , 1 , &
              1 , 1 ,-1    ,1 , 1 ,-1  , -1 ,-1 ,-1  ,  -1 ,-1 ,-1 /),(/3,8,5/))
-        !Signs of the x,y,z for each projection  :psgn( [x,y,z], project )  
+        !Signs of the x,y,z for each projection  :psgn( [x,y,z], project )
         real (kind=dp),dimension(3,8),parameter :: psgn2= reshape((/  &
              1 , 1 , 1   , 1 , 1 , 1   , -1 , -1 , 1 ,  -1 , -1 , 1 , &
              1 , 1 ,-1   , 1 , 1 ,-1  , -1 , -1 ,-1 ,  -1 , -1 ,-1 /),(/3,8/))
@@ -2433,7 +2433,7 @@ contains
 
 
         ! Signs of the (vx,vy,vz) for each Projection and type of Orbit
-        ! (BT) 8-fold symmetry same as before  
+        ! (BT) 8-fold symmetry same as before
         real(kind=dp), dimension(3, 8, 5), &
             parameter :: vsgn1 = reshape((/ &
                                         ! X tubes
@@ -2470,14 +2470,14 @@ contains
              ! Z tubes
              1 , 1 , 1    , 1 ,1 , 1  , -1 ,-1 , 1  , -1 , -1 , 1 , &
              1 , 1 ,-1    , 1 ,1 ,-1  , -1 ,-1 ,-1  , -1 , -1 ,-1 , &
-             ! Boxed 
+             ! Boxed
              1 , 1 , 1    ,1 , 1 , 1  , -1 ,-1 , 1  ,  -1 ,-1 , 1 , &
              1 , 1 ,-1    ,1 , 1 ,-1  , -1 ,-1 ,-1  ,  -1 ,-1 ,-1 , &
              ! Stochastic
              1 , 1 , 1    ,1 , 1 , 1  , -1 ,-1 , 1  ,  -1 ,-1 , 1 , &
              1 , 1 ,-1    ,1 , 1 ,-1  , -1 ,-1 ,-1  ,  -1 ,-1 ,-1 /),(/3,8,5/))
-        
-        !Signs of the x,y,z for each projection  :psgn( [x,y,z], project )  
+
+        !Signs of the x,y,z for each projection  :psgn( [x,y,z], project )
         real (kind=dp),dimension(3,8),parameter :: psgn2= reshape((/  &
              1 , 1 , 1   , 1 , 1 , 1   , -1 , -1 , 1 ,  -1 , -1 , 1 , &
              1 , 1 ,-1   , 1 , 1 ,-1  , -1 , -1 ,-1 ,  -1 , -1 ,-1 /),(/3,8/))

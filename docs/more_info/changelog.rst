@@ -5,6 +5,8 @@ Change Log
 ****************
 
 - Bugfix: fixed crash when GH coefficient number in GH file does not match config file setting when using Python nnls
+- Improvement: updated tutorial notebooks
+- Bugfix: Re-enable support for directly instantiating a Model object (bypassing ModelIterator) if the all_models table is empty. Only recommended for testing.
 
 Version: 4.0
 ================
