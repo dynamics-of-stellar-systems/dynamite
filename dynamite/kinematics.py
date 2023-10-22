@@ -148,6 +148,44 @@ class GaussHermite(Kinematics, data.Integrated):
             self.max_gh_order = self.get_highest_order_gh_coefficient()
             self.n_apertures = len(self.data)
 
+    def adjust_gh_data_to_coefficient_number(self, number_GH):
+        """Adjust kinematics file columns to configured `number_GH` parameter
+
+        If number_GH (configuration file) > max_GH_order (number of gh
+        coefficients in the kinematics file), columns with zeros
+        `h<max_GH_order+1> dh<max_GH_order+1>` ...
+        `h<number_GH> dh<number_GH>`will be added to the gh kinematics data.
+        If number_GH < max_GH_order, the corresponding columns will be
+        removed from the kinematics data
+
+        Parameters
+        ----------
+        number_GH : int
+            Desired number of gh coefficients as given in the configuration
+            file.
+
+        Returns
+        -------
+        None.
+
+        """
+        if number_GH > self.max_gh_order:
+            cols_to_add = [f'{d}h{i+1}'
+                           for i in range(self.max_gh_order, number_GH)
+                           for d in ('', 'd')]
+            self.data.add_columns(
+                [np.zeros(self.n_apertures) for i in cols_to_add],
+                names=cols_to_add)
+            self.max_gh_order = self.get_highest_order_gh_coefficient()
+            self.logger.info(f'Added zero gh columns {cols_to_add}.')
+        elif number_GH < self.max_gh_order:
+            cols_to_remove = [f'{d}h{i+1}'
+                              for i in range(number_GH, self.max_gh_order)
+                              for d in ('', 'd')]
+            self.data.remove_columns(cols_to_remove)
+            self.max_gh_order = self.get_highest_order_gh_coefficient()
+            self.logger.info(f'Removed gh columns {cols_to_remove}.')
+
     def get_highest_order_gh_coefficient(self, max_gh_check=20):
         """Get max order GH coeeff from data table
 

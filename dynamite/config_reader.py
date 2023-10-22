@@ -896,22 +896,21 @@ class Configuration(object):
                         check_gh = (kin_data.type == 'GaussHermite')
                         check_bl = (kin_data.type == 'BayesLOSVD')
                         if (not check_gh) and (not check_bl):
-                            self.logger.error('VisibleComponent kinematics type'
-                                              'must be GaussHermite or '
-                                              'BayesLOSVD')
-                            raise ValueError('VisibleComponent kinematics type'
-                                             'must be GaussHermite or '
-                                             'BayesLOSVD')
+                            txt = 'VisibleComponent kinematics type must be ' \
+                                  'GaussHermite or BayesLOSVD'
+                            self.logger.error(txt)
+                            raise ValueError(txt)
                         if check_bl:
                             # check weight solver type
                             if ws_type == 'LegacyWeightSolver':
-                                self.logger.error("LegacyWeightSolver can't be "
-                                                  "used with BayesLOSVD - use "
-                                                  "weight-solver type NNLS")
-                                raise ValueError("LegacyWeightSolver can't be "
-                                                  "used with BayesLOSVD - use "
-                                                  "weight-solver type NNLS")
-
+                                txt = "LegacyWeightSolver can't be used with "\
+                                      "BayesLOSVD - use weight-solver type NNLS"
+                                self.logger.error(txt)
+                                raise ValueError(txt)
+                        if check_gh:
+                            # In case number_GH != #gh components in kin file...
+                            kin_data.adjust_gh_data_to_coefficient_number(
+                                self.settings.weight_solver_settings['number_GH'])
                 else:
                     self.logger.error('VisibleComponent must have kinematics: '
                                       'either GaussHermite or BayesLOSVD')
