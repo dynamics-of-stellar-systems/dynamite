@@ -4,10 +4,12 @@ cvxopt>=1.2.6
 h5py>=3.1.0
 lmfit
 matplotlib>=3.3.4
-numpy>=1.20.1
-pafit>=2.0.7
+numpy<1.25,>=1.21
+pafit>=2.0.8
 pathos>=0.2.7
 plotbin>=3.1.3
 PyYAML>=5.4.1
-scipy>=1.6.0
+scipy>=1.10
+six
+sparse>=0.14.0
 vorbin>=3.1.4

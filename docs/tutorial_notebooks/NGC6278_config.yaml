@@ -100,7 +100,7 @@ system_components:
                 type: GaussHermite
                 datafile: "gauss_hermite_kins.ecsv"
                 aperturefile: "aperture.dat"
-                binfile: "bins.dat"          
+                binfile: "bins.dat"
 
 system_parameters:
     ml:

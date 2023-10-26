@@ -11,8 +11,12 @@ Welcome to DYNAMITE's documentation!
 How to cite
 ================
 
-If you use DYNAMITE, please cite our `ASCL entry <http://www.ascl.net/code/v/2684>`_ using the following `BibTex citation <https://ui.adsabs.harvard.edu/abs/2020ascl.soft11007J/exportcitation>`_.
-Moreover, please cite the paper presenting the original code, `van den Bosch et al. 2008 <https://ui.adsabs.harvard.edu/abs/2008MNRAS.385..647V/exportcitation>`_, and our most recent contribution, `Thater et al. 2022 <https://ui.adsabs.harvard.edu/abs/2022A%26A...667A..51T/exportcitation>`_.
+If you use DYNAMITE, please cite our `ASCL entry <http://www.ascl.net/code/v/2684>`_ using the following `BibTeX citation <https://ui.adsabs.harvard.edu/abs/2020ascl.soft11007J/exportcitation>`_.
+Moreover, please cite the paper presenting the original code, `van den Bosch et al. 2008 <https://ui.adsabs.harvard.edu/abs/2008MNRAS.385..647V/abstract>`_, and our most recent contribution, `Thater et al. 2022 <https://ui.adsabs.harvard.edu/abs/2022A%26A...667A..51T/abstract>`_.
+
+If you use the ``dynamite.analysis.Decomposition`` class, please cite the paper describing its methodology, `Santucci et al. 2022 <https://ui.adsabs.harvard.edu/abs/2022ApJ...930..153S/abstract>`_.
+
+If you model a galaxy having a bar/disk (i.e., if your configuration file includes a ``bardisk`` component), please cite `Tahmasebzadeh et al. 2022 <https://ui.adsabs.harvard.edu/abs/2022ApJ...941..109T/abstract>`_.
 
 ===================
 Orbit mirroring bug
@@ -32,8 +36,8 @@ To get started with DYNAMITE,
 1. Get the latest stable version from our `GitHub release page <https://github.com/dynamics-of-stellar-systems/dynamite/releases>`_. If you want the current version in development, you can also download this from our `GitHub page <https://github.com/dynamics-of-stellar-systems/dynamite>`_.
 2. Install. The `installation page <https://dynamics.univie.ac.at/dynamite_docs/getting_started/installation.html>`_ has the full instructions. An overview is:
 
-  a. Install Galahad: in the directory ``legacy_fortran/galahad-2.3/`` run the command ``./install_Galahad``
-  b. Compile the Fortran programs: in the directory ``legacy_fortran/``  run the command ``make all``
+  a. (optional) Install Galahad: in the directory ``legacy_fortran/galahad-2.3/`` run the command ``./install_Galahad``
+  b. Compile the Fortran programs: in the directory ``legacy_fortran/``  run the command ``make all`` if you have installed Galahad, or the command ``make nogal`` if you have not installed it
   c. Install DYNAMITE Python package: in the main directory run the command ``python setup.py install``
 
 3. Run orbit-based models! The following program will run a single model,
@@ -72,7 +76,7 @@ Each page is an ipython notebook which you can either view in the browser, or do
    :maxdepth: 1
    :caption: Tutorials:
 
-   tutorial_notebooks/1_data_prep_for_gauss_hermites.ipynb
+   tutorial_notebooks/1_data_prep_for_gauss_hermite.ipynb
    tutorial_notebooks/2_quickstart.ipynb
    tutorial_notebooks/3_model_iterations_and_plots.ipynb
    tutorial_notebooks/4_BayesLOSVD.ipynb
@@ -103,6 +107,7 @@ The API overview may be a useful starting point.
    api_docs/weight_solver
    api_docs/model_iterator
    api_docs/plotting
+   api_docs/analysis
 
 More Information
 ================

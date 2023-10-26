@@ -11,7 +11,7 @@ module interpolpot
     public:: ip_accel
 
     ! setup the constants for the potential
-    public:: ip_setup
+    public:: ip_setup, ip_setup_bar
 
     ! setup the constants for the potential
     public:: ip_stop
@@ -34,6 +34,7 @@ contains
 
     subroutine ip_setup()
         use dmpotent, only: dm_setup
+        use triaxpotent, only: tp_setup
         use initial_parameters, only: conversion_factor
         integer(kind=i4b) :: error
 
@@ -41,6 +42,7 @@ contains
 
         allocate (grid(3, nphi, ntheta, nradius))
 
+        call tp_setup()
         call dm_setup()
         call ip_read(error)
         if (error == 0) call ip_testaccuracy(error)
@@ -53,6 +55,31 @@ contains
 
         print *, "  * Potential interpolation setup"
     end subroutine ip_setup
+
+    subroutine ip_setup_bar() ! this subroutine exists purely so we can call tp_setup_bar instead of tp_setup
+        use dmpotent, only: dm_setup
+        use triaxpotent, only: tp_setup_bar
+        use initial_parameters, only: conversion_factor
+        integer(kind=i4b) :: error
+
+        error = 1
+
+        allocate (grid(3, nphi, ntheta, nradius))
+
+        call tp_setup_bar()
+        call dm_setup()
+        call ip_read(error)
+        if (error == 0) call ip_testaccuracy(error)
+        if (error /= 0) then
+            call ip_setup_grid()
+            call ip_save()
+            call ip_testaccuracy(error)
+            if (error /= 0) stop "failed to setup interpolation grid"
+        end if
+
+        print *, "  * Potential interpolation setup"
+    end subroutine ip_setup_bar
+
 
     subroutine ip_stop()
         use dmpotent, only: dm_stop

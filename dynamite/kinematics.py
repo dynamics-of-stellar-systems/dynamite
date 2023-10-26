@@ -1,5 +1,6 @@
 import numpy as np
 from scipy import special, stats
+from scipy.optimize import curve_fit
 from astropy import table
 import logging
 import os
@@ -641,6 +642,7 @@ class Histogram(object):
 
     """
     def __init__(self, xedg=None, y=None, normalise=False):
+        self.logger = logging.getLogger(f'{__name__}.{__class__.__name__}')
         self.xedg = xedg
         self.x = (xedg[:-1] + xedg[1:])/2.
         self.dx = xedg[1:] - xedg[:-1]
@@ -733,6 +735,49 @@ class Histogram(object):
         var /= norm
         sigma = var**0.5
         return sigma
+
+    def get_mean_sigma_gaussfit(self):
+        """Get the mean velocity and velocity dispersion from fitted Gaussians
+
+        Returns
+        -------
+        array shape (n_orbits, n_apertures)
+            mean velocity of losvd
+        array shape (n_orbits, n_apertures)
+            velocity dispersion of losvd
+
+        """
+        v_mean = self.get_mean() # starting values for fit
+        v_sigma = self.get_sigma() # starting values for fit
+        def gauss(x, a, mean, sigma):
+            return a*np.exp(-(x-mean)**2/(2.*sigma**2))
+        for orbit in range(self.y.shape[0]):
+            for aperture in range(self.y.shape[-1]):
+                err_msg=f'{orbit=}, {aperture=}: mean or sigma is nan.'
+                if not (np.isnan(v_mean[orbit,aperture]) or
+                        np.isnan(v_sigma[orbit,aperture])): # nan?
+                    p_initial = [1/(v_sigma[orbit,aperture]*np.sqrt(2*np.pi)),
+                                 v_mean[orbit,aperture],
+                                 v_sigma[orbit,aperture]]
+                    try:
+                        p_opt, _ = curve_fit(gauss,
+                                             self.x,
+                                             self.y[orbit,:,aperture],
+                                             p0=p_initial,
+                                             method='trf')
+                    except:
+                        self.logger.warning(f'{err_msg} Gaussfit failed. '
+                            'Check data. Histogram moments '
+                            f'suggested mean={v_mean[orbit,aperture]}, '
+                            f'sigma={v_sigma[orbit,aperture]}.')
+                        v_mean[orbit,aperture] = np.nan # overwrite v_mean
+                        v_sigma[orbit,aperture] = np.nan # overwrite v_sigma
+                    else:
+                        v_mean[orbit,aperture] = p_opt[1] # overwrite v_mean
+                        v_sigma[orbit,aperture] = p_opt[2] # overwrite v_sigma
+                else:
+                    self.logger.info(f'{err_msg}')
+        return v_mean, v_sigma
 
 class BayesLOSVD(Kinematics, data.Integrated):
     """Bayes LOSVD kinematic data
@@ -1007,8 +1052,6 @@ class BayesLOSVD(Kinematics, data.Integrated):
         aperture_file.write(string)
         string = '\t{0}\t{1} \n'.format(nx, ny)
         aperture_file.write(string)
-        string = ' aperture = -(hst_pa) + 90 \n'
-        aperture_file.write(string)
         aperture_file.close()
         # Write bins.dat file
         ix = np.digitize(x, x_edg)
@@ -1099,7 +1142,7 @@ class BayesLOSVD(Kinematics, data.Integrated):
             scale factor to divide the data velocity spacing
 
         Returns
-        ----------
+        -------
         Sets the result to attribute `self.hist_bins`
 
         """
@@ -1125,7 +1168,7 @@ class BayesLOSVD(Kinematics, data.Integrated):
             directly.
 
         Returns
-        ----------
+        -------
         Sets the result to attribute `self.hist_bins`
 
         """

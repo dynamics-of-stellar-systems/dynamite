@@ -1,23 +1,24 @@
 import logging
 import subprocess
 import sys
-import numpy as np
 import os
+from copy import deepcopy
+import numpy as np
 import scipy.integrate
 from scipy.special import erf
 from scipy.interpolate import UnivariateSpline
 from scipy.sparse import csr_matrix
 from scipy.sparse.csgraph import maximum_bipartite_matching
-from copy import deepcopy
 import matplotlib as mpl
 from matplotlib.ticker import MaxNLocator, FixedLocator,LogLocator
 from matplotlib.ticker import NullFormatter
 import matplotlib.pyplot as plt
+import astropy
 from plotbin import display_pixels
-from dynamite import constants as const
+import dynamite
 from dynamite import kinematics
-from dynamite import weight_solvers
 from dynamite import physical_system as physys
+from dynamite import analysis
 import cmasher as cmr
 class ReorderLOSVDError(Exception):
     pass
@@ -237,7 +238,7 @@ class Plotter():
                 ax = plt.subplot(nnofix-1, nnofix-1, pltnum)
 
                 plt.plot(val[nofix_name[i]],val[nofix_name[j]], 'D',
-                         color='black', markersize=4)
+                         color='gray', markersize=4)
 
                 for k in range(nf - 1, -1, -1):
                     if val['chi2t'][k]/chlim<=3: #only significant chi2 values
@@ -280,6 +281,14 @@ class Plotter():
                     if nofix_islog[j]:
                         ax.set_yscale('log')
                 else:
+                    if nofix_islog[i]:
+                        ax.set_xscale('log')
+                        if  max(val[nofix_name[i]])/min(val[nofix_name[i]]) > 100:
+                            ax.xaxis.set_major_locator(LogLocator(base=10,numticks=3))
+                        else:
+                            ax.xaxis.set_major_locator(MaxNLocator(nbins=3, prune='lower'))
+                    if nofix_islog[j]:
+                        ax.set_yscale('log')
                     ax.xaxis.set_major_formatter(NullFormatter())
 
                 if i==0:
@@ -300,6 +309,10 @@ class Plotter():
                         ax.set_yticklabels([label_format.format(x).replace('e+0','e') for x in ticks_loc],fontsize=fontsize)
                     ax.yaxis.set_tick_params(labelsize=fontsize)
                 else:
+                    if nofix_islog[i]:
+                        ax.set_xscale('log')
+                    if nofix_islog[j]:
+                        ax.set_yscale('log')
                     ax.yaxis.set_major_formatter(NullFormatter())
 
                 ax.xaxis.set_minor_formatter(NullFormatter())
@@ -422,18 +435,13 @@ class Plotter():
         ws_type = self.settings.weight_solver_settings['type']
 
         if kin_type is kinematics.GaussHermite:
-            if ws_type == 'LegacyWeightSolver':
-                if cbar_lims=='default':
-                    cbar_lims = 'data'
-                fig = self._plot_kinematic_maps_gaussherm(
-                    model,
-                    kin_set,
-                    cbar_lims=cbar_lims,
-                    **kwargs)
-            else:
-                self.logger.info(f'Gauss Hermite kinematic maps can only be '
-                                 'plotted if LegacyWeightSolver is used')
-                fig = plt.figure(figsize=(27, 12))
+            if cbar_lims=='default':
+                cbar_lims = 'data'
+            fig = self._plot_kinematic_maps_gaussherm(
+                model,
+                kin_set,
+                cbar_lims=cbar_lims,
+                **kwargs)
         elif kin_type is kinematics.BayesLOSVD:
             if cbar_lims=='default':
                 cbar_lims = [0,3]
@@ -445,6 +453,7 @@ class Plotter():
 
         figname = self.plotdir + f'kinematic_map_{kin_name}' + figtype
         fig.savefig(figname, dpi=300)
+        self.logger.info(f'Kinematic map written to {figname}.')
         return fig
 
     def _plot_kinematic_maps_bayeslosvd(self,
@@ -699,34 +708,53 @@ class Plotter():
                    ncol=2)
         return fig
 
-    def _plot_kinematic_maps_gaussherm(self, model, kin_set, cbar_lims='data'):
+    def _plot_kinematic_maps_gaussherm(self,
+                                       model,
+                                       kin_set,
+                                       v_sigma_option='fit',
+                                       cbar_lims='data'):
+        v_sigma_options = ['moments', 'fit']
+        if v_sigma_option not in v_sigma_options:
+            text = 'v_sigma_option must be in {v_sigma_options}, ' \
+                   f'not {v_sigma_option}.'
+            self.logger.error(text)
+            raise ValueError(text)
+
+        # get the model's projected masses=flux and kinematic data
+        a = analysis.Analysis(config=self.config, model=model, kin_set=kin_set)
+        model_gh_coef = \
+            a.get_gh_model_kinematic_maps(v_sigma_option=v_sigma_option)
+
+        # get the observed projected masses and kinematic data
         stars = \
           self.system.get_component_from_class(physys.TriaxialVisibleComponent)
-        kinem_fname = model.directory + 'nn_kinem.out'
-        body_kinem = np.genfromtxt(kinem_fname, skip_header=1)
+        kinematics_data = stars.kinematic_data[kin_set].data
+        # pick out the projected masses only for this kinematic set
+        flux=stars.mge_lum.get_projected_masses_from_file(model.directory_noml)
+        ap_idx_range_start = \
+            sum([len(stars.kinematic_data[i].data) for i in range(kin_set)])
+        ap_idx_range_end = ap_idx_range_start + len(kinematics_data)
+        flux = flux[ap_idx_range_start:ap_idx_range_end]
 
-        first_bin = sum(k.n_apertures for k in stars.kinematic_data[:kin_set])
-        n_bins = stars.kinematic_data[kin_set].n_apertures
-        body_kinem = body_kinem[first_bin:first_bin+n_bins]
-        self.logger.debug(f'kin_set={kin_set}, plotting bins '
-                          f'{first_bin} through {first_bin+n_bins-1}')
+        fluxm = np.array(model_gh_coef['flux'])
+        vel = np.array(kinematics_data['v'])
+        dvel = np.array(kinematics_data['dv'])
+        velm = np.array(model_gh_coef['v'])
+        sig = np.array(kinematics_data['sigma'])
+        dsig = np.array(kinematics_data['dsigma'])
+        sigm = np.array(model_gh_coef['sigma'])
+        h = {}
+        dh = {}
+        hm = {}
+        for i in range(3,self.settings.weight_solver_settings['number_GH']+1):
+            h[i] = np.array(kinematics_data[f'h{i}'])
+            dh[i] = np.array(kinematics_data[f'dh{i}'])
+            hm[i] = np.array(model_gh_coef[f'h{i}'])
 
-        if self.settings.weight_solver_settings['number_GH'] == 2:
-            id_num, flux, fluxm, velm, vel, dvel, sigm, sig, dsig = body_kinem.T
-
-            #to not need to change the plotting routine below, higher moments are set to 0
-            h3m, h3, dh3, h4m, h4, dh4 = vel*0, vel*0, vel*0+0.4, vel*0, vel*0, vel*0+0.4
-
-        if self.settings.weight_solver_settings['number_GH'] == 4:
-            id_num, flux, fluxm, velm, vel, dvel, sigm, sig, dsig, h3m, h3, dh3, h4m, h4, dh4 = body_kinem.T
-
-        if self.settings.weight_solver_settings['number_GH'] == 6:
-            id_num, flux, fluxm, velm, vel, dvel, sigm, sig, dsig, h3m, h3, dh3, h4m, h4, dh4, h5m, h5, dh5, h6m, h6, dh6 = body_kinem.T
-
-            #still ToDO: Add the kinematic map plots for h5 and h6
+        #still ToDO: Add the kinematic map plots for h5 and h6 below
 
         text = '`cbar_lims` must be one of `model`, `data` or `combined`'
-        if not cbar_lims in ['model', 'data', 'combined']:
+        if cbar_lims not in ['model', 'data', 'combined']:
             self.logger.error(text)
             raise AssertionError(text)
         if cbar_lims=='model':
@@ -740,80 +768,35 @@ class Plotter():
             h3max, h3min = 0.15, -0.15
             h4max, h4min = 0.15, -0.15
             if h4max == h4min:
-                h4max, h4min = np.max(h4m), np.min(h4m)
+                h4max, h4min = np.max(hm[4]), np.min(hm[4])
         elif cbar_lims=='combined':
             tmp = np.hstack((velm, vel))
             vmax = np.max(np.abs(tmp))
             tmp = np.hstack((sigm, sig))
             smax, smin = np.max(tmp), np.min(tmp)
-            tmp = np.hstack((h3m, h3))
+            tmp = np.hstack((hm[3], h[3]))
             h3max, h3min = np.max(tmp), np.min(tmp)
-            tmp = np.hstack((h4m, h4))
+            tmp = np.hstack((hm[4], h[4]))
             h4max, h4min = np.max(tmp), np.min(tmp)
         else:
             self.logger.error('unknown choice of `cbar_lims`')
 
-        # Read aperture.dat
-        # The angle that is saved in this file is measured counter clock-wise
-        # from the galaxy major axis to the X-axis of the input data.
+        # get aperture and bin data
 
-        aperture_fname = stars.kinematic_data[kin_set].aperturefile
-        aperture_fname = self.input_directory + aperture_fname
-
-        lines = [line.rstrip('\n').split() for line in open(aperture_fname)]
-        minx = float(lines[1][0])
-        miny = float(lines[1][1])
-        sx = float(lines[2][0])
-        sy = float(lines[2][1])
-        sy = sy + miny
-        angle_deg = float(lines[3][0])
-        nx = int(lines[4][0])
-        ny = int(lines[4][1])
-        dx = sx / nx
-
-        self.logger.debug(f"Pixel grid dimension is dx={dx},nx={nx},ny={ny}")
-        grid = np.zeros((nx, ny), dtype=int)
-
-        xr = np.arange(nx, dtype=float) * dx + minx + 0.5 * dx
-        yc = np.arange(ny, dtype=float) * dx + miny + 0.5 * dx
-
-        xi = np.outer(xr, (yc * 0 + 1))
-        xt = xi.T.flatten()
-        yi = np.outer((xr * 0 + 1), yc)
-        yt = yi.T.flatten()
-
+        dp_args = stars.kinematic_data[kin_set].dp_args
+        x = dp_args['x']
+        y = dp_args['y']
+        dx = dp_args['dx']
+        grid = dp_args['idx_bin_to_pix']
+        angle_deg = dp_args['angle']
+        self.logger.debug(f"Pixel grid dimension is {dx=}, "
+                          f"{len(x)=}, {len(y)=}.")
         self.logger.debug(f'PA: {angle_deg}')
-        xi = xt
-        yi = yt
 
-        # read bins.dat
-
-        bin_fname = stars.kinematic_data[kin_set].binfile
-        bin_fname = self.input_directory + bin_fname
-        lines_bins = [line.rstrip('\n').split() for line in open(bin_fname)]
-        i = 0
-        str_head = []
-        i_var = []
-        grid = []
-        while i < len(lines_bins):
-            for x in lines_bins[i]:
-                if i == 0:
-                    str_head.append(str(x))
-                if i == 1:
-                    i_var.append(int(x))
-                if i > 1:
-                    grid.append(int(x))
-            i += 1
-        str_head = str(str_head[0])
-        i_var = int(i_var[0])
-        grid = np.ravel(np.array(grid))
-
-        # bins start counting at 1 in fortran and at 0 in idl:
-        grid = grid - 1
-
-        # Only select the pixels that have a bin associated with them.
+        # # Only select the pixels that have a bin associated with them.
         s = np.ravel(np.where((grid >= 0)))
-        fhist, fbinedge = np.histogram(grid[s], bins=len(flux))
+        fhist, _ = np.histogram(grid[s], bins=len(flux))
+        self.logger.debug(f'{flux.shape=}, {fluxm.shape=}, {fhist.shape=}')
         flux = flux / fhist
         fluxm = fluxm / fhist
 
@@ -849,7 +832,6 @@ class Plotter():
                                  nticks=7,
                                  #cmap='sauron')
                                  cmap=map2)
-        x, y = xi[s], yi[s]
 
         ### PLOT THE REAL DATA
         ax1 = plt.subplot(3, 5, 1)
@@ -869,12 +851,12 @@ class Plotter():
                                           **kw_display_pixels1)
         ax3.set_title('velocity dispersion',fontsize=20, pad=20)
         ax4 = plt.subplot(3, 5, 4)
-        display_pixels.display_pixels(x, y, h3[grid[s]],
+        display_pixels.display_pixels(x, y, h[3][grid[s]],
                                           vmin=h3min, vmax=h3max,
                                           **kw_display_pixels)
         ax4.set_title(r'$h_{3}$ moment',fontsize=20, pad=20)
         ax5 = plt.subplot(3, 5, 5)
-        display_pixels.display_pixels(x, y, h4[grid[s]],
+        display_pixels.display_pixels(x, y, h[4][grid[s]],
                                           vmin=h4min, vmax=h4max,
                                           **kw_display_pixels)
         ax5.set_title(r'$h_{4}$ moment',fontsize=20, pad=20)
@@ -894,11 +876,11 @@ class Plotter():
                                           vmin=smin, vmax=smax,
                                           **kw_display_pixels1)
         plt.subplot(3, 5, 9)
-        display_pixels.display_pixels(x, y, h3m[grid[s]],
+        display_pixels.display_pixels(x, y, hm[3][grid[s]],
                                           vmin=h3min, vmax=h3max,
                                           **kw_display_pixels)
         plt.subplot(3, 5, 10)
-        display_pixels.display_pixels(x, y, h4m[grid[s]],
+        display_pixels.display_pixels(x, y, hm[4][grid[s]],
                                           vmin=h4min, vmax=h4max,
                                           **kw_display_pixels)
 
@@ -926,12 +908,12 @@ class Plotter():
                                           vmin=-10, vmax=10,
                                           **kw_display_pixels)
         plt.subplot(3, 5, 14)
-        c = (h3m[grid[s]] - h3[grid[s]]) / dh3[grid[s]]
+        c = (hm[3][grid[s]] - h[3][grid[s]]) / dh[3][grid[s]]
         display_pixels.display_pixels(x, y, c,
                                           vmin=-10, vmax=10,
                                           **kw_display_pixels)
         plt.subplot(3, 5, 15)
-        c = (h4m[grid[s]] - h4[grid[s]]) / dh4[grid[s]]
+        c = (hm[4][grid[s]] - h[4][grid[s]]) / dh[4][grid[s]]
         display_pixels.display_pixels(x, y, c,
                                           vmin=-10, vmax=10,
                                           **kw_display_pixels)
@@ -1076,12 +1058,12 @@ class Plotter():
         if (np.max(qintr - pintr) > 0): res=0
         if (np.min(qintr) <= 0.0) : res=0
 
-        if (res == 1):
-            pintr2 = pintr
-            qintr2 = qintr
-            uintr2 = 1./(np.sqrt(qobs/np.sqrt((pintr*np.cos(theta_view))**2 +
-                     (qintr*np.sin(theta_view))**2*
-                     ((pintr*np.cos(phi_view))**2 + np.sin(phi_view)**2))))
+        #if (res == 1):
+        pintr2 = pintr
+        qintr2 = qintr
+        uintr2 = 1./(np.sqrt(qobs/np.sqrt((pintr*np.cos(theta_view))**2 +
+                                          (qintr*np.sin(theta_view))**2*
+                                          ((pintr*np.cos(phi_view))**2 + np.sin(phi_view)**2))))
 
         return  pintr2, qintr2, uintr2
 
@@ -1329,12 +1311,14 @@ class Plotter():
             t.add_index(which_chi2)
             model_id = t.loc_indices[min_chi2]
             model = self.all_models.get_model_from_row(model_id)
+            self.logger.debug(f'Using model {model_id} in {model.directory}.')
 
-        mdir = model.directory
-        mdir_noml = mdir[:mdir[:-1].rindex('/')+1]
+        orblib = model.get_orblib()
+        _ = model.get_weights(orblib)
+        orbw = model.weights
 
-        file2 = mdir_noml + 'datfil/orblib.dat_orbclass.out'
-        file3 = mdir_noml + 'datfil/orblibbox.dat_orbclass.out'
+        file2 = model.directory_noml + 'datfil/orblib.dat_orbclass.out'
+        file3 = model.directory_noml + 'datfil/orblibbox.dat_orbclass.out'
         file3_test = os.path.isfile(file3)
         if not file3_test:
             file3= '%s' % file2
@@ -1350,14 +1334,8 @@ class Plotter():
 
         norb = int(nre*nrth*nrrad)
         ncol=int(ndither**3)
-        orbclass1 = np.genfromtxt(file2).T
-        orbclass1 = orbclass1.reshape((5,ncol,norb), order='F')
-        orbclass2 = np.genfromtxt(file3).T
-        orbclass2 = orbclass1.reshape((5,ncol,norb), order='F')
-
-        orblib = model.get_orblib()
-        _ = model.get_weights(orblib)
-        orbw = model.weights
+        orbclass1 = orblib.read_orbit_property_file_base(file2, ncol, norb)
+        orbclass2 = orblib.read_orbit_property_file_base(file3, ncol, norb)
 
         orbclass=np.dstack((orbclass1,orbclass1,orbclass2))
         orbclass1a=np.copy(orbclass1)
@@ -1455,27 +1433,33 @@ class Plotter():
                         midpoint=0.5,
                         stop=1.0,
                         name='shiftedcmap'):
-        '''
+        """
         Function to offset the "center" of a colormap. Useful for
         data with a negative min and positive max and you want the
         middle of the colormap's dynamic range to be at zero.
 
-        Input
-        -----
-          cmap : The matplotlib colormap to be altered
-          start : Offset from lowest point in the colormap's range.
+        Parameters
+        ----------
+        cmap : The matplotlib colormap to be altered
+        start : Offset from lowest point in the colormap's range.
               Defaults to 0.0 (no lower offset). Should be between
               0.0 and `midpoint`.
-          midpoint : The new center of the colormap. Defaults to
+        midpoint : The new center of the colormap. Defaults to
               0.5 (no shift). Should be between 0.0 and 1.0. In
               general, this should be  1 - vmax / (vmax + abs(vmin))
               For example if your data range from -15.0 to +5.0 and
               you want the center of the colormap at 0.0, `midpoint`
               should be set to  1 - 5/(5 + 15)) or 0.75
-          stop : Offset from highest point in the colormap's range.
+        stop : Offset from highest point in the colormap's range.
               Defaults to 1.0 (no upper offset). Should be between
               `midpoint` and 1.0.
-        '''
+        name : The name of the new colormap, the default is 'shiftedcmap'.
+
+        Returns
+        -------
+        newcmap : The new colormap.
+
+        """
         cdict = {
             'red': [],
             'green': [],
@@ -1691,6 +1675,8 @@ class Plotter():
         Solid lines and shaded areas represent the mean and standard
         deviation of the anisotropy of models having parameters in a
         confidence region around the minimum chisquare.
+
+        Currently, this method only works with the ``LegacyWeightSolver``.
 
         Parameters
         ----------
@@ -2061,3 +2047,206 @@ class Plotter():
             shell=True, check=True).stdout.decode('utf-8'). \
             split(sep='\n')[0].split()[-1]
         return v
+
+#############################################################################
+########################   More Plotting Routines  ##########################
+#############################################################################
+
+    def orbit_distribution(self,
+                           model=None,
+                           minr=None,
+                           maxr=None,
+                           nr=50,
+                           nl=61,
+                           equal_weighted_orbits=False,
+                           orientation='horizontal',
+                           figtype='.png',
+                           subset='all',
+                           getdata=False):
+        """Make the orbit distibution plot
+
+        Plots a model's orbit distribution in (radius, circularity) space.
+        Orbits are split by type: [long, short, intermediate]-axis tubes and
+        box orbits (classification is handled by ``orblib.classify_orbits``).
+        Each orbit only contributes to the appropriate distribution, e.g. box
+        orbits *only* appear in the box-orbit panel. Compared to older versions
+        of orbit distibution plots, this means that there is now no "stripe" at
+        ``lmd_z=0``, since any non short-axis tubes have been moved to their own
+        panel. The fraction of orbits in each type is added as title. Note that
+        individual orbits now contribute a point to the distibution, rather
+        than a single point per orbit-bundle. This means that - if
+        ``dithering>1`` - the orbit distributions are sampled better compared
+        to previous versions.
+
+        Parameters
+        ----------
+        model : optional, a dynamite.model.Model object
+            Determines which model is used for the plot. If ``None``, the
+            minimum chi^2 model is used (the setting in the configuration
+            file's parameter settings is used to determine which chi^2 is used).
+        minr : float, optional
+            the minimum radius [kpc] to show in the plot. If ``None``, this is
+            set to the minimum radius of the orbit library
+        maxr : float, optional
+            the maximum radius [kpc] to show in the plot. If ``None``, this is
+            set to the minimum radius of the orbit library
+        nr : int, optional
+            number of radial bins, by default 50
+        nl : int, optional
+            number of circularity bins, by default 61
+        equal_weighted_orbits : bool, optional
+           weight all orbit bundels equally, instead of using the model's
+           best-fitting weights. Useful to see the distributiuon of the full
+           orbit libary, by default ``False``
+        orientation : str, optional
+            arrange panels ``'horizontal'`` or ``'vertical'``,
+            by default ``'horizontal'``
+        figtype : str, optional
+            file type extension to save the plot, by default ``'.png'``
+        subset : str, optional
+            either ``'all'`` or any combination of ``['long', 'short',
+            'intermediate', 'box']`` separated by ``'+'`` e.g. ``'long+box'``,
+            ``'box+short+intermediate'``. Any order works, but the order does
+            not affect the order of plots. By default ``'all'``
+        getdata : bool, optional
+            whether to return the orbit distribtuion data plotted in the plot,
+            by default ``False``
+
+        Returns
+        -------
+        `mpl.Figure` or a tuple (`mpl.Figure`, np.array) if ``getdata=True``
+            the figure object, and (if ``getdata=True``) a 3D array where the
+            1st dimension indexes over 4 orbit types (long, int., short, box),
+            2nd over radii, 3rd over circularities.
+
+        Raises
+        ------
+        NotImplementedError
+            if ``orientation`` is invalid
+        ValueError
+            if orbit classes don't match the projection tensor or orbit class
+            names are invalid
+        """
+        if model is None:
+            model_id = self.all_models.get_best_n_models_idx(n=1)[0]
+            model = self.all_models.get_model_from_row(model_id)
+            self.logger.debug(f'Using model {model_id} in {model.directory}.')
+        if orientation not in ['horizontal', 'vertical']:
+            raise NotImplementedError(f"Unknown orientation {orientation}, "
+                                      f"must be 'horizontal' or 'vertical'.")
+        orblib = model.get_orblib()
+        orblib.get_projection_tensor(minr=minr, maxr=maxr, nr=nr, nl=nl)
+        if equal_weighted_orbits:
+            n_bundles = orblib.projection_tensor.shape[-1]
+            weights = np.ones(n_bundles)/n_bundles
+        else:
+            weight_solver = model.get_weights(orblib)
+            weights, _, _, _ = weight_solver.solve(orblib)
+        mod_orb_dists = orblib.projection_tensor.dot(weights)
+        mod_orbclass_fracs = np.sum(mod_orb_dists, (1,2))
+        mod_orbclass_fracs = mod_orbclass_fracs/np.sum(mod_orbclass_fracs)
+        # get orbit classes to plot
+        # Note: the order of the orbit classes in orb_classes below must match
+        # the order in the projection_tensor and mod_orb_dists!
+        def frac_to_pc_str(x):
+            return f'{100.*x:.1f}%'
+        orb_classes = [{'name':'long',
+                        'plot':True,
+                        'label':'$\lambda_x$',
+                        'title':f'Long axis tubes: {frac_to_pc_str(mod_orbclass_fracs[0])}'},
+                       {'name':'intermediate',
+                        'plot':True,
+                        'label':'$\lambda_y$',
+                        'title':f'Int. axis tubes: {frac_to_pc_str(mod_orbclass_fracs[1])}'},
+                       {'name':'short',
+                        'plot':True,
+                        'label':'$\lambda_z$',
+                        'title':f'Short axis tubes: {frac_to_pc_str(mod_orbclass_fracs[2])}'},
+                       {'name':'box',
+                        'plot':True,
+                        'label':'$\lambda_\mathrm{tot}$',
+                        'title':f'Box: {frac_to_pc_str(mod_orbclass_fracs[3])}'}]
+        if len(orb_classes) != mod_orb_dists.shape[0]:
+            raise ValueError('Orbit class mismatch with projection tensor.')
+        elif not all(subset_class in [oc['name'] for oc in orb_classes]+['all']
+                     for subset_class in subset.split(sep='+')):
+            raise ValueError('Orbit class subset mismatch.')
+        if subset != 'all':
+            for orb_class in orb_classes:
+                if orb_class['name'] not in subset.split(sep='+'):
+                    orb_class['plot'] = False
+        n_plots = sum(orb_class['plot'] for orb_class in orb_classes)
+        self.logger.info('Plotting orbit distribution for orbit '
+                         f'classes {subset}: {n_plots} subplot(s).')
+        # plotting utilities
+        vmax = max(np.amax(mod_orb_dists[i]) for i in range(len(orb_classes))
+                                             if orb_classes[i]['plot'])
+        kwimshow = {'aspect':'auto',
+                    'cmap':'magma_r',
+                    'interpolation':'none',
+                    'vmax':vmax}
+        ranges = orblib.projection_tensor_rng
+        log10_r_rng = ranges['log10_r_rng']
+        lmd_rng = ranges['lmd_rng']
+        tot_lmd_rng = ranges['tot_lmd_rng']
+        # make plot
+        r_label = '$\log_{10} (r/\mathrm{kpc})$'
+        fig_size = 15 * n_plots/len(orb_classes)
+        self.logger.info(f'{fig_size=}.')
+        if orientation == 'horizontal':
+            fig, ax = plt.subplots(1, n_plots,
+                                   figsize=(fig_size+1, 5),
+                                   sharey=True)
+            if n_plots == 1:
+                ax = [ax]
+            ax[0].set_ylabel(r_label)
+            plot_idx = 0
+            for orb_class_idx, orb_class in enumerate(orb_classes):
+                if orb_class['plot']:
+                    plot_data = np.flipud(mod_orb_dists[orb_class_idx])
+                    if orb_class['name'] == 'box':
+                        extent = tot_lmd_rng+log10_r_rng
+                    else:
+                        extent = lmd_rng+log10_r_rng
+                    cax = ax[plot_idx].imshow(plot_data,
+                                              extent=extent,
+                                              **kwimshow)
+                    ax[plot_idx].set_xlabel(orb_class['label'])
+                    ax[plot_idx].set_title(orb_class['title'])
+                    plot_idx += 1
+            fig.tight_layout()
+            fig.colorbar(cax, ax=ax, orientation='vertical', pad=0.03)
+        elif orientation == 'vertical':
+            fig, ax = plt.subplots(n_plots, 1,
+                                   figsize=(5, fig_size+1),
+                                   sharex=True)
+            if n_plots == 1:
+                ax = [ax]
+            ax[-1].set_xlabel(r_label)
+            plot_idx = 0
+            for orb_class_idx, orb_class in enumerate(orb_classes):
+                if orb_class['plot']:
+                    plot_data = np.flipud(mod_orb_dists[orb_class_idx].T)
+                    if orb_class['name'] == 'box':
+                        extent = log10_r_rng+tot_lmd_rng
+                    else:
+                        extent = log10_r_rng+lmd_rng
+                    cax = ax[plot_idx].imshow(plot_data,
+                                              extent=extent,
+                                              **kwimshow)
+                    # ax[plot_idx].set_xlabel(r_label)
+                    ax[plot_idx].set_ylabel(orb_class['label'])
+                    ax[plot_idx].set_title(orb_class['title'])
+                    plot_idx += 1
+            fig.tight_layout()
+            fig.colorbar(cax, ax=ax, orientation='horizontal', pad=0.15/n_plots)
+        else:
+            raise NotImplementedError(f'Unknown orientation {orientation}.')
+        # format and save
+        figname = self.plotdir + 'orbit_distribution' + figtype
+        fig.savefig(figname)
+        self.logger.info(f'Plot {figname} saved in {self.plotdir}')
+        if getdata:
+            return mod_orb_dists, fig
+        else:
+            return fig
