@@ -847,7 +847,8 @@ class Configuration(object):
         Validates the system and settings.
 
         This includes aligning the number of gh coefficients with the config
-        file setting number_GH for Gauss Hermite kinematics.
+        file setting `number_GH` for Gauss Hermite kinematics and also applies
+        the weight solver settings' systematic errors to the kinematics.
 
         This method is still VERY rudimentary and will be adjusted as we add new
         functionality to dynamite. Currently, this method is geared towards
@@ -914,7 +915,10 @@ class Configuration(object):
                         if check_gh:
                             # In case number_GH != #gh components in kin file...
                             kin_data.adjust_gh_data_to_coefficient_number(
-                                self.settings.weight_solver_settings['number_GH'])
+                                self.settings.weight_solver_settings)
+                            # Calculate kinemtic data including systematic err
+                            kin_data.calculate_data_sys_err(
+                                self.settings.weight_solver_settings)
                 else:
                     self.logger.error('VisibleComponent must have kinematics: '
                                       'either GaussHermite or BayesLOSVD')

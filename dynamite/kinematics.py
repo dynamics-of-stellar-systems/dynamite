@@ -145,10 +145,11 @@ class GaussHermite(Kinematics, data.Integrated):
         super().__init__(**kwargs)
         self.logger = logging.getLogger(f'{__name__}.{__class__.__name__}')
         if hasattr(self, 'data'):
+            self.data_sys_err = None
             self.max_gh_order = self.get_highest_order_gh_coefficient()
             self.n_apertures = len(self.data)
 
-    def adjust_gh_data_to_coefficient_number(self, number_GH):
+    def adjust_gh_data_to_coefficient_number(self, weight_solver_settings):
         """Adjust kinematics file columns to configured `number_GH` parameter
 
         If number_GH (configuration file) > max_GH_order (number of gh
@@ -160,15 +161,15 @@ class GaussHermite(Kinematics, data.Integrated):
 
         Parameters
         ----------
-        number_GH : int
-            Desired number of gh coefficients as given in the configuration
-            file.
+        weight_solver_settings : dict
+            Configuration.settings.weight_solver_settings object
 
         Returns
         -------
         None.
 
         """
+        number_GH = weight_solver_settings['number_GH']
         if number_GH > self.max_gh_order:
             cols_to_add = [f'{d}h{i+1}'
                            for i in range(self.max_gh_order, number_GH)
@@ -185,6 +186,47 @@ class GaussHermite(Kinematics, data.Integrated):
             self.data.remove_columns(cols_to_remove)
             self.max_gh_order = self.get_highest_order_gh_coefficient()
             self.logger.info(f'Removed gh columns {cols_to_remove}.')
+
+    def calculate_data_sys_err(self, weight_solver_settings):
+        """Create `self.data_sys_err` with GH systematic errors applied
+
+        Applies the systematic uncertainties to the dh3, dh4, ... values and
+        calculates the h1, h2 uncertainties from vdMarel + Franx 93.
+        `self.data_sys_err `is a deep copy of `self.data` with updated
+        uncertainty columns.
+
+        Parameters
+        ----------
+        weight_solver_settings : dict
+            Configuration.settings.weight_solver_settings object
+
+        Returns
+        -------
+        None.
+
+        """
+        self.data_sys_err = self.data.copy(copy_data=True)
+        # construct uncertainties
+        uncertainties = np.zeros((self.n_apertures, self.max_gh_order))
+        # uncertainties on h1,h2 from vdMarel + Franx 93
+        uncertainties[:,0] = self.data['dv']/np.sqrt(2)/self.data['sigma']
+        uncertainties[:,1] = self.data['dsigma']/np.sqrt(2)/self.data['sigma']
+        # uncertainties h3, h4, etc... are taken from data table
+        for i in range(3, self.max_gh_order+1):
+            uncertainties[:,i-1] = self.data[f'dh{i}']
+        # add the systematic uncertainties
+        systematics = weight_solver_settings['GH_sys_err']
+        if type(systematics) is str:
+            systematics = systematics.split(' ')
+            systematics = [float(x) for x in systematics]
+        systematics = np.array(systematics)
+        systematics = systematics[0:self.max_gh_order]
+        uncertainties = (uncertainties**2. + systematics**2.)**0.5
+        self.data_sys_err['dv'] = uncertainties[:,0]
+        self.data_sys_err['dsigma'] = uncertainties[:,1]
+        for i in range(3, self.max_gh_order+1):
+            self.data_sys_err[f'dh{i}'] = uncertainties[:,i-1]
+        self.logger.debug('Applied systematic errors and h1, h2 uncertainties.')
 
     def get_highest_order_gh_coefficient(self, max_gh_check=20):
         """Get max order GH coeeff from data table
@@ -582,35 +624,26 @@ class GaussHermite(Kinematics, data.Integrated):
         -------
         tuple
             (observed_values, uncertainties), where:
-            - observed_values is array of GH exapnsion coefficients of shape
+            - observed_values is array of GH expansion coefficients of shape
             (n_apertures, max_gh_order)
-            - uncertainties is array of uncertainties on GH exapnsion
+            - uncertainties is array of uncertainties on GH expansion
             coefficients of shape (n_apertures, max_gh_order)
 
         """
-        max_gh_order = weight_solver_settings['number_GH']
         # construct observed values
-        observed_values = np.zeros((self.n_apertures, max_gh_order))
+        observed_values = np.zeros((self.n_apertures, self.max_gh_order))
         # h1, h2 = 0, 0
         # h3, h4, etc... are taken from the data table
-        for i in range(3, max_gh_order+1):
-            observed_values[:,i-1] = self.data[f'h{i}']
+        for i in range(3, self.max_gh_order+1):
+            observed_values[:,i-1] = self.data_sys_err[f'h{i}']
         # construct uncertainties
         uncertainties = np.zeros_like(observed_values)
         # uncertainties on h1,h2 from vdMarel + Franx 93
-        uncertainties[:,0] = self.data['dv']/np.sqrt(2)/self.data['sigma']
-        uncertainties[:,1] = self.data['dsigma']/np.sqrt(2)/self.data['sigma']
+        uncertainties[:,0] = self.data_sys_err['dv']
+        uncertainties[:,1] = self.data_sys_err['dsigma']
         # uncertainties h3, h4, etc... are taken from data table
-        for i in range(3, max_gh_order+1):
-            uncertainties[:,i-1] = self.data[f'dh{i}']
-        # add the systematic uncertainties
-        systematics = weight_solver_settings['GH_sys_err']
-        if type(systematics) is str:
-            systematics = systematics.split(' ')
-            systematics = [float(x) for x in systematics]
-        systematics = np.array(systematics)
-        systematics = systematics[0:max_gh_order]
-        uncertainties = (uncertainties**2. + systematics**2.)**0.5
+        for i in range(3, self.max_gh_order+1):
+            uncertainties[:,i-1] = self.data_sys_err[f'dh{i}']
         return observed_values, uncertainties
 
     def set_default_hist_width(self, n_sig=3.):

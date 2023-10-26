@@ -161,7 +161,7 @@ weight_solver_settings:
     # nnls_solver: 'scipy'
     CRcut: True
     regularisation: 0
-    number_GH: 5
+    number_GH: 4
     GH_sys_err: '0.0 0.0 0.0 0.0 0.3 0.3 0.6 0.6'
     lum_intr_rel_err: 0.01
     sb_proj_rel_err: 0.02
