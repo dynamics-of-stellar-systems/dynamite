@@ -165,13 +165,6 @@ class LegacyWeightSolver(WeightSolver):
             kinematics[i].convert_to_old_format(old_filename)
         # combine all kinematics into one file
         if len(kinematics)>1:
-            gh_order = kinematics[0].get_highest_order_gh_coefficient()
-            if not all(kin.get_highest_order_gh_coefficient() == gh_order \
-                       for kin in kinematics[1:]):
-                text = 'Multiple kinematics: all need to have the same ' \
-                       'number of gh coefficients'
-                self.logger.error(text)
-                raise ValueError(text)
             if not all(isinstance(kin,dyn_kin.GaussHermite) \
                        for kin in kinematics):
                 text = 'Multiple kinematics: all must be GaussHermite'

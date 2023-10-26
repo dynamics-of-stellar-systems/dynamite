@@ -774,7 +774,6 @@ class Configuration(object):
         self.logger.info('Config file copied to '
                          f'{dest_directory}{self.config_file_name}.')
 
-
     def backup_config_file(self, reset=False, keep=None, delete_other=False):
         """
         Copy the config file to the output directory.
@@ -847,6 +846,9 @@ class Configuration(object):
         """
         Validates the system and settings.
 
+        This includes aligning the number of gh coefficients with the config
+        file setting number_GH for Gauss Hermite kinematics.
+
         This method is still VERY rudimentary and will be adjusted as we add new
         functionality to dynamite. Currently, this method is geared towards
         legacy mode.
@@ -856,6 +858,8 @@ class Configuration(object):
         None.
 
         """
+        self.settings.validate()
+        _ = self.validate_chi2()
         if sum(1 for i in self.system.cmp_list \
                if isinstance(i, physys.Plummer)) != 1:
             self.logger.error('System must have exactly one Plummer object')
@@ -989,8 +993,6 @@ class Configuration(object):
                     max_bins += 1
                 for k in stars.kinematic_data:
                     k.hist_bins = max_bins
-        self.settings.validate()
-        _ = self.validate_chi2()
 
     def validate_chi2(self, which_chi2=None):
         """
