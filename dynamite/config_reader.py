@@ -912,13 +912,6 @@ class Configuration(object):
                                       "BayesLOSVD - use weight-solver type NNLS"
                                 self.logger.error(txt)
                                 raise ValueError(txt)
-                        if check_gh:
-                            # In case number_GH != #gh components in kin file...
-                            kin_data.adjust_gh_data_to_coefficient_number(
-                                self.settings.weight_solver_settings)
-                            # Calculate kinemtic data including systematic err
-                            kin_data.calculate_data_sys_err(
-                                self.settings.weight_solver_settings)
                 else:
                     self.logger.error('VisibleComponent must have kinematics: '
                                       'either GaussHermite or BayesLOSVD')

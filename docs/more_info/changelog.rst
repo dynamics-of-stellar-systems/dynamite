@@ -4,6 +4,7 @@
 Change Log
 ****************
 
+- Improvement: calculation of kinmapchi2 now considers systematic errors in the GH coefficients, align with number_GH in config file's weight_solver_settings
 - Bugfix: fixed crash when the number of GH coefficients a kinematics file does not match number_GH in config file's weight_solver_settings
 - Improvement: updated tutorial notebooks
 - Bugfix: Re-enable support for directly instantiating a Model object (bypassing ModelIterator) if the all_models table is empty. Only recommended for testing.
