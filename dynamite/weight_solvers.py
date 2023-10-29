@@ -168,14 +168,14 @@ class LegacyWeightSolver(WeightSolver):
         kinematics = stars.kinematic_data
         # convert kinematics to old format to input to fortran
         for i in np.arange(len(kinematics)):
-            if len(kinematics)==1:
-                old_filename = self.direc_no_ml+'infil/kin_data.dat'
+            if len(kinematics) == 1:
+                old_filename = self.direc_no_ml + 'infil/kin_data.dat'
             else:
                 old_filename = self.direc_no_ml+'infil/kin_data_'+str(i)+'.dat'
             kinematics[i].convert_to_old_format(old_filename, self.settings)
         # combine all kinematics into one file
-        if len(kinematics)>1:
-            if not all(isinstance(kin,dyn_kin.GaussHermite) \
+        if len(kinematics) > 1:
+            if not all(isinstance(kin, dyn_kin.GaussHermite)
                        for kin in kinematics):
                 text = 'Multiple kinematics: all must be GaussHermite'
                 self.logger.error(text)
@@ -185,7 +185,9 @@ class LegacyWeightSolver(WeightSolver):
             # ...replace data attribute with stacked table of all kinematics
             kins_combined.data = table.vstack([k.get_data(self.settings)
                                                for k in kinematics])
-            old_filename = self.direc_no_ml+'infil/kin_data_combined.dat'
+            kins_combined.n_apertures = len(kins_combined.data)
+            kins_combined.max_gh_order = self.settings['number_GH']
+            old_filename = self.direc_no_ml + 'infil/kin_data_combined.dat'
             kins_combined.convert_to_old_format(old_filename, self.settings)
 
     def create_fortran_input_nnls(self):

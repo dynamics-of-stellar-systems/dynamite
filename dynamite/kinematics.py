@@ -353,7 +353,8 @@ class GaussHermite(Kinematics, data.Integrated):
                               filename_old_format,
                               weight_solver_settings):
         data = self.get_data(weight_solver_settings,
-                             apply_systematic_error=False)
+                             apply_systematic_error=False,
+                             cache_data=False)
         nbins = len(data)
         n_gh = weight_solver_settings['number_GH']
         # write comment string
