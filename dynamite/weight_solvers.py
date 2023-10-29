@@ -116,7 +116,7 @@ class WeightSolver(object):
                                                           weights=weights)
             # get the observed projected masses (unused) and kinematic data
             kinematics_data = \
-                kin_data.get_data(self.settings, apply_systematic_error=True)
+                kin_data.get_data(self.settings, apply_systematic_error=False)
             # calculate chi2_kinmap
             for coef in coefs:
                 obs_val = np.array(kinematics_data[coef])
