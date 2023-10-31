@@ -253,7 +253,7 @@ If any kinematics have of type ``GaussHermite`` , then the following additional 
 
 - ``weight_solver_settings``
     - ``number_GH``: integer, the number of Gauss-Hermites
-    - ``GH_sys_err``: a string of length 2 + ``number_GH`` floats, the systematic error applied to ``V``, ``sigma``, ``h3``, ..., ``hN``
+    - ``GH_sys_err``: a string of length ``number_GH`` floats, the systematic error applied to ``V``, ``sigma``, ``h3``, ..., ``hN``
 
 If any kinematic set has type ``BayesLOSVD``, then the ``weight_solver_settings`` must have type ``NNLS``, and no additional settings are required.
 
