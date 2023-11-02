@@ -249,11 +249,11 @@ Settings relevant for solving for orbital weights.
     - ``sb_proj_rel_err``: float, typical 0.01, the systematic error (fraction) applied to the projected surface brightness constraint
     - ``CRcut``: Boolean, default False, whether to use the ``CRcut`` solution for the counter-rotating orbit problem. See `Zhu et al. 2018 <https://ui.adsabs.harvard.edu/abs/2018MNRAS.473.3000Z/abstract>`_ for more details.
 
-If any kinematics have of type ``GaussHermite`` , then the following additional settings are needed.
+If any kinematics have of type ``GaussHermite``, the following additional settings are needed.
 
 - ``weight_solver_settings``
-    - ``number_GH``: integer, the highest order of Gauss-Hermites
-    - ``GH_sys_err``: a string of length ``number_GH`` floats, the systematic error applied to ``V``, ``sigma``, ``h3``, ..., ``hN``
+    - ``number_GH``: integer, the highest order kinematics to be used when solving for orbital weights. Note that this can be different from the order of the input data you provide. If ``number_GH`` is lower than in the data, then higher order kinematics are ignored while weight solving. Alternatively, if ``number_GH`` is higher than in the data, then we (fictitiously) assume that the higher-order kinematics were observed to be zero, with a systematic error specified in the ``GH_sys_err`` setting. The latter option can be considered as a form of regularisation, penalising solutions where higher-order kinematics (although unobserved) reach unrealistically high values.
+    - ``GH_sys_err``: a string of floats, of length ``number_GH``. These are systematic error applied to ``V``, ``sigma``, ``h3``, ..., ``hN``. During weight solving, these systematic error are added in quadrature to the random errors which are provided in the data file. If ``number_GH`` is larger than the kinematic order of the observed data, then the corresponding systematic errors can be interpreted as a typical value for higher order kinematics; models with higher-order kinematics which exceed this typical value will be penalised.
 
 If any kinematic set has type ``BayesLOSVD``, then the ``weight_solver_settings`` must have type ``NNLS``, and no additional settings are required.
 
