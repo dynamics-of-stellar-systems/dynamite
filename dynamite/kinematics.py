@@ -177,15 +177,15 @@ class GaussHermite(Kinematics, data.Integrated):
         Returns an astropy table holding the observed Gauss Hermite kinematics
         with their uncertainties, adapted to the desired number of GH
         coefficients and optionally including the systematic errors.
-
         The `number_GH` setting from the configuration file determines the
-        number of returned GH coefficients:
-        If number_GH (configuration file) > max_GH_order (number of gh
-        coefficients in the kinematics file), columns with zeros
-        `h<max_GH_order+1> dh<max_GH_order+1>` ...
-        `h<number_GH> dh<number_GH>`will be added to the gh kinematics data.
-        If number_GH < max_GH_order, the corresponding columns will be
-        removed from the kinematics data.
+        number of returned GH coefficients.
+    
+        If number_GH (configuration file) greater than max_GH_order (number of 
+        gh coefficients in the kinematics file), columns with zeros
+        `h<max_GH_order+1> dh<max_GH_order+1>` ... `h<number_GH> dh<number_GH>`
+        will be added to the gh kinematics data. If number_GH is less than 
+        `max_GH_order`, the corresponding columns will be removed from the 
+        kinematics data.
 
         Parameters
         ----------
