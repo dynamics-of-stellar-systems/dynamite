@@ -1442,20 +1442,20 @@ class Plotter():
 
         Parameters
         ----------
-          cmap : The matplotlib colormap to be altered
-          start : Offset from lowest point in the colormap's range.
+        cmap : The matplotlib colormap to be altered
+        start : Offset from lowest point in the colormap's range.
               Defaults to 0.0 (no lower offset). Should be between
               0.0 and `midpoint`.
-          midpoint : The new center of the colormap. Defaults to
+        midpoint : The new center of the colormap. Defaults to
               0.5 (no shift). Should be between 0.0 and 1.0. In
               general, this should be  1 - vmax / (vmax + abs(vmin))
               For example if your data range from -15.0 to +5.0 and
               you want the center of the colormap at 0.0, `midpoint`
               should be set to  1 - 5/(5 + 15)) or 0.75
-          stop : Offset from highest point in the colormap's range.
+        stop : Offset from highest point in the colormap's range.
               Defaults to 1.0 (no upper offset). Should be between
               `midpoint` and 1.0.
-          name : The name of the new colormap, the default is 'shiftedcmap'.
+        name : The name of the new colormap, the default is 'shiftedcmap'.
 
         Returns
         -------
@@ -1677,6 +1677,8 @@ class Plotter():
         Solid lines and shaded areas represent the mean and standard
         deviation of the anisotropy of models having parameters in a
         confidence region around the minimum chisquare.
+
+        Currently, this method only works with the ``LegacyWeightSolver``.
 
         Parameters
         ----------

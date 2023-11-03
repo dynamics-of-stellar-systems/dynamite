@@ -234,7 +234,7 @@ class AllModels(object):
         griddata/_chi2.cat
 
         Parameters
-        -----------
+        ----------
         legacy_filename: string
             the legacy_filename (probably griddata/_chi2.cat)
         """
@@ -280,7 +280,7 @@ class AllModels(object):
         `legacy` AKA schwpy format were likely called ```griddata/_chi2.cat``.
 
         Parameters
-        -----------
+        ----------
         legacy_filename: string
             the legacy_filename (probably griddata/_chi2.cat)
         """

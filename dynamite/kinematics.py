@@ -1245,7 +1245,7 @@ class BayesLOSVD(Kinematics, data.Integrated):
             scale factor to divide the data velocity spacing
 
         Returns
-        ----------
+        -------
         Sets the result to attribute `self.hist_bins`
 
         """
@@ -1271,7 +1271,7 @@ class BayesLOSVD(Kinematics, data.Integrated):
             directly.
 
         Returns
-        ----------
+        -------
         Sets the result to attribute `self.hist_bins`
 
         """

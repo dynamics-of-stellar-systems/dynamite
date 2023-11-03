@@ -104,7 +104,7 @@ class System(object):
                 text = 'System needs omega as its second parameter'
                 self.logger.error(text)
                 raise ValueError(text)
-        
+
     def validate_parset(self, par):
         """
         Validates the system's parameter values
@@ -185,7 +185,7 @@ class System(object):
             name of the component type/class
 
         Raises
-        -------
+        ------
         ValueError : if there are more than one component of the same class.
             # TODO: remove this limit, e.g. if we had two MGE-based components
             one for stars, one for gas
@@ -235,7 +235,7 @@ class System(object):
             self.logger.error('Found zero triaxial visible components')
             raise ValueError('Found zero triaxial visible components')
         return mges[0]
-        
+
     def get_all_bar_components(self):
         """Get all components which are rotating MGEs (i.e. bars)
 
@@ -571,7 +571,7 @@ class VisibleComponent(Component):
         quad_nr = 10 # size of (r, th, ph) grid, hardcoded in Fortran
         quad_nth = 6
         quad_nph = 6
-    
+
         quad_grid = np.zeros([quad_nph, quad_nth, quad_nr])
         quad_lr = np.zeros(quad_nr + 1)
         quad_lth = np.zeros(quad_nth + 1)
@@ -587,7 +587,7 @@ class VisibleComponent(Component):
         orbit_dithering = orblib_settings['dithering']
         nener = orblib_settings['nE']
         pintr, qintr, sigintr_km, dens = self.triax_deproj()
-        
+
     def validate(self, **kwds):
         super().validate(**kwds)
         if not (isinstance(self.mge_pot, mge.MGE) and \
