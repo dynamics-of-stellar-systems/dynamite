@@ -7,7 +7,7 @@ Change Log
 Version: 4.1
 ================
 
-- Improvement: calculation of kinmapchi2 now considers systematic errors in the GH coefficients, align with number_GH in config file's weight_solver_settings
+- Improvement: calculation of kinmapchi2 now aligns with number_GH in config file's weight_solver_settings
 - Bugfix: fixed crash when the number of GH coefficients a kinematics file does not match number_GH in config file's weight_solver_settings
 - Improvement: The bash test script ``dev_tests/test_notebooks.sh`` executes all tutorial notebooks for testing a valid DYNAMITE installation
 - Improvement: updated tutorial notebooks
