@@ -112,8 +112,8 @@ class ModelIterator(object):
         tuple of matplotlib.pyplot.figure:
             matplotlib.pyplot.figure: chi2 vs. model id plot
             matplotlib.pyplot.figure: chisquare plot
-            (matplotlib.pyplot.figure, str):
-                kinematic maps of best model so far, kinematics name
+            (matplotlib.pyplot.figure, str): kinematic maps of best model so 
+            far, kinematics name
 
         """
         chi2_vs_model_id_plot = self.chi2_vs_model_id_plot \
