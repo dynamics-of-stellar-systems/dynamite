@@ -179,12 +179,12 @@ class GaussHermite(Kinematics, data.Integrated):
         coefficients and optionally including the systematic errors.
         The `number_GH` setting from the configuration file determines the
         number of returned GH coefficients.
-    
-        If number_GH (configuration file) greater than max_GH_order (number of 
+
+        If number_GH (configuration file) greater than max_GH_order (number of
         gh coefficients in the kinematics file), columns with zeros
         `h<max_GH_order+1> dh<max_GH_order+1>` ... `h<number_GH> dh<number_GH>`
-        will be added to the gh kinematics data. If number_GH is less than 
-        `max_GH_order`, the corresponding columns will be removed from the 
+        will be added to the gh kinematics data. If number_GH is less than
+        `max_GH_order`, the corresponding columns will be removed from the
         kinematics data.
 
         Parameters
@@ -234,7 +234,7 @@ class GaussHermite(Kinematics, data.Integrated):
             self.logger.info(f'Kinematics {self.name}: '
                              f'removed gh columns {cols_to_remove}.')
             if cache_data:
-                self._data_raw = gh_data
+                self._data_raw = gh_data.copy(copy_data=True)
         if apply_systematic_error:
             # construct uncertainties
             uncertainties = np.zeros((self.n_apertures, number_gh))
@@ -259,7 +259,7 @@ class GaussHermite(Kinematics, data.Integrated):
             self.logger.debug(f'Kinematics {self.name}: applied systematic '
                               'errors and h1, h2 uncertainties.')
             if cache_data:
-                self._data_with_sys_err = gh_data
+                self._data_with_sys_err = gh_data.copy(copy_data=True)
         return gh_data
 
     def get_highest_order_gh_coefficient(self):

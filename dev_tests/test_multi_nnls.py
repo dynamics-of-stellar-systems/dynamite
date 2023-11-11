@@ -61,7 +61,7 @@ def run_user_test():
 
     c.all_models.table.pprint(max_lines=-1, max_width=-1)
 
-    # for one model, re-calculate solution with the new weight solver
+    # re-calculate solution with the new weight solver
     print('Recalculating orbit weights with scipy NNLS solver')
 
     fig, ax = plt.subplots(1, 3, sharey=True, figsize=(12,4))
@@ -72,15 +72,26 @@ def run_user_test():
                                                 mod_dir=mod0.directory_noml,
                                                 parset=parset0)
         orblib0.read_losvd_histograms()
-        weight_solver = mod0.get_weights()
-        weights_old, chi2_tot_old, chi2_kin_old = weight_solver.solve(orblib0)
+        weight_solver_old = dyn.weight_solvers.LegacyWeightSolver(
+                config=c,
+                directory_with_ml=mod0.directory,
+                CRcut=True)
+        solution_old = weight_solver_old.solve(orblib0,
+                                               ignore_existing_weights=True)
+        weights_old, chi2_tot_old, chi2_kin_old, chi2_kinmap_old = \
+            (s for s in solution_old)
         weight_solver_new = dyn.weight_solvers.NNLS(
                 config=c,
                 directory_with_ml=mod0.directory,
                 CRcut=True,
                 nnls_solver='scipy')
-        solution_new = weight_solver_new.solve(orblib0)
-        weights_new = solution_new[0]
+        solution_new = weight_solver_new.solve(orblib0,
+                                               ignore_existing_weights=True)
+        weights_new, chi2_tot_new, chi2_kin_new, chi2_kinmap_new = \
+            (s for s in solution_new)
+        print(f'Model {i}, {chi2_tot_old = }, {chi2_tot_new = }.')
+        print(f'Model {i}, {chi2_kin_old = }, {chi2_kin_new = }.')
+        print(f'Model {i}, {chi2_kinmap_old = }, {chi2_kinmap_new = }.')
         ax[i].plot(weights_old, label='Legacy')
         ax[i].plot(weights_new, '--', label='NNLS scipy')
         ax[i].legend()
