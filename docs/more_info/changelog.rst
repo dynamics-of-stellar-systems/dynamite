@@ -4,6 +4,8 @@
 Change Log
 ****************
 
+- Improvement: the beta plots now work for all implemented weight solvers.
+
 Version: 4.1
 ================
 

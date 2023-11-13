@@ -1597,7 +1597,8 @@ class Plotter():
 
 #############################################################################
 
-    def anisotropy_single(self, file=None):
+    # TODO before merging
+    def anisotropy_single_old(self, file=None):
 
         # intrinsic moments
         #"iph,ith,ir,ma,mm,me,x,y,z (in arcsec),vx,vy,vz,xv2,vy2 ,vz2,vxvy,vyvz,vzvx,OL,OS,OB"
@@ -1661,9 +1662,80 @@ class Plotter():
 
         return rr, orotR, Rad, vzz_r, vrr_r, vpp_r, vp_r
 
+    def anisotropy_single(self, model=None):
+
+        # format of the intrinsic moments array:
+        # density, x, y, z, vx, vy, vz, xv2,vy2,vz2,vxvy,vyvz,vzvx
+        # 0        1  2  3  4   5   6   7   8   9   10   11   12
+
+        orblib = model.get_orblib()
+        _ = model.get_weights(orblib)
+        moment_constructor, bin_edges = \
+            orblib.get_model_intrinsic_moment_constructor()
+        moments = moment_constructor(model.weights)
+
+        nmom = moments.shape[3]
+        if nmom != 13:
+            txt = 'The moments array must have 13 columns.'
+            self.logger.error(txt)
+            raise ValueError(txt)
+        nrr = moments.shape[0]  # grid bin edges over spherical r
+        nth = moments.shape[1]  # grid bin edges over spherical theta
+        nph = moments.shape[2]  # grid bin edges over spherical phi
+        ntot = nph * nth * nrr
+        data = moments.reshape((ntot,nmom), order='F')  # match legacy r,th,ph
+
+        d = data[:,0]  # density
+        x = data[:,1]  # x
+        y = data[:,2]  # y
+        z = data[:,3]  # z
+        RR = np.sqrt(x**2 + y**2)
+        r = np.sqrt(RR**2 + z**2)
+
+        v1car = data[:,4:7]           # <v_t> t=x,y,z [(km/s)]  # vx, vy, vz
+        dum = data[:,[7,10,12,10,8,11,12,11,9]]  # vx2,vxvy,vzvx,vxvy,vy2,vyvz,vzvx,vyvz,vz2
+        v2car = np.reshape(dum[:,:], (ntot,3,3), order='F')  # < v_s * v_t > s, t = x, y, z[(km / s) ^ 2]
+        v2sph = self.car2sph_mu12(x, y, z, v1car, v2car)[1]  # (v_r, v_phi, v_theta)
+        orot = 1 - (0.5*(v2sph[:,1,1] + v2sph[:,2,2]))/(v2sph[:,0,0])
+        rr = np.sum(np.sum(np.reshape(r,(nrr,nth,nph),order='F'),
+                    axis=2), axis=1)/(nth*nph)
+        TM = np.sum(np.sum(np.reshape(d,(nrr,nth,nph),order='F'),
+                    axis=2), axis=1)
+        orotR = np.sum(np.sum(np.reshape(orot*d,(nrr,nth,nph),
+                    order='F'), axis=2), axis=1)/TM
+
+        v1cyl, v2cyl = self.car2cyl_mu12(x, y, z, v1car, v2car)        # (v_R, v_phi, v_z)
+        vrr = v2cyl[:,0,0]
+        vpp = v2cyl[:,1,1]
+        vzz = v2cyl[:,2,2]
+        vp = v1cyl[:,1]
+        nbins = 14
+        Bint = 2**(np.arange(nbins+1, dtype=float)/2.5) - 1.0
+        Rad = np.zeros(nbins)
+        vrr_r = np.zeros(nbins)
+        vpp_r = np.zeros(nbins)
+        vzz_r = np.zeros(nbins)
+        vp_r = np.zeros(nbins)
+        d = data[:,0]  # density
+        ### Bin along RR
+        for i in range(nbins):
+            ss=np.ravel(np.where((RR > Bint[i]) & \
+                        (RR < Bint[i+1]) & (np.abs(z) < 5.0)))
+                        # restrict to the disk plane with |z| < 5 arcsec
+            nss=len(ss)
+            if nss > 0:
+                Rad[i] = np.average(RR[ss])
+                vrr_r[i] = np.sum(vrr[ss]*d[ss])/np.sum(d[ss])
+                vpp_r[i] = np.sum(vpp[ss]*d[ss])/np.sum(d[ss])
+                vzz_r[i] = np.sum(vzz[ss]*d[ss])/np.sum(d[ss])
+                vp_r[i] = np.sum(vp[ss]*d[ss])/np.sum(d[ss])
+
+        return rr, orotR, Rad, vzz_r, vrr_r, vpp_r, vp_r
+
 #############################################################################
 
-    def beta_plot(self, which_chi2=None, Rmax_arcs=None, figtype=None):
+    # TODO before merging
+    def beta_plot(self, which_chi2=None, Rmax_arcs=None, figtype=None, new=False):
         """
         Generates anisotropy plots
 
@@ -1708,8 +1780,6 @@ class Plotter():
 
         """
 
-        modeldir = self.modeldir
-
         if figtype is None:
             figtype = '.png'
 
@@ -1742,10 +1812,16 @@ class Plotter():
         Vp = np.zeros((100,n))
 
         for i in range(n):
-            filei = modeldir + val['directory'][i] + 'nn_intrinsic_moments.out'
-
-            rr, orotR, Rad, vzz_r, vrr_r, vpp_r, \
-                vp_r = self.anisotropy_single(file=filei)
+            model_dir = self.modeldir + val['directory'][i]
+            # TODO before merging
+            if new:
+                model = self.all_models.get_model_from_directory(model_dir)
+                rr, orotR, Rad, vzz_r, vrr_r, vpp_r, \
+                    vp_r = self.anisotropy_single(model)
+            else:
+                filei = model_dir + 'nn_intrinsic_moments.out'
+                rr, orotR, Rad, vzz_r, vrr_r, vpp_r, \
+                    vp_r = self.anisotropy_single_old(file=filei)
             nrr = len(rr)
             RRn[0:nrr,i] = rr
             orotn[0:nrr,i] = orotR
@@ -1761,8 +1837,9 @@ class Plotter():
             Vp2[0:nrad,i] = vpp_r
             Vp[0:nrad,i] = vp_r
 
-        filename1 = self.plotdir + 'anisotropy_var' + figtype
-        filename2 = self.plotdir + 'betaz_var' + figtype
+        # TODO before merging
+        filename1 = self.plotdir + ('new' if new else 'old') + 'anisotropy_var' + figtype
+        filename2 = self.plotdir + ('new' if new else 'old') + 'betaz_var' + figtype
 
         RRn_m = np.zeros(nrr)
         RRn_e = np.zeros(nrr)
