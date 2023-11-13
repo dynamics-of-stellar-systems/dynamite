@@ -1663,7 +1663,7 @@ class Plotter():
 
 #############################################################################
 
-    def beta_plot(self, which_chi2=None, Rmax_arcs=None, figtype =None):
+    def beta_plot(self, which_chi2=None, Rmax_arcs=None, figtype=None):
         """
         Generates anisotropy plots
 
@@ -1713,7 +1713,8 @@ class Plotter():
         if figtype is None:
             figtype = '.png'
 
-        which_chi2 = self.config.validate_chi2(which_chi2)
+        if which_chi2 is None:
+            which_chi2 = self.config.validate_chi2(which_chi2)
 
         if Rmax_arcs is None:
             text = f'Rmax_arcs must be a number, but it is {Rmax_arcs}'
@@ -1726,7 +1727,7 @@ class Plotter():
         chi2pmin = val[which_chi2][0]
         chlim = np.sqrt(self.config.get_2n_obs())
 
-        # select the models within 1 sigma confidence level
+        # select the models within 1 sigma confidence level, minimum 3
         n = len(np.ravel(np.where(val[which_chi2] <= chi2pmin + chlim*3)))
         if n < 3:
             n = 3
