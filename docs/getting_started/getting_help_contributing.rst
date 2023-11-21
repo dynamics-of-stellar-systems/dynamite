@@ -4,7 +4,7 @@
 Getting help/contributing to the code
 *************************************
 
-If you would like to use DYNAMITE for any scientific project, please feel free to `get in contact <https://dynamics.univie.ac.at/dynamite_docs/more_info/team.html#development-team>`_ and discuss ideas or if you need help getting started. 
+If you would like to use DYNAMITE for any scientific project, please feel free to `get in contact <https://dynamics.univie.ac.at/dynamite_docs/more_info/team.html#development-team>`_ and discuss ideas or if you need help getting started.
 
 We would also love to have your input to the code! We want to make contributing to this project as easy and transparent as possible, whether it is:
 
@@ -50,9 +50,8 @@ Any contributions you make will be under the GPL v3 license
 In short, when you submit code changes, your submissions are understood to be under the same license that covers the project. Feel free to get in touch if that is a concern.
 
 
-***************
 Code of Conduct
-***************
+===============
 
 Our Pledge
 ----------
@@ -98,6 +97,6 @@ Instances of abusive, harassing, or otherwise unacceptable behaviour may be repo
 Attribution
 -----------
 
-This Code of Conduct was adapted from the Contributor Covenant, version 1.4, available at `http://contributor-covenant.org/version/1/4<http://contributor-covenant.org/version/1/4>`_.
+This Code of Conduct was adapted from the Contributor Covenant, version 1.4, available at `http://contributor-covenant.org/version/1/4 <http://contributor-covenant.org/version/1/4>`_.
 
-Parts of this document were adapted from the `open-source contribution guidelines for monofonIC<https://bitbucket.org/ohahn/monofonic/src/master/CONTRIBUTING.md>`_.
+Parts of this document were adapted from the `open-source contribution guidelines for monofonIC <https://bitbucket.org/ohahn/monofonic/src/master/CONTRIBUTING.md>`_.
