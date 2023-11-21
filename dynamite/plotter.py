@@ -1597,32 +1597,38 @@ class Plotter():
 
 #############################################################################
 
-    def anisotropy_single(self, file=None):
+    def anisotropy_single(self, model=None):
 
-        # intrinsic moments
-        #"iph,ith,ir,ma,mm,me,x,y,z (in arcsec),vx,vy,vz,xv2,vy2 ,vz2,vxvy,vyvz,vzvx,OL,OS,OB"
-        # 0   1   2  3  4  5  6 7 8             9  10 11 12  13  14  15   16   17   18,19,20
+        # format of the intrinsic moments array:
+        # density, x, y, z, vx, vy, vz, xv2,vy2,vz2,vxvy,vyvz,vzvx
+        # 0        1  2  3  4   5   6   7   8   9   10   11   12
 
-        filename_moments = file
-        nmom, nph, nth, nrr = np.genfromtxt(filename_moments, max_rows=1, skip_header=1).T
-        if int(nmom) != 16: sys.exit('made for 16 moments')
-        nmom = int(nmom)
-        nph = int(nph)
-        nth = int(nth)
-        nrr = int(nrr)
+        orblib = model.get_orblib()
+        _ = model.get_weights(orblib)
+        moment_constructor, bin_edges = \
+            orblib.get_model_intrinsic_moment_constructor()
+        moments = moment_constructor(model.weights)
 
-        ntot = nph*nth*nrr
-        data = np.genfromtxt(filename_moments, max_rows=ntot, skip_header=10)
+        nmom = moments.shape[3]
+        if nmom != 13:
+            txt = 'The moments array must have 13 columns.'
+            self.logger.error(txt)
+            raise ValueError(txt)
+        nrr = moments.shape[0]  # grid bin edges over spherical r
+        nth = moments.shape[1]  # grid bin edges over spherical theta
+        nph = moments.shape[2]  # grid bin edges over spherical phi
+        ntot = nph * nth * nrr
+        data = moments.reshape((ntot,nmom), order='F')  # match legacy r,th,ph
 
-        d = data[:,4]
-        x = data[:,6]
-        y = data[:,7]
-        z = data[:,8]
+        d = data[:,0]  # density
+        x = data[:,1]  # x
+        y = data[:,2]  # y
+        z = data[:,3]  # z
         RR = np.sqrt(x**2 + y**2)
         r = np.sqrt(RR**2 + z**2)
 
-        v1car = data[:,9:12]           #; <v_t> t=x,y,z [(km/s)]
-        dum = data[:,[12,15,17,15,13,16,17,16,14]]
+        v1car = data[:,4:7]           # <v_t> t=x,y,z [(km/s)]  # vx, vy, vz
+        dum = data[:,[7,10,12,10,8,11,12,11,9]]  # vx2,vxvy,vzvx,vxvy,vy2,vyvz,vzvx,vyvz,vz2
         v2car = np.reshape(dum[:,:], (ntot,3,3), order='F')  # < v_s * v_t > s, t = x, y, z[(km / s) ^ 2]
         v2sph = self.car2sph_mu12(x, y, z, v1car, v2car)[1]  # (v_r, v_phi, v_theta)
         orot = 1 - (0.5*(v2sph[:,1,1] + v2sph[:,2,2]))/(v2sph[:,0,0])
@@ -1645,7 +1651,7 @@ class Plotter():
         vpp_r = np.zeros(nbins)
         vzz_r = np.zeros(nbins)
         vp_r = np.zeros(nbins)
-        d = data[:,4]
+        d = data[:,0]  # density
         ### Bin along RR
         for i in range(nbins):
             ss=np.ravel(np.where((RR > Bint[i]) & \
@@ -1663,7 +1669,7 @@ class Plotter():
 
 #############################################################################
 
-    def beta_plot(self, which_chi2=None, Rmax_arcs=None, figtype =None):
+    def beta_plot(self, which_chi2=None, Rmax_arcs=None, figtype=None):
         """
         Generates anisotropy plots
 
@@ -1708,12 +1714,11 @@ class Plotter():
 
         """
 
-        modeldir = self.modeldir
-
         if figtype is None:
             figtype = '.png'
 
-        which_chi2 = self.config.validate_chi2(which_chi2)
+        if which_chi2 is None:
+            which_chi2 = self.config.validate_chi2(which_chi2)
 
         if Rmax_arcs is None:
             text = f'Rmax_arcs must be a number, but it is {Rmax_arcs}'
@@ -1726,7 +1731,7 @@ class Plotter():
         chi2pmin = val[which_chi2][0]
         chlim = np.sqrt(self.config.get_2n_obs())
 
-        # select the models within 1 sigma confidence level
+        # select the models within 1 sigma confidence level, minimum 3
         n = len(np.ravel(np.where(val[which_chi2] <= chi2pmin + chlim*3)))
         if n < 3:
             n = 3
@@ -1741,10 +1746,10 @@ class Plotter():
         Vp = np.zeros((100,n))
 
         for i in range(n):
-            filei = modeldir + val['directory'][i] + 'nn_intrinsic_moments.out'
-
-            rr, orotR, Rad, vzz_r, vrr_r, vpp_r, \
-                vp_r = self.anisotropy_single(file=filei)
+            model_dir = self.modeldir + val['directory'][i]
+            model = self.all_models.get_model_from_directory(model_dir)
+            rr, orotR, Rad, vzz_r, vrr_r, vpp_r, vp_r = \
+                self.anisotropy_single(model)
             nrr = len(rr)
             RRn[0:nrr,i] = rr
             orotn[0:nrr,i] = orotR
