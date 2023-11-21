@@ -104,7 +104,7 @@ class Kinematics(data.Data):
             The kinematics data
 
         """
-        return self.data
+        return self.data.copy(copy_data=True)
 
     def transform_orblib_to_observables(self,
                                         losvd_histograms,
@@ -179,12 +179,12 @@ class GaussHermite(Kinematics, data.Integrated):
         coefficients and optionally including the systematic errors.
         The `number_GH` setting from the configuration file determines the
         number of returned GH coefficients.
-    
-        If number_GH (configuration file) greater than max_GH_order (number of 
+
+        If number_GH (configuration file) greater than max_GH_order (number of
         gh coefficients in the kinematics file), columns with zeros
         `h<max_GH_order+1> dh<max_GH_order+1>` ... `h<number_GH> dh<number_GH>`
-        will be added to the gh kinematics data. If number_GH is less than 
-        `max_GH_order`, the corresponding columns will be removed from the 
+        will be added to the gh kinematics data. If number_GH is less than
+        `max_GH_order`, the corresponding columns will be removed from the
         kinematics data.
 
         Parameters
@@ -212,29 +212,35 @@ class GaussHermite(Kinematics, data.Integrated):
         """
         if cache_data:
             if not apply_systematic_error and self._data_raw is not None:
-                return self._data_raw  # ######################################
+                self.logger.debug(f'Kin {self.name}: get cached data w/o err')
+                return self._data_raw.copy(copy_data=True)  # #################
             if apply_systematic_error and self._data_with_sys_err is not None:
-                return self._data_with_sys_err  # #############################
-        gh_data = self.data.copy(copy_data=True)
+                self.logger.debug(f'Kin {self.name}: get cached data with err')
+                return self._data_with_sys_err.copy(copy_data=True)  # ########
+
         number_gh = weight_solver_settings['number_GH']
-        if number_gh > self.max_gh_order:
-            cols_to_add = [f'{d}h{i+1}'
-                           for i in range(self.max_gh_order, number_gh)
-                           for d in ('', 'd')]
-            gh_data.add_columns(
-                [np.zeros(self.n_apertures) for i in cols_to_add],
-                names=cols_to_add)
-            self.logger.info(f'Kinematics {self.name}: '
-                             f'added all-zero gh columns {cols_to_add}.')
-        elif number_gh < self.max_gh_order:
-            cols_to_remove = [f'{d}h{i+1}'
-                              for i in range(number_gh, self.max_gh_order)
-                              for d in ('', 'd')]
-            gh_data.remove_columns(cols_to_remove)
-            self.logger.info(f'Kinematics {self.name}: '
-                             f'removed gh columns {cols_to_remove}.')
+        if cache_data and self._data_raw is not None:  # Apply sys_err to cache?
+            gh_data = self._data_raw.copy(copy_data=True)
+        else:  # Calculate data table with number_GH coefs
+            gh_data = self.data.copy(copy_data=True)
+            if number_gh > self.max_gh_order:
+                cols_to_add = [f'{d}h{i+1}'
+                               for i in range(self.max_gh_order, number_gh)
+                               for d in ('', 'd')]
+                gh_data.add_columns(
+                    [np.zeros(self.n_apertures) for i in cols_to_add],
+                    names=cols_to_add)
+                self.logger.info(f'Kinematics {self.name}: '
+                                 f'added all-zero gh columns {cols_to_add}.')
+            elif number_gh < self.max_gh_order:
+                cols_to_remove = [f'{d}h{i+1}'
+                                  for i in range(number_gh, self.max_gh_order)
+                                  for d in ('', 'd')]
+                gh_data.remove_columns(cols_to_remove)
+                self.logger.info(f'Kinematics {self.name}: '
+                                 f'removed gh columns {cols_to_remove}.')
             if cache_data:
-                self._data_raw = gh_data
+                self._data_raw = gh_data.copy(copy_data=True)
         if apply_systematic_error:
             # construct uncertainties
             uncertainties = np.zeros((self.n_apertures, number_gh))
@@ -259,7 +265,7 @@ class GaussHermite(Kinematics, data.Integrated):
             self.logger.debug(f'Kinematics {self.name}: applied systematic '
                               'errors and h1, h2 uncertainties.')
             if cache_data:
-                self._data_with_sys_err = gh_data
+                self._data_with_sys_err = gh_data.copy(copy_data=True)
         return gh_data
 
     def get_highest_order_gh_coefficient(self):

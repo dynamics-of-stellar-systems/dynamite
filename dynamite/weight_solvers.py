@@ -43,7 +43,7 @@ class WeightSolver(object):
         self.CRcut = CRcut
         self.weight_file = f'{self.direc_with_ml}orbit_weights.ecsv'
 
-    def solve(self, orblib):
+    def solve(self, orblib, ignore_existing_weights=False):
         """Template solve method
 
         Specific implementations should override this.
@@ -51,6 +51,9 @@ class WeightSolver(object):
         Parameters
         ----------
         orblib : dyn.OrbitLibrary object
+        ignore_existing_weights : bool
+            If True, do not check for already existing weights and solve again.
+            Default is False.
 
         Returns
         -------
@@ -239,7 +242,7 @@ class LegacyWeightSolver(WeightSolver):
         nn_file.write(text)
         nn_file.close()
 
-    def solve(self, orblib=None):
+    def solve(self, orblib=None, ignore_existing_weights=False):
         """Main method to solve NNLS problem.
 
         Parameters
@@ -248,6 +251,9 @@ class LegacyWeightSolver(WeightSolver):
             This parameter is not used in this Legacy implementation (as all
             orbit library information is read from files). It is included here
             for consistency with later WeightSolver implementations
+        ignore_existing_weights : bool
+            If True, do not check for already existing weights and solve again.
+            Default is False.
 
         Returns
         -------
@@ -263,7 +269,7 @@ class LegacyWeightSolver(WeightSolver):
 
         """
         self.logger.info(f"Using WeightSolver: {__class__.__name__}")
-        if self.weight_file_exists():
+        if (not ignore_existing_weights) and self.weight_file_exists():
             self.logger.info("Reading NNLS solution from existing output.")
             results = ascii.read(self.weight_file)
             weights = results['weights']
@@ -739,7 +745,7 @@ class NNLS(WeightSolver):
         orb_gh[idx_cut[0], idx_cut[1], 0] = 3./dvhist
         return orb_gh
 
-    def solve(self, orblib):
+    def solve(self, orblib, ignore_existing_weights=False):
         """Solve for orbit weights
 
         **Note:** the returned chi2 values are not the same as
@@ -750,6 +756,9 @@ class NNLS(WeightSolver):
         orblib : dyn.OrbitLibrary
             must have attributes losvd_histograms, intrinsic_masses, and
             projected_masses
+        ignore_existing_weights : bool
+            If True, do not check for already existing weights and solve again.
+            Default is False.
 
         Returns
         -------
@@ -767,7 +776,7 @@ class NNLS(WeightSolver):
         self.logger.info(f"Using WeightSolver: {__class__.__name__}/"
                          f"{self.nnls_solver}")
         orblib.read_losvd_histograms()
-        if self.weight_file_exists():
+        if (not ignore_existing_weights) and self.weight_file_exists():
             results = ascii.read(self.weight_file, format='ecsv')
             self.logger.info("NNLS solution read from existing output")
             weights = results['weights']
