@@ -35,6 +35,8 @@ And usually, for one galaxy you will create at least 30 models to find the best-
 Software requirements
 =====================
 
+Supplementary to this section, please also see the list of tested platforms as well as Fortran and Python releases at the `bottom of this document <#tested-platforms>`_.
+
 Fortran compiler
 ----------------
 
@@ -53,7 +55,12 @@ displays the version. We recommend version 10.4 or later.
 macOS
 ^^^^^
 
-In the following, we explain the installation of the GNU Fortran compiler via Homebrew and via MacPorts. **Homebrew** can be used to install the latest ``gcc`` and all additional libraries in the following way::
+In the following, we explain the installation of the GNU Fortran compiler via Homebrew and via MacPorts.
+
+Homebrew
+""""""""
+
+**Homebrew** can be used to install the latest ``gcc`` and all additional libraries in the following way::
 
     brew update
     brew install gcc
@@ -71,6 +78,9 @@ with the output: ``gfortran(1) - GNU Fortran compiler`` (please ignore any lines
     which gfortran
 
 returns its location, for example: ``/usr/local/bin/gfortran``.
+
+MacPorts
+""""""""
 
 Alternatively, you can also install ``gcc`` with **MacPorts**. The installation is then a bit different::
 
@@ -118,7 +128,7 @@ Known problems
 
 .. _install-procedure:
 
-Installation and Configure Procedure
+Installation and configure procedure
 ====================================
 
 Download from `github <https://github.com/dynamics-of-stellar-systems/dynamite>`_, unzip and move the DYNAMITE code to the directory in which you want to install it. Make sure that your system fulfills the :ref:`software-requirements` listed above (in particular the Fortran compiler).
@@ -127,8 +137,8 @@ If you encouter problems during the installation process, have a look at the sec
 
 There are two major installation options for DYNAMITE:
 
-(A) DYNAMITE with the GALAHAD (the ``LegacyWeightSolver``) and the SciPy-based ``NNLS`` weight solvers.
-(B) DYNAMITE with just the SciPy-based ``NNLS`` weight solver.
+(A) DYNAMITE with the GALAHAD (the ``LegacyWeightSolver``) and the Python (SciPy and cvxopt) ``NNLS`` weight solvers.
+(B) DYNAMITE with just the Python (SciPy and cvxopt) ``NNLS`` weight solvers.
 
 In case of installation option (A), the installation of DYNAMITE consists of three steps; in case of (B), it consists of two steps, as detailed below.
 
@@ -147,7 +157,7 @@ In the following installation, a number of prompts start. The answers differ for
 
 During the installation, your terminal might express several warnings. These are however not critical if your installation finishes properly.
 
-Install Galahad, Version 2.3 - Prompt answers for Linux
+Install Galahad, version 2.3 - prompt answers for Linux
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 Prompts from ``./install_galahad``. The answers for the recommended installation are marked in bold.
@@ -221,7 +231,7 @@ Prompts from ``./install_galahad``. The answers for the recommended installation
 * y(es)
 * **n(o) <--**
 
-Install Galahad, Version 2.3 - Prompt answers for macOS
+Install Galahad, version 2.3 - prompt answers for macOS
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 Prompts from ``./install_galahad``. The answers for the recommended installation are marked in bold.
 
@@ -456,10 +466,15 @@ Troubleshooting
 Fortran code calls fail
 -----------------------
 
-Try to clean up and recompile. In ``.../legacy_fortran``, issue::
+Try to clean up and recompile. In ``.../legacy_fortran``, issue one of the following, depending on your installation option::
 
     make distclean
     make all
+
+or::
+
+    make distclean
+    make nogal
 
 and in ``.../dynamite``, re-install with the command::
 
@@ -468,11 +483,11 @@ and in ``.../dynamite``, re-install with the command::
 Python install fails
 --------------------
 
-Try ``python3``instead of ``python``::
+Try ``python3`` instead of ``python``::
 
     python3 setup.py install
 
-If ``setup.py`` still does not work, this may be because of failed package installations. Make sure to have at least ``numpy`` installed beforehand. Running ``setup.py`` will install the necessary packages for you, but you can also install some packages manually if needed:
+If ``setup.py`` still does not work, this may be because of failed package installations. Make sure to have at least ``numpy`` installed beforehand. Running ``setup.py`` will install the necessary packages for you, but you can also install some packages manually if needed::
 
     pip install astropy
 
@@ -499,3 +514,19 @@ to::
 
 (``-ftree-loop-linear`` is the same as ``-floop-nest-optimize`` and poses a problem if gcc/gfortran is compiled without isl).
 
+Tested platforms
+----------------
+
+The following table states the platforms / Fortran compilers / Python releases which were successfully used to build DYNAMITE and run the ``dev_test/test_nnls.py`` test script.
+
+The 'G / P' column refers to the weight solver:
+
+- \(G) means that both GALAHAD and Python (SciPy and cvxopt) NNLS were successfully compiled and used. This corresponds to installation option (A).
+- \(P) means that only the Python (SciPy and cvxopt) NNLS solvers were successfully compiled and used. This corresponds to installation option (B).
+
+.. csv-table:: Tested platforms / Fortran compilers / Python releases
+   :header-rows: 1
+
+   OS and release,  Fortran release,    Python rel.,    G / P,  Date tested,    Remarks
+   macOS 13.5.2,    gfortran 12.2.0,    3.9.13,         G,      2023-09-14
+   AlmaLinux 8.5,   gfortran 8.5.0,     3.10.8,         G,      2023-09-14,     VSC5 w/o modules loaded
