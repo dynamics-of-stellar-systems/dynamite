@@ -61,7 +61,7 @@ The following pages give all the information needed to get started,
   getting_started/installation.rst
   getting_started/code_overview.rst
   getting_started/configuration.rst
-  getting_started/getting_help.rst
+  getting_started/getting_help_contributing.rst
   how_to_cite.rst
 
 The tutorials also show an example of running DYNAMITE from start to finish - this could also be a great place to start getting acquainted with the code. Further sections show other API-documentation for specific classes and methods, and other miscellaneous information.
@@ -119,7 +119,6 @@ More Information
    more_info/team.rst
    more_info/publications.rst
    more_info/changelog.rst
-   more_info/getting_involved.rst
    more_info/license.rst
    more_info/making_the_docs.rst
 
