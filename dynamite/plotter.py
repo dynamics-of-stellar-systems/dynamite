@@ -33,9 +33,13 @@ class Plotter():
     Parameters
     ----------
     config : a ``dyn.config_reader.Configuration`` object
+    dpi : float, optional
+        The resolution of saved figures if not specified elsewhere. The
+        default is 100 dpi.
 
     """
-    def __init__(self, config=None):
+
+    def __init__(self, config=None, dpi=100):
         self.logger = logging.getLogger(f'{__name__}.{__class__.__name__}')
         if config is None:
             text = f'{__class__.__name__} needs configuration object, ' \
@@ -49,6 +53,7 @@ class Plotter():
         self.input_directory = config.settings.io_settings['input_directory']
         self.plotdir = config.settings.io_settings['plot_directory']
         self.modeldir = config.settings.io_settings['model_directory']
+        mpl.rcParams['savefig.dpi'] = dpi
 
     def make_chi2_vs_model_id_plot(self, which_chi2=None, figtype=None):
         """

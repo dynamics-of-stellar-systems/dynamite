@@ -4,6 +4,7 @@
 Change Log
 ****************
 
+- Improvement: the Plotter's new optional argument ``dpi`` (default: 100) allows to change the resolution of all saved figures except the kinematic maps (always 300 dpi).
 - Improvement: the beta plots now work for all implemented weight solvers.
 
 Version: 4.1
