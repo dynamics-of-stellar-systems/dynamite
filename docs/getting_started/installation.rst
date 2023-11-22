@@ -21,13 +21,24 @@ Computers running the DYNAMITE models must meet the following hardware requireme
 
 **Recommended Hardware Requirements**
 
-We recommend at least 50-100 GB of hard disk space for running the dynamical models. The DYNAMITE software only takes 150 MB, but the orbit libraries can become very large. As examples one model for the following orbit libraries has the size:
+We recommend at least 50-100 GB of hard disk space for running the dynamical models.
+The DYNAMITE software only takes 150 MB, but the orbit libraries can become very large. The table below shows some examples for model sizes of different orbit libraries (see the `configuration documentation <configuration.html#orblib-settings>`_ for more information on orbit library settings).
+Note that the total memory requirements may be lower due to model sharing orbit libraries.
 
-* (nE, nI2, nI3) = (5,4,3)    : 85 MB
-* (nE, nI2, nI3) = (21,8,7)   : 664 MB
-* (nE, nI2, nI3) = (41,11,11) : 2.55 GB
+.. table::
+   :widths: auto
 
-And usually, for one galaxy you will create at least 30 models to find the best-fitting model parameters.
+   =====  =====  =====  ===========  =========  ================================================
+     nE    nI2    nI3    dithering    Size       Example use
+   =====  =====  =====  ===========  =========  ================================================
+     5      4      3         1          71 MB    Good for tests (recommended minimum), too small for science
+     6      5      4         1          79 MB    Used for test cases, too small for science
+    21      8      7         1         213 MB
+    21     10      7         5         461 MB    CALIFA and ATLAS3D
+    41     11     11         1         733 MB
+   =====  =====  =====  ===========  =========  ================================================
+
+Usually, for one galaxy you will create at least 30 models to find the best-fitting model parameters.
 
 
 .. _software-requirements:
