@@ -109,10 +109,10 @@ orblib_settings:
     accuracy: '1.0d-5'
 
 weight_solver_settings:
-    type: "NNLS"      # must use "NNLS" with BayesLOSVD, not
+    type: "NNLS"      # must use "NNLS" with BayesLOSVD
+    nnls_solver: 'scipy'
     lum_intr_rel_err: 0.01
     sb_proj_rel_err: 0.02
-    nnls_solver: 'scipy'
 
 parameter_space_settings:
     generator_type: "LegacyGridSearch"
