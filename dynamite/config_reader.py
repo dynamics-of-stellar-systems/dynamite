@@ -121,8 +121,6 @@ class Configuration(object):
     ----------
     filename : string
         needs to refer to an existing file including path
-    silent : DEPRECATED
-        (diagnostic output handled by logging module)
     reset_logging : bool
         if False: use the calling application's logging settings
         if True: set logging to Dynamite defaults
@@ -160,7 +158,6 @@ class Configuration(object):
 
     def __init__(self,
                  filename=None,
-                 silent=None,
                  reset_logging=False,
                  user_logfile='dynamite',
                  reset_existing_output=False):
@@ -176,9 +173,6 @@ class Configuration(object):
         self.logger.debug(f'This is Python {sys.version.split()[0]}')
         self.logger.debug(f'Using DYNAMITE version {dyn.__version__} '
                           f'located at {dyn.__path__}')
-
-        if silent is not None:
-            self.logger.warning("'silent' option is deprecated and ignored")
 
         self.logger.debug('Global variables: ' \
                           f'{const.GRAV_CONST_KM = }, {const.PARSEC_KM = }, ' \
