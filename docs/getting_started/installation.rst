@@ -442,7 +442,7 @@ in the ``.../dev_tests/`` directory, which takes less than two minutes to run.
 
 You can check the output in the directory ``.../tests/NGC6278_output/plots``, where you should find a plot called ``chi2_vs_model_id.png``, looking like the following figure.
 
-.. image:: chi2_vs_model_id.png
+.. image:: kinchi2_vs_model_id.png
 
 This figure shows the values of the :math:`\chi^2` obtained for the three models run in the test file, as a function of the ID of each model, and shown with red crosses. The black circles represent the range of expected values for this quantity, which can vary because of details in the numerical computation, depending on the system and the compiler used. If you obtain a figure similar to the one provided here, the code is running correctly (no need to worry if your crosses are falling slightly outside the circles).
 
