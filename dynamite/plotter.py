@@ -1059,15 +1059,25 @@ class Plotter():
         maxsb = max(maxf,maxfm)
 
         # The galaxy has NOT already rotated with PA to align major axis with x
+        # Also, retain geometry from previous 5-column plot of width 27.
 
         n_col = number_gh + 1
-        fig = plt.figure(figsize=(27, 12))
-        plt.subplots_adjust(hspace=0.7,
-                            wspace=0.01,
-                            left=0.01,
+        left_margin = 27 * 0.04
+        right_margin = 27 * 0.03
+        col_width = (27 - left_margin - right_margin) / 5
+        fig_width = left_margin + col_width * n_col + right_margin
+        text_x = 0.015 * 27 / fig_width
+        fig = plt.figure(figsize=(fig_width, 12))
+        kwtext = dict(size=20, ha='center', va='center', rotation=90.)
+        fig.text(text_x, 0.83, 'data', **kwtext)
+        fig.text(text_x, 0.53, 'model', **kwtext)
+        fig.text(text_x, 0.2, 'residual', **kwtext)
+        fig.subplots_adjust(hspace=0.01,
+                            wspace=0.3,
+                            left=left_margin / fig_width,
                             bottom=0.05,
                             top=0.99,
-                            right=0.99)
+                            right=(1 - right_margin / fig_width))
         map1 = cmr.get_sub_cmap('twilight_shifted', 0.05, 0.6)
         map2 = cmr.get_sub_cmap('twilight_shifted', 0.05, 0.95)
         kw_display_pixels1 = dict(pixelsize=dx,
@@ -1151,13 +1161,6 @@ class Plotter():
             display_pixels.display_pixels(x, y, c,
                                           vmin=-10, vmax=10,
                                           **kw_display_pixels)
-
-        fig.subplots_adjust(left=0.04, wspace=0.3,
-                            hspace=0.01, right=0.97)
-        kwtext = dict(size=20, ha='center', va='center', rotation=90.)
-        fig.text(0.015, 0.83, 'data', **kwtext)
-        fig.text(0.015, 0.53, 'model', **kwtext)
-        fig.text(0.015, 0.2, 'residual', **kwtext)
 
         return fig
 
