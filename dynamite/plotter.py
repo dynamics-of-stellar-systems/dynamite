@@ -438,11 +438,12 @@ class Plotter():
             if cbar_lims=='default':
                 cbar_lims = 'data'
             # TODO: delete before merging START
-            fig_old = self._plot_kinematic_maps_gaussherm_old(
-                    model,
-                    kin_set,
-                    cbar_lims=cbar_lims,
-                    **kwargs)
+            if self.settings.weight_solver_settings['number_GH'] == 4:
+                fig_old = self._plot_kinematic_maps_gaussherm_old(
+                        model,
+                        kin_set,
+                        cbar_lims=cbar_lims,
+                        **kwargs)
             # TODO: delete before merging END
             fig = self._plot_kinematic_maps_gaussherm(
                 model,
@@ -459,9 +460,10 @@ class Plotter():
                 **kwargs)
 
         # TODO: delete before merging START
-        figname = self.plotdir + f'kinematic_map_{kin_name}_old' + figtype
-        fig_old.savefig(figname, dpi=300)
-        self.logger.info(f'Kinematic map (old method) written to {figname}.')
+        if self.settings.weight_solver_settings['number_GH'] == 4:
+            figname = self.plotdir + f'kinematic_map_{kin_name}_old' + figtype
+            fig_old.savefig(figname, dpi=300)
+            self.logger.info(f'Kinematic map (old) written to {figname}.')
         # TODO: delete before merging END
         figname = self.plotdir + f'kinematic_map_{kin_name}' + figtype
         fig.savefig(figname, dpi=300)
@@ -1144,6 +1146,8 @@ class Plotter():
         for i in gh_plot:
             plt.subplot(3, n_col, (3 - 1) * n_col + i + 1)
             c = (hm[i][grid[s]] - h[i][grid[s]]) / dh[i][grid[s]]
+            c[c == np.inf] = np.finfo(float).max  # fix for display_pixels
+            c[c == -np.inf] = np.finfo(float).min
             display_pixels.display_pixels(x, y, c,
                                           vmin=-10, vmax=10,
                                           **kw_display_pixels)
