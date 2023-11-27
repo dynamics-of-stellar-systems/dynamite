@@ -4,6 +4,7 @@
 Change Log
 ****************
 
+- New feature: Gauss-Hermite kinematic maps can now be plotted for any number of Gauss-Hermite coefficients.
 - Improvement: the beta plots now work for all implemented weight solvers.
 
 Version: 4.1

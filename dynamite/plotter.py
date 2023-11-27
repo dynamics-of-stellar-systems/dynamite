@@ -722,6 +722,7 @@ class Plotter():
                    ncol=2)
         return fig
 
+    # TODO: delete before merging START
     def _plot_kinematic_maps_gaussherm_old(self,
                                            model,
                                            kin_set,
@@ -947,6 +948,7 @@ class Plotter():
 
         return fig
 
+    # TODO: delete before merging END
     def _plot_kinematic_maps_gaussherm(self,
                                        model,
                                        kin_set,
