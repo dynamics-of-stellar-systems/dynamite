@@ -133,5 +133,6 @@ def create_comparison_data():
 if __name__ == '__main__':
     # create_comparison_data()
     c = run_user_test()
-
+    p = dyn.plotter.Plotter(c)
+    p.plot_sb_profile(Rmax_arcs=15)
 # end
