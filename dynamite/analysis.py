@@ -79,6 +79,9 @@ class Decomposition:
     def plot_decomp(self, xlim, ylim, v_sigma_option='fit'):
         """ Generate decomposition plots.
 
+        The plots are written to the plots directory, the underlying data as
+        .ecsv astropy tables into the model directory.
+
         Parameters
         ----------
         xlim : float
@@ -271,8 +274,14 @@ class Decomposition:
                    xlim,
                    ylim,
                    comp_kinem_moments,
-                   figtype='.png'):
-        """ Generate decomposition plots.
+                   figtype='.png',
+                   return_table_only=False):
+        """ Generate decomposition plots based on components' (flux, v, dv)
+        vs aperture table.
+
+        The plots are written to the plots directory, the underlying data as
+        ecsv astropy tables into the model directory. If
+        `return_table_only=True`, nothing is written to disk.
 
         Parameters
         ----------
@@ -288,10 +297,16 @@ class Decomposition:
         figtype : str, optional
             Determines the file format and extension to use when saving the
             figure. The default is '.png'.
+        return_table_only : bool, optional
+            If True, this method does not create a plot or save data to disk,
+            but only returns the table with the components' kinematics.
+            The default is False.
 
         Returns
         -------
-        None.
+        comps_kin : astropy table (if `return_table_only=True`)
+            The astropy table holding the components' kinematics.
+        None : if `return_table_only=False`.
 
         """
 
@@ -364,6 +379,9 @@ class Decomposition:
                          labels[1]:vel[i][grid[s]],
                          labels[2]:sig[i][grid[s]]})
         comps_kin = astropy.table.Table(table)
+
+        if return_table_only:
+            return comps_kin  # ###############################################
 
         kin_name = stars.kinematic_data[self.kin_set].name
         file_name = f'comps_kin_{v_sigma_option}_{kin_name}'
