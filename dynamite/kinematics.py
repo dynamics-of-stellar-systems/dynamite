@@ -49,6 +49,7 @@ class Kinematics(data.Data):
                    f'{self.hist_width}, {self.hist_center}, {self.hist_bins})'
                 self.logger.error(text)
                 raise ValueError(text)
+            self.n_spatial_bins = len(self.data)
 
     def update(self, **kwargs):
         """
@@ -89,10 +90,10 @@ class Kinematics(data.Data):
         return f'{self.__class__.__name__}({self.__dict__})'
 
     def get_data(self, **kwargs):
-        """Returns the kinemtics data.
+        """Returns the kinematics data.
 
-        This skeleton method just returns the self.data attribute and allows
-        for specific implementations by subclasses.
+        This skeleton method returns a deep copy of the self.data attribute
+        and allows for specific implementations by subclasses.
 
         Parameters
         ----------
@@ -164,7 +165,7 @@ class GaussHermite(Kinematics, data.Integrated):
         self.logger = logging.getLogger(f'{__name__}.{__class__.__name__}')
         if hasattr(self, 'data'):
             self.max_gh_order = self.get_highest_order_gh_coefficient()
-            self.n_apertures = len(self.data)
+            self.n_apertures = self.n_spatial_bins
             self._data_raw = None
             self._data_with_sys_err = None
 
@@ -178,7 +179,8 @@ class GaussHermite(Kinematics, data.Integrated):
         with their uncertainties, adapted to the desired number of GH
         coefficients and optionally including the systematic errors.
         The `number_GH` setting from the configuration file determines the
-        number of returned GH coefficients.
+        number of returned GH coefficients. The data in the returned table is
+        a deep copy of the observed data.
 
         If number_GH (configuration file) greater than max_GH_order (number of
         gh coefficients in the kinematics file), columns with zeros

@@ -544,10 +544,10 @@ class Configuration(object):
         for k in stars.kinematic_data:
             if k.type == 'GaussHermite':
                 number_GH = self.settings.weight_solver_settings['number_GH']
-                n_obs += number_GH * len(k.data)
+                n_obs += number_GH * k.n_spatial_bins
             if k.type == 'BayesLOSVD':
-                nvbins = k.data.meta['nvbins']
-                n_obs += nvbins * len(k.data)
+                nvbins = k.get_data().meta['nvbins']
+                n_obs += nvbins * k.n_spatial_bins
         two_n_obs = 2 * n_obs
         return two_n_obs
 
