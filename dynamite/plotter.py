@@ -398,8 +398,7 @@ class Plotter():
         if figtype is None:
             figtype = '.png'
 
-        stars = \
-          self.system.get_component_from_class(physys.TriaxialVisibleComponent)
+        stars = self.system.get_unique_triaxial_visible_component()
         n_kin = len(stars.kinematic_data)
 
         #########################################
@@ -501,8 +500,7 @@ class Plotter():
 
         """
         # get the data
-        stars = \
-          self.system.get_component_from_class(physys.TriaxialVisibleComponent)
+        stars = self.system.get_unique_triaxial_visible_component()
         kin_set = stars.kinematic_data[kin_set]
         # helper function to decide which losvds to plot
         def dissimilar_subset_greedy_search(distance_matrix, target_size):
@@ -973,8 +971,7 @@ class Plotter():
         gh_plot = range(3,number_gh + 1)
 
         # get the observed projected masses and kinematic data
-        stars = \
-          self.system.get_component_from_class(physys.TriaxialVisibleComponent)
+        stars = self.system.get_unique_triaxial_visible_component()
         kinematics_data = stars.kinematic_data[kin_set].get_data(
             self.settings.weight_solver_settings,
             apply_systematic_error=False)
