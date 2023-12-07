@@ -70,7 +70,7 @@ class Settings(object):
             raise ValueError(text)
 
     def validate(self):
-        """Validate that all expected settings are present
+        """Validate that all expected settings are present and perform checks
         """
         if not(self.orblib_settings and self.parameter_space_settings and
                self.io_settings and self.weight_solver_settings
@@ -80,6 +80,11 @@ class Settings(object):
                              and io_settings
                              and weight_solver_settings
                              and multiprocessing_settings"""
+            self.logger.error(text)
+            raise ValueError(text)
+        if self.orblib_settings['nI2'] < 4:
+            text = "orblib_settings: nI2 must be >= 4, but is " \
+                   f"{self.orblib_settings['nI2']}."
             self.logger.error(text)
             raise ValueError(text)
         self.logger.debug('Settings validated.')
@@ -121,8 +126,6 @@ class Configuration(object):
     ----------
     filename : string
         needs to refer to an existing file including path
-    silent : DEPRECATED
-        (diagnostic output handled by logging module)
     reset_logging : bool
         if False: use the calling application's logging settings
         if True: set logging to Dynamite defaults
@@ -160,7 +163,6 @@ class Configuration(object):
 
     def __init__(self,
                  filename=None,
-                 silent=None,
                  reset_logging=False,
                  user_logfile='dynamite',
                  reset_existing_output=False):
@@ -176,9 +178,6 @@ class Configuration(object):
         self.logger.debug(f'This is Python {sys.version.split()[0]}')
         self.logger.debug(f'Using DYNAMITE version {dyn.__version__} '
                           f'located at {dyn.__path__}')
-
-        if silent is not None:
-            self.logger.warning("'silent' option is deprecated and ignored")
 
         self.logger.debug('Global variables: ' \
                           f'{const.GRAV_CONST_KM = }, {const.PARSEC_KM = }, ' \
@@ -845,10 +844,6 @@ class Configuration(object):
     def validate(self):
         """
         Validates the system and settings.
-
-        This includes aligning the number of gh coefficients with the config
-        file setting `number_GH` for Gauss Hermite kinematics and also applies
-        the weight solver settings' systematic errors to the kinematics.
 
         This method is still VERY rudimentary and will be adjusted as we add new
         functionality to dynamite. Currently, this method is geared towards
