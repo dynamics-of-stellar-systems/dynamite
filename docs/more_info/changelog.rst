@@ -4,6 +4,7 @@
 Change Log
 ****************
 
+- Bugfix: fixed crash when multiple kinematics had different number of PSF components.
 - Improvement: the beta plots now work for all implemented weight solvers.
 
 Version: 4.1
