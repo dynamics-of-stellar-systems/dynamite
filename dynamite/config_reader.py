@@ -479,6 +479,7 @@ class Configuration(object):
         self.all_models = model.AllModels(config=self)
         logger.info('Instantiated AllModels object')
         logger.debug(f'AllModels:\n{self.all_models.table}')
+        self.all_models.update_model_table()
 
         # self.backup_config_file(reset=False)
 
