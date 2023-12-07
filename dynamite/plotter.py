@@ -34,7 +34,7 @@ class Plotter():
     ----------
     config : a ``dyn.config_reader.Configuration`` object
     dpi : float, optional
-        The resolution of saved figures if not specified elsewhere. The
+        The resolution of saved figures (if not overridden later). The
         default is 100 dpi.
 
     """
