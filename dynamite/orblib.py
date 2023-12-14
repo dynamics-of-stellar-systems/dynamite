@@ -663,7 +663,7 @@ class LegacyOrbitLibrary(OrbitLibrary):
         error_msg = 'must have odd number of velocity bins for all kinematics'
         assert np.all(np.array(hist_bins) % 1==0), error_msg
         self.logger.debug('...checks ok.')
-        n_apertures = [len(k.data) for k in stars.kinematic_data]
+        n_apertures = [k.n_spatial_bins for k in stars.kinematic_data]
         # get index linking  kinematic set to aperture
         # kin_idx_per_ap[i] = N <--> aperture i is from kinematic set N
         kin_idx_per_ap = [np.zeros(n_apertures[i], dtype=int)+i
