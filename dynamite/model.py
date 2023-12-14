@@ -21,7 +21,7 @@ class AllModels(object):
     ----------
     config : a ``dyn.config_reader.Configuration`` object
     from_file : bool
-        whether to create this ojbect from a saved `all_models.ecsv` file
+        whether to create this object from a saved `all_models.ecsv` file
 
     """
     def __init__(self, config=None, from_file=True):
@@ -37,13 +37,13 @@ class AllModels(object):
         self.make_empty_table()
         if from_file and os.path.isfile(self.filename):
             self.logger.info('Previous models have been found: '
-                        f'Reading {self.filename} into '
-                        f'{__class__.__name__}.table')
-            self.read_completed_model_file()
+                             f'Reading {self.filename} into '
+                             f'{__class__.__name__}.table')
+            self.read_model_table()
         else:
             self.logger.info(f'No previous models (file {self.filename}) '
-                        'have been found: '
-                        f'Made an empty table in {__class__.__name__}.table')
+                             'have been found: Made '
+                             f'an empty table in {__class__.__name__}.table')
 
     def set_filename(self, filename):
         """Set the name (including path) for this model
@@ -88,8 +88,24 @@ class AllModels(object):
         dtype.append('U256')
         self.table = table.Table(names=names, dtype=dtype)
 
-    def read_completed_model_file(self):
+    def read_model_table(self):
         """Read table from file ``self.filename``
+
+        Returns
+        -------
+        None
+            sets ``self.table``
+
+        """
+        table_read = ascii.read(self.filename)
+        self.table = table.vstack((self.table, table_read),
+                                  join_type='outer',
+                                  metadata_conflicts='error')
+        self.logger.debug(f'{len(self.table)} models read '
+                          f'from file {self.filename}')
+
+    def update_model_table(self):
+        """all_models table update: fix incomplete models, add kinmapchi2.
 
         Dealing with incomplete models:
         Models with all_done==False but an existing model_done_staging.ecsv
@@ -106,19 +122,16 @@ class AllModels(object):
         Note that orbit libraries on disk will not be deleted as they
         may be in use by other models.
 
+        * Up to DYNAMITE 3.0 there was no kinmapchi2 column in the all_models
+        table. If possible (data exists on disk), calculate and add the values,
+        otherwise set to np.nan.
+
         Returns
         -------
         None
             sets ``self.table``
 
         """
-        table_read = ascii.read(self.filename)
-        self.table = table.vstack((self.table, table_read),
-                                  join_type='outer',
-                                  metadata_conflicts='error')
-        self.logger.debug(f'{len(self.table)} models read '
-                          f'from file {self.filename}')
-
         table_modified = False
         for i, row in enumerate(self.table):
             if not row['all_done']:
@@ -194,37 +207,47 @@ class AllModels(object):
                         ' perhaps it has already been removed before.')
             os.chdir(cwd)
             self.table.remove_rows(to_delete)
-
-        which_chi2 = 'kinmapchi2'
-        if which_chi2 not in self.table.colnames:
+        # Up to DYNAMITE 3.0 there was no kinmapchi2 column -> retrofit.
+        if isinstance(self.table['kinmapchi2'], table.column.MaskedColumn):
             table_modified = True
-            # a legacy all_models table does not have the kinmapchi2 column
-            # add that column to the table and initialize with nan
-            self.logger.info('Legacy all_models table read, adding and '
-                             f'updating {which_chi2} column...')
-            self.table.add_column(float('nan'),
-                                  index=self.table.colnames.index('kinchi2')+1,
-                                  name=which_chi2,
-                                  copy=True)
-            for row_id, row in enumerate(self.table):
-                if row['orblib_done'] and row['weights_done']:
-                    # both orblib_done and weights_done being True indicates
-                    # that data for kinmapchi2 is on the disk -> calculate
-                    # kinmapchi2 (not nan only for LegacyWeightSolver)
-                    mod = self.get_model_from_row(row_id)
-                    ws_type=self.config.settings.weight_solver_settings['type']
-                    weight_solver = getattr(ws,ws_type)(
-                                            config=self.config,
-                                            directory_with_ml=mod.directory)
-                    row[which_chi2] = weight_solver.chi2_kinmap()
-                    self.logger.info(f'Model {row_id}: {which_chi2} = '
-                                     f'{row[which_chi2]}')
-                else:
-                    self.logger.warning(f'Model {row_id}: cannot update '
-                                        f'{which_chi2} - data deleted?')
-
+            self.retrofit_kinmapchi2()
+        # If the table has been modified, save it.
         if table_modified:
             self.save()
+            self.logger.info('all_models table updated and saved.')
+        else:
+            self.logger.info('No all_models table update required.')
+
+    def retrofit_kinmapchi2(self):
+        """Calculates kinmapchi2 for DYNAMITE legacy tables if possible.
+
+        Returns
+        -------
+        None.
+            updates ``self.table``
+        """
+        which_chi2 = 'kinmapchi2'
+        self.logger.info('Legacy all_models table read, updating '
+                         f'{which_chi2} column...')
+        # self.table[which_chi2] = np.nan
+        for row_id, row in enumerate(self.table):
+            if row['orblib_done'] and row['weights_done']:
+                # both orblib_done==True and weights_done==True indicates
+                # that data for kinmapchi2 is on the disk -> calculate
+                # kinmapchi2
+                mod = self.get_model_from_row(row_id)
+                ws_type = self.config.settings.weight_solver_settings['type']
+                weight_solver = getattr(ws, ws_type)(
+                                        config=self.config,
+                                        directory_with_ml=mod.directory)
+                orblib = mod.get_orblib()
+                _, _, _, row[which_chi2] = weight_solver.solve(orblib)
+                self.logger.info(f'Model {row_id}: {which_chi2} = '
+                                 f'{row[which_chi2]}')
+            else:
+                row[which_chi2] = np.nan
+                self.logger.warning(f'Model {row_id}: cannot update '
+                                    f'{which_chi2} - data deleted?')
 
     def read_legacy_chi2_file(self, legacy_filename):
         """
