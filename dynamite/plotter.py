@@ -492,9 +492,9 @@ class Plotter():
 
         """
         # get the data
-        stars = \
-          self.system.get_component_from_class(physys.TriaxialVisibleComponent)
+        stars = self.system.get_unique_triaxial_visible_component()
         kin_set = stars.kinematic_data[kin_set]
+        kin_data = kin_set.get_data()
         # helper function to decide which losvds to plot
         def dissimilar_subset_greedy_search(distance_matrix, target_size):
             """Greedy algorithm to find dissimilar subsets
@@ -525,11 +525,11 @@ class Plotter():
         # helper function to get positions of a regular 3x3 grid on the map
         def get_coords_of_regular_3by3_grid():
             # get range of x and y values
-            minx = np.min(kin_set.data['xbin'])
-            maxx = np.max(kin_set.data['xbin'])
+            minx = np.min(kin_data['xbin'])
+            maxx = np.max(kin_data['xbin'])
             x = np.array([minx, maxx])
-            miny = np.min(kin_set.data['ybin'])
-            maxy = np.max(kin_set.data['ybin'])
+            miny = np.min(kin_data['ybin'])
+            maxy = np.max(kin_data['ybin'])
             y = np.array([miny, maxy])
             x, y = kin_set.convert_to_plot_coords(x, y)
             # get 3 evenly spaced coords in x and y
@@ -580,8 +580,8 @@ class Plotter():
             return threshold
         # helper function to reorder the plotted LOSVDs into a sensible order
         def reorder_losvds(idx_to_plot):
-            x = kin_set.data['xbin'][idx_to_plot]
-            y = kin_set.data['ybin'][idx_to_plot]
+            x = kin_data['xbin'][idx_to_plot]
+            y = kin_data['ybin'][idx_to_plot]
             x, y = kin_set.convert_to_plot_coords(x, y)
             xg, yg = get_coords_of_regular_3by3_grid()
             # get distance between plot positions and regular grid
@@ -604,13 +604,13 @@ class Plotter():
         # normalise LOSVDs to same scale at data, i.e. summing to 1
         losvd_model = (losvd_model.T/np.sum(losvd_model, 1)).T
         # get chi2's
-        chi2_per_losvd_bin = losvd_model - kin_set.data['losvd']
-        chi2_per_losvd_bin = chi2_per_losvd_bin/kin_set.data['dlosvd']
+        chi2_per_losvd_bin = losvd_model - kin_data['losvd']
+        chi2_per_losvd_bin = chi2_per_losvd_bin/kin_data['dlosvd']
         chi2_per_losvd_bin = chi2_per_losvd_bin**2.
         chi2_per_apertur = np.sum(chi2_per_losvd_bin, 1)
-        reduced_chi2_per_apertur = chi2_per_apertur/kin_set.data.meta['nvbins']
+        reduced_chi2_per_apertur = chi2_per_apertur/kin_data.meta['nvbins']
         # pick a subset of 9 LOSVDs to plot which are not similar to one another
-        dist = 1.*kin_set.data['losvd']
+        dist = 1.*kin_data['losvd']
         dist = dist[:,np.newaxis,:] - dist[np.newaxis,:,:]
         dist = np.sum(dist**2., 2)**0.5
         idx_to_plot, _ = dissimilar_subset_greedy_search(dist, 9)
@@ -671,14 +671,14 @@ class Plotter():
         mean_chi2r = np.mean(reduced_chi2_per_apertur)
         ax_chi2.set_title(f'$\chi^2_r={mean_chi2r:.2f}$')
         # plot locations of LOSVDs
-        x = kin_set.data['xbin'][idx_to_plot]
-        y = kin_set.data['ybin'][idx_to_plot]
+        x = kin_data['xbin'][idx_to_plot]
+        y = kin_data['ybin'][idx_to_plot]
         x, y = kin_set.convert_to_plot_coords(x, y)
         ax_chi2.plot(x, y, 'o', ms=15, c='none', mec='0.2')
         for i, (x0,y0) in enumerate(zip(x,y)):
             ax_chi2.text(x0, y0, f'{i+1}', ha='center', va='center')
         # plot LOSVDs
-        varr = kin_set.data.meta['vcent']
+        varr = kin_data.meta['vcent']
         for i, (idx0, ax0) in enumerate(zip(idx_to_plot, ax_losvds)):
             col = (reduced_chi2_per_apertur[idx0]-vmin)/(vmax-vmin)
             col = cmap(col)
@@ -687,13 +687,13 @@ class Plotter():
                      bbox = dict(boxstyle=f"circle", fc=col, alpha=0.5)
                     )
             dat_line, = ax0.plot(varr,
-                                 kin_set.data['losvd'][idx0],
+                                 kin_data['losvd'][idx0],
                                  ls=':',
                                  color=color_dat)
             dat_band = ax0.fill_between(
                 varr,
-                kin_set.data['losvd'][idx0]-kin_set.data['dlosvd'][idx0],
-                kin_set.data['losvd'][idx0]+kin_set.data['dlosvd'][idx0],
+                kin_data['losvd'][idx0]-kin_data['dlosvd'][idx0],
+                kin_data['losvd'][idx0]+kin_data['dlosvd'][idx0],
                 alpha=0.2,
                 color=color_dat,
                 )

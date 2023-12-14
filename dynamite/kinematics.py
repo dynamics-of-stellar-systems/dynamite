@@ -49,6 +49,7 @@ class Kinematics(data.Data):
                    f'{self.hist_width}, {self.hist_center}, {self.hist_bins})'
                 self.logger.error(text)
                 raise ValueError(text)
+            self.n_spatial_bins = len(self.data)
 
     def update(self, **kwargs):
         """
@@ -89,10 +90,10 @@ class Kinematics(data.Data):
         return f'{self.__class__.__name__}({self.__dict__})'
 
     def get_data(self, **kwargs):
-        """Returns the kinemtics data.
+        """Returns the kinematics data.
 
-        This skeleton method just returns the self.data attribute and allows
-        for specific implementations by subclasses.
+        This skeleton method returns a deep copy of the self.data attribute
+        and allows for specific implementations by subclasses.
 
         Parameters
         ----------
@@ -164,7 +165,7 @@ class GaussHermite(Kinematics, data.Integrated):
         self.logger = logging.getLogger(f'{__name__}.{__class__.__name__}')
         if hasattr(self, 'data'):
             self.max_gh_order = self.get_highest_order_gh_coefficient()
-            self.n_apertures = len(self.data)
+            self.n_apertures = self.n_spatial_bins
             self._data_raw = None
             self._data_with_sys_err = None
 
@@ -178,7 +179,8 @@ class GaussHermite(Kinematics, data.Integrated):
         with their uncertainties, adapted to the desired number of GH
         coefficients and optionally including the systematic errors.
         The `number_GH` setting from the configuration file determines the
-        number of returned GH coefficients.
+        number of returned GH coefficients. The data in the returned table is
+        a deep copy of the observed data.
 
         If number_GH (configuration file) greater than max_GH_order (number of
         gh coefficients in the kinematics file), columns with zeros
@@ -195,8 +197,8 @@ class GaussHermite(Kinematics, data.Integrated):
             is set to `True`, the key `GH_sys_err`.
         apply_systematic_error : bool, optional
             If set to `True`, apply the systematic uncertainties to the
-            dh3, dh4, ... values and calculates the h1, h2 uncertainties
-            from vdMarel + Franx 93.
+            dh3, dh4, ... values and calculates the dv, dsigma uncertainties
+            from vdMarel + Franx 93, ApJ 407,525.
         cache_data : bool, optional
             If set to `True`, the first call of this method will store the
             calculated data table in attribute self._data_raw
@@ -244,7 +246,7 @@ class GaussHermite(Kinematics, data.Integrated):
         if apply_systematic_error:
             # construct uncertainties
             uncertainties = np.zeros((self.n_apertures, number_gh))
-            # uncertainties on h1,h2 from vdMarel + Franx 93
+            # uncertainties on h1,h2 from vdMarel + Franx 93, ApJ 407,525
             uncertainties[:, 0] = gh_data['dv'] / np.sqrt(2) / gh_data['sigma']
             uncertainties[:, 1] = gh_data['dsigma']/np.sqrt(2)/gh_data['sigma']
             # uncertainties h3, h4, etc... are taken from gh_data table
@@ -586,7 +588,7 @@ class GaussHermite(Kinematics, data.Integrated):
         """Calcuate GH expansion coeffients given an LOSVD
 
         Expand LOSVD around a given v_mu and v_sig using eqn 7 of
-        vd Marel & Franx 93
+        vd Marel & Franx 93, ApJ 407,525
 
         Parameters
         ----------
@@ -676,7 +678,7 @@ class GaussHermite(Kinematics, data.Integrated):
             observed_values[:, i - 1] = gh_data[f'h{i}']
         # construct uncertainties
         uncertainties = np.zeros_like(observed_values)
-        # uncertainties on h1,h2 from vdMarel + Franx 93
+        # uncertainties on h1,h2 from vdMarel + Franx 93, ApJ 407,525
         uncertainties[:, 0] = gh_data['dv']
         uncertainties[:, 1] = gh_data['dsigma']
         # uncertainties h3, h4, etc... are taken from data table
