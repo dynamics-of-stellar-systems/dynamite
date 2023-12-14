@@ -4,6 +4,7 @@
 Change Log
 ****************
 
+- Improvement: better crash recovery by re-use existing tube orbits when recalculating orblib.
 - Bugfix: fixed a bug in retrofitting kinmapchi2 in old all_models tables.
 - Improvement: removed deprecated silent option from config reader.
 - Improvement: the Plotter's new optional argument ``dpi`` (default: 100) allows to change the resolution of all saved figures except the kinematic maps (always 300 dpi).
