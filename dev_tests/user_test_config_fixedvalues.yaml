@@ -185,11 +185,11 @@ parameter_space_settings:
     generator_settings:
         # For LegacyGridSearch, specify ONE of the following two settings
         #threshold_del_chi2_abs: 0.5  # absolute change in chi2 threshold
-        threshold_del_chi2_as_frac_of_sqrt2nobs: 0.1
+        # threshold_del_chi2_as_frac_of_sqrt2nobs: 0.1
         SpecificModels_mode: "cartesian" # "list" or "cartesian"
     stopping_criteria:
-        min_delta_chi2_abs : 0.5  # absolute "optimality tolerance"
-        #min_delta_chi2_rel : 0.05 # relative "optimality tolerance"
+        # min_delta_chi2_abs : 0.5  # absolute "optimality tolerance"
+        # #min_delta_chi2_rel : 0.05 # relative "optimality tolerance"
         n_max_mods : 3
         n_max_iter : 10
 

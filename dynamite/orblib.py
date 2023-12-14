@@ -59,9 +59,12 @@ class LegacyOrbitLibrary(OrbitLibrary):
         self.in_dir = config.settings.io_settings['input_directory']
         self.orblibs_in_parallel = \
             config.settings.multiprocessing_settings['orblibs_in_parallel']
-        mod = config.all_models.get_model_from_parset(self.parset)
-        self.velocity_scaling_factor = \
-            config.all_models.get_model_velocity_scaling_factor(model=mod)
+        if len(config.all_models.table) == 0:
+            self.velocity_scaling_factor = 1.0
+        else:
+            mod = config.all_models.get_model_from_parset(self.parset)
+            self.velocity_scaling_factor = \
+                config.all_models.get_model_velocity_scaling_factor(model=mod)
 
     def check_orlib_files(self):
         """
@@ -737,7 +740,7 @@ class LegacyOrbitLibrary(OrbitLibrary):
         error_msg = 'must have odd number of velocity bins for all kinematics'
         assert np.all(np.array(hist_bins) % 1==0), error_msg
         self.logger.debug('...checks ok.')
-        n_apertures = [len(k.data) for k in stars.kinematic_data]
+        n_apertures = [k.n_spatial_bins for k in stars.kinematic_data]
         # get index linking  kinematic set to aperture
         # kin_idx_per_ap[i] = N <--> aperture i is from kinematic set N
         kin_idx_per_ap = [np.zeros(n_apertures[i], dtype=int)+i
@@ -941,12 +944,19 @@ class LegacyOrbitLibrary(OrbitLibrary):
         proj_mass = [np.sum(self.losvd_histograms[i].y,1) for i in range(nkins)]
         self.projected_masses = proj_mass
 
-    def read_orbit_intrinsic_moments(self):
+    def read_orbit_intrinsic_moments(self, cache=True):
         """Read the intrinsic moments of the orbit library.
 
         Moments stored in 3D grid over spherical co-ords (r,theta,phi). This
         function reads the data from files, formats them correctly, and coverts
         to physical units.
+
+        Parameters
+        ----------
+        cache : bool, optional
+            If True, the intrinsic moments and the bin edges are cached
+            between calls to this method. The cache files are stored in the
+            orbit library's datfil/ directory. The default is True.
 
         Returns
         -------
@@ -958,29 +968,51 @@ class LegacyOrbitLibrary(OrbitLibrary):
             contains grid bin edges over spherical (r, theta, phi).
 
         """
-        intmom_tubes, int_grid = self.read_orbit_base(
-            'orblib',
-            return_instrisic_moments=True)
-        intmom_tubes = self.duplicate_flip_and_interlace_intmoms(intmom_tubes)
-        intmom_boxes, _ = self.read_orbit_base(
-            'orblibbox',
-            return_instrisic_moments=True)
-        intmoms = np.concatenate((intmom_tubes, intmom_boxes), 0)
-        velscale = self.velocity_scaling_factor
-        conversion_factor = self.system.distMPc * 1e6 * np.tan(np.pi/648000.0) * PARSEC_KM
-        intmoms[:,:,:,:,1] /= conversion_factor # kpc -> arcsec
-        intmoms[:,:,:,:,2] /= conversion_factor
-        intmoms[:,:,:,:,3] /= conversion_factor
-        intmoms[:,:,:,:,4] *= velscale # for velocity stretching due to M/L
-        intmoms[:,:,:,:,5] *= velscale
-        intmoms[:,:,:,:,6] *= velscale
-        intmoms[:,:,:,:,7] *= velscale**2.
-        intmoms[:,:,:,:,8] *= velscale**2.
-        intmoms[:,:,:,:,9] *= velscale**2.
-        intmoms[:,:,:,:,10] *= velscale**2.
-        intmoms[:,:,:,:,11] *= velscale**2.
-        intmoms[:,:,:,:,12] *= velscale**2.
-        int_grid[0] /= conversion_factor # kpc -> arcsec
+        mom_file = self.mod_dir + 'datfil/intmoms.npz'
+        grid_file = self.mod_dir + 'datfil/int_grid.npz'
+        mom_file_exists = os.path.isfile(mom_file)
+        grid_file_exists = os.path.isfile(grid_file)
+        if cache and mom_file_exists and grid_file_exists:
+            with np.load(mom_file, allow_pickle=False) as data:
+                intmoms = data['intmoms']
+            with np.load(grid_file, allow_pickle=False) as data:
+                int_grid = [data[x] for x in ('r', 'th', 'ph')]
+        else:
+            intmom_tubes, int_grid = self.read_orbit_base(
+                'orblib',
+                return_instrisic_moments=True)
+            intmom_tubes = \
+                self.duplicate_flip_and_interlace_intmoms(intmom_tubes)
+            intmom_boxes, _ = self.read_orbit_base(
+                'orblibbox',
+                return_instrisic_moments=True)
+            intmoms = np.concatenate((intmom_tubes, intmom_boxes), 0)
+            velscale = self.velocity_scaling_factor
+            conversion_factor = self.system.distMPc * 1e6 * \
+                                np.tan(np.pi/648000.0) * PARSEC_KM
+            intmoms[:,:,:,:,1] /= conversion_factor # kpc -> arcsec
+            intmoms[:,:,:,:,2] /= conversion_factor
+            intmoms[:,:,:,:,3] /= conversion_factor
+            intmoms[:,:,:,:,4] *= velscale # for velocity stretching due to M/L
+            intmoms[:,:,:,:,5] *= velscale
+            intmoms[:,:,:,:,6] *= velscale
+            intmoms[:,:,:,:,7] *= velscale**2.
+            intmoms[:,:,:,:,8] *= velscale**2.
+            intmoms[:,:,:,:,9] *= velscale**2.
+            intmoms[:,:,:,:,10] *= velscale**2.
+            intmoms[:,:,:,:,11] *= velscale**2.
+            intmoms[:,:,:,:,12] *= velscale**2.
+            int_grid[0] /= conversion_factor # kpc -> arcsec
+            if cache:
+                if mom_file_exists:
+                    os.remove(mom_file)
+                if grid_file_exists:
+                    os.remove(grid_file)
+                np.savez_compressed(mom_file, intmoms=intmoms)
+                np.savez(grid_file,
+                         r=int_grid[0],
+                         th=int_grid[1],
+                         ph=int_grid[2])
         return intmoms, int_grid
 
     def read_orbit_property_file_base(self, file, ncol, nrow):

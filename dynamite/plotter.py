@@ -33,9 +33,13 @@ class Plotter():
     Parameters
     ----------
     config : a ``dyn.config_reader.Configuration`` object
+    dpi : float, optional
+        The resolution of saved figures (if not overridden later). The
+        default is 100 dpi.
 
     """
-    def __init__(self, config=None):
+
+    def __init__(self, config=None, dpi=100):
         self.logger = logging.getLogger(f'{__name__}.{__class__.__name__}')
         if config is None:
             text = f'{__class__.__name__} needs configuration object, ' \
@@ -49,6 +53,7 @@ class Plotter():
         self.input_directory = config.settings.io_settings['input_directory']
         self.plotdir = config.settings.io_settings['plot_directory']
         self.modeldir = config.settings.io_settings['model_directory']
+        mpl.rcParams['savefig.dpi'] = dpi
 
     def make_chi2_vs_model_id_plot(self, which_chi2=None, figtype=None):
         """
@@ -487,9 +492,9 @@ class Plotter():
 
         """
         # get the data
-        stars = \
-          self.system.get_component_from_class(physys.TriaxialVisibleComponent)
+        stars = self.system.get_unique_triaxial_visible_component()
         kin_set = stars.kinematic_data[kin_set]
+        kin_data = kin_set.get_data()
         # helper function to decide which losvds to plot
         def dissimilar_subset_greedy_search(distance_matrix, target_size):
             """Greedy algorithm to find dissimilar subsets
@@ -520,11 +525,11 @@ class Plotter():
         # helper function to get positions of a regular 3x3 grid on the map
         def get_coords_of_regular_3by3_grid():
             # get range of x and y values
-            minx = np.min(kin_set.data['xbin'])
-            maxx = np.max(kin_set.data['xbin'])
+            minx = np.min(kin_data['xbin'])
+            maxx = np.max(kin_data['xbin'])
             x = np.array([minx, maxx])
-            miny = np.min(kin_set.data['ybin'])
-            maxy = np.max(kin_set.data['ybin'])
+            miny = np.min(kin_data['ybin'])
+            maxy = np.max(kin_data['ybin'])
             y = np.array([miny, maxy])
             x, y = kin_set.convert_to_plot_coords(x, y)
             # get 3 evenly spaced coords in x and y
@@ -575,8 +580,8 @@ class Plotter():
             return threshold
         # helper function to reorder the plotted LOSVDs into a sensible order
         def reorder_losvds(idx_to_plot):
-            x = kin_set.data['xbin'][idx_to_plot]
-            y = kin_set.data['ybin'][idx_to_plot]
+            x = kin_data['xbin'][idx_to_plot]
+            y = kin_data['ybin'][idx_to_plot]
             x, y = kin_set.convert_to_plot_coords(x, y)
             xg, yg = get_coords_of_regular_3by3_grid()
             # get distance between plot positions and regular grid
@@ -599,13 +604,13 @@ class Plotter():
         # normalise LOSVDs to same scale at data, i.e. summing to 1
         losvd_model = (losvd_model.T/np.sum(losvd_model, 1)).T
         # get chi2's
-        chi2_per_losvd_bin = losvd_model - kin_set.data['losvd']
-        chi2_per_losvd_bin = chi2_per_losvd_bin/kin_set.data['dlosvd']
+        chi2_per_losvd_bin = losvd_model - kin_data['losvd']
+        chi2_per_losvd_bin = chi2_per_losvd_bin/kin_data['dlosvd']
         chi2_per_losvd_bin = chi2_per_losvd_bin**2.
         chi2_per_apertur = np.sum(chi2_per_losvd_bin, 1)
-        reduced_chi2_per_apertur = chi2_per_apertur/kin_set.data.meta['nvbins']
+        reduced_chi2_per_apertur = chi2_per_apertur/kin_data.meta['nvbins']
         # pick a subset of 9 LOSVDs to plot which are not similar to one another
-        dist = 1.*kin_set.data['losvd']
+        dist = 1.*kin_data['losvd']
         dist = dist[:,np.newaxis,:] - dist[np.newaxis,:,:]
         dist = np.sum(dist**2., 2)**0.5
         idx_to_plot, _ = dissimilar_subset_greedy_search(dist, 9)
@@ -666,14 +671,14 @@ class Plotter():
         mean_chi2r = np.mean(reduced_chi2_per_apertur)
         ax_chi2.set_title(f'$\chi^2_r={mean_chi2r:.2f}$')
         # plot locations of LOSVDs
-        x = kin_set.data['xbin'][idx_to_plot]
-        y = kin_set.data['ybin'][idx_to_plot]
+        x = kin_data['xbin'][idx_to_plot]
+        y = kin_data['ybin'][idx_to_plot]
         x, y = kin_set.convert_to_plot_coords(x, y)
         ax_chi2.plot(x, y, 'o', ms=15, c='none', mec='0.2')
         for i, (x0,y0) in enumerate(zip(x,y)):
             ax_chi2.text(x0, y0, f'{i+1}', ha='center', va='center')
         # plot LOSVDs
-        varr = kin_set.data.meta['vcent']
+        varr = kin_data.meta['vcent']
         for i, (idx0, ax0) in enumerate(zip(idx_to_plot, ax_losvds)):
             col = (reduced_chi2_per_apertur[idx0]-vmin)/(vmax-vmin)
             col = cmap(col)
@@ -682,13 +687,13 @@ class Plotter():
                      bbox = dict(boxstyle=f"circle", fc=col, alpha=0.5)
                     )
             dat_line, = ax0.plot(varr,
-                                 kin_set.data['losvd'][idx0],
+                                 kin_data['losvd'][idx0],
                                  ls=':',
                                  color=color_dat)
             dat_band = ax0.fill_between(
                 varr,
-                kin_set.data['losvd'][idx0]-kin_set.data['dlosvd'][idx0],
-                kin_set.data['losvd'][idx0]+kin_set.data['dlosvd'][idx0],
+                kin_data['losvd'][idx0]-kin_data['dlosvd'][idx0],
+                kin_data['losvd'][idx0]+kin_data['dlosvd'][idx0],
                 alpha=0.2,
                 color=color_dat,
                 )
@@ -728,11 +733,13 @@ class Plotter():
         # get the observed projected masses and kinematic data
         stars = \
           self.system.get_component_from_class(physys.TriaxialVisibleComponent)
-        kinematics_data = stars.kinematic_data[kin_set].data
+        kinematics_data = stars.kinematic_data[kin_set].get_data(
+            self.settings.weight_solver_settings,
+            apply_systematic_error=False)
         # pick out the projected masses only for this kinematic set
         flux=stars.mge_lum.get_projected_masses_from_file(model.directory_noml)
         ap_idx_range_start = \
-            sum([len(stars.kinematic_data[i].data) for i in range(kin_set)])
+            sum([stars.kinematic_data[i].n_apertures for i in range(kin_set)])
         ap_idx_range_end = ap_idx_range_start + len(kinematics_data)
         flux = flux[ap_idx_range_start:ap_idx_range_end]
 
@@ -1433,27 +1440,33 @@ class Plotter():
                         midpoint=0.5,
                         stop=1.0,
                         name='shiftedcmap'):
-        '''
+        """
         Function to offset the "center" of a colormap. Useful for
         data with a negative min and positive max and you want the
         middle of the colormap's dynamic range to be at zero.
 
-        Input
-        -----
-          cmap : The matplotlib colormap to be altered
-          start : Offset from lowest point in the colormap's range.
+        Parameters
+        ----------
+        cmap : The matplotlib colormap to be altered
+        start : Offset from lowest point in the colormap's range.
               Defaults to 0.0 (no lower offset). Should be between
               0.0 and `midpoint`.
-          midpoint : The new center of the colormap. Defaults to
+        midpoint : The new center of the colormap. Defaults to
               0.5 (no shift). Should be between 0.0 and 1.0. In
               general, this should be  1 - vmax / (vmax + abs(vmin))
               For example if your data range from -15.0 to +5.0 and
               you want the center of the colormap at 0.0, `midpoint`
               should be set to  1 - 5/(5 + 15)) or 0.75
-          stop : Offset from highest point in the colormap's range.
+        stop : Offset from highest point in the colormap's range.
               Defaults to 1.0 (no upper offset). Should be between
               `midpoint` and 1.0.
-        '''
+        name : The name of the new colormap, the default is 'shiftedcmap'.
+
+        Returns
+        -------
+        newcmap : The new colormap.
+
+        """
         cdict = {
             'red': [],
             'green': [],
@@ -1589,32 +1602,38 @@ class Plotter():
 
 #############################################################################
 
-    def anisotropy_single(self, file=None):
+    def anisotropy_single(self, model=None):
 
-        # intrinsic moments
-        #"iph,ith,ir,ma,mm,me,x,y,z (in arcsec),vx,vy,vz,xv2,vy2 ,vz2,vxvy,vyvz,vzvx,OL,OS,OB"
-        # 0   1   2  3  4  5  6 7 8             9  10 11 12  13  14  15   16   17   18,19,20
+        # format of the intrinsic moments array:
+        # density, x, y, z, vx, vy, vz, xv2,vy2,vz2,vxvy,vyvz,vzvx
+        # 0        1  2  3  4   5   6   7   8   9   10   11   12
 
-        filename_moments = file
-        nmom, nph, nth, nrr = np.genfromtxt(filename_moments, max_rows=1, skip_header=1).T
-        if int(nmom) != 16: sys.exit('made for 16 moments')
-        nmom = int(nmom)
-        nph = int(nph)
-        nth = int(nth)
-        nrr = int(nrr)
+        orblib = model.get_orblib()
+        _ = model.get_weights(orblib)
+        moment_constructor, bin_edges = \
+            orblib.get_model_intrinsic_moment_constructor()
+        moments = moment_constructor(model.weights)
 
-        ntot = nph*nth*nrr
-        data = np.genfromtxt(filename_moments, max_rows=ntot, skip_header=10)
+        nmom = moments.shape[3]
+        if nmom != 13:
+            txt = 'The moments array must have 13 columns.'
+            self.logger.error(txt)
+            raise ValueError(txt)
+        nrr = moments.shape[0]  # grid bin edges over spherical r
+        nth = moments.shape[1]  # grid bin edges over spherical theta
+        nph = moments.shape[2]  # grid bin edges over spherical phi
+        ntot = nph * nth * nrr
+        data = moments.reshape((ntot,nmom), order='F')  # match legacy r,th,ph
 
-        d = data[:,4]
-        x = data[:,6]
-        y = data[:,7]
-        z = data[:,8]
+        d = data[:,0]  # density
+        x = data[:,1]  # x
+        y = data[:,2]  # y
+        z = data[:,3]  # z
         RR = np.sqrt(x**2 + y**2)
         r = np.sqrt(RR**2 + z**2)
 
-        v1car = data[:,9:12]           #; <v_t> t=x,y,z [(km/s)]
-        dum = data[:,[12,15,17,15,13,16,17,16,14]]
+        v1car = data[:,4:7]           # <v_t> t=x,y,z [(km/s)]  # vx, vy, vz
+        dum = data[:,[7,10,12,10,8,11,12,11,9]]  # vx2,vxvy,vzvx,vxvy,vy2,vyvz,vzvx,vyvz,vz2
         v2car = np.reshape(dum[:,:], (ntot,3,3), order='F')  # < v_s * v_t > s, t = x, y, z[(km / s) ^ 2]
         v2sph = self.car2sph_mu12(x, y, z, v1car, v2car)[1]  # (v_r, v_phi, v_theta)
         orot = 1 - (0.5*(v2sph[:,1,1] + v2sph[:,2,2]))/(v2sph[:,0,0])
@@ -1637,7 +1656,7 @@ class Plotter():
         vpp_r = np.zeros(nbins)
         vzz_r = np.zeros(nbins)
         vp_r = np.zeros(nbins)
-        d = data[:,4]
+        d = data[:,0]  # density
         ### Bin along RR
         for i in range(nbins):
             ss=np.ravel(np.where((RR > Bint[i]) & \
@@ -1655,7 +1674,7 @@ class Plotter():
 
 #############################################################################
 
-    def beta_plot(self, which_chi2=None, Rmax_arcs=None, figtype =None):
+    def beta_plot(self, which_chi2=None, Rmax_arcs=None, figtype=None):
         """
         Generates anisotropy plots
 
@@ -1669,6 +1688,8 @@ class Plotter():
         Solid lines and shaded areas represent the mean and standard
         deviation of the anisotropy of models having parameters in a
         confidence region around the minimum chisquare.
+
+        Currently, this method only works with the ``LegacyWeightSolver``.
 
         Parameters
         ----------
@@ -1698,12 +1719,11 @@ class Plotter():
 
         """
 
-        modeldir = self.modeldir
-
         if figtype is None:
             figtype = '.png'
 
-        which_chi2 = self.config.validate_chi2(which_chi2)
+        if which_chi2 is None:
+            which_chi2 = self.config.validate_chi2(which_chi2)
 
         if Rmax_arcs is None:
             text = f'Rmax_arcs must be a number, but it is {Rmax_arcs}'
@@ -1716,7 +1736,7 @@ class Plotter():
         chi2pmin = val[which_chi2][0]
         chlim = np.sqrt(self.config.get_2n_obs())
 
-        # select the models within 1 sigma confidence level
+        # select the models within 1 sigma confidence level, minimum 3
         n = len(np.ravel(np.where(val[which_chi2] <= chi2pmin + chlim*3)))
         if n < 3:
             n = 3
@@ -1731,10 +1751,10 @@ class Plotter():
         Vp = np.zeros((100,n))
 
         for i in range(n):
-            filei = modeldir + val['directory'][i] + 'nn_intrinsic_moments.out'
-
-            rr, orotR, Rad, vzz_r, vrr_r, vpp_r, \
-                vp_r = self.anisotropy_single(file=filei)
+            model_dir = self.modeldir + val['directory'][i]
+            model = self.all_models.get_model_from_directory(model_dir)
+            rr, orotR, Rad, vzz_r, vrr_r, vpp_r, vp_r = \
+                self.anisotropy_single(model)
             nrr = len(rr)
             RRn[0:nrr,i] = rr
             orotn[0:nrr,i] = orotR

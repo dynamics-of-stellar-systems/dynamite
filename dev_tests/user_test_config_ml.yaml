@@ -155,11 +155,11 @@ orblib_settings:
     random_seed: 4242 # integer; any value <= 0 results in stochastic seed
 
 weight_solver_settings:
-    type: "LegacyWeightSolver"
-    nnls_solver: 1
-    # type: "NNLS"
-    # nnls_solver: 'scipy'
-    CRcut: False
+    # type: "LegacyWeightSolver"
+    # nnls_solver: 1
+    type: "NNLS"
+    nnls_solver: 'scipy'
+    CRcut: True
     regularisation: 0
     number_GH: 4
     GH_sys_err: '0.0 0.0 0.0 0.0 0.3 0.3 0.6 0.6'

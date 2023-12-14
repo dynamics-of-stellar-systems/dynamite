@@ -21,7 +21,7 @@ class AllModels(object):
     ----------
     config : a ``dyn.config_reader.Configuration`` object
     from_file : bool
-        whether to create this ojbect from a saved `all_models.ecsv` file
+        whether to create this object from a saved `all_models.ecsv` file
 
     """
     def __init__(self, config=None, from_file=True):
@@ -37,13 +37,13 @@ class AllModels(object):
         self.make_empty_table()
         if from_file and os.path.isfile(self.filename):
             self.logger.info('Previous models have been found: '
-                        f'Reading {self.filename} into '
-                        f'{__class__.__name__}.table')
+                             f'Reading {self.filename} into '
+                             f'{__class__.__name__}.table')
             self.read_model_table()
         else:
             self.logger.info(f'No previous models (file {self.filename}) '
-                        'have been found: '
-                        f'Made an empty table in {__class__.__name__}.table')
+                             'have been found: Made '
+                             f'an empty table in {__class__.__name__}.table')
 
     def set_filename(self, filename):
         """Set the name (including path) for this model
@@ -232,6 +232,9 @@ class AllModels(object):
         # If the table has been modified, save it.
         if table_modified:
             self.save()
+            self.logger.info('all_models table updated and saved.')
+        else:
+            self.logger.info('No all_models table update required.')
 
     def retrofit_kinmapchi2(self):
         """Calculates kinmapchi2 for DYNAMITE legacy tables if possible.
@@ -244,7 +247,7 @@ class AllModels(object):
         which_chi2 = 'kinmapchi2'
         self.logger.info('Legacy all_models table read, updating '
                          f'{which_chi2} column...')
-        self.table[which_chi2] = np.nan
+        # self.table[which_chi2] = np.nan
         for row_id, row in enumerate(self.table):
             if row['orblib_done'] and row['weights_done']:
                 # both orblib_done==True and weights_done==True indicates
@@ -260,6 +263,7 @@ class AllModels(object):
                 self.logger.info(f'Model {row_id}: {which_chi2} = '
                                  f'{row[which_chi2]}')
             else:
+                row[which_chi2] = np.nan
                 self.logger.warning(f'Model {row_id}: cannot update '
                                     f'{which_chi2} - data deleted?')
 
@@ -271,7 +275,7 @@ class AllModels(object):
         griddata/_chi2.cat
 
         Parameters
-        -----------
+        ----------
         legacy_filename: string
             the legacy_filename (probably griddata/_chi2.cat)
         """
@@ -317,7 +321,7 @@ class AllModels(object):
         `legacy` AKA schwpy format were likely called ```griddata/_chi2.cat``.
 
         Parameters
-        -----------
+        ----------
         legacy_filename: string
             the legacy_filename (probably griddata/_chi2.cat)
         """

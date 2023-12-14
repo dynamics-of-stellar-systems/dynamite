@@ -43,7 +43,7 @@ class WeightSolver(object):
         self.CRcut = CRcut
         self.weight_file = f'{self.direc_with_ml}orbit_weights.ecsv'
 
-    def solve(self, orblib):
+    def solve(self, orblib, ignore_existing_weights=False):
         """Template solve method
 
         Specific implementations should override this.
@@ -51,6 +51,9 @@ class WeightSolver(object):
         Parameters
         ----------
         orblib : dyn.OrbitLibrary object
+        ignore_existing_weights : bool
+            If True, do not check for already existing weights and solve again.
+            Default is False.
 
         Returns
         -------
@@ -78,6 +81,14 @@ class WeightSolver(object):
         """
         Returns the chi2 directly calculated from the gh kinematic maps.
 
+        For each kinematic set, the following applies: If number_GH in the
+        weight_solver_settings is smaller than the number of GH coefficients
+        in the data file, only number_GH coefficients will be considered.
+        If number_GH is greater than the number of GH coefficients in the
+        data file, only the coefficients in the data file will be considered.
+
+        Does only work with Gauss Hermite kinematics.
+
         Parameters
         ----------
         weights : ``numpy.array`` like
@@ -96,17 +107,19 @@ class WeightSolver(object):
             self.logger.info("'GaussHermite' kinematics required for "
                              "kinmapchi2. Value set to nan.")
             return float('nan')  # #######################################
-        n_gh = self.settings['number_GH']
+        number_gh = self.settings['number_GH']
         mod=self.config.all_models.get_model_from_directory(self.direc_with_ml)
         chi2_kinmap = 0.
-        coefs = ['v', 'sigma'] + [f'h{i}' for i in range(3, n_gh + 1)]
-        for kin_set in range(len(stars.kinematic_data)):
+        for kin_set, kin_data in enumerate(stars.kinematic_data):
+            n_gh = min(number_gh, kin_data.max_gh_order)
+            coefs = ['v', 'sigma'] + [f'h{i}' for i in range(3, n_gh + 1)]
             # get the model's projected masses=flux (unused) and kinematic data
             a=analysis.Analysis(config=self.config, model=mod, kin_set=kin_set)
             model_gh_coef = a.get_gh_model_kinematic_maps(v_sigma_option='fit',
                                                           weights=weights)
             # get the observed projected masses (unused) and kinematic data
-            kinematics_data = stars.kinematic_data[kin_set].data
+            kinematics_data = \
+                kin_data.get_data(self.settings, apply_systematic_error=False)
             # calculate chi2_kinmap
             for coef in coefs:
                 obs_val = np.array(kinematics_data[coef])
@@ -158,21 +171,14 @@ class LegacyWeightSolver(WeightSolver):
         kinematics = stars.kinematic_data
         # convert kinematics to old format to input to fortran
         for i in np.arange(len(kinematics)):
-            if len(kinematics)==1:
-                old_filename = self.direc_no_ml+'infil/kin_data.dat'
+            if len(kinematics) == 1:
+                old_filename = self.direc_no_ml + 'infil/kin_data.dat'
             else:
                 old_filename = self.direc_no_ml+'infil/kin_data_'+str(i)+'.dat'
-            kinematics[i].convert_to_old_format(old_filename)
+            kinematics[i].convert_to_old_format(old_filename, self.settings)
         # combine all kinematics into one file
-        if len(kinematics)>1:
-            gh_order = kinematics[0].get_highest_order_gh_coefficient()
-            if not all(kin.get_highest_order_gh_coefficient() == gh_order \
-                       for kin in kinematics[1:]):
-                text = 'Multiple kinematics: all need to have the same ' \
-                       'number of gh coefficients'
-                self.logger.error(text)
-                raise ValueError(text)
-            if not all(isinstance(kin,dyn_kin.GaussHermite) \
+        if len(kinematics) > 1:
+            if not all(isinstance(kin, dyn_kin.GaussHermite)
                        for kin in kinematics):
                 text = 'Multiple kinematics: all must be GaussHermite'
                 self.logger.error(text)
@@ -180,9 +186,12 @@ class LegacyWeightSolver(WeightSolver):
             # make a dummy 'kins_combined' object ...
             kins_combined = copy.deepcopy(kinematics[0])
             # ...replace data attribute with stacked table of all kinematics
-            kins_combined.data = table.vstack([k.data for k in kinematics])
-            old_filename = self.direc_no_ml+'infil/kin_data_combined.dat'
-            kins_combined.convert_to_old_format(old_filename)
+            kins_combined.data = table.vstack([k.get_data(self.settings)
+                                               for k in kinematics])
+            kins_combined.n_apertures = len(kins_combined.data)
+            kins_combined.max_gh_order = self.settings['number_GH']
+            old_filename = self.direc_no_ml + 'infil/kin_data_combined.dat'
+            kins_combined.convert_to_old_format(old_filename, self.settings)
 
     def create_fortran_input_nnls(self):
         """create fortran input file nn.in
@@ -233,7 +242,7 @@ class LegacyWeightSolver(WeightSolver):
         nn_file.write(text)
         nn_file.close()
 
-    def solve(self, orblib=None):
+    def solve(self, orblib=None, ignore_existing_weights=False):
         """Main method to solve NNLS problem.
 
         Parameters
@@ -242,6 +251,9 @@ class LegacyWeightSolver(WeightSolver):
             This parameter is not used in this Legacy implementation (as all
             orbit library information is read from files). It is included here
             for consistency with later WeightSolver implementations
+        ignore_existing_weights : bool
+            If True, do not check for already existing weights and solve again.
+            Default is False.
 
         Returns
         -------
@@ -257,7 +269,7 @@ class LegacyWeightSolver(WeightSolver):
 
         """
         self.logger.info(f"Using WeightSolver: {__class__.__name__}")
-        if self.weight_file_exists():
+        if (not ignore_existing_weights) and self.weight_file_exists():
             self.logger.info("Reading NNLS solution from existing output.")
             results = ascii.read(self.weight_file)
             weights = results['weights']
@@ -658,7 +670,7 @@ class NNLS(WeightSolver):
         idx_ap_start = 0
         for (kins, orb_losvd) in kins_and_orb_losvds:
             # pick out the projected masses for this kinematic set
-            n_ap = len(kins.data)
+            n_ap = kins.n_spatial_bins  # OK for both GaussHermite & BayesLOSVD
             idx_ap_end = idx_ap_start + n_ap
             prj_mass_i = self.projected_masses[idx_ap_start:idx_ap_end]
             idx_ap_start += n_ap
@@ -713,8 +725,9 @@ class NNLS(WeightSolver):
         if type(kins) is not dyn_kin.GaussHermite:
             return orb_gh
         orb_mu_v = orb_losvd.get_mean()
-        obs_mu_v = kins.data['v']
-        obs_sig_v = kins.data['sigma']
+        kins_data = kins.get_data(self.settings, apply_systematic_error=False)
+        obs_mu_v = kins_data['v']
+        obs_sig_v = kins_data['sigma']
         delta_v = np.abs(orb_mu_v - obs_mu_v)
         condition1 = (np.abs(obs_mu_v)/obs_sig_v > 1.5)
         condition2 = (delta_v/obs_sig_v > 3.0)
@@ -733,7 +746,7 @@ class NNLS(WeightSolver):
         orb_gh[idx_cut[0], idx_cut[1], 0] = 3./dvhist
         return orb_gh
 
-    def solve(self, orblib):
+    def solve(self, orblib, ignore_existing_weights=False):
         """Solve for orbit weights
 
         **Note:** the returned chi2 values are not the same as
@@ -744,6 +757,9 @@ class NNLS(WeightSolver):
         orblib : dyn.OrbitLibrary
             must have attributes losvd_histograms, intrinsic_masses, and
             projected_masses
+        ignore_existing_weights : bool
+            If True, do not check for already existing weights and solve again.
+            Default is False.
 
         Returns
         -------
@@ -761,7 +777,7 @@ class NNLS(WeightSolver):
         self.logger.info(f"Using WeightSolver: {__class__.__name__}/"
                          f"{self.nnls_solver}")
         orblib.read_losvd_histograms()
-        if self.weight_file_exists():
+        if (not ignore_existing_weights) and self.weight_file_exists():
             results = ascii.read(self.weight_file, format='ecsv')
             self.logger.info("NNLS solution read from existing output")
             weights = results['weights']

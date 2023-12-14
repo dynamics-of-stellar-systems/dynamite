@@ -4,7 +4,20 @@
 Change Log
 ****************
 
-- Improvement: better crash recovery: re-use existing tube orbits when recalculating orblib, bugfix in retrofitting kinmapchi2 in old all_models tables
+- Improvement: better crash recovery by re-use existing tube orbits when recalculating orblib.
+- Bugfix: fixed a bug in retrofitting kinmapchi2 in old all_models tables.
+- Improvement: removed deprecated silent option from config reader.
+- Improvement: the Plotter's new optional argument ``dpi`` (default: 100) allows to change the resolution of all saved figures except the kinematic maps (always 300 dpi).
+- Improvement: the beta plots now work for all implemented weight solvers.
+
+Version: 4.1
+================
+
+- Improvement: calculation of kinmapchi2 now aligns with number_GH in config file's weight_solver_settings
+- Bugfix: fixed crash when the number of GH coefficients a kinematics file does not match number_GH in config file's weight_solver_settings
+- Improvement: The bash test script ``dev_tests/test_notebooks.sh`` executes all tutorial notebooks for testing a valid DYNAMITE installation
+- Improvement: updated tutorial notebooks
+- Bugfix: Re-enable support for directly instantiating a Model object (bypassing ModelIterator) if the all_models table is empty. Only recommended for testing.
 
 Version: 4.0
 ================
