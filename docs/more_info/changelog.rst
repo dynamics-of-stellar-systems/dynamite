@@ -4,6 +4,7 @@
 Change Log
 ****************
 
+- Bugfix: fixed crash when different kinematics had different numbers of PSF components.
 - Bugfix: fixed a bug in retrofitting kinmapchi2 in old all_models tables.
 - Improvement: removed deprecated silent option from config reader.
 - Improvement: the Plotter's new optional argument ``dpi`` (default: 100) allows to change the resolution of all saved figures except the kinematic maps (always 300 dpi).
