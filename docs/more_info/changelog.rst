@@ -4,6 +4,7 @@
 Change Log
 ****************
 
+- Bugfix: fixed a bug in the kinematics errors (affects NNLS solves).
 - Bugfix: fixed crash when different kinematics had different numbers of PSF components.
 - Bugfix: fixed a bug in retrofitting kinmapchi2 in old all_models tables.
 - Improvement: removed deprecated silent option from config reader.

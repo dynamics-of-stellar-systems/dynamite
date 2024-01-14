@@ -194,11 +194,10 @@ class GaussHermite(Kinematics, data.Integrated):
         weight_solver_settings : dict
             `Configuration.settings.weight_solver_settings` object.
             Must include the key `number_GH` and - if apply_systematic_error
-            is set to `True`, the key `GH_sys_err`.
+            is set to `True` - the key `GH_sys_err`.
         apply_systematic_error : bool, optional
-            If set to `True`, apply the systematic uncertainties to the
-            dh3, dh4, ... values and calculates the dv, dsigma uncertainties
-            from vdMarel + Franx 93, ApJ 407,525.
+            If set to `True`, apply the systematic uncertainties to the dv,
+            dsigma, dh3, dh4, ... values.
         cache_data : bool, optional
             If set to `True`, the first call of this method will store the
             calculated data table in attribute self._data_raw
@@ -244,28 +243,19 @@ class GaussHermite(Kinematics, data.Integrated):
             if cache_data:
                 self._data_raw = gh_data.copy(copy_data=True)
         if apply_systematic_error:
-            # construct uncertainties
-            uncertainties = np.zeros((self.n_apertures, number_gh))
-            # uncertainties on h1,h2 from vdMarel + Franx 93, ApJ 407,525
-            uncertainties[:, 0] = gh_data['dv'] / np.sqrt(2) / gh_data['sigma']
-            uncertainties[:, 1] = gh_data['dsigma']/np.sqrt(2)/gh_data['sigma']
-            # uncertainties h3, h4, etc... are taken from gh_data table
-            for i in range(3, number_gh + 1):
-                uncertainties[:, i - 1] = gh_data[f'dh{i}']
             # add the systematic uncertainties
             systematics = weight_solver_settings['GH_sys_err']
             if type(systematics) is str:
                 systematics = systematics.split(' ')
                 systematics = [float(x) for x in systematics]
-            systematics = np.array(systematics)
-            systematics = systematics[0:number_gh]
-            uncertainties = (uncertainties**2 + systematics**2)**0.5
-            gh_data['dv'] = uncertainties[:, 0]
-            gh_data['dsigma'] = uncertainties[:, 1]
+            systematics = np.array(systematics)[0:number_gh]
+            gh_data['dv'] = np.sqrt(gh_data['dv']**2 + systematics[0]**2)
+            gh_data['dsigma']=np.sqrt(gh_data['dsigma']**2 + systematics[1]**2)
             for i in range(3, number_gh + 1):
-                gh_data[f'dh{i}'] = uncertainties[:, i - 1]
-            self.logger.debug(f'Kinematics {self.name}: applied systematic '
-                              'errors and h1, h2 uncertainties.')
+                gh_data[f'dh{i}'] = \
+                    np.sqrt(gh_data[f'dh{i}']**2 + systematics[i - 1]**2)
+            self.logger.debug(f'Kinematics {self.name}: '
+                              'applied systematic errors.')
             if cache_data:
                 self._data_with_sys_err = gh_data.copy(copy_data=True)
         return gh_data
@@ -679,8 +669,8 @@ class GaussHermite(Kinematics, data.Integrated):
         # construct uncertainties
         uncertainties = np.zeros_like(observed_values)
         # uncertainties on h1,h2 from vdMarel + Franx 93, ApJ 407,525
-        uncertainties[:, 0] = gh_data['dv']
-        uncertainties[:, 1] = gh_data['dsigma']
+        uncertainties[:, 0] = gh_data['dv'] / np.sqrt(2) / gh_data['sigma']
+        uncertainties[:, 1] = gh_data['dsigma'] / np.sqrt(2) / gh_data['sigma']
         # uncertainties h3, h4, etc... are taken from data table
         for i in range(3, number_gh + 1):
             uncertainties[:, i - 1] = gh_data[f'dh{i}']
