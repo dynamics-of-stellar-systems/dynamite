@@ -225,6 +225,18 @@ class GaussHermite(Kinematics, data.Integrated):
         else:  # Calculate data table with number_GH coefs
             gh_data = self.data.copy(copy_data=True)
             if number_gh > self.max_gh_order:
+                systematics = weight_solver_settings['GH_sys_err']
+                if type(systematics) is not str:
+                    txt = 'weight_solver_settings: GH_sys_err must be a string.'
+                    self.logger.error(txt)
+                    raise ValueError(txt)
+                systematics = [float(x) for x in systematics.split(' ')]
+                systematics = np.array(systematics)
+                if any(systematics[self.max_gh_order:number_gh] <= 0):
+                    txt = 'weight_solver_settings: GH_sys_err must be > 0 ' \
+                          ' for extra GH coefficients.'
+                    self.logger.error(txt)
+                    raise ValueError(txt)
                 cols_to_add = [f'{d}h{i+1}'
                                for i in range(self.max_gh_order, number_gh)
                                for d in ('', 'd')]
