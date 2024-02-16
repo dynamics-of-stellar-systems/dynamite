@@ -4,6 +4,7 @@
 Change Log
 ****************
 
+- Improvement: removed broken link from tutorial 2 and added some data preparation comments to tutorials 1 and 2
 - Bugfix: fixed crash when different kinematics had different numbers of PSF components.
 - Bugfix: fixed a bug in retrofitting kinmapchi2 in old all_models tables.
 - Improvement: removed deprecated silent option from config reader.
