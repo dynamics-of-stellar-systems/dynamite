@@ -403,8 +403,7 @@ class Plotter():
         if figtype is None:
             figtype = '.png'
 
-        stars = \
-          self.system.get_component_from_class(physys.TriaxialVisibleComponent)
+        stars = self.system.get_unique_triaxial_visible_component()
         n_kin = len(stars.kinematic_data)
 
         #########################################
@@ -729,15 +728,21 @@ class Plotter():
         a = analysis.Analysis(config=self.config, model=model, kin_set=kin_set)
         model_gh_coef = \
             a.get_gh_model_kinematic_maps(v_sigma_option=v_sigma_option)
+        number_gh = self.settings.weight_solver_settings['number_GH']
+        if len(model_gh_coef.colnames) - 1 != number_gh:
+            text = 'number_GH in config inconsistent with kinematic map data.'
+            self.logger.error(text)
+            raise ValueError(text)
+        gh_plot = range(3,number_gh + 1)
 
         # get the observed projected masses and kinematic data
-        stars = \
-          self.system.get_component_from_class(physys.TriaxialVisibleComponent)
+        stars = self.system.get_unique_triaxial_visible_component()
         kinematics_data = stars.kinematic_data[kin_set].get_data(
             self.settings.weight_solver_settings,
             apply_systematic_error=False)
         # pick out the projected masses only for this kinematic set
-        flux=stars.mge_lum.get_projected_masses_from_file(model.directory_noml)
+        flux = \
+            stars.mge_lum.get_projected_masses_from_file(model.directory_noml)
         ap_idx_range_start = \
             sum([stars.kinematic_data[i].n_apertures for i in range(kin_set)])
         ap_idx_range_end = ap_idx_range_start + len(kinematics_data)
@@ -753,40 +758,41 @@ class Plotter():
         h = {}
         dh = {}
         hm = {}
-        for i in range(3,self.settings.weight_solver_settings['number_GH']+1):
+        for i in gh_plot:
             h[i] = np.array(kinematics_data[f'h{i}'])
             dh[i] = np.array(kinematics_data[f'dh{i}'])
             hm[i] = np.array(model_gh_coef[f'h{i}'])
 
-        #still ToDO: Add the kinematic map plots for h5 and h6 below
-
-        text = '`cbar_lims` must be one of `model`, `data` or `combined`'
         if cbar_lims not in ['model', 'data', 'combined']:
+            text = '`cbar_lims` must be one of `model`, `data` or `combined`'
             self.logger.error(text)
             raise AssertionError(text)
-        if cbar_lims=='model':
+        hmin = {}
+        hmax = {}
+        if cbar_lims == 'model':
             vmax = np.max(np.abs(velm))
             smax, smin = np.max(sigm), np.min(sigm)
-            h3max, h3min = 0.15, -0.15
-            h4max, h4min = 0.15, -0.15
-        elif cbar_lims=='data':
+            for i in gh_plot:
+                hmin[i], hmax[i] = -0.15, 0.15
+            # h3max, h3min = 0.15, -0.15
+            # h4max, h4min = 0.15, -0.15
+        elif cbar_lims == 'data':
             vmax = np.max(np.abs(vel))
             smax, smin = np.max(sig), np.min(sig)
-            h3max, h3min = 0.15, -0.15
-            h4max, h4min = 0.15, -0.15
-            if h4max == h4min:
-                h4max, h4min = np.max(hm[4]), np.min(hm[4])
-        elif cbar_lims=='combined':
+            for i in gh_plot:
+                hmin[i], hmax[i] = -0.15, 0.15
+            # if h4max == h4min:
+            #     h4max, h4min = np.max(hm[4]), np.min(hm[4])
+        elif cbar_lims == 'combined':
             tmp = np.hstack((velm, vel))
             vmax = np.max(np.abs(tmp))
             tmp = np.hstack((sigm, sig))
             smax, smin = np.max(tmp), np.min(tmp)
-            tmp = np.hstack((hm[3], h[3]))
-            h3max, h3min = np.max(tmp), np.min(tmp)
-            tmp = np.hstack((hm[4], h[4]))
-            h4max, h4min = np.max(tmp), np.min(tmp)
+            for i in gh_plot:
+                tmp = np.stack((hm[i], h[i]))
+                hmin[i], hmax[i] = np.min(tmp), np.max(tmp)
         else:
-            self.logger.error('unknown choice of `cbar_lims`')
+            self.logger.error(f'Unknown choice of `cbar_lims`: {cbar_lims}.')
 
         # get aperture and bin data
 
@@ -800,14 +806,14 @@ class Plotter():
                           f"{len(x)=}, {len(y)=}.")
         self.logger.debug(f'PA: {angle_deg}')
 
-        # # Only select the pixels that have a bin associated with them.
+        # Only select the pixels that have a bin associated with them.
         s = np.ravel(np.where((grid >= 0)))
         fhist, _ = np.histogram(grid[s], bins=len(flux))
         self.logger.debug(f'{flux.shape=}, {fluxm.shape=}, {fhist.shape=}')
         flux = flux / fhist
         fluxm = fluxm / fhist
 
-        ### plot settings
+        # plot settings
 
         minf = min(np.array(list(map(np.log10, flux[grid[s]] / max(flux)))))
         maxf = max(np.array(list(map(np.log10, flux[grid[s]] / max(flux)))))
@@ -816,120 +822,109 @@ class Plotter():
         minsb = min(minf,minfm)
         maxsb = max(maxf,maxfm)
 
-        # The galaxy has NOT already rotated with PA to make major axis aligned with x
+        # The galaxy has NOT already rotated with PA to align major axis with x
+        # Also, retain geometry from previous 5-column plot of width 27.
 
-        fig = plt.figure(figsize=(27, 12))
-        plt.subplots_adjust(hspace=0.7,
-                            wspace=0.01,
-                            left=0.01,
+        n_col = number_gh + 1
+        left_margin = 27 * 0.04
+        right_margin = 27 * 0.03
+        col_width = (27 - left_margin - right_margin) / 5
+        fig_width = left_margin + col_width * n_col + right_margin
+        text_x = 0.015 * 27 / fig_width
+        fig = plt.figure(figsize=(fig_width, 12))
+        kwtext = dict(size=20, ha='center', va='center', rotation=90.)
+        fig.text(text_x, 0.83, 'data', **kwtext)
+        fig.text(text_x, 0.53, 'model', **kwtext)
+        fig.text(text_x, 0.2, 'residual', **kwtext)
+        fig.subplots_adjust(hspace=0.01,
+                            wspace=0.3,
+                            left=left_margin / fig_width,
                             bottom=0.05,
                             top=0.99,
-                            right=0.99)
+                            right=(1 - right_margin / fig_width))
         map1 = cmr.get_sub_cmap('twilight_shifted', 0.05, 0.6)
         map2 = cmr.get_sub_cmap('twilight_shifted', 0.05, 0.95)
         kw_display_pixels1 = dict(pixelsize=dx,
-                                 angle=angle_deg,
-                                 colorbar=True,
-                                 nticks=7,
-                                 #cmap='sauron')
-                                 cmap=map1)
+                                  angle=angle_deg,
+                                  colorbar=True,
+                                  nticks=7,
+                                  # cmap='sauron')
+                                  cmap=map1)
         kw_display_pixels = dict(pixelsize=dx,
                                  angle=angle_deg,
                                  colorbar=True,
                                  nticks=7,
-                                 #cmap='sauron')
+                                 # cmap='sauron')
                                  cmap=map2)
 
-        ### PLOT THE REAL DATA
-        ax1 = plt.subplot(3, 5, 1)
+        # PLOT THE REAL DATA
+        ax1 = plt.subplot(3, n_col, (1 - 1) * n_col + 1)
         c = np.array(list(map(np.log10, flux[grid[s]] / max(flux))))
         display_pixels.display_pixels(x, y, c,
-                                          vmin=minsb, vmax=maxsb,
-                                          **kw_display_pixels1)
+                                      vmin=minsb, vmax=maxsb,
+                                      **kw_display_pixels1)
         ax1.set_title('surface brightness (log)',fontsize=20, pad=20)
-        ax2 = plt.subplot(3, 5, 2)
+        ax2 = plt.subplot(3, n_col, (1 - 1) * n_col + 2)
         display_pixels.display_pixels(x, y, vel[grid[s]],
-                                          vmin=-1.0 * vmax, vmax=vmax,
-                                          **kw_display_pixels)
+                                      vmin=-vmax, vmax=vmax,
+                                      **kw_display_pixels)
         ax2.set_title('velocity',fontsize=20, pad=20)
-        ax3 = plt.subplot(3, 5, 3)
+        ax3 = plt.subplot(3, n_col, (1 - 1) * n_col + 3)
         display_pixels.display_pixels(x, y, sig[grid[s]],
-                                          vmin=smin, vmax=smax,
-                                          **kw_display_pixels1)
+                                      vmin=smin, vmax=smax,
+                                      **kw_display_pixels1)
         ax3.set_title('velocity dispersion',fontsize=20, pad=20)
-        ax4 = plt.subplot(3, 5, 4)
-        display_pixels.display_pixels(x, y, h[3][grid[s]],
-                                          vmin=h3min, vmax=h3max,
+        for i in gh_plot:
+            ax = plt.subplot(3, n_col, (1 - 1) * n_col + i + 1)
+            display_pixels.display_pixels(x, y, h[i][grid[s]],
+                                          vmin=hmin[i], vmax=hmax[i],
                                           **kw_display_pixels)
-        ax4.set_title(r'$h_{3}$ moment',fontsize=20, pad=20)
-        ax5 = plt.subplot(3, 5, 5)
-        display_pixels.display_pixels(x, y, h[4][grid[s]],
-                                          vmin=h4min, vmax=h4max,
-                                          **kw_display_pixels)
-        ax5.set_title(r'$h_{4}$ moment',fontsize=20, pad=20)
+            ax.set_title(r'$h_{' + f'{i}' + r'}$ moment',fontsize=20, pad=20)
 
-        ### PLOT THE MODEL DATA
-        plt.subplot(3, 5, 6)
+        # PLOT THE MODEL DATA
+        plt.subplot(3, n_col, (2 - 1) * n_col + 1)
         c = np.array(list(map(np.log10, fluxm[grid[s]] / max(fluxm))))
         display_pixels.display_pixels(x, y, c,
-                                          vmin=minsb, vmax=maxsb,
-                                          **kw_display_pixels1)
-        plt.subplot(3, 5, 7)
+                                      vmin=minsb, vmax=maxsb,
+                                      **kw_display_pixels1)
+        plt.subplot(3, n_col, (2 - 1) * n_col + 2)
         display_pixels.display_pixels(x, y, velm[grid[s]],
-                                          vmin=-1.0 * vmax, vmax=vmax,
-                                          **kw_display_pixels)
-        plt.subplot(3, 5, 8)
+                                      vmin=-vmax, vmax=vmax,
+                                      **kw_display_pixels)
+        plt.subplot(3, n_col, (2 - 1) * n_col + 3)
         display_pixels.display_pixels(x, y, sigm[grid[s]],
-                                          vmin=smin, vmax=smax,
-                                          **kw_display_pixels1)
-        plt.subplot(3, 5, 9)
-        display_pixels.display_pixels(x, y, hm[3][grid[s]],
-                                          vmin=h3min, vmax=h3max,
-                                          **kw_display_pixels)
-        plt.subplot(3, 5, 10)
-        display_pixels.display_pixels(x, y, hm[4][grid[s]],
-                                          vmin=h4min, vmax=h4max,
+                                      vmin=smin, vmax=smax,
+                                      **kw_display_pixels1)
+        for i in gh_plot:
+            plt.subplot(3, n_col, (2 - 1) * n_col + i + 1)
+            display_pixels.display_pixels(x, y, hm[i][grid[s]],
+                                          vmin=hmin[i], vmax=hmax[i],
                                           **kw_display_pixels)
 
-
-        kw_display_pixels = dict(pixelsize=dx,
-                                 angle=angle_deg,
-                                 colorbar=True,
-                                 nticks=7,
-                                 cmap=map2)
-
-        ### PLOT THE ERROR NORMALISED RESIDUALS
-        plt.subplot(3, 5, 11)
+        # PLOT THE ERROR NORMALISED RESIDUALS
+        plt.subplot(3, n_col, (3 - 1) * n_col + 1)
         c = (fluxm[grid[s]] - flux[grid[s]]) / flux[grid[s]]
         display_pixels.display_pixels(x, y, c,
-                                          vmin=-0.05, vmax=0.05,
-                                          **kw_display_pixels)
-        plt.subplot(3, 5, 12)
+                                      vmin=-0.05, vmax=0.05,
+                                      **kw_display_pixels)
+        plt.subplot(3, n_col, (3 - 1) * n_col + 2)
         c = (velm[grid[s]] - vel[grid[s]]) / dvel[grid[s]]
         display_pixels.display_pixels(x, y, c,
-                                          vmin=-10, vmax=10,
-                                          **kw_display_pixels)
-        plt.subplot(3, 5, 13)
+                                      vmin=-10, vmax=10,
+                                      **kw_display_pixels)
+        plt.subplot(3, n_col, (3 - 1) * n_col + 3)
         c = (sigm[grid[s]] - sig[grid[s]]) / dsig[grid[s]]
         display_pixels.display_pixels(x, y, c,
+                                      vmin=-10, vmax=10,
+                                      **kw_display_pixels)
+        for i in gh_plot:
+            plt.subplot(3, n_col, (3 - 1) * n_col + i + 1)
+            c = (hm[i][grid[s]] - h[i][grid[s]]) / dh[i][grid[s]]
+            c[c == np.inf] = np.finfo(float).max  # fix for display_pixels
+            c[c == -np.inf] = np.finfo(float).min
+            display_pixels.display_pixels(x, y, c,
                                           vmin=-10, vmax=10,
                                           **kw_display_pixels)
-        plt.subplot(3, 5, 14)
-        c = (hm[3][grid[s]] - h[3][grid[s]]) / dh[3][grid[s]]
-        display_pixels.display_pixels(x, y, c,
-                                          vmin=-10, vmax=10,
-                                          **kw_display_pixels)
-        plt.subplot(3, 5, 15)
-        c = (hm[4][grid[s]] - h[4][grid[s]]) / dh[4][grid[s]]
-        display_pixels.display_pixels(x, y, c,
-                                          vmin=-10, vmax=10,
-                                          **kw_display_pixels)
-        fig.subplots_adjust(left=0.04, wspace=0.3,
-                            hspace=0.01, right=0.97)
-        kwtext = dict(size=20, ha='center', va='center', rotation=90.)
-        fig.text(0.015, 0.83, 'data', **kwtext)
-        fig.text(0.015, 0.53, 'model', **kwtext)
-        fig.text(0.015, 0.2, 'residual', **kwtext)
 
         return fig
 
