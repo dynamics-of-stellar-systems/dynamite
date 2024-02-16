@@ -670,7 +670,7 @@ class NNLS(WeightSolver):
         idx_ap_start = 0
         for (kins, orb_losvd) in kins_and_orb_losvds:
             # pick out the projected masses for this kinematic set
-            n_ap = len(kins.data)  # OK for both GaussHermite and BayesLOSVD
+            n_ap = kins.n_spatial_bins  # OK for both GaussHermite & BayesLOSVD
             idx_ap_end = idx_ap_start + n_ap
             prj_mass_i = self.projected_masses[idx_ap_start:idx_ap_end]
             idx_ap_start += n_ap
@@ -725,8 +725,9 @@ class NNLS(WeightSolver):
         if type(kins) is not dyn_kin.GaussHermite:
             return orb_gh
         orb_mu_v = orb_losvd.get_mean()
-        obs_mu_v = kins.data['v']
-        obs_sig_v = kins.data['sigma']
+        kins_data = kins.get_data(self.settings, apply_systematic_error=False)
+        obs_mu_v = kins_data['v']
+        obs_sig_v = kins_data['sigma']
         delta_v = np.abs(orb_mu_v - obs_mu_v)
         condition1 = (np.abs(obs_mu_v)/obs_sig_v > 1.5)
         condition2 = (delta_v/obs_sig_v > 3.0)

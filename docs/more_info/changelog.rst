@@ -5,6 +5,11 @@ Change Log
 ****************
 
 - New feature: Gauss-Hermite kinematic maps can now be plotted for any number of Gauss-Hermite coefficients.
+- Improvement: removed broken link from tutorial 2 and added some data preparation comments to tutorials 1 and 2
+- Bugfix: fixed crash when different kinematics had different numbers of PSF components.
+- Bugfix: fixed a bug in retrofitting kinmapchi2 in old all_models tables.
+- Improvement: removed deprecated silent option from config reader.
+- Improvement: the Plotter's new optional argument ``dpi`` (default: 100) allows to change the resolution of all saved figures except the kinematic maps (always 300 dpi).
 - Improvement: the beta plots now work for all implemented weight solvers.
 
 Version: 4.1

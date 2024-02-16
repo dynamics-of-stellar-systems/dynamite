@@ -205,10 +205,30 @@ This section is used for settings relevant for the calculation of orbit librarie
 
     \text{total number of orbits} = 3 \; n_E \; n_{I2} \; n_{I3} \; \mathrm{(dithering)}^3
 
+  .. table:: Recommendations for orbit library sizes
+     :width: 95%
+     :widths: auto
+
+     =====  =====  =====  ===========  ================================================
+       nE    nI2    nI3    dithering    Example use
+     =====  =====  =====  ===========  ================================================
+       5      4      3         1        Test-orbit library.
+                                        A good orbit library for fast checking whether DYNAMITE runs, but it is too small to be used for scientific analyses
+      21     10      7         5        Good orbit library for CALIFA and ATLAS3D-like data quality.
+                                        Examples: CALIFA (`Zhu et al. 2018 <https://ui.adsabs.harvard.edu/abs/2018MNRAS.473.3000Z/abstract>`_),
+                                        SAMI (`Santucci et al. 2022 <https://ui.adsabs.harvard.edu/abs/2022ApJ...930..153S/abstract>`_),
+                                        ATLAS3D (`Thater et al. 2023b <https://arxiv.org/abs/2305.09344>`_), MANGA
+      still bigger orbit libraries      MUSE-like data: e.g., `Poci et al. 2021 <https://arxiv.org/pdf/2102.02449.pdf>`_,
+                                        `Ding et al. 2023 <https://arxiv.org/abs/2301.05532>`_,
+                                        `Thater et al. 2023 <https://arxiv.org/abs/2304.13310>`_
+     --------------------------------  ------------------------------------------------
+     =====  =====  =====  ===========  ================================================
+
 - ``orblib_settings``
     - ``nE``: integer, size of grid in integral-of-motion :math:`E`
     - ``nI2``: integer, size of grid in second integral-of-motion :math:`I_2` (similar to :math:`L_z`). Must be at least 4.
     - ``nI3``: integer, size of grid in third integral-of-motion :math:`I_3`
+    - ``dithering``: integer, size of mini-grid of orbits around each set of initial conditions
     - ``logrmin``: log10 of minimum orbit radius in arcsecs
     - ``logrmax``: log10 of maximum orbit radius in arcsecs
     - ``random_seed``: integer, used for stochastically blurring orbit library by the PSF. Any value :math:`\leq 0` gives a stochastic seed.

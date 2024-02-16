@@ -134,8 +134,8 @@ orblib_settings:
     random_seed: 4242     # fixed rnd. seed for reproducible tutorial (set to 0 for stochastic seed)
 
 weight_solver_settings:
-    type: "LegacyWeightSolver"
-    nnls_solver: 1
+    type: "NNLS"
+    nnls_solver: "scipy"
     regularisation: 0
     number_GH: 4
     GH_sys_err: '0.0 0.0 0.0 0.0 0.3 0.3 0.6 0.6'
