@@ -4,6 +4,9 @@
 Change Log
 ****************
 
+Version: 4.2
+================
+
 - Improvement: if ``number_GH`` in the config file is larger than the kinematic order of the observed data, then DYNAMITE ensures that the corresponding systematic errors are > 0.
 - Bugfix: fixed a bug in the kinematics errors (affects NNLS solves).
 - New feature: Gauss-Hermite kinematic maps can now be plotted for any number of Gauss-Hermite coefficients.
