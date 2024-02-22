@@ -44,7 +44,7 @@ system_components:
             f: # NFW Darkmatter fraction
                 fixed: True
                 value: 1.25893
-                LaTeX: "$M_{200}/M_\\mathrm{stars}$"
+                LaTeX: "$\\log(M_{200}/M_\\mathrm{stars})$"
                 logarithmic: False
                 par_generator_settings:
                     lo: 0.

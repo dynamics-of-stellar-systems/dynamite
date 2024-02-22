@@ -4,9 +4,6 @@
 Change Log
 ****************
 
-
-- Bugfix: fixed colorbar overlap with x-axis in the chi2 plot if only two parameters are varied and added label to chi2 plot colorbar.
-
 Version: 4.2
 ================
 

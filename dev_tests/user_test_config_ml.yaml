@@ -86,7 +86,7 @@ system_components:
                     minstep: 0.02
                 fixed: True
                 value: 0.54
-                LaTeX: "$q_\\mathrm{min}$"
+                LaTeX: "$q_{min}$"
             p: # intrinsic B/A
                 par_generator_settings:
                     lo: 0.99
@@ -95,7 +95,7 @@ system_components:
                     minstep: 0.01
                 fixed: True
                 value: 0.99
-                LaTeX: "$p_\\mathrm{min}$"
+                LaTeX: "$p_{min}$"
             u: # sigma_obs / sigma_intrinsic
                 par_generator_settings:
                     lo: 0.95
