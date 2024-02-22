@@ -325,12 +325,16 @@ class Plotter():
 
         plt.subplots_adjust(hspace=0)
         plt.subplots_adjust(wspace=0)
-        axcb = fig.add_axes([0.75, 0.07, 0.2, 0.02])
+        if nnofix == 2:
+            axcb = fig.add_axes([0.75, 0.13, 0.2, 0.02])
+        else:
+            axcb = fig.add_axes([0.75, 0.07, 0.2, 0.02])
         cb = mpl.colorbar.ColorbarBase(axcb,
                     cmap=plt.get_cmap('viridis_r'),
                     norm=mpl.colors.Normalize(vmin=0., vmax=3),
                     orientation='horizontal')
         cb.ax.tick_params(labelsize=fontsize)
+        cb.set_label(label='$\\chi^2/\\sigma_{\\chi^2}$', size=fontsize)
         plt.subplots_adjust(top=0.99, right=0.99, bottom=0.07, left=0.1)
         fig.savefig(figname)
         self.logger.info(f'Plot {figname} saved in {self.plotdir}')

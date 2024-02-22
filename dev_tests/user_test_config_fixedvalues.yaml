@@ -29,7 +29,7 @@ system_components:
                 fixed: True
                 value: 5.0
                 logarithmic: True
-                LaTeX: "$M_{BH}$"
+                LaTeX: "$\\log(M_\\mathrm{BH}/M_\\odot)$"
             a: # scale length
                 par_generator_settings:
                     fixed_values:
@@ -37,7 +37,7 @@ system_components:
                         - 0.002
                 fixed: True
                 value: 1.e-3  # dot required, renders as str '1e-3' otherwise
-                LaTeX: "$a_{BH}$"
+                LaTeX: "$a_\\mathrm{BH}$"
         type: "Plummer" # class name
         include: True
         contributes_to_potential: True
@@ -53,7 +53,7 @@ system_components:
                 logarithmic: True
                 fixed: True
                 value: 3.0
-                LaTeX: "$log(C)$"
+                LaTeX: "$\\log(C)$"
             f: # NFW Darkmatter fraction
                 par_generator_settings:
                     lo: 0.0
@@ -63,7 +63,7 @@ system_components:
                 logarithmic: True
                 fixed: True
                 value: 1.0
-                LaTeX: "$log(M_{200}/M_{star})$"
+                LaTeX: "$\\log(M_{200}/M_\\mathrm{stars})$"
         type: NFW
         include: True
         contributes_to_potential: True
@@ -79,7 +79,7 @@ system_components:
     #             logarithmic: True
     #             fixed: True
     #             value: 1.0
-    #             LaTeX: "$log(M_{200}/M_{star})$"
+    #             LaTeX: "$\\log(M_{200}/M_\\mathrm{stars})$"
     #     type: NFW_m200_c
     #     include: True
     #     contributes_to_potential: True
@@ -94,7 +94,7 @@ system_components:
                     minstep: 0.02
                 fixed: True
                 value: 0.54
-                LaTeX: "$q_{min}$"
+                LaTeX: "$q_\\mathrm{min}$"
             p: # intrinsic B/A
                 par_generator_settings:
                     lo: 0.99
@@ -103,7 +103,7 @@ system_components:
                     minstep: 0.01
                 fixed: True
                 value: 0.99
-                LaTeX: "$p_{min}$"
+                LaTeX: "$p_\\mathrm{min}$"
             u: # sigma_obs / sigma_intrinsic
                 par_generator_settings:
                     lo: 0.95
@@ -112,7 +112,7 @@ system_components:
                     minstep: 0.01
                 fixed: True
                 value: 0.9999
-                LaTeX: "$u_{min}$"
+                LaTeX: "$u_\\mathrm{min}$"
         type: "TriaxialVisibleComponent" # class name
         mge_pot: "mge.ecsv"
         mge_lum: "mge.ecsv"
@@ -138,7 +138,7 @@ system_parameters:
             minstep: 0.5
         fixed: False
         value: 5.
-        LaTeX: "$Y_{r}$"
+        LaTeX: "$Y_\\mathrm{r}$"
 
 ###############################################################################
 # SECTION 2: SETTINGS

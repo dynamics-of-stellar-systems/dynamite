@@ -21,11 +21,11 @@ system_components:
                 fixed: True
                 value: 6.5
                 logarithmic: True
-                LaTeX: "$M_{BH}$"
+                LaTeX: "$\\log(M_\\mathrm{BH}/M_\\odot)$"
             a: # scale length
                 fixed: True
                 value: 1.e-3  # dot required, renders as str '1e-3' otherwise
-                LaTeX: "$a_{BH}$"
+                LaTeX: "$a_\\mathrm{BH}$"
         type: "Plummer" # class name
         include: True
         contributes_to_potential: True
@@ -35,7 +35,7 @@ system_components:
             c: # NFW Darkmatter concentration
                 fixed: True
                 value: 10  #10.0
-                LaTeX: "$c_{NFW}$"
+                LaTeX: "$c_\\mathrm{NFW}$"
                 par_generator_settings:
                     lo: 1.0
                     hi: 10.0
@@ -44,7 +44,7 @@ system_components:
             f: # NFW Darkmatter fraction
                 fixed: True
                 value: 1.25893
-                LaTeX: "$log(M_{200}/M_{star})$"
+                LaTeX: "$\\log(M_{200}/M_\\mathrm{stars})$"
                 logarithmic: False
                 par_generator_settings:
                     lo: 0.
@@ -60,15 +60,15 @@ system_components:
             q: # intrinsic flattening (C/A)
                 fixed: True
                 value: 0.2 #0.49
-                LaTeX: "$q_{min}$"
+                LaTeX: "$q_\\mathrm{min}$"
             p: # intrinsic B/A
                 fixed: True
                 value: 0.7
-                LaTeX: "$p_{min}$"
+                LaTeX: "$p_\\mathrm{min}$"
             u: # sigma_obs / sigma_intrinsic
                 fixed: True
                 value: 0.9999
-                LaTeX: "$u_{min}$"
+                LaTeX: "$u_\\mathrm{min}$"
         type: "TriaxialVisibleComponent" # class name
         mge_pot: "mge4.ecsv"
         mge_lum: "mge4.ecsv"
@@ -103,7 +103,7 @@ system_parameters:
             minstep: 0.5
         fixed: False
         value: 5.5
-        LaTeX: "$Y_{r}$"
+        LaTeX: "$Y_\\mathrm{r}$"
 
 ###############################################################################
 # SECTION 2: SETTINGS
