@@ -26,7 +26,7 @@ system_components:
                 fixed: True
                 value: 0.0
                 logarithmic: False
-                LaTeX: "$\\log(M_\\mathrm{BH}/M_\\odot)$"
+                LaTeX: "$M_\\mathrm{BH}/M_\\odot$"
             a: # scale length
                 fixed: True
                 value: 1.e-3  # dot required, renders as str '1e-3' otherwise
