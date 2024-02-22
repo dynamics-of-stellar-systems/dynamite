@@ -56,7 +56,7 @@ system_components:
                 logarithmic: True
                 fixed: False
                 value: 12.0
-                LaTeX: "$M_\\mathrm{vir}$"
+                LaTeX: "$\\log(M_\\mathrm{vir})$"
             gam: # NFW inner_log_slope
                 par_generator_settings:
                     lo: 0.
