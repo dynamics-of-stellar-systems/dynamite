@@ -2257,3 +2257,76 @@ class Plotter():
             return mod_orb_dists, fig
         else:
             return fig
+
+    def plot_sb_profile(self,
+                        Rmax_arcs,
+                        components='all',
+                        kin_set=0,
+                        figtype='.png'):
+        """
+        Rmax_arcs : numerical value
+            Determines the upper range of the x-axis.
+        components : str or list, optional
+            'all' or a list of components to show separately on the right
+            panel. Currently, ['thin_d', 'warm_d', 'disk', 'bulge', 'all']
+            are implemented. The default is 'all'
+        figtype : str, optional
+            Determines the file extension to use when saving the figure.
+            The default is `.png`.
+        """
+        decomp = analysis.Decomposition(config=self.config, kin_set=kin_set)
+        comp_kinem_moments = decomp.comps_aphist(v_sigma_option='moments')
+        comps_kin = decomp.plot_comps(xlim=Rmax_arcs,
+                                      ylim=Rmax_arcs,
+                                      comp_kinem_moments=comp_kinem_moments,
+                                      return_table_only=True)
+        if components == 'all':
+            components = [c[:c.rindex('_')]
+                          for c in comps_kin.colnames
+                          if '_lsb' in c]
+        if 'all' in components:
+            components.remove('all')
+        min_lsb = np.nanmin(np.log10(comps_kin['all_lsb']))
+        max_lsb = np.nanmax(np.log10(comps_kin['all_lsb']))
+        # plot in linear scale
+        xrange = np.array([0.1, Rmax_arcs])
+        yrange = np.array([min_lsb - max_lsb, 0])
+
+        plot_file = self.plotdir + 'sb_profile' + figtype
+        fig = plt.figure(figsize=(10,5))
+
+        ax = fig.add_subplot(1, 2, 1)
+        ax.set_xlim(xrange)
+        ax.set_ylim(yrange)
+        ax.set_xlabel(r'$R$ [arcsec]', fontsize=9)
+        ax.set_ylabel(r'surface brightness (log)', fontsize=9)
+        ax.tick_params(labelsize=8)
+        ax.plot(np.sqrt(comps_kin['x/arcs']**2 + comps_kin['y/arcs']**2),
+                np.log10(comps_kin['all_lsb']) - max_lsb,
+                '.',
+                color='black',
+                linewidth=2,
+                label='all')
+        ax.legend(loc='upper right', fontsize=8)
+
+        ax = fig.add_subplot(1, 2, 2)
+        ax.set_xlim(xrange)
+        ax.set_ylim(yrange)
+        ax.set_xlabel(r'$R$ [arcsec]', fontsize=9)
+        # ax.set_ylabel(r'surface brightness (log)', fontsize=9)
+        ax.tick_params(labelsize=8)
+        colors = ['blue', 'green', 'red', 'cyan', 'magenta', 'yellow']
+        for col_idx, comp in enumerate(components):
+            ax.plot(np.sqrt(comps_kin['x/arcs']**2 + comps_kin['y/arcs']**2),
+                    np.log10(comps_kin[f'{comp}_lsb']) - max_lsb,
+                    '.',
+                    color=colors[col_idx],
+                    linewidth=2,
+                    label=comp)
+        ax.legend(loc='upper right', fontsize=8)
+
+        plt.tight_layout()
+        plt.savefig(plot_file)
+        self.logger.info(f'Plot {plot_file} saved in {self.plotdir}')
+
+        return fig
