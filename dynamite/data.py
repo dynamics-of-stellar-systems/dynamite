@@ -181,7 +181,7 @@ class Integrated(Data):
             self.logger.error(txt)
             raise ValueError(txt)
         self.logger.debug(f'{self.aperturefile} and {self.binfile} read.')
-        n_bins_kinem = self.data[-1][0]
+        n_bins_kinem = self.data[-1][0] + (1 if self.data[0][0] == 0 else 0)
         if not (n_bins_kinem == len(self.data) == max(grid)):
             txt = f'Number of kinematic bins does not match: {len(self.data)}'\
                   f' (length of {self.datafile}), {n_bins_kinem} (last id in '\
