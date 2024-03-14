@@ -7,8 +7,6 @@ import cmasher as cmr
 import astropy
 import dynamite as dyn
 
-class muClass:
-    pass
 
 class Decomposition:
     """

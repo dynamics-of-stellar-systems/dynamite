@@ -26,11 +26,11 @@ system_components:
                 fixed: True
                 value: 5.2
                 logarithmic: True
-                LaTeX: "$M_{BH}$"
+                LaTeX: "$\\log(M_\\mathrm{BH}/M_\\odot)$"
             a:
                 fixed: True
                 value: 0.001
-                LaTeX: "$a_{BH}$"
+                LaTeX: "$a_\\mathrm{BH}$"
         type: "Plummer"
         include: True
         contributes_to_potential: True
@@ -55,7 +55,7 @@ system_components:
                 logarithmic: True
                 fixed: True
                 value: 1.0
-                LaTeX: "$M_{200}/M_*$"
+                LaTeX: "$\\log(M_{200}/M_*)$"
         type: NFW
         include: True
         contributes_to_potential: True
@@ -111,7 +111,7 @@ system_parameters:
             minstep: 0.5
         fixed: True
         value: 5.
-        LaTeX: "$Y_{r}$"
+        LaTeX: "$Y_\\mathrm{r}$"
 
 ###############################################################################
 # SECTION 2: SETTINGS
