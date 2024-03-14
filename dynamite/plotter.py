@@ -334,7 +334,9 @@ class Plotter():
                     norm=mpl.colors.Normalize(vmin=0., vmax=3),
                     orientation='horizontal')
         cb.ax.tick_params(labelsize=fontsize)
-        cb.set_label(label='$\\chi^2/\\sigma_{\\chi^2}$', size=fontsize)
+        cb.set_label(label='$\\left.'
+                           '\\left(\\chi^2-\\chi^2_\\mathrm{min}\\right)'
+                           '\\right/\\sqrt{2n_\\mathrm{obs}}$', size=fontsize)
         plt.subplots_adjust(top=0.99, right=0.99, bottom=0.07, left=0.1)
         fig.savefig(figname)
         self.logger.info(f'Plot {figname} saved in {self.plotdir}')
