@@ -175,7 +175,7 @@ class Integrated(Data):
         i_var = int(i_var[0])
         grid = np.ravel(np.array(grid))
         if not (nx * ny == i_var == len(grid)):
-            txt = f'Number of apertures do not match: {nx}*{ny}={nx*ny} ' \
+            txt = f'Numbers of apertures do not match: {nx}*{ny}={nx*ny} ' \
                   f'({self.aperturefile}), {i_var} ({self.binfile}), ' \
                   f'{len(grid)} (bin data points in {self.binfile}).'
             self.logger.error(txt)
@@ -183,7 +183,7 @@ class Integrated(Data):
         self.logger.debug(f'{self.aperturefile} and {self.binfile} read.')
         n_bins_kinem = self.data[-1][0] + (1 if self.data[0][0] == 0 else 0)
         if not (n_bins_kinem == len(self.data) == max(grid)):
-            txt = f'Number of kinematic bins does not match: {len(self.data)}'\
+            txt = f'Numbers of kinematic bins do not match: {len(self.data)}'\
                   f' (length of {self.datafile}), {n_bins_kinem} (last id in '\
                   f'{self.datafile}), max number {max(grid)} in {self.binfile}.'
             self.logger.error(txt)
