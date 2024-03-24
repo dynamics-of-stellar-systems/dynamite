@@ -22,7 +22,7 @@ The development team are those currently involved in coding for DYNAMITE:
 
 * Sabine Thater (``sabine.thater@univie.ac.at``), postdoc at Uni Wien working on the development of DYNAMITE. In her research, she applies the axisymmetric and the triaxial Schwarzschild code to centres of galaxies.
 
-* Alina Boecker (``alina.boecker@univie.ac.at``)
+* Alina Boecker (``alina.boecker@univie.ac.at``), postdoc at Uni Wien, co-ordinating and coding for DYNAMITE. Research interests: stellar populations of galaxies, integrated spectra, accretion histories, cosmological simulations.
 
 * Anja Feldmeier-Krause (``anja.krause@univie.ac.at``)
 
