@@ -24,7 +24,7 @@ The development team are those currently involved in coding for DYNAMITE:
 
 * Alina Boecker (``alina.boecker@univie.ac.at``), postdoc at Uni Wien, co-ordinating and coding for DYNAMITE. Research interests: stellar populations of galaxies, integrated spectra, accretion histories, cosmological simulations.
 
-* Anja Feldmeier-Krause (``anja.krause@univie.ac.at``)
+* Anja Feldmeier-Krause (``anja.krause@univie.ac.at``), postdoc at Uni Wien. Research interests include the formation and evolution of galaxy nuclei, in particular at the centre of the Milky Way, but also in other galaxies.
 
 * Iris Breda (``iris.breda@univie.ac.at``), postdoc at Uni Wien. Research interests: formation and evolution of secular evolving galaxies such as disks and co-evolution of their stellar components.
 
