@@ -242,7 +242,10 @@ class LegacyWeightSolver(WeightSolver):
         nn_file.write(text)
         nn_file.close()
 
-    def solve(self, orblib=None, ignore_existing_weights=False):
+    def solve(self,
+              orblib=None,
+              ignore_existing_weights=False,
+              delete_legacy_files=True):
         """Main method to solve NNLS problem.
 
         Parameters
@@ -254,6 +257,10 @@ class LegacyWeightSolver(WeightSolver):
         ignore_existing_weights : bool
             If True, do not check for already existing weights and solve again.
             Default is False.
+        delete_legacy_files : bool
+            If True, legacy output files will be deleted after a successful
+            solve, otherwise they will remain in the model directory.
+            Default is True.
 
         Returns
         -------
@@ -311,10 +318,9 @@ class LegacyWeightSolver(WeightSolver):
                         text += 'Check DYNAMITE legacy_fortran executables.'
                         self.logger.error(text)
                         raise FileNotFoundError(text)
-                    else:
-                        text += f'{log_file} Be wary: DYNAMITE may crash...'
-                        self.logger.warning(text)
-                        raise RuntimeError(text)
+                    text += f'{log_file} Be wary: DYNAMITE may crash...'
+                    self.logger.warning(text)
+                    raise RuntimeError(text)
                 # set the current directory to the dynamite directory
                 os.chdir(cur_dir)
                 # delete existing .yaml files and copy current config file
@@ -328,16 +334,26 @@ class LegacyWeightSolver(WeightSolver):
             weights, chi2_tot, chi2_kin = \
                 self.get_weights_and_chi2_from_orbmat_file()
             chi2_kinmap = self.chi2_kinmap(weights)
+            # store legacy chi2 definitions (unused by DYNAMITE)
+            chi2_legacy, chi2_kin_legacy = self.read_chi2()
             results = table.Table()
             results['weights'] = weights
             results.meta = {'chi2_tot': chi2_tot,
                             'chi2_kin': chi2_kin,
-                            'chi2_kinmap': chi2_kinmap}
+                            'chi2_kinmap': chi2_kinmap,
+                            'chi2_legacy': chi2_legacy,
+                            'chi2_kin_legacy': chi2_kin_legacy}
             results.write(self.weight_file,
                           format='ascii.ecsv',
                           overwrite=True)
             # clean up
-            os.remove(self.direc_with_ml + 'nn_orbmat.out')
+            if delete_legacy_files:
+                for f_name in ['nn_aphist.out', 'nn_con.out',
+                               'nn_intrinsic_moments.out', 'nn_orb.out',
+                               'nn_orbmat.out', 'nn.in']:
+                    os.remove(self.direc_with_ml + f_name)
+                os.remove(self.fname_nn_kinem)
+                os.remove(self.fname_nn_nnls)
         return weights, chi2_tot, chi2_kin, chi2_kinmap
 
     def write_executable_for_weight_solver(self):
