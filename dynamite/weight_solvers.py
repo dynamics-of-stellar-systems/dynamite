@@ -26,7 +26,9 @@ class WeightSolver(object):
         model directory with the ml extension
     CRcut : Bool, default False
         whether to use the `CRcut` solution for the counter-rotating orbit
-        problem. See Zhu et al. 2018 for more.
+        problem. See Zhu et al. 2018 for more. If `CRcut` is given in the
+        configuration file's weight solver settings (which is normally the
+        case), this parameter is ignored.
 
     """
 
