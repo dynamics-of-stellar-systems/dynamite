@@ -28,7 +28,7 @@ The development team are those currently involved in coding for DYNAMITE:
 
 * Iris Breda (``iris.breda@univie.ac.at``), postdoc at Uni Wien. Research interests: formation and evolution of secular evolving galaxies such as disks and co-evolution of their stellar components.
 
-* Francisco Aros (``faros@iu.edu``)
+* Francisco Aros (``faros@iu.edu``), postdoc at Indiana University Bloomington, working on stellar dynamics of globular clusters and connecting simulations, dynamical models and observations in clusters with single and multiple populations.
 
 * Thomas Maindl (``thomas.maindl@univie.ac.at``, ``thomas.maindl@sdb.ltd``), scientific computing expert. Active contributor and adviser on DYNAMITE software architecture, class structure, coding, and building the code.
 
