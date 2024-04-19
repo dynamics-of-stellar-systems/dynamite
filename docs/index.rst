@@ -14,7 +14,9 @@ How to cite
 If you use DYNAMITE, please cite our `ASCL entry <http://www.ascl.net/code/v/2684>`_ using the following `BibTeX citation <https://ui.adsabs.harvard.edu/abs/2020ascl.soft11007J/exportcitation>`_.
 Moreover, please cite the paper presenting the original code, `van den Bosch et al. 2008 <https://ui.adsabs.harvard.edu/abs/2008MNRAS.385..647V/abstract>`_, and our most recent contribution, `Thater et al. 2022 <https://ui.adsabs.harvard.edu/abs/2022A%26A...667A..51T/abstract>`_.
 
-If you use the ``dynamite.analysis.Decomposition`` class, please cite the paper describing its methodology, `Santucci et al. 2022 <https://ui.adsabs.harvard.edu/abs/2022ApJ...930..153S/abstract>`_.
+If you use the ``dynamite.analysis.Decomposition`` class, please cite the papers describing its methodology,
+`Zhu et al. 2018 <https://ui.adsabs.harvard.edu/abs/2018MNRAS.473.3000Z/abstract>`_ and
+`Santucci et al. 2022 <https://ui.adsabs.harvard.edu/abs/2022ApJ...930..153S/abstract>`_.
 
 If you model a galaxy having a bar/disk (i.e., if your configuration file includes a ``bardisk`` component), please cite `Tahmasebzadeh et al. 2022 <https://ui.adsabs.harvard.edu/abs/2022ApJ...941..109T/abstract>`_.
 
@@ -62,7 +64,6 @@ The following pages give all the information needed to get started,
   getting_started/code_overview.rst
   getting_started/configuration.rst
   getting_started/getting_help_contributing.rst
-  how_to_cite.rst
 
 The tutorials also show an example of running DYNAMITE from start to finish - this could also be a great place to start getting acquainted with the code. Further sections show other API-documentation for specific classes and methods, and other miscellaneous information.
 
