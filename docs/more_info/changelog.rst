@@ -4,6 +4,8 @@
 Change Log
 ****************
 
+- Improvement: ``LegacyWeightSolver`` is now DEPRECATED and will be removed along with GALAHAD in a future version of DYNAMITE. Use weight solver ``type: NNLS`` instead if you can.
+
 Version: 4.2
 ================
 
