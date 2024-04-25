@@ -4,6 +4,7 @@
 Change Log
 ****************
 
+- Improvement: The installation procedure has been changed to make DYNAMITE compatible with Python 3.12. Installing and uninstalling is now done using pip.
 - Improvement: ``LegacyWeightSolver`` is now DEPRECATED and will be removed along with GALAHAD in a future version of DYNAMITE. Use weight solver ``type: "NNLS"`` instead if you can.
 
 Version: 4.2

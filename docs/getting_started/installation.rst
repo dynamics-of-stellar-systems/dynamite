@@ -385,24 +385,10 @@ You can also explicitly choose to install into your user directory by adding the
 
     python -m pip install . --user
 
-To make uninstalling easier, it is useful to record the files which have been created when you install the package. This can be done by::
+For a detailed report of what the installation did, ``pip`` can create a JSON file. This can be done by::
 
     python -m pip install . --report what_pip_did.json
 
-
-OLD TEXT:
-
-If all these files are there, you can proceed with the installation, by going back to ``.../dynamite`` and running::
-
-    python setup.py install
-
-On systems you don't have root privileges on (such as a cluster), you can choose to install into your user directory by adding the ``--user`` flag::
-
-    python setup.py install --user
-
-To make uninstalling easier, it is useful to record the files which have been created when you install the package. This can be done by::
-
-    python setup.py install --record list_of_created_files.txt
 
 Several Python packages are installed in this way (if they are not already), including:
 
@@ -424,8 +410,11 @@ To remove all compiled Fortran codes, go back to ``.../legacy_fortran``, and typ
 
     make distclean
 
-If you used the ``--record`` option suggested above when installing the python part of the code, you can easily uninstall it by manually removing all the files listed in the text file.
+The system's (or your user's) installation directory can be cleaned up by::
 
+    python -m pip uninstall dynamite
+
+Before actual deletion takes place, ``pip`` will display a list of files and directories that will be remeoved and wait for your confirmation.
 
 ..
     Post-Installation
