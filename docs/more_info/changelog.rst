@@ -6,6 +6,7 @@ Change Log
 
 - Bugfix: the chi2 plot now shows correct axis ticks for log quantities.
 - Bugfix: fixed colorbar overlap with x-axis in the chi2 plot if only two parameters are varied and added label to chi2 plot colorbar.
+- Improvement: ``LegacyWeightSolver`` is now DEPRECATED and will be removed along with GALAHAD in a future version of DYNAMITE. Use weight solver ``type: "NNLS"`` instead if you can.
 
 Version: 4.2
 ================
