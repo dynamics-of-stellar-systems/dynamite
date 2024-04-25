@@ -206,7 +206,7 @@ class Plotter():
                     nofix_latex.append(pars[i].LaTeX)
                     nofix_islog.append(pars[i].logarithmic)
                 if pars[i].logarithmic:
-                    val[pars[i].name] = np.log(val[pars[i].name])
+                    val[pars[i].name] = np.log10(val[pars[i].name])
 
         nnofix=len(nofix_sel)
 
