@@ -186,7 +186,7 @@ class Plotter():
 
         # get the plummer component i.e. black hole
         bh = self.system.get_component_from_class(physys.Plummer)
-        val[f'm-{bh.name}'] = np.log10(val[f'm-{bh.name}']*scale_factor**2)
+        val[f'm-{bh.name}'] = val[f'm-{bh.name}']*scale_factor**2
 
         #get number and names of parameters that are not fixed
         nofix_sel=[]
