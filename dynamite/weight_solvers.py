@@ -709,7 +709,7 @@ class NNLS(WeightSolver):
         return orbmat, rhs
 
     def apply_CR_cut(self, kins, orb_losvd, orb_gh):
-        """apply `CRcut`
+        r"""apply `CRcut`
 
         to solve the `counter rotating orbit problem`. This cuts orbits which
         have :math:`|V - V_\mathrm{obs}|> 3\sigma_\mathrm{obs}`. See
