@@ -702,12 +702,19 @@ class LegacyOrbitLibrary(OrbitLibrary):
                 kin_idx = kin_idx_per_ap[i_ap]
                 i_ap0 = i_ap - idx_ap_reset[kin_idx]
                 ivmin, ivmax = orblibf.read_ints(np.int32)
-                if ivmin <= ivmax:
+                if (ivmin <= ivmax):
                     nv0 = (hist_bins[kin_idx]-1)/2
                     # ^--- this is an integer since hist_bins is odd
                     nv0 = int(nv0)
                     tmp = orblibf.read_reals(float)
-                    velhist0[kin_idx][j, ivmin+nv0:ivmax+nv0+1, i_ap0] = tmp
+                    if tmp.size == velhist0[kin_idx][j, ivmin+nv0:ivmax+nv0+1, i_ap0].shape:
+                        velhist0[kin_idx][j, ivmin+nv0:ivmax+nv0+1, i_ap0] = tmp
+                    else:
+                        # n_extra = tmp.size - velhist0[kin_idx].shape[1]
+                        # assert n_extra%2 == 0, 'an error in your hacky bugfix'
+                        # buffer = int(n_extra/2)
+                        # velhist0[kin_idx][j, :, i_ap0] = tmp[buffer:-buffer]
+                        pass
             if return_instrisic_moments:
                 intrinsic_moms[j] = quad_light
         orblibf.close()
