@@ -26,7 +26,9 @@ class WeightSolver(object):
         model directory with the ml extension
     CRcut : Bool, default False
         whether to use the `CRcut` solution for the counter-rotating orbit
-        problem. See Zhu et al. 2018 for more.
+        problem. See Zhu et al. 2018 for more. If `CRcut` is given in the
+        configuration file's weight solver settings (which is normally the
+        case), this parameter is ignored.
 
     """
 
@@ -163,6 +165,10 @@ class LegacyWeightSolver(WeightSolver):
         # prepare fortran input file for nnls
         self.copy_kinematic_data()
         self.create_fortran_input_nnls()
+        self.logger.info(f'{__class__.__name__} is DEPRECATED and '
+                         'will be removed in a future version of '
+                         f'DYNAMITE. Use weight solver type NNLS instead '
+                         f'of {__class__.__name__} if you can.')
 
     def copy_kinematic_data(self):
         """Copy kin data to infil/ direc
@@ -277,11 +283,12 @@ class LegacyWeightSolver(WeightSolver):
             chi2_kin = results.meta['chi2_kin']
             chi2_kinmap = results.meta['chi2_kinmap']
         else:
+            fname_nn_orbmat = self.direc_with_ml + 'nn_orbmat.out'
             # If legacy result files do not exist, run weight solving.
-            check1 = os.path.isfile(self.fname_nn_kinem)
-            check2 = os.path.isfile(self.fname_nn_nnls)
-            check3 = os.path.isfile(self.direc_with_ml + 'nn_orbmat.out')
-            if not check1 or not check2 or not check3:
+            check = (os.path.isfile(self.fname_nn_kinem) and
+                     os.path.isfile(self.fname_nn_nnls) and
+                     os.path.isfile(fname_nn_orbmat))
+            if ignore_existing_weights or not check:
                 # set the current directory to the directory in which
                 # the models are computed
                 cur_dir = os.getcwd()
@@ -300,6 +307,11 @@ class LegacyWeightSolver(WeightSolver):
                                    stdout=subprocess.PIPE,
                                    stderr=subprocess.STDOUT,
                                    shell=True)
+                # clean up decompressed files
+                for f_name in [f'datfil/orblib_{self.ml}.dat',
+                               f'datfil/orblibbox_{self.ml}.dat']:
+                    if os.path.isfile(f_name):
+                        os.remove(f_name)
                 log_file = f'Logfile: {self.direc_no_ml+logfile}.'
                 if not p.stdout.decode("UTF-8"):
                     self.logger.info(f'...done, NNLS problem solved - {cmdstr}'
@@ -311,16 +323,15 @@ class LegacyWeightSolver(WeightSolver):
                         text += 'Check DYNAMITE legacy_fortran executables.'
                         self.logger.error(text)
                         raise FileNotFoundError(text)
-                    else:
-                        text += f'{log_file} Be wary: DYNAMITE may crash...'
-                        self.logger.warning(text)
-                        raise RuntimeError(text)
+                    text += f'{log_file} Be wary: DYNAMITE may crash...'
+                    self.logger.warning(text)
+                    raise RuntimeError(text)
                 # set the current directory to the dynamite directory
                 os.chdir(cur_dir)
                 # delete existing .yaml files and copy current config file
                 # into model directory
                 self.config.copy_config_file(self.direc_with_ml)
-            else:
+            else:  # If legacy output files exist, just create the weight file
                 self.logger.info("Reading NNLS solution from existing legacy "
                                  "output and converting to weights file.")
             # Now the legacy result files exist -> read, calculate
@@ -336,6 +347,9 @@ class LegacyWeightSolver(WeightSolver):
             results.write(self.weight_file,
                           format='ascii.ecsv',
                           overwrite=True)
+            # clean up
+            if os.path.isfile(fname_nn_orbmat):
+                os.remove(fname_nn_orbmat)
         return weights, chi2_tot, chi2_kin, chi2_kinmap
 
     def write_executable_for_weight_solver(self):
@@ -379,8 +393,6 @@ class LegacyWeightSolver(WeightSolver):
                            self.legacy_directory +
                            f'/triaxnnls_noCRcut < {nn}.in >> {nn}ls.log '
                            '|| exit 1\n')
-        txt_file.write(f'rm datfil/orblib_{self.ml}.dat' + '\n')
-        txt_file.write(f'rm datfil/orblibbox_{self.ml}.dat' + '\n')
         txt_file.close()
         return cmdstr
 
