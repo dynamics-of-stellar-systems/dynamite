@@ -120,7 +120,7 @@ class Plotter():
             Which chi2 is used for determining the best models. If None,
             the setting from the configuration file will be used.
             The default is None.
-        nexcl : integer, optional
+        n_excl : integer, optional
             Determines how many models (in the initial burn-in phase of
             the fit) to exclude from the plot. Must be an integer number.
             Default is 0 (all models are shown). Use this with caution!
@@ -186,7 +186,7 @@ class Plotter():
 
         # get the plummer component i.e. black hole
         bh = self.system.get_component_from_class(physys.Plummer)
-        val[f'm-{bh.name}'] = np.log10(val[f'm-{bh.name}']*scale_factor**2)
+        val[f'm-{bh.name}'] = val[f'm-{bh.name}']*scale_factor**2
 
         #get number and names of parameters that are not fixed
         nofix_sel=[]
@@ -196,8 +196,6 @@ class Plotter():
 
         for i in np.arange(len(pars)):
             if pars[i].fixed==False:
-
-                pars[i].name
                 nofix_sel.append(i)
                 if pars[i].name == 'ml':
                     nofix_name.insert(0, 'ml')
@@ -207,6 +205,8 @@ class Plotter():
                     nofix_name.append(pars[i].name)
                     nofix_latex.append(pars[i].LaTeX)
                     nofix_islog.append(pars[i].logarithmic)
+                if pars[i].logarithmic:
+                    val[pars[i].name] = np.log10(val[pars[i].name])
 
         nnofix=len(nofix_sel)
 
@@ -270,54 +270,24 @@ class Plotter():
 
                 if j==i+1:
                     ax.set_xlabel(xtit, fontsize=size)
-                    if nofix_islog[i]:
-                        ax.set_xscale('log')
-                        if  max(val[nofix_name[i]])/min(val[nofix_name[i]]) > 100:
-                            ax.xaxis.set_major_locator(LogLocator(base=10,numticks=3))
-                        else:
-                            ax.xaxis.set_major_locator(MaxNLocator(nbins=3, prune='lower'))
-                    else:
-                        ax.xaxis.set_major_locator(MaxNLocator(nbins=4, prune='lower'))
+                    ax.xaxis.set_major_locator(MaxNLocator(nbins=4, prune='lower'))
                     ticks_loc = ax.get_xticks().tolist()
                     ax.xaxis.set_major_locator(FixedLocator(ticks_loc))
-                    if max(val[nofix_name[i]]) > 200 or nofix_islog[i]:
+                    if max(val[nofix_name[i]]) > 200:
                         ax.set_xticklabels([label_format.format(x).replace('e+0','e') for x in ticks_loc],fontsize=fontsize)
                     ax.xaxis.set_tick_params(labelsize=fontsize)
-                    if nofix_islog[j]:
-                        ax.set_yscale('log')
                 else:
-                    if nofix_islog[i]:
-                        ax.set_xscale('log')
-                        if  max(val[nofix_name[i]])/min(val[nofix_name[i]]) > 100:
-                            ax.xaxis.set_major_locator(LogLocator(base=10,numticks=3))
-                        else:
-                            ax.xaxis.set_major_locator(MaxNLocator(nbins=3, prune='lower'))
-                    if nofix_islog[j]:
-                        ax.set_yscale('log')
                     ax.xaxis.set_major_formatter(NullFormatter())
 
                 if i==0:
                     ax.set_ylabel(ytit, fontsize=size)
-                    if nofix_islog[i]:
-                        ax.set_xscale('log')
-                    if nofix_islog[j]:
-                        ax.set_yscale('log')
-                        if  max(val[nofix_name[j]])/min(val[nofix_name[j]]) > 100:
-                            ax.yaxis.set_major_locator(LogLocator(base=10,numticks=3))
-                        else:
-                            ax.yaxis.set_major_locator(MaxNLocator(nbins=3, prune='lower'))
-                    else:
-                        ax.yaxis.set_major_locator(MaxNLocator(nbins=4, prune='lower'))
+                    ax.yaxis.set_major_locator(MaxNLocator(nbins=4, prune='lower'))
                     ticks_loc = ax.get_yticks().tolist()
                     ax.yaxis.set_major_locator(FixedLocator(ticks_loc))
-                    if max(val[nofix_name[j]]) > 200 or nofix_islog[j]:
+                    if max(val[nofix_name[j]]) > 200:
                         ax.set_yticklabels([label_format.format(x).replace('e+0','e') for x in ticks_loc],fontsize=fontsize)
                     ax.yaxis.set_tick_params(labelsize=fontsize)
                 else:
-                    if nofix_islog[i]:
-                        ax.set_xscale('log')
-                    if nofix_islog[j]:
-                        ax.set_yscale('log')
                     ax.yaxis.set_major_formatter(NullFormatter())
 
                 ax.xaxis.set_minor_formatter(NullFormatter())
@@ -325,12 +295,18 @@ class Plotter():
 
         plt.subplots_adjust(hspace=0)
         plt.subplots_adjust(wspace=0)
-        axcb = fig.add_axes([0.75, 0.07, 0.2, 0.02])
+        if nnofix == 2:
+            axcb = fig.add_axes([0.75, 0.13, 0.2, 0.02])
+        else:
+            axcb = fig.add_axes([0.75, 0.07, 0.2, 0.02])
         cb = mpl.colorbar.ColorbarBase(axcb,
                     cmap=plt.get_cmap('viridis_r'),
                     norm=mpl.colors.Normalize(vmin=0., vmax=3),
                     orientation='horizontal')
         cb.ax.tick_params(labelsize=fontsize)
+        cb.set_label(label='$\\left.'
+                           '\\left(\\chi^2-\\chi^2_\\mathrm{min}\\right)'
+                           '\\right/\\sqrt{2n_\\mathrm{obs}}$', size=fontsize)
         plt.subplots_adjust(top=0.99, right=0.99, bottom=0.07, left=0.1)
         fig.savefig(figname)
         self.logger.info(f'Plot {figname} saved in {self.plotdir}')
