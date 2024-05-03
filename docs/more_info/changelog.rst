@@ -4,7 +4,7 @@
 Change Log
 ****************
 
-- Improvement: save disk space by cleaning up decompressed files after a crash and removing unused legacy files nn_orbmat.out after solving.
+- Improvement: save disk space by cleaning up decompressed files after a crash and removing unused legacy file nn_orbmat.out after solving.
 - Improvement: ``LegacyWeightSolver`` is now DEPRECATED and will be removed along with GALAHAD in a future version of DYNAMITE. Use weight solver ``type: "NNLS"`` instead if you can.
 
 Version: 4.2
