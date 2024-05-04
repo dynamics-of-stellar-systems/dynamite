@@ -743,6 +743,13 @@ class Plotter():
                 text = "cbar_lims=='user' requires s_min_max=[smin,smax]."
                 self.logger.error(text)
                 raise ValueError(text)
+        else:
+            if v_max:
+                self.logger.warning("v_max ignored, you may want to try "
+                                    "cbar_lims='user'")
+            if s_min_max:
+                self.logger.warning("s_min_max ignored, you may want to try "
+                                    "cbar_lims='user'")
 
         # get the model's projected masses=flux and kinematic data
         a = analysis.Analysis(config=self.config, model=model, kin_set=kin_set)
