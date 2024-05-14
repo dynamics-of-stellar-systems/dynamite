@@ -5,17 +5,18 @@ Created 2021-2024
 
 @author: Sabine Thater, Julia Lamprecht, Thomas I. Maindl
 """
-from astropy.io import fits
 import numpy as np
+from astropy import table
+from astropy.io import fits
 import matplotlib.pyplot as plt
 import plotbin.display_pixels as dp
 import pafit.fit_kinematic_pa as pa
-from astropy import table
 import cmasher as cmr
 
+
 def read_kinematics_user(file):
-    #This function can be filled by the user
-    return None
+    # This function can be filled by the user
+    return None, None, None, None
 
 
 def read_kinematics_nifs(f_names, n_gh='all', idl=False):
@@ -85,59 +86,6 @@ def read_kinematics_nifs(f_names, n_gh='all', idl=False):
     if idl:  # IDL starts at 1, python at 0
         bin_num -= 1
 
-    # vel = data[:,1]
-    # dvel = data[:,2]
-    # sig = data[:,3]
-    # dsig = data[:,4]
-    # # Subtract the median from the odd moments
-    # h = {}
-    # dh = {}
-    # for i_gh in gh_save:
-    #     h[i_gh] = data[:,2 * i_gh]
-    #     if i_gh % 2 == 1:
-    #         h[i_gh] -= np.median(h[i_gh])
-    #     dh[i_gh] = data[:,2 * i_gh + 1]
-
-    # h3 = data[:,6]-np.median(data[:,6])
-    # h4 = data[:,8]
-    # h5 = data[:,10]-np.median(data[:,10])
-    # h6 = data[:,12]
-    # h7 = data[:,14]-np.median(data[:,14])
-    # h8 = data[:,16]
-    # dh3 = data[:,7]
-    # dh4 = data[:,9]
-    # dh5 = data[:,11]
-    # dh6 = data [:,13]
-    # # Repeat for other higher order moments if available in the data,
-    # # as many as you like, here up to gh12
-
-    # dh7 = data [:,15]
-    # dh8 = data[:,17]
-    # h9 = data[:,18]-np.median(data[:,18])
-    # dh9 = data[:,19]
-    # h10 = data[:,20]
-    # dh10 = data[:,21]
-    # h11 = data[:,22]-np.median(data[:,22])
-    # dh11 = data[:,23]
-    # h12 = data[:,24]
-    # dh12 = data[:,25]
-
-    # # Extract bin numbers and spatial coordinates
-    # bin_num = voronoi[:,2]
-    # bin_num = bin_num.astype(int)
-    # if idl:  # IDL stars at 1, python at 0
-    #     bin_num -= 1
-    # x = voronoi[:,0]
-    # y = voronoi[:,1]
-
-    # The following (1) would read vel and dvel, not bin coordinates,
-    # (2) is not used any further -> commented out
-    # # Extract spatial coordinates of bins
-    # xbin = data[:,1]
-    # ybin = data[:,2]
-
-    # return binNum, x, y, vel, sig, h3, h4, dvel, dsig, dh3, dh4, xbin, ybin, \
-    #        h5, h6, dh5, dh6,h7,h8,dh7,dh8, h9,dh9,h10,dh10,h11,dh11,h12,dh12
     return bin_num, x, y, data_table
 
 
@@ -303,7 +251,7 @@ def create_kin_input(galaxy, file, dyn_model_dir, expr='', angle_deg=0, ngh=4,
         binNum,xp,yp,flux,vel,sig,h3,h4,dvel,dsig,dh3,dh4,xbin,ybin=read_atlas3d(file)
 
     elif kin_input == 'USER':
-        binNum,xp,yp,flux,vel,sig,h3,h4,dvel,dsig,dh3,dh4,xbin,ybin=read_kinematics_user(file)
+        binNum, xp, yp, data = read_kinematics_user(file)
 
     elif kin_input == 'NIFS':
         binNum, xp, yp, data = read_kinematics_nifs(file, idl=True)
@@ -319,34 +267,29 @@ def create_kin_input(galaxy, file, dyn_model_dir, expr='', angle_deg=0, ngh=4,
         data['h4'] = h4
         data['dh4'] = dh4
         if ngh == 6:
-            h5 = np.full_like(h4, 0)
-            h6 = np.full_like(h4, 0)
-            dh5 = np.full_like(h4, 0.3)
-            dh6 = np.full_like(h4, 0.3)
-            data['h5'] = h5
-            data['dh5'] = dh5
-            data['h6'] = h6
-            data['dh6'] = dh6
+            data['h5'] = np.full_like(h4, 0)
+            data['dh5'] = np.full_like(h4, 0.3)
+            data['h6'] = np.full_like(h4, 0)
+            data['dh6'] = np.full_like(h4, 0.3)
     n_gh = len(data.colnames) // 2
     # add first column holding a bin index starting at 1
     data.add_column(np.arange(1, len(data) + 1), name='vbin_id', index=0)
 
     xp=xp+xoffset
     yp=yp+yoffset
-    # xbin=xbin+xoffset
-    # ybin=ybin+yoffset
+    # xbin=xbin+xoffset  # not used
+    # ybin=ybin+yoffset  # not used
 
     map1 = cmr.get_sub_cmap('twilight_shifted', 0.05, 0.6)
     map2 = cmr.get_sub_cmap('twilight_shifted', 0.05, 0.95)
 
-    # vel = vel - np.median(vel)
     if fit_PA:
-        # angle_deg,_,vel_syst = pa.fit_kinematic_pa(xp,yp,vel[binNum],cmap=map2)
-        angle_deg,_,vel_syst = pa.fit_kinematic_pa(xp,yp,data['v'][binNum],cmap=map2)
+        angle_deg,_,vel_syst = pa.fit_kinematic_pa(xp,
+                                                   yp,
+                                                   data['v'][binNum],
+                                                   cmap=map2)
         plt.savefig(dyn_model_dir + 'pafit' + expr + '.pdf')
-        # vel=vel - vel_syst
         data['v'] -= vel_syst
-    # vel = vel + voffset
     data['v'] += voffset  # add velocity offset if required
 
     # Determination of the pixel size
@@ -385,38 +328,42 @@ def create_kin_input(galaxy, file, dyn_model_dir, expr='', angle_deg=0, ngh=4,
         print('Vels plot: {0}, {1}, {2}'.format(vmax, smin, smax))
 
         plot_rows = (n_gh - 1) // 6 + 1
-        plot_cols = 4 if n_gh == 4 else 6
-        # fig, axs = plt.subplots(1, 4, figsize=(18,4))
-        fig, ax = plt.subplots(plot_rows, plot_cols, figsize=(25, 5 * plot_rows))
-        # plt.subplot(1,4,1)
+        if n_gh == 4:
+            plot_cols = 4
+            fig, ax = plt.subplots(1, 4, figsize=(18,4))
+        else:
+            plot_cols = 6
+            fig, ax = plt.subplots(plot_rows,
+                                   plot_cols,
+                                   figsize=(25, 5 * plot_rows))
         plt.subplot(plot_rows,plot_cols,1)
         plt.title('Velocity [km/s]')
+        plt.xlabel('arcsec', fontsize=10)
         plt.ylabel('arcsec', fontsize=10)
-        dp.display_pixels(xp,yp,data['v'][binNum],angle=angle_deg,vmin=-vmax,vmax=vmax,cmap=map2)
+        dp.display_pixels(xp, yp, data['v'][binNum],
+                          angle=angle_deg,
+                          vmin=-vmax, vmax=vmax,
+                          cmap=map2)
 
-        # plt.subplot(1,4,2)
         plt.subplot(plot_rows,plot_cols,2)
         plt.title('Velocity dispersion [km/s]')
         plt.xlabel('arcsec', fontsize=10)
-        dp.display_pixels(xp,yp,data['sigma'][binNum],angle=angle_deg,vmin=smin,vmax=smax,cmap=map1)
+        dp.display_pixels(xp, yp, data['sigma'][binNum],
+                          angle=angle_deg,
+                          vmin=smin, vmax=smax,
+                          cmap=map1)
 
-        # plt.subplot(1,4,3)
-        # plt.title(r'$h_{3}$ moment')
-        # dp.display_pixels(xp,yp,data['h3'][binNum],angle=angle_deg,vmin=-0.15,vmax=0.15,cmap=map2)
-
-        # plt.subplot(1,4,4)
-        # plt.title(r'$h_{4}$ moment')
-        # dp.display_pixels(xp,yp,data['h4'][binNum],angle=angle_deg,vmin=-0.15,vmax=0.15,cmap=map2)
-
-        for h_mom in range(3,n_gh + 1):
+        for h_mom in range(3, n_gh + 1):
             plt.subplot(plot_rows,plot_cols,h_mom)
             plt.title(f'$h_{{{h_mom}}}$ moment')
+            plt.xlabel('arcsec', fontsize=10)
             if (h_mom - 1) % plot_cols == 0:
                 plt.ylabel('arcsec', fontsize=10)
-            plt.xlabel('arcsec', fontsize=10)
-            dp.display_pixels(xp,yp,data[f'h{h_mom}'][binNum],angle=angle_deg,vmin=-0.15,vmax=0.15,cmap=map2)
+            dp.display_pixels(xp, yp, data[f'h{h_mom}'][binNum],
+                              angle=angle_deg,
+                              vmin=-0.15, vmax=0.15,
+                              cmap=map2)
 
-        # fig.subplots_adjust(left=0.04, wspace=0.3, hspace=0.01, right=0.97)
         fig.savefig(dyn_model_dir + 'kinmaps' + expr + '.pdf')
 
     # round v, dv, sigma, dsigma, and the GH moments (but not their errors)
@@ -424,6 +371,10 @@ def create_kin_input(galaxy, file, dyn_model_dir, expr='', angle_deg=0, ngh=4,
                                       [f'h{i}' for i in range(3,n_gh + 1)]})
 
     if files is True:
-        create_aperture_file(dyn_model_dir,expr,minx,maxx,miny,maxy,angle_deg,nx,ny)
-        create_bins_file(dyn_model_dir,expr,grid)
-        kin_file(dyn_model_dir,expr,data)
+        create_aperture_file(dyn_model_dir,
+                             expr,
+                             minx, maxx, miny, maxy,
+                             angle_deg,
+                             nx, ny)
+        create_bins_file(dyn_model_dir, expr, grid)
+        kin_file(dyn_model_dir, expr, data)
