@@ -231,7 +231,8 @@ def kin_file(directory,expr,data):
 
 
 #### main routine ######
-def create_kin_input(galaxy, file, dyn_model_dir, expr='', angle_deg=0, ngh=4,
+def create_kin_input(galaxy, file, dyn_model_dir, expr='', angle_deg=0,
+                     ngh='all',
                      pointsym=0, bisym=0, xoffset=0, yoffset=0, voffset=0,
                      fit_PA=False, kin_input=0, files=True, plot=True):
     """
@@ -245,16 +246,20 @@ def create_kin_input(galaxy, file, dyn_model_dir, expr='', angle_deg=0, ngh=4,
 
     #read in binned kinematics, this needs to be changed by the user
     if kin_input == 'CALIFA':
+        if ngh == 'all':
+            ngh = 4
         binNum,xp,yp,flux,vel,sig,h3,h4,dvel,dsig,dh3,dh4,xbin,ybin=read_califa(file)
 
     elif kin_input == 'ATLAS3D':
+        if ngh == 'all':
+            ngh = 4
         binNum,xp,yp,flux,vel,sig,h3,h4,dvel,dsig,dh3,dh4,xbin,ybin=read_atlas3d(file)
 
     elif kin_input == 'USER':
         binNum, xp, yp, data = read_kinematics_user(file)
 
     elif kin_input == 'NIFS':
-        binNum, xp, yp, data = read_kinematics_nifs(file, idl=True)
+        binNum, xp, yp, data = read_kinematics_nifs(file, n_gh=ngh, idl=True)
 
     if kin_input in ['CALIFA', 'ATLAS3D']:
         data = table.Table()
