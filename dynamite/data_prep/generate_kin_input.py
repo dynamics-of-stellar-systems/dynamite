@@ -333,14 +333,20 @@ def create_kin_input(galaxy, file, dyn_model_dir, expr='', angle_deg=0,
         print('Vels plot: {0}, {1}, {2}'.format(vmax, smin, smax))
 
         plot_rows = (n_gh - 1) // 6 + 1
-        if n_gh == 4:
+        if n_gh <= 4:
             plot_cols = 4
-            fig, ax = plt.subplots(1, 4, figsize=(18,4))
+            figsize = (18, 4)
         else:
             plot_cols = 6
-            fig, ax = plt.subplots(plot_rows,
-                                   plot_cols,
-                                   figsize=(25, 5 * plot_rows))
+            figsize = (25, 5 * plot_rows)
+        fig, ax = plt.subplots(plot_rows, plot_cols, figsize=figsize)
+        if n_gh % plot_cols > 0:  # remove axes from empty subplots
+            for col in range(n_gh % plot_cols, plot_cols):
+                if plot_rows == 1:
+                    ax[col].set_axis_off()
+                else:
+                    ax[plot_rows - 1, col].set_axis_off()
+
         plt.subplot(plot_rows,plot_cols,1)
         plt.title('Velocity [km/s]')
         plt.xlabel('arcsec', fontsize=10)
