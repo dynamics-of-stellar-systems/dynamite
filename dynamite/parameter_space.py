@@ -587,14 +587,21 @@ class ParameterGenerator(object):
                 models0 = self.current_models.table[mask]
                 last_chi2 = np.nanmin(models0[self.chi2])
                 last_iter -= 1
-            previous_chi2 = np.nan
-            while np.isnan(previous_chi2): # look for non-nan (kin)chi2 value
-                if last_iter < 0:
-                    return
-                mask = self.current_models.table['which_iter'] == last_iter
-                models1 = self.current_models.table[mask]
-                previous_chi2 = np.nanmin(models1[self.chi2])
-                last_iter -= 1
+            # previous_chi2 = np.nan
+            # while np.isnan(previous_chi2): # look for non-nan (kin)chi2 value
+            #     if last_iter < 0:
+            #         return
+            #     mask = self.current_models.table['which_iter'] == last_iter
+            #     models1 = self.current_models.table[mask]
+            #     previous_chi2 = np.nanmin(models1[self.chi2])
+            #     last_iter -= 1
+            if last_iter < 0:
+                return
+            mask = self.current_models.table['which_iter'] <= last_iter
+            models1 = self.current_models.table[mask]
+            previous_chi2 = np.nanmin(models1[self.chi2])
+            if np.isnan(previous_chi2):
+                return
             # Don't use abs() so we stop on increasing chi2 values, too:
             delta_chi2 = previous_chi2 - last_chi2
             if self.min_delta_chi2_rel:
