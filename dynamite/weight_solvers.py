@@ -369,27 +369,27 @@ class LegacyWeightSolver(WeightSolver):
         cmdstr = f'cmd_nnls_{self.ml}'
         txt_file = open(cmdstr, "w")
         txt_file.write('#!/bin/bash' + '\n')
-        txt_file.write('# if the gzipped orbit library exist unzip it' + '\n')
-        txt_file.write(f'test -e datfil/orblib_{self.ml}.dat || bunzip2 -c  datfil/orblib.dat.bz2 > datfil/orblib_{self.ml}.dat' + '\n')
-        txt_file.write(f'test -e datfil/orblibbox_{self.ml}.dat || bunzip2 -c  datfil/orblibbox.dat.bz2 > datfil/orblibbox_{self.ml}.dat' + '\n')
+        txt_file.write('# unzip the gzipped orbit library\n')
+        txt_file.write(f'rm -f datfil/orblib_{self.ml}.dat && bunzip2 -c datfil/orblib.dat.bz2 > datfil/orblib_{self.ml}.dat\n')
+        txt_file.write(f'rm -f datfil/orblibbox_{self.ml}.dat && bunzip2 -c datfil/orblibbox.dat.bz2 > datfil/orblibbox_{self.ml}.dat\n')
         if self.system.is_bar_disk_system():
             txt_file.write(f'test -e {self.legacy_directory}/triaxnnls_bar' +
                            f' || {{ echo "File {self.legacy_directory}/triaxnnls_bar not found." && exit 127; }}\n')
-            txt_file.write('test -e ' + str(nn) + '_kinem.out || ' +
+            txt_file.write('rm -f ' + str(nn) + '_kinem.out && ' +
                            self.legacy_directory +
                            f'/triaxnnls_bar < {nn}.in >> {nn}ls.log '
                            '|| exit 1\n')
         elif self.CRcut is True:
             txt_file.write(f'test -e {self.legacy_directory}/triaxnnls_CRcut' +
                            f' || {{ echo "File {self.legacy_directory}/triaxnnls_CRcut not found." && exit 127; }}\n')
-            txt_file.write('test -e ' + str(nn) + '_kinem.out || ' +
+            txt_file.write('rm -f ' + str(nn) + '_kinem.out && ' +
                            self.legacy_directory +
                            f'/triaxnnls_CRcut < {nn}.in >> {nn}ls.log '
                            '|| exit 1\n')
         else:
             txt_file.write(f'test -e {self.legacy_directory}/triaxnnls_noCRcut' +
                            f' || {{ echo "File {self.legacy_directory}/triaxnnls_noCRcut not found." && exit 127; }}\n')
-            txt_file.write('test -e ' + str(nn) + '_kinem.out || ' +
+            txt_file.write('rm -f ' + str(nn) + '_kinem.out && ' +
                            self.legacy_directory +
                            f'/triaxnnls_noCRcut < {nn}.in >> {nn}ls.log '
                            '|| exit 1\n')
