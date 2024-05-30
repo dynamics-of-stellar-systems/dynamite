@@ -623,16 +623,13 @@ class LegacyOrbitLibrary(OrbitLibrary):
         # unzip orblib to a temproary file with ml value attached
         # ml value is needed to prevent different processes clashing
         ml = self.parset['ml']
-        aaa = subprocess.run(['bunzip2', '-c', f'datfil/{fileroot}.dat.bz2'],
-                             stdout=subprocess.PIPE)
         tmpfname = f'datfil/{fileroot}_{ml}.dat'
-        tmpf = open(tmpfname, "wb")
-        tmpf.write(aaa.stdout)
-        tmpf.close()
+        subprocess.run(f'bunzip2 -c datfil/{fileroot}.dat.bz2 > {tmpfname}',
+                       shell=True)
         # read the fortran file
         orblibf = FortranFile(tmpfname, 'r')
         # remove temproary file
-        subprocess.call(['rm', tmpfname])
+        os.remove(tmpfname)
         # read size of orbit library
         # from integrator_setup_write, lines 506 - 5129:
         tmp = orblibf.read_ints(np.int32)
