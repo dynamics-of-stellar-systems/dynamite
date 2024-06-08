@@ -5,6 +5,12 @@ Change Log
 ****************
 
 - Improvement: The installation procedure has been changed to make DYNAMITE compatible with Python 3.12. Installing and uninstalling is now done using pip.
+- New feature: ``data_prep/generate_kin_input.py`` implements reading NIFS kinematics with an arbitrary number of GH moments.
+- Improvement: improved checks and error messages for velocity and spatial bin input data inconsistencies.
+- Improvement: save disk space by cleaning up decompressed files after a crash and removing unused legacy file nn_orbmat.out after solving.
+- Improvement: stability fix in MGE: if q>0.9999 it will be set to 0.9999 (before, it was 0.99999).
+- Bugfix: the chi2 plot now shows correct axis ticks for log quantities.
+- Bugfix: fixed colorbar overlap with x-axis in the chi2 plot if only two parameters are varied and added label to chi2 plot colorbar.
 - Improvement: ``LegacyWeightSolver`` is now DEPRECATED and will be removed along with GALAHAD in a future version of DYNAMITE. Use weight solver ``type: "NNLS"`` instead if you can.
 
 Version: 4.2
