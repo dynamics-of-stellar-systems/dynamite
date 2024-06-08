@@ -81,7 +81,6 @@ This section lists the following attributes of the system::
   system_attributes:
       distMPc: ...        # distance in MPc
       name:  ...          # name for your galaxy
-      position_angle: ... # in degrees
       r_eff: ...          # r_eff, will be calculated if False or missing
 
 ``system_components``
@@ -146,6 +145,8 @@ The following types of component are available, listed with their parameters:
   - exactly one out of [``NFW``, ``NFW_m200_c``, ``Hernquist``, ``TriaxialCoredLogPotential``, ``GeneralisedNFW``]
       - representing the dark halo
 
+.. _observed_data:
+
 ``observed data``
 ^^^^^^^^^^^^^^^^^^^^
 
@@ -155,15 +156,19 @@ The ``TriaxialVisibleComponent`` represents the galaxy's stars, and therefore ha
     - ``mge_lum``: string, filename for the MGE of the projected luminosity density, with intensity units of :math:`L_\odot \mathrm{pc}^{-2}`.
     - ``mge_pot``: string, filename for the MGE of the projected mass density, with intensity units of :math:`M_\odot \mathrm{pc}^{-2}`. If you assume that stellar-mass follows stellar-light, then the files ``mge_lum`` and ``mge_pot`` will be identical.
     - ``kinematics``
-        - ``name of the kinematic set``: a descriptive name, best without spaces as it will be part of the kinematic plot file name.
+        - ``name_of_the_kinematic_set``: a descriptive name, best without spaces as it will be part of the kinematic plot file name.
             - ``type``: type of kinematics - either ``GaussHermite`` or ``BayesLOSVD``
-            - ``weight``: float, weighting applied to this kinematic set in chi2 calculation
+            - ``weight``: float, weighting applied to this kinematic set in chi2 calculation; weights don't need to add up to 1.0.
             - ``datafile``: string, filename for the kinematics ECSV data file
             - ``aperturefile``: string, filename of the aperture file for this kinematic set
             - ``binfile``: string, filename of the bin file for this kinematic set
             - ``hist_width``: *optional*, float or 'default', the width (i.e. min. to max. value) of the velocity histogram for storing orbits. The default option is a width slightly wider than that of the observed kinematics.
             - ``hist_center``: *optional*, float or 'default', the center of the velocity histogram for storing orbits. The default option is 0.
             - ``hist_bins``: *optional*, int or 'default', the number of bins in the velocity histogram for storing orbits. The default option gives about 10 times better velocity sampling than the data.
+        - ``name_of_next_kinematic_set`` (if any...)
+            - ...
+
+For more information on the input file formats, please refer to the :ref:`input_files` section of the Overview page.
 
 ``system_parameters``
 =====================
@@ -201,10 +206,30 @@ This section is used for settings relevant for the calculation of orbit librarie
 
     \text{total number of orbits} = 3 \; n_E \; n_{I2} \; n_{I3} \; \mathrm{(dithering)}^3
 
+  .. table:: Recommendations for orbit library sizes
+     :width: 95%
+     :widths: auto
+
+     =====  =====  =====  ===========  ================================================
+       nE    nI2    nI3    dithering    Example use
+     =====  =====  =====  ===========  ================================================
+       5      4      3         1        Test-orbit library.
+                                        A good orbit library for fast checking whether DYNAMITE runs, but it is too small to be used for scientific analyses
+      21     10      7         5        Good orbit library for CALIFA and ATLAS3D-like data quality.
+                                        Examples: CALIFA (`Zhu et al. 2018 <https://ui.adsabs.harvard.edu/abs/2018MNRAS.473.3000Z/abstract>`_),
+                                        SAMI (`Santucci et al. 2022 <https://ui.adsabs.harvard.edu/abs/2022ApJ...930..153S/abstract>`_),
+                                        ATLAS3D (`Thater et al. 2023b <https://arxiv.org/abs/2305.09344>`_), MANGA
+      still bigger orbit libraries      MUSE-like data: e.g., `Poci et al. 2021 <https://arxiv.org/pdf/2102.02449.pdf>`_,
+                                        `Ding et al. 2023 <https://arxiv.org/abs/2301.05532>`_,
+                                        `Thater et al. 2023 <https://arxiv.org/abs/2304.13310>`_
+     --------------------------------  ------------------------------------------------
+     =====  =====  =====  ===========  ================================================
+
 - ``orblib_settings``
     - ``nE``: integer, size of grid in integral-of-motion :math:`E`
     - ``nI2``: integer, size of grid in second integral-of-motion :math:`I_2` (similar to :math:`L_z`). Must be at least 4.
     - ``nI3``: integer, size of grid in third integral-of-motion :math:`I_3`
+    - ``dithering``: integer, size of mini-grid of orbits around each set of initial conditions
     - ``logrmin``: log10 of minimum orbit radius in arcsecs
     - ``logrmax``: log10 of maximum orbit radius in arcsecs
     - ``random_seed``: integer, used for stochastically blurring orbit library by the PSF. Any value :math:`\leq 0` gives a stochastic seed.
@@ -245,11 +270,11 @@ Settings relevant for solving for orbital weights.
     - ``sb_proj_rel_err``: float, typical 0.01, the systematic error (fraction) applied to the projected surface brightness constraint
     - ``CRcut``: Boolean, default False, whether to use the ``CRcut`` solution for the counter-rotating orbit problem. See `Zhu et al. 2018 <https://ui.adsabs.harvard.edu/abs/2018MNRAS.473.3000Z/abstract>`_ for more details.
 
-If any kinematics have of type ``GaussHermite`` , then the following additional settings are needed.
+If any kinematics have of type ``GaussHermite``, the following additional settings are needed.
 
 - ``weight_solver_settings``
-    - ``number_GH``: integer, the number of Gauss-Hermites
-    - ``GH_sys_err``: a string of length 2 + ``number_GH`` floats, the systematic error applied to ``V``, ``sigma``, ``h3``, ..., ``hN``
+    - ``number_GH``: integer, the highest order kinematics to be used when solving for orbital weights. Note that this can be different from the order of the input data you provide. If ``number_GH`` is lower than in the data, then higher order kinematics are ignored while weight solving. Alternatively, if ``number_GH`` is higher than in the data, then we (fictitiously) assume that the higher-order kinematics were observed to be zero, with a *nonzero* systematic error that must be specified in the ``GH_sys_err`` setting. The latter option can be considered as a form of regularisation, penalising solutions where higher-order kinematics (although unobserved) reach unrealistically high values.
+    - ``GH_sys_err``: a string of floats, must contain at least ``number_GH`` entries. These are systematic errors applied to ``V``, ``sigma``, ``h3``, ..., ``hN``. During weight solving, these systematic errors are added in quadrature to the random errors which you provide in the data file. If ``number_GH`` is larger than the kinematic order of the observed data, then the corresponding systematic errors must be > 0 and can be interpreted as a typical value for higher order kinematics; models with higher-order kinematics which exceed this typical value will be penalised.
 
 If any kinematic set has type ``BayesLOSVD``, then the ``weight_solver_settings`` must have type ``NNLS``, and no additional settings are required.
 

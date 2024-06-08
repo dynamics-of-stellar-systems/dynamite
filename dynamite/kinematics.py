@@ -49,6 +49,7 @@ class Kinematics(data.Data):
                    f'{self.hist_width}, {self.hist_center}, {self.hist_bins})'
                 self.logger.error(text)
                 raise ValueError(text)
+            self.n_spatial_bins = len(self.data)
 
     def update(self, **kwargs):
         """
@@ -87,6 +88,24 @@ class Kinematics(data.Data):
 
     def __repr__(self):
         return f'{self.__class__.__name__}({self.__dict__})'
+
+    def get_data(self, **kwargs):
+        """Returns the kinematics data.
+
+        This skeleton method returns a deep copy of the self.data attribute
+        and allows for specific implementations by subclasses.
+
+        Parameters
+        ----------
+        **kwargs : argument list (optional)
+
+        Returns
+        -------
+        astropy table
+            The kinematics data
+
+        """
+        return self.data.copy(copy_data=True)
 
     def transform_orblib_to_observables(self,
                                         losvd_histograms,
@@ -146,18 +165,118 @@ class GaussHermite(Kinematics, data.Integrated):
         self.logger = logging.getLogger(f'{__name__}.{__class__.__name__}')
         if hasattr(self, 'data'):
             self.max_gh_order = self.get_highest_order_gh_coefficient()
-            self.n_apertures = len(self.data)
+            self.n_apertures = self.n_spatial_bins
+            self._data_raw = None
+            self._data_with_sys_err = None
 
-    def get_highest_order_gh_coefficient(self, max_gh_check=20):
+    def get_data(self,
+                 weight_solver_settings,
+                 apply_systematic_error=False,
+                 cache_data=True):
+        """Get GH kinematics data consistent with `number_GH` configuration.
+
+        Returns an astropy table holding the observed Gauss Hermite kinematics
+        with their uncertainties, adapted to the desired number of GH
+        coefficients and optionally including the systematic errors.
+        The `number_GH` setting from the configuration file determines the
+        number of returned GH coefficients. The data in the returned table is
+        a deep copy of the observed data.
+
+        If number_GH (configuration file) greater than max_GH_order (number of
+        gh coefficients in the kinematics file), columns with zeros
+        `h<max_GH_order+1> dh<max_GH_order+1>` ... `h<number_GH> dh<number_GH>`
+        will be added to the gh kinematics data. If number_GH is less than
+        `max_GH_order`, the corresponding columns will be removed from the
+        kinematics data.
+
+        Parameters
+        ----------
+        weight_solver_settings : dict
+            `Configuration.settings.weight_solver_settings` object.
+            Must include the key `number_GH` and - if apply_systematic_error
+            is set to `True` - the key `GH_sys_err`.
+        apply_systematic_error : bool, optional
+            If set to `True`, apply the systematic uncertainties to the dv,
+            dsigma, dh3, dh4, ... values.
+        cache_data : bool, optional
+            If set to `True`, the first call of this method will store the
+            calculated data table in attribute self._data_raw
+            (if apply_systematic_error=False) or self._data_with_sys_err
+            (if apply_systematic_error=True), respectively. Consecutive calls
+            will return the stored data. The default is `True`.
+
+        Returns
+        -------
+        gh_data : astropy table
+            GH kinemtics coefficients
+
+        """
+        if cache_data:
+            if not apply_systematic_error and self._data_raw is not None:
+                self.logger.debug(f'Kin {self.name}: get cached data w/o err')
+                return self._data_raw.copy(copy_data=True)  # #################
+            if apply_systematic_error and self._data_with_sys_err is not None:
+                self.logger.debug(f'Kin {self.name}: get cached data with err')
+                return self._data_with_sys_err.copy(copy_data=True)  # ########
+
+        number_gh = weight_solver_settings['number_GH']
+        if cache_data and self._data_raw is not None:  # Apply sys_err to cache?
+            gh_data = self._data_raw.copy(copy_data=True)
+        else:  # Calculate data table with number_GH coefs
+            gh_data = self.data.copy(copy_data=True)
+            if number_gh > self.max_gh_order:
+                systematics = weight_solver_settings['GH_sys_err']
+                if type(systematics) is not str:
+                    txt = 'weight_solver_settings: GH_sys_err must be a string.'
+                    self.logger.error(txt)
+                    raise ValueError(txt)
+                systematics = [float(x) for x in systematics.split(' ')]
+                systematics = np.array(systematics)
+                if any(systematics[self.max_gh_order:number_gh] <= 0):
+                    txt = 'weight_solver_settings: GH_sys_err must be > 0 ' \
+                          ' for extra GH coefficients.'
+                    self.logger.error(txt)
+                    raise ValueError(txt)
+                cols_to_add = [f'{d}h{i+1}'
+                               for i in range(self.max_gh_order, number_gh)
+                               for d in ('', 'd')]
+                gh_data.add_columns(
+                    [np.zeros(self.n_apertures) for i in cols_to_add],
+                    names=cols_to_add)
+                self.logger.info(f'Kinematics {self.name}: '
+                                 f'added all-zero gh columns {cols_to_add}.')
+            elif number_gh < self.max_gh_order:
+                cols_to_remove = [f'{d}h{i+1}'
+                                  for i in range(number_gh, self.max_gh_order)
+                                  for d in ('', 'd')]
+                gh_data.remove_columns(cols_to_remove)
+                self.logger.info(f'Kinematics {self.name}: '
+                                 f'removed gh columns {cols_to_remove}.')
+            if cache_data:
+                self._data_raw = gh_data.copy(copy_data=True)
+        if apply_systematic_error:
+            # add the systematic uncertainties
+            systematics = weight_solver_settings['GH_sys_err']
+            if type(systematics) is str:
+                systematics = systematics.split(' ')
+                systematics = [float(x) for x in systematics]
+            systematics = np.array(systematics)[0:number_gh]
+            gh_data['dv'] = np.sqrt(gh_data['dv']**2 + systematics[0]**2)
+            gh_data['dsigma']=np.sqrt(gh_data['dsigma']**2 + systematics[1]**2)
+            for i in range(3, number_gh + 1):
+                gh_data[f'dh{i}'] = \
+                    np.sqrt(gh_data[f'dh{i}']**2 + systematics[i - 1]**2)
+            self.logger.debug(f'Kinematics {self.name}: '
+                              'applied systematic errors.')
+            if cache_data:
+                self._data_with_sys_err = gh_data.copy(copy_data=True)
+        return gh_data
+
+    def get_highest_order_gh_coefficient(self):
         """Get max order GH coeeff from data table
 
         Checks the data table for columns titled ['h{i}'] and ['dh{i}'], and
         return the largest i such that both exist
-
-        Parameters
-        ----------
-        max_gh_check : int, optional
-            check up to this order
 
         Returns
         -------
@@ -166,9 +285,11 @@ class GaussHermite(Kinematics, data.Integrated):
 
         """
         colnames = self.data.colnames
-        gh_order_in_table = [i for i in range(max_gh_check) if f'h{i}' in colnames and f'dh{i}' in colnames]
+        max_gh_check = (len(colnames) - 1) // 2  # First column is the vbin_id
+        gh_order_in_table = [i for i in range(max_gh_check + 1)
+                             if f'h{i}' in colnames and f'dh{i}' in colnames]
         try:
-            max_gh_order = np.max(gh_order_in_table)
+            max_gh_order = max(gh_order_in_table)
         except ValueError:
             max_gh_order = None
         return max_gh_order
@@ -238,28 +359,27 @@ class GaussHermite(Kinematics, data.Integrated):
         self.logger.debug(f'File {filename_new_format} written (new format)')
         return
 
-    def convert_to_old_format(self, filename_old_format):
-        nbins = len(self.data)
-        # extract n_gh from list of column names
-        # colnames = self.data.colnames
-        # idx = ['h' in x and 'd' not in x for x in colnames]
-        # idx = np.where(idx)[0]
-        # n_gh = [int(colnames[idx0][1]) for idx0 in idx]
-        # n_gh = np.max(n_gh)
-        n_gh = self.get_highest_order_gh_coefficient()
+    def convert_to_old_format(self,
+                              filename_old_format,
+                              weight_solver_settings):
+        data = self.get_data(weight_solver_settings,
+                             apply_systematic_error=False,
+                             cache_data=False)
+        nbins = len(data)
+        n_gh = weight_solver_settings['number_GH']
         # write comment string
         comment = '{0} {1}'.format(nbins, n_gh)
         idx = np.arange(nbins)+1
-        velSym = self.data['v'].data
-        dvelSym = self.data['dv'].data
-        sigSym = self.data['sigma'].data
-        dsigSym = self.data['dsigma'].data
+        velSym = data['v'].data
+        dvelSym = data['dv'].data
+        sigSym = data['sigma'].data
+        dsigSym = data['dsigma'].data
         n_gh_col = np.full_like(velSym, n_gh)
         array_to_print = [idx, velSym, dvelSym, sigSym, dsigSym, n_gh_col]
         fmt = '%5i %13.13f %13.13f %13.13f %13.13f %5i '
         for i in range(3, n_gh+1):
-            hi_Sym = self.data[f'h{i}'].data
-            dhi_Sym = self.data[f'dh{i}'].data
+            hi_Sym = data[f'h{i}'].data
+            dhi_Sym = data[f'dh{i}'].data
             array_to_print += [hi_Sym, dhi_Sym]
             fmt += '%13.13f %13.13f '
         array_to_print = np.transpose(array_to_print)
@@ -271,7 +391,7 @@ class GaussHermite(Kinematics, data.Integrated):
         self.logger.debug(f'File {filename_old_format} written (old format)')
         return 0
 
-    def get_hermite_polynomial_coeffients(self, max_order=None):
+    def get_hermite_polynomial_coeffients(self, max_order):
         """Get Hermite poly coeffients
 
         Normalised as in eqn 14 of Capellari 16
@@ -288,8 +408,6 @@ class GaussHermite(Kinematics, data.Integrated):
             coeffients[i,j] = coef of x^j in polynomial of order i
 
         """
-        if max_order is None:
-            max_order = self.n_gh
         coeffients = []
         for i in range(0, max_order+1):
             # physicists hermite polynomials
@@ -472,7 +590,7 @@ class GaussHermite(Kinematics, data.Integrated):
         """Calcuate GH expansion coeffients given an LOSVD
 
         Expand LOSVD around a given v_mu and v_sig using eqn 7 of
-        vd Marel & Franx 93
+        vd Marel & Franx 93, ApJ 407,525
 
         Parameters
         ----------
@@ -513,14 +631,14 @@ class GaussHermite(Kinematics, data.Integrated):
     def transform_orblib_to_observables(self,
                                         losvd_histograms,
                                         weight_solver_settings):
-        max_gh_order = weight_solver_settings['number_GH']
+        number_gh = weight_solver_settings['number_GH']
         v_mu = self.data['v']
         v_sig = self.data['sigma']
         orblib_gh_coefs = self.get_gh_expansion_coefficients(
             v_mu=v_mu,
             v_sig=v_sig,
             vel_hist=losvd_histograms,
-            max_order=max_gh_order)
+            max_order=number_gh)
         # in triaxnnls, GH coefficients are divided by velocity spacing of the
         # histogram. This is equivalent to normalising LOSVDs as probability
         # densities before calculating the GH coefficients. For now, do as was
@@ -537,42 +655,37 @@ class GaussHermite(Kinematics, data.Integrated):
 
         Parameters
         ----------
-        weight_solver_settings : type
-            Description of parameter `weight_solver_settings`.
+        weight_solver_settings : dict
+            `Configuration.settings.weight_solver_settings` object.
+            Must include the key `number_GH`.
 
         Returns
         -------
         tuple
             (observed_values, uncertainties), where:
-            - observed_values is array of GH exapnsion coefficients of shape
-            (n_apertures, max_gh_order)
-            - uncertainties is array of uncertainties on GH exapnsion
-            coefficients of shape (n_apertures, max_gh_order)
+            - observed_values is array of GH expansion coefficients of shape
+            (n_apertures, number_GH)
+            - uncertainties is array of uncertainties on GH expansion
+            coefficients of shape (n_apertures, number_GH)
 
         """
-        max_gh_order = weight_solver_settings['number_GH']
+        number_gh = weight_solver_settings['number_GH']
+        gh_data = self.get_data(weight_solver_settings,
+                                apply_systematic_error=True)
         # construct observed values
-        observed_values = np.zeros((self.n_apertures, max_gh_order))
+        observed_values = np.zeros((self.n_apertures, number_gh))
         # h1, h2 = 0, 0
         # h3, h4, etc... are taken from the data table
-        for i in range(3, self.max_gh_order+1):
-            observed_values[:,i-1] = self.data[f'h{i}']
+        for i in range(3, number_gh + 1):
+            observed_values[:, i - 1] = gh_data[f'h{i}']
         # construct uncertainties
         uncertainties = np.zeros_like(observed_values)
-        # uncertainties on h1,h2 from vdMarel + Franx 93
-        uncertainties[:,0] = self.data['dv']/np.sqrt(2)/self.data['sigma']
-        uncertainties[:,1] = self.data['dsigma']/np.sqrt(2)/self.data['sigma']
+        # uncertainties on h1,h2 from vdMarel + Franx 93, ApJ 407,525
+        uncertainties[:, 0] = gh_data['dv'] / np.sqrt(2) / gh_data['sigma']
+        uncertainties[:, 1] = gh_data['dsigma'] / np.sqrt(2) / gh_data['sigma']
         # uncertainties h3, h4, etc... are taken from data table
-        for i in range(3, self.max_gh_order+1):
-            uncertainties[:,i-1] = self.data[f'dh{i}']
-        # add the systematic uncertainties
-        systematics = weight_solver_settings['GH_sys_err']
-        if type(systematics) is str:
-            systematics = systematics.split(' ')
-            systematics = [float(x) for x in systematics]
-        systematics = np.array(systematics)
-        systematics = systematics[0:max_gh_order]
-        uncertainties = (uncertainties**2. + systematics**2.)**0.5
+        for i in range(3, number_gh + 1):
+            uncertainties[:, i - 1] = gh_data[f'dh{i}']
         return observed_values, uncertainties
 
     def set_default_hist_width(self, n_sig=3.):
@@ -753,7 +866,7 @@ class Histogram(object):
             return a*np.exp(-(x-mean)**2/(2.*sigma**2))
         for orbit in range(self.y.shape[0]):
             for aperture in range(self.y.shape[-1]):
-                err_msg=f'{orbit=}, {aperture=}: both mean and sigma are nan.'
+                err_msg=f'{orbit=}, {aperture=}: mean or sigma is nan.'
                 if not (np.isnan(v_mean[orbit,aperture]) or
                         np.isnan(v_sigma[orbit,aperture])): # nan?
                     p_initial = [1/(v_sigma[orbit,aperture]*np.sqrt(2*np.pi)),
@@ -1052,8 +1165,6 @@ class BayesLOSVD(Kinematics, data.Integrated):
         aperture_file.write(string)
         string = '\t{0}\t{1} \n'.format(nx, ny)
         aperture_file.write(string)
-        string = ' aperture = -(hst_pa) + 90 \n'
-        aperture_file.write(string)
         aperture_file.close()
         # Write bins.dat file
         ix = np.digitize(x, x_edg)
@@ -1144,7 +1255,7 @@ class BayesLOSVD(Kinematics, data.Integrated):
             scale factor to divide the data velocity spacing
 
         Returns
-        ----------
+        -------
         Sets the result to attribute `self.hist_bins`
 
         """
@@ -1170,7 +1281,7 @@ class BayesLOSVD(Kinematics, data.Integrated):
             directly.
 
         Returns
-        ----------
+        -------
         Sets the result to attribute `self.hist_bins`
 
         """

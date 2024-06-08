@@ -52,7 +52,7 @@ module triaxpotent
     public:: tp_accel
 
     ! setup the constants for the potential
-    public:: tp_setup
+    public:: tp_setup, tp_setup_bar
 
     ! The potentential estimators for the internal and middel part of the pot.
     private:: potin, potmid
@@ -67,9 +67,12 @@ module triaxpotent
     real(kind=dp), private, dimension(:), allocatable :: A1, A2, A3, F, V0
 
     ! deprojected information about the gaussians
-    real(kind=dp), public, dimension(:), allocatable :: sigintr_km, pintr
-    real(kind=dp), public, dimension(:), allocatable :: qintr, dens
-    real(kind=dp), public, dimension(:), allocatable :: triaxpar
+    real (kind=dp),public ,dimension(:),allocatable :: qintr, pintr, sigintr_km       
+    real (kind=dp),public ,dimension(:),allocatable :: qintr_d, pintr_d, sigintr_km_d 
+    real (kind=dp),public ,dimension(:),allocatable :: qintr_b, pintr_b, sigintr_km_b 
+    real (kind=dp),public ,dimension(:),allocatable :: dens
+    real (kind=dp),public ,dimension(:),allocatable :: triaxpar, triaxpar_d, triaxpar_b 
+
     ! global helper variables for the integration
     real(kind=dp), private:: gx, gy, gz
     integer(kind=i4b), private:: gn  ! global gauss index number
@@ -237,6 +240,193 @@ contains
         print *, "  Triaxial potential routines setup finished"
 
     end subroutine tp_setup
+
+    !+++++++++++++++++++++++++++++++++++
+    !+++++++++++++++++++++++++++++++++++++
+    subroutine tp_setup_bar()
+        use ellipticalintegrals, only: elle, ellf
+        !-------------------------------------
+        integer(kind=i4b) :: i
+        real(kind=dp) :: E, k, p, q, trmass, secth, cotph
+        real(kind=dp) :: ix, iy, iz, ax, ay, az
+        real(kind=dp ),dimension(:),allocatable:: delp, nom1minq2, nomp2minq2, denom
+        real(kind=dp ),dimension(:),allocatable:: delpt, nom1minq2t, nomp2minq2t, denomt		
+
+        print *, " Setting up triaxial potential routines for disk+bulge"
+
+        allocate ( qintr_d       (ngaus_disk) , pintr_d     (ngaus_disk),&
+                   sigintr_km_d  (ngaus_disk), triaxpar_d   (ngaus_disk) )
+                   
+        allocate ( delp          (ngaus_bulge), nom1minq2  (ngaus_bulge),&
+                   nomp2minq2    (ngaus_bulge), denom      (ngaus_bulge),& 
+                   sigintr_km_b  (ngaus_bulge), pintr_b    (ngaus_bulge),&
+                   qintr_b       (ngaus_bulge), triaxpar_b   (ngaus_bulge) )
+                     
+        allocate ( delpt          (ngauss_mge), nom1minq2t  (ngauss_mge),&
+                   nomp2minq2t    (ngauss_mge), denomt      (ngauss_mge),&
+                   triaxpar      (ngauss_mge), pintr       (ngauss_mge),& 
+                   sigintr_km     (ngauss_mge), qintr       (ngauss_mge),&
+                   dens           (ngauss_mge), V0          (ngauss_mge) )  
+
+        ! do the analytic triaxial deprojection under the MGE hypotesis
+        ! (see e.g. Cappellari 2002)
+        secth = 1.0_dp/cos(theta_view)
+        cotph = 1.0_dp/tan(phi_view)
+
+
+       !=========for Disk
+        qintr_d(:) = ( qobs_d(:)**2 - cos(theta_view)**2) / sin(theta_view)**2
+        pintr_d(:) = 0.9999999999_dp
+        triaxpar_d(:) = 0.000_dp
+        sigintr_km_d(:) = sigobs_km_d(:)
+    
+        if ( any(qintr_d(:) < 0.0_dp) ) &
+        stop " q^2 is below 0 (in disk)."
+    
+        qintr_d(:) = sqrt(qintr_d(:))
+        
+        if ( any ( qintr_d(:) > pintr_d(:) )) stop "q>p in disk"
+            
+        !======== for bulge
+        delp(:) = 1.0_dp - qobs_b(:)**2
+        
+        nom1minq2(:) = delp(:)*( 2.0_dp*cos(2.0_dp*psi_obs_b(:)) + &
+             sin(2.0_dp*psi_obs_b(:))*(secth*cotph - cos(theta_view)*tan(phi_view)))
+        
+        nomp2minq2(:) = delp(:)*( 2.0_dp*cos(2.0_dp*psi_obs_b(:)) + &
+             sin(2.0_dp*psi_obs_b(:))*(cos(theta_view)*cotph - secth*tan(phi_view)))
+        
+        denom(:)  = 2.0_dp*sin(theta_view)**2*( delp(:)*cos(psi_obs_b(:))*&
+             (cos(psi_obs_b(:)) + secth*cotph*sin(psi_obs_b(:))) - 1.0_dp )
+        
+        ! These are temporary values of the squared intrinsic axial 
+        ! ratios p^2 and q^2
+        qintr_b(:) = (1.0_dp   - nom1minq2(:)/denom(:))
+        pintr_b(:) = (qintr_b(:) + nomp2minq2(:)/denom(:))   
+        
+        ! Quick check to see if we are not going to take the sqrt of 
+        ! a negative number.
+        if ( any(qintr_b(:) < 0.0_dp) .or. any (pintr_b(:) < 0.0_dp)) &
+             stop "p^2 or q^2 is below 0 (In bulge)."
+        
+        ! intrinsic axial ratios p and q 
+        qintr_b(:) = sqrt(qintr_b(:))
+        pintr_b(:) = sqrt(pintr_b(:))
+        
+        if ( any ( qintr_b(:) > pintr_b(:) )) stop "q>p in bulge"  
+        if ( any ( pintr_b(:) > 1.0_dp   )) stop "p>1 in bulge"               
+        
+        ! intrinsic sigma (Cappellari 2002 eq 9.) 
+        sigintr_km_b(:) = sigobs_km_b(:)*sqrt( qobs_b(:)/sqrt((pintr_b(:)*&
+             cos(theta_view))**2+ (qintr_b(:)*sin(theta_view))**2*((pintr_b(:)*&
+             cos(phi_view))**2 + sin(phi_view)**2) ) )               
+        
+        
+        ! triaxiality parameter T = (1-p^2)/(1-q^2)
+        triaxpar_b(:)=(1.0_dp-pintr_b(:)**2)/(1.0_dp-qintr_b(:)**2)
+        if ( any(triaxpar_b(:) < 0.0_dp) .or.  any(triaxpar_b(:) > 1.0_dp) ) &
+             stop "No triaxial deprojection possible for bulge" 
+        
+        ! combile all the gaussians together (disk + bulge)   
+        !===========
+        qintr       = [qintr_d , qintr_b]                              
+        pintr       = [pintr_d , pintr_b]                              
+        sigintr_km  = [sigintr_km_d , sigintr_km_b]                    
+        triaxpar    = [triaxpar_d,triaxpar_b]
+        
+        
+        print *, "middle axis ratio P"
+        print *, pintr(:)
+        print *, "minor  axis ratio q"
+        print *, qintr(:)
+        print *, "triaxiality parameters:"
+        print *, triaxpar(:)
+        print *, "Unitless Length of the projected major axis: U"
+        print *, sigobs_km(:)/sigintr_km(:)
+
+        ! density factor
+        dens(:) = surf_km(:)*qobs(:)*sigobs_km(:)**2/ &
+                  (sqrt(twopi_d)*pintr(:)*qintr(:)*sigintr_km(:)**3)
+
+        ! Integration Constant
+        V0(:) = 4.0_dp*Pi_d*grav_const_km*sigintr_km(:)**2*pintr(:) &
+                *qintr(:)*dens(:)
+
+        ! Masses of the individual gausses.
+        print *, '  * Masses of the individual gausses'
+        print *, twopi_d*(surf_km(:)*qobs(:)*sigobs_km(:)**2)
+        ! Total mass of the galaxy
+        trmass = twopi_d*sum(surf_km(:)*qobs(:)*sigobs_km(:)**2)
+        print *, "Total mass (Msun) projected:", trmass
+        trmass = sqrt(twopi_d)**3*sum(dens(:)*pintr(:)*qintr(:)*sigintr_km(:)**3)
+        print *, "Total mass (Msun) intrinsic:", trmass
+
+        ! Setup constants for the computation of the potential for the inner region
+        allocate (A1(ngauss_mge), A2(ngauss_mge), A3(ngauss_mge) &
+                  , F(ngauss_mge))
+
+        ! Compute the Constants for the inner approximation
+        do i = 1, ngauss_mge
+            p = pintr(i)
+            q = qintr(i)
+
+            ! Calculate the Elliptical integrals
+            k = sqrt((1.0_dp - p*p)/(1.0_dp - q*q))
+            call ellf(acos(q), k, F(i))
+            call elle(acos(q), k, E)
+            A1(i) = (F(i) - E)/(1.0_dp - p*p)
+
+            A2(i) = ((1.0_dp - q*q)*E - (p*p - q*q)*F(i) - (q/p)*(1.0_dp - p*p)* &
+                     sqrt(1.0_dp - q*q))/((1.0_dp - p*p)*(p*p - q*q))
+
+            A3(i) = ((p/q)*sqrt(1.0_dp - q*q) - E)/(p*p - q*q)
+
+            ! According to Glenn a1+a2+a3 should be equal to sqrt(1-q**2)/(p*q)
+            if (abs((sqrt(1 - q**2)/(p*q)) - A1(i) - A2(i) - A3(i)) &
+                > 1.0e-6) then
+                print *, "  * Failure to properly compute A1, A2 and A3 in tp_setup"
+                print *, "  * gauss_n,A1,A2,A3: ", i, A1(i), A2(i), A3(i)
+                print *, abs((sqrt(1 - q**2)/(p*q)) - A1(i) - A2(i) - A3(i))
+                print *, p, q, (1.0_dp - p*p)
+                print *, (F(i) - E), k, epsilon(1.0_dp)
+                stop
+            end if
+
+        end do
+
+        ! Test the accuracy of the approximation regimes
+        print *, "  Testing the accuracy of the approximation regimes."
+
+        do i = 1, ngauss_mge
+            call potin(i, inner_approx*sigintr_km(i), 1.0_dp, 1.0_dp, ax)
+            call potmid(i, inner_approx*sigintr_km(i), 1.0_dp, 1.0_dp, ix)
+            if (abs((ix - ax)/ix) > 1.0e-4) stop "Failed test 1"
+            call potin(i, 1.0_dp, 1.0_dp, inner_approx*sigintr_km(i), ax)
+            call potmid(i, 1.0_dp, 1.0_dp, inner_approx*sigintr_km(i), ix)
+            if (abs((ix - ax)/ix) > 1.0e-4) stop "Failed test 2"
+            ax = sqrt(pi_d/2.0_dp)*V0(i)/outer_approx
+            call potmid(i, outer_approx*sigintr_km(i), 0.0_dp, 0.0_dp, ix)
+            if (abs((ix - ax)/ix) > 1.0e-4) stop "Failed test 3"
+            ax = sqrt(pi_d/2.0_dp)*V0(i)/outer_approx
+            call potmid(i, 1.0_dp, 1.0_dp, outer_approx*sigintr_km(i), ix)
+            if (abs((ix - ax)/ix) > 1.0e-4) stop "Failed test 4"
+            call accin(i, inner_approx*sigintr_km(i)*0.95, &
+                       0.2*inner_approx*sigintr_km(i), 0.2*inner_approx*sigintr_km(i), ax, ay, az)
+            call accmid(i, inner_approx*sigintr_km(i)*0.95, &
+                        0.2*inner_approx*sigintr_km(i), 0.2*inner_approx*sigintr_km(i), ix, iy, iz)
+            if (sqrt((ix - ax)**2 + (iy - ay)**2 + (iz - az)**2) &
+                /sqrt(ix**2 + iy**2 + iz**2) > 1.0e-3) stop "Failed test 5"
+            call accin(i, 0.2*inner_approx*sigintr_km(i), &
+                       0.2*inner_approx*sigintr_km(i), 0.95*inner_approx*sigintr_km(i), ax, ay, az)
+            call accmid(i, 0.2*inner_approx*sigintr_km(i), &
+                        0.2*inner_approx*sigintr_km(i), 0.95*inner_approx*sigintr_km(i), ix, iy, iz)
+            if (sqrt((ix - ax)**2 + (iy - ay)**2 + (iz - az)**2) &
+                /sqrt(ix**2 + iy**2 + iz**2) > 1.0e-2) stop "Failed test 6"
+        end do
+
+        print *, "  Triaxial potential routines setup finished"
+
+    end subroutine tp_setup_bar
 
     !+++++++++++++++++++++++++++++++++++
     subroutine tp_potent(x, y, z, pot)

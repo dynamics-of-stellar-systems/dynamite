@@ -70,7 +70,7 @@ class Settings(object):
             raise ValueError(text)
 
     def validate(self):
-        """Validate that all expected settings are present
+        """Validate that all expected settings are present and perform checks
         """
         if not(self.orblib_settings and self.parameter_space_settings and
                self.io_settings and self.weight_solver_settings
@@ -80,6 +80,11 @@ class Settings(object):
                              and io_settings
                              and weight_solver_settings
                              and multiprocessing_settings"""
+            self.logger.error(text)
+            raise ValueError(text)
+        if self.orblib_settings['nI2'] < 4:
+            text = "orblib_settings: nI2 must be >= 4, but is " \
+                   f"{self.orblib_settings['nI2']}."
             self.logger.error(text)
             raise ValueError(text)
         self.logger.debug('Settings validated.')
@@ -121,8 +126,6 @@ class Configuration(object):
     ----------
     filename : string
         needs to refer to an existing file including path
-    silent : DEPRECATED
-        (diagnostic output handled by logging module)
     reset_logging : bool
         if False: use the calling application's logging settings
         if True: set logging to Dynamite defaults
@@ -160,7 +163,6 @@ class Configuration(object):
 
     def __init__(self,
                  filename=None,
-                 silent=None,
                  reset_logging=False,
                  user_logfile='dynamite',
                  reset_existing_output=False):
@@ -176,9 +178,6 @@ class Configuration(object):
         self.logger.debug(f'This is Python {sys.version.split()[0]}')
         self.logger.debug(f'Using DYNAMITE version {dyn.__version__} '
                           f'located at {dyn.__path__}')
-
-        if silent is not None:
-            self.logger.warning("'silent' option is deprecated and ignored")
 
         self.logger.debug('Global variables: ' \
                           f'{const.GRAV_CONST_KM = }, {const.PARSEC_KM = }, ' \
@@ -321,6 +320,15 @@ class Configuration(object):
                         path = self.settings.io_settings['input_directory']
                         c.mge_lum = mge.MGE(input_directory=path,
                                         datafile=data_comp['mge_lum'])
+
+                    if 'disk_pot' in data_comp:
+                        path = self.settings.io_settings['input_directory']
+                        c.disk_pot = mge.MGE(input_directory=path,
+                                             datafile=data_comp['disk_pot'])
+                    if 'disk_lum' in data_comp:
+                        path = self.settings.io_settings['input_directory']
+                        c.disk_lum = mge.MGE(input_directory=path,
+                                             datafile=data_comp['disk_pot'])
 
                     # add component to system
                     c.validate()
@@ -471,6 +479,7 @@ class Configuration(object):
         self.all_models = model.AllModels(config=self)
         logger.info('Instantiated AllModels object')
         logger.debug(f'AllModels:\n{self.all_models.table}')
+        self.all_models.update_model_table()
 
         # self.backup_config_file(reset=False)
 
@@ -530,16 +539,15 @@ class Configuration(object):
             2 * total number of kinematic observations
 
         """
-        stars = \
-          self.system.get_component_from_class(physys.TriaxialVisibleComponent)
+        stars = self.system.get_unique_triaxial_visible_component()
         n_obs = 0.
         for k in stars.kinematic_data:
             if k.type == 'GaussHermite':
                 number_GH = self.settings.weight_solver_settings['number_GH']
-                n_obs += number_GH * len(k.data)
+                n_obs += number_GH * k.n_spatial_bins
             if k.type == 'BayesLOSVD':
-                nvbins = k.data.meta['nvbins']
-                n_obs += nvbins * len(k.data)
+                nvbins = k.get_data().meta['nvbins']
+                n_obs += nvbins * k.n_spatial_bins
         two_n_obs = 2 * n_obs
         return two_n_obs
 
@@ -766,7 +774,6 @@ class Configuration(object):
         self.logger.info('Config file copied to '
                          f'{dest_directory}{self.config_file_name}.')
 
-
     def backup_config_file(self, reset=False, keep=None, delete_other=False):
         """
         Copy the config file to the output directory.
@@ -848,22 +855,31 @@ class Configuration(object):
         None.
 
         """
+        self.settings.validate()
+        _ = self.validate_chi2()
         if sum(1 for i in self.system.cmp_list \
                if isinstance(i, physys.Plummer)) != 1:
             self.logger.error('System must have exactly one Plummer object')
             raise ValueError('System must have exactly one Plummer object')
-        if sum(1 for i in self.system.cmp_list \
-               if isinstance(i, physys.VisibleComponent)) != 1:
-            self.logger.error('System needs to have exactly one '
-                              'VisibleComponent object')
-            raise ValueError('System needs to have exactly one '
-                             'VisibleComponent object')
+
+        if self.system.is_bar_disk_system():
+            if self.system.number_of_bar_components() != 1:
+                self.logger.error('Bar/disk system needs to have exactly one BarDiskComponent object')
+                raise ValueError('Bar/disk system needs to have exactly one BarDiskComponent object')
+        else:
+            if self.system.number_of_visible_components() != 1:
+                self.logger.error('System needs to have exactly one '
+                                  'VisibleComponent object')
+                raise ValueError('System needs to have exactly one '
+                                 'VisibleComponent object')
+
         if sum(1 for i in self.system.cmp_list \
                if issubclass(type(i), physys.DarkComponent)
                and not isinstance(i, physys.Plummer)) > 1:
             self.logger.error('System must have zero or one DM Halo object')
             raise ValueError('System must have zero or one DM Halo object')
-        if not 1 < len(self.system.cmp_list) < 4:
+
+        if not 1 < len(self.system.cmp_list) < 5:
             self.logger.error('System needs to comprise exactly one Plummer, '
                               'one VisibleComponent, and zero or one DM Halo '
                               'object(s)')
@@ -874,28 +890,24 @@ class Configuration(object):
         ws_type = self.settings.weight_solver_settings['type']
 
         for c in self.system.cmp_list:
-            if issubclass(type(c), physys.VisibleComponent): # Check vis. comp.
+            if issubclass(type(c), physys.VisibleComponent) \
+               and not issubclass(type(c), physys.BarDiskComponent): # Check vis. comp.
                 if c.kinematic_data:
                     for kin_data in c.kinematic_data:
                         check_gh = (kin_data.type == 'GaussHermite')
                         check_bl = (kin_data.type == 'BayesLOSVD')
                         if (not check_gh) and (not check_bl):
-                            self.logger.error('VisibleComponent kinematics type'
-                                              'must be GaussHermite or '
-                                              'BayesLOSVD')
-                            raise ValueError('VisibleComponent kinematics type'
-                                             'must be GaussHermite or '
-                                             'BayesLOSVD')
+                            txt = 'VisibleComponent kinematics type must be ' \
+                                  'GaussHermite or BayesLOSVD'
+                            self.logger.error(txt)
+                            raise ValueError(txt)
                         if check_bl:
                             # check weight solver type
                             if ws_type == 'LegacyWeightSolver':
-                                self.logger.error("LegacyWeightSolver can't be "
-                                                  "used with BayesLOSVD - use "
-                                                  "weight-solver type NNLS")
-                                raise ValueError("LegacyWeightSolver can't be "
-                                                  "used with BayesLOSVD - use "
-                                                  "weight-solver type NNLS")
-
+                                txt = "LegacyWeightSolver can't be used with "\
+                                      "BayesLOSVD - use weight-solver type NNLS"
+                                self.logger.error(txt)
+                                raise ValueError(txt)
                 else:
                     self.logger.error('VisibleComponent must have kinematics: '
                                       'either GaussHermite or BayesLOSVD')
@@ -946,9 +958,7 @@ class Configuration(object):
             # these requirements are not needed by orblib_f.f90, but are assumed
             # by the NNLS routine triaxnnl_*.f90 (see 2144-2145 of orblib_f.f90)
             # Therefore this check is based on WeightSolver type.
-            stars = self.system.get_component_from_class(
-                physys.TriaxialVisibleComponent
-                )
+            stars = self.system.get_unique_triaxial_visible_component()
             hist_widths = [k.hist_width for k in stars.kinematic_data]
             hist_centers = [k.hist_center for k in stars.kinematic_data]
             hist_bins = [k.hist_bins for k in stars.kinematic_data]
@@ -976,13 +986,6 @@ class Configuration(object):
                     max_bins += 1
                 for k in stars.kinematic_data:
                     k.hist_bins = max_bins
-        self.settings.validate()
-
-        which_chi2 = self.validate_chi2()
-        if which_chi2 == 'kinmapchi2' and ws_type != 'LegacyWeightSolver':
-            msg = 'kinmapchi2 is only allowed with LegacyWeightSolver'
-            self.logger.error(msg)
-            raise ValueError(msg)
 
     def validate_chi2(self, which_chi2=None):
         """

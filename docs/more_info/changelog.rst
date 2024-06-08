@@ -4,6 +4,44 @@
 Change Log
 ****************
 
+- New feature: ``data_prep/generate_kin_input.py`` implements reading NIFS kinematics with an arbitrary number of GH moments.
+- Improvement: improved checks and error messages for velocity and spatial bin input data inconsistencies.
+- Improvement: save disk space by cleaning up decompressed files after a crash and removing unused legacy file nn_orbmat.out after solving.
+- Improvement: stability fix in MGE: if q>0.9999 it will be set to 0.9999 (before, it was 0.99999).
+- Bugfix: the chi2 plot now shows correct axis ticks for log quantities.
+- Bugfix: fixed colorbar overlap with x-axis in the chi2 plot if only two parameters are varied and added label to chi2 plot colorbar.
+- Improvement: ``LegacyWeightSolver`` is now DEPRECATED and will be removed along with GALAHAD in a future version of DYNAMITE. Use weight solver ``type: "NNLS"`` instead if you can.
+
+Version: 4.2
+================
+
+- Improvement: if ``number_GH`` in the config file is larger than the kinematic order of the observed data, then DYNAMITE ensures that the corresponding systematic errors are > 0.
+- Bugfix: fixed a bug in the kinematics errors (affects NNLS solves).
+- New feature: Gauss-Hermite kinematic maps can now be plotted for any number of Gauss-Hermite coefficients.
+- Improvement: removed broken link from tutorial 2 and added some data preparation comments to tutorials 1 and 2
+- Bugfix: fixed crash when different kinematics had different numbers of PSF components.
+- Bugfix: fixed a bug in retrofitting kinmapchi2 in old all_models tables.
+- Improvement: removed deprecated silent option from config reader.
+- Improvement: the Plotter's new optional argument ``dpi`` (default: 100) allows to change the resolution of all saved figures except the kinematic maps (always 300 dpi).
+- Improvement: the beta plots now work for all implemented weight solvers.
+
+Version: 4.1
+================
+
+- Improvement: calculation of kinmapchi2 now aligns with number_GH in config file's weight_solver_settings
+- Bugfix: fixed crash when the number of GH coefficients a kinematics file does not match number_GH in config file's weight_solver_settings
+- Improvement: The bash test script ``dev_tests/test_notebooks.sh`` executes all tutorial notebooks for testing a valid DYNAMITE installation
+- Improvement: updated tutorial notebooks
+- Bugfix: Re-enable support for directly instantiating a Model object (bypassing ModelIterator) if the all_models table is empty. Only recommended for testing.
+
+Version: 4.0
+================
+
+- New feature: kinmapchi2 (directly calculated from the kinematic maps) is now also available for the python NNLS solver
+- New feature: added support for bar/disk decomposition
+- New feature: added support for getting intrinsic model moments for both Gauss Hermite and a BayesLOSVD models
+- Improvement: Eliminated unused position_angle system attribute from the configuration file (the angle is read from aperture.dat)
+- Improvement: DYNAMITE can now be built without GALAHAD (LegacyWeightSolver will not be available then)
 - Improvement: plotting gh kinematic maps is more efficient and now works for all weight solvers
 - New feature: New parameter generator SpecificModels generates and runs a predefined list of models or models resulting from a cartesian product of parameter values
 - Improvement: the orbit plot (Plotter.orbit_plot) now works for all implemented weight solvers
@@ -15,7 +53,7 @@ Change Log
 - New feature: Added a new method AllModels.make_best_models_table() that creates a table of the best models (best n models or models within a chi2-threshold of the best) and saves it to disk
 - Bugfix: If reattempt_failures=False, in certain cases it could occur that orblibs of successful models were deleted
 - Bugfix: Fixed a bug related to a nonexistent model directory if a crash occurs between the parameter generator adding a model and starting to solve it
-- Improvement: Dynamite will no longer crash upon Legacy Fortran errors, but issue warnings and assign nan to the affected chi2 values
+- Improvement: Dynamite will no longer crash upon Legacy Fortran errors (except when executables are not found), but issue warnings and assign nan to the affected chi2 values
 - Improvement: When executing a dummy run (do_dummy_run==True), model_iterator will set both kinchi2 and kinmapchi2 to nan (instead of zero)
 - Improvement: DYNAMITE will retrofit existing all_models tables with the new column kinmapchi2 and calculate its values for existing models whenever possible
 - New feature: chi2 can now be directly calculated from the kinematic maps when using the LegacyWeightSolver via which_chi2: "kinmapchi2"

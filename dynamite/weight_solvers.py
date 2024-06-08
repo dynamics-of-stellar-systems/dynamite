@@ -8,8 +8,10 @@ import logging
 from scipy import optimize
 import cvxopt
 
+from dynamite import analysis
 from dynamite import physical_system as physys
 from dynamite import kinematics as dyn_kin
+
 
 class WeightSolver(object):
     """Generic WeightSolver class
@@ -17,12 +19,33 @@ class WeightSolver(object):
     Specific implementations are defined as sub-classes. Each one should
     have a main method `solve`
 
-    """
-    def __init__(self):
-        self.logger = logging.getLogger(f'{__name__}.{__class__.__name__}')
-        pass
+    Parameters
+    ----------
+    config : a ``dyn.config_reader.Configuration`` object
+    directory_with_ml : string
+        model directory with the ml extension
+    CRcut : Bool, default False
+        whether to use the `CRcut` solution for the counter-rotating orbit
+        problem. See Zhu et al. 2018 for more. If `CRcut` is given in the
+        configuration file's weight solver settings (which is normally the
+        case), this parameter is ignored.
 
-    def solve(self, orblib):
+    """
+
+    def __init__(self, config, directory_with_ml, CRcut=False):
+        self.logger = logging.getLogger(f'{__name__}.{__class__.__name__}')
+        self.config = config
+        self.system = config.system
+        self.settings = config.settings.weight_solver_settings
+        self.direc_with_ml = directory_with_ml
+        self.direc_no_ml \
+            = directory_with_ml[:directory_with_ml[:-1].rindex('/')+1]
+        if 'CRcut' in self.settings.keys():
+            CRcut = self.settings['CRcut']
+        self.CRcut = CRcut
+        self.weight_file = f'{self.direc_with_ml}orbit_weights.ecsv'
+
+    def solve(self, orblib, ignore_existing_weights=False):
         """Template solve method
 
         Specific implementations should override this.
@@ -30,6 +53,9 @@ class WeightSolver(object):
         Parameters
         ----------
         orblib : dyn.OrbitLibrary object
+        ignore_existing_weights : bool
+            If True, do not check for already existing weights and solve again.
+            Default is False.
 
         Returns
         -------
@@ -53,20 +79,69 @@ class WeightSolver(object):
         # ...
         return weights, chi2_tot, chi2_kin, chi2_kinmap
 
-    def chi2_kinmap(self):
+    def chi2_kinmap(self, weights):
         """
-        Template chi2_kinmap method
+        Returns the chi2 directly calculated from the gh kinematic maps.
 
-        Returns the chi2 directly calculated from the kinematic maps.
-        Specific implementations should override this.
+        For each kinematic set, the following applies: If number_GH in the
+        weight_solver_settings is smaller than the number of GH coefficients
+        in the data file, only number_GH coefficients will be considered.
+        If number_GH is greater than the number of GH coefficients in the
+        data file, only the coefficients in the data file will be considered.
+
+        Does only work with Gauss Hermite kinematics.
+
+        Parameters
+        ----------
+        weights : ``numpy.array`` like
+            The model's orbital weights.
 
         Returns
         -------
         chi2_kinmap : float
-            chi2 directly calculated from the kinematic maps.
+            chi2 directly calculated from the kinematic maps: sum of
+            squared residuals of V, sigma, and GH coefficients from h_3 to h_N
 
         """
-        return float('nan')
+        stars = \
+          self.system.get_component_from_class(physys.TriaxialVisibleComponent)
+        if any(k.type != 'GaussHermite' for k in stars.kinematic_data):
+            self.logger.info("'GaussHermite' kinematics required for "
+                             "kinmapchi2. Value set to nan.")
+            return float('nan')  # #######################################
+        number_gh = self.settings['number_GH']
+        mod=self.config.all_models.get_model_from_directory(self.direc_with_ml)
+        chi2_kinmap = 0.
+        for kin_set, kin_data in enumerate(stars.kinematic_data):
+            n_gh = min(number_gh, kin_data.max_gh_order)
+            coefs = ['v', 'sigma'] + [f'h{i}' for i in range(3, n_gh + 1)]
+            # get the model's projected masses=flux (unused) and kinematic data
+            a=analysis.Analysis(config=self.config, model=mod, kin_set=kin_set)
+            model_gh_coef = a.get_gh_model_kinematic_maps(v_sigma_option='fit',
+                                                          weights=weights)
+            # get the observed projected masses (unused) and kinematic data
+            kinematics_data = \
+                kin_data.get_data(self.settings, apply_systematic_error=False)
+            # calculate chi2_kinmap
+            for coef in coefs:
+                obs_val = np.array(kinematics_data[coef])
+                mod_val = np.array(model_gh_coef[coef])
+                err_val = np.array(kinematics_data['d' + coef])
+                chi2_kinmap += sum(np.square((obs_val - mod_val) / err_val))
+        return chi2_kinmap
+
+    def weight_file_exists(self):
+        """Check whether the file(s) holding the current model's weights exist.
+
+        May be re-implemented by sub-classes.
+
+        Returns
+        -------
+        bool
+            True if weight solving data exists, False otherwise.
+
+        """
+        return os.path.isfile(self.weight_file)
 
 
 class LegacyWeightSolver(WeightSolver):
@@ -76,60 +151,40 @@ class LegacyWeightSolver(WeightSolver):
     ```triaxnnls_noCRcut.f90``. Uses Lawson and Hanson non-negative
     least-squares algorithm.
 
-    Parameters
-    ----------
-    config : a ``dyn.config_reader.Configuration`` object
-    directory_with_ml : string
-        model directory with the ml extension
-    CRcut : Bool, default False
-        whether to use the `CRcut` solution for the counter-rotating orbit
-        problem. See Zhu et al. 2018 for more.
-
     """
-    def __init__(self, config, directory_with_ml, CRcut=False):
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
         self.logger = logging.getLogger(f'{__name__}.{__class__.__name__}')
-        self.config = config
-        self.system = config.system
-        self.directory_with_ml = directory_with_ml
-        self.settings = config.settings.weight_solver_settings
-        self.legacy_directory = config.settings.legacy_settings['directory']
+        self.legacy_directory=self.config.settings.legacy_settings['directory']
         self.sformat = self.system.parameters[0].sformat # this is ml's format
-        ml_idx = self.directory_with_ml.rindex('/ml')
-        self.direc_no_ml = directory_with_ml[:ml_idx+1]
-        ml_str = self.directory_with_ml[ml_idx+3:]
+        ml_idx = self.direc_with_ml.rindex('/ml')
+        ml_str = self.direc_with_ml[ml_idx+3:]
         self.ml = float(ml_str[:-1]) if ml_str[-1] == '/' else float(ml_str)
-        self.fname_nn_kinem = self.directory_with_ml + 'nn_kinem.out'
-        self.fname_nn_nnls = self.directory_with_ml + 'nn_nnls.out'
-        if 'CRcut' in self.settings.keys():
-            CRcut = self.settings['CRcut']
-        self.CRcut = CRcut
+        self.fname_nn_kinem = self.direc_with_ml + 'nn_kinem.out'
+        self.fname_nn_nnls = self.direc_with_ml + 'nn_nnls.out'
         # prepare fortran input file for nnls
         self.copy_kinematic_data()
-        self.create_fortran_input_nnls(self.direc_no_ml, self.ml)
+        self.create_fortran_input_nnls()
+        self.logger.info(f'{__class__.__name__} is DEPRECATED and '
+                         'will be removed in a future version of '
+                         f'DYNAMITE. Use weight solver type NNLS instead '
+                         f'of {__class__.__name__} if you can.')
 
     def copy_kinematic_data(self):
         """Copy kin data to infil/ direc
         """
-        stars = self.system.get_component_from_class( \
-                                        physys.TriaxialVisibleComponent)
+        stars = self.system.get_unique_triaxial_visible_component()
         kinematics = stars.kinematic_data
         # convert kinematics to old format to input to fortran
         for i in np.arange(len(kinematics)):
-            if len(kinematics)==1:
-                old_filename = self.direc_no_ml+'infil/kin_data.dat'
+            if len(kinematics) == 1:
+                old_filename = self.direc_no_ml + 'infil/kin_data.dat'
             else:
                 old_filename = self.direc_no_ml+'infil/kin_data_'+str(i)+'.dat'
-            kinematics[i].convert_to_old_format(old_filename)
+            kinematics[i].convert_to_old_format(old_filename, self.settings)
         # combine all kinematics into one file
-        if len(kinematics)>1:
-            gh_order = kinematics[0].get_highest_order_gh_coefficient()
-            if not all(kin.get_highest_order_gh_coefficient() == gh_order \
-                       for kin in kinematics[1:]):
-                text = 'Multiple kinematics: all need to have the same ' \
-                       'number of gh coefficients'
-                self.logger.error(text)
-                raise ValueError(text)
-            if not all(isinstance(kin,dyn_kin.GaussHermite) \
+        if len(kinematics) > 1:
+            if not all(isinstance(kin, dyn_kin.GaussHermite)
                        for kin in kinematics):
                 text = 'Multiple kinematics: all must be GaussHermite'
                 self.logger.error(text)
@@ -137,36 +192,35 @@ class LegacyWeightSolver(WeightSolver):
             # make a dummy 'kins_combined' object ...
             kins_combined = copy.deepcopy(kinematics[0])
             # ...replace data attribute with stacked table of all kinematics
-            kins_combined.data = table.vstack([k.data for k in kinematics])
-            old_filename = self.direc_no_ml+'infil/kin_data_combined.dat'
-            kins_combined.convert_to_old_format(old_filename)
+            kins_combined.data = table.vstack([k.get_data(self.settings)
+                                               for k in kinematics])
+            kins_combined.n_apertures = len(kins_combined.data)
+            kins_combined.max_gh_order = self.settings['number_GH']
+            old_filename = self.direc_no_ml + 'infil/kin_data_combined.dat'
+            kins_combined.convert_to_old_format(old_filename, self.settings)
 
-    def create_fortran_input_nnls(self, path, ml):
+    def create_fortran_input_nnls(self):
         """create fortran input file nn.in
 
         Parameters
         ----------
-        path : string
-            model directory path
-        ml : float
-            the mass-scaling parameter ml
+        None
 
         Returns
         -------
         None
 
         """
-        # when varying ml the LOSVD is scaled - no new orbits are calculated
-        # Therefore we need to know the ml that was used for the orbit library
-        infile=path+'infil/parameters_pot.in'
-        lines = [line.rstrip('\n').split() for line in open(infile)]
-        ml_orblib=float((lines[-9])[0])
-
+        # When varying ml the LOSVD is scaled - no new orbits are calculated.
+        # Therefore we need to know the ml that was used for the orbit library.
+        # The scaling factor is sqrt(model_ml/original_orblib_ml).
+        mod=self.config.all_models.get_model_from_directory(self.direc_with_ml)
+        ml_scaling_factor = \
+            self.config.all_models.get_model_velocity_scaling_factor(model=mod)
         #-------------------
         #write nn.in
         #-------------------
-        n_kin = len(self.system.get_component_from_class( \
-                    physys.TriaxialVisibleComponent).kinematic_data)
+        n_kin = len(self.system.get_unique_triaxial_visible_component().kinematic_data)
 
         if n_kin==1:
             kin_data_file='kin_data.dat'
@@ -176,7 +230,7 @@ class LegacyWeightSolver(WeightSolver):
 
         text='infil/parameters_pot.in' +'\n' + \
         str(self.settings['regularisation'])   + '                                  [ regularization strength, 0 = no regularization ]' +'\n'  + \
-        f'ml{ml:{self.sformat}}/nn\n' + \
+        f'ml{self.ml:{self.sformat}}/nn\n' + \
         'datfil/mass_qgrid.dat' +'\n' + \
         'datfil/mass_aper.dat' +'\n' + \
         str(self.settings['number_GH']) + '	                           [ # of GH moments to constrain the model]' +'\n' + \
@@ -184,16 +238,17 @@ class LegacyWeightSolver(WeightSolver):
         str(self.settings['GH_sys_err']) + '    [ systemic error of v, sigma, h3, h4... ]' + '\n' + \
         str(self.settings['lum_intr_rel_err']) + '                               [ relative error for intrinsic luminosity ]' +'\n' + \
         str(self.settings['sb_proj_rel_err']) + '                               [ relative error for projected SB ]' + '\n' + \
-        str(np.sqrt(ml/ml_orblib))  + '                                [ scale factor related to M/L, sqrt( (M/L)_k / (M/L)_ref ) ]' + '\n' + \
-        f'datfil/orblib_{ml}.dat' +'\n' + \
-        f'datfil/orblibbox_{ml}.dat' +'\n' + \
+        str(ml_scaling_factor)  + '                                [ scale factor related to M/L, sqrt( (M/L)_k / (M/L)_ref ) ]' + '\n' + \
+        f'datfil/orblib_{self.ml}.dat\n' + \
+        f'datfil/orblibbox_{self.ml}.dat\n' + \
         str(self.settings['nnls_solver']) + '                                  [ nnls solver ]'
 
-        nn_file= open(path+f'ml{ml:{self.sformat}}/nn.in',"w")
+        nn_file = open(self.direc_no_ml + f'ml{self.ml:{self.sformat}}/nn.in',
+                       "w")
         nn_file.write(text)
         nn_file.close()
 
-    def solve(self, orblib=None):
+    def solve(self, orblib=None, ignore_existing_weights=False):
         """Main method to solve NNLS problem.
 
         Parameters
@@ -202,11 +257,14 @@ class LegacyWeightSolver(WeightSolver):
             This parameter is not used in this Legacy implementation (as all
             orbit library information is read from files). It is included here
             for consistency with later WeightSolver implementations
+        ignore_existing_weights : bool
+            If True, do not check for already existing weights and solve again.
+            Default is False.
 
         Returns
         -------
         tuple
-            (weights, chi2_all, chi2_kin) where:
+            (weights, chi2_all, chi2_kin, chi2_kinmap) where:
                 -   weights : array, of orbit weights
                 -   chi2_all : float, sum of squared residuals for intrinsic
                     masses, projected_masses and GH coefficients from h_1 to h_n
@@ -217,54 +275,89 @@ class LegacyWeightSolver(WeightSolver):
 
         """
         self.logger.info(f"Using WeightSolver: {__class__.__name__}")
-        check1 = os.path.isfile(self.fname_nn_kinem)
-        check2 = os.path.isfile(self.fname_nn_nnls)
-        check3 = os.path.isfile(self.directory_with_ml + 'nn_orbmat.out')
-        if not check1 or not check2 or not check3:
-            # set the current directory to the directory in which
-            # the models are computed
-            cur_dir = os.getcwd()
-            os.chdir(self.direc_no_ml)
-            cmdstr = self.write_executable_for_weight_solver(self.ml)
-            with open(cmdstr) as f:
-                for line in f:
-                    i = line.find('>>')
-                    if i >= 0:
-                        j = line.find('.log')
-                        logfile = line[i+3:j+4]
-                        break
-            self.logger.info("Fitting orbit library to the kinematic " + \
-                             f"data: {logfile[:logfile.rindex('/')]}")
-            p = subprocess.run('bash '+cmdstr,
-                               stdout=subprocess.PIPE,
-                               stderr=subprocess.STDOUT,
-                               shell=True)
-            log_file = f'Logfile: {self.direc_no_ml+logfile}'
-            if not p.stdout.decode("UTF-8"):
-                self.logger.info(f'...done, NNLS problem solved -  {cmdstr} '
-                                 f'exit code {p.returncode}. {log_file}')
-            else:
-                text = f'{cmdstr} exit code {p.returncode}. ERROR. ' \
-                       f'Message: {p.stdout.decode("UTF-8")}{log_file}'
-                self.logger.error(text)
-                raise RuntimeError(text)
-            #set the current directory to the dynamite directory
-            os.chdir(cur_dir)
-            #delete existing .yaml files and copy current config file
-            #into model directory
-            self.config.copy_config_file(self.directory_with_ml)
+        if (not ignore_existing_weights) and self.weight_file_exists():
+            self.logger.info("Reading NNLS solution from existing output.")
+            results = ascii.read(self.weight_file)
+            weights = results['weights']
+            chi2_tot = results.meta['chi2_tot']
+            chi2_kin = results.meta['chi2_kin']
+            chi2_kinmap = results.meta['chi2_kinmap']
         else:
-            self.logger.info("NNLS solution read from existing output")
-        wts, chi2_tot, chi2_kin = self.get_weights_and_chi2_from_orbmat_file()
-        return wts, chi2_tot, chi2_kin, self.chi2_kinmap()
+            fname_nn_orbmat = self.direc_with_ml + 'nn_orbmat.out'
+            # If legacy result files do not exist, run weight solving.
+            check = (os.path.isfile(self.fname_nn_kinem) and
+                     os.path.isfile(self.fname_nn_nnls) and
+                     os.path.isfile(fname_nn_orbmat))
+            if ignore_existing_weights or not check:
+                # set the current directory to the directory in which
+                # the models are computed
+                cur_dir = os.getcwd()
+                os.chdir(self.direc_no_ml)
+                cmdstr = self.write_executable_for_weight_solver()
+                with open(cmdstr) as f:
+                    for line in f:
+                        i = line.find('>>')
+                        if i >= 0:
+                            j = line.find('.log')
+                            logfile = line[i+3:j+4]
+                            break
+                self.logger.info("Fitting orbit library to the kinematic " +
+                                 f"data: {logfile[:logfile.rindex('/')]}")
+                p = subprocess.run('bash '+cmdstr,
+                                   stdout=subprocess.PIPE,
+                                   stderr=subprocess.STDOUT,
+                                   shell=True)
+                # clean up decompressed files
+                for f_name in [f'datfil/orblib_{self.ml}.dat',
+                               f'datfil/orblibbox_{self.ml}.dat']:
+                    if os.path.isfile(f_name):
+                        os.remove(f_name)
+                log_file = f'Logfile: {self.direc_no_ml+logfile}.'
+                if not p.stdout.decode("UTF-8"):
+                    self.logger.info(f'...done, NNLS problem solved - {cmdstr}'
+                                     f' exit code {p.returncode}. {log_file}')
+                else:
+                    text = f'...failed! {cmdstr} exit code {p.returncode}. ' \
+                           f'Message: {p.stdout.decode("UTF-8")}'
+                    if p.returncode == 127: # command not found
+                        text += 'Check DYNAMITE legacy_fortran executables.'
+                        self.logger.error(text)
+                        raise FileNotFoundError(text)
+                    text += f'{log_file} Be wary: DYNAMITE may crash...'
+                    self.logger.warning(text)
+                    raise RuntimeError(text)
+                # set the current directory to the dynamite directory
+                os.chdir(cur_dir)
+                # delete existing .yaml files and copy current config file
+                # into model directory
+                self.config.copy_config_file(self.direc_with_ml)
+            else:  # If legacy output files exist, just create the weight file
+                self.logger.info("Reading NNLS solution from existing legacy "
+                                 "output and converting to weights file.")
+            # Now the legacy result files exist -> read, calculate
+            # kinmapchi2, and save to the weight file.
+            weights, chi2_tot, chi2_kin = \
+                self.get_weights_and_chi2_from_orbmat_file()
+            chi2_kinmap = self.chi2_kinmap(weights)
+            results = table.Table()
+            results['weights'] = weights
+            results.meta = {'chi2_tot': chi2_tot,
+                            'chi2_kin': chi2_kin,
+                            'chi2_kinmap': chi2_kinmap}
+            results.write(self.weight_file,
+                          format='ascii.ecsv',
+                          overwrite=True)
+            # clean up
+            if os.path.isfile(fname_nn_orbmat):
+                os.remove(fname_nn_orbmat)
+        return weights, chi2_tot, chi2_kin, chi2_kinmap
 
-    def write_executable_for_weight_solver(self, ml):
+    def write_executable_for_weight_solver(self):
         """write executable bash script file
 
         Parameters
         ----------
-        ml : float
-            the mass-scaling parameter ml
+        None
 
         Returns
         -------
@@ -272,25 +365,34 @@ class LegacyWeightSolver(WeightSolver):
             the name of the bash script file to execute
 
         """
-        nn = f'ml{ml:{self.sformat}}/nn'
-        cmdstr = f'cmd_nnls_{ml}'
+        nn = f'ml{self.ml:{self.sformat}}/nn'
+        cmdstr = f'cmd_nnls_{self.ml}'
         txt_file = open(cmdstr, "w")
         txt_file.write('#!/bin/bash' + '\n')
         txt_file.write('# if the gzipped orbit library exist unzip it' + '\n')
-        txt_file.write(f'test -e datfil/orblib_{ml}.dat || bunzip2 -c  datfil/orblib.dat.bz2 > datfil/orblib_{ml}.dat' + '\n')
-        txt_file.write(f'test -e datfil/orblibbox_{ml}.dat || bunzip2 -c  datfil/orblibbox.dat.bz2 > datfil/orblibbox_{ml}.dat' + '\n')
-        if self.CRcut is True:
+        txt_file.write(f'test -e datfil/orblib_{self.ml}.dat || bunzip2 -c  datfil/orblib.dat.bz2 > datfil/orblib_{self.ml}.dat' + '\n')
+        txt_file.write(f'test -e datfil/orblibbox_{self.ml}.dat || bunzip2 -c  datfil/orblibbox.dat.bz2 > datfil/orblibbox_{self.ml}.dat' + '\n')
+        if self.system.is_bar_disk_system():
+            txt_file.write(f'test -e {self.legacy_directory}/triaxnnls_bar' +
+                           f' || {{ echo "File {self.legacy_directory}/triaxnnls_bar not found." && exit 127; }}\n')
+            txt_file.write('test -e ' + str(nn) + '_kinem.out || ' +
+                           self.legacy_directory +
+                           f'/triaxnnls_bar < {nn}.in >> {nn}ls.log '
+                           '|| exit 1\n')
+        elif self.CRcut is True:
+            txt_file.write(f'test -e {self.legacy_directory}/triaxnnls_CRcut' +
+                           f' || {{ echo "File {self.legacy_directory}/triaxnnls_CRcut not found." && exit 127; }}\n')
             txt_file.write('test -e ' + str(nn) + '_kinem.out || ' +
                            self.legacy_directory +
                            f'/triaxnnls_CRcut < {nn}.in >> {nn}ls.log '
                            '|| exit 1\n')
         else:
+            txt_file.write(f'test -e {self.legacy_directory}/triaxnnls_noCRcut' +
+                           f' || {{ echo "File {self.legacy_directory}/triaxnnls_noCRcut not found." && exit 127; }}\n')
             txt_file.write('test -e ' + str(nn) + '_kinem.out || ' +
                            self.legacy_directory +
                            f'/triaxnnls_noCRcut < {nn}.in >> {nn}ls.log '
                            '|| exit 1\n')
-        txt_file.write(f'rm datfil/orblib_{ml}.dat' + '\n')
-        txt_file.write(f'rm datfil/orblibbox_{ml}.dat' + '\n')
         txt_file.close()
         return cmdstr
 
@@ -306,7 +408,7 @@ class LegacyWeightSolver(WeightSolver):
             the orbital weights
 
         """
-        fname = self.directory_with_ml + 'nn_orb.out'
+        fname = self.direc_with_ml + 'nn_orb.out'
         col_names = ['orb_idx',
                      'E_idx',
                      'I2_idx',
@@ -336,7 +438,7 @@ class LegacyWeightSolver(WeightSolver):
             (orbmat, rhs, solution)
 
         """
-        fname = self.directory_with_ml + 'nn_orbmat.out'
+        fname = self.direc_with_ml + 'nn_orbmat.out'
         orbmat_shape = np.loadtxt(fname, max_rows=1, dtype=int)
         orbmat_size = np.product(orbmat_shape)
         tmp = np.loadtxt(fname, skiprows=1)
@@ -368,9 +470,14 @@ class LegacyWeightSolver(WeightSolver):
         A, b, weights = self.read_nnls_orbmat_rhs_and_solution()
         chi2_vector = (np.dot(A, weights) - b)**2.
         chi2_tot = np.sum(chi2_vector)
-        stars = \
-          self.system.get_component_from_class(physys.TriaxialVisibleComponent)
-        mge = stars.mge_lum
+
+        if self.system.is_bar_disk_system():
+            bardisk = self.system.get_unique_bar_component()
+            mge = bardisk.mge_lum + bardisk.disk_lum
+        else:
+            stars = self.system.get_unique_triaxial_visible_component()
+            mge = stars.mge_lum
+
         intrinsic_masses = mge.get_intrinsic_masses_from_file(self.direc_no_ml)
         projected_masses = mge.get_projected_masses_from_file(self.direc_no_ml)
         n_intrinsic = np.product(intrinsic_masses.shape)
@@ -378,18 +485,18 @@ class LegacyWeightSolver(WeightSolver):
         chi2_kin = np.sum(chi2_vector[1+n_intrinsic+n_apertures:])
         return weights, chi2_tot, chi2_kin
 
-    def chi2_kinmap(self):
-        """
-        Returns the chi2 directly calculated from the kinematic maps.
+    # def chi2_kinmap(self):
+    #     """
+    #     Returns the chi2 directly calculated from the kinematic maps.
 
-        Returns
-        -------
-        chi2_kinmap : float
-            chi2 directly calculated from the kinematic maps.
+    #     Returns
+    #     -------
+    #     chi2_kinmap : float
+    #         chi2 directly calculated from the kinematic maps.
 
-        """
-        _, chi2_kinmap = self.read_chi2()
-        return chi2_kinmap
+    #     """
+    #     _, chi2_kinmap = self.read_chi2()
+    #     return chi2_kinmap
 
     def read_chi2(self):
         """Read chi2 values from `nn_kinem.out`
@@ -470,35 +577,19 @@ class NNLS(WeightSolver):
 
     Parameters
     ----------
-    config : a ``dyn.config_reader.Configuration`` object
-    directory_with_ml : string
-        model directory with the ml extension
-    CRcut : Bool, default False
-        whether to use the `CRcut` solution for the counter-rotating orbit
-        problem. See Zhu et al. 2018 for more.
     nnls_solver : string
         either ``scipy`` or ``cvxopt``
 
     """
     def __init__(self,
-                 config,
-                 directory_with_ml,
-                 CRcut=False,
-                 nnls_solver=None):
+                 nnls_solver=None,
+                 **kwargs):
+        super().__init__(**kwargs)
         self.logger = logging.getLogger(f'{__name__}.{__class__.__name__}')
-        self.config = config
-        self.system = config.system
-        self.settings = config.settings.weight_solver_settings
-        self.direc_with_ml = directory_with_ml
-        self.direc_no_ml \
-            = directory_with_ml[:directory_with_ml[:-1].rindex('/')+1]
         if nnls_solver is None:
             nnls_solver = self.settings['nnls_solver']
         assert nnls_solver in ['scipy', 'cvxopt'], 'Unknown nnls_solver'
         self.nnls_solver = nnls_solver
-        if 'CRcut' in self.settings.keys():
-            CRcut = self.settings['CRcut']
-        self.CRcut = CRcut
         self.get_observed_mass_constraints()
 
     def get_observed_mass_constraints(self):
@@ -517,9 +608,14 @@ class NNLS(WeightSolver):
                     and ``self.n_mass_constraints``
 
         """
-        stars = \
-          self.system.get_component_from_class(physys.TriaxialVisibleComponent)
-        mge = stars.mge_lum
+        if self.system.is_bar_disk_system():
+            bardisk = self.system.get_unique_bar_component()
+            mge = bardisk.mge_lum + bardisk.disk_lum
+        else:
+            stars = self.system.get_unique_triaxial_visible_component()
+            mge = stars.mge_lum
+
+
         # intrinsic mass
         intrinsic_masses = mge.get_intrinsic_masses_from_file(self.direc_no_ml)
         self.intrinsic_masses = intrinsic_masses
@@ -581,13 +677,12 @@ class NNLS(WeightSolver):
         econ[idx] = np.abs(self.projected_masses * self.projected_mass_error)
         orbmat[idx,:] = np.hstack(orblib.projected_masses).T
         # add kinematics to con, econ, orbmat
-        triax_component = physys.TriaxialVisibleComponent
-        stars = self.system.get_component_from_class(triax_component)
+        stars = self.system.get_unique_triaxial_visible_component()
         kins_and_orb_losvds = zip(stars.kinematic_data, orblib.losvd_histograms)
         idx_ap_start = 0
         for (kins, orb_losvd) in kins_and_orb_losvds:
             # pick out the projected masses for this kinematic set
-            n_ap = len(kins.data)
+            n_ap = kins.n_spatial_bins  # OK for both GaussHermite & BayesLOSVD
             idx_ap_end = idx_ap_start + n_ap
             prj_mass_i = self.projected_masses[idx_ap_start:idx_ap_end]
             idx_ap_start += n_ap
@@ -642,8 +737,9 @@ class NNLS(WeightSolver):
         if type(kins) is not dyn_kin.GaussHermite:
             return orb_gh
         orb_mu_v = orb_losvd.get_mean()
-        obs_mu_v = kins.data['v']
-        obs_sig_v = kins.data['sigma']
+        kins_data = kins.get_data(self.settings, apply_systematic_error=False)
+        obs_mu_v = kins_data['v']
+        obs_sig_v = kins_data['sigma']
         delta_v = np.abs(orb_mu_v - obs_mu_v)
         condition1 = (np.abs(obs_mu_v)/obs_sig_v > 1.5)
         condition2 = (delta_v/obs_sig_v > 3.0)
@@ -662,7 +758,7 @@ class NNLS(WeightSolver):
         orb_gh[idx_cut[0], idx_cut[1], 0] = 3./dvhist
         return orb_gh
 
-    def solve(self, orblib):
+    def solve(self, orblib, ignore_existing_weights=False):
         """Solve for orbit weights
 
         **Note:** the returned chi2 values are not the same as
@@ -673,6 +769,9 @@ class NNLS(WeightSolver):
         orblib : dyn.OrbitLibrary
             must have attributes losvd_histograms, intrinsic_masses, and
             projected_masses
+        ignore_existing_weights : bool
+            If True, do not check for already existing weights and solve again.
+            Default is False.
 
         Returns
         -------
@@ -684,19 +783,19 @@ class NNLS(WeightSolver):
                 -   chi2_kin : float sum of squared residuals for GH
                     coefficients h_1 to h_n
                 -   chi2_kinmap : directly calculates the chi2 from the
-                    kinematic maps NOT CURRENTLY IMPLEMENTED, RETURNS nan!
+                    kinematic maps
 
         """
         self.logger.info(f"Using WeightSolver: {__class__.__name__}/"
                          f"{self.nnls_solver}")
         orblib.read_losvd_histograms()
-        weight_file = f'{self.direc_with_ml}orbit_weights.ecsv'
-        if os.path.isfile(weight_file):
+        if (not ignore_existing_weights) and self.weight_file_exists():
+            results = ascii.read(self.weight_file, format='ecsv')
             self.logger.info("NNLS solution read from existing output")
-            result = ascii.read(weight_file, format='ecsv')
-            weights = result['weights']
-            chi2_tot = result.meta['chi2_tot']
-            chi2_kin = result.meta['chi2_kin']
+            weights = results['weights']
+            chi2_tot = results.meta['chi2_tot']
+            chi2_kin = results.meta['chi2_kin']
+            chi2_kinmap = results.meta['chi2_kinmap']
         else:
             A, b = self.construct_nnls_matrix_and_rhs(orblib)
             if self.nnls_solver=='scipy':
@@ -711,23 +810,27 @@ class NNLS(WeightSolver):
                 text = 'Unknown nnls_solver'
                 self.logger.error(text)
                 raise ValueError(text)
-            np.savetxt(weight_file, weights)
+            np.savetxt(self.weight_file, weights)
             self.logger.info("NNLS problem solved")
             # calculate chi2s
             chi2_vector = (np.dot(A, weights) - b)**2.
             chi2_tot = np.sum(chi2_vector)
             chi2_kin = np.sum(chi2_vector[self.n_mass_constraints:])
+            chi2_kinmap = self.chi2_kinmap(weights)
             # save the output
             results = table.Table()
             results['weights'] = weights
             # add chi2 to meta data
-            meta = {'chi2_tot':chi2_tot, 'chi2_kin':chi2_kin}
-            results = table.Table(results, meta=meta)
-            results.write(weight_file, format='ascii.ecsv', overwrite=True)
-            #delete existing .yaml files and copy current config file
-            #into model directory
+            results.meta = {'chi2_tot': chi2_tot,
+                            'chi2_kin': chi2_kin,
+                            'chi2_kinmap': chi2_kinmap}
+            results.write(self.weight_file,
+                          format='ascii.ecsv',
+                          overwrite=True)
+            # delete existing .yaml files and copy current config file
+            # into model directory
             self.config.copy_config_file(self.direc_with_ml)
-        return weights, chi2_tot, chi2_kin, self.chi2_kinmap()
+        return weights, chi2_tot, chi2_kin, chi2_kinmap
 
 
 class CvxoptNonNegSolver():

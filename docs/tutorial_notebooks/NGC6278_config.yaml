@@ -26,11 +26,11 @@ system_components:
                 fixed: True
                 value: 5.0
                 logarithmic: True
-                LaTeX: "$M_{BH}$"
+                LaTeX: "$\\log(M_\\mathrm{BH}/M_\\odot)$"
             a:
                 fixed: True
                 value: 0.001
-                LaTeX: "$a_{BH}$"
+                LaTeX: "$a_\\mathrm{BH}$"
         type: "Plummer"
         include: True
         contributes_to_potential: True
@@ -55,7 +55,7 @@ system_components:
                 logarithmic: True
                 fixed: False
                 value: 1.0
-                LaTeX: "$M_{200}/M_*$"
+                LaTeX: "$\\log(M_{200}/M_*)$"
         type: NFW
         include: True
         contributes_to_potential: True
@@ -100,7 +100,7 @@ system_components:
                 type: GaussHermite
                 datafile: "gauss_hermite_kins.ecsv"
                 aperturefile: "aperture.dat"
-                binfile: "bins.dat"          
+                binfile: "bins.dat"
 
 system_parameters:
     ml:
@@ -111,7 +111,7 @@ system_parameters:
             minstep: 0.5
         fixed: False
         value: 5.
-        LaTeX: "$Y_{r}$"
+        LaTeX: "$Y_\\mathrm{r}$"
 
 ###############################################################################
 # SECTION 2: SETTINGS
@@ -134,8 +134,8 @@ orblib_settings:
     random_seed: 4242     # fixed rnd. seed for reproducible tutorial (set to 0 for stochastic seed)
 
 weight_solver_settings:
-    type: "LegacyWeightSolver"
-    nnls_solver: 1
+    type: "NNLS"
+    nnls_solver: "scipy"
     regularisation: 0
     number_GH: 4
     GH_sys_err: '0.0 0.0 0.0 0.0 0.3 0.3 0.6 0.6'

@@ -1,6 +1,6 @@
+import logging
 from astropy.io import ascii
 from astropy.table import Table
-import logging
 import numpy as np
 from plotbin import display_pixels
 
@@ -72,11 +72,21 @@ class Integrated(Data):
         self.aperturefile = aperturefile
         self.binfile = binfile
         super().__init__(**kwargs)
+        self.logger = logging.getLogger(f'{__name__}.{__class__.__name__}')
         if hasattr(self, 'data'):
             self.PSF = self.data.meta['PSF']
+            if abs(sum(self.PSF['weight'])-1.0) > 1e-8:
+                txt = f"PSF weights add up to {sum(self.PSF['weight'])}, " + \
+                      "not 1.0."
+                if hasattr(self, 'datafile'):
+                    txt += ' Check input data in '
+                    if hasattr(self, 'input_directory'):
+                        txt += f'{self.input_directory}'
+                    txt += f'{self.datafile}.'
+                self.logger.error(txt)
+                raise ValueError(txt)
         if self.aperturefile is not None and self.binfile is not None:
             self.read_aperture_and_bin_files()
-        self.logger = logging.getLogger(f'{__name__}.{__class__.__name__}')
 
     def add_psf_to_datafile(self,
                             sigma=[1.],
@@ -119,7 +129,7 @@ class Integrated(Data):
 
         Returns
         -------
-        Sets the attribute ``self.dp_arg``
+        Sets the attribute ``self.dp_args``
 
         """
         # read aperture file
@@ -164,6 +174,22 @@ class Integrated(Data):
         str_head = str(str_head[0])
         i_var = int(i_var[0])
         grid = np.ravel(np.array(grid))
+        if not (nx * ny == i_var == len(grid)):
+            txt = f'Numbers of apertures do not match: {nx}*{ny}={nx*ny} ' \
+                  f'({self.aperturefile}), {i_var} ({self.binfile}), ' \
+                  f'{len(grid)} (bin data points in {self.binfile}).'
+            self.logger.error(txt)
+            raise ValueError(txt)
+        self.logger.debug(f'{self.aperturefile} and {self.binfile} read.')
+        n_bins_kinem = self.data[-1][0] + (1 if self.data[0][0] == 0 else 0)
+        if not (n_bins_kinem == len(self.data) == max(grid)):
+            txt = f'Numbers of kinematic bins do not match: {len(self.data)}'\
+                  f' (length of {self.datafile}), {n_bins_kinem} (last id in '\
+                  f'{self.datafile}), max number {max(grid)} in {self.binfile}.'
+            self.logger.error(txt)
+            raise ValueError(txt)
+        self.logger.debug(f'Number of vbins in {self.datafile}, '
+                          f'{self.binfile} validated.')
         # bins start counting at 1 in fortran and at 0 in idl:
         grid = grid - 1
         # Only select the pixels that have a bin associated with them.
@@ -174,7 +200,9 @@ class Integrated(Data):
                    'y':y,
                    'dx':dx,
                    'idx_bin_to_pix':grid[s],
-                   'angle':angle_deg}
+                   'angle':angle_deg} # Angle in degrees measured counter
+                                      # clockwise from the galaxy major axis
+                                      # to the X-axis of the input data
         self.dp_args = dp_args
 
     def get_map_plotter(self):
