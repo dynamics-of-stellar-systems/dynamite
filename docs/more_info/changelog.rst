@@ -5,6 +5,8 @@ Change Log
 ****************
 
 - Improvement: the Gauss Hermite kinematic maps new parameter value `cbar_lims='user'` allows user-defined velocity and velocity dispersion limits (see `Plotter.plot_kinematic_maps()`).
+- New feature: ``data_prep/generate_kin_input.py`` implements reading NIFS kinematics with an arbitrary number of GH moments.
+- Improvement: improved checks and error messages for velocity and spatial bin input data inconsistencies.
 - Improvement: save disk space by cleaning up decompressed files after a crash and removing unused legacy file nn_orbmat.out after solving.
 - Improvement: stability fix in MGE: if q>0.9999 it will be set to 0.9999 (before, it was 0.99999).
 - Bugfix: the chi2 plot now shows correct axis ticks for log quantities.

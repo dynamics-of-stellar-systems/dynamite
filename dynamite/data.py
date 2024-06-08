@@ -1,6 +1,6 @@
+import logging
 from astropy.io import ascii
 from astropy.table import Table
-import logging
 import numpy as np
 from plotbin import display_pixels
 
@@ -174,6 +174,22 @@ class Integrated(Data):
         str_head = str(str_head[0])
         i_var = int(i_var[0])
         grid = np.ravel(np.array(grid))
+        if not (nx * ny == i_var == len(grid)):
+            txt = f'Numbers of apertures do not match: {nx}*{ny}={nx*ny} ' \
+                  f'({self.aperturefile}), {i_var} ({self.binfile}), ' \
+                  f'{len(grid)} (bin data points in {self.binfile}).'
+            self.logger.error(txt)
+            raise ValueError(txt)
+        self.logger.debug(f'{self.aperturefile} and {self.binfile} read.')
+        n_bins_kinem = self.data[-1][0] + (1 if self.data[0][0] == 0 else 0)
+        if not (n_bins_kinem == len(self.data) == max(grid)):
+            txt = f'Numbers of kinematic bins do not match: {len(self.data)}'\
+                  f' (length of {self.datafile}), {n_bins_kinem} (last id in '\
+                  f'{self.datafile}), max number {max(grid)} in {self.binfile}.'
+            self.logger.error(txt)
+            raise ValueError(txt)
+        self.logger.debug(f'Number of vbins in {self.datafile}, '
+                          f'{self.binfile} validated.')
         # bins start counting at 1 in fortran and at 0 in idl:
         grid = grid - 1
         # Only select the pixels that have a bin associated with them.
