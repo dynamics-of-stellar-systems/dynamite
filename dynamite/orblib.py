@@ -313,7 +313,7 @@ class LegacyOrbitLibrary(OrbitLibrary):
                 f.write(line)
             for i in range(n_psf):
                 psf_i = stars.kinematic_data[i].PSF
-                for j in range(n_gauss_psf_i):
+                for j in range(len(psf_i['sigma'])):
                     weight_ij, sigma_ij = psf_i['weight'][j], psf_i['sigma'][j]
                     label = f'[weight, sigma of comp {j+1} of psf {i+1}]'
                     line = f"{weight_ij} {sigma_ij}{tab}{label}\n"

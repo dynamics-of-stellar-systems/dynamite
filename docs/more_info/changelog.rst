@@ -5,6 +5,22 @@ Change Log
 ****************
 
 - Improvement: better crash recovery by re-use existing tube orbits when recalculating orblib.
+- New feature: ``data_prep/generate_kin_input.py`` implements reading NIFS kinematics with an arbitrary number of GH moments.
+- Improvement: improved checks and error messages for velocity and spatial bin input data inconsistencies.
+- Improvement: save disk space by cleaning up decompressed files after a crash and removing unused legacy file nn_orbmat.out after solving.
+- Improvement: stability fix in MGE: if q>0.9999 it will be set to 0.9999 (before, it was 0.99999).
+- Bugfix: the chi2 plot now shows correct axis ticks for log quantities.
+- Bugfix: fixed colorbar overlap with x-axis in the chi2 plot if only two parameters are varied and added label to chi2 plot colorbar.
+- Improvement: ``LegacyWeightSolver`` is now DEPRECATED and will be removed along with GALAHAD in a future version of DYNAMITE. Use weight solver ``type: "NNLS"`` instead if you can.
+
+Version: 4.2
+================
+
+- Improvement: if ``number_GH`` in the config file is larger than the kinematic order of the observed data, then DYNAMITE ensures that the corresponding systematic errors are > 0.
+- Bugfix: fixed a bug in the kinematics errors (affects NNLS solves).
+- New feature: Gauss-Hermite kinematic maps can now be plotted for any number of Gauss-Hermite coefficients.
+- Improvement: removed broken link from tutorial 2 and added some data preparation comments to tutorials 1 and 2
+- Bugfix: fixed crash when different kinematics had different numbers of PSF components.
 - Bugfix: fixed a bug in retrofitting kinmapchi2 in old all_models tables.
 - Improvement: removed deprecated silent option from config reader.
 - Improvement: the Plotter's new optional argument ``dpi`` (default: 100) allows to change the resolution of all saved figures except the kinematic maps (always 300 dpi).

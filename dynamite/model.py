@@ -132,7 +132,7 @@ class AllModels(object):
         * Note that orbit libraries on disk will not be deleted if
         in use by other models.
 
-        * Up to DYNAMITE 3.0 there was no kinmapchi2 column in the all_models
+        Up to DYNAMITE 3.0 there was no kinmapchi2 column in the all_models
         table. If possible (data exists on disk), calculate and add the values,
         otherwise set to np.nan.
 

@@ -16,15 +16,15 @@ class MGE(data.Data):
 
         Any q 'too close to 1' will be set to q=NINES for numerical stability.
         If any changes are made, a warning message will be logged. Note that
-        the 'closeness' to 1 might be machine dependent - for us 'five nines',
-        0.99999, worked...
+        the 'closeness' to 1 might be machine dependent - for us 'four nines',
+        0.9999, worked...
 
         Returns
         -------
         None. Any changes are applied to ``self.data``.
 
         """
-        NINES = 0.99999
+        NINES = 0.9999
         new_mge = False
         for r in self.data:
             if r['q'] > NINES:
@@ -155,7 +155,7 @@ class MGE(data.Data):
         Returns
         -------
         new_mge : Object of type MGE
-    
+
         """
         mge1_data = self.data
         mge2_data = other.data
