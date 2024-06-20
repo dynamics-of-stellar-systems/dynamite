@@ -1047,26 +1047,25 @@ class BayesLOSVD(Kinematics, data.Integrated):
         nbins = len(completed_bins)
         losvd_mean = np.zeros((nbins,nv))
         losvd_sigma = np.zeros((nbins,nv))
+        # put the data in a table
+        data = table.Table()
+        data['binID_BayesLOSVD'] = completed_bins
+        data['bin_flux'] = np.zeros(nbins)
         # completed_bins may have gaps i.e. some bins may not be completed, so
         # to fill arrays use a counter `i` - do not use completed_bins as index
-        i = 0
-        for bin in completed_bins:
+        for i,i_bin in enumerate(completed_bins):
             # get median LOSVD
-            losvd_mean[i] = result[bin]['losvd'][2]
+            losvd_mean[i] = result[i_bin]['losvd'][2]
             # get 68% BCI
-            bci_68 = result[bin]['losvd'][3] - result[bin]['losvd'][1]
+            bci_68 = result[i_bin]['losvd'][3] - result[i_bin]['losvd'][1]
             losvd_sigma[i] = 0.5*bci_68
-            i += 1
+            # add bin fluxes to the table
+            data['bin_flux'][i] = result['bin_flux'][i_bin]
         # BAYES-LOSVD returns the velocity array (and losvds) in descening order
         # let's flip them to make it easier to work with later
         vcent = vcent[::-1]
         losvd_mean = losvd_mean[:,::-1]
         losvd_sigma = losvd_sigma[:,::-1]
-        # put them in a table
-        data = table.Table()
-        data['binID_BayesLOSVD'] = completed_bins
-        # add bin fluxes to the table
-        data['bin_flux'] = result['bin_flux']
         # BayesLOSVD bin indexing starts at 0 and some bins may be missing, but:
         # 1) orblib_f.f90 assumes bins start at 1
         # 2) LegacyOrbitLibrary.read_orbit_base assumes that no bins are missing
@@ -1077,8 +1076,9 @@ class BayesLOSVD(Kinematics, data.Integrated):
             data[f'dlosvd_{j}'] = losvd_sigma[:,j]
         # add meta-data
         meta = {'dv':dv, 'vcent':list(vcent), 'nbins':nbins, 'nvbins':nv}
-        data = table.Table(data, meta=meta)
+        data.meta = meta
         data.write(outfile, format='ascii.ecsv', overwrite=True)
+        self.logger.info(f'BayesLOSVD output written to {outfile}.')
         return
 
     def write_aperture_and_bin_files(self,
