@@ -751,7 +751,7 @@ class LegacyGridSearch(ParameterGenerator):
             raise ValueError(text)
 
     def specific_generate_method(self, **kwargs):
-        """
+        r"""
         Generates new models
 
         Starts at the initial point. Start the iteration: (i) find all models

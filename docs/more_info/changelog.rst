@@ -4,6 +4,7 @@
 Change Log
 ****************
 
+- Improvement: The installation procedure has been changed to make DYNAMITE compatible with Python 3.12. Installing and uninstalling is now done using pip.
 - Improvement: reduced the main memory requirements of the Python NNLS solvers.
 - Bugfix: fix a crash when creating the BayesLOSVD kinematics file in rare cases where the completed bins were determined incorrectly.
 - New feature: ``data_prep/generate_kin_input.py`` implements reading NIFS kinematics with an arbitrary number of GH moments.
