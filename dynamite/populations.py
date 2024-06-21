@@ -1,6 +1,6 @@
 import logging
 
-class Populations(object):
+class Populations(data.Data):
     """
     Populations class holding attributes and methods pertaining to population data
     """
@@ -13,6 +13,9 @@ class Populations(object):
                  aperturefile=None,
                  binfile=None,
                  PSF=None,
+                 hist_width='default',
+                 hist_center='default',
+                 hist_bins='default'
                  ):
         self.logger = logging.getLogger(f'{__name__}.{__class__.__name__}')
         self.name = name
