@@ -88,7 +88,7 @@ class Settings(object):
                    "nnls_solver setting or try to install cvxopt e.g., via " \
                    "'python -m pip install .[cvxopt]'."
             self.logger.error(text)
-            raise ModuleNotFoundError
+            raise ModuleNotFoundError(text)
         if self.orblib_settings['nI2'] < 4:
             text = "orblib_settings: nI2 must be >= 4, but is " \
                    f"{self.orblib_settings['nI2']}."
