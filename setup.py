@@ -58,6 +58,8 @@ setuptools.setup(
     },
     # extra requirements for testing
     extras_require={
+        "cvxopt":
+            "cvxopt>=1.2.6",
         "testing": [
             "pytest",
             "coverage",

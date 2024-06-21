@@ -6,7 +6,11 @@ from astropy.io import ascii
 import subprocess
 import logging
 from scipy import optimize
-import cvxopt
+
+try:
+    import cvxopt
+except ModuleNotFoundError:
+    pass
 
 from dynamite import analysis
 from dynamite import physical_system as physys

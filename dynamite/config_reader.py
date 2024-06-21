@@ -82,6 +82,13 @@ class Settings(object):
                              and multiprocessing_settings"""
             self.logger.error(text)
             raise ValueError(text)
+        if self.weight_solver_settings['nnls_solver'] == 'cvxopt' and \
+           not importlib.util.find_spec('cvxopt'):
+            text = "nnls_solver 'cvxopt' is not installed. Use a different " \
+                   "nnls_solver setting or try to install cvxopt e.g., via " \
+                   "'python -m pip install .[cvxopt]'."
+            self.logger.error(text)
+            raise ModuleNotFoundError
         if self.orblib_settings['nI2'] < 4:
             text = "orblib_settings: nI2 must be >= 4, but is " \
                    f"{self.orblib_settings['nI2']}."
