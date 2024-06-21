@@ -385,10 +385,17 @@ You can also explicitly choose to install into your user directory by adding the
 
     python -m pip install . --user
 
+This will install the DYNAMITE Python scripts as well as the previously compiled Fortran programs.
+However, the weight solver ``cvxopt`` is optional and not included in the standard DYNAMITE installation because its installation proved to
+be problematic for some users. To include ``cvxopt``, it can be specified (with or without a following ``--user``) as::
+
+    python -m pip install .[cvxopt]
+
+or installed manually.
+
 For a detailed report of what the installation did, ``pip`` can create a JSON file. This can be done by::
 
     python -m pip install . --report what_pip_did.json
-
 
 Several Python packages are installed in this way (if they are not already), including:
 
@@ -414,7 +421,7 @@ The system's (or your user's) installation directory can be cleaned up by::
 
     python -m pip uninstall dynamite
 
-Before actual deletion takes place, ``pip`` will display a list of files and directories that will be remeoved and wait for your confirmation.
+Before actual deletion takes place, ``pip`` will display a list of files and directories that will be removed and wait for your confirmation.
 
 ..
     Post-Installation
