@@ -224,7 +224,7 @@ class Plotter():
         figname = self.plotdir + which_chi2 + '_plot' + figtype
 
         colormap_orig = mpl.cm.viridis
-        colormap = mpl.cm.get_cmap('viridis_r')
+        colormap = mpl.colormaps.get_cmap('viridis_r')
 
         size = 12+len(nofix_islog)
         fontsize = max(size-4,15)
