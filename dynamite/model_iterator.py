@@ -98,7 +98,7 @@ class ModelIterator(object):
                     self.kinematic_maps = \
                         the_plotter.plot_kinematic_maps(kin_set='all',
                                                         cbar_lims='default')
-                    plt.close('all') # just to make sure...
+                    plt.close('all')  # just to make sure...
                 except:
                     self.logger.warning(f'Iteration {total_iter}: '
                                         'plotting failed!')
@@ -112,7 +112,7 @@ class ModelIterator(object):
         tuple of matplotlib.pyplot.figure:
             matplotlib.pyplot.figure: chi2 vs. model id plot
             matplotlib.pyplot.figure: chisquare plot
-            (matplotlib.pyplot.figure, str): kinematic maps of best model so 
+            (matplotlib.pyplot.figure, str): kinematic maps of best model so
             far, kinematics name
 
         """

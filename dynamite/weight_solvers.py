@@ -440,7 +440,7 @@ class LegacyWeightSolver(WeightSolver):
         """
         fname = self.direc_with_ml + 'nn_orbmat.out'
         orbmat_shape = np.loadtxt(fname, max_rows=1, dtype=int)
-        orbmat_size = np.product(orbmat_shape)
+        orbmat_size = np.prod(orbmat_shape)
         tmp = np.loadtxt(fname, skiprows=1)
         orbmat = tmp[0:orbmat_size]
         orbmat = np.reshape(orbmat, orbmat_shape)
@@ -480,7 +480,7 @@ class LegacyWeightSolver(WeightSolver):
 
         intrinsic_masses = mge.get_intrinsic_masses_from_file(self.direc_no_ml)
         projected_masses = mge.get_projected_masses_from_file(self.direc_no_ml)
-        n_intrinsic = np.product(intrinsic_masses.shape)
+        n_intrinsic = np.prod(intrinsic_masses.shape)
         n_apertures = len(projected_masses)
         chi2_kin = np.sum(chi2_vector[1+n_intrinsic+n_apertures:])
         return weights, chi2_tot, chi2_kin
@@ -629,7 +629,7 @@ class NNLS(WeightSolver):
         self.total_mass_error = np.min([self.intrinsic_mass_error/10.,
                                         np.abs(1. - self.total_mass)])
         # enumerate the mass constriants
-        n_intrinsic = np.product(self.intrinsic_masses.shape)
+        n_intrinsic = np.prod(self.intrinsic_masses.shape)
         n_apertures = len(self.projected_masses)
         self.n_intrinsic = n_intrinsic
         self.n_apertures = n_apertures
