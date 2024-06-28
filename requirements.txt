@@ -3,8 +3,8 @@ cmasher>=1.6.0
 cvxopt>=1.2.6
 h5py>=3.1.0
 lmfit
-matplotlib>=3.3.4
-numpy>=1.21
+matplotlib<3.9,>=3.3.4
+numpy<2,>=1.21
 pafit>=2.0.8
 pathos>=0.2.7
 plotbin>=3.1.3

@@ -287,18 +287,6 @@ class Configuration(object):
                             kin_list.append(kinematics_set)
                         c.kinematic_data = kin_list
 
-                    # cast hist. values to correct numeric type unless `default`
-                    for i, k in enumerate(c.kinematic_data):
-                        if (k.hist_width=='default') is False:
-                            logger.debug(f'hist_width = {k.hist_width}')
-                            k.hist_width = float(k.hist_width)
-                        if (k.hist_center=='default') is False:
-                            logger.debug(f'hist_center = {k.hist_center}')
-                            k.hist_center = float(k.hist_center)
-                        if (k.hist_bins=='default') is False:
-                            logger.debug(f'hist_bins = {k.hist_bins}')
-                            k.hist_bins = int(k.hist_bins)
-
                     # read populations
 
                     if 'populations' in data_comp:
@@ -314,21 +302,6 @@ class Configuration(object):
                                                 **data_pop)
                             pop_list.append(populations_set)
                         c.population_data = pop_list
-
-                    # cast hist. values to correct numeric type unless `default`
-                    for i, p in enumerate(c.population_data):
-                        if (p.hist_width == 'default') is False:
-                            logger.debug(f'{p.name} hist_width = '
-                                         f'{p.hist_width}')
-                            p.hist_width = float(p.hist_width)
-                        if (p.hist_center == 'default') is False:
-                            logger.debug(f'{p.name} hist_center = '
-                                         f'{p.hist_center}')
-                            p.hist_center = float(p.hist_center)
-                        if (p.hist_bins == 'default') is False:
-                            logger.debug(f'{p.name} hist_bins = '
-                                         f'{p.hist_bins}')
-                            p.hist_bins = int(p.hist_bins)
 
                     if 'mge_pot' in data_comp:
                         path = self.settings.io_settings['input_directory']

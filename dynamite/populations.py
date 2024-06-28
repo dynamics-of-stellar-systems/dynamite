@@ -23,15 +23,15 @@ class Populations(data.Integrated):
             if hist_width=='default':
                 self.set_default_hist_width()  # needed for pop data?
             else:
-                self.hist_width = hist_width
+                self.hist_width = float(hist_width)
             if hist_center=='default':
                 self.set_default_hist_center()  # needed for pop data?
             else:
-                self.hist_center = hist_center
+                self.hist_center = float(hist_center)
             if hist_bins=='default':
                 self.set_default_hist_bins()  # needed for pop data?
             else:
-                self.hist_bins = hist_bins
+                self.hist_bins = int(hist_bins)
             self.__class__.values = list(self.__dict__.keys())
             self.logger = logging.getLogger(f'{__name__}.{__class__.__name__}')
             if self.weight is None or self.hist_width is None or \

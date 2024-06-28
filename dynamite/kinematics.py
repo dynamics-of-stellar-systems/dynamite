@@ -31,15 +31,15 @@ class Kinematics(data.Data):
             if hist_width=='default':
                 self.set_default_hist_width()
             else:
-                self.hist_width = hist_width
+                self.hist_width = float(hist_width)
             if hist_center=='default':
                 self.set_default_hist_center()
             else:
-                self.hist_center = hist_center
+                self.hist_center = float(hist_center)
             if hist_bins=='default':
                 self.set_default_hist_bins()
             else:
-                self.hist_bins = hist_bins
+                self.hist_bins = int(hist_bins)
             self.__class__.values = list(self.__dict__.keys())
             self.logger = logging.getLogger(f'{__name__}.{__class__.__name__}')
             if self.weight==None or self.type==None or self.hist_width==None or \
@@ -706,7 +706,7 @@ class GaussHermite(Kinematics, data.Integrated):
         v, sig = self.data['v'], self.data['sigma']
         max_abs_v_plus_3sig = np.max(np.abs(v) + n_sig*sig)
         hist_width = 2.*max_abs_v_plus_3sig
-        self.hist_width = hist_width
+        self.hist_width = float(hist_width)
 
     def set_default_hist_center(self):
         """Sets default histogram center to 0.
