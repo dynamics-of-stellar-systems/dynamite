@@ -66,7 +66,7 @@ class Populations(data.Integrated):
 
         for k, v in kwargs.items():
             if k not in self.__class__.values:
-                text = 'Invalid population key ' + k + '. Allowed keys: ' + \
+                text = 'Invalid populations key ' + k + '. Allowed keys: ' + \
                        str(tuple(self.__class__.values))
                 self.logger.error(text)
                 raise ValueError(text)
@@ -74,7 +74,7 @@ class Populations(data.Integrated):
 
     def validate(self): # here we can put more validation...
         if sorted(self.__class__.values) != sorted(self.__dict__.keys()):
-            text = 'Population attributes can only be ' + \
+            text = 'Populations attributes can only be ' + \
                    str(tuple(self.__class__.values)) + ', not ' + \
                    str(tuple(self.__dict__.keys()))
             self.logger.error(text)
@@ -82,5 +82,22 @@ class Populations(data.Integrated):
 
     def __repr__(self):
         return f'{self.__class__.__name__}({self.__dict__})'
+
+    def get_data(self, **kwargs):
+        """Returns the populations data.
+
+        This returns a deep copy of the self.data attribute.
+
+        Parameters
+        ----------
+        **kwargs : argument list (optional)
+
+        Returns
+        -------
+        astropy table
+            The populations data
+
+        """
+        return self.data.copy(copy_data=True)
 
 # end

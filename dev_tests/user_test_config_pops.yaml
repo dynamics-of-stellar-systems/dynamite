@@ -107,7 +107,7 @@ system_components:
                 # with_pops: False # IMPLEMENT ME: default False, if true, assume gauss_hermite_kins.ecsv has population columns used to create
         populations: # optional, only specified for components with kinematics
             pop1:
-                weight: 1.0 # weight of kinematics data specified by name
+                weight: 1.0 # weight of populations data specified by name
                 # type: GaussHermite # specifies which object class to create
                 hist_width: '2719.8215332031'
                 hist_center: '0.0000'

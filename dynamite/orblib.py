@@ -99,16 +99,17 @@ class LegacyOrbitLibrary(OrbitLibrary):
                 stars = self.system.get_unique_bar_component()
             else:
                 stars = self.system.get_unique_triaxial_visible_component()
-            kinematics = stars.kinematic_data
-            # create the kinematic input files for each kinematic dataset
-            for i in np.arange(len(kinematics)):
-                # copy aperture and bins file across
-                aperture_file = self.in_dir + kinematics[i].aperturefile
-                shutil.copyfile(aperture_file,
-                            self.mod_dir+'infil/'+ kinematics[i].aperturefile)
-                binfile = self.in_dir + kinematics[i].binfile
-                shutil.copyfile(binfile,
-                            self.mod_dir+'infil/'+ kinematics[i].binfile)
+            # create the kinematics and populations input files
+            # for each kinematic dataset and population dataset
+            for kin_pop in stars.kinematic_data, stars.population_data:
+                for i in np.arange(len(kin_pop)):
+                    # copy aperture and bins files across
+                    aperture_file = self.in_dir + kin_pop[i].aperturefile
+                    shutil.copyfile(aperture_file,
+                                self.mod_dir+'infil/'+ kin_pop[i].aperturefile)
+                    binfile = self.in_dir + kin_pop[i].binfile
+                    shutil.copyfile(binfile,
+                                self.mod_dir+'infil/'+ kin_pop[i].binfile)
             # calculate orbit libary
             file1 = 'begin.dat'
             file2 = 'beginbox.dat'
@@ -256,7 +257,7 @@ class LegacyOrbitLibrary(OrbitLibrary):
             else:
                 f.write(f'datfil/begin.dat\n')
             label = '[number of orbital periods to integrate]'
-            line = f"{self.settings['orbital_periods']}\t\t{label}\n"
+            line = f"{self.settings['orbital_periods']}{tab}{label}\n"
             f.write(line)
             label = '[points to sample for each orbit in the merid. plane]'
             line = f"{self.settings['sampling']}{tab}{label}\n"
@@ -270,49 +271,92 @@ class LegacyOrbitLibrary(OrbitLibrary):
             label = '[accuracy]'
             line = f"{self.settings['accuracy']}{tab}{label}\n"
             f.write(line)
-            n_psf = len(stars.kinematic_data)
-            label = '[number of psfs of the kinematic data]'
-            line = f"{n_psf}{tab}{label}\n"
+            n_psf_kin = len(stars.kinematic_data)
+            n_psf_pop = len(stars.population_data)
+            label = '[number of psfs of the kinematic data + population data]'
+            line = f"{n_psf_kin+n_psf_pop}{tab}{label}\n"
             f.write(line)
-            for i in range(n_psf):
+            for i in range(n_psf_kin):
                 psf_i = stars.kinematic_data[i].PSF
                 n_gauss_psf_i = len(psf_i['sigma'])
-                label = f'[# of gaussians in psf {i+1}]'
+                label = f'[# of gaussians in kinematics psf {i+1}]'
                 line = f"{n_gauss_psf_i}{tab}{label}\n"
                 f.write(line)
-            for i in range(n_psf):
+            for i in range(n_psf_pop):
+                psf_i = stars.population_data[i].PSF
+                n_gauss_psf_i = len(psf_i['sigma'])
+                label = f'[# of gaussians in populations psf {i+1}]'
+                line = f"{n_gauss_psf_i}{tab}{label}\n"
+                f.write(line)
+            for i in range(n_psf_kin):
                 psf_i = stars.kinematic_data[i].PSF
                 for j in range(len(psf_i['sigma'])):
                     weight_ij, sigma_ij = psf_i['weight'][j], psf_i['sigma'][j]
-                    label = f'[weight, sigma of comp {j+1} of psf {i+1}]'
+                    label = f'[weight, sigma of comp {j+1} of kins psf {i+1}]'
                     line = f"{weight_ij} {sigma_ij}{tab}{label}\n"
                     f.write(line)
-            # every kinematic-set has a psf and aperture, so n_psf = n_aperture
-            n_aperture = n_psf
-            label = '[# of apertures]'
-            line = f'{n_aperture}{tab}{label}\n'
+            for i in range(n_psf_pop):
+                psf_i = stars.population_data[i].PSF
+                for j in range(len(psf_i['sigma'])):
+                    weight_ij, sigma_ij = psf_i['weight'][j], psf_i['sigma'][j]
+                    label = f'[weight, sigma of comp {j+1} of pops psf {i+1}]'
+                    line = f"{weight_ij} {sigma_ij}{tab}{label}\n"
+                    f.write(line)
+            # every kinematic set and population set has a psf and aperture,
+            # so n_psf_kin = n_aperture_kin and n_psf_pop = n_aperture_pop
+            n_aperture_kin = n_psf_kin
+            n_aperture_pop = n_psf_pop
+            label = '[# of apertures of the kinematic data + population data]'
+            line = f'{n_aperture_kin + n_aperture_pop}{tab}{label}\n'
             f.write(line)
-            for i in np.arange(n_aperture):
+            for i in np.arange(n_aperture_kin):
                 kin_i = stars.kinematic_data[i]
                 # aperturefile cant have a label since fortran reads whole line
                 f.write(f'"infil/{kin_i.aperturefile}"\n')
-                label = f'[use psf {i+1} for {kin_i.name}]'
+                label = f'[use kinematics psf {i+1} for {kin_i.name}]'
                 line = f'{i+1}{tab}{label}\n'
                 f.write(line)
-            for i in np.arange(n_aperture):
-                kin_i = stars.kinematic_data[i]
-                label = f'[vhist width, center and nbins for {kin_i.name}]'
-                w, c, b = kin_i.hist_width, kin_i.hist_center, kin_i.hist_bins
-                line = f'{w} {c} {b}{tab}{label}\n'
+            for i in np.arange(n_aperture_pop):
+                pop_i = stars.population_data[i]
+                # aperturefile cant have a label since fortran reads whole line
+                f.write(f'"infil/{pop_i.aperturefile}"\n')
+                label = f'[use populations psf {i+1} = ' \
+                        f'total psf {i+n_psf_kin+1} for {pop_i.name}]'
+                line = f'{i+n_psf_kin+1}{tab}{label}\n'
                 f.write(line)
-            for i in np.arange(n_aperture):
-                label = f'[use binning for aperture {1+i}? 0/1 = yes/no]'
+            for i in np.arange(n_aperture_kin):
+                kin_i = stars.kinematic_data[i]
+                label = '[vhist width, center and nbins for kinematics ' \
+                        f'{kin_i.name}]'
+                w, c, b = kin_i.hist_width, kin_i.hist_center, kin_i.hist_bins
+                line = f'{w} {c} {b}{tab[:-1]}{label}\n'
+                f.write(line)
+            for i in np.arange(n_aperture_pop):
+                pop_i = stars.population_data[i]
+                label = '[vhist width, center and nbins for populations ' \
+                        f'{pop_i.name}]'
+                w, c, b = pop_i.hist_width, pop_i.hist_center, pop_i.hist_bins
+                line = f'{w} {c} {b}{tab[:-1]}{label}\n'
+                f.write(line)
+            for i in np.arange(n_aperture_kin):
+                label = f'[use binning for kinematics aperture {1+i}? ' \
+                        '0/1 = yes/no]'
                 line = f'1{tab}{label}\n'
                 f.write(line)
-            for i in np.arange(n_aperture):
+            for i in np.arange(n_aperture_pop):
+                label = f'[use binning for populations aperture {1+i}? ' \
+                        '0/1 = yes/no]'
+                line = f'1{tab}{label}\n'
+                f.write(line)
+            for i in np.arange(n_aperture_kin):
                 kin_i = stars.kinematic_data[i]
-                label = f'[binfile for aperture {1+i}]'
+                label = f'[binfile for kinematics aperture {1+i}]'
                 line = f'"infil/{kin_i.binfile}"{tab}{label}\n'
+                f.write(line)
+            for i in np.arange(n_aperture_pop):
+                pop_i = stars.population_data[i]
+                label = f'[binfile for populations aperture {1+i}]'
+                line = f'"infil/{pop_i.binfile}"{tab}{label}\n'
                 f.write(line)
             if box:
                 f.write(f'datfil/orblibbox.dat\n')
@@ -335,24 +379,40 @@ class LegacyOrbitLibrary(OrbitLibrary):
         #write triaxmassbin.in
         #-----------------------
         tab = '\t\t\t\t\t\t\t\t'
-        n_psf = len(stars.kinematic_data)
+        n_psf_kin = len(stars.kinematic_data)
+        n_psf_pop = len(stars.population_data)
         f = open(path + 'triaxmassbin.in', 'w')
         f.write('infil/parameters_lum.in\n')
-        f.write(f'{n_psf}{tab}[# of apertures]\n')
-        for i in range(n_psf):
+        f.write(f'{n_psf_kin+n_psf_pop}{tab}'
+                '[# of kinematics + populations apertures]\n')
+        for i in range(n_psf_kin):
             kin_i = stars.kinematic_data[i]
             f.write(f'"infil/{kin_i.aperturefile}"\n')
             psf_i = kin_i.PSF
             n_gauss_psf_i = len(psf_i['sigma'])
-            label = f'[# of gaussians in psf {i+1}]'
+            label = f'[# of gaussians in kinematics psf {i+1}]'
             line = f"{n_gauss_psf_i}{tab}{label}\n"
             f.write(line)
             for j in range(n_gauss_psf_i):
                 weight_ij, sigma_ij = psf_i['weight'][j], psf_i['sigma'][j]
-                label = f'[weight, sigma of comp {j+1} of psf {i+1}]'
+                label = f'[weight, sigma of comp {j+1} of kin psf {i+1}]'
                 line = f"{weight_ij} {sigma_ij}{tab}{label}\n"
                 f.write(line)
             f.write(f'"infil/{kin_i.binfile}"\n')
+        for i in range(n_psf_pop):
+            pop_i = stars.population_data[i]
+            f.write(f'"infil/{pop_i.aperturefile}"\n')
+            psf_i = pop_i.PSF
+            n_gauss_psf_i = len(psf_i['sigma'])
+            label = f'[# of gaussians in populations psf {i+1}]'
+            line = f"{n_gauss_psf_i}{tab}{label}\n"
+            f.write(line)
+            for j in range(n_gauss_psf_i):
+                weight_ij, sigma_ij = psf_i['weight'][j], psf_i['sigma'][j]
+                label = f'[weight, sigma of comp {j+1} of pop psf {i+1}]'
+                line = f"{weight_ij} {sigma_ij}{tab}{label}\n"
+                f.write(line)
+            f.write(f'"infil/{pop_i.binfile}"\n')
         f.write('"datfil/mass_aper.dat"')
         f.close()
 
