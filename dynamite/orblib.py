@@ -702,6 +702,7 @@ class LegacyOrbitLibrary(OrbitLibrary):
         # from histogram_setup_write, lines 1917-1926:
         tmp = orblibf.read_record(np.int32, np.int32, float)
         nconstr = tmp[0][0] # = total number of apertures for ALL kinematics
+                            #   and populations
         # nvhist = tmp[1][0] # = (nvbins-1)/2 for histo of FIRST kinematic set
         # dvhist = tmp[2][0] # = delta_v in histogram for FIRST kinematic set
         # these nvhist and dvhist are for the first kinematic set only
@@ -709,21 +710,32 @@ class LegacyOrbitLibrary(OrbitLibrary):
         # histogram settings for other N-1 sets may be different from the first
         # these aren't stored in orblib.dat so must read from kinematics objects
         stars = self.system.get_unique_triaxial_visible_component()
+        # For now, also calculate velocity histograms for population data...
         n_kins = len(stars.kinematic_data)
+        n_pops = len(stars.population_data)
         hist_widths = [k.hist_width for k in stars.kinematic_data]
+        hist_widths += [p.hist_width for p in stars.population_data]
         hist_centers = [k.hist_center for k in stars.kinematic_data]
+        hist_centers += [p.hist_center for p in stars.population_data]
         hist_bins = [k.hist_bins for k in stars.kinematic_data]
+        hist_bins += [p.hist_bins for p in stars.population_data]
         self.logger.debug('Checking number of velocity bins...')
-        error_msg = 'must have odd number of velocity bins for all kinematics'
+        error_msg = 'must have odd number of velocity bins for all ' \
+                    'kinematics and populations'
         assert np.all(np.array(hist_bins) % 1==0), error_msg
         self.logger.debug('...checks ok.')
         n_apertures = [k.n_spatial_bins for k in stars.kinematic_data]
+        n_apertures += [p.n_spatial_bins for p in stars.population_data]
         # get index linking  kinematic set to aperture
         # kin_idx_per_ap[i] = N <--> aperture i is from kinematic set N
-        kin_idx_per_ap = [np.zeros(n_apertures[i], dtype=int)+i
-                          for i in range(n_kins)]
-        kin_idx_per_ap = np.concatenate(kin_idx_per_ap)
-        kin_idx_per_ap = np.array(kin_idx_per_ap, dtype=int)
+        # NEW: Extended to kinematic and population data, this now reads:
+        # get index linking kinematic and population sets to apertures
+        # kinpop_idx_per_ap[i] = N <--> aperture i is from kinematic set N
+        #   if N < n_kins or from population set N - n_kins if N >= n_kins
+        kinpop_idx_per_ap = [np.zeros(n_apertures[i], dtype=int) + i
+                             for i in range(n_kins + n_pops)]
+        kinpop_idx_per_ap = np.concatenate(kinpop_idx_per_ap)
+        kinpop_idx_per_ap = np.array(kinpop_idx_per_ap, dtype=int)
         # below we loop i_ap from 1-n_total_apertures but will need the index of
         # i_ap for the relevant kinematic set: we use `idx_ap_reset` to do this
         cum_n_apertures = np.cumsum(n_apertures)
@@ -751,23 +763,24 @@ class LegacyOrbitLibrary(OrbitLibrary):
             # We need to extract 3D density for use in weight solving.
             density_3D[j] = quad_light[:,:,:,0]
             for i_ap in range(nconstr):
-                kin_idx = kin_idx_per_ap[i_ap]
-                i_ap0 = i_ap - idx_ap_reset[kin_idx]
+                kinpop_idx = kinpop_idx_per_ap[i_ap]
+                i_ap0 = i_ap - idx_ap_reset[kinpop_idx]
                 ivmin, ivmax = orblibf.read_ints(np.int32)
                 if ivmin <= ivmax:
-                    nv0 = (hist_bins[kin_idx]-1)/2
+                    nv0 = (hist_bins[kinpop_idx]-1)/2
                     # ^--- this is an integer since hist_bins is odd
                     nv0 = int(nv0)
                     tmp = orblibf.read_reals(float)
-                    velhist0[kin_idx][j, ivmin+nv0:ivmax+nv0+1, i_ap0] = tmp
+                    velhist0[kinpop_idx][j, ivmin+nv0:ivmax+nv0+1, i_ap0] = tmp
             if return_instrisic_moments:
                 intrinsic_moms[j] = quad_light
         orblibf.close()
         # remove temporary file
         os.remove(tmpfname)
         os.chdir(cur_dir)
+        # For now, also calculate velocity histograms for population data...
         velhists = []
-        for i in range(n_kins):
+        for i in range(n_kins + n_pops):
             center0 = hist_centers[i]
             width0 = hist_widths[i]
             bins0 = hist_bins[i]
