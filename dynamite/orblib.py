@@ -885,27 +885,50 @@ class LegacyOrbitLibrary(OrbitLibrary):
                                        normalise=False)
         return new_orblib
 
-    def read_losvd_histograms(self):
+    def read_losvd_histograms(self, kins=True, pops=False):
         """Read the orbit library
 
         Read box orbits and tube orbits, mirrors the latter, and combines.
         Rescales the velocity axis according to the ``ml`` value. Sets LOSVDs
         and 3D grid/aperture masses of the combined orbit library.
 
+        Parameters
+        ----------
+        kins : Bool
+            If True, return LOSVD histograms for the kinematics apertures.
+        pops : Bool
+            If True, return LOSVD histograms for the populations apertures.
+            If both kins and pops are True, population data is returned
+            following kinematic data.
+
         Returns
         -------
         Sets the attributes:
             -   ``self.losvd_histograms``: a list, whose i'th entry is a
                 ``dyn.kinematics.Histogram`` object holding the orbit lib LOSVDs
-                binned for the i'th kinematic set
+                binned for the i'th kinematic/population set
             -   ``self.intrinsic_masses``: 3D grid/intrinsic masses of orbit lib
             -   ``self.projected_masses``: aperture/proj. masses of orbit lib
             -   ``self.n_orbs``: number of orbits in the orbit library
 
         """
+        if self.system.is_bar_disk_system():
+            stars = self.system.get_unique_bar_component()
+        else:
+            stars = self.system.get_unique_triaxial_visible_component()
+        n_kins = len(stars.kinematic_data)
+
         # TODO: check if this ordering is compatible with weights read in by
         # LegacyWeightSolver.read_weights
         tube_orblib, tube_density_3D = self.read_orbit_base('orblib')
+        if not (kins or pops):
+            txt = 'Specify kins or pops.'
+            self.logger.error(txt)
+            raise ValueError(txt)
+        if kins and not pops:
+            tube_orblib = tube_orblib[:n_kins]
+        elif pops and not kins:  # FIXME: fix once kinematics get attribute with_pops!
+            tube_orblib = tube_orblib[n_kins:]
 
         if not self.system.is_bar_disk_system():
             # tube orbits are mirrored/flipped and used twice
@@ -917,6 +940,10 @@ class LegacyOrbitLibrary(OrbitLibrary):
 
         # read box orbits
         box_orblib, box_density_3D = self.read_orbit_base('orblibbox')
+        if kins and not pops:
+            box_orblib = box_orblib[:n_kins]
+        elif pops and not kins:  # FIXME: fix once kinematics get attribute with_pops!
+            box_orblib = box_orblib[n_kins:]
         # combine orblibs
         orblib = []
         for (t0, b0) in zip(tube_orblib, box_orblib):
