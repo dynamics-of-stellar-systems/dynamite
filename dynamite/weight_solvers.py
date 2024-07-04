@@ -643,7 +643,6 @@ class NNLS(WeightSolver):
             txt = 'Specify kins or pops.'
             self.logger.error(txt)
             raise ValueError(txt)
-        self.logger.warning(f'{self.projected_masses.shape=}.')
         self.projected_mass_error = self.settings['sb_proj_rel_err']
         # total mass constraint
         self.total_mass = np.sum(intrinsic_masses)
