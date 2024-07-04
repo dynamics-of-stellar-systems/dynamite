@@ -120,6 +120,17 @@ system_components:
                 datafile: "gauss_hermite_kins.ecsv"  # both discr. & integrated
                 aperturefile: "aperture.dat" # integrated only
                 binfile: "bins.dat"          # integrated only
+                # with_pops: False # IMPLEMENT ME: default False, if true, assume gauss_hermite_kins.ecsv has population columns used to create
+        # populations: # optional, only specified for components with kinematics
+        #     pop1:
+        #         weight: 1.0 # weight of populations data specified by name
+        #         # type: GaussHermite # specifies which object class to create
+        #         hist_width: '2719.8215332031'
+        #         hist_center: '0.0000'
+        #         hist_bins: '203'
+        #         datafile: "stellar_pops.ecsv"  # both discr. & integrated
+        #         aperturefile: "aperture_for_pops.dat" # integrated only
+        #         binfile: "bins_for_pops.dat"          # integrated only
 
 system_parameters:
     ml: # M/L
@@ -159,7 +170,7 @@ weight_solver_settings:
     # nnls_solver: 1
     type: "NNLS"
     nnls_solver: 'scipy'
-    CRcut: True
+    CRcut: False  # True
     regularisation: 0
     number_GH: 4
     GH_sys_err: '0.0 0.0 0.0 0.0 0.3 0.3 0.6 0.6'
