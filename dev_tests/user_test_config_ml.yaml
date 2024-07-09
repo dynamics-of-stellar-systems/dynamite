@@ -118,6 +118,7 @@ system_components:
                 hist_center: '0.0000'
                 hist_bins: '203'
                 datafile: "gauss_hermite_kins.ecsv"  # both discr. & integrated
+                # datafile: "gauss_hermite_kins_with_pops.ecsv"  # both discr. & integrated
                 aperturefile: "aperture.dat" # integrated only
                 binfile: "bins.dat"          # integrated only
                 # with_pops: False # IMPLEMENT ME: default False, if true, assume gauss_hermite_kins.ecsv has population columns used to create

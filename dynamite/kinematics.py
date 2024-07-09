@@ -25,6 +25,7 @@ class Kinematics(data.Data):
                  **kwargs
                  ):
         super().__init__(**kwargs)
+        self.logger = logging.getLogger(f'{__name__}.{__class__.__name__}')
         if hasattr(self, 'data'):
             self.weight = weight
             self.type = type
@@ -40,8 +41,14 @@ class Kinematics(data.Data):
                 self.set_default_hist_bins()
             else:
                 self.hist_bins = int(hist_bins)
+            pop_columns = ['t', 'dt', 'Z', 'dZ']
+            if all(c in self.data.colnames for c in pop_columns):
+                self.logger.debug(f'Kinem {self.name} has population data.')
+                self.with_pops = True
+                self.data.remove_columns(pop_columns)
+            else:
+                self.with_pops = False
             self.__class__.values = list(self.__dict__.keys())
-            self.logger = logging.getLogger(f'{__name__}.{__class__.__name__}')
             if self.weight==None or self.type==None or self.hist_width==None or \
                     self.hist_center==None or self.hist_bins==None:
                 text = 'Kinematics need (weight, type, hist_width, hist_center, '\

@@ -278,13 +278,31 @@ class Configuration(object):
                     # VisibleComponent has kinematics?)
                         logger.debug('Has kinematics '
                                     f'{list(data_comp["kinematics"].keys())}')
+                        kin_id = 0
                         for kin, data_kin in data_comp['kinematics'].items():
                             path=self.settings.io_settings['input_directory']
                             kinematics_set = getattr(kinem,data_kin['type'])\
                                                 (name=kin,
                                                  input_directory=path,
                                                  **data_kin)
+                            if kinematics_set.with_pops:
+                                populations_set = popul.Populations(
+                                        name=f'{kin}_pop',
+                                        input_directory=path,
+                                        weight=data_kin['weight'],
+                                        aperturefile=data_kin['aperturefile'],
+                                        binfile=data_kin['binfile'],
+                                        datafile=data_kin['datafile'],
+                                        hist_width=data_kin['hist_width'],
+                                        hist_center=data_kin['hist_center'],
+                                        hist_bins=data_kin['hist_bins'],
+                                        kin_aper=kin_id)
+                                populations_set.clean_data()
+                                pop_list.append(populations_set)
+                                logger.debug('Has population in kinematics '
+                                             f'bins: {populations_set}')
                             kin_list.append(kinematics_set)
+                            kin_id += 1
                         c.kinematic_data = kin_list
 
                     # read populations

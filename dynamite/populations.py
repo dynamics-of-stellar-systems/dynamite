@@ -14,9 +14,11 @@ class Populations(data.Integrated):
                  hist_width='default',
                  hist_center='default',
                  hist_bins='default',
+                 kin_aper=None,
                  **kwargs
                  ):
         super().__init__(**kwargs)
+        self.kin_aper = kin_aper
         if hasattr(self, 'data'):
             self.weight = weight
             self.type = type
@@ -100,4 +102,17 @@ class Populations(data.Integrated):
         """
         return self.data.copy(copy_data=True)
 
+    def clean_data(self):
+        """
+        Removes all data columns except for the index and the populations data.
+
+        Returns
+        -------
+        None.
+
+        """
+        pop_columns = ['t', 'dt', 'Z', 'dZ']
+        self.data.remove_columns(c
+                                 for c in self.data.columns[1:]
+                                 if c not in pop_columns)
 # end
