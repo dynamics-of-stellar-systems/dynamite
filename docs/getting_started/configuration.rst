@@ -295,7 +295,7 @@ Settings relevant for parameter search.
     - ``which_chi2``: string, specifies which :math:`\chi^2` value to consider when generating new parameters, must be one of the following:
         - ``kinchi2``: this includes contributions from only the kinematics. If ``GaussHermite`` kinematics are used then this is includes terms from all Hermite coefficients :math:`h_1, h2, h3, ..., h_N`. If ``BayesLOSVD`` kinematics are used, then this includes contributions from all LOSVD bins.
         - ``chi2``: this includes contributions from the observed surface density, de-projected 3D density, and kinematics (as specified above).
-        - ``kinmapchi2``: the `\chi^2` directly calculated from the ``GaussHermite`` kinematic maps (not available for ``BayesLOSVD`` kinematics).
+        - ``kinmapchi2``: the :math:`\chi^2` directly calculated from the ``GaussHermite`` kinematic maps (not available for ``BayesLOSVD`` kinematics).
     - ``generator_settings``: if ``generator_type = LegacyGridSearch``, then one of the following two settings must be set. These are the :math:`|\chi^2|` thresholds used for in ``LegacyGridSearch``,
         - ``threshold_del_chi2_abs``: an absolute :math:`|\chi^2|` threshold
         - ``threshold_del_chi2_as_frac_of_sqrt2nobs``: a threshold given as a fraction of :math:`\sqrt{2N_\mathrm{obs}}` where :math:`N_\mathrm{obs}` is the total number of kinematic observations, which is equal to the number of spatial apertures multiplied by (i) ``number_GH`` if ``GaussHermite`` kinematics are used, or (ii) the number of LOSVD bins if ``BayesLOSVD`` kinematics are used.
