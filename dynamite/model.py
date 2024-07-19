@@ -1035,6 +1035,9 @@ class Model(object):
         else:
             raise ValueError(f'Unknown WeightSolver type {ws_type}.')
         weights, chi2_tot, chi2_kin, chi2_kinmap = weight_solver.solve(orblib)
+        if np.isnan(weights[0]):
+            self.logger.warning(f'Could not solve model in {self.directory}, '
+                                'weights = nan and chi2 = nan.')
         self.chi2 = chi2_tot # instrinsic/projected mass + GH coeeficients 1-Ngh
         self.kinchi2 = chi2_kin # GH coeeficients 1-Ngh
         self.kinmapchi2 = chi2_kinmap
