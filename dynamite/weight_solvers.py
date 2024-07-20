@@ -799,14 +799,8 @@ class NNLS(WeightSolver):
         else:
             A, b = self.construct_nnls_matrix_and_rhs(orblib)
             if self.nnls_solver=='scipy':
-                try:
-                    solution = optimize.nnls(A, b)
-                    weights = solution[0]
-                except Exception as e:
-                    self.logger.warning(f'Solver error occured: {e} '
-                                        'All weights and chi2 set to nan. '
-                                        'May consider trying cvxopt.')
-                    weights = np.full(A.shape[1], np.nan)
+                solution = optimize.nnls(A, b)
+                weights = solution[0]
             elif self.nnls_solver=='cvxopt':
                 P = np.dot(A.T, A)
                 q = -1.*np.dot(A.T, b)
@@ -817,8 +811,7 @@ class NNLS(WeightSolver):
                 self.logger.error(text)
                 raise ValueError(text)
             np.savetxt(self.weight_file, weights)
-            if not np.isnan(weights[0]):
-                self.logger.info("NNLS problem solved")
+            self.logger.info("NNLS problem solved")
             # calculate chi2s
             chi2_vector = (np.dot(A, weights) - b)**2.
             chi2_tot = np.sum(chi2_vector)
