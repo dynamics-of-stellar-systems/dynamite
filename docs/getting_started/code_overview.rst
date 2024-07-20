@@ -109,6 +109,7 @@ Comments on kinematics
 ----------------------
 
 LegacyWeightSolver can't be used with BayesLOSVD - use weight-solver type NNLS.
+In some cases, the weight solver ``type: "NNLS"`` ``nnls_solver: "scipy"`` may fail for some models if the SciPy version is >= 1.12. In such cases, it is recommended to use ``type: "NNLS"`` ``nnls_solver: "cvxopt"`` or to reinstall DYNAMITE with ``scipy<1.12`` in ``requirements.txt``.
 
 It is possible to simultaneously fit multiple sets of kinematics in DYNAMITE, which is only supported for Gauss Hermite kinematics. In that case, all input files should be placed in this directory::
 
