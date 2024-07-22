@@ -7,6 +7,14 @@ class Populations(data.Integrated):
     """
     Populations class holding attributes and methods pertaining to population
     data
+
+
+    Parameters
+    ----------
+    kin_aper : int or None
+        If an integer, the index of the kinematic data set (starting with 0)
+        which shares its apertures with the population data set.
+        If None (the default), the population data set has its own apertures.
     """
     values = []
     def __init__(self,
@@ -15,8 +23,7 @@ class Populations(data.Integrated):
                  hist_center='default',
                  hist_bins='default',
                  kin_aper=None,
-                 **kwargs
-                 ):
+                 **kwargs):
         super().__init__(**kwargs)
         self.kin_aper = kin_aper
         if hasattr(self, 'data'):
@@ -85,14 +92,10 @@ class Populations(data.Integrated):
     def __repr__(self):
         return f'{self.__class__.__name__}({self.__dict__})'
 
-    def get_data(self, **kwargs):
+    def get_data(self):
         """Returns the populations data.
 
         This returns a deep copy of the self.data attribute.
-
-        Parameters
-        ----------
-        **kwargs : argument list (optional)
 
         Returns
         -------
