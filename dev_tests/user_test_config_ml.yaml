@@ -117,11 +117,11 @@ system_components:
                 hist_width: '2719.8215332031'
                 hist_center: '0.0000'
                 hist_bins: '203'
-                datafile: "gauss_hermite_kins.ecsv"  # both discr. & integrated
-                # datafile: "gauss_hermite_kins_with_pops.ecsv"  # both discr. & integrated
+                # datafile: "gauss_hermite_kins.ecsv"  # both discr. & integrated
+                datafile: "gauss_hermite_kins_with_pops.ecsv"  # both discr. & integrated
                 aperturefile: "aperture.dat" # integrated only
                 binfile: "bins.dat"          # integrated only
-                # with_pops: False # IMPLEMENT ME: default False, if true, assume gauss_hermite_kins.ecsv has population columns used to create
+                with_pops: False # If True, pop columns will create pop object
         # populations: # optional, only specified for components with kinematics
         #     pop1:
         #         weight: 1.0 # weight of populations data specified by name
