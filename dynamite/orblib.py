@@ -900,7 +900,8 @@ class LegacyOrbitLibrary(OrbitLibrary):
         pops : Bool
             If True, return LOSVD histograms for the populations apertures.
             If both kins and pops are True, population data is returned
-            following kinematic data.
+            following kinematic data. Also, histograms for the apertures used
+            by both kinematics and populations are retur.
 
         Returns
         -------
@@ -928,13 +929,17 @@ class LegacyOrbitLibrary(OrbitLibrary):
             raise ValueError(txt)
         if kins and not pops:
             tube_orblib = tube_orblib[:n_kins]
-        elif pops and not kins:  # collect all orblibs used by pops
-            i_kins = set(p.kin_aper
-                         for p in stars.population_data
-                         if p.kin_aper is not None)
-            tube_orblib = [o for i, o in enumerate(tube_orblib[:n_kins])
-                           if i in i_kins]  # kin orblibs used by pops
-            tube_orblib += tube_orblib[n_kins:]  # pop-only orblibs
+        else:  # pops is True
+            # collect all orblibs used by pops:
+            kin_aper_in_pops = set(p.kin_aper
+                                   for p in stars.population_data
+                                   if p.kin_aper is not None)
+            # kin orblibs + kin orblibs used by pops + pop-only orblibs:
+            tube_orblib = \
+                tube_orblib[:n_kins] if kins else [] + \
+                [o for i, o in enumerate(tube_orblib[:n_kins])
+                   if i in kin_aper_in_pops] + \
+                tube_orblib[n_kins:] if len(tube_orblib) > n_kins else []
 
         if not self.system.is_bar_disk_system():
             # tube orbits are mirrored/flipped and used twice
@@ -948,10 +953,14 @@ class LegacyOrbitLibrary(OrbitLibrary):
         box_orblib, box_density_3D = self.read_orbit_base('orblibbox')
         if kins and not pops:
             box_orblib = box_orblib[:n_kins]
-        elif pops and not kins:  # collect all orblibs used by pops
-            box_orblib = [o for i, o in enumerate(box_orblib[:n_kins])
-                          if i in i_kins]  # kin orblibs used by pops
-            box_orblib += box_orblib[n_kins:]
+        else:  # pops is True
+            # kin orblibs + kin orblibs used by pops + pop-only orblibs:
+            box_orblib = \
+                box_orblib[:n_kins] if kins else [] + \
+                [o for i, o in enumerate(box_orblib[:n_kins])
+                   if i in kin_aper_in_pops] + \
+                box_orblib[n_kins:] if len(box_orblib) > n_kins else []
+
         # combine orblibs
         orblib = []
         for (t0, b0) in zip(tube_orblib, box_orblib):
