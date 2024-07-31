@@ -799,34 +799,51 @@ class NNLS(WeightSolver):
         else:
             A, b = self.construct_nnls_matrix_and_rhs(orblib)
             if self.nnls_solver=='scipy':
-                solution = optimize.nnls(A, b)
-                weights = solution[0]
+                try:
+                    solution = optimize.nnls(A, b)
+                    weights = solution[0]
+                except Exception as e:
+                    txt = f'Orblib {orblib.mod_dir}, ml={orblib.parset["ml"]}'\
+                        f': SciPy solver error occured: {e} All weights ' \
+                        'and chi2 set to nan. Consider trying cvxopt.'
+                    self.logger.warning(txt)
+                    weights = np.full(A.shape[1], np.nan)
             elif self.nnls_solver=='cvxopt':
-                P = np.dot(A.T, A)
-                q = -1.*np.dot(A.T, b)
-                solver = CvxoptNonNegSolver(P, q)
-                weights = solver.beta
+                try:
+                    P = np.dot(A.T, A)
+                    q = -1.*np.dot(A.T, b)
+                    solver = CvxoptNonNegSolver(P, q)
+                    weights = solver.beta
+                except Exception as e:
+                    txt = f'Orblib {orblib.mod_dir}, ml={orblib.parset["ml"]}'\
+                        f': CVXOPT solver error occured: {e} All weights ' \
+                        'and chi2 set to nan. Consider trying scipy.'
+                    self.logger.warning(txt)
+                    weights = np.full(A.shape[1], np.nan)
             else:
                 text = 'Unknown nnls_solver'
                 self.logger.error(text)
                 raise ValueError(text)
-            np.savetxt(self.weight_file, weights)
-            self.logger.info("NNLS problem solved")
-            # calculate chi2s
-            chi2_vector = (np.dot(A, weights) - b)**2.
-            chi2_tot = np.sum(chi2_vector)
-            chi2_kin = np.sum(chi2_vector[self.n_mass_constraints:])
-            chi2_kinmap = self.chi2_kinmap(weights)
-            # save the output
-            results = table.Table()
-            results['weights'] = weights
-            # add chi2 to meta data
-            results.meta = {'chi2_tot': chi2_tot,
-                            'chi2_kin': chi2_kin,
-                            'chi2_kinmap': chi2_kinmap}
-            results.write(self.weight_file,
-                          format='ascii.ecsv',
-                          overwrite=True)
+            if not np.isnan(weights[0]):
+                np.savetxt(self.weight_file, weights)
+                self.logger.info("NNLS problem solved")
+                # calculate chi2s
+                chi2_vector = (np.dot(A, weights) - b)**2.
+                chi2_tot = np.sum(chi2_vector)
+                chi2_kin = np.sum(chi2_vector[self.n_mass_constraints:])
+                chi2_kinmap = self.chi2_kinmap(weights)
+                # save the output
+                results = table.Table()
+                results['weights'] = weights
+                # add chi2 to meta data
+                results.meta = {'chi2_tot': chi2_tot,
+                                'chi2_kin': chi2_kin,
+                                'chi2_kinmap': chi2_kinmap}
+                results.write(self.weight_file,
+                              format='ascii.ecsv',
+                              overwrite=True)
+            else:
+                chi2_tot = chi2_kin = chi2_kinmap = np.nan
             # delete existing .yaml files and copy current config file
             # into model directory
             self.config.copy_config_file(self.direc_with_ml)

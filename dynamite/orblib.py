@@ -697,23 +697,17 @@ class LegacyOrbitLibrary(OrbitLibrary):
         """
         cur_dir = os.getcwd()
         os.chdir(self.mod_dir)
-        # unzip orblib to a temproary file with ml value attached
+        # unzip orblib to a temporary file with ml value attached
         # ml value is needed to prevent different processes clashing
         ml = self.parset['ml']
-        aaa = subprocess.run(['bunzip2', '-c', f'datfil/{fileroot}.dat.bz2'],
-                             stdout=subprocess.PIPE)
         tmpfname = f'datfil/{fileroot}_{ml}.dat'
-        tmpf = open(tmpfname, "wb")
-        tmpf.write(aaa.stdout)
-        tmpf.close()
+        subprocess.run(f'bunzip2 -c datfil/{fileroot}.dat.bz2 > {tmpfname}',
+                       shell=True)
         # read the fortran file
         orblibf = FortranFile(tmpfname, 'r')
-        # remove temproary file
-        subprocess.call(['rm', tmpfname])
         # read size of orbit library
         # from integrator_setup_write, lines 506 - 5129:
-        tmp = orblibf.read_ints(np.int32)
-        norb, t2, t3, t4, ndith = tmp
+        norb, _, _, _, ndith = orblibf.read_ints(np.int32)
         # from qgrid_setup_write, lines 2339-1350:
         quad_light_grid_sizes = orblibf.read_ints(np.int32)
         size_ql, size_qph, size_qth, size_qlr = quad_light_grid_sizes
@@ -725,8 +719,8 @@ class LegacyOrbitLibrary(OrbitLibrary):
         # from histogram_setup_write, lines 1917-1926:
         tmp = orblibf.read_record(np.int32, np.int32, float)
         nconstr = tmp[0][0] # = total number of apertures for ALL kinematics
-        nvhist = tmp[1][0] # = (nvbins-1)/2 for histo of FIRST kinematic set
-        dvhist = tmp[2][0] # = delta_v in histogram for FIRST kinematic set
+        # nvhist = tmp[1][0] # = (nvbins-1)/2 for histo of FIRST kinematic set
+        # dvhist = tmp[2][0] # = delta_v in histogram for FIRST kinematic set
         # these nvhist and dvhist are for the first kinematic set only
         # however, orbit are stored N times where N = number of kinematic sets
         # histogram settings for other N-1 sets may be different from the first
@@ -756,13 +750,11 @@ class LegacyOrbitLibrary(OrbitLibrary):
         velhist0 = [np.zeros((norb, nv, na)) for (nv,na) in tmp]
         # Next read the histograms themselves.
         orbtypes = np.zeros((norb, ndith**3), dtype=int)
-        nbins_vhist = 2*nvhist + 1
-        velhist = np.zeros((norb, nbins_vhist, nconstr))
         density_3D = np.zeros((norb, size_qlr, size_qth, size_qph))
         if return_instrisic_moments:
             intrinsic_moms = np.zeros((norb, size_qlr, size_qth, size_qph, 16))
         for j in range(norb):
-            t1,t2,t3,t4,t5 = orblibf.read_ints(np.int32)
+            _, _, _, _, _ = orblibf.read_ints(np.int32)
             orbtypes[j, :] = orblibf.read_ints(np.int32)
             quad_light = orblibf.read_reals(float)
             quad_light = np.reshape(quad_light, quad_light_grid_sizes[::-1])
@@ -788,6 +780,8 @@ class LegacyOrbitLibrary(OrbitLibrary):
             if return_instrisic_moments:
                 intrinsic_moms[j] = quad_light
         orblibf.close()
+        # remove temporary file
+        os.remove(tmpfname)
         os.chdir(cur_dir)
         velhists = []
         for i in range(n_kins):
@@ -800,7 +794,6 @@ class LegacyOrbitLibrary(OrbitLibrary):
             vedg = np.arange(bins0+1) * dvhist0
             v = (vedg[1:] + vedg[:-1])/2.
             v_cent = v[idx_center]
-            delta_v = center0 - v_cent
             vedg -= v_cent
             vvv = dyn_kin.Histogram(xedg=vedg,
                                     y=velhist0[i],
