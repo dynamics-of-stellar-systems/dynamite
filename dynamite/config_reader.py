@@ -255,7 +255,8 @@ class Configuration(object):
                     # initialize the component's paramaters, kinematics,
                     # and populations
 
-                    par_list, kin_list, pop_list = [], [], []
+                    par_list, kin_list = [], []
+                    c.population_data = []
 
                     # read parameters
 
@@ -298,7 +299,7 @@ class Configuration(object):
                                         hist_bins=data_kin['hist_bins'],
                                         kin_aper=kin_id)
                                 populations_set.clean_data()
-                                pop_list.append(populations_set)
+                                c.population_data.append(populations_set)
                                 logger.debug('Has population in kinematics '
                                              f'bins: {populations_set}')
                             kin_list.append(kinematics_set)
@@ -318,8 +319,7 @@ class Configuration(object):
                                                 name=pop,
                                                 input_directory=path,
                                                 **data_pop)
-                            pop_list.append(populations_set)
-                        c.population_data = pop_list
+                            c.population_data.append(populations_set)
 
                     if 'mge_pot' in data_comp:
                         path = self.settings.io_settings['input_directory']

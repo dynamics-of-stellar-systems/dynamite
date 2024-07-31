@@ -43,9 +43,12 @@ class Kinematics(data.Data):
             else:
                 self.hist_bins = int(hist_bins)
             pop_columns = ['t', 'dt', 'Z', 'dZ']
-            if all(c in self.data.colnames for c in pop_columns) and with_pops:
-                self.logger.debug(f'Kinem {self.name} has population data.')
-                self.with_pops = True
+            if all(c in self.data.colnames for c in pop_columns):
+                if with_pops:
+                    self.logger.debug(f'Kinem {self.name} has population data.')
+                    self.with_pops = True
+                else:
+                    self.with_pops = False
                 self.data.remove_columns(pop_columns)
             else:
                 self.with_pops = False

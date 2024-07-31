@@ -936,10 +936,10 @@ class LegacyOrbitLibrary(OrbitLibrary):
                                    if p.kin_aper is not None)
             # kin orblibs + kin orblibs used by pops + pop-only orblibs:
             tube_orblib = \
-                tube_orblib[:n_kins] if kins else [] + \
+                (tube_orblib[:n_kins] if kins else []) + \
                 [o for i, o in enumerate(tube_orblib[:n_kins])
                    if i in kin_aper_in_pops] + \
-                tube_orblib[n_kins:] if len(tube_orblib) > n_kins else []
+                (tube_orblib[n_kins:] if len(tube_orblib) > n_kins else [])
 
         if not self.system.is_bar_disk_system():
             # tube orbits are mirrored/flipped and used twice
@@ -956,10 +956,10 @@ class LegacyOrbitLibrary(OrbitLibrary):
         else:  # pops is True
             # kin orblibs + kin orblibs used by pops + pop-only orblibs:
             box_orblib = \
-                box_orblib[:n_kins] if kins else [] + \
+                (box_orblib[:n_kins] if kins else []) + \
                 [o for i, o in enumerate(box_orblib[:n_kins])
                    if i in kin_aper_in_pops] + \
-                box_orblib[n_kins:] if len(box_orblib) > n_kins else []
+                (box_orblib[n_kins:] if len(box_orblib) > n_kins else [])
 
         # combine orblibs
         orblib = []
@@ -973,7 +973,7 @@ class LegacyOrbitLibrary(OrbitLibrary):
             orblib[i].scale_x_values(self.velocity_scaling_factor)
         self.losvd_histograms = orblib
         self.intrinsic_masses = density_3D
-        self.n_orbs = self.losvd_histograms[0].y.shape[0]
+        self.n_orbs = self.losvd_histograms[0].y.shape[0] if nkins > 0 else 0
         proj_mass = [np.sum(self.losvd_histograms[i].y,1) for i in range(nkins)]
         self.projected_masses = proj_mass
 
