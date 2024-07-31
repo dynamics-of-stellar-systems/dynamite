@@ -98,7 +98,7 @@ class ModelIterator(object):
                     self.kinematic_maps = \
                         the_plotter.plot_kinematic_maps(kin_set='all',
                                                         cbar_lims='default')
-                    plt.close('all') # just to make sure...
+                    plt.close('all')  # just to make sure...
                 except:
                     self.logger.warning(f'Iteration {total_iter}: '
                                         'plotting failed!')

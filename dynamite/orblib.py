@@ -1233,7 +1233,7 @@ class LegacyOrbitLibrary(OrbitLibrary):
             # create binary sparse matrix, with 1 entry per particle per bundle
             projection00 = sparse.COO(coords, 1, shape=r_idx.shape+(nr,nl))
             # average over individual orbits in a bundle
-            projection00 = np.mean(projection00, 1)
+            projection00 = np.mean(projection00, axis=1)
             projection += [projection00]
         projection = np.stack(projection)
         projection = np.moveaxis(projection, 1, 3)
