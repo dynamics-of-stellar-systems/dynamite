@@ -5,6 +5,7 @@ Change Log
 ****************
 
 - Improvement: DYNAMITE is now compatible with the latest numpy 2.0.0 and matplotlib 3.9.0 versions
+- Improvement: prevent DYNAMITE from crashing if NNLS weight solving fails.
 - Improvement: the Gauss Hermite kinematic maps new parameter value `cbar_lims='user'` allows user-defined velocity and velocity dispersion limits (see `Plotter.plot_kinematic_maps()`).
 - Improvement: reduced the main memory requirements of the Python NNLS solvers.
 - Bugfix: fix a crash when creating the BayesLOSVD kinematics file in rare cases where the completed bins were determined incorrectly.
