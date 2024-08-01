@@ -42,16 +42,14 @@ class Kinematics(data.Data):
                 self.set_default_hist_bins()
             else:
                 self.hist_bins = int(hist_bins)
-            pop_columns = ['t', 'dt', 'Z', 'dZ']
-            if all(c in self.data.colnames for c in pop_columns):
-                if with_pops:
-                    self.logger.debug(f'Kinem {self.name} has population data.')
-                    self.with_pops = True
-                else:
-                    self.with_pops = False
-                self.data.remove_columns(pop_columns)
+            has_pops, pop_cols = self.has_pops()
+            if has_pops and with_pops:
+                self.with_pops = True
+                self.pop_cols = pop_cols
+                self.logger.debug(f'Kinem {self.name} has population data.')
             else:
                 self.with_pops = False
+                self.pop_cols = []
             self.__class__.values = list(self.__dict__.keys())
             if self.weight==None or self.type==None or self.hist_width==None or \
                     self.hist_center==None or self.hist_bins==None:
@@ -61,6 +59,23 @@ class Kinematics(data.Data):
                 self.logger.error(text)
                 raise ValueError(text)
             self.n_spatial_bins = len(self.data)
+
+    def has_pops(self):
+        """
+        Identifies population data in the kinematics data file.
+
+        If there is population data, it is removed from self.data. This
+        method needs to be implemented for all Kinematics subclasses.
+
+        Returns
+        -------
+        bool
+            True if population data is found, False otherwise.
+        list
+            List of population data columns
+
+        """
+        return False, []
 
     def update(self, **kwargs):
         """
@@ -282,6 +297,30 @@ class GaussHermite(Kinematics, data.Integrated):
             if cache_data:
                 self._data_with_sys_err = gh_data.copy(copy_data=True)
         return gh_data
+
+    def has_pops(self):
+        """
+        Identifies population data in the kinematics data file.
+
+        If there is population data, it is removed from self.data. This
+        method needs to be implemented for all Kinematics subclasses.
+
+        Returns
+        -------
+        bool
+            True if population data is found, False otherwise.
+        list
+            List of population data columns
+
+        """
+        max_gh = self.get_highest_order_gh_coefficient()
+        gh_cols = ['v', 'dv', 'sigma', 'dsigma']
+        gh_cols += [f'{d}h{i}' for i in range(3, max_gh + 1) for d in ('','d')]
+        pop_cols = [c for c in self.data.colnames[1:] if c not in gh_cols]
+        self.data.remove_columns(pop_cols)
+        has_pops = len(pop_cols) > 0
+        pop_cols = self.data.colnames[:1] + pop_cols
+        return has_pops, pop_cols
 
     def get_highest_order_gh_coefficient(self):
         """Get max order GH coeeff from data table
@@ -915,6 +954,29 @@ class BayesLOSVD(Kinematics, data.Integrated):
         if hasattr(self, 'data'):
             self.convert_losvd_columns_to_one_multidimensional_column()
             self.set_mean_v_and_sig_v_per_aperture()
+
+    def has_pops(self):
+        """
+        Identifies population data in the kinematics data file.
+
+        If there is population data, it is removed from self.data. This
+        method needs to be implemented for all Kinematics subclasses.
+
+        Returns
+        -------
+        bool
+            True if population data is found, False otherwise.
+        list
+            List of population data columns
+
+        """
+        kin_cols = ['binID_BayesLOSVD', 'bin_flux', 'binID_dynamite',
+                    'v', 'sigma', 'xbin', 'ybin', 'losvd', 'dlosvd']
+        pop_cols = [c for c in self.data.colnames if c not in kin_cols]
+        self.data.remove_columns(pop_cols)
+        has_pops = len(pop_cols) > 0
+        pop_cols = ['binID_dynamite'] + pop_cols
+        return has_pops, pop_cols
 
     def convert_losvd_columns_to_one_multidimensional_column(self):
         """Convert 1D to multi-dim columns
