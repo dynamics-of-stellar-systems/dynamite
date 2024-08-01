@@ -25,22 +25,22 @@ class Data(object):
                  datafile=None,
                  input_directory=None
                  ):
+        self.logger = logging.getLogger(f'{__name__}.{__class__.__name__}')
         self.name = name
         if not hasattr(self, 'input_directory'):
             self.datafile = datafile
             self.input_directory = input_directory if input_directory else ''
             if datafile is not None:
                 self.data = ascii.read(self.input_directory+self.datafile)
-            self.logger = logging.getLogger(f'{__name__}.{__class__.__name__}')
-            self.logger.debug(f'Data {self.name} read from '
-                              f'{self.input_directory}{self.datafile}')
-            data_array = np.lib.recfunctions.structured_to_unstructured(
-                self.data.as_array())
-            if np.isnan(data_array).any():
-                txt = f'Input file {self.input_directory}{datafile} has nans'
-                self.logger.error(f'{txt} at: '
-                                  f'{np.argwhere(np.isnan(data_array))}.')
-                raise ValueError(txt)
+                self.logger.debug(f'Data {self.name} read from '
+                                  f'{self.input_directory}{self.datafile}')
+                data_array = np.lib.recfunctions.structured_to_unstructured(
+                    self.data.as_array())
+                if np.isnan(data_array).any():
+                    txt=f'Input file {self.input_directory}{datafile} has nans'
+                    self.logger.error(f'{txt} at: '
+                                      f'{np.argwhere(np.isnan(data_array))}.')
+                    raise ValueError(txt)
 
 
 class Discrete(Data):
