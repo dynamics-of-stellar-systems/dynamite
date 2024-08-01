@@ -99,16 +99,16 @@ class LegacyOrbitLibrary(OrbitLibrary):
                 stars = self.system.get_unique_bar_component()
             else:
                 stars = self.system.get_unique_triaxial_visible_component()
-            kinematics = stars.kinematic_data
-            # create the kinematic input files for each kinematic dataset
-            for i in np.arange(len(kinematics)):
-                # copy aperture and bins file across
-                aperture_file = self.in_dir + kinematics[i].aperturefile
-                shutil.copyfile(aperture_file,
-                            self.mod_dir+'infil/'+ kinematics[i].aperturefile)
-                binfile = self.in_dir + kinematics[i].binfile
-                shutil.copyfile(binfile,
-                            self.mod_dir+'infil/'+ kinematics[i].binfile)
+            # create the kinematics and populations input files for each
+            # kinematic dataset and population dataset with own apertures
+            kin_pops = stars.kinematic_data
+            kin_pops += [p for p in stars.population_data if p.kin_aper is None]
+            for data_set in kin_pops:
+                # copy aperture and bins files across
+                shutil.copyfile(self.in_dir + data_set.aperturefile,
+                                self.mod_dir + f'infil/{data_set.aperturefile}')
+                shutil.copyfile(self.in_dir + data_set.binfile,
+                                self.mod_dir + f'infil/{data_set.binfile}')
             # calculate orbit libary
             file1 = 'begin.dat'
             file2 = 'beginbox.dat'
@@ -242,6 +242,9 @@ class LegacyOrbitLibrary(OrbitLibrary):
         #---------------------------------
         #write orblib.in and orblibbox.in
         #---------------------------------
+        n_psf_kin = len(stars.kinematic_data)
+        psf_pop_idx = [i for i, p in enumerate(stars.population_data)
+                       if p.kin_aper is None]  # pops with their own apertures
         def write_orblib_dot_in(box=False):
             tab = '\t\t\t\t\t\t\t\t'
             if box:
@@ -256,7 +259,7 @@ class LegacyOrbitLibrary(OrbitLibrary):
             else:
                 f.write(f'datfil/begin.dat\n')
             label = '[number of orbital periods to integrate]'
-            line = f"{self.settings['orbital_periods']}\t\t{label}\n"
+            line = f"{self.settings['orbital_periods']}{tab}{label}\n"
             f.write(line)
             label = '[points to sample for each orbit in the merid. plane]'
             line = f"{self.settings['sampling']}{tab}{label}\n"
@@ -270,49 +273,92 @@ class LegacyOrbitLibrary(OrbitLibrary):
             label = '[accuracy]'
             line = f"{self.settings['accuracy']}{tab}{label}\n"
             f.write(line)
-            n_psf = len(stars.kinematic_data)
-            label = '[number of psfs of the kinematic data]'
-            line = f"{n_psf}{tab}{label}\n"
+            label = '[number of psfs of the kinematic data + population data]'
+            line = f"{n_psf_kin+len(psf_pop_idx)}{tab}{label}\n"
             f.write(line)
-            for i in range(n_psf):
+            for i in range(n_psf_kin):
                 psf_i = stars.kinematic_data[i].PSF
                 n_gauss_psf_i = len(psf_i['sigma'])
-                label = f'[# of gaussians in psf {i+1}]'
+                label = f'[# of gaussians in kinematics psf {i+1}]'
                 line = f"{n_gauss_psf_i}{tab}{label}\n"
                 f.write(line)
-            for i in range(n_psf):
+            for i in psf_pop_idx:
+                psf_i = stars.population_data[i].PSF
+                n_gauss_psf_i = len(psf_i['sigma'])
+                label = f'[# of gaussians in populations psf {i+1}]'
+                line = f"{n_gauss_psf_i}{tab}{label}\n"
+                f.write(line)
+            for i in range(n_psf_kin):
                 psf_i = stars.kinematic_data[i].PSF
                 for j in range(len(psf_i['sigma'])):
                     weight_ij, sigma_ij = psf_i['weight'][j], psf_i['sigma'][j]
-                    label = f'[weight, sigma of comp {j+1} of psf {i+1}]'
-                    line = f"{weight_ij} {sigma_ij}{tab}{label}\n"
+                    label = f'[weight, sigma of comp {j+1} of kins psf {i+1}]'
+                    line = f"{weight_ij} {sigma_ij}{tab[:-1]}{label}\n"
                     f.write(line)
-            # every kinematic-set has a psf and aperture, so n_psf = n_aperture
-            n_aperture = n_psf
-            label = '[# of apertures]'
-            line = f'{n_aperture}{tab}{label}\n'
+            for i in psf_pop_idx:
+                psf_i = stars.population_data[i].PSF
+                for j in range(len(psf_i['sigma'])):
+                    weight_ij, sigma_ij = psf_i['weight'][j], psf_i['sigma'][j]
+                    label = f'[weight, sigma of comp {j+1} of pops psf {i+1}]'
+                    line = f"{weight_ij} {sigma_ij}{tab[:-1]}{label}\n"
+                    f.write(line)
+            # every kinematic set and population set has a psf and aperture,
+            # so n_psf_kin = n_aperture_kin and n_psf_pop = len(psf_pop_idx)
+            # (note that some pops may re-use a kin psf, so not all pops
+            # need to have a psf of their own)
+            n_aperture_kin = n_psf_kin
+            n_aperture_pop = len(psf_pop_idx)
+            label = '[# of apertures of the kinematic data + population data]'
+            line = f'{n_aperture_kin + n_aperture_pop}{tab}{label}\n'
             f.write(line)
-            for i in np.arange(n_aperture):
+            for i in np.arange(n_aperture_kin):
                 kin_i = stars.kinematic_data[i]
                 # aperturefile cant have a label since fortran reads whole line
                 f.write(f'"infil/{kin_i.aperturefile}"\n')
-                label = f'[use psf {i+1} for {kin_i.name}]'
+                label = f'[use kinematics psf {i+1} for {kin_i.name}]'
                 line = f'{i+1}{tab}{label}\n'
                 f.write(line)
-            for i in np.arange(n_aperture):
-                kin_i = stars.kinematic_data[i]
-                label = f'[vhist width, center and nbins for {kin_i.name}]'
-                w, c, b = kin_i.hist_width, kin_i.hist_center, kin_i.hist_bins
-                line = f'{w} {c} {b}{tab}{label}\n'
+            for i0, i in enumerate(psf_pop_idx):  # i0 counts aperture sets
+                pop_i = stars.population_data[i]
+                # aperturefile cant have a label since fortran reads whole line
+                f.write(f'"infil/{pop_i.aperturefile}"\n')
+                label = f'[use populations psf {i+1} = ' \
+                        f'total psf {i0+n_psf_kin+1} for {pop_i.name}]'
+                line = f'{i0+n_psf_kin+1}{tab}{label}\n'
                 f.write(line)
-            for i in np.arange(n_aperture):
-                label = f'[use binning for aperture {1+i}? 0/1 = yes/no]'
+            for i in np.arange(n_aperture_kin):
+                kin_i = stars.kinematic_data[i]
+                label = '[vhist width, center and nbins for kinematics ' \
+                        f'{kin_i.name}]'
+                w, c, b = kin_i.hist_width, kin_i.hist_center, kin_i.hist_bins
+                line = f'{w} {c} {b}{tab[:-2]}{label}\n'
+                f.write(line)
+            for i in psf_pop_idx:
+                pop_i = stars.population_data[i]
+                label = '[vhist width, center and nbins for populations ' \
+                        f'{pop_i.name}]'
+                w, c, b = pop_i.hist_width, pop_i.hist_center, pop_i.hist_bins
+                line = f'{w} {c} {b}{tab[:-2]}{label}\n'
+                f.write(line)
+            for i in np.arange(n_aperture_kin):
+                label = f'[use binning for kinematics aperture {1+i}? ' \
+                        '0/1 = yes/no]'
                 line = f'1{tab}{label}\n'
                 f.write(line)
-            for i in np.arange(n_aperture):
+            for i in psf_pop_idx:
+                label = f'[use binning for populations aperture {1+i}? ' \
+                        '0/1 = yes/no]'
+                line = f'1{tab}{label}\n'
+                f.write(line)
+            for i in np.arange(n_aperture_kin):
                 kin_i = stars.kinematic_data[i]
-                label = f'[binfile for aperture {1+i}]'
-                line = f'"infil/{kin_i.binfile}"{tab}{label}\n'
+                label = f'[binfile for kinematics aperture {1+i}]'
+                line = f'"infil/{kin_i.binfile}"{tab[:-2]}{label}\n'
+                f.write(line)
+            for i in psf_pop_idx:
+                pop_i = stars.population_data[i]
+                label = f'[binfile for populations aperture {1+i}]'
+                line = f'"infil/{pop_i.binfile}"{tab[:-3]}{label}\n'
                 f.write(line)
             if box:
                 f.write(f'datfil/orblibbox.dat\n')
@@ -335,24 +381,38 @@ class LegacyOrbitLibrary(OrbitLibrary):
         #write triaxmassbin.in
         #-----------------------
         tab = '\t\t\t\t\t\t\t\t'
-        n_psf = len(stars.kinematic_data)
         f = open(path + 'triaxmassbin.in', 'w')
         f.write('infil/parameters_lum.in\n')
-        f.write(f'{n_psf}{tab}[# of apertures]\n')
-        for i in range(n_psf):
+        f.write(f'{n_psf_kin + len(psf_pop_idx)}{tab}'
+                '[# of kinematics + populations apertures]\n')
+        for i in range(n_psf_kin):
             kin_i = stars.kinematic_data[i]
             f.write(f'"infil/{kin_i.aperturefile}"\n')
             psf_i = kin_i.PSF
             n_gauss_psf_i = len(psf_i['sigma'])
-            label = f'[# of gaussians in psf {i+1}]'
+            label = f'[# of gaussians in kinematics psf {i+1}]'
             line = f"{n_gauss_psf_i}{tab}{label}\n"
             f.write(line)
             for j in range(n_gauss_psf_i):
                 weight_ij, sigma_ij = psf_i['weight'][j], psf_i['sigma'][j]
-                label = f'[weight, sigma of comp {j+1} of psf {i+1}]'
-                line = f"{weight_ij} {sigma_ij}{tab}{label}\n"
+                label = f'[weight, sigma of comp {j+1} of kin psf {i+1}]'
+                line = f"{weight_ij} {sigma_ij}{tab[:-1]}{label}\n"
                 f.write(line)
             f.write(f'"infil/{kin_i.binfile}"\n')
+        for i in psf_pop_idx:
+            pop_i = stars.population_data[i]
+            f.write(f'"infil/{pop_i.aperturefile}"\n')
+            psf_i = pop_i.PSF
+            n_gauss_psf_i = len(psf_i['sigma'])
+            label = f'[# of gaussians in populations psf {i+1}]'
+            line = f"{n_gauss_psf_i}{tab}{label}\n"
+            f.write(line)
+            for j in range(n_gauss_psf_i):
+                weight_ij, sigma_ij = psf_i['weight'][j], psf_i['sigma'][j]
+                label = f'[weight, sigma of comp {j+1} of pop psf {i+1}]'
+                line = f"{weight_ij} {sigma_ij}{tab[:-1]}{label}\n"
+                f.write(line)
+            f.write(f'"infil/{pop_i.binfile}"\n')
         f.write('"datfil/mass_aper.dat"')
         f.close()
 
@@ -642,6 +702,7 @@ class LegacyOrbitLibrary(OrbitLibrary):
         # from histogram_setup_write, lines 1917-1926:
         tmp = orblibf.read_record(np.int32, np.int32, float)
         nconstr = tmp[0][0] # = total number of apertures for ALL kinematics
+                            #   and populations with own apertures
         # nvhist = tmp[1][0] # = (nvbins-1)/2 for histo of FIRST kinematic set
         # dvhist = tmp[2][0] # = delta_v in histogram for FIRST kinematic set
         # these nvhist and dvhist are for the first kinematic set only
@@ -649,21 +710,33 @@ class LegacyOrbitLibrary(OrbitLibrary):
         # histogram settings for other N-1 sets may be different from the first
         # these aren't stored in orblib.dat so must read from kinematics objects
         stars = self.system.get_unique_triaxial_visible_component()
+        # For now, also calculate velocity histograms for population data...
         n_kins = len(stars.kinematic_data)
+        pops = [p for p in stars.population_data if p.kin_aper is None]
         hist_widths = [k.hist_width for k in stars.kinematic_data]
+        hist_widths += [p.hist_width for p in pops]
         hist_centers = [k.hist_center for k in stars.kinematic_data]
+        hist_centers += [p.hist_center for p in pops]
         hist_bins = [k.hist_bins for k in stars.kinematic_data]
+        hist_bins += [p.hist_bins for p in pops]
         self.logger.debug('Checking number of velocity bins...')
-        error_msg = 'must have odd number of velocity bins for all kinematics'
+        error_msg = 'must have odd number of velocity bins for all ' \
+                    'kinematics and populations'
         assert np.all(np.array(hist_bins) % 1==0), error_msg
         self.logger.debug('...checks ok.')
         n_apertures = [k.n_spatial_bins for k in stars.kinematic_data]
+        n_apertures += [p.n_spatial_bins for p in pops]
         # get index linking  kinematic set to aperture
         # kin_idx_per_ap[i] = N <--> aperture i is from kinematic set N
-        kin_idx_per_ap = [np.zeros(n_apertures[i], dtype=int)+i
-                          for i in range(n_kins)]
-        kin_idx_per_ap = np.concatenate(kin_idx_per_ap)
-        kin_idx_per_ap = np.array(kin_idx_per_ap, dtype=int)
+        # NEW: Extended to kinematic and population data, this now reads:
+        # get index linking kinematic and population sets with own apertures
+        # to apertures
+        # kinpop_idx_per_ap[i] = N <--> aperture i is from kinematic set N
+        #   if N < n_kins or from population set N - n_kins if N >= n_kins
+        kinpop_idx_per_ap = [np.zeros(n_apertures[i], dtype=int) + i
+                             for i in range(n_kins + len(pops))]
+        kinpop_idx_per_ap = np.concatenate(kinpop_idx_per_ap)
+        kinpop_idx_per_ap = np.array(kinpop_idx_per_ap, dtype=int)
         # below we loop i_ap from 1-n_total_apertures but will need the index of
         # i_ap for the relevant kinematic set: we use `idx_ap_reset` to do this
         cum_n_apertures = np.cumsum(n_apertures)
@@ -691,23 +764,24 @@ class LegacyOrbitLibrary(OrbitLibrary):
             # We need to extract 3D density for use in weight solving.
             density_3D[j] = quad_light[:,:,:,0]
             for i_ap in range(nconstr):
-                kin_idx = kin_idx_per_ap[i_ap]
-                i_ap0 = i_ap - idx_ap_reset[kin_idx]
+                kinpop_idx = kinpop_idx_per_ap[i_ap]
+                i_ap0 = i_ap - idx_ap_reset[kinpop_idx]
                 ivmin, ivmax = orblibf.read_ints(np.int32)
                 if ivmin <= ivmax:
-                    nv0 = (hist_bins[kin_idx]-1)/2
+                    nv0 = (hist_bins[kinpop_idx]-1)/2
                     # ^--- this is an integer since hist_bins is odd
                     nv0 = int(nv0)
                     tmp = orblibf.read_reals(float)
-                    velhist0[kin_idx][j, ivmin+nv0:ivmax+nv0+1, i_ap0] = tmp
+                    velhist0[kinpop_idx][j, ivmin+nv0:ivmax+nv0+1, i_ap0] = tmp
             if return_instrisic_moments:
                 intrinsic_moms[j] = quad_light
         orblibf.close()
         # remove temporary file
         os.remove(tmpfname)
         os.chdir(cur_dir)
+        # For now, also calculate velocity histograms for population data...
         velhists = []
-        for i in range(n_kins):
+        for i in range(n_kins + len(pops)):
             center0 = hist_centers[i]
             width0 = hist_widths[i]
             bins0 = hist_bins[i]
@@ -812,27 +886,61 @@ class LegacyOrbitLibrary(OrbitLibrary):
                                        normalise=False)
         return new_orblib
 
-    def read_losvd_histograms(self):
+    def read_losvd_histograms(self, kins=True, pops=False):
         """Read the orbit library
 
         Read box orbits and tube orbits, mirrors the latter, and combines.
         Rescales the velocity axis according to the ``ml`` value. Sets LOSVDs
         and 3D grid/aperture masses of the combined orbit library.
 
+        Parameters
+        ----------
+        kins : Bool
+            If True, return LOSVD histograms for the kinematics apertures.
+        pops : Bool
+            If True, return LOSVD histograms for the populations apertures.
+            If both kins and pops are True, population data is returned
+            following kinematic data. Note that if population and kinematic
+            data are provided in one file (i.e. they share the same binning)
+            then they have identical orbit libraries.
+
         Returns
         -------
         Sets the attributes:
             -   ``self.losvd_histograms``: a list, whose i'th entry is a
                 ``dyn.kinematics.Histogram`` object holding the orbit lib LOSVDs
-                binned for the i'th kinematic set
+                binned for the i'th kinematic/population set
             -   ``self.intrinsic_masses``: 3D grid/intrinsic masses of orbit lib
             -   ``self.projected_masses``: aperture/proj. masses of orbit lib
             -   ``self.n_orbs``: number of orbits in the orbit library
 
         """
+        if self.system.is_bar_disk_system():
+            stars = self.system.get_unique_bar_component()
+        else:
+            stars = self.system.get_unique_triaxial_visible_component()
+        n_kins = len(stars.kinematic_data)
+
         # TODO: check if this ordering is compatible with weights read in by
         # LegacyWeightSolver.read_weights
         tube_orblib, tube_density_3D = self.read_orbit_base('orblib')
+        if not (kins or pops):
+            txt = 'Specify kins or pops.'
+            self.logger.error(txt)
+            raise ValueError(txt)
+        if kins and not pops:
+            tube_orblib = tube_orblib[:n_kins]
+        else:  # pops is True
+            # collect all orblibs used by pops:
+            kin_aper_in_pops = set(p.kin_aper
+                                   for p in stars.population_data
+                                   if p.kin_aper is not None)
+            # kin orblibs + kin orblibs used by pops + pop-only orblibs:
+            tube_orblib = \
+                (tube_orblib[:n_kins] if kins else []) + \
+                [o for i, o in enumerate(tube_orblib[:n_kins])
+                   if i in kin_aper_in_pops] + \
+                (tube_orblib[n_kins:] if len(tube_orblib) > n_kins else [])
 
         if not self.system.is_bar_disk_system():
             # tube orbits are mirrored/flipped and used twice
@@ -844,6 +952,16 @@ class LegacyOrbitLibrary(OrbitLibrary):
 
         # read box orbits
         box_orblib, box_density_3D = self.read_orbit_base('orblibbox')
+        if kins and not pops:
+            box_orblib = box_orblib[:n_kins]
+        else:  # pops is True
+            # kin orblibs + kin orblibs used by pops + pop-only orblibs:
+            box_orblib = \
+                (box_orblib[:n_kins] if kins else []) + \
+                [o for i, o in enumerate(box_orblib[:n_kins])
+                   if i in kin_aper_in_pops] + \
+                (box_orblib[n_kins:] if len(box_orblib) > n_kins else [])
+
         # combine orblibs
         orblib = []
         for (t0, b0) in zip(tube_orblib, box_orblib):
@@ -856,7 +974,7 @@ class LegacyOrbitLibrary(OrbitLibrary):
             orblib[i].scale_x_values(self.velocity_scaling_factor)
         self.losvd_histograms = orblib
         self.intrinsic_masses = density_3D
-        self.n_orbs = self.losvd_histograms[0].y.shape[0]
+        self.n_orbs = self.losvd_histograms[0].y.shape[0] if nkins > 0 else 0
         proj_mass = [np.sum(self.losvd_histograms[i].y,1) for i in range(nkins)]
         self.projected_masses = proj_mass
 

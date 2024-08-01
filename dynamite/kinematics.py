@@ -22,26 +22,37 @@ class Kinematics(data.Data):
                  hist_width='default',
                  hist_center='default',
                  hist_bins='default',
+                 with_pops=False,
                  **kwargs
                  ):
         super().__init__(**kwargs)
+        self.logger = logging.getLogger(f'{__name__}.{__class__.__name__}')
         if hasattr(self, 'data'):
             self.weight = weight
             self.type = type
             if hist_width=='default':
                 self.set_default_hist_width()
             else:
-                self.hist_width = hist_width
+                self.hist_width = float(hist_width)
             if hist_center=='default':
                 self.set_default_hist_center()
             else:
-                self.hist_center = hist_center
+                self.hist_center = float(hist_center)
             if hist_bins=='default':
                 self.set_default_hist_bins()
             else:
-                self.hist_bins = hist_bins
+                self.hist_bins = int(hist_bins)
+            pop_columns = ['t', 'dt', 'Z', 'dZ']
+            if all(c in self.data.colnames for c in pop_columns):
+                if with_pops:
+                    self.logger.debug(f'Kinem {self.name} has population data.')
+                    self.with_pops = True
+                else:
+                    self.with_pops = False
+                self.data.remove_columns(pop_columns)
+            else:
+                self.with_pops = False
             self.__class__.values = list(self.__dict__.keys())
-            self.logger = logging.getLogger(f'{__name__}.{__class__.__name__}')
             if self.weight==None or self.type==None or self.hist_width==None or \
                     self.hist_center==None or self.hist_bins==None:
                 text = 'Kinematics need (weight, type, hist_width, hist_center, '\
@@ -706,7 +717,7 @@ class GaussHermite(Kinematics, data.Integrated):
         v, sig = self.data['v'], self.data['sigma']
         max_abs_v_plus_3sig = np.max(np.abs(v) + n_sig*sig)
         hist_width = 2.*max_abs_v_plus_3sig
-        self.hist_width = hist_width
+        self.hist_width = float(hist_width)
 
     def set_default_hist_center(self):
         """Sets default histogram center to 0.
