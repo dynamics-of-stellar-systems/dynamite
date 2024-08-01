@@ -900,8 +900,9 @@ class LegacyOrbitLibrary(OrbitLibrary):
         pops : Bool
             If True, return LOSVD histograms for the populations apertures.
             If both kins and pops are True, population data is returned
-            following kinematic data. Also, histograms for the apertures used
-            by both kinematics and populations are returned twice in that case.
+            following kinematic data. Note that if population and kinematic
+            data are provided in one file (i.e. they share the same binning)
+            then they have identical orbit libraries.
 
         Returns
         -------
