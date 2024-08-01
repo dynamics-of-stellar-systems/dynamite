@@ -4,6 +4,8 @@
 Change Log
 ****************
 
+- Improvement: prevent DYNAMITE from crashing if NNLS weight solving fails.
+- Improvement: the Gauss Hermite kinematic maps new parameter value `cbar_lims='user'` allows user-defined velocity and velocity dispersion limits (see `Plotter.plot_kinematic_maps()`).
 - Improvement: reduced the main memory requirements of the Python NNLS solvers.
 - Bugfix: fix a crash when creating the BayesLOSVD kinematics file in rare cases where the completed bins were determined incorrectly.
 - New feature: ``data_prep/generate_kin_input.py`` implements reading NIFS kinematics with an arbitrary number of GH moments.
