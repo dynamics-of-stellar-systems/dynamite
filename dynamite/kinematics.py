@@ -341,6 +341,10 @@ class GaussHermite(Kinematics, data.Integrated):
                              names=names,
                              dtype=dtype)
         self.logger.debug(f'File {filename} read (old format)')
+        if np.isnan(data).any():
+            txt = f'Input file {filename} has nans'
+            self.logger.error(f'{txt} at: {np.argwhere(np.isnan(data))}.')
+            raise ValueError(txt)
         return data
 
     def convert_file_from_old_format(self,
@@ -1015,6 +1019,11 @@ class BayesLOSVD(Kinematics, data.Integrated):
         for key,values in input_data.items():
             self.logger.debug(' - '+key)
             struct[key] = np.array(values)
+            if np.isnan(struct[key]).any():
+                txt = f'Input file {filename} has nans'
+                self.logger.error(f'{txt} at: '
+                                  f'{np.argwhere(np.isnan(struct[key]))}.')
+                raise ValueError(txt)
         if f.get("out") != None:
             self.logger.debug("# Loading Stan results:")
             output_data = f['out']
@@ -1024,7 +1033,13 @@ class BayesLOSVD(Kinematics, data.Integrated):
                 struct[int(idx)] = {}
                 for key,values in tmp.items():
                     self.logger.debug(' - ['+idx+'] '+key)
-                    struct[int(idx)][key] = np.array(values)
+                    v_array = np.array(values)
+                    struct[int(idx)][key] = v_array
+                    if np.isnan(v_array).any():
+                        txt = f'Input file {filename} has nans'
+                        self.logger.error(f'{txt} at: '
+                                          f'{np.argwhere(np.isnan(v_array))}.')
+                        raise ValueError(txt)
         self.logger.info("load_hdf5 is DONE")
         return struct
 

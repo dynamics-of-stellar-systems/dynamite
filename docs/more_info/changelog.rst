@@ -4,6 +4,7 @@
 Change Log
 ****************
 
+- Improvement: DYNAMITE now checks for nan values in the kinematics and mges when first reading the data
 - Improvement: prevent DYNAMITE from crashing if NNLS weight solving fails.
 - Improvement: the Gauss Hermite kinematic maps new parameter value `cbar_lims='user'` allows user-defined velocity and velocity dispersion limits (see `Plotter.plot_kinematic_maps()`).
 - Improvement: reduced the main memory requirements of the Python NNLS solvers.
