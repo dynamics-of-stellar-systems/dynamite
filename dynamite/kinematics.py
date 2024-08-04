@@ -17,7 +17,6 @@ class Kinematics(data.Data):
     """
     values = []
     def __init__(self,
-                 weight=None,
                  type=None,
                  hist_width='default',
                  hist_center='default',
@@ -28,7 +27,6 @@ class Kinematics(data.Data):
         super().__init__(**kwargs)
         self.logger = logging.getLogger(f'{__name__}.{__class__.__name__}')
         if hasattr(self, 'data'):
-            self.weight = weight
             self.type = type
             if hist_width=='default':
                 self.set_default_hist_width()
@@ -53,10 +51,10 @@ class Kinematics(data.Data):
             else:
                 self.with_pops = False
             self.__class__.values = list(self.__dict__.keys())
-            if self.weight==None or self.type==None or self.hist_width==None or \
+            if self.type==None or self.hist_width==None or \
                     self.hist_center==None or self.hist_bins==None:
-                text = 'Kinematics need (weight, type, hist_width, hist_center, '\
-                   f'hist_bins), but has ({self.weight}, {self.type}, ' \
+                text = 'Kinematics need (type, hist_width, hist_center, '\
+                   f'hist_bins), but has ({self.type}, ' \
                    f'{self.hist_width}, {self.hist_center}, {self.hist_bins})'
                 self.logger.error(text)
                 raise ValueError(text)
