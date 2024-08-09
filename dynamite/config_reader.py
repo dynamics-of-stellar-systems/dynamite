@@ -297,11 +297,11 @@ class Configuration(object):
                                         hist_width=data_kin['hist_width'],
                                         hist_center=data_kin['hist_center'],
                                         hist_bins=data_kin['hist_bins'],
-                                        kin_aper=kin_id)
-                                populations_set.clean_data()
+                                        kin_aper=kin_id,
+                                        pop_cols=kinematics_set.pop_cols)
                                 c.population_data.append(populations_set)
                                 logger.debug('Has population in kinematics '
-                                             f'bins: {populations_set}')
+                                             f'bins: {kin}')
                             kin_list.append(kinematics_set)
                             kin_id += 1
                         c.kinematic_data = kin_list

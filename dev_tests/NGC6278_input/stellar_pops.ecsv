@@ -2,16 +2,16 @@
 # ---
 # datatype:
 # - {name: vbin_id, datatype: int64}
-# - {name: t, datatype: float64}
-# - {name: dt, datatype: float64}
-# - {name: Z, datatype: float64}
-# - {name: dZ, datatype: float64}
+# - {name: alpha, datatype: float64}
+# - {name: dalpha, datatype: float64}
+# - {name: INDEX, datatype: float64}
+# - {name: dINDEX, datatype: float64}
 # meta: !!omap
 # - PSF:
 #     sigma: [1.06]
 #     weight: [1.0]
 # schema: astropy-2.0
-vbin_id t dt Z dZ
+vbin_id alpha dalpha INDEX dINDEX
 1 -44.7518 2.0988 211.7829 1.9654
 2 -69.2798 2.3608 188.883 2.1766
 3 -70.8007 3.9338 177.095 3.7142
