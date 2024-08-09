@@ -4,6 +4,7 @@
 Change Log
 ****************
 
+- Improvement: the ``weight`` attribute of kinematics and populations is now officially DEPRECATED as it has always been ignored by DYNAMITE.
 - Improvement: DYNAMITE now checks for nan values in the kinematics and mges when first reading the data
 - Improvement: prevent DYNAMITE from crashing if NNLS weight solving fails.
 - Improvement: the Gauss Hermite kinematic maps new parameter value `cbar_lims='user'` allows user-defined velocity and velocity dispersion limits (see `Plotter.plot_kinematic_maps()`).

@@ -112,7 +112,6 @@ system_components:
         contributes_to_potential: True
         kinematics: # optional, only specified for components with kinematics
             kinset1:
-                weight: 1.0 # weight of kinematics data specified by name
                 type: GaussHermite # specifies which object class to create
                 hist_width: '2719.8215332031'
                 hist_center: '0.0000'
@@ -124,7 +123,6 @@ system_components:
                 with_pops: False # If True, pop columns will create pop object
         # populations: # optional, only specified for components with kinematics
         #     pop1:
-        #         weight: 1.0 # weight of populations data specified by name
         #         # type: GaussHermite # specifies which object class to create
         #         hist_width: '2719.8215332031'
         #         hist_center: '0.0000'
