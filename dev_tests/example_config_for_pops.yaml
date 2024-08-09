@@ -99,7 +99,6 @@ system_components:
         contributes_to_potential: True
         kinematics: # optional, only specified for components with kinematics
             set1:
-                weight: 1.0 # weight of kinematics data specified by name
                 type: GaussHermite # specifies which object class to create
                 hist_width: '2719.8215332031'
                 hist_center: '0.0000'
@@ -107,10 +106,9 @@ system_components:
                 datafile: "gauss_hermite_kins.ecsv"  # both discr. & integrated
                 aperturefile: "aperture.dat" # integrated only
                 binfile: "bins.dat"          # integrated only
-                with_pops: False # default False, if true, assume gauss_hermite_kins.ecsv has population columns used to create 
+                with_pops: False # default False, if true, assume gauss_hermite_kins.ecsv has population columns used to create
         populations: # optional, only specified for components with kinematics
             set1:
-                # weight: 1.0 # weight of kinematics data specified by name
                 # type: GaussHermite # specifies which object class to create
                 hist_width: '2719.8215332031'
                 hist_center: '0.0000'

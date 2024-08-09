@@ -282,6 +282,12 @@ class Configuration(object):
                         kin_id = 0
                         for kin, data_kin in data_comp['kinematics'].items():
                             path=self.settings.io_settings['input_directory']
+                            if 'weight' in data_kin:
+                                logger.warning(f'Kinematics {kin}: the '
+                                    '\'weight\' attribute is DEPRECATED and '
+                                    'will be ignored. In a future DYNAMITE '
+                                    'realease this will report an error.')
+                                del data_kin['weight']
                             kinematics_set = getattr(kinem,data_kin['type'])\
                                                 (name=kin,
                                                  input_directory=path,
@@ -290,7 +296,6 @@ class Configuration(object):
                                 populations_set = popul.Populations(
                                         name=f'{kin}_pop',
                                         input_directory=path,
-                                        weight=data_kin['weight'],
                                         aperturefile=data_kin['aperturefile'],
                                         binfile=data_kin['binfile'],
                                         datafile=data_kin['datafile'],

@@ -96,7 +96,6 @@ system_components:
         contributes_to_potential: True
         kinematics:
             califa:
-                weight: 1.0
                 type: GaussHermite
                 datafile: "gauss_hermite_kins.ecsv"
                 aperturefile: "aperture.dat"

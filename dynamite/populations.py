@@ -18,7 +18,6 @@ class Populations(data.Integrated):
     """
     values = []
     def __init__(self,
-                 weight=None,
                  hist_width='default',
                  hist_center='default',
                  hist_bins='default',
@@ -27,7 +26,6 @@ class Populations(data.Integrated):
         super().__init__(**kwargs)
         self.kin_aper = kin_aper
         if hasattr(self, 'data'):
-            self.weight = weight
             self.type = type
             if hist_width=='default':
                 self.set_default_hist_width()  # needed for pop data?
@@ -43,10 +41,10 @@ class Populations(data.Integrated):
                 self.hist_bins = int(hist_bins)
             self.__class__.values = list(self.__dict__.keys())
             self.logger = logging.getLogger(f'{__name__}.{__class__.__name__}')
-            if self.weight is None or self.hist_width is None or \
+            if self.hist_width is None or \
                     self.hist_center is None or self.hist_bins is None:
-                text = 'Populations need (weight, hist_width, hist_center, '\
-                   f'hist_bins), but has ({self.weight}, {self.type}, ' \
+                text = 'Populations need (hist_width, hist_center, '\
+                   f'hist_bins), but has ({self.type}, ' \
                    f'{self.hist_width}, {self.hist_center}, {self.hist_bins})'
                 self.logger.error(text)
                 raise ValueError(text)
