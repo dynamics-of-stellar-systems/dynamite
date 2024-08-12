@@ -22,11 +22,13 @@ class Populations(data.Integrated):
                  hist_center='default',
                  hist_bins='default',
                  kin_aper=None,
+                 pop_cols=None,
                  **kwargs):
         super().__init__(**kwargs)
         self.kin_aper = kin_aper
         if hasattr(self, 'data'):
-            self.type = type
+            if pop_cols is not None:
+                self.clean_data(pop_cols)
             if hist_width=='default':
                 self.set_default_hist_width()  # needed for pop data?
             else:
@@ -44,8 +46,8 @@ class Populations(data.Integrated):
             if self.hist_width is None or \
                     self.hist_center is None or self.hist_bins is None:
                 text = 'Populations need (hist_width, hist_center, '\
-                   f'hist_bins), but has ({self.type}, ' \
-                   f'{self.hist_width}, {self.hist_center}, {self.hist_bins})'
+                   f'hist_bins), but has ' \
+                   f'({self.hist_width}, {self.hist_center}, {self.hist_bins})'
                 self.logger.error(text)
                 raise ValueError(text)
             self.n_spatial_bins = len(self.data)
@@ -103,7 +105,7 @@ class Populations(data.Integrated):
         """
         return self.data.copy(copy_data=True)
 
-    def clean_data(self):
+    def clean_data(self, pop_cols):
         """
         Removes all data columns except for the index and the populations data.
 
@@ -112,8 +114,7 @@ class Populations(data.Integrated):
         None.
 
         """
-        pop_columns = ['t', 'dt', 'Z', 'dZ']
         self.data.remove_columns(c
-                                 for c in self.data.columns[1:]
-                                 if c not in pop_columns)
+                                 for c in self.data.columns
+                                 if c not in pop_cols)
 # end

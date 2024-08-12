@@ -10,10 +10,10 @@
 # - {name: dh3, datatype: float64}
 # - {name: h4, datatype: float64}
 # - {name: dh4, datatype: float64}
-# - {name: t, datatype: int64}
+# - {name: t, datatype: float64}
 # - {name: dt, datatype: float64}
-# - {name: Z, datatype: int64}
-# - {name: dZ, datatype: int64}
+# - {name: Z, datatype: float64}
+# - {name: dZ, datatype: float64}
 # meta:
 #   PSF:
 #     sigma: [1.06]
