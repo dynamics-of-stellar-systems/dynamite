@@ -546,7 +546,7 @@ class ParameterGenerator(object):
             # never stop when current_models is empty
             self.check_generic_stopping_critera()
             self.check_specific_stopping_critera()
-            if any(self.status.values()):
+            if any(v for v in self.status.values() if type(v) is bool):
                 self.status['stop'] = True
                 self.logger.info(f'Stopping criteria met: {self.status}.')
 
