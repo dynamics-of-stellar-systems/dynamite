@@ -29,8 +29,6 @@ class Populations(data.Integrated):
         if hasattr(self, 'data'):
             if pop_cols is not None:
                 self.clean_data(pop_cols)
-            self.weight = weight
-            self.type = type
             if hist_width=='default':
                 self.set_default_hist_width()  # needed for pop data?
             else:
@@ -48,8 +46,8 @@ class Populations(data.Integrated):
             if self.hist_width is None or \
                     self.hist_center is None or self.hist_bins is None:
                 text = 'Populations need (hist_width, hist_center, '\
-                   f'hist_bins), but has ({self.type}, ' \
-                   f'{self.hist_width}, {self.hist_center}, {self.hist_bins})'
+                   f'hist_bins), but has ' \
+                   f'({self.hist_width}, {self.hist_center}, {self.hist_bins})'
                 self.logger.error(text)
                 raise ValueError(text)
             self.n_spatial_bins = len(self.data)
