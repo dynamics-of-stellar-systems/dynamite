@@ -59,6 +59,10 @@ class MGE(data.Data):
                             skip_header=1,
                             max_rows=n_cmp_mge,
                             names=['I', 'sigma', 'q', 'PA_twist'])
+        if np.isnan(dat).any():
+            txt = f'Input file {filename} has nans'
+            self.logger.error(f'{txt} at: {np.argwhere(np.isnan(dat))}.')
+            raise ValueError(txt)
         return dat
 
     def convert_file_from_old_format(self,
