@@ -1136,17 +1136,12 @@ class LegacyOrbitLibrary(OrbitLibrary):
         orb_properties['lmd'] = (orb_properties['L']/r_vrms).to(u.dimensionless_unscaled)
         self.orb_properties = orb_properties
 
-    def find_threshold_angular_momentum(self, make_diagnostic_plots=False):
+    def classification_diagnostic_plot(self, dl=1.0e17):
         """Find threshold angular momentum ``dL`` for use in orbit classification
-
-        Currently uses a hard coded value of ``0.090909 * 10^18 km km/s``.
-        TODO: generalise this to automatically select ``dL`` based on the orblib.
 
         Parameters
         ----------
-        make_diagnostic_plots : bool, optional
-            If ``True``, plot diagnostic angular momentum histograms. The
-            default is ``False``.
+        dl : float, threshold angular momentum, default = 1e17
 
         Returns
         -------
@@ -1154,18 +1149,19 @@ class LegacyOrbitLibrary(OrbitLibrary):
             The threshold angular momentum ``dL``.
         """
         orb_properties = self.orb_properties
-        dl = np.linspace(-1, 1, 12)[6]
-        dl *= 1.
-        if make_diagnostic_plots:
-            kw_hist = {'range':(-1,1), 'bins':11, 'alpha':0.3}
-            _ = plt.hist(np.ravel(orb_properties['Lx'].value/1e18), **kw_hist)
-            _ = plt.hist(np.ravel(orb_properties['Ly'].value/1e18), **kw_hist)
-            _ = plt.hist(np.ravel(orb_properties['Lz'].value/1e18), **kw_hist)
-            plt.axvline(dl, ls=':', color='k')
-            plt.axvline(-dl, ls=':', color='k')
+        kw_hist = {'range':(-1.0e18, 1.0e18), 'bins':51, 'alpha':0.3}
+        _ = plt.hist(np.ravel(orb_properties['Lx'].value), label='$L_x$', **kw_hist)
+        _ = plt.hist(np.ravel(orb_properties['Ly'].value), label='$L_y$', **kw_hist)
+        _ = plt.hist(np.ravel(orb_properties['Lz'].value), label='$L_z$', **kw_hist)
+        plt.axvline(dl, ls=':', color='k')
+        plt.axvline(-dl, ls=':', color='k')
+        plt.gca().set_xlabel('Angular momenta $L_{x/y/z}$ [km/s/kpc]')
+        plt.gca().set_ylabel('pdf')
+        plt.gca().set_title('Distribtuion of angular momenta of orbits in orblib')
+        plt.gca().legend()
         return dl
 
-    def classify_orbits(self, make_diagnostic_plots=False):
+    def classify_orbits(self, make_diagnostic_plots=False, dL=1.0e17, force_lambda_z=False):
         """ Perform orbit classification.
 
         Orbits are classified in 3D angular momentum space ``(Lx, Ly, Lz)``
@@ -1173,16 +1169,17 @@ class LegacyOrbitLibrary(OrbitLibrary):
         classify as follows:
 
         - ``|Lx|,|Ly|,|Lz|<dL`` --> box
-        - ``|Lx|>dL``, ``|Ly|,|Lz|<dL`` --> x-axis tube
-        - ``|Ly|>dL``, ``|Lx|,|Lz|<dL`` --> y-axis tube (theoretically unstable)
-        - ``|Lz|>dL``, ``|Lx|,|Ly|<dL`` --> z-axis tube
+        - ``|Lx|>dL`` & ``|Ly|,|Lz|<dL`` --> x-axis tube
+        - ``|Ly|>dL`` & ``|Lx|,|Lz|<dL`` --> y-axis tube (theoretically unstable)
+        - ``|Lz|>dL`` & ``|Lx|,|Ly|<dL`` --> z-axis tube
 
-        This "exact" classification leaves many orbits unclassified. Instead we
-        classify tube orbits using the less strict criteria:
+        but this "exact" classification leaves many orbits unclassified.
+        Instead we classify tube orbits using the less strict criteria:
 
-        - not a box, ``|Lx|>|Ly|``, ``|Lx|>|Lz|`` --> x-axis tube "-ish"
-        - not a box, ``|Ly|>|Lz|``, ``|Ly|>|Lz|`` --> y-axis tube "-ish"
-        - not a box, ``|Lz|>|Lx|``, ``|Lz|>|Ly|`` --> z-axis tube "-ish"
+        - ``|Lx|,|Ly|,|Lz|<dL`` --> box
+        - not a box & ``|Lx|>|Ly|`` & ``|Lx|>|Lz|`` --> x-axis tube "-ish"
+        - not a box & ``|Ly|>|Lz|`` & ``|Ly|>|Lz|`` --> y-axis tube "-ish"
+        - not a box & ``|Lz|>|Lx|`` & ``|Lz|>|Ly|`` --> z-axis tube "-ish"
 
         The method logs the fraction of all orbits in each classification, and
         the fraction of each type which are "exact" according to the stricter
@@ -1194,6 +1191,8 @@ class LegacyOrbitLibrary(OrbitLibrary):
         make_diagnostic_plots : bool, optional
             whether to make diagnostic plot in
             ``find_threshold_angular_momentum``, by default ``False``.
+        
+        dL : float, threshold angular momentum, default = 1e17
 
         Returns
         -------
@@ -1206,35 +1205,32 @@ class LegacyOrbitLibrary(OrbitLibrary):
 
         """
         orb_properties = self.orb_properties
-        dl = self.find_threshold_angular_momentum(
-            make_diagnostic_plots=make_diagnostic_plots
-            )
+        dl = 1.*dL
+        if make_diagnostic_plots:
+            self.classification_diagnostic_plot(dl=dl)
         # find box orbits
         bool_box = (
-            (np.abs(orb_properties['Lx'].value/1e18) <= dl) &
-            (np.abs(orb_properties['Ly'].value/1e18) <= dl) &
-            (np.abs(orb_properties['Lz'].value/1e18) <= dl)
+            (np.abs(orb_properties['Lx'].value) <= dl) &
+            (np.abs(orb_properties['Ly'].value) <= dl) &
+            (np.abs(orb_properties['Lz'].value) <= dl)
         )
         idx_box = np.where(bool_box)
         # find "true" tube orbits i.e. with exactly one component of L =/= 0
         bool_xtube = (
-            (np.abs(orb_properties['Lx'].value/1e18) > dl) &
-            (np.abs(orb_properties['Ly'].value/1e18) <= dl) &
-            (np.abs(orb_properties['Lz'].value/1e18) <= dl)
+            (np.abs(orb_properties['Lx'].value) > dl) &
+            (np.abs(orb_properties['Ly'].value) <= dl) &
+            (np.abs(orb_properties['Lz'].value) <= dl)
         )
-        idx_xtube = np.where(bool_xtube)
         bool_ytube = (
-            (np.abs(orb_properties['Lx'].value/1e18) <= dl) &
-            (np.abs(orb_properties['Ly'].value/1e18) > dl) &
-            (np.abs(orb_properties['Lz'].value/1e18) <= dl)
+            (np.abs(orb_properties['Lx'].value) <= dl) &
+            (np.abs(orb_properties['Ly'].value) > dl) &
+            (np.abs(orb_properties['Lz'].value) <= dl)
         )
-        idx_ytube = np.where(bool_ytube)
         bool_ztube = (
-            (np.abs(orb_properties['Lx'].value/1e18) <= dl) &
-            (np.abs(orb_properties['Ly'].value/1e18) <= dl) &
-            (np.abs(orb_properties['Lz'].value/1e18) > dl)
+            (np.abs(orb_properties['Lx'].value) <= dl) &
+            (np.abs(orb_properties['Ly'].value) <= dl) &
+            (np.abs(orb_properties['Lz'].value) > dl)
         )
-        idx_ztube = np.where(bool_ztube)
         # find tube-ish orbits i.e. with one component of L larger than other 2
         bool_xtish = (
             (bool_box==False)&
@@ -1251,6 +1247,11 @@ class LegacyOrbitLibrary(OrbitLibrary):
             (np.abs(orb_properties['Lz']) > np.abs(orb_properties['Lx'])) &
             (np.abs(orb_properties['Lz']) > np.abs(orb_properties['Ly']))
         )
+        if force_lambda_z:
+            bool_xtish = np.full_like(bool_xtish, False)
+            bool_ytish = np.full_like(bool_ytish, False)
+            bool_box = np.full_like(bool_box, False)
+            bool_ztish = np.full_like(bool_ztish, True)
         # find any remaining orbits
         bool_other = (
             (bool_box==False) &
@@ -1291,23 +1292,19 @@ class LegacyOrbitLibrary(OrbitLibrary):
         }
         self.orb_classification = orb_classification
 
-    def get_projection_tensor(self, minr=None, maxr=None, nr=50, nl=61):
-        # skip if this method has been run before with the same input
+    def get_projection_tensor(self, minr=None, maxr=None, nr=50, nl=61, force_lambda_z=False, dL=1e17):
         projection_tensor_pars = {'minr':minr,
                                   'maxr':maxr,
                                   'nr':nr,
-                                  'nl':nl}
-        if hasattr(self, 'projection_tensor_pars'):
-            if self.projection_tensor_pars == projection_tensor_pars:
-                return
-            else:
-                self.projection_tensor_pars = projection_tensor_pars
+                                  'nl':nl,
+                                  'dL':dL,
+                                  'force_lambda_z':force_lambda_z}
+        self.projection_tensor_pars = projection_tensor_pars
         # otherwise, continue...
         if hasattr(self, 'orb_properties') == False:
             self.read_orbit_property_file()
         orb_properties = self.orb_properties
-        if hasattr(self, 'orb_classification') == False:
-            self.classify_orbits()
+        self.classify_orbits(dL=dL, force_lambda_z=force_lambda_z)
         if minr is None:
             minr = np.min(orb_properties['r']).value
         if maxr is None:
@@ -1351,7 +1348,7 @@ class LegacyOrbitLibrary(OrbitLibrary):
             # create binary sparse matrix, with 1 entry per particle per bundle
             projection00 = sparse.COO(coords, 1, shape=r_idx.shape+(nr,nl))
             # average over individual orbits in a bundle
-            projection00 = np.mean(projection00, 1)
+            projection00 = np.mean(projection00, axis=1)
             projection += [projection00]
         projection = np.stack(projection)
         projection = np.moveaxis(projection, 1, 3)

@@ -73,6 +73,7 @@ system_components:
                 datafile: "bayes_losvd_kins.ecsv"
                 aperturefile: "aperture.dat"
                 binfile: "bins.dat"
+                weight: 1.0
         include: True
         contributes_to_potential: True
 
