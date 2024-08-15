@@ -100,7 +100,6 @@ system_components:
                 datafile: "gauss_hermite_kins.ecsv"
                 aperturefile: "aperture.dat"
                 binfile: "bins.dat"
-                weight: 1.0
 
 system_parameters:
     ml:

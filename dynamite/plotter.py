@@ -2142,7 +2142,7 @@ class Plotter():
             ``'box+short+intermediate'``. Any order works, but the order does
             not affect the order of plots. By default ``'all'``
         dL : float, default 1e17
-            Threshold angular momentum used for orbit classification 
+            Threshold angular momentum used for orbit classification
         force_lambda_z : bool, dafault False
             if true, then we force the orbit distribution to only be collapsed
             onto (r, lambda_z) space. This is done by forcing all orbits to be
@@ -2180,7 +2180,7 @@ class Plotter():
             weights = np.ones(n_bundles)/n_bundles
         else:
             weight_solver = model.get_weights(orblib)
-            weights, _, _, _ = weight_solver.solve(orblib)
+            weights = model.weights
         mod_orb_dists = orblib.projection_tensor.dot(weights)
         mod_orbclass_fracs = np.sum(mod_orb_dists, (1,2))
         mod_orbclass_fracs = mod_orbclass_fracs/np.sum(mod_orbclass_fracs)

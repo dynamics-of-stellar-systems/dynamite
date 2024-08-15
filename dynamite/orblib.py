@@ -1191,7 +1191,7 @@ class LegacyOrbitLibrary(OrbitLibrary):
         make_diagnostic_plots : bool, optional
             whether to make diagnostic plot in
             ``find_threshold_angular_momentum``, by default ``False``.
-        
+
         dL : float, threshold angular momentum, default = 1e17
 
         Returns
@@ -1278,9 +1278,12 @@ class LegacyOrbitLibrary(OrbitLibrary):
         self.logger.info(f'    - {percent(n_ztish/n_orb_tot)} z-tubes')
         self.logger.info(f'    - {percent(n_other/n_orb_tot)} other types')
         self.logger.info('Amongst tubes, % with only one nonzero component of L:')
-        self.logger.info(f'    - {percent(n_xt_exact/n_xtish)} of x-tubes')
-        self.logger.info(f'    - {percent(n_yt_exact/n_ytish)} of y-tubes')
-        self.logger.info(f'    - {percent(n_zt_exact/n_ztish)} of z-tubes')
+        frac = n_xt_exact/n_xtish if n_xtish > 0 else 0
+        self.logger.info(f'    - {percent(frac)} of x-tubes')
+        frac = n_yt_exact/n_ytish if n_ytish > 0 else 0
+        self.logger.info(f'    - {percent(frac)} of y-tubes')
+        frac = n_zt_exact/n_ztish if n_ztish > 0 else 0
+        self.logger.info(f'    - {percent(frac)} of z-tubes')
         self.logger.info('Orbit library classification DONE.')
         # save the output
         orb_classification = {

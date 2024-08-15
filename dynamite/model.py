@@ -1014,13 +1014,18 @@ class Model(object):
     def get_weights(self, orblib=None):
         """Get the orbital weights
 
+        Gets the orbital weights and chi2 values by calling the appropriate
+        ``WeightSolver.solve()`` method.
+
         Parameters
         ----------
         orblib : a ``dyn.orblib.OrbitLibrary`` object
 
         Returns
         -------
-        a ``dyn.weight_solver.WeightSolver`` object
+        weight_solver : a ``dyn.weight_solver.WeightSolver`` object
+        Sets the attributes ``self.weights``, ``self.chi2``,
+        ``self.kinchi2``, and ``self.kinmapchi2``.
 
         """
         ws_type = self.config.settings.weight_solver_settings['type']
