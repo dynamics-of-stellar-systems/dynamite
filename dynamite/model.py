@@ -1024,8 +1024,11 @@ class Model(object):
         Returns
         -------
         weight_solver : a ``dyn.weight_solver.WeightSolver`` object
-        Sets the attributes ``self.weights``, ``self.chi2``,
-        ``self.kinchi2``, and ``self.kinmapchi2``.
+            sets attributes:
+                - ``self.weights``
+                - ``self.chi2``
+                - ``self.kinchi2``
+                - ``self.kinmapchi2``
 
         """
         ws_type = self.config.settings.weight_solver_settings['type']
