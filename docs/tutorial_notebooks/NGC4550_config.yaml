@@ -70,7 +70,6 @@ system_components:
         kinematics:
             sauron:
                 type: BayesLOSVD
-                weight: 1.0
                 datafile: "bayes_losvd_kins.ecsv"
                 aperturefile: "aperture.dat"
                 binfile: "bins.dat"

@@ -255,7 +255,8 @@ class Configuration(object):
                     # initialize the component's paramaters, kinematics,
                     # and populations
 
-                    par_list, kin_list, pop_list = [], [], []
+                    par_list, kin_list = [], []
+                    c.population_data = []
 
                     # read parameters
 
@@ -278,39 +279,52 @@ class Configuration(object):
                     # VisibleComponent has kinematics?)
                         logger.debug('Has kinematics '
                                     f'{list(data_comp["kinematics"].keys())}')
+                        kin_id = 0
                         for kin, data_kin in data_comp['kinematics'].items():
                             path=self.settings.io_settings['input_directory']
+                            if 'weight' in data_kin:
+                                logger.warning(f'Kinematics {kin}: the '
+                                    '\'weight\' attribute is DEPRECATED and '
+                                    'will be ignored. In a future DYNAMITE '
+                                    'realease this will report an error.')
+                                del data_kin['weight']
                             kinematics_set = getattr(kinem,data_kin['type'])\
                                                 (name=kin,
                                                  input_directory=path,
                                                  **data_kin)
+                            if kinematics_set.with_pops:
+                                populations_set = popul.Populations(
+                                        name=f'{kin}_pop',
+                                        input_directory=path,
+                                        aperturefile=data_kin['aperturefile'],
+                                        binfile=data_kin['binfile'],
+                                        datafile=data_kin['datafile'],
+                                        hist_width=data_kin['hist_width'],
+                                        hist_center=data_kin['hist_center'],
+                                        hist_bins=data_kin['hist_bins'],
+                                        kin_aper=kin_id,
+                                        pop_cols=kinematics_set.pop_cols)
+                                c.population_data.append(populations_set)
+                                logger.debug('Has population in kinematics '
+                                             f'bins: {kin}')
                             kin_list.append(kinematics_set)
+                            kin_id += 1
                         c.kinematic_data = kin_list
-
-                    # cast hist. values to correct numeric type unless `default`
-                    for i, k in enumerate(c.kinematic_data):
-                        if (k.hist_width=='default') is False:
-                            logger.debug(f'hist_width = {k.hist_width}')
-                            k.hist_width = float(k.hist_width)
-                        if (k.hist_center=='default') is False:
-                            logger.debug(f'hist_center = {k.hist_center}')
-                            k.hist_center = float(k.hist_center)
-                        if (k.hist_bins=='default') is False:
-                            logger.debug(f'hist_bins = {k.hist_bins}')
-                            k.hist_bins = int(k.hist_bins)
 
                     # read populations
 
                     if 'populations' in data_comp:
-                    # shall we include a check here (e.g., only
-                    # VisibleComponent has populations?)
+                        # shall we include a check here (e.g., only
+                        # VisibleComponent has populations?)
                         logger.debug(f'Has populations '
                                 f'{tuple(data_comp["populations"].keys())}')
                         for pop, data_pop in data_comp['populations'].items():
-                            populations_set = popul.Populations(name=pop,
-                                                                **data_pop)
-                            pop_list.append(populations_set)
-                        c.population_data = pop_list
+                            path = self.settings.io_settings['input_directory']
+                            populations_set = popul.Populations(
+                                                name=pop,
+                                                input_directory=path,
+                                                **data_pop)
+                            c.population_data.append(populations_set)
 
                     if 'mge_pot' in data_comp:
                         path = self.settings.io_settings['input_directory']
@@ -919,6 +933,12 @@ class Configuration(object):
                                       'either GaussHermite or BayesLOSVD')
                     raise ValueError('VisibleComponent must have kinematics: '
                                      'either GaussHermite or BayesLOSVD')
+                n_pops = len(c.population_data)
+                if n_pops > 0 and ws_type == 'LegacyWeightSolver':
+                    txt = 'LegacyWeightSolver cannot be used with population '\
+                        'data - use weight-solver type NNLS.'
+                    self.logger.error(txt)
+                    raise ValueError(txt)
                 if c.symmetry != 'triax':
                     self.logger.error('Legacy mode: VisibleComponent must be '
                                       'triaxial')

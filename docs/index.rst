@@ -83,7 +83,7 @@ Each page is an ipython notebook which you can either view in the browser, or do
    tutorial_notebooks/4_BayesLOSVD.ipynb
    tutorial_notebooks/5_parameter_space.ipynb
    tutorial_notebooks/6_orbits_and_weights.ipynb
-
+   tutorial_notebooks/7_orbital_distributions.ipynb
 
 API Documentation
 =================
