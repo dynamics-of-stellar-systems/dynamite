@@ -17,39 +17,63 @@ class Kinematics(data.Data):
     """
     values = []
     def __init__(self,
-                 weight=None,
                  type=None,
                  hist_width='default',
                  hist_center='default',
                  hist_bins='default',
+                 with_pops=False,
                  **kwargs
                  ):
         super().__init__(**kwargs)
+        self.logger = logging.getLogger(f'{__name__}.{__class__.__name__}')
         if hasattr(self, 'data'):
-            self.weight = weight
             self.type = type
             if hist_width=='default':
                 self.set_default_hist_width()
             else:
-                self.hist_width = hist_width
+                self.hist_width = float(hist_width)
             if hist_center=='default':
                 self.set_default_hist_center()
             else:
-                self.hist_center = hist_center
+                self.hist_center = float(hist_center)
             if hist_bins=='default':
                 self.set_default_hist_bins()
             else:
-                self.hist_bins = hist_bins
+                self.hist_bins = int(hist_bins)
+            has_pops, pop_cols = self.has_pops()
+            if has_pops and with_pops:
+                self.with_pops = True
+                self.pop_cols = pop_cols
+                self.logger.debug(f'Kinem {self.name} has population data.')
+            else:
+                self.with_pops = False
+                self.pop_cols = []
             self.__class__.values = list(self.__dict__.keys())
-            self.logger = logging.getLogger(f'{__name__}.{__class__.__name__}')
-            if self.weight==None or self.type==None or self.hist_width==None or \
+            if self.type==None or self.hist_width==None or \
                     self.hist_center==None or self.hist_bins==None:
-                text = 'Kinematics need (weight, type, hist_width, hist_center, '\
-                   f'hist_bins), but has ({self.weight}, {self.type}, ' \
+                text = 'Kinematics need (type, hist_width, hist_center, '\
+                   f'hist_bins), but has ({self.type}, ' \
                    f'{self.hist_width}, {self.hist_center}, {self.hist_bins})'
                 self.logger.error(text)
                 raise ValueError(text)
             self.n_spatial_bins = len(self.data)
+
+    def has_pops(self):
+        """
+        Identifies population data in the kinematics data file.
+
+        If there is population data, it is removed from self.data. This
+        method needs to be implemented for all Kinematics subclasses.
+
+        Returns
+        -------
+        bool
+            True if population data is found, False otherwise.
+        list
+            List of population data columns
+
+        """
+        return False, []
 
     def update(self, **kwargs):
         """
@@ -272,6 +296,30 @@ class GaussHermite(Kinematics, data.Integrated):
                 self._data_with_sys_err = gh_data.copy(copy_data=True)
         return gh_data
 
+    def has_pops(self):
+        """
+        Identifies population data in the kinematics data file.
+
+        If there is population data, it is removed from self.data. This
+        method needs to be implemented for all Kinematics subclasses.
+
+        Returns
+        -------
+        bool
+            True if population data is found, False otherwise.
+        list
+            List of population data columns
+
+        """
+        max_gh = self.get_highest_order_gh_coefficient()
+        gh_cols = ['v', 'dv', 'sigma', 'dsigma']
+        gh_cols += [f'{d}h{i}' for i in range(3, max_gh + 1) for d in ('','d')]
+        pop_cols = [c for c in self.data.colnames[1:] if c not in gh_cols]
+        self.data.remove_columns(pop_cols)
+        has_pops = len(pop_cols) > 0
+        pop_cols = self.data.colnames[:1] + pop_cols
+        return has_pops, pop_cols
+
     def get_highest_order_gh_coefficient(self):
         """Get max order GH coeeff from data table
 
@@ -330,6 +378,10 @@ class GaussHermite(Kinematics, data.Integrated):
                              names=names,
                              dtype=dtype)
         self.logger.debug(f'File {filename} read (old format)')
+        if np.isnan(data).any():
+            txt = f'Input file {filename} has nans'
+            self.logger.error(f'{txt} at: {np.argwhere(np.isnan(data))}.')
+            raise ValueError(txt)
         return data
 
     def convert_file_from_old_format(self,
@@ -706,7 +758,7 @@ class GaussHermite(Kinematics, data.Integrated):
         v, sig = self.data['v'], self.data['sigma']
         max_abs_v_plus_3sig = np.max(np.abs(v) + n_sig*sig)
         hist_width = 2.*max_abs_v_plus_3sig
-        self.hist_width = hist_width
+        self.hist_width = float(hist_width)
 
     def set_default_hist_center(self):
         """Sets default histogram center to 0.
@@ -905,6 +957,29 @@ class BayesLOSVD(Kinematics, data.Integrated):
             self.convert_losvd_columns_to_one_multidimensional_column()
             self.set_mean_v_and_sig_v_per_aperture()
 
+    def has_pops(self):
+        """
+        Identifies population data in the kinematics data file.
+
+        If there is population data, it is removed from self.data. This
+        method needs to be implemented for all Kinematics subclasses.
+
+        Returns
+        -------
+        bool
+            True if population data is found, False otherwise.
+        list
+            List of population data columns
+
+        """
+        kin_cols = ['binID_BayesLOSVD', 'bin_flux', 'binID_dynamite',
+                    'v', 'sigma', 'xbin', 'ybin', 'losvd', 'dlosvd']
+        pop_cols = [c for c in self.data.colnames if c not in kin_cols]
+        self.data.remove_columns(pop_cols)
+        has_pops = len(pop_cols) > 0
+        pop_cols = ['binID_dynamite'] + pop_cols
+        return has_pops, pop_cols
+
     def convert_losvd_columns_to_one_multidimensional_column(self):
         """Convert 1D to multi-dim columns
 
@@ -1004,6 +1079,11 @@ class BayesLOSVD(Kinematics, data.Integrated):
         for key,values in input_data.items():
             self.logger.debug(' - '+key)
             struct[key] = np.array(values)
+            if np.isnan(struct[key]).any():
+                txt = f'Input file {filename} has nans'
+                self.logger.error(f'{txt} at: '
+                                  f'{np.argwhere(np.isnan(struct[key]))}.')
+                raise ValueError(txt)
         if f.get("out") != None:
             self.logger.debug("# Loading Stan results:")
             output_data = f['out']
@@ -1013,7 +1093,13 @@ class BayesLOSVD(Kinematics, data.Integrated):
                 struct[int(idx)] = {}
                 for key,values in tmp.items():
                     self.logger.debug(' - ['+idx+'] '+key)
-                    struct[int(idx)][key] = np.array(values)
+                    v_array = np.array(values)
+                    struct[int(idx)][key] = v_array
+                    if np.isnan(v_array).any():
+                        txt = f'Input file {filename} has nans'
+                        self.logger.error(f'{txt} at: '
+                                          f'{np.argwhere(np.isnan(v_array))}.')
+                        raise ValueError(txt)
         self.logger.info("load_hdf5 is DONE")
         return struct
 

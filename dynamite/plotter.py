@@ -2095,6 +2095,8 @@ class Plotter():
                            orientation='horizontal',
                            figtype='.png',
                            subset='all',
+                           dL=1e17,
+                           force_lambda_z=False,
                            getdata=False):
         """Make the orbit distibution plot
 
@@ -2141,6 +2143,12 @@ class Plotter():
             'intermediate', 'box']`` separated by ``'+'`` e.g. ``'long+box'``,
             ``'box+short+intermediate'``. Any order works, but the order does
             not affect the order of plots. By default ``'all'``
+        dL : float, default 1e17
+            Threshold angular momentum used for orbit classification
+        force_lambda_z : bool, dafault False
+            if true, then we force the orbit distribution to only be collapsed
+            onto (r, lambda_z) space. This is done by forcing all orbits to be
+            classified as short axis-tube orbits.
         getdata : bool, optional
             whether to return the orbit distribtuion data plotted in the plot,
             by default ``False``
@@ -2168,13 +2176,13 @@ class Plotter():
             raise NotImplementedError(f"Unknown orientation {orientation}, "
                                       f"must be 'horizontal' or 'vertical'.")
         orblib = model.get_orblib()
-        orblib.get_projection_tensor(minr=minr, maxr=maxr, nr=nr, nl=nl)
+        orblib.get_projection_tensor(minr=minr, maxr=maxr, nr=nr, nl=nl, force_lambda_z=force_lambda_z, dL=dL)
         if equal_weighted_orbits:
             n_bundles = orblib.projection_tensor.shape[-1]
             weights = np.ones(n_bundles)/n_bundles
         else:
             weight_solver = model.get_weights(orblib)
-            weights, _, _, _ = weight_solver.solve(orblib)
+            weights = model.weights
         mod_orb_dists = orblib.projection_tensor.dot(weights)
         mod_orbclass_fracs = np.sum(mod_orb_dists, (1,2))
         mod_orbclass_fracs = mod_orbclass_fracs/np.sum(mod_orbclass_fracs)
