@@ -10,6 +10,13 @@ import dynamite as dyn
 
 
 class Coloring:
+    """Class to hold coloring-related routines
+
+    Parameters
+    ----------
+    config : a ``dyn.config_reader.Configuration`` object
+
+    """
 
     def __init__(self, config):
         self.logger = logging.getLogger(f'{__name__}.{__class__.__name__}')
@@ -26,7 +33,10 @@ class Coloring:
                         make_diagnostic_plots=False,
                         extra_diagnostic_output=False):
         """
-        Perform Voronoi binning of orbits in the r-circularity phase space.
+        Perform Voronoi binning of orbits in the radius-circularity phase
+        space. The goal is to group the "original" n_orbits orbit bundles into
+        fewer n_bundle "Voronoi" bundles with each of these Voronoi bundles
+        accounting for a weight of at least ``vor_weight``.
 
         Parameters
         ----------
@@ -50,7 +60,11 @@ class Coloring:
             the target total orbital weight in each Voronoi bin.
             The default is 0.01.
         vor_ignore_zeros : bool, optional
-            DESCRIPTION. The default is ``False``.
+            If ``True``, then radius-circularity bins that have zero total
+            weight will be ignored in the binning process. NOTE: this
+            feature is still EXPERIMENTAL due to insufficient testing, may
+            still be buggy, and is therefore NOT RECOMMENDED.
+            The default is ``False``.
         make_diagnostic_plots : bool, optional
             If ``True``, both vorbin and DYNAMITE will produce diagnostic
             plots visualizing the binning result. The default is ``False``.
@@ -60,11 +74,21 @@ class Coloring:
 
         Returns
         -------
-        vor_bundle_mapping : np.array of shape (n_vor_bundle,n_orbit_bundle)
-            DESCRIPTION.
+        (vor_bundle_mapping, phase_space_binning) : tuple, where
+        vor_bundle_mapping : np.array of shape (n_bundle, n_orbits)
+            Mapping between the "original" orbit bundles and the Voronoi
+            orbit bundles: vor_bundle_mapping(i_bundle, i_orbit) is the
+            fraction of i_orbit assigned to i_bundle, multiplied by i_orbit's
+            weight.
         phase_space_binning : dict
-            phase_space_binning['in']: np.array of shape 3, nr*nl holding the
-            binning input (r, l, .
+            phase_space_binning['in']: np.array of shape (3, nr*nl) holding the
+            binning input: bin r coordinates, bin lambda_z coordinates,
+            bin total weights
+            phase_space_binning['out']: np.array of shape (3, n_bundle) holding
+            the Voronoi binning output: weighted Voronoi bin centroid
+            coordinates r_bar, lambda_bar and Voronoi bin total weights
+            phase_space_binning['map']: np.array of shape (nr*nl,) holding the
+            phase space mapping: Voronoi bin numbers for each input bin
 
         """
         if model is None:
@@ -96,7 +120,6 @@ class Coloring:
         # get the orbit distribution in the r, lambda space
         # = total weight in the r, l bins
         orbit_distribution = projection_tensor.dot(weights)
-        self.logger.info(f'{orbit_distribution.shape=}')
 
         # build the input for vorbin
         dr = (log_maxr - log_minr) / nr
@@ -107,8 +130,8 @@ class Coloring:
         vor_in = np.vstack((np.array([m.ravel() for m in input_grid]),
                             orbit_distribution.T.ravel()))
         if vor_ignore_zeros:
-            is_zero_weight_bin = vor_in[2,:] > 0
-            vor_in = vor_in[:,is_zero_weight_bin]  # eliminate zero-weight bins
+            nonzero_weight_bins = vor_in[2,:] > 0
+            vor_in = vor_in[:,nonzero_weight_bins]
 
         def sum_weights(index, signal, noise):
             """
@@ -144,15 +167,15 @@ class Coloring:
         phase_space_binning = {'in':vor_in,
                                'out':np.vstack((r_bar, l_bar, bin_weights)),
                                'map':binning}  # Vor bin numbers of r, l bins
-        self.logger.info(f'{phase_space_binning["in"].shape=}\n'
-                         f'{phase_space_binning["out"].shape=}\n'
-                         f'{phase_space_binning["map"].shape=}')
-        #log: 'x original orbit bundles divided into y Voronoi bundles'
+        n_orbits = projection_tensor.shape[-1]  # "original" orbit bundles
+        n_bundle = phase_space_binning['out'].shape[-1]  # Voronoi bundles
+        self.logger.info(f'{n_orbits} original orbit bundles aggregated into '
+                         f'{n_bundle} Voronoi bundles.')
         if make_diagnostic_plots:
             if vor_ignore_zeros:
                 vor_bin_map = iter(phase_space_binning['map'])
                 vor_map_dense = [next(vor_bin_map) if nz else np.nan
-                                 for nz in is_zero_weight_bin]
+                                 for nz in nonzero_weight_bins]
             else:
                 vor_map_dense = phase_space_binning['map']
             vor_map_dense = np.array(vor_map_dense).reshape(nl, nr)
@@ -176,22 +199,20 @@ class Coloring:
                         'coloring_voronoi_binning.png')
 
         # map "original" orbit bundles to Voronoi bundles
-        n_orbits = projection_tensor.shape[-1]  # "original" orbit bundles
-        n_bundle = phase_space_binning['out'].shape[-1]  # Voronoi bundles
-        # weighted orbit fractions in the input bins: flatten r and l indices
-        # of the projection tensor and make r the fastest moving index, like
-        # in phase_space_binning['out']=binning, shape=(nr*nl, n_orbits)
+        # calculate weighted orbit fractions in the input bins: "flatten"
+        # r and l indices of the projection tensor making r the fastest moving
+        # index, like in phase_space_binning['map']==binning and multiply
+        # element-wise with the orbit weights; orb_frac.shape=(nr*nl, n_orbits)
         orb_frac = projection_tensor.todense().reshape((nr * nl, -1),
                                                        order='F') * weights
         if vor_ignore_zeros:  # eliminate bins with zero total weight
-            orb_frac = orb_frac[is_zero_weight_bin]
+            orb_frac = orb_frac[nonzero_weight_bins]
         # each Voronoi bin number represents a Voronoi (orbit) bundle
         # for each "original" (orbit) bundle, calculate its fractions that go
         # into each Voronoi bundle
         vor_bundle_mapping = np.zeros((n_bundle, n_orbits))
-        # for i in range(orb_frac.shape[0]):  # for each pixel, collect the weighted orbit fractions
-        #     vor_bundle_mapping[binning[i]] += orb_frac[i]
-        vor_bundle_mapping[binning[:]] += orb_frac[:]
+        for i in range(orb_frac.shape[0]):  # collect weighted orbit fractions
+            vor_bundle_mapping[binning[i]] += orb_frac[i]
+        # vor_bundle_mapping[binning[:]] += orb_frac[:]
 
-        self.logger.info(f'{vor_bundle_mapping.shape=}')
         return vor_bundle_mapping, phase_space_binning
