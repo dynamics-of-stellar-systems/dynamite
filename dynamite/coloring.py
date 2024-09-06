@@ -2,11 +2,8 @@
 import logging
 import matplotlib.pyplot as plt
 import numpy as np
-import sparse
 
 from vorbin.voronoi_2d_binning import voronoi_2d_binning
-
-import dynamite as dyn
 
 
 class Coloring:
@@ -37,6 +34,8 @@ class Coloring:
         space. The goal is to group the "original" n_orbits orbit bundles into
         fewer n_bundle "Voronoi" bundles with each of these Voronoi bundles
         accounting for a weight of at least ``vor_weight``.
+        This method uses the ``vorbin`` package by Michele Cappellari
+        (M. Cappellari, Y. Copin, 2003, MNRAS 342, 345).
 
         Parameters
         ----------
