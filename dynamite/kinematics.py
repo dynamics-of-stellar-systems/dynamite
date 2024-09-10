@@ -973,8 +973,9 @@ class BayesLOSVD(Kinematics, data.Integrated):
 
         """
         kin_cols = ['binID_BayesLOSVD', 'bin_flux', 'binID_dynamite',
-                    'v', 'sigma', 'xbin', 'ybin', 'losvd', 'dlosvd']
-        pop_cols = [c for c in self.data.colnames if c not in kin_cols]
+                    'v', 'sigma', 'xbin', 'ybin']
+        pop_cols = [c for c in self.data.colnames if c not in kin_cols
+                    and not any(c.startswith(s) for s in ['losvd', 'dlosvd'])]
         self.data.remove_columns(pop_cols)
         has_pops = len(pop_cols) > 0
         pop_cols = ['binID_dynamite'] + pop_cols
