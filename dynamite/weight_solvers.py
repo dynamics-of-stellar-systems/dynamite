@@ -289,6 +289,10 @@ class LegacyWeightSolver(WeightSolver):
                      os.path.isfile(self.fname_nn_nnls) and
                      os.path.isfile(fname_nn_orbmat))
             if ignore_existing_weights or not check:
+                for f in [self.fname_nn_kinem, self.fname_nn_nnls,
+                          fname_nn_orbmat]:
+                    if os.path.isfile(f):
+                        os.remove(f)
                 # set the current directory to the directory in which
                 # the models are computed
                 cur_dir = os.getcwd()
