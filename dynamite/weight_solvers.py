@@ -858,7 +858,6 @@ class NNLS(WeightSolver):
                 self.logger.error(text)
                 raise ValueError(text)
             if not np.isnan(weights[0]):
-                np.savetxt(self.weight_file, weights)
                 self.logger.info("NNLS problem solved")
                 # calculate chi2s
                 chi2_vector = (np.dot(A, weights) - b)**2.
