@@ -889,7 +889,7 @@ class Model(object):
         """
         if not os.path.isfile(self.config.config_file_name):
             txt = f'Unexpected: config file {self.config.config_file_name}' + \
-                  'not found.'
+                  ' not found.'
             self.logger.error(txt)
             raise FileNotFoundError(txt)
         model_yaml_files = glob.glob(self.directory+'*.yaml')
@@ -1014,13 +1014,21 @@ class Model(object):
     def get_weights(self, orblib=None):
         """Get the orbital weights
 
+        Gets the orbital weights and chi2 values by calling the appropriate
+        ``WeightSolver.solve()`` method.
+
         Parameters
         ----------
         orblib : a ``dyn.orblib.OrbitLibrary`` object
 
         Returns
         -------
-        a ``dyn.weight_solver.WeightSolver`` object
+        weight_solver : a ``dyn.weight_solver.WeightSolver`` object
+            sets attributes:
+                - ``self.weights``
+                - ``self.chi2``
+                - ``self.kinchi2``
+                - ``self.kinmapchi2``
 
         """
         ws_type = self.config.settings.weight_solver_settings['type']

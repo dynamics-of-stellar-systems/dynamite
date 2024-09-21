@@ -596,8 +596,18 @@ class NNLS(WeightSolver):
         self.nnls_solver = nnls_solver
         self.get_observed_mass_constraints()
 
-    def get_observed_mass_constraints(self):
-        """Get aperture+intrinsic mass constraits from MGE
+    def get_observed_mass_constraints(self, kins=True, pops=False):
+        """Get aperture+intrinsic mass constraints from MGE
+
+        Parameters
+        ----------
+        kins : Bool
+            If True, returns the projected masses of the MGE for the
+            kinematic data apertures.
+        pops : Bool
+            If True, returns the projected masses of the MGE for the
+            population data apertures. If both kins and pops are True,
+            population data is returned following kinematic data.
 
         Returns
         -------
@@ -615,10 +625,11 @@ class NNLS(WeightSolver):
         if self.system.is_bar_disk_system():
             bardisk = self.system.get_unique_bar_component()
             mge = bardisk.mge_lum + bardisk.disk_lum
+            n_kin_ap = [k.n_spatial_bins for k in bardisk.kinematic_data]
         else:
             stars = self.system.get_unique_triaxial_visible_component()
             mge = stars.mge_lum
-
+            n_kin_ap = [k.n_spatial_bins for k in stars.kinematic_data]
 
         # intrinsic mass
         intrinsic_masses = mge.get_intrinsic_masses_from_file(self.direc_no_ml)
@@ -626,7 +637,25 @@ class NNLS(WeightSolver):
         self.intrinsic_mass_error = self.settings['lum_intr_rel_err']
         # projected
         projected_masses = mge.get_projected_masses_from_file(self.direc_no_ml)
-        self.projected_masses = projected_masses
+        if kins and pops:
+            self.projected_masses = projected_masses
+        elif kins:
+            self.projected_masses = projected_masses[:sum(n_kin_ap)]
+        elif pops:
+            i_kins = set(p.kin_aper  # collect all apertures used by pops
+                         for p in stars.population_data
+                         if p.kin_aper is not None)
+            cum_n_kin_ap = np.cumsum(n_kin_ap)
+            pr_masses = []
+            for i_kin in i_kins:  # add proj ms for kin apertures used by pops
+                i_ap0 = cum_n_kin_ap[i_kin - 1] if i_kin > 0 else 0
+                pr_masses += projected_masses[i_ap0:cum_n_kin_ap[i_kin]]
+            pr_masses += projected_masses[sum(n_kin_ap):]
+            self.projected_masses = pr_masses
+        else:
+            txt = 'Specify kins or pops.'
+            self.logger.error(txt)
+            raise ValueError(txt)
         self.projected_mass_error = self.settings['sb_proj_rel_err']
         # total mass constraint
         self.total_mass = np.sum(intrinsic_masses)
@@ -654,8 +683,8 @@ class NNLS(WeightSolver):
             (orbmat, rhs)
 
         """
-        # construct vector of observed constraits (con), errors (econ) and
-        # matrix or orbit proprtites (orbmat)
+        # construct vector of observed constraints (con), errors (econ) and
+        # matrix or orbit propertites (orbmat)
         con = np.zeros(self.n_mass_constraints)
         econ = np.zeros(self.n_mass_constraints)
         orbmat = np.zeros((self.n_mass_constraints, orblib.n_orbs))
@@ -771,8 +800,6 @@ class NNLS(WeightSolver):
         Parameters
         ----------
         orblib : dyn.OrbitLibrary
-            must have attributes losvd_histograms, intrinsic_masses, and
-            projected_masses
         ignore_existing_weights : bool
             If True, do not check for already existing weights and solve again.
             Default is False.
@@ -792,7 +819,9 @@ class NNLS(WeightSolver):
         """
         self.logger.info(f"Using WeightSolver: {__class__.__name__}/"
                          f"{self.nnls_solver}")
-        orblib.read_losvd_histograms()
+        orblib.read_losvd_histograms()  # sets orblib.losvd_histograms,
+                                        # orblib.intrinsic_masses, and
+                                        # orblib.projected_masses
         if (not ignore_existing_weights) and self.weight_file_exists():
             results = ascii.read(self.weight_file, format='ecsv')
             self.logger.info("NNLS solution read from existing output")
@@ -803,34 +832,51 @@ class NNLS(WeightSolver):
         else:
             A, b = self.construct_nnls_matrix_and_rhs(orblib)
             if self.nnls_solver=='scipy':
-                solution = optimize.nnls(A, b)
-                weights = solution[0]
+                try:
+                    solution = optimize.nnls(A, b)
+                    weights = solution[0]
+                except Exception as e:
+                    txt = f'Orblib {orblib.mod_dir}, ml={orblib.parset["ml"]}'\
+                        f': SciPy solver error occured: {e} All weights ' \
+                        'and chi2 set to nan. Consider trying cvxopt.'
+                    self.logger.warning(txt)
+                    weights = np.full(A.shape[1], np.nan)
             elif self.nnls_solver=='cvxopt':
-                P = np.dot(A.T, A)
-                q = -1.*np.dot(A.T, b)
-                solver = CvxoptNonNegSolver(P, q)
-                weights = solver.beta
+                try:
+                    P = np.dot(A.T, A)
+                    q = -1.*np.dot(A.T, b)
+                    solver = CvxoptNonNegSolver(P, q)
+                    weights = solver.beta
+                except Exception as e:
+                    txt = f'Orblib {orblib.mod_dir}, ml={orblib.parset["ml"]}'\
+                        f': CVXOPT solver error occured: {e} All weights ' \
+                        'and chi2 set to nan. Consider trying scipy.'
+                    self.logger.warning(txt)
+                    weights = np.full(A.shape[1], np.nan)
             else:
                 text = 'Unknown nnls_solver'
                 self.logger.error(text)
                 raise ValueError(text)
-            np.savetxt(self.weight_file, weights)
-            self.logger.info("NNLS problem solved")
-            # calculate chi2s
-            chi2_vector = (np.dot(A, weights) - b)**2.
-            chi2_tot = np.sum(chi2_vector)
-            chi2_kin = np.sum(chi2_vector[self.n_mass_constraints:])
-            chi2_kinmap = self.chi2_kinmap(weights)
-            # save the output
-            results = table.Table()
-            results['weights'] = weights
-            # add chi2 to meta data
-            results.meta = {'chi2_tot': chi2_tot,
-                            'chi2_kin': chi2_kin,
-                            'chi2_kinmap': chi2_kinmap}
-            results.write(self.weight_file,
-                          format='ascii.ecsv',
-                          overwrite=True)
+            if not np.isnan(weights[0]):
+                np.savetxt(self.weight_file, weights)
+                self.logger.info("NNLS problem solved")
+                # calculate chi2s
+                chi2_vector = (np.dot(A, weights) - b)**2.
+                chi2_tot = np.sum(chi2_vector)
+                chi2_kin = np.sum(chi2_vector[self.n_mass_constraints:])
+                chi2_kinmap = self.chi2_kinmap(weights)
+                # save the output
+                results = table.Table()
+                results['weights'] = weights
+                # add chi2 to meta data
+                results.meta = {'chi2_tot': chi2_tot,
+                                'chi2_kin': chi2_kin,
+                                'chi2_kinmap': chi2_kinmap}
+                results.write(self.weight_file,
+                              format='ascii.ecsv',
+                              overwrite=True)
+            else:
+                chi2_tot = chi2_kin = chi2_kinmap = np.nan
             # delete existing .yaml files and copy current config file
             # into model directory
             self.config.copy_config_file(self.direc_with_ml)

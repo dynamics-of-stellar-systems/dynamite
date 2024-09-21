@@ -5,6 +5,11 @@ Change Log
 ****************
 
 - Improvement: The installation procedure has been changed to make DYNAMITE compatible with Python 3.12. Installing and uninstalling is now done using pip.
+- Improvement: added a new tutorial notebook ``7_orbital_distributions.ipynb`` which takes a closer look at orbit distributions.
+- Improvement: the ``weight`` attribute of kinematics and populations is now officially DEPRECATED as it has always been ignored by DYNAMITE.
+- Improvement: DYNAMITE now checks for nan values in the kinematics and mges when first reading the data
+- Improvement: prevent DYNAMITE from crashing if NNLS weight solving fails.
+- Improvement: the Gauss Hermite kinematic maps new parameter value `cbar_lims='user'` allows user-defined velocity and velocity dispersion limits (see `Plotter.plot_kinematic_maps()`).
 - Improvement: reduced the main memory requirements of the Python NNLS solvers.
 - Bugfix: fix a crash when creating the BayesLOSVD kinematics file in rare cases where the completed bins were determined incorrectly.
 - New feature: ``data_prep/generate_kin_input.py`` implements reading NIFS kinematics with an arbitrary number of GH moments.

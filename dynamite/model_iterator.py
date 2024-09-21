@@ -144,11 +144,15 @@ class ModelIterator(object):
                 config.all_models.table[row]['kinchi2'] = kinchi2
                 config.all_models.table[row]['kinmapchi2'] = kinmapchi2
                 config.all_models.table[row]['time_modified'] = time
-                config.all_models.table[row]['weights_done'] = True
-                config.all_models.table[row]['all_done'] = True
+                if not all(np.isnan([chi2, kinchi2, kinmapchi2])):
+                    config.all_models.table[row]['weights_done'] = True
+                    config.all_models.table[row]['all_done'] = True
+                    self.logger.debug('Reattempting weight solving for model '
+                                      f'in row {i} successful.')
+                else:
+                    self.logger.info('Reattempting weight solving for model '
+                                     f'in row {i} failed.')
             config.all_models.save()
-            self.logger.debug('Reattempted weight solving for models in in rows'
-                             f' {rows_with_orbits_but_no_weights} successful.')
 
     def get_missing_weights(self, row):
         self.logger.debug(f'Reattempting weight solving for model {row}.')
@@ -435,7 +439,8 @@ class ModelInnerIterator(object):
                 orb_done = True
                 if get_weights:
                     weight_solver = mod.get_weights(orblib)
-                    wts_done = True
+                    if not np.isnan(mod.weights[0]):
+                        wts_done = True
                 else:
                     mod.chi2, mod.kinchi2, mod.kinmapchi2 \
                         = np.nan, np.nan, np.nan

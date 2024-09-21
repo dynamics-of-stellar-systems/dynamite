@@ -322,7 +322,7 @@ class Plotter():
                             model=None,
                             kin_set=0,
                             cbar_lims='default',
-                            figtype=None,
+                            figtype='.png',
                             **kwargs):
         """
         Generates a kinematic map of a model with v, sigma, h3, h4...
@@ -348,36 +348,63 @@ class Plotter():
             for each kinematic dataset. A list of (fig,kin_set_name) is
             returned where fig are figure objects and kin_set_name are
             the names of the kinematics sets.
-        cbar_lims : STR
-            Determines which set of values is used to determine the
-            limiting values defining the colorbar used in the plots.
-            Accepted values: 'model', 'data', 'combined', 'default'.
-            The default is 'data' for GaussHermite kinematics, and [0,3] for
-            BayesLOSVD kinematics where reduced chi2 values are plotted.
+        cbar_lims : string or tuple/list
+            If set to 'default' (or not set), then 'data' is used for Gauss
+            Hermite and [0,3] for BayesLOSVD kinematics.
+
+            Gauss Hermite kinematics only: determines which set of values
+            defines the colorbar limits in the plots:
+            'model', 'data', 'combined', 'default', 'user'. If 'user', then the
+            parameters v_max and s_min_max must be defined.
+
+            BayesLOSVD kinematics only: if set to a tuple/list, cbar_lims
+            defines the colorbar limits of the plotted reduced chi2 values.
         figtype : STR, optional
-            Determines the file extension to use when saving the figure.
-            If None, the default setting is used ('.png').
+            Determines the file format of the saved figure, defaults to '.png'.
+        v_sigma_option : STR, optional
+            Gauss Hermite kinematics only: If 'fit', v_mean and v_sigma are
+            calculated based on fitting Gaussians, if 'moments',
+            v_mean and v_sigma are calculated directly from the model's losvd
+            histograms. The default is 'fit'.
+        v_max : float
+            Mandatory if cbar_lims=='user' (Gauss Hermite kinematics).
+            Defines the velocity colorbar limits. The limits
+            are then [-v_max,v_max]. Not relevant for other values of cbar_lims
+            nor for BayesLOSVD kinematics.
+        s_min_max : tuple/list of floats
+            Mandatory if cbar_lims=='user' and kinematics are of type
+            Gauss Hermite and defines the velocity dispersion colorbar limits.
+            The limits are then [s_min_max[0],s_min_max[1]]. Not relevant for
+            other values of cbar_lims nor for BayesLOSVD kinematics.
 
         Raises
         ------
         ValueError
             If kin_set is not smaller than the number of kinematic sets.
+        AssertionError
+            Gauss Hermite kinematics only: If cbar_lims is not one of 'model',
+            'data', 'combined', 'default', or 'user'.
         ValueError
-            If cbar_lims is not one of 'model', 'data', or 'combined'.
+            Gauss Hermite kinematics only: If cbar_lims=='user' and v_max
+            and/or s_min_max are not provided.
+        ValueError
+            Gauss Hermite kinematics only: If v_sigma_option is not one of
+            'moments' or 'fit'.
+        ValueError
+            Gauss Hermite kinematics only: If the number of Gauss Hermite
+            coefficients in the configuration file is inconsistent with the
+            kinematic map data.
 
         Returns
         -------
 
         list or `matplotlib.pyplot.figure`
-            if kin_set == 'all', returns `(matplotlib.pyplot.figure, string)`, i.e.
-            Figure instances along with kinemtics name or figure instance
+            if kin_set == 'all', returns `(matplotlib.pyplot.figure, string)`,
+            i.e. Figure instances along with kinemtics name or figure instance
             else, returns a `matplotlib.pyplot.figure`
 
         """
         # Taken from schw_kin.py.
-
-        if figtype is None:
-            figtype = '.png'
 
         stars = self.system.get_unique_triaxial_visible_component()
         n_kin = len(stars.kinematic_data)
@@ -389,7 +416,8 @@ class Plotter():
             for i in range(n_kin):
                 fig = self.plot_kinematic_maps(model=model,
                                                kin_set=i,
-                                               cbar_lims=cbar_lims)
+                                               cbar_lims=cbar_lims,
+                                               **kwargs)
                 figures.append((fig, stars.kinematic_data[i].name))
             return figures # returns a list of (fig,kin_name) tuples
         #########################################
@@ -692,13 +720,36 @@ class Plotter():
                                        model,
                                        kin_set,
                                        v_sigma_option='fit',
-                                       cbar_lims='data'):
+                                       cbar_lims='data',
+                                       v_max=None,
+                                       s_min_max=None):
         v_sigma_options = ['moments', 'fit']
         if v_sigma_option not in v_sigma_options:
             text = 'v_sigma_option must be in {v_sigma_options}, ' \
                    f'not {v_sigma_option}.'
             self.logger.error(text)
             raise ValueError(text)
+        if cbar_lims not in ['model', 'data', 'combined', 'user']:
+            text = '`cbar_lims` must be one of `model`, `data`, `combined`, '\
+                   'or `user`.'
+            self.logger.error(text)
+            raise AssertionError(text)
+        if cbar_lims == 'user':
+            if not v_max:
+                text = "cbar_lims=='user' requires v_max > 0."
+                self.logger.error(text)
+                raise ValueError(text)
+            if not s_min_max:
+                text = "cbar_lims=='user' requires s_min_max=[smin,smax]."
+                self.logger.error(text)
+                raise ValueError(text)
+        else:
+            if v_max:
+                self.logger.warning("v_max ignored, you may want to try "
+                                    "cbar_lims='user'")
+            if s_min_max:
+                self.logger.warning("s_min_max ignored, you may want to try "
+                                    "cbar_lims='user'")
 
         # get the model's projected masses=flux and kinematic data
         a = analysis.Analysis(config=self.config, model=model, kin_set=kin_set)
@@ -739,34 +790,31 @@ class Plotter():
             dh[i] = np.array(kinematics_data[f'dh{i}'])
             hm[i] = np.array(model_gh_coef[f'h{i}'])
 
-        if cbar_lims not in ['model', 'data', 'combined']:
-            text = '`cbar_lims` must be one of `model`, `data` or `combined`'
-            self.logger.error(text)
-            raise AssertionError(text)
         hmin = {}
         hmax = {}
         if cbar_lims == 'model':
             vmax = np.max(np.abs(velm))
-            smax, smin = np.max(sigm), np.min(sigm)
+            smin, smax = np.min(sigm), np.max(sigm)
             for i in gh_plot:
                 hmin[i], hmax[i] = -0.15, 0.15
-            # h3max, h3min = 0.15, -0.15
-            # h4max, h4min = 0.15, -0.15
         elif cbar_lims == 'data':
             vmax = np.max(np.abs(vel))
-            smax, smin = np.max(sig), np.min(sig)
+            smin, smax = np.min(sig), np.max(sig)
             for i in gh_plot:
                 hmin[i], hmax[i] = -0.15, 0.15
-            # if h4max == h4min:
-            #     h4max, h4min = np.max(hm[4]), np.min(hm[4])
         elif cbar_lims == 'combined':
             tmp = np.hstack((velm, vel))
             vmax = np.max(np.abs(tmp))
             tmp = np.hstack((sigm, sig))
-            smax, smin = np.max(tmp), np.min(tmp)
+            smin, smax = np.min(tmp), np.max(tmp)
             for i in gh_plot:
                 tmp = np.stack((hm[i], h[i]))
                 hmin[i], hmax[i] = np.min(tmp), np.max(tmp)
+        elif cbar_lims == 'user':
+            vmax = v_max
+            smin, smax = s_min_max
+            for i in gh_plot:
+                hmin[i], hmax[i] = -0.15, 0.15
         else:
             self.logger.error(f'Unknown choice of `cbar_lims`: {cbar_lims}.')
 
@@ -2045,6 +2093,8 @@ class Plotter():
                            orientation='horizontal',
                            figtype='.png',
                            subset='all',
+                           dL=1e17,
+                           force_lambda_z=False,
                            getdata=False):
         """Make the orbit distibution plot
 
@@ -2091,6 +2141,12 @@ class Plotter():
             'intermediate', 'box']`` separated by ``'+'`` e.g. ``'long+box'``,
             ``'box+short+intermediate'``. Any order works, but the order does
             not affect the order of plots. By default ``'all'``
+        dL : float, default 1e17
+            Threshold angular momentum used for orbit classification
+        force_lambda_z : bool, dafault False
+            if true, then we force the orbit distribution to only be collapsed
+            onto (r, lambda_z) space. This is done by forcing all orbits to be
+            classified as short axis-tube orbits.
         getdata : bool, optional
             whether to return the orbit distribtuion data plotted in the plot,
             by default ``False``
@@ -2118,13 +2174,13 @@ class Plotter():
             raise NotImplementedError(f"Unknown orientation {orientation}, "
                                       f"must be 'horizontal' or 'vertical'.")
         orblib = model.get_orblib()
-        orblib.get_projection_tensor(minr=minr, maxr=maxr, nr=nr, nl=nl)
+        orblib.get_projection_tensor(minr=minr, maxr=maxr, nr=nr, nl=nl, force_lambda_z=force_lambda_z, dL=dL)
         if equal_weighted_orbits:
             n_bundles = orblib.projection_tensor.shape[-1]
             weights = np.ones(n_bundles)/n_bundles
         else:
             weight_solver = model.get_weights(orblib)
-            weights, _, _, _ = weight_solver.solve(orblib)
+            weights = model.weights
         mod_orb_dists = orblib.projection_tensor.dot(weights)
         mod_orbclass_fracs = np.sum(mod_orb_dists, (1,2))
         mod_orbclass_fracs = mod_orbclass_fracs/np.sum(mod_orbclass_fracs)
