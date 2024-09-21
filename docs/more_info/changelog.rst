@@ -4,7 +4,7 @@
 Change Log
 ****************
 
-- Improvement: DYNAMITE is now compatible with the latest numpy 2.0.0 and matplotlib 3.9.0 versions
+- Improvement: made DYNAMITE compatible with numpy 2.0.0 and matplotlib 3.9.0 (removed use of deprecated features)
 - Improvement: added a new tutorial notebook ``7_orbital_distributions.ipynb`` which takes a closer look at orbit distributions.
 - Improvement: the ``weight`` attribute of kinematics and populations is now officially DEPRECATED as it has always been ignored by DYNAMITE.
 - Improvement: DYNAMITE now checks for nan values in the kinematics and mges when first reading the data
