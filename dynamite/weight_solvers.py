@@ -858,7 +858,6 @@ class NNLS(WeightSolver):
                 self.logger.error(text)
                 raise ValueError(text)
             if not np.isnan(weights[0]):
-                self.logger.info("NNLS problem solved")
                 # calculate chi2s
                 chi2_vector = (np.dot(A, weights) - b)**2.
                 chi2_tot = np.sum(chi2_vector)
@@ -874,6 +873,7 @@ class NNLS(WeightSolver):
                 results.write(self.weight_file,
                               format='ascii.ecsv',
                               overwrite=True)
+                self.logger.info("NNLS problem solved and chi2 calculated.")
             else:
                 chi2_tot = chi2_kin = chi2_kinmap = np.nan
             # delete existing .yaml files and copy current config file
