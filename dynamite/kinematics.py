@@ -879,7 +879,9 @@ class Histogram(object):
         na = np.newaxis
         mean = np.sum(self.x[na,:,na] * self.y * self.dx[na,:,na], axis=1)
         norm = self.get_normalisation()
-        mean /= norm
+        # ignore invalid operations resulting in np.nan (such as 0/0 -> np.nan)
+        with np.errstate(invalid='ignore'):
+            mean /= norm
         return mean
 
     def get_sigma(self):
