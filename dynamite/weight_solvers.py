@@ -293,6 +293,10 @@ class LegacyWeightSolver(WeightSolver):
                      os.path.isfile(self.fname_nn_nnls) and
                      os.path.isfile(fname_nn_orbmat))
             if ignore_existing_weights or not check:
+                for f in [self.fname_nn_kinem, self.fname_nn_nnls,
+                          fname_nn_orbmat]:
+                    if os.path.isfile(f):
+                        os.remove(f)
                 # set the current directory to the directory in which
                 # the models are computed
                 cur_dir = os.getcwd()
@@ -858,8 +862,6 @@ class NNLS(WeightSolver):
                 self.logger.error(text)
                 raise ValueError(text)
             if not np.isnan(weights[0]):
-                np.savetxt(self.weight_file, weights)
-                self.logger.info("NNLS problem solved")
                 # calculate chi2s
                 chi2_vector = (np.dot(A, weights) - b)**2.
                 chi2_tot = np.sum(chi2_vector)
@@ -875,6 +877,7 @@ class NNLS(WeightSolver):
                 results.write(self.weight_file,
                               format='ascii.ecsv',
                               overwrite=True)
+                self.logger.info("NNLS problem solved and chi2 calculated.")
             else:
                 chi2_tot = chi2_kin = chi2_kinmap = np.nan
             # delete existing .yaml files and copy current config file
