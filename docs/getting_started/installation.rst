@@ -378,15 +378,24 @@ Your terminal will likely express several warnings again, but these are not crit
 
 If all these files are there, you can proceed with the installation, by going back to ``.../dynamite`` and running::
 
-    python setup.py install
+    python -m pip install .
 
-On systems you don't have root privileges on (such as a cluster), you can choose to install into your user directory by adding the ``--user`` flag::
+On systems you don't have root privileges on (such as a cluster), ``pip`` should automatically install into your user directory.
+You can also explicitly choose to install into your user directory by adding the ``--user`` flag::
 
-    python setup.py install --user
+    python -m pip install . --user
 
-To make uninstalling easier, it is useful to record the files which have been created when you install the package. This can be done by::
+This will install the DYNAMITE Python scripts as well as the previously compiled Fortran programs.
+However, the weight solver ``cvxopt`` is optional and not included in the standard DYNAMITE installation because its installation proved to
+be problematic for some users. To include ``cvxopt``, it can be specified (with or without a following ``--user``) as::
 
-    python setup.py install --record list_of_created_files.txt
+    python -m pip install .[cvxopt]
+
+or installed manually.
+
+For a detailed report of what the installation did, ``pip`` can create a JSON file. This can be done by::
+
+    python -m pip install . --report what_pip_did.json
 
 Several Python packages are installed in this way (if they are not already), including:
 
@@ -408,8 +417,11 @@ To remove all compiled Fortran codes, go back to ``.../legacy_fortran``, and typ
 
     make distclean
 
-If you used the ``--record`` option suggested above when installing the python part of the code, you can easily uninstall it by manually removing all the files listed in the text file.
+The system's (or your user's) installation directory can be cleaned up by::
 
+    python -m pip uninstall dynamite
+
+Before actual deletion takes place, ``pip`` will display a list of files and directories that will be removed and wait for your confirmation.
 
 ..
     Post-Installation
@@ -494,9 +506,11 @@ and in ``.../dynamite``, re-install with the command::
 Python install fails
 --------------------
 
+If the installation fails and the error message complains about the distutils package, please make sure that the environment variable ``SETUPTOOLS_USE_DISTUTILS`` is NOT set (remove from your shell startup script or ``unset SETUPTOOLS_USE_DISTUTILS``).
+
 Try ``python3`` instead of ``python``::
 
-    python3 setup.py install
+    python3 -m pip install .
 
 If ``setup.py`` still does not work, this may be because of failed package installations. Make sure to have at least ``numpy`` installed beforehand. Running ``setup.py`` will install the necessary packages for you, but you can also install some packages manually if needed::
 
@@ -539,5 +553,8 @@ The 'G / P' column refers to the weight solver:
    :header-rows: 1
 
    OS and release,  Fortran release,    Python rel.,    G / P,  Date tested,    Remarks
-   macOS 13.5.2,    gfortran 12.2.0,    3.9.13,         G,      2023-09-14
-   AlmaLinux 8.5,   gfortran 8.5.0,     3.10.8,         G,      2023-09-14,     VSC5 w/o modules loaded
+   macOS 14.4.1,    gfortran 12.2.0,    3.8.19,         G,      2024-04-23
+   macOS 14.4.1,    gfortran 12.2.0,    3.9.19,         G,      2024-04-23
+   macOS 14.4.1,    gfortran 12.2.0,    3.12.3,         G,      2024-04-23
+   AlmaLinux 8.5,   gfortran 8.5.0,     3.10.14,        G,      2024-04-23,     VSC5 w/o modules loaded
+   AlmaLinux 8.5,   gfortran 8.5.0,     3.12.3,         G,      2024-04-23,     VSC5 w/o modules loaded, with miniconda

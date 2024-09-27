@@ -6,7 +6,11 @@ from astropy.io import ascii
 import subprocess
 import logging
 from scipy import optimize
-import cvxopt
+
+try:
+    import cvxopt
+except ModuleNotFoundError:
+    pass
 
 from dynamite import analysis
 from dynamite import physical_system as physys
@@ -743,7 +747,7 @@ class NNLS(WeightSolver):
         return orbmat, rhs
 
     def apply_CR_cut(self, kins, orb_losvd, orb_gh):
-        """apply `CRcut`
+        r"""apply `CRcut`
 
         to solve the `counter rotating orbit problem`. This cuts orbits which
         have :math:`|V - V_\mathrm{obs}|> 3\sigma_\mathrm{obs}`. See
