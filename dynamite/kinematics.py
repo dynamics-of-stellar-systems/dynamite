@@ -543,13 +543,13 @@ class GaussHermite(Kinematics, data.Integrated):
         return result
 
     def evaluate_losvd(self, v, v_mu, v_sig, h):
-        """ evaluate LOSVDs
+        r""" evaluate LOSVDs
 
         Evaluate the quantity
 
         .. math::
 
-            \mathrm{LOSVD}(v) = \\frac{1}{v_\sigma} \mathcal{N}(w; 0, 1^2)
+            \mathrm{LOSVD}(v) = \frac{1}{v_\sigma} \mathcal{N}(w; 0, 1^2)
                 \Sigma_{m=0}^{M} h_m H_m(w)
 
         where normalised velocity :math:`w = (v-v_\mu)/v_\sigma`
@@ -586,7 +586,7 @@ class GaussHermite(Kinematics, data.Integrated):
         return losvd
 
     def evaluate_losvd_normalisation(self, h):
-        """Evaluate LOSVD normalisation
+        r"""Evaluate LOSVD normalisation
 
         Evaluate the normalising integral
 
@@ -741,11 +741,11 @@ class GaussHermite(Kinematics, data.Integrated):
         return observed_values, uncertainties
 
     def set_default_hist_width(self, n_sig=3.):
-        """Sets default histogram width
+        r"""Sets default histogram width
 
         Set it to
 
-        :math:`2 * max(|v| + n_\mathrm{sig}*\sigma)`
+        :math:`2 * \max(|v| + n_\mathrm{sig}*\sigma)`
 
         i.e. double the largest velcoity present in the observed LOSVD
 
