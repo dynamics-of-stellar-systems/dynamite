@@ -5,6 +5,7 @@ Change Log
 ****************
 
 - Improvement: misc. improvements in documentation and tutorials.
+- Improvement: The installation procedure has been changed to make DYNAMITE compatible with Python 3.12. Installing and uninstalling is now done using pip.
 - Improvement: added a new tutorial notebook ``7_orbital_distributions.ipynb`` which takes a closer look at orbit distributions.
 - Improvement: the ``weight`` attribute of kinematics and populations is now officially DEPRECATED as it has always been ignored by DYNAMITE.
 - Improvement: DYNAMITE now checks for nan values in the kinematics and mges when first reading the data
