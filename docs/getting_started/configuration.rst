@@ -232,6 +232,9 @@ This section is used for settings relevant for the calculation of orbit librarie
     - ``logrmin``: log10 of minimum orbit radius in arcsecs
     - ``logrmax``: log10 of maximum orbit radius in arcsecs
     - ``random_seed``: integer, used for stochastically blurring orbit library by the PSF. Any value :math:`\leq 0` gives a stochastic seed.
+    - ``quad_nr``: integer, sampling of grid recording the intrinsic moments in :math:`r`, default if missing: 10
+    - ``quad_nth``: integer, sampling of grid recording the intrinsic moments in :math:`\theta`, default if missing: 6
+    - ``quad_nph``: integer, sampling of grid recording the intrinsic moments in :math:`\phi`, default if missing:  6
 
 The following settings must also be set in the configuration files but have *typical* values which should generally be sufficient and should not be changed,
 
@@ -247,7 +250,7 @@ There is also an optional setting,
 - ``orblib_settings``
     - ``use_new_mirroring``: boolean
 
-This controls whether or not to use the correction to orbit mirroring introduces in `Quenneville et al 2021 <https://arxiv.org/abs/2111.06904>`_ . This is optional: if ommited, the default is True.
+This controls whether or not to use the correction to orbit mirroring introduces in `Quenneville et al 2021 <https://arxiv.org/abs/2111.06904>`_ . This is optional: if omitted, the default is True.
 
 
 ``weight_solver_settings``
