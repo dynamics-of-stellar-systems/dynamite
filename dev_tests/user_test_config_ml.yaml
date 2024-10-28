@@ -154,9 +154,9 @@ orblib_settings:
     nI3: 4
     dithering: 1
     # sampling of grid recording the intrinsic moments, default: 10, 6, 6
-    # quad_nr: 10
-    # quad_nth: 6
-    # quad_nph: 6
+    quad_nr: 10
+    quad_nth: 6
+    quad_nph: 6
     #the following values should usually not be changed
     orbital_periods: 200
     sampling: 50000
