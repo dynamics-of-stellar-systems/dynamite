@@ -798,8 +798,8 @@ class Configuration(object):
                     os.remove(f_name)
             self.logger.debug(f'{dest_directory}*.yaml files deleted.')
         shutil.copy2(self.config_file_name, dest_directory)
-        self.logger.info('Config file copied to '
-                         f'{dest_directory}{self.config_file_name}.')
+        self.logger.info(f'Config file {self.config_file_name} copied to '
+                         f'{dest_directory}.')
 
     def backup_config_file(self, reset=False, keep=None, delete_other=False):
         """
