@@ -80,13 +80,13 @@ class Coloring:
             fraction of i_orbit assigned to i_bundle, multiplied by i_orbit's
             weight.
         phase_space_binning : dict
-            phase_space_binning['in']: np.array of shape (3, nr*nl) holding the
-            binning input: bin r, bin lambda_z, bin total weight
-            phase_space_binning['out']: np.array of shape (3, n_bundle) holding
-            the Voronoi binning output: weighted Voronoi bin centroid
-            coordinates r_bar, lambda_bar and Voronoi bin total weights
-            phase_space_binning['map']: np.array of shape (nr*nl,) holding the
-            phase space mapping: Voronoi bin numbers for each input bin
+            'in': np.array of shape (3, nr*nl), the binning input:
+            bin r, bin lambda_z, bin total weight
+            'out': np.array of shape (3, n_bundle), the Voronoi binning output:
+            weighted Voronoi bin centroid coordinates r_bar, lambda_bar
+            and Voronoi bin total weights
+            'map': np.array of shape (nr*nl,) the phase space mapping:
+            Voronoi bin numbers for each input bin
 
         """
         if model is None:
