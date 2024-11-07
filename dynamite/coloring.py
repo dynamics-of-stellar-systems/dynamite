@@ -21,8 +21,8 @@ class Coloring:
 
     def bin_phase_space(self,
                         model=None,
-                        minr=None,
-                        maxr=None,
+                        minr='auto',
+                        maxr='auto',
                         nr=50,
                         nl=61,
                         vor_weight=0.01,
@@ -43,14 +43,14 @@ class Coloring:
             the model used for the binning. If ``None``, choose the minimum
             :math:`\\chi^2` model (the configuration setting ``which_chi2``
             determines the :math:`\\chi^2` type). The default is ``None``.
-        minr : float, optional
-            the minimum radius [kpc] considered in the binning. If ``None``,
+        minr : float or str, optional
+            the minimum radius [kpc] considered in the binning. If 'auto',
             this is set to the minimum radius of the orbit library.
-            The default is ``None.``
-        maxr : float, optional
-            the maximum radius [kpc] considered in the binning. If ``None``,
+            The default is 'auto'.
+        maxr : float or str, optional
+            the maximum radius [kpc] considered in the binning. If 'auto',
             this is set to the maximum radius of the orbit library.
-            The default is ``None``.
+            The default is 'auto'.
         nr : int, optional
             number of radial bins. The default is 50.
         nl : int, optional
@@ -81,8 +81,7 @@ class Coloring:
             weight.
         phase_space_binning : dict
             phase_space_binning['in']: np.array of shape (3, nr*nl) holding the
-            binning input: bin r coordinates, bin lambda_z coordinates,
-            bin total weights
+            binning input: bin r, bin lambda_z, bin total weight
             phase_space_binning['out']: np.array of shape (3, n_bundle) holding
             the Voronoi binning output: weighted Voronoi bin centroid
             coordinates r_bar, lambda_bar and Voronoi bin total weights
@@ -96,14 +95,14 @@ class Coloring:
         orblib = model.get_orblib()
         _ = model.get_weights(orblib)
         weights = model.weights
-        if minr is None or maxr is None:
+        if minr == 'auto' or maxr == 'auto':
             # use the orbit library's limits for the radius limits
             if not hasattr(orblib, 'orb_properties'):
                 orblib.read_orbit_property_file()
             orb_properties = orblib.orb_properties
-            if minr is None:
+            if minr == 'auto':
                 minr = np.min(orb_properties['r']).value
-            if maxr is None:
+            if maxr == 'auto':
                 maxr = np.max(orb_properties['r']).value
         log_minr, log_maxr = np.log10(minr), np.log10(maxr)
 
@@ -132,7 +131,7 @@ class Coloring:
             nonzero_weight_bins = vor_in[2,:] > 0
             vor_in = vor_in[:,nonzero_weight_bins]
 
-        def sum_weights(index, signal, noise):
+        def _sum_weights(index, signal, noise):
             """
             Function to calculate the "S/N" (here: sum of orbital weights) of
             a Voronoi bin comprising radius, lambda_z bins given in index
@@ -146,7 +145,8 @@ class Coloring:
             signal : float vector
                 vector of length M>N with the orbital weights in all r,l bins
             noise : float vector
-                vector of length M>N with the noise of all r,l bins, ignored.
+                vector of length M>N with the noise of all r,l bins, ignored
+                (provided for compatibility with vorbin).
 
             Returns
             -------
@@ -161,7 +161,7 @@ class Coloring:
                                noise=np.ones_like(vor_in[0]),
                                target_sn=vor_weight,
                                plot=make_diagnostic_plots,
-                               sn_func=sum_weights,
+                               sn_func=_sum_weights,
                                quiet=not extra_diagnostic_output)
         phase_space_binning = {'in':vor_in,
                                'out':np.vstack((r_bar, l_bar, bin_weights)),
