@@ -1513,7 +1513,8 @@ class Plotter():
             cdict['alpha'].append((si, a, a))
 
         newcmap = mpl.colors.LinearSegmentedColormap(name, cdict)
-        mpl.colormaps.register(cmap=newcmap)
+        if name not in mpl.colormaps or mpl.colormaps[name] != newcmap:
+            mpl.colormaps.register(cmap=newcmap, force=True)
 
         return newcmap
 

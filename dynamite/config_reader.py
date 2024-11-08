@@ -798,8 +798,8 @@ class Configuration(object):
                     os.remove(f_name)
             self.logger.debug(f'{dest_directory}*.yaml files deleted.')
         shutil.copy2(self.config_file_name, dest_directory)
-        self.logger.info('Config file copied to '
-                         f'{dest_directory}{self.config_file_name}.')
+        self.logger.info(f'Config file {self.config_file_name} copied to '
+                         f'{dest_directory}.')
 
     def backup_config_file(self, reset=False, keep=None, delete_other=False):
         """
@@ -883,7 +883,7 @@ class Configuration(object):
 
         """
         self.settings.validate()
-        _ = self.validate_chi2()
+        which_chi2 = self.validate_chi2()
         if sum(1 for i in self.system.cmp_list \
                if isinstance(i, physys.Plummer)) != 1:
             self.logger.error('System must have exactly one Plummer object')
@@ -933,6 +933,12 @@ class Configuration(object):
                             if ws_type == 'LegacyWeightSolver':
                                 txt = "LegacyWeightSolver can't be used with "\
                                       "BayesLOSVD - use weight-solver type NNLS"
+                                self.logger.error(txt)
+                                raise ValueError(txt)
+                            # check for compatible chi2 variant
+                            if which_chi2 == 'kinmapchi2':
+                                txt = 'kinmapchi2 cannot be used with ' \
+                                      'BayesLOSVD - use chi2 or kinchi2.'
                                 self.logger.error(txt)
                                 raise ValueError(txt)
                 else:
