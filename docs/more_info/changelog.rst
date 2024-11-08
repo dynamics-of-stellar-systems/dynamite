@@ -4,6 +4,7 @@
 Change Log
 ****************
 
+- Improvement: misc. improvements in documentation and tutorials.
 - Improvement: Sampling of grid recording the intrinsic moments (in r, theta, phi) can optionally be defined in the config file's orblib settings.
 - Improvement: The installation procedure has been changed to make DYNAMITE compatible with Python 3.12. Installing and uninstalling is now done using pip.
 - Improvement: added a new tutorial notebook ``7_orbital_distributions.ipynb`` which takes a closer look at orbit distributions.
