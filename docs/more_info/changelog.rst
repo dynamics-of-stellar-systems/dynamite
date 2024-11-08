@@ -4,6 +4,7 @@
 Change Log
 ****************
 
+- Improvement: made DYNAMITE compatible with numpy 2.0.0 and matplotlib 3.9.0 (removed use of deprecated features)
 - Bugfix: fix a bug that prevents Bayes LOSVD kinemtic maps from being created more than once
 - Improvement: misc. improvements in documentation and tutorials.
 - Improvement: Sampling of grid recording the intrinsic moments (in r, theta, phi) can optionally be defined in the config file's orblib settings.
