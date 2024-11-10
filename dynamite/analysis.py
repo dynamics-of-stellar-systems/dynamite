@@ -80,6 +80,7 @@ class Decomposition:
         # Do the decomposition
         self.comps=['thin_d', 'thick_d', 'disk',
                     'cr_thin_d', 'cr_thick_d', 'cr_disk', 'bulge', 'all']
+        # Important: the 'all' component needs to be the last one in the list!
         if ocut is not None:
             self.ocut = ocut
         else:
@@ -177,6 +178,7 @@ class Decomposition:
                                            names=[f'{comp}_lsb',
                                                   f'{comp}_v',
                                                   f'{comp}_sig'])
+            # Important: the sequence of lsb - v - sig matters!
         return comp_flux_v_sigma
 
     def decompose_orbits(self, ocut=None):
@@ -347,28 +349,31 @@ class Decomposition:
                               & (np.abs(yi) <= ylim)))
         s_wide = np.ravel(np.where(grid >= 0))
 
-        quant = ['_lsb', '_v', '_sig']
         vel = []
         sig = []
         t = []
-        totalf = 0
-        for i in range(len(comps)):
-            labels = [comps[i] + qq for qq in quant]
+        # totalf = 0
+        for comp in comps:
+            labels = [col for col in comp_kinem_moments.colnames
+                          if col.startswith(comp)]
             flux = comp_kinem_moments[labels[0]]
-            w = weights[[comps[i] in s for s in self.decomp['component']]]
+            w = weights[[comp in s for s in self.decomp['component']]]
             fhist, fbinedge = np.histogram(grid[s_wide], bins=len(flux))
             flux = flux / fhist
             tt = flux[grid]*1.
             tt = tt * np.sum(w)/np.sum(tt)
             t.append(tt.copy())
-            if comps[i] in ['thin_d', 'thick_d', 'bulge']:
-                totalf += np.sum(tt)
-                if comps[i] == 'thin_d':
-                    fluxtot = tt
-                else:
-                    fluxtot += tt
+            # if comps[i] in ['thin_d', 'thick_d', 'bulge']:
+            #     totalf += np.sum(tt)
+            #     if comps[i] == 'thin_d':
+            #         fluxtot = tt
+            #     else:
+            #         fluxtot += tt
             vel.append(comp_kinem_moments[labels[1]])
             sig.append(comp_kinem_moments[labels[2]])
+
+        totalf = np.sum(tt)  # tt refers to the 'all' comp (the last in comps)
+        fluxtot = tt
 
         t = t/totalf
 
@@ -385,7 +390,8 @@ class Decomposition:
 
         table = {'x/arcs':xi_t,'y/arcs':yi_t}
         for i in range(len(comps)):
-            labels = [comps[i] + qq for qq in quant]
+            labels = [col for col in comp_kinem_moments.colnames
+                          if col.startswith(comp)]
             table.update({labels[0]:t[i][s],
                          labels[1]:vel[i][grid[s]],
                          labels[2]:sig[i][grid[s]]})
