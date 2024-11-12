@@ -4,6 +4,7 @@
 Change Log
 ****************
 
+- Improvement: added counter-rotating components to decomposition.
 - Bugfix: fix a bug that prevents Bayes LOSVD kinemtic maps from being created more than once
 - Improvement: misc. improvements in documentation and tutorials.
 - Improvement: Sampling of grid recording the intrinsic moments (in r, theta, phi) can optionally be defined in the config file's orblib settings.

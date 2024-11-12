@@ -35,6 +35,10 @@ class Decomposition:
         Determines which kinematic set to use.
         The value of this parameter is the index of the data
         set (e.g. kin_set=0, kin_set=1). The default is 0.
+    ocut : list of floats, optional
+        The cuts in lambda_z. The default is None, which translates to
+        ocut=[0.8, 0.25, -0.25, -0.8], the selection in lambda_z
+        following Santucci+22.
 
     Raises
     ------
@@ -42,7 +46,7 @@ class Decomposition:
         if no config object is given or the kin_set does not exist.
 
     """
-    def __init__(self, config=None, model=None, kin_set=0):
+    def __init__(self, config=None, model=None, kin_set=0, ocut=None):
         self.logger = logging.getLogger(f'{__name__}.{__class__.__name__}')
         if config is None:
             text = f'{__class__.__name__} needs configuration object, ' \
@@ -74,6 +78,14 @@ class Decomposition:
         # Get orbit weights and store them in self.model.weights
         _ = self.model.get_weights(self.orblib)
         # Do the decomposition
+        self.comps=['thin_d', 'thick_d', 'disk',
+                    'cr_thin_d', 'cr_thick_d', 'cr_disk', 'bulge', 'all']
+        # Important: the 'all' component needs to be the last one in the list!
+        if ocut is not None:
+            self.ocut = ocut
+        else:
+            self.ocut = [  0.8,     0.25,   -0.25,        -0.8        ]
+        #             thin_d  thick_d   bulge    cr_thick_d   cr_thin_d
         self.decomp = self.decompose_orbits()
         # self.losvd_histograms, self.proj_mass, self.decomp = self.run_dec()
         self.logger.info('Orbits read and velocity histogram created.')
@@ -166,6 +178,7 @@ class Decomposition:
                                            names=[f'{comp}_lsb',
                                                   f'{comp}_v',
                                                   f'{comp}_sig'])
+            # Important: the sequence of lsb - v - sig matters!
         return comp_flux_v_sigma
 
     def decompose_orbits(self, ocut=None):
@@ -173,10 +186,8 @@ class Decomposition:
 
         Parameters
         ----------
-        ocut : list of floats, optional
-            The cuts in lambda_z. The default is None, which translates to
-            ocut=[0.8, 0.25, -0.25], the selection in lambda_z
-            following Santucci+22.
+        ocut : DEPRECATED, will be removed in the next major release.
+            Use ocut= when instatiating the Decomposition object.'
 
         Returns
         -------
@@ -190,8 +201,14 @@ class Decomposition:
             The table's meta data ``comps`` holds a list of all components.
 
         """
+        comps = self.comps
         if ocut is None:
-            ocut = [0.8, 0.25, -0.25]
+            ocut = self.ocut
+        else:
+            self.logger.warning('Argument ocut is DEPRECATED and will be '
+                                'removed in the next major release. Use '
+                                'ocut= when instatiating the '
+                                f'{__class__.__name__} object.')
         self.logger.debug(f'Cut lines are: {ocut}.')
         file2 = self.model.directory_noml + 'datfil/orblib.dat_orbclass.out'
         file3 = self.model.directory_noml + 'datfil/orblibbox.dat_orbclass.out'
@@ -239,7 +256,6 @@ class Decomposition:
 
         lzm_sign= np.sum(lz, axis=0) / n_dither ** 3
 
-        comps=['thin_d', 'warm_d', 'disk', 'bulge', 'all']
         self.logger.info(f'Decomposing {n_orbs} orbits into {comps=}...')
         decomp = astropy.table.Table({'id':range(n_orbs),
                                       'component':['']*n_orbs},
@@ -247,21 +263,31 @@ class Decomposition:
                                      meta={'comps':comps})
         # map components
         comp_map = np.zeros(n_orbs, dtype=int)
-        # cold component
+        # cold component (thin disk)
         comp_map[np.ravel(np.where(lzm_sign >= ocut[0]))] += \
             2**comps.index('thin_d')
-        # warm component
+        # warm component (thick disk)
         comp_map[np.ravel(np.where((lzm_sign > ocut[1])
                                  & (lzm_sign < ocut[0])))] += \
-            2**comps.index('warm_d')
-        # hot component
+            2**comps.index('thick_d')
+        # hot component (bulge)
         comp_map[np.ravel(np.where((lzm_sign > ocut[2])
                                  & (lzm_sign <= ocut[1])))] += \
             2**comps.index('bulge') # was lzm_sign<ocut[1]
-        # disk component
+        # disk component (disk)
         comp_map[np.ravel(np.where(lzm_sign > ocut[1]))] += \
             2**comps.index('disk')
-        # whole component
+        # counter-rotating cold component (cr thin disk)
+        comp_map[np.ravel(np.where(lzm_sign <= ocut[3]))] += \
+            2**comps.index('cr_thin_d')
+        # counter-rotating warm component (cr thick disk)
+        comp_map[np.ravel(np.where((lzm_sign > ocut[3])
+                                 & (lzm_sign <= ocut[2])))] += \
+            2**comps.index('cr_thick_d')
+        # counter-rotating disk (cr disk)
+        comp_map[np.ravel(np.where((lzm_sign <= ocut[2])))] += \
+            2**comps.index('cr_disk')
+        # whole component (all)
         comp_map += 2**comps.index('all')
         for i in np.ravel(np.where(comp_map > 0)):
             for k, comp in enumerate(comps):
@@ -323,28 +349,31 @@ class Decomposition:
                               & (np.abs(yi) <= ylim)))
         s_wide = np.ravel(np.where(grid >= 0))
 
-        quant = ['_lsb', '_v', '_sig']
         vel = []
         sig = []
         t = []
-        totalf = 0
-        for i in range(len(comps)):
-            labels = [comps[i] + qq for qq in quant]
+        # totalf = 0
+        for comp in comps:
+            labels = [col for col in comp_kinem_moments.colnames
+                          if col.startswith(comp)]
             flux = comp_kinem_moments[labels[0]]
-            w = weights[[comps[i] in s for s in self.decomp['component']]]
+            w = weights[[comp in s for s in self.decomp['component']]]
             fhist, fbinedge = np.histogram(grid[s_wide], bins=len(flux))
             flux = flux / fhist
             tt = flux[grid]*1.
             tt = tt * np.sum(w)/np.sum(tt)
             t.append(tt.copy())
-            if comps[i] in ['thin_d', 'warm_d', 'bulge']:
-                totalf += np.sum(tt)
-                if comps[i] == 'thin_d':
-                    fluxtot = tt
-                else:
-                    fluxtot += tt
+            # if comps[i] in ['thin_d', 'thick_d', 'bulge']:
+            #     totalf += np.sum(tt)
+            #     if comps[i] == 'thin_d':
+            #         fluxtot = tt
+            #     else:
+            #         fluxtot += tt
             vel.append(comp_kinem_moments[labels[1]])
             sig.append(comp_kinem_moments[labels[2]])
+
+        totalf = np.sum(tt)  # tt refers to the 'all' comp (the last in comps)
+        fluxtot = tt
 
         t = t/totalf
 
@@ -361,7 +390,8 @@ class Decomposition:
 
         table = {'x/arcs':xi_t,'y/arcs':yi_t}
         for i in range(len(comps)):
-            labels = [comps[i] + qq for qq in quant]
+            labels = [col for col in comp_kinem_moments.colnames
+                          if col.startswith(comp)]
             table.update({labels[0]:t[i][s],
                          labels[1]:vel[i][grid[s]],
                          labels[2]:sig[i][grid[s]]})
@@ -384,8 +414,11 @@ class Decomposition:
         LL = len(comps)
         map1 = cmr.get_sub_cmap('twilight_shifted', 0.05, 0.6)
         map2 = cmr.get_sub_cmap('twilight_shifted', 0.05, 0.95)
-        titles = ['THIN DISK','THICK DISK','DISK','BULGE','ALL']
-        compon = np.array(['thin_d','warm_d','disk','bulge','all'])
+        # titles = ['THIN DISK','THICK DISK','DISK','BULGE','ALL']
+        # compon = np.array(['thin_d','thick_d','disk','bulge','all'])
+        titles = [c.replace('_disk', ' disk').replace('_d', ' disk').replace('_',' ')
+                  for c in self.comps]
+        compon = np.array(self.comps)
         kwtext = dict(size=20, ha='center', va='center', rotation=90.)
         kw_display1 = dict(pixelsize=dx, colorbar=True,
                                   nticks=7, cmap=map1)
