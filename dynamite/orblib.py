@@ -1295,14 +1295,26 @@ class LegacyOrbitLibrary(OrbitLibrary):
         }
         self.orb_classification = orb_classification
 
-    def get_projection_tensor(self, minr=None, maxr=None, nr=50, nl=61, force_lambda_z=False, dL=1e17):
+    def get_projection_tensor(self,
+                              minr=None,
+                              maxr=None,
+                              nr=50,
+                              nl=61,
+                              force_lambda_z=False,
+                              dL=1e17,
+                              r_scale='log'):
         projection_tensor_pars = {'minr':minr,
                                   'maxr':maxr,
                                   'nr':nr,
                                   'nl':nl,
                                   'dL':dL,
-                                  'force_lambda_z':force_lambda_z}
+                                  'force_lambda_z':force_lambda_z,
+                                  'r_scale':r_scale}
         self.projection_tensor_pars = projection_tensor_pars
+        if r_scale not in ['log', 'linear']:
+            txt = f"r_scale must be 'log' or 'linear', not {r_scale}."
+            self.logger.error(txt)
+            raise ValueError(txt)
         # otherwise, continue...
         if hasattr(self, 'orb_properties') == False:
             self.read_orbit_property_file()
@@ -1313,19 +1325,28 @@ class LegacyOrbitLibrary(OrbitLibrary):
         if maxr is None:
             maxr = np.max(orb_properties['r']).value
         log10_r_rng = (np.log10(minr), np.log10(maxr))
+        lin_r_rng = (minr, maxr)
         lmd_rng = (-1, 1)
         tot_lmd_rng = (0, 1)
         # store ranges for use in plots
         self.projection_tensor_rng = {
             'log10_r_rng':log10_r_rng,
+            'lin_r_rng':lin_r_rng,
             'lmd_rng':lmd_rng,
             'tot_lmd_rng':tot_lmd_rng,
         }
         # store ranges for use in plots
-        log10_r_edg = np.linspace(*log10_r_rng, nr+1)
+        # log10_r_edg = np.linspace(*log10_r_rng, nr+1)
+        # lin_r_edg = np.linspace(*lin_r_rng, nr+1)
+        r_edg = np.linspace(*log10_r_rng, nr+1) if r_scale == 'log' \
+                else np.linspace(*lin_r_rng, nr+1)
         lmd_edg = np.linspace(*lmd_rng, nl+1)
         tot_lmd_edg = np.linspace(*tot_lmd_rng, nl+1)
-        r_idx = np.digitize(np.log10(orb_properties['r'].value), bins=log10_r_edg)
+        if r_scale == 'log':
+            r_idx = np.digitize(np.log10(orb_properties['r'].value),
+                                bins=r_edg)
+        else:
+            r_idx = np.digitize(orb_properties['r'].value, bins=r_edg)
         lmd_x_idx = np.digitize(orb_properties['lmd_x'].value, bins=lmd_edg)
         lmd_y_idx = np.digitize(orb_properties['lmd_y'].value, bins=lmd_edg)
         lmd_z_idx = np.digitize(orb_properties['lmd_z'].value, bins=lmd_edg)
