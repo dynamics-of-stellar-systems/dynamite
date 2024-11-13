@@ -305,7 +305,7 @@ Settings relevant for parameter search.
     - ``stopping_criteria``: all of the following must be specified. If any of the criteria are met, then the parameter generation will stop:
         - One of ``min_delta_chi2_abs`` or ``min_delta_chi2_rel`` must be set: float, absolute or relative tolerance for ending the parameter search. If an iteration does not improve the minimum chi2 by this threshold, no new iteration will be performed.
         - ``n_max_mods``: int, maximum number of models desired
-        - ``n_max_iter``: int, maximum number of iterations desired
+        - ``n_max_iter``: int, maximum number of iterations to be run. The iteration a model was created in is listed under the ``which_iter`` column of the ``all_models`` table, and these are indexed from ``0,... n_max_iter-1``. The ``n_max_iter`` setting controls the total *cumulative* number of iterations to run i.e. if you specify ``n_max_iter=10`` and there are existing models which ``which_iter=9``, then no new iterations will be run. Note that the first two iterations are always run together i.e. whether you specify ``n_max_iter=1`` or ``n_max_iter=2``, iterations 0 and 1 will both be run.
 
 ``io_settings``
 =====================
