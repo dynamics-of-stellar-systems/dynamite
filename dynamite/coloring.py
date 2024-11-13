@@ -23,6 +23,7 @@ class Coloring:
                         model=None,
                         minr='auto',
                         maxr='auto',
+                        r_scale='linear',
                         nr=50,
                         nl=61,
                         vor_weight=0.01,
@@ -51,6 +52,10 @@ class Coloring:
             the maximum radius [kpc] considered in the binning. If 'auto',
             this is set to the maximum radius of the orbit library.
             The default is 'auto'.
+        r_scale : str, optional
+            switches between logarithmic (r_scale='log') and linear
+            (r_scale='linear') scaling and binning of the (minr,maxr)
+            r interval. The default is 'linear'.
         nr : int, optional
             number of radial bins. The default is 50.
         nl : int, optional
@@ -99,18 +104,24 @@ class Coloring:
             # use the orbit library's limits for the radius limits
             if not hasattr(orblib, 'orb_properties'):
                 orblib.read_orbit_property_file()
-            orb_properties = orblib.orb_properties
+            orb_r = orblib.orb_properties['r']
             if minr == 'auto':
-                minr = np.min(orb_properties['r']).value
+                minr = np.min(orb_r).value
             if maxr == 'auto':
-                maxr = np.max(orb_properties['r']).value
+                maxr = np.max(orb_r).value
         log_minr, log_maxr = np.log10(minr), np.log10(maxr)
+        if r_scale not in ['log', 'linear']:
+            txt = f"r_scale must be 'log' or 'linear', not {r_scale}."
+            self.logger.error(txt)
+            raise ValueError(txt)
+        r_logscale = True if r_scale == 'log' else False
 
         orblib.get_projection_tensor(minr=minr,
                                      maxr=maxr,
                                      nr=nr,
                                      nl=nl,
-                                     force_lambda_z=True)
+                                     force_lambda_z=True,
+                                     r_scale=r_scale)
         # pick entry [2] = fraction of orbits in each r, l bin (ALL orbit types)
         # indices r, l, b = radius, lambda_z, original_orbit_bundle
         projection_tensor = orblib.projection_tensor[2]
@@ -120,8 +131,12 @@ class Coloring:
         orbit_distribution = projection_tensor.dot(weights)
 
         # build the input for vorbin
-        dr = (log_maxr - log_minr) / nr
-        input_bins_r = np.linspace(log_minr + dr / 2, log_maxr - dr / 2, num=nr)
+        if r_logscale:
+            dr = (log_maxr - log_minr) / nr
+            input_bins_r = np.linspace(log_minr + dr / 2, log_maxr - dr / 2, num=nr)
+        else:
+            dr = (maxr - minr) / nr
+            input_bins_r = np.linspace(minr + dr / 2, maxr - dr / 2, num=nr)
         dl = 2 / nl
         input_bins_l = np.linspace(-1 + dl / 2, 1 - dl / 2, num=nl)
         input_grid = np.meshgrid(input_bins_r,input_bins_l)
@@ -182,7 +197,10 @@ class Coloring:
             plt.imshow(orbit_distribution.T,
                        interpolation='spline16',
                        origin='lower',
-                       extent=(log_minr, log_maxr, -1, 1),
+                       extent=(log_minr if r_logscale else minr,
+                               log_maxr if r_logscale else maxr,
+                               -1,
+                               1),
                        aspect='auto',
                        cmap='Greys',
                        alpha=0.9)
@@ -191,7 +209,7 @@ class Coloring:
                            shading='nearest',
                            cmap='tab20',
                            alpha=0.3)
-            plt.xlabel('$\\log_{10}$ ($r$/kpc)')
+            plt.xlabel(('$\\log_{10}$ ' if r_logscale else '') + '($r$/kpc)')
             plt.ylabel('Circularity $\\lambda_z$')
             plt.colorbar(label='Voronoi bin id')
             plt.savefig(f'{self.config.settings.io_settings["plot_directory"]}'

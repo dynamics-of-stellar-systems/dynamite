@@ -1178,7 +1178,7 @@ class LegacyOrbitLibrary(OrbitLibrary):
 
         - ``|Lx|,|Ly|,|Lz|<dL`` --> box
         - not a box & ``|Lx|>|Ly|`` & ``|Lx|>|Lz|`` --> x-axis tube "-ish"
-        - not a box & ``|Ly|>|Lz|`` & ``|Ly|>|Lz|`` --> y-axis tube "-ish"
+        - not a box & ``|Ly|>|Lx|`` & ``|Ly|>|Lz|`` --> y-axis tube "-ish"
         - not a box & ``|Lz|>|Lx|`` & ``|Lz|>|Ly|`` --> z-axis tube "-ish"
 
         The method logs the fraction of all orbits in each classification, and
@@ -1298,18 +1298,18 @@ class LegacyOrbitLibrary(OrbitLibrary):
     def get_projection_tensor(self,
                               minr=None,
                               maxr=None,
+                              r_scale='log',
                               nr=50,
                               nl=61,
                               force_lambda_z=False,
-                              dL=1e17,
-                              r_scale='log'):
+                              dL=1e17):
         projection_tensor_pars = {'minr':minr,
                                   'maxr':maxr,
+                                  'r_scale':r_scale,
                                   'nr':nr,
                                   'nl':nl,
                                   'dL':dL,
-                                  'force_lambda_z':force_lambda_z,
-                                  'r_scale':r_scale}
+                                  'force_lambda_z':force_lambda_z}
         self.projection_tensor_pars = projection_tensor_pars
         if r_scale not in ['log', 'linear']:
             txt = f"r_scale must be 'log' or 'linear', not {r_scale}."

@@ -2087,6 +2087,7 @@ class Plotter():
                            model=None,
                            minr=None,
                            maxr=None,
+                           r_scale='log',
                            nr=50,
                            nl=61,
                            equal_weighted_orbits=False,
@@ -2123,6 +2124,10 @@ class Plotter():
         maxr : float, optional
             the maximum radius [kpc] to show in the plot. If ``None``, this is
             set to the minimum radius of the orbit library
+        r_scale : str, optional
+            switches between logarithmic (r_scale='log') and linear
+            (r_scale='linear') scaling and binning of the (minr,maxr)
+            r interval. The default is 'log'.
         nr : int, optional
             number of radial bins, by default 50
         nl : int, optional
@@ -2170,11 +2175,22 @@ class Plotter():
             model_id = self.all_models.get_best_n_models_idx(n=1)[0]
             model = self.all_models.get_model_from_row(model_id)
             self.logger.debug(f'Using model {model_id} in {model.directory}.')
+        if r_scale not in ['log', 'linear']:
+            txt = f"r_scale must be 'log' or 'linear', not {r_scale}."
+            self.logger.error(txt)
+            raise ValueError(txt)
+        r_logscale = True if r_scale == 'log' else False
         if orientation not in ['horizontal', 'vertical']:
             raise NotImplementedError(f"Unknown orientation {orientation}, "
                                       f"must be 'horizontal' or 'vertical'.")
         orblib = model.get_orblib()
-        orblib.get_projection_tensor(minr=minr, maxr=maxr, nr=nr, nl=nl, force_lambda_z=force_lambda_z, dL=dL)
+        orblib.get_projection_tensor(minr=minr,
+                                     maxr=maxr,
+                                     r_scale=r_scale,
+                                     nr=nr,
+                                     nl=nl,
+                                     force_lambda_z=force_lambda_z,
+                                     dL=dL)
         if equal_weighted_orbits:
             n_bundles = orblib.projection_tensor.shape[-1]
             weights = np.ones(n_bundles)/n_bundles
@@ -2226,10 +2242,12 @@ class Plotter():
                     'vmax':vmax}
         ranges = orblib.projection_tensor_rng
         log10_r_rng = ranges['log10_r_rng']
+        lin_r_rng = ranges['lin_r_rng']
         lmd_rng = ranges['lmd_rng']
         tot_lmd_rng = ranges['tot_lmd_rng']
         # make plot
-        r_label = '$\log_{10} (r/\mathrm{kpc})$'
+        # r_label = '$\log_{10} (r/\mathrm{kpc})$'
+        r_label = ('$\\log_{10} ' if r_logscale else '$') + '(r/\\mathrm{kpc})$'
         fig_size = 15 * n_plots/len(orb_classes)
         self.logger.info(f'{fig_size=}.')
         if orientation == 'horizontal':
@@ -2244,9 +2262,15 @@ class Plotter():
                 if orb_class['plot']:
                     plot_data = np.flipud(mod_orb_dists[orb_class_idx])
                     if orb_class['name'] == 'box':
-                        extent = tot_lmd_rng+log10_r_rng
+                        if r_logscale:
+                            extent = tot_lmd_rng+log10_r_rng
+                        else:
+                            extent = tot_lmd_rng+lin_r_rng
                     else:
-                        extent = lmd_rng+log10_r_rng
+                        if r_logscale:
+                            extent = lmd_rng+log10_r_rng
+                        else:
+                            extent = lmd_rng+lin_r_rng
                     cax = ax[plot_idx].imshow(plot_data,
                                               extent=extent,
                                               **kwimshow)
@@ -2267,9 +2291,15 @@ class Plotter():
                 if orb_class['plot']:
                     plot_data = np.flipud(mod_orb_dists[orb_class_idx].T)
                     if orb_class['name'] == 'box':
-                        extent = log10_r_rng+tot_lmd_rng
+                        if r_logscale:
+                            extent = log10_r_rng+tot_lmd_rng
+                        else:
+                            extent = lin_r_rng+tot_lmd_rng
                     else:
-                        extent = log10_r_rng+lmd_rng
+                        if r_logscale:
+                            extent = log10_r_rng+lmd_rng
+                        else:
+                            extent = lin_r_rng+lmd_rng
                     cax = ax[plot_idx].imshow(plot_data,
                                               extent=extent,
                                               **kwimshow)
