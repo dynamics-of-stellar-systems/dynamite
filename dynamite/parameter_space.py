@@ -463,6 +463,8 @@ class ParameterGenerator(object):
                 if self._is_newmodel(m, eps=1e-10):
                     self.add_model(m, n_iter=this_iter)
                     newmodels += 1
+        else:
+            self.model_list = []
         self.logger.info(f'{self.name} added {newmodels} new model(s) out of '
                          f'{len(self.model_list)}')
         # combine first two iterations by calling the generator again...
@@ -541,14 +543,12 @@ class ParameterGenerator(object):
         """
         self.status['stop'] = False
         if len(self.current_models.table) > 0:
-        # never stop when current_models is empty
+            # never stop when current_models is empty
             self.check_generic_stopping_critera()
             self.check_specific_stopping_critera()
-            for key in [reasons for reasons in self.status \
-                        if isinstance(reasons, bool) and reasons != 'stop']:
-                if self.status[key]:
-                    self.status['stop'] = True
-                    break
+            if any(v for v in self.status.values() if type(v) is bool):
+                self.status['stop'] = True
+                self.logger.info(f'Stopping criteria met: {self.status}.')
 
     def check_generic_stopping_critera(self):
         """check generic stopping critera
@@ -751,7 +751,7 @@ class LegacyGridSearch(ParameterGenerator):
             raise ValueError(text)
 
     def specific_generate_method(self, **kwargs):
-        """
+        r"""
         Generates new models
 
         Starts at the initial point. Start the iteration: (i) find all models

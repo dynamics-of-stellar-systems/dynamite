@@ -20,6 +20,8 @@ from dynamite import kinematics
 from dynamite import physical_system as physys
 from dynamite import analysis
 import cmasher as cmr
+
+
 class ReorderLOSVDError(Exception):
     pass
 
@@ -224,7 +226,7 @@ class Plotter():
         figname = self.plotdir + which_chi2 + '_plot' + figtype
 
         colormap_orig = mpl.cm.viridis
-        colormap = mpl.cm.get_cmap('viridis_r')
+        colormap = mpl.colormaps.get_cmap('viridis_r')
 
         size = 12+len(nofix_islog)
         fontsize = max(size-4,15)
@@ -400,7 +402,7 @@ class Plotter():
 
         list or `matplotlib.pyplot.figure`
             if kin_set == 'all', returns `(matplotlib.pyplot.figure, string)`,
-            i.e. Figure instances along with kinemtics name or figure instance
+            i.e. Figure instances along with kinematics name or figure instance
             else, returns a `matplotlib.pyplot.figure`
 
         """
@@ -649,7 +651,7 @@ class Plotter():
                 if i<2:
                     ax.set_xticks([])
                 else:
-                    ax.set_xlabel('$v_\mathrm{LOS}$ [km/s]')
+                    ax.set_xlabel(r'$v_\mathrm{LOS}$ [km/s]')
                 ax.set_yticks([])
         # get cmap
         vmin, vmax = cbar_lims
@@ -666,13 +668,13 @@ class Plotter():
         map_plotter = kin_set.get_map_plotter()
         plt.sca(ax_chi2)
         map_plotter(reduced_chi2_per_apertur,
-                    label='$\chi^2_r$',
+                    label=r'$\chi^2_r$',
                     colorbar=True,
                     vmin=vmin,
                     vmax=vmax,
                     cmap=cmap)
         mean_chi2r = np.mean(reduced_chi2_per_apertur)
-        ax_chi2.set_title(f'$\chi^2_r={mean_chi2r:.2f}$')
+        ax_chi2.set_title(f'$\\chi^2_r={mean_chi2r:.2f}$')
         # plot locations of LOSVDs
         x = kin_data['xbin'][idx_to_plot]
         y = kin_data['ybin'][idx_to_plot]
@@ -1511,7 +1513,8 @@ class Plotter():
             cdict['alpha'].append((si, a, a))
 
         newcmap = mpl.colors.LinearSegmentedColormap(name, cdict)
-        plt.register_cmap(cmap=newcmap)
+        if name not in mpl.colormaps or mpl.colormaps[name] != newcmap:
+            mpl.colormaps.register(cmap=newcmap, force=True)
 
         return newcmap
 
@@ -2207,19 +2210,19 @@ class Plotter():
             return f'{100.*x:.1f}%'
         orb_classes = [{'name':'long',
                         'plot':True,
-                        'label':'$\lambda_x$',
+                        'label':r'$\lambda_x$',
                         'title':f'Long axis tubes: {frac_to_pc_str(mod_orbclass_fracs[0])}'},
                        {'name':'intermediate',
                         'plot':True,
-                        'label':'$\lambda_y$',
+                        'label':r'$\lambda_y$',
                         'title':f'Int. axis tubes: {frac_to_pc_str(mod_orbclass_fracs[1])}'},
                        {'name':'short',
                         'plot':True,
-                        'label':'$\lambda_z$',
+                        'label':r'$\lambda_z$',
                         'title':f'Short axis tubes: {frac_to_pc_str(mod_orbclass_fracs[2])}'},
                        {'name':'box',
                         'plot':True,
-                        'label':'$\lambda_\mathrm{tot}$',
+                        'label':r'$\lambda_\mathrm{tot}$',
                         'title':f'Box: {frac_to_pc_str(mod_orbclass_fracs[3])}'}]
         if len(orb_classes) != mod_orb_dists.shape[0]:
             raise ValueError('Orbit class mismatch with projection tensor.')
@@ -2246,7 +2249,6 @@ class Plotter():
         lmd_rng = ranges['lmd_rng']
         tot_lmd_rng = ranges['tot_lmd_rng']
         # make plot
-        # r_label = '$\log_{10} (r/\mathrm{kpc})$'
         r_label = ('$\\log_{10} ' if r_logscale else '$') + '(r/\\mathrm{kpc})$'
         fig_size = 15 * n_plots/len(orb_classes)
         self.logger.info(f'{fig_size=}.')

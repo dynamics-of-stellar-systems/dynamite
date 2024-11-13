@@ -232,6 +232,9 @@ This section is used for settings relevant for the calculation of orbit librarie
     - ``logrmin``: log10 of minimum orbit radius in arcsecs
     - ``logrmax``: log10 of maximum orbit radius in arcsecs
     - ``random_seed``: integer, used for stochastically blurring orbit library by the PSF. Any value :math:`\leq 0` gives a stochastic seed.
+    - ``quad_nr``: integer, sampling of grid recording the intrinsic moments in :math:`r`, default if missing: 10
+    - ``quad_nth``: integer, sampling of grid recording the intrinsic moments in :math:`\theta`, default if missing: 6
+    - ``quad_nph``: integer, sampling of grid recording the intrinsic moments in :math:`\phi`, default if missing:  6
 
 The following settings must also be set in the configuration files but have *typical* values which should generally be sufficient and should not be changed,
 
@@ -247,7 +250,7 @@ There is also an optional setting,
 - ``orblib_settings``
     - ``use_new_mirroring``: boolean
 
-This controls whether or not to use the correction to orbit mirroring introduces in `Quenneville et al 2021 <https://arxiv.org/abs/2111.06904>`_ . This is optional: if ommited, the default is True.
+This controls whether or not to use the correction to orbit mirroring introduces in `Quenneville et al 2021 <https://arxiv.org/abs/2111.06904>`_ . This is optional: if omitted, the default is True.
 
 
 ``weight_solver_settings``
@@ -295,13 +298,14 @@ Settings relevant for parameter search.
     - ``which_chi2``: string, specifies which :math:`\chi^2` value to consider when generating new parameters, must be one of the following:
         - ``kinchi2``: this includes contributions from only the kinematics. If ``GaussHermite`` kinematics are used then this is includes terms from all Hermite coefficients :math:`h_1, h2, h3, ..., h_N`. If ``BayesLOSVD`` kinematics are used, then this includes contributions from all LOSVD bins.
         - ``chi2``: this includes contributions from the observed surface density, de-projected 3D density, and kinematics (as specified above).
+        - ``kinmapchi2``: the :math:`\chi^2` directly calculated from the ``GaussHermite`` kinematic maps (not available for ``BayesLOSVD`` kinematics).
     - ``generator_settings``: if ``generator_type = LegacyGridSearch``, then one of the following two settings must be set. These are the :math:`|\chi^2|` thresholds used for in ``LegacyGridSearch``,
         - ``threshold_del_chi2_abs``: an absolute :math:`|\chi^2|` threshold
         - ``threshold_del_chi2_as_frac_of_sqrt2nobs``: a threshold given as a fraction of :math:`\sqrt{2N_\mathrm{obs}}` where :math:`N_\mathrm{obs}` is the total number of kinematic observations, which is equal to the number of spatial apertures multiplied by (i) ``number_GH`` if ``GaussHermite`` kinematics are used, or (ii) the number of LOSVD bins if ``BayesLOSVD`` kinematics are used.
     - ``stopping_criteria``: all of the following must be specified. If any of the criteria are met, then the parameter generation will stop:
         - One of ``min_delta_chi2_abs`` or ``min_delta_chi2_rel`` must be set: float, absolute or relative tolerance for ending the parameter search. If an iteration does not improve the minimum chi2 by this threshold, no new iteration will be performed.
         - ``n_max_mods``: int, maximum number of models desired
-        - ``n_max_iter``: int, maximum number of iterations desired
+        - ``n_max_iter``: int, maximum number of iterations to be run. The iteration a model was created in is listed under the ``which_iter`` column of the ``all_models`` table, and these are indexed from ``0,... n_max_iter-1``. The ``n_max_iter`` setting controls the total *cumulative* number of iterations to run i.e. if you specify ``n_max_iter=10`` and there are existing models which ``which_iter=9``, then no new iterations will be run. Note that the first two iterations are always run together i.e. whether you specify ``n_max_iter=1`` or ``n_max_iter=2``, iterations 0 and 1 will both be run.
 
 ``io_settings``
 =====================

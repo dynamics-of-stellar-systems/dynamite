@@ -6,7 +6,11 @@ from astropy.io import ascii
 import subprocess
 import logging
 from scipy import optimize
-import cvxopt
+
+try:
+    import cvxopt
+except ModuleNotFoundError:
+    pass
 
 from dynamite import analysis
 from dynamite import physical_system as physys
@@ -289,6 +293,10 @@ class LegacyWeightSolver(WeightSolver):
                      os.path.isfile(self.fname_nn_nnls) and
                      os.path.isfile(fname_nn_orbmat))
             if ignore_existing_weights or not check:
+                for f in [self.fname_nn_kinem, self.fname_nn_nnls,
+                          fname_nn_orbmat]:
+                    if os.path.isfile(f):
+                        os.remove(f)
                 # set the current directory to the directory in which
                 # the models are computed
                 cur_dir = os.getcwd()
@@ -440,7 +448,7 @@ class LegacyWeightSolver(WeightSolver):
         """
         fname = self.direc_with_ml + 'nn_orbmat.out'
         orbmat_shape = np.loadtxt(fname, max_rows=1, dtype=int)
-        orbmat_size = np.product(orbmat_shape)
+        orbmat_size = np.prod(orbmat_shape)
         tmp = np.loadtxt(fname, skiprows=1)
         orbmat = tmp[0:orbmat_size]
         orbmat = np.reshape(orbmat, orbmat_shape)
@@ -480,7 +488,7 @@ class LegacyWeightSolver(WeightSolver):
 
         intrinsic_masses = mge.get_intrinsic_masses_from_file(self.direc_no_ml)
         projected_masses = mge.get_projected_masses_from_file(self.direc_no_ml)
-        n_intrinsic = np.product(intrinsic_masses.shape)
+        n_intrinsic = np.prod(intrinsic_masses.shape)
         n_apertures = len(projected_masses)
         chi2_kin = np.sum(chi2_vector[1+n_intrinsic+n_apertures:])
         return weights, chi2_tot, chi2_kin
@@ -658,7 +666,7 @@ class NNLS(WeightSolver):
         self.total_mass_error = np.min([self.intrinsic_mass_error/10.,
                                         np.abs(1. - self.total_mass)])
         # enumerate the mass constriants
-        n_intrinsic = np.product(self.intrinsic_masses.shape)
+        n_intrinsic = np.prod(self.intrinsic_masses.shape)
         n_apertures = len(self.projected_masses)
         self.n_intrinsic = n_intrinsic
         self.n_apertures = n_apertures
@@ -743,7 +751,7 @@ class NNLS(WeightSolver):
         return orbmat, rhs
 
     def apply_CR_cut(self, kins, orb_losvd, orb_gh):
-        """apply `CRcut`
+        r"""apply `CRcut`
 
         to solve the `counter rotating orbit problem`. This cuts orbits which
         have :math:`|V - V_\mathrm{obs}|> 3\sigma_\mathrm{obs}`. See
@@ -854,8 +862,6 @@ class NNLS(WeightSolver):
                 self.logger.error(text)
                 raise ValueError(text)
             if not np.isnan(weights[0]):
-                np.savetxt(self.weight_file, weights)
-                self.logger.info("NNLS problem solved")
                 # calculate chi2s
                 chi2_vector = (np.dot(A, weights) - b)**2.
                 chi2_tot = np.sum(chi2_vector)
@@ -871,6 +877,7 @@ class NNLS(WeightSolver):
                 results.write(self.weight_file,
                               format='ascii.ecsv',
                               overwrite=True)
+                self.logger.info("NNLS problem solved and chi2 calculated.")
             else:
                 chi2_tot = chi2_kin = chi2_kinmap = np.nan
             # delete existing .yaml files and copy current config file
