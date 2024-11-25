@@ -463,6 +463,8 @@ class ParameterGenerator(object):
                 if self._is_newmodel(m, eps=1e-10):
                     self.add_model(m, n_iter=this_iter)
                     newmodels += 1
+        else:
+            self.model_list = []
         self.logger.info(f'{self.name} added {newmodels} new model(s) out of '
                          f'{len(self.model_list)}')
         # combine first two iterations by calling the generator again...
@@ -541,14 +543,12 @@ class ParameterGenerator(object):
         """
         self.status['stop'] = False
         if len(self.current_models.table) > 0:
-        # never stop when current_models is empty
+            # never stop when current_models is empty
             self.check_generic_stopping_critera()
             self.check_specific_stopping_critera()
-            for key in [reasons for reasons in self.status \
-                        if isinstance(reasons, bool) and reasons != 'stop']:
-                if self.status[key]:
-                    self.status['stop'] = True
-                    break
+            if any(v for v in self.status.values() if type(v) is bool):
+                self.status['stop'] = True
+                self.logger.info(f'Stopping criteria met: {self.status}.')
 
     def check_generic_stopping_critera(self):
         """check generic stopping critera
@@ -587,14 +587,13 @@ class ParameterGenerator(object):
                 models0 = self.current_models.table[mask]
                 last_chi2 = np.nanmin(models0[self.chi2])
                 last_iter -= 1
-            previous_chi2 = np.nan
-            while np.isnan(previous_chi2): # look for non-nan (kin)chi2 value
-                if last_iter < 0:
-                    return
-                mask = self.current_models.table['which_iter'] == last_iter
-                models1 = self.current_models.table[mask]
-                previous_chi2 = np.nanmin(models1[self.chi2])
-                last_iter -= 1
+            if last_iter < 0:
+                return
+            mask = self.current_models.table['which_iter'] <= last_iter
+            models1 = self.current_models.table[mask]
+            previous_chi2 = np.nanmin(models1[self.chi2])
+            if np.isnan(previous_chi2):
+                return
             # Don't use abs() so we stop on increasing chi2 values, too:
             delta_chi2 = previous_chi2 - last_chi2
             if self.min_delta_chi2_rel:
@@ -751,7 +750,7 @@ class LegacyGridSearch(ParameterGenerator):
             raise ValueError(text)
 
     def specific_generate_method(self, **kwargs):
-        """
+        r"""
         Generates new models
 
         Starts at the initial point. Start the iteration: (i) find all models
@@ -1232,8 +1231,8 @@ class SpecificModels(ParameterGenerator):
     ``lo``, and ``high``. Also, ``fixed`` will be ignored if ``fixed_values``
     is specified.
 
-    Further, all models are run in a single iteration and the
-    ``stopping_criteria`` section in the configuration file's
+    Further, all models are run in a single iteration and the optimality
+    tolerances in the ``stopping_criteria`` section in the configuration file's
     ``parameter_space_settings`` will be ignored.
 
     Parameters

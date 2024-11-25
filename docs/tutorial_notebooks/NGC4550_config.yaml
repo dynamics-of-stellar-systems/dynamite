@@ -22,11 +22,11 @@ system_components:
                 fixed: True
                 value: 6.0
                 logarithmic: True
-                LaTeX: "$M_{BH}$"
+                LaTeX: "$\\log(M_\\mathrm{BH}/M_\\odot)$"
             a:
                 fixed: True
                 value: 1.e-3
-                LaTeX: "$a_{BH}$"
+                LaTeX: "$a_\\mathrm{BH}$"
         include: True
         contributes_to_potential: True
 
@@ -36,11 +36,11 @@ system_components:
             c: # NFW halo concentration
                 fixed: True
                 value: 10.0
-                LaTeX: "$c_{NFW}$"
+                LaTeX: "$c_\\mathrm{NFW}$"
             f: # dark matter fraction M200/M*
                 fixed: False
                 value: 0.0
-                LaTeX: "$M_{200}/M_*$"
+                LaTeX: "$\\log(M_{200}/M_*)$"
                 logarithmic: True
                 par_generator_settings:
                     lo: -1.
@@ -56,21 +56,20 @@ system_components:
             q: # intrinsic flattening (C/A)
                 fixed: True
                 value: 0.1
-                LaTeX: "$q_{min}$"
+                LaTeX: "$q_\\mathrm{min}$"
             p: # intrinsic flattening B/A
                 fixed: True
                 value: 0.99
-                LaTeX: "$p_{min}$"
+                LaTeX: "$p_\\mathrm{min}$"
             u: # sigma_obs / sigma_intrinsic
                 fixed: True
                 value: 0.9999
-                LaTeX: "$u_{min}$"
+                LaTeX: "$u_\\mathrm{min}$"
         mge_pot: "mge.ecsv"
         mge_lum: "mge.ecsv"
         kinematics:
             sauron:
                 type: BayesLOSVD
-                weight: 1.0
                 datafile: "bayes_losvd_kins.ecsv"
                 aperturefile: "aperture.dat"
                 binfile: "bins.dat"
@@ -86,7 +85,7 @@ system_parameters: # physical system standalone parameters
             hi: 8.0
             step: 1.0
             minstep: 0.1
-        LaTeX: "$Y_{r}$"
+        LaTeX: "$Y_\\mathrm{r}$"
 
 ###############################################################################
 # SECTION 2: SETTINGS
@@ -109,10 +108,10 @@ orblib_settings:
     accuracy: '1.0d-5'
 
 weight_solver_settings:
-    type: "NNLS"      # must use "NNLS" with BayesLOSVD, not
+    type: "NNLS"      # must use "NNLS" with BayesLOSVD
+    nnls_solver: 'scipy'
     lum_intr_rel_err: 0.01
     sb_proj_rel_err: 0.02
-    nnls_solver: 'scipy'
 
 parameter_space_settings:
     generator_type: "LegacyGridSearch"

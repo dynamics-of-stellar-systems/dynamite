@@ -57,6 +57,8 @@ To keep track of your configuration settings, a copy of the configuration file w
 
 Note: DYNAMITE can also be run interactively, e.g. from a Jupyter notebook, but this must be launched from ``main_directory``.
 
+.. _input_files:
+
 Input Files
 ===================
 
@@ -70,17 +72,20 @@ The following input files are required::
   | │   ├── aperture.dat      # more info about binning of kinematics
   |
 
-The Multi Gaussian Expansion (MGE) describes the galaxy's 2D surface-brightness distributon. To generate this, fit and MGE to a photometric image e.g. using `mge <http://www-astro.physics.ox.ac.uk/~mxc/software/#mge>`_. The data must be given as a table in `Astropy ECSV format <https://docs.astropy.org/en/stable/api/astropy.io.ascii.Ecsv.html>`_, with columns:
+The exact filenames can be freely defined in the configuration file as described in the :ref:`observed_data` section of the Configuration page.
 
-- L_sun/ pc^2
-- sigma in arcseconds
-- q
-- PA_twist in degrees
+The Multi Gaussian Expansion (MGE) in ``mge.ecsv`` describes the galaxy's 2D surface-brightness distributon. To generate this, fit an MGE to a photometric image e.g. using `mge <http://www-astro.physics.ox.ac.uk/~mxc/software/#mge>`_. The data must be given as a table in `Astropy ECSV format <https://docs.astropy.org/en/stable/api/astropy.io.ascii.Ecsv.html>`_, with columns
 
-It is also possible to provide two separate MGE's for the surface-brightness and surface mass-density (see the observed data section of the `Configuration page <configuration.html>`__ for detauls.
+- ``I``: peak surface brightness values of the MGE Gaussians describing the surface brightness of the tracer population for which the kinematics is derived. Units: ``L_sun/pc^2`` (solar luminosities per ``parsec^2``).
+- ``sigma``: dispersion of the MGE Gaussians describing the distribution of the kinematic-tracer population. Units: ``arcsec`` (arcseconds).
+- ``q``: observed axial ratio q of the MGE Gaussians describing the distribution of the kinematic-tracer population.
+- ``PA_twist``: observed position angle (psi=PA_twist) of the MGE Gaussians describing the distribution of the kinematic-tracer population. Units: ``deg`` (degrees).
+
+It is also possible to provide two separate MGE's for the surface-brightness and surface mass-density (see the :ref:`observed_data` section of the Configuration page for details.
 
 Two types of kinematic are supported: tables of Gauss Hermite expansion coefficients, or histogrammed LOSVDs output by `BayesLOSVD <https://github.com/jfalconbarroso/BAYES-LOSVD>`_.
-These must be in the form of `Astropy ECSV files <https://docs.astropy.org/en/stable/api/astropy.io.ascii.Ecsv.html>`_. The files ``aperture.dat`` and ``bins.dat`` contain information about the spatial binning of your kinematic data. Convenience functions are provided for creating converting some standard kinematic data files, and examples demonstrating these can be found in the tutorials.
+These must be in the form of `Astropy ECSV files <https://docs.astropy.org/en/stable/api/astropy.io.ascii.Ecsv.html>`_ e.g., ``kinematics.ecsv``. The files ``aperture.dat`` and ``bins.dat`` contain information about the spatial binning of your kinematic data. Convenience functions are provided for creating converting some standard kinematic data files, and examples demonstrating these can be found in the tutorials.
+Note that the kinematics need to be centered at the center of the MGE.
 
 The file ``aperture.dat`` file contains the spatial extent in arcseconds, the angle (in degrees ) ``90 - position_angle``, and size of the grid in pixels::
 
@@ -90,9 +95,23 @@ The file ``aperture.dat`` file contains the spatial extent in arcseconds, the an
         90.-position_angle
         npix_x  n_pix_y
 
-while ``bins.dat`` encodes the spatial (e.g. Voronoi) binning: specifically, one header line with the total number of pixels in the grid, followed by the bin ID of each pixel in the grid.
+As ``aperture.dat`` is also read by legacy Fortran components of DYNAMITE, it is important that its first line is exactly as displayed above, otherwise DYNAMITE will crash.
 
-It is possible to simultaneously fit multiple sets of kinematics in DYNAMITE. In this case, all input files should be placed in this directory::
+The file ``bins.dat`` encodes the spatial (e.g. Voronoi) binning: specifically, one header line with the total number of pixels in the grid, followed by the bin ID of each pixel in the grid::
+
+    #Counterrotaton_binning_version_1
+    no of pixels in grid
+    ...
+
+Note that also for this file the first line needs to be exactly like displayed above (including the typo ``Counterrotaton``!) to avoid legacy Fortran errors.
+
+Comments on kinematics
+----------------------
+
+LegacyWeightSolver can't be used with BayesLOSVD - use weight-solver type NNLS.
+In some cases, the weight solver ``type: "NNLS"`` ``nnls_solver: "scipy"`` may fail for some models if the SciPy version is >= 1.12. In such cases, it is recommended to use ``type: "NNLS"`` ``nnls_solver: "cvxopt"`` or to reinstall DYNAMITE with ``scipy<1.12`` in ``requirements.txt``.
+
+It is possible to simultaneously fit multiple sets of kinematics in DYNAMITE, which is only supported for Gauss Hermite kinematics. In that case, all input files should be placed in this directory::
 
   | main_directory
   | ├── input_files
@@ -106,6 +125,7 @@ It is possible to simultaneously fit multiple sets of kinematics in DYNAMITE. In
   |
 
 The specific names of the files given here are just examples - you can specify the names you would like to use in the configuration file.
+The individual kinematics' tables need to have the same number of expansion coefficients. In case your kinematics have different numbers of Gauss Hermite expansion coefficients, we recommend to augment the respecive tables with zero values for the additional coefficients and set the respective coefficients' errors to a large number (e.g., 0.3 or 0.5).
 
 Configuration File
 ===================

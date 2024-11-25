@@ -1,0 +1,167 @@
+# Example yaml configuration file for the legacy implementation
+# All relevant input is in one file with two sections: SYSTEM and SETTINGS
+
+# Start of yaml document
+---
+###################################################################################
+# SECTION 1 : SYSTEM
+# Define the physical system (e.g. the galaxy, globular cluster etc being modelled)
+###################################################################################
+
+system_attributes:
+    distMPc: 39.96
+    name: "NGC6278"
+    position_angle: 97.69
+
+system_components:
+
+    bh:
+        parameters:
+            m:
+                par_generator_settings:
+                    lo: 1.0
+                    hi: 10.0
+                    step: 1.
+                    minstep: 0.
+                fixed: True
+                value: 5.2
+                logarithmic: True
+                LaTeX: "$\\log(M_\\mathrm{BH}/M_\\odot)$"
+            a:
+                fixed: True
+                value: 0.001
+                LaTeX: "$a_\\mathrm{BH}$"
+        type: "Plummer"
+        include: True
+        contributes_to_potential: True
+
+    dh:
+        parameters:
+            c: # concentration
+                par_generator_settings:
+                    lo: 1.0
+                    hi: 10.0
+                    step: 2.0
+                    minstep: 0.1
+                fixed: True
+                value: 8.0
+                LaTeX: "$C$"
+            f: # dark-matter fraction M200/M*
+                par_generator_settings:
+                    lo: -1.5
+                    hi: 1.5
+                    step: 0.5
+                    minstep: 0.1
+                logarithmic: True
+                fixed: True
+                value: 1.0
+                LaTeX: "$\\log(M_{200}/M_*)$"
+        type: NFW
+        include: True
+        contributes_to_potential: True
+
+    stars:
+        parameters:
+            q: # intrinsic flattening (C/A)
+                par_generator_settings:
+                    lo: 0.05
+                    hi: 0.99
+                    step: 0.04
+                    minstep: 0.02
+                fixed: True
+                value: 0.54
+                LaTeX: "$q$"
+            p: # intrinsic flattening (B/A)
+                par_generator_settings:
+                    lo: 0.99
+                    hi: 0.999
+                    step: 0.02
+                    minstep: 0.01
+                fixed: True
+                value: 0.99
+                LaTeX: "$p$"
+            u: # sigma_obs / sigma_intrinsic
+                par_generator_settings:
+                    lo: 0.95
+                    hi: 1.0
+                    step: 0.01
+                    minstep: 0.01
+                fixed: True
+                value: 0.9999
+                LaTeX: "$u$"
+        type: "TriaxialVisibleComponent"
+        mge_pot: "mge.ecsv"
+        mge_lum: "mge.ecsv"
+        include: True
+        contributes_to_potential: True
+        kinematics:
+            califa:
+                type: GaussHermite
+                datafile: "gauss_hermite_kins.ecsv"
+                aperturefile: "aperture.dat"
+                binfile: "bins.dat"
+
+system_parameters:
+    ml:
+        par_generator_settings:
+            lo: 1.
+            hi: 9.
+            step: 4.0
+            minstep: 0.5
+        fixed: True
+        value: 5.
+        LaTeX: "$Y_\\mathrm{r}$"
+
+###############################################################################
+# SECTION 2: SETTINGS
+# Define other settings e.g. for the orbit library and weight solver
+###############################################################################
+
+orblib_settings:
+    nE: 6                 # pick small orbit library for fast tutorial exaecution
+    logrmin: -0.101275
+    logrmax: 1.99123
+    nI2: 5                # must be >= 4
+    nI3: 4
+    dithering: 1          # pick dithering=1 for for fast tutorial exaecution
+    # the following values should usually not be changed
+    orbital_periods: 200
+    sampling: 50000
+    starting_orbit: 1
+    number_orbits: -1     # i.e. integrate all orbits
+    accuracy: '1.0d-5'
+    random_seed: 4242     # fixed rnd. seed for reproducible tutorial (set to 0 for stochastic seed)
+
+weight_solver_settings:
+    type: "NNLS"
+    nnls_solver: "scipy"
+    regularisation: 0
+    number_GH: 4
+    GH_sys_err: '0.0 0.0 0.0 0.0 0.3 0.3 0.6 0.6'
+    lum_intr_rel_err: 0.01
+    sb_proj_rel_err: 0.02
+
+parameter_space_settings:
+    generator_type: "SpecificModels"
+    which_chi2: "kinchi2"  # only use kinematic part of chi2 for parameter search (recommended)
+    generator_settings:
+        # For LegacyGridSearch, specify ONE of the following two settings
+        # threshold_del_chi2_abs: 0.5  # absolute change in chi2 threshold
+        # threshold_del_chi2_as_frac_of_sqrt2nobs: 0.1
+        SpecificModels_mode: "list" # "list" or "cartesian"
+    stopping_criteria:
+        # min_delta_chi2_abs : 0.5  # absolute "optimality tolerance"
+        # #min_delta_chi2_rel : 0.05 # relative "optimality tolerance"
+        n_max_mods : 15
+        n_max_iter : 10
+
+io_settings:        # paths can be given with or without trailing slash
+    input_directory: "NGC6278_input/dynamite_input/"
+    output_directory: "NGC6278_output/"
+    all_models_file: "all_models.ecsv"
+
+multiprocessing_settings:
+    ncpus: 4        # integer or 'all_available'
+
+legacy_settings:
+    directory: "default"

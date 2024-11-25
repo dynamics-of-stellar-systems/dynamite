@@ -70,7 +70,7 @@ class Settings(object):
             raise ValueError(text)
 
     def validate(self):
-        """Validate that all expected settings are present
+        """Validate that all expected settings are present and perform checks
         """
         if not(self.orblib_settings and self.parameter_space_settings and
                self.io_settings and self.weight_solver_settings
@@ -82,6 +82,25 @@ class Settings(object):
                              and multiprocessing_settings"""
             self.logger.error(text)
             raise ValueError(text)
+        if self.weight_solver_settings['nnls_solver'] == 'cvxopt' and \
+           not importlib.util.find_spec('cvxopt'):
+            text = "nnls_solver 'cvxopt' is not installed. Use a different " \
+                   "nnls_solver setting or try to install cvxopt e.g., via " \
+                   "'python -m pip install .[cvxopt]'."
+            self.logger.error(text)
+            raise ModuleNotFoundError(text)
+        if self.orblib_settings['nI2'] < 4:
+            text = "orblib_settings: nI2 must be >= 4, but is " \
+                   f"{self.orblib_settings['nI2']}."
+            self.logger.error(text)
+            raise ValueError(text)
+        for quad in ['nr', 'nth', 'nph']:
+            key = 'quad_' + quad
+            if key not in self.orblib_settings.keys():
+                default = 10 if quad == 'nr' else 6
+                self.orblib_settings[key] = default
+                self.logger.info(f'No value given for orblib setting {key} '
+                                 f'- set to its default {default}.')
         self.logger.debug('Settings validated.')
 
     def __repr__(self):
@@ -121,8 +140,6 @@ class Configuration(object):
     ----------
     filename : string
         needs to refer to an existing file including path
-    silent : DEPRECATED
-        (diagnostic output handled by logging module)
     reset_logging : bool
         if False: use the calling application's logging settings
         if True: set logging to Dynamite defaults
@@ -160,7 +177,6 @@ class Configuration(object):
 
     def __init__(self,
                  filename=None,
-                 silent=None,
                  reset_logging=False,
                  user_logfile='dynamite',
                  reset_existing_output=False):
@@ -176,9 +192,6 @@ class Configuration(object):
         self.logger.debug(f'This is Python {sys.version.split()[0]}')
         self.logger.debug(f'Using DYNAMITE version {dyn.__version__} '
                           f'located at {dyn.__path__}')
-
-        if silent is not None:
-            self.logger.warning("'silent' option is deprecated and ignored")
 
         self.logger.debug('Global variables: ' \
                           f'{const.GRAV_CONST_KM = }, {const.PARSEC_KM = }, ' \
@@ -256,7 +269,8 @@ class Configuration(object):
                     # initialize the component's paramaters, kinematics,
                     # and populations
 
-                    par_list, kin_list, pop_list = [], [], []
+                    par_list, kin_list = [], []
+                    c.population_data = []
 
                     # read parameters
 
@@ -279,39 +293,52 @@ class Configuration(object):
                     # VisibleComponent has kinematics?)
                         logger.debug('Has kinematics '
                                     f'{list(data_comp["kinematics"].keys())}')
+                        kin_id = 0
                         for kin, data_kin in data_comp['kinematics'].items():
                             path=self.settings.io_settings['input_directory']
+                            if 'weight' in data_kin:
+                                logger.warning(f'Kinematics {kin}: the '
+                                    '\'weight\' attribute is DEPRECATED and '
+                                    'will be ignored. In a future DYNAMITE '
+                                    'realease this will report an error.')
+                                del data_kin['weight']
                             kinematics_set = getattr(kinem,data_kin['type'])\
                                                 (name=kin,
                                                  input_directory=path,
                                                  **data_kin)
+                            if kinematics_set.with_pops:
+                                populations_set = popul.Populations(
+                                        name=f'{kin}_pop',
+                                        input_directory=path,
+                                        aperturefile=data_kin['aperturefile'],
+                                        binfile=data_kin['binfile'],
+                                        datafile=data_kin['datafile'],
+                                        hist_width=data_kin['hist_width'],
+                                        hist_center=data_kin['hist_center'],
+                                        hist_bins=data_kin['hist_bins'],
+                                        kin_aper=kin_id,
+                                        pop_cols=kinematics_set.pop_cols)
+                                c.population_data.append(populations_set)
+                                logger.debug('Has population in kinematics '
+                                             f'bins: {kin}')
                             kin_list.append(kinematics_set)
+                            kin_id += 1
                         c.kinematic_data = kin_list
-
-                    # cast hist. values to correct numeric type unless `default`
-                    for i, k in enumerate(c.kinematic_data):
-                        if (k.hist_width=='default') is False:
-                            logger.debug(f'hist_width = {k.hist_width}')
-                            k.hist_width = float(k.hist_width)
-                        if (k.hist_center=='default') is False:
-                            logger.debug(f'hist_center = {k.hist_center}')
-                            k.hist_center = float(k.hist_center)
-                        if (k.hist_bins=='default') is False:
-                            logger.debug(f'hist_bins = {k.hist_bins}')
-                            k.hist_bins = int(k.hist_bins)
 
                     # read populations
 
                     if 'populations' in data_comp:
-                    # shall we include a check here (e.g., only
-                    # VisibleComponent has populations?)
+                        # shall we include a check here (e.g., only
+                        # VisibleComponent has populations?)
                         logger.debug(f'Has populations '
                                 f'{tuple(data_comp["populations"].keys())}')
                         for pop, data_pop in data_comp['populations'].items():
-                            populations_set = popul.Populations(name=pop,
-                                                                **data_pop)
-                            pop_list.append(populations_set)
-                        c.population_data = pop_list
+                            path = self.settings.io_settings['input_directory']
+                            populations_set = popul.Populations(
+                                                name=pop,
+                                                input_directory=path,
+                                                **data_pop)
+                            c.population_data.append(populations_set)
 
                     if 'mge_pot' in data_comp:
                         path = self.settings.io_settings['input_directory']
@@ -321,6 +348,15 @@ class Configuration(object):
                         path = self.settings.io_settings['input_directory']
                         c.mge_lum = mge.MGE(input_directory=path,
                                         datafile=data_comp['mge_lum'])
+
+                    if 'disk_pot' in data_comp:
+                        path = self.settings.io_settings['input_directory']
+                        c.disk_pot = mge.MGE(input_directory=path,
+                                             datafile=data_comp['disk_pot'])
+                    if 'disk_lum' in data_comp:
+                        path = self.settings.io_settings['input_directory']
+                        c.disk_lum = mge.MGE(input_directory=path,
+                                             datafile=data_comp['disk_pot'])
 
                     # add component to system
                     c.validate()
@@ -454,10 +490,9 @@ class Configuration(object):
             self.logger.error(text)
             raise ValueError(text)
         logger.info('System assembled')
+        self.validate()
         logger.debug(f'System: {self.system}')
         logger.debug(f'Settings: {self.settings}')
-
-        self.validate()
         logger.info('Configuration validated')
 
         if 'generator_settings' in self.settings.parameter_space_settings:
@@ -471,6 +506,7 @@ class Configuration(object):
         self.all_models = model.AllModels(config=self)
         logger.info('Instantiated AllModels object')
         logger.debug(f'AllModels:\n{self.all_models.table}')
+        self.all_models.update_model_table()
 
         # self.backup_config_file(reset=False)
 
@@ -530,16 +566,15 @@ class Configuration(object):
             2 * total number of kinematic observations
 
         """
-        stars = \
-          self.system.get_component_from_class(physys.TriaxialVisibleComponent)
+        stars = self.system.get_unique_triaxial_visible_component()
         n_obs = 0.
         for k in stars.kinematic_data:
             if k.type == 'GaussHermite':
                 number_GH = self.settings.weight_solver_settings['number_GH']
-                n_obs += number_GH * len(k.data)
+                n_obs += number_GH * k.n_spatial_bins
             if k.type == 'BayesLOSVD':
-                nvbins = k.data.meta['nvbins']
-                n_obs += nvbins * len(k.data)
+                nvbins = k.get_data().meta['nvbins']
+                n_obs += nvbins * k.n_spatial_bins
         two_n_obs = 2 * n_obs
         return two_n_obs
 
@@ -763,9 +798,8 @@ class Configuration(object):
                     os.remove(f_name)
             self.logger.debug(f'{dest_directory}*.yaml files deleted.')
         shutil.copy2(self.config_file_name, dest_directory)
-        self.logger.info('Config file copied to '
-                         f'{dest_directory}{self.config_file_name}.')
-
+        self.logger.info(f'Config file {self.config_file_name} copied to '
+                         f'{dest_directory}.')
 
     def backup_config_file(self, reset=False, keep=None, delete_other=False):
         """
@@ -848,22 +882,31 @@ class Configuration(object):
         None.
 
         """
+        self.settings.validate()
+        which_chi2 = self.validate_chi2()
         if sum(1 for i in self.system.cmp_list \
                if isinstance(i, physys.Plummer)) != 1:
             self.logger.error('System must have exactly one Plummer object')
             raise ValueError('System must have exactly one Plummer object')
-        if sum(1 for i in self.system.cmp_list \
-               if isinstance(i, physys.VisibleComponent)) != 1:
-            self.logger.error('System needs to have exactly one '
-                              'VisibleComponent object')
-            raise ValueError('System needs to have exactly one '
-                             'VisibleComponent object')
+
+        if self.system.is_bar_disk_system():
+            if self.system.number_of_bar_components() != 1:
+                self.logger.error('Bar/disk system needs to have exactly one BarDiskComponent object')
+                raise ValueError('Bar/disk system needs to have exactly one BarDiskComponent object')
+        else:
+            if self.system.number_of_visible_components() != 1:
+                self.logger.error('System needs to have exactly one '
+                                  'VisibleComponent object')
+                raise ValueError('System needs to have exactly one '
+                                 'VisibleComponent object')
+
         if sum(1 for i in self.system.cmp_list \
                if issubclass(type(i), physys.DarkComponent)
                and not isinstance(i, physys.Plummer)) > 1:
             self.logger.error('System must have zero or one DM Halo object')
             raise ValueError('System must have zero or one DM Halo object')
-        if not 1 < len(self.system.cmp_list) < 4:
+
+        if not 1 < len(self.system.cmp_list) < 5:
             self.logger.error('System needs to comprise exactly one Plummer, '
                               'one VisibleComponent, and zero or one DM Halo '
                               'object(s)')
@@ -874,33 +917,41 @@ class Configuration(object):
         ws_type = self.settings.weight_solver_settings['type']
 
         for c in self.system.cmp_list:
-            if issubclass(type(c), physys.VisibleComponent): # Check vis. comp.
+            if issubclass(type(c), physys.VisibleComponent) \
+               and not issubclass(type(c), physys.BarDiskComponent): # Check vis. comp.
                 if c.kinematic_data:
                     for kin_data in c.kinematic_data:
                         check_gh = (kin_data.type == 'GaussHermite')
                         check_bl = (kin_data.type == 'BayesLOSVD')
                         if (not check_gh) and (not check_bl):
-                            self.logger.error('VisibleComponent kinematics type'
-                                              'must be GaussHermite or '
-                                              'BayesLOSVD')
-                            raise ValueError('VisibleComponent kinematics type'
-                                             'must be GaussHermite or '
-                                             'BayesLOSVD')
+                            txt = 'VisibleComponent kinematics type must be ' \
+                                  'GaussHermite or BayesLOSVD'
+                            self.logger.error(txt)
+                            raise ValueError(txt)
                         if check_bl:
                             # check weight solver type
                             if ws_type == 'LegacyWeightSolver':
-                                self.logger.error("LegacyWeightSolver can't be "
-                                                  "used with BayesLOSVD - use "
-                                                  "weight-solver type NNLS")
-                                raise ValueError("LegacyWeightSolver can't be "
-                                                  "used with BayesLOSVD - use "
-                                                  "weight-solver type NNLS")
-
+                                txt = "LegacyWeightSolver can't be used with "\
+                                      "BayesLOSVD - use weight-solver type NNLS"
+                                self.logger.error(txt)
+                                raise ValueError(txt)
+                            # check for compatible chi2 variant
+                            if which_chi2 == 'kinmapchi2':
+                                txt = 'kinmapchi2 cannot be used with ' \
+                                      'BayesLOSVD - use chi2 or kinchi2.'
+                                self.logger.error(txt)
+                                raise ValueError(txt)
                 else:
                     self.logger.error('VisibleComponent must have kinematics: '
                                       'either GaussHermite or BayesLOSVD')
                     raise ValueError('VisibleComponent must have kinematics: '
                                      'either GaussHermite or BayesLOSVD')
+                n_pops = len(c.population_data)
+                if n_pops > 0 and ws_type == 'LegacyWeightSolver':
+                    txt = 'LegacyWeightSolver cannot be used with population '\
+                        'data - use weight-solver type NNLS.'
+                    self.logger.error(txt)
+                    raise ValueError(txt)
                 if c.symmetry != 'triax':
                     self.logger.error('Legacy mode: VisibleComponent must be '
                                       'triaxial')
@@ -946,9 +997,7 @@ class Configuration(object):
             # these requirements are not needed by orblib_f.f90, but are assumed
             # by the NNLS routine triaxnnl_*.f90 (see 2144-2145 of orblib_f.f90)
             # Therefore this check is based on WeightSolver type.
-            stars = self.system.get_component_from_class(
-                physys.TriaxialVisibleComponent
-                )
+            stars = self.system.get_unique_triaxial_visible_component()
             hist_widths = [k.hist_width for k in stars.kinematic_data]
             hist_centers = [k.hist_center for k in stars.kinematic_data]
             hist_bins = [k.hist_bins for k in stars.kinematic_data]
@@ -976,13 +1025,6 @@ class Configuration(object):
                     max_bins += 1
                 for k in stars.kinematic_data:
                     k.hist_bins = max_bins
-        self.settings.validate()
-
-        which_chi2 = self.validate_chi2()
-        if which_chi2 == 'kinmapchi2' and ws_type != 'LegacyWeightSolver':
-            msg = 'kinmapchi2 is only allowed with LegacyWeightSolver'
-            self.logger.error(msg)
-            raise ValueError(msg)
 
     def validate_chi2(self, which_chi2=None):
         """

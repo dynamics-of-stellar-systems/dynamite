@@ -27,6 +27,19 @@
 ! Written by Remco van den Bosch <bosch@strw.leidenuniv.nl>
 ! Sterrewacht Leiden, The Netherlands
 
+!++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+! Note on rotating bar code:
+! The modified or added lines are commented by ! (BT)
+! In this file, the modified parts are:
+! 1- Integration of orbits in a rotating frame in case of (Omega != 0).
+! 2- Applying 4-fold symmetry instead of 8-fold symmetry mirroring and symmetrizing if (Omega != 0).
+! 3- if (Omega != 0), Sorting information of each orbit e.g. Circularity and ... during integration.
+! created file called  _orb_info.out for each library
+!
+! adapted from code originally by Behzad Tahmasebzadeh, July 2023
+!++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+
 module random_gauss_generator
     use numeric_kinds
     implicit none
@@ -113,7 +126,7 @@ module integrator
 
     public  :: integrator_integrate
 
-    public  :: integrator_setup, integrator_set_current
+    public  :: integrator_setup, integrator_set_current, integrator_setup_bar
 
     public  :: integrator_stop, integrator_find_orbtype
 
@@ -194,6 +207,7 @@ contains
         print *, "  ** Setting up integrator module"
         print *, "  * Calling MGE setup"
         call iniparam()
+        print *, "  * Calling ip_setup"
         call ip_setup()
         call ini_integ()
         print *, "  * How many orbits should be integrated?"
@@ -233,6 +247,55 @@ contains
     end subroutine integrator_setup
 
     !++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+    subroutine integrator_setup_bar()
+        use initial_parameters, only: iniparam_bar, orbit_dithering, Omega
+        !use triaxpotent, only : tp_setup
+        use interpolpot, only: ip_setup_bar
+        !----------------------------------------------------------------------
+        integer(kind=i4b) :: ndith3
+        print *, "  ** Setting up integrator module"
+        print *, "  * Calling MGE setup"
+        call iniparam_bar()
+        print *, "  * Calling ip_setup_bar"
+        call ip_setup_bar()
+        call ini_integ()
+        print *, "  * How many orbits should be integrated?"
+        read *, integrator_n_orbits
+        print *, "    ", integrator_n_orbits
+        if (integrator_n_orbits < 1) stop " Too few orbits"
+        print *, "  * How many points should be generated per starting point?"
+        read *, integrator_points
+        print *, "    ", integrator_points
+        integrator_dithering = orbit_dithering
+        ndith3 = integrator_dithering**3
+        allocate (integrator_orbittypes(ndith3))
+        allocate (integrator_moments(5, ndith3))
+        if (integrator_points < 1) stop " Too few points"
+        print *, "  * At which starting point should be started?"
+        read *, integrator_start
+        print *, "    ", integrator_start
+        call integrator_set_current(integrator_start - 1)
+        print *, "  * How many starting points should be integrated?"
+        read *, integrator_number
+        print *, "    ", integrator_number
+        if (integrator_number == -1) integrator_number = &
+            (nEner*nI2*nI3/integrator_dithering**3)
+
+        if (integrator_number < 1) stop " To few starting points"
+        if (integrator_number > &
+            (nEner*nI2*nI3/integrator_dithering**3)) &
+            & stop " Too many orbits in total"
+        print *, "  * How great should te accuracy be of the integrator?"
+        read *, integrator_accuracy
+        print *, "    ", integrator_accuracy
+        if (integrator_accuracy < 0 .or. 0.5 < integrator_accuracy) &
+          & stop " wrong accuracy"
+
+        print *, "  ** integrator module setup finished"
+
+    end subroutine integrator_setup_bar
+
+    !++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
     subroutine integrator_stop()
         !----------------------------------------------------------------------
         if (allocated(xini)) then
@@ -250,6 +313,7 @@ contains
 
     !++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
     subroutine integrator_integrate(pos, vel, otype, done, first, alldone)
+      use initial_parameters    , only : conversion_factor , Omega     ! (BT)
         logical, intent(out):: done, alldone
         logical, intent(in):: first
         real(kind=dp), intent(out), dimension(integrator_points, 3) :: pos
@@ -257,7 +321,10 @@ contains
         integer(kind=i4b), intent(out) :: otype
         integer(kind=i4b), save :: dith = 0
         integer(kind=i4b)    :: temporbit
+        real    (kind=dp ), dimension(6) :: YY ! (BT)
+        real    (kind=dp )   :: Enjo,r_mean,lz2,vca,Svr,Svt,Svz ! (BT)
         real(kind=dp), dimension(5) :: moments
+        real    (kind=dp ),dimension(3) :: moments2 ! (BT)
         !----------------------------------------------------------------------
         alldone = .false.
         if (first) then
@@ -276,10 +343,35 @@ contains
             if (regurizable(temporbit) == 1) totalnotregularizable = 1
             !print*,"  * Starting integrating :",integrator_current,dith,temporbit
             call real_integrator(temporbit, pos, vel)
-            call integrator_find_orbtype(otype, moments, pos, vel)
+            call integrator_find_orbtype(otype, moments, moments2, pos, vel) ! (BT)
             integrator_orbittypes(dith) = otype
             integrator_moments(:, dith) = moments
             done = .false.
+
+            ! write orbit information  in case of figure rotation (BT)
+            if (Omega /= 0.0_dp ) then
+               r_mean = moments(4)*conversion_factor**(-1.0_dp)
+               lz2    = moments(3)*conversion_factor**(-1.0_dp)
+               !cir = moments(3)/( SQRT(moments(5))*moments(4) )
+               vca  = moments(5)
+               Svr  = moments2(1)
+               Svt  = moments2(2)
+               Svz  = moments2(3)
+
+               YY(1) =  pos(1,1)
+               YY(2) =  pos(1,2)
+               YY(3) =  pos(1,3)
+               YY(4) =  vel(1,1)
+               YY(5) =  vel(1,2)
+               YY(6) =  vel(1,3)
+
+               ! Compute and store start energy at begin point
+               call computer_energy(YY,Enjo)
+
+               write (unit=32, fmt="(25es13.5)")  Enjo, r_mean, lz2, vca, Svr, Svt, Svz
+            endif
+            ! end write orbit information
+
         else
             ! integrating done. Set 'done' to true and return.
             pos(:, :) = 0.0_dp
@@ -574,6 +666,7 @@ contains
 
     !++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
     subroutine derivs(N, xin, yin, dydx, RPAR, IPAR)
+      use initial_parameters, only: Omega        ! (BT)
         use interpolpot, only: ip_accel
         !use triaxpotent, only : tp_accel
         integer, intent(in)              :: N
@@ -593,9 +686,22 @@ contains
         !   yin(5) = dy/dt
         !   yin(6) = dz/dt
 
-        ! First calculate the true accelerations at the given position
-        dydx(1:3) = yin(4:6)
-        call ip_accel(yin(1), yin(2), yin(3), dydx(4), dydx(5), dydx(6))
+        if (Omega == 0.0_dp ) then
+           ! First calculate the true accelerations at the given position
+           dydx(1:3) = yin(4:6)
+           call ip_accel(yin(1), yin(2), yin(3), dydx(4), dydx(5), dydx(6))
+        else
+           ! Rotating frame with Omega pattern speed (BT)
+           dydx(1) =  yin(4) + Omega*yin(2)  ! extra terms for integration in co-rotating frame
+           dydx(2) =  yin(5) - Omega*yin(1)
+           dydx(3) =  yin(6)
+
+           call ip_accel(yin(1),yin(2),yin(3),dydx(4),dydx(5),dydx(6))
+
+           dydx(4) =  dydx(4) + Omega*yin(5)
+           dydx(5) =  dydx(5) - Omega*yin(4)
+           dydx(6) =  dydx(6)
+        end if
 
     end subroutine derivs
 
@@ -643,11 +749,13 @@ contains
     END SUBROUTINE SOLOUT
 
     !++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-    subroutine integrator_find_orbtype(type, moments, pos, vel)
+    subroutine integrator_find_orbtype(type, moments, moments2, pos, vel) ! (BT)
         integer(kind=i4b), intent(out) :: type
-        real(kind=dp), intent(out), dimension(:) :: moments
+        real(kind=dp), intent(out), dimension(:) :: moments, moments2 ! (BT)
         real(kind=dp), intent(in), dimension(:, :) :: pos
         real(kind=dp), intent(in), dimension(size(pos, 1), 3) :: vel
+        real (kind=dp),dimension(size(pos,1)) :: vr, vt, vz ! (BT)
+        real (kind=dp) :: sd_vr, sd_vt, sd_vz, mean_vr, mean_vt, mean_vz, n ! (BT)
         !----------------------------------------------------------------------
         real(kind=dp) :: lxc, lyc, lzc
         real(kind=dp), dimension(size(pos, 1)) :: t
@@ -692,15 +800,39 @@ contains
                               + vel(:, 3)*vel(:, 1)))/size(pos, 1)
 
         !print*,moments(3),moments(5),moments(3)/moments(4)/sqrt(moments(5))
+
+        ! convert velocity to cylinderical  (anisotropy) (BT)
+        vr = ( pos(:,1) * vel(:,1) +  pos(:,2) * vel(:,2) ) / sqrt(pos(:,1)**2+pos(:,2)**2)
+        vt = ( pos(:,1) * vel(:,2) +  pos(:,2) * vel(:,1) ) / sqrt(pos(:,1)**2+pos(:,2)**2)
+        vz = vel(:,3)
+
+        N = size(pos,1)
+        mean_vr = sum(vr) / N
+        sd_vr = sqrt(sum((vr-mean_vr)**2) / N)
+
+        mean_vt = sum(vt) / N
+        sd_vt = sqrt(sum((vt-mean_vt)**2) / N)
+
+        mean_vz = sum(vz) / N
+        sd_vz = sqrt(sum((vz-mean_vz)**2) / N)
+
+        moments2(1) =  sd_vr
+        moments2(2) =  sd_vt
+        moments2(3) =  sd_vz
+
     end subroutine integrator_find_orbtype
 
     subroutine computer_energy(Y, E)
+      use initial_parameters, only: Omega ! (BT)
         ! Compute the energy of a particle.
         use interpolpot, only: ip_potent
         real(kind=dp), intent(in), dimension(6) :: Y
         real(kind=dp), intent(out) :: E
         real(kind=dp) :: ep
         call ip_potent(y(1), y(2), y(3), Ep)
+        if (Omega /= 0.0_dp ) then
+           ep = ep + Omega*(y(1)*y(5)-y(2)*y(4)) ! check the conservation of effective potential (BT)
+        end if
         E = ep - 0.5_dp*(y(4)**2 + y(5)**2 + y(6)**2)
     end subroutine computer_energy
 
@@ -795,6 +927,7 @@ contains
 
     !++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
     subroutine project_n(type, pos, vel, proj, losvel, velx, vely, n)
+      use initial_parameters, only :  Omega ! (BT)
         ! use initial_parameters, only : theta_view, phi_view
         ! pos( :, (r,z) )
         real(kind=dp), intent(in), dimension(:, :)   :: pos
@@ -810,9 +943,12 @@ contains
         !----------------------------------------------------------------------
         real(kind=dp)              :: t1, t2, t3, theta, phi
 
+        real (kind=dp),dimension(3,8,5) ::vsgn          ! (BT)
+        real (kind=dp),dimension(3,8) ::psgn            ! (BT)
+
         ! Signs of the (vx,vy,vz) for each Projection and type of Orbit
         real(kind=dp), dimension(3, 8, 5), &
-            parameter :: vsgn = reshape((/ &
+            parameter :: vsgn1 = reshape((/ &
                                         ! X tubes
                                         1, 1, 1, -1, 1, 1, 1, 1, -1, -1, 1, -1, &
                                         -1, -1, 1, 1, -1, 1, -1, -1, -1, 1, -1, -1, &
@@ -831,9 +967,41 @@ contains
 
         !Signs of the x,y,z for each projection  :psgn( [x,y,z], project )
         real(kind=dp), dimension(3, 8), &
-            parameter :: psgn = reshape((/ &
+            parameter :: psgn1 = reshape((/ &
                                         1, 1, 1, -1, 1, 1, -1, -1, 1, 1, -1, 1, &
                                         1, 1, -1, -1, 1, -1, -1, -1, -1, 1, -1, -1/), (/3, 8/))
+
+
+        ! Signs of the (vx,vy,vz) for each Projection and type of Orbit
+        ! (BT) 4-fold symmetry same as before
+        real (kind=dp),dimension(3,8,5),parameter :: vsgn2= reshape((/  &
+             ! X tubes
+             1 , 1 , 1    ,1 , 1 , 1  ,  -1 , -1 ,1  ,   -1 , -1 , 1 , &
+             1 ,1 , -1    ,1 ,1 , -1  , -1 ,-1 ,-1  ,  -1 ,-1 , -1 , &
+             ! Y tubes
+             1 , 1 , 1    , 1 , 1 ,1  ,  1 , 1 ,-1  ,  1 , 1 , -1 , &
+             -1 , -1 , 1   ,-1 , -1 ,1  , -1 ,-1 ,-1  , -1 ,-1 , -1 , &
+             ! Z tubes
+             1 , 1 , 1    , 1 ,1 , 1  , -1 ,-1 , 1  , -1 , -1 , 1 , &
+             1 , 1 ,-1    , 1 ,1 ,-1  , -1 ,-1 ,-1  , -1 , -1 ,-1 , &
+             ! Boxed
+             1 , 1 , 1    ,1 , 1 , 1  , -1 ,-1 , 1  ,  -1 ,-1 , 1 , &
+             1 , 1 ,-1    ,1 , 1 ,-1  , -1 ,-1 ,-1  ,  -1 ,-1 ,-1 , &
+             ! Stochastic
+             1 , 1 , 1    ,1 , 1 , 1  , -1 ,-1 , 1  ,  -1 ,-1 , 1 , &
+             1 , 1 ,-1    ,1 , 1 ,-1  , -1 ,-1 ,-1  ,  -1 ,-1 ,-1 /),(/3,8,5/))
+        !Signs of the x,y,z for each projection  :psgn( [x,y,z], project )
+        real (kind=dp),dimension(3,8),parameter :: psgn2= reshape((/  &
+             1 , 1 , 1   , 1 , 1 , 1   , -1 , -1 , 1 ,  -1 , -1 , 1 , &
+             1 , 1 ,-1   , 1 , 1 ,-1  , -1 , -1 ,-1 ,  -1 , -1 ,-1 /),(/3,8/))
+
+        ! Use 8-fold for non-rotating, but 4-fold for rotating (BT)
+        vsgn=vsgn1
+        psgn=psgn1
+        if (Omega /= 0.0_dp ) then
+           vsgn=vsgn2
+           psgn=psgn2
+        endif
 
         theta = theta_proj
         phi = phi_proj
@@ -2233,16 +2401,13 @@ contains
     !++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
     subroutine qgrid_setup()
         use initial_parameters, only: nEner, nI2, nI3, rLogMin, rLogMax, sigobs_km &
-                                      , conversion_factor
+                                      , conversion_factor &
+                                      , quad_nr, quad_nth, quad_nph
         use integrator, only: integrator_dithering
         !----------------------------------------------------------------------
-        integer(kind=i4b) :: i, quad_nr, quad_nth, quad_nph
+        integer(kind=i4b) :: i
         real(kind=dp)  :: inR, psfsize
         print *, "  ** Octant grid module setup"
-
-        quad_nr = 10   !10 !15 ! int(NEner / integrator_dithering*0.55 )
-        quad_nth = 6    !4  !4 ! int(nI2   / integrator_dithering ) - 1 ! towards middle axis
-        quad_nph = 6    ! 5 !5 ! int(nI3   / integrator_dithering ) - 1 ! towards minor axis
 
         print *, "  ** Grid dimension:"
         print *, quad_nr, quad_nth, quad_nph
@@ -2290,6 +2455,7 @@ contains
 
     !++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
     subroutine qgrid_store(proj, vel, type)
+      use initial_parameters, only :  Omega ! (BT)
         ! proj (n, (x,y,z) )
         real(kind=dp), dimension(:, :), intent(in) :: proj, vel
         integer(kind=i4b), intent(in)                       :: type
@@ -2298,8 +2464,14 @@ contains
         integer(kind=i4b) :: i, j, n1, n2, n3, store_type
         integer(kind=i4b), save ::ir = 1, ith = 1, iph = 1
 
+        real (kind=dp),dimension(3,8,5) ::vsgn
+        real (kind=dp),dimension(3,8) ::psgn
+
+
+        ! Signs of the (vx,vy,vz) for each Projection and type of Orbit
+        ! (BT) 8-fold symmetry same as before
         real(kind=dp), dimension(3, 8, 5), &
-            parameter :: vsgn = reshape((/ &
+            parameter :: vsgn1 = reshape((/ &
                                         ! X tubes
                                         1, 1, 1, -1, 1, 1, 1, 1, -1, -1, 1, -1, &
                                         -1, -1, 1, 1, -1, 1, -1, -1, -1, 1, -1, -1, &
@@ -2318,9 +2490,41 @@ contains
 
         !Signs of the x,y,z for each projection  :psgn( [x,y,z], project )
         real(kind=dp), dimension(3, 8), &
-            parameter :: psgn = reshape((/ &
+            parameter :: psgn1 = reshape((/ &
                                         1, 1, 1, -1, 1, 1, -1, -1, 1, 1, -1, 1, &
                                         1, 1, -1, -1, 1, -1, -1, -1, -1, 1, -1, -1/), (/3, 8/))
+
+        ! Signs of the (vx,vy,vz) for each Projection and type of Orbit
+        ! (BT) 4-fold symmetry in case of rotating frame
+        real (kind=dp),dimension(3,8,5),parameter :: vsgn2= reshape((/  &
+             ! X tubes
+             1 , 1 , 1    ,1 , 1 , 1  ,  -1 , -1 ,1  ,   -1 , -1 , 1 , &
+             1 ,1 , -1    ,1 ,1 , -1  , -1 ,-1 ,-1  ,  -1 ,-1 , -1 , &
+             ! Y tubes
+             1 , 1 , 1    , 1 , 1 ,1  ,  1 , 1 ,-1  ,  1 , 1 , -1 , &
+             -1 , -1 , 1   ,-1 , -1 ,1  , -1 ,-1 ,-1  , -1 ,-1 , -1 , &
+             ! Z tubes
+             1 , 1 , 1    , 1 ,1 , 1  , -1 ,-1 , 1  , -1 , -1 , 1 , &
+             1 , 1 ,-1    , 1 ,1 ,-1  , -1 ,-1 ,-1  , -1 , -1 ,-1 , &
+             ! Boxed
+             1 , 1 , 1    ,1 , 1 , 1  , -1 ,-1 , 1  ,  -1 ,-1 , 1 , &
+             1 , 1 ,-1    ,1 , 1 ,-1  , -1 ,-1 ,-1  ,  -1 ,-1 ,-1 , &
+             ! Stochastic
+             1 , 1 , 1    ,1 , 1 , 1  , -1 ,-1 , 1  ,  -1 ,-1 , 1 , &
+             1 , 1 ,-1    ,1 , 1 ,-1  , -1 ,-1 ,-1  ,  -1 ,-1 ,-1 /),(/3,8,5/))
+
+        !Signs of the x,y,z for each projection  :psgn( [x,y,z], project )
+        real (kind=dp),dimension(3,8),parameter :: psgn2= reshape((/  &
+             1 , 1 , 1   , 1 , 1 , 1   , -1 , -1 , 1 ,  -1 , -1 , 1 , &
+             1 , 1 ,-1   , 1 , 1 ,-1  , -1 , -1 ,-1 ,  -1 , -1 ,-1 /),(/3,8/))
+
+        ! Use 8-fold for non-rotating, but 4-fold for rotating (BT)
+        vsgn=vsgn1
+        psgn=psgn1
+        if (Omega /= 0.0_dp ) then
+           vsgn=vsgn2
+           psgn=psgn2
+        endif
 
         ! Hunt assumes open boundaries, but our boundaries are closed
         ! So we dont give the outer boundaries to hunt.
@@ -2568,6 +2772,9 @@ contains
         close (unit=out_handle + 1, iostat=error)
         if (error /= 0) stop "  Error closing status file."
 
+        close(unit=32,iostat=error)                           ! for orbit info (BT)
+        if (error/=0) stop "  Error closing status file."
+
         print *, " * Finished closing files"
 
     end subroutine output_close
@@ -2627,7 +2834,7 @@ module high_level
     private
 
     ! setup/run/stop the program.
-    public :: setup, run, stob
+    public :: setup, setup_bar, run, stob
 
 contains
 
@@ -2664,7 +2871,40 @@ contains
     end subroutine setup
 
     !++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+    subroutine setup_bar()
+        use integrator, only: integrator_setup_bar
+        use projection, only: projection_setup
+        use quadrantgrid, only: qgrid_setup
+        use aperture_routines, only: aperture_setup
+        use histograms, only: histogram_setup
+        use psf, only: psf_setup
+        use output, only: output_setup
+        !----------------------------------------------------------------------
+        character(len=80) :: string
+        print *, "  ** Start Setup"
+        print *, "  * Give setup version info: [U for unspecified]"
+        read *, string
+        if (string == "#counterrotation_setupfile_version_1" .or. string == "U") then
+            print *, "  * Setupfile is Version 1"
+            call integrator_setup_bar()
+            call projection_setup()
+            call qgrid_setup()
+            call psf_setup()
+            call aperture_setup()
+            call histogram_setup()
+            call output_setup()
+        else
+            print *, "This version is not understood by this program"
+            STOP "program terminated in high_level:setup"
+        end if
+
+        print *, "  ** Setup Finished"
+
+    end subroutine setup_bar
+
+    !++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
     subroutine run()
+      use initial_parameters, only: Omega
         use histograms, only: histogram_reset, hist_thesame, &
                               histogram_velbin, histogram_store
         use projection, only: project, projection_symmetry
@@ -2688,6 +2928,7 @@ contains
         real(kind=dp) :: t1, t2
         alldone = .false.
         print *, "  ** Starting Orbit Calculations"
+        if (Omega /= 0.0_dp) print*,"Pattern speed ==================== ", Omega ! (BT)
         do  ! for each orbit
 
             call cpu_time(t1)

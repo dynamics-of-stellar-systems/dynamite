@@ -1,5 +1,7 @@
 import os
 import copy
+import glob
+import difflib
 import logging
 import shutil
 import numpy as np
@@ -19,7 +21,7 @@ class AllModels(object):
     ----------
     config : a ``dyn.config_reader.Configuration`` object
     from_file : bool
-        whether to create this ojbect from a saved `all_models.ecsv` file
+        whether to create this object from a saved `all_models.ecsv` file
 
     """
     def __init__(self, config=None, from_file=True):
@@ -35,13 +37,13 @@ class AllModels(object):
         self.make_empty_table()
         if from_file and os.path.isfile(self.filename):
             self.logger.info('Previous models have been found: '
-                        f'Reading {self.filename} into '
-                        f'{__class__.__name__}.table')
-            self.read_completed_model_file()
+                             f'Reading {self.filename} into '
+                             f'{__class__.__name__}.table')
+            self.read_model_table()
         else:
             self.logger.info(f'No previous models (file {self.filename}) '
-                        'have been found: '
-                        f'Made an empty table in {__class__.__name__}.table')
+                             'have been found: Made '
+                             f'an empty table in {__class__.__name__}.table')
 
     def set_filename(self, filename):
         """Set the name (including path) for this model
@@ -86,8 +88,24 @@ class AllModels(object):
         dtype.append('U256')
         self.table = table.Table(names=names, dtype=dtype)
 
-    def read_completed_model_file(self):
+    def read_model_table(self):
         """Read table from file ``self.filename``
+
+        Returns
+        -------
+        None
+            sets ``self.table``
+
+        """
+        table_read = ascii.read(self.filename)
+        self.table = table.vstack((self.table, table_read),
+                                  join_type='outer',
+                                  metadata_conflicts='error')
+        self.logger.debug(f'{len(self.table)} models read '
+                          f'from file {self.filename}')
+
+    def update_model_table(self):
+        """all_models table update: fix incomplete models, add kinmapchi2.
 
         Dealing with incomplete models:
         Models with all_done==False but an existing model_done_staging.ecsv
@@ -104,19 +122,16 @@ class AllModels(object):
         Note that orbit libraries on disk will not be deleted as they
         may be in use by other models.
 
+        Up to DYNAMITE 3.0 there was no kinmapchi2 column in the all_models
+        table. If possible (data exists on disk), calculate and add the values,
+        otherwise set to np.nan.
+
         Returns
         -------
         None
             sets ``self.table``
 
         """
-        table_read = ascii.read(self.filename)
-        self.table = table.vstack((self.table, table_read),
-                                  join_type='outer',
-                                  metadata_conflicts='error')
-        self.logger.debug(f'{len(self.table)} models read '
-                          f'from file {self.filename}')
-
         table_modified = False
         for i, row in enumerate(self.table):
             if not row['all_done']:
@@ -192,37 +207,47 @@ class AllModels(object):
                         ' perhaps it has already been removed before.')
             os.chdir(cwd)
             self.table.remove_rows(to_delete)
-
-        which_chi2 = 'kinmapchi2'
-        if which_chi2 not in self.table.colnames:
+        # Up to DYNAMITE 3.0 there was no kinmapchi2 column -> retrofit.
+        if isinstance(self.table['kinmapchi2'], table.column.MaskedColumn):
             table_modified = True
-            # a legacy all_models table does not have the kinmapchi2 column
-            # add that column to the table and initialize with nan
-            self.logger.info('Legacy all_models table read, adding and '
-                             f'updating {which_chi2} column...')
-            self.table.add_column(float('nan'),
-                                  index=self.table.colnames.index('kinchi2')+1,
-                                  name=which_chi2,
-                                  copy=True)
-            for row_id, row in enumerate(self.table):
-                if row['orblib_done'] and row['weights_done']:
-                    # both orblib_done and weights_done being True indicates
-                    # that data for kinmapchi2 is on the disk -> calculate
-                    # kinmapchi2 (not nan only for LegacyWeightSolver)
-                    mod = self.get_model_from_row(row_id)
-                    ws_type=self.config.settings.weight_solver_settings['type']
-                    weight_solver = getattr(ws,ws_type)(
-                                            config=self.config,
-                                            directory_with_ml=mod.directory)
-                    row[which_chi2] = weight_solver.chi2_kinmap()
-                    self.logger.info(f'Model {row_id}: {which_chi2} = '
-                                     f'{row[which_chi2]}')
-                else:
-                    self.logger.warning(f'Model {row_id}: cannot update '
-                                        f'{which_chi2} - data deleted?')
-
+            self.retrofit_kinmapchi2()
+        # If the table has been modified, save it.
         if table_modified:
             self.save()
+            self.logger.info('all_models table updated and saved.')
+        else:
+            self.logger.info('No all_models table update required.')
+
+    def retrofit_kinmapchi2(self):
+        """Calculates kinmapchi2 for DYNAMITE legacy tables if possible.
+
+        Returns
+        -------
+        None.
+            updates ``self.table``
+        """
+        which_chi2 = 'kinmapchi2'
+        self.logger.info('Legacy all_models table read, updating '
+                         f'{which_chi2} column...')
+        # self.table[which_chi2] = np.nan
+        for row_id, row in enumerate(self.table):
+            if row['orblib_done'] and row['weights_done']:
+                # both orblib_done==True and weights_done==True indicates
+                # that data for kinmapchi2 is on the disk -> calculate
+                # kinmapchi2
+                mod = self.get_model_from_row(row_id)
+                ws_type = self.config.settings.weight_solver_settings['type']
+                weight_solver = getattr(ws, ws_type)(
+                                        config=self.config,
+                                        directory_with_ml=mod.directory)
+                orblib = mod.get_orblib()
+                _, _, _, row[which_chi2] = weight_solver.solve(orblib)
+                self.logger.info(f'Model {row_id}: {which_chi2} = '
+                                 f'{row[which_chi2]}')
+            else:
+                row[which_chi2] = np.nan
+                self.logger.warning(f'Model {row_id}: cannot update '
+                                    f'{which_chi2} - data deleted?')
 
     def read_legacy_chi2_file(self, legacy_filename):
         """
@@ -232,7 +257,7 @@ class AllModels(object):
         griddata/_chi2.cat
 
         Parameters
-        -----------
+        ----------
         legacy_filename: string
             the legacy_filename (probably griddata/_chi2.cat)
         """
@@ -278,7 +303,7 @@ class AllModels(object):
         `legacy` AKA schwpy format were likely called ```griddata/_chi2.cat``.
 
         Parameters
-        -----------
+        ----------
         legacy_filename: string
             the legacy_filename (probably griddata/_chi2.cat)
         """
@@ -348,6 +373,37 @@ class AllModels(object):
                 break
         else:
             text = f'parset not in all_models table. parset={parset}, ' \
+                   f'all_models table: {self.table}'
+            self.logger.error(text)
+            raise ValueError(text)
+        return mod
+
+    def get_model_from_directory(self, directory):
+        """Get the ``Model`` from a model directory
+
+        Parameters
+        ----------
+        directory : str
+            The directory string needs to start with the output directory
+            defined in ``config.settings.io_settings['output_directory']``
+
+        Raises
+        ------
+        ValueError
+            If the directory does not exist in the all_models table.
+
+        Returns
+        -------
+        mod : a ``dyn.model.Model`` object
+
+        """
+        for idx, dir_table in enumerate(self.table['directory']):
+            if self.config.settings.io_settings['output_directory'] \
+                                        + 'models/' + dir_table == directory:
+                mod = self.get_model_from_row(idx)
+                break
+        else:
+            text = f'Directory {directory} not in all_models table. ' \
                    f'all_models table: {self.table}'
             self.logger.error(text)
             raise ValueError(text)
@@ -800,6 +856,78 @@ class Model(object):
         self.directory_noml=self.directory[:self.directory[:-1].rindex('/')+1]
         self.logger.debug('Model directory string up to ml: '
                           f'{self.directory_noml}')
+        self.validate_config_file()
+
+    def validate_config_file(self):
+        """
+        Validate the content of the config file against the model's config file
+
+        Upon solving a model, DYNAMITE creates a backup of the config file in
+        the model directory. Instantiating a model later (e.g., for plotting)
+        using a config file that is incompatible with the one used to create
+        the model can lead to problems (e.g., differently sized orbit library).
+        This method validates the "global" config file against the one in the
+        model directory (if existing).
+
+        Differing config files may be ok and intended (e.g., due to expanding
+        the parameter space). Therefore, the main purpose of this method is to
+        add warnings to the log to alert the user.
+
+        Raises
+        ------
+        FileNotFoundError
+            If the "global" config file cannot be found.
+
+        Returns
+        -------
+        bool
+            ``False`` if a config file backup is successfully found in the
+            model directory and it differs from the "global" config file.
+            ``True`` otherwise (no config file backup could be identified or
+            the config file backup is identical to the global config file).
+
+        """
+        if not os.path.isfile(self.config.config_file_name):
+            txt = f'Unexpected: config file {self.config.config_file_name}' + \
+                  ' not found.'
+            self.logger.error(txt)
+            raise FileNotFoundError(txt)
+        model_yaml_files = glob.glob(self.directory+'*.yaml')
+        n_yaml_files = len(model_yaml_files)
+        if n_yaml_files == 0:
+            self.logger.debug(f'No config file backup in {self.directory} '
+                              'found - probably a new model.')
+            return True  # ####################
+        if n_yaml_files == 1:
+            f_i = 0
+        else:
+            try:
+                f_i = model_yaml_files.index(self.directory +
+                                             self.config.config_file_name)
+            except ValueError:
+                self.logger.warning('More than one .yaml file found in '
+                                    f'{self.directory}. No file name matches '
+                                    'the config file, no check possible.')
+                return True  # ####################
+        model_config_file_name = model_yaml_files[f_i]
+        with open(self.config.config_file_name) as c_f:
+            config_file = c_f.readlines()
+        with open(model_config_file_name) as c_f:
+            model_config_file = c_f.readlines()
+        c_diff = difflib.unified_diff(config_file,
+                                      model_config_file,
+                                      fromfile=self.config.config_file_name,
+                                      tofile=model_config_file_name)
+        c_diff = list(c_diff)
+        if len(c_diff) > 0:
+            self.logger.warning('ACTION REQUIRED, PLEASE CHECK: '
+                                'The current config file '
+                                f'{self.config.config_file_name} differs from '
+                                f'the config file {model_config_file_name} '
+                                'backup in the model directory. Diff output:\n'
+                                f'{"".join(c_diff)}.')
+            return False  # ####################
+        return True
 
     def get_model_directory(self):
         """get the name of this model's output directory
@@ -886,13 +1014,21 @@ class Model(object):
     def get_weights(self, orblib=None):
         """Get the orbital weights
 
+        Gets the orbital weights and chi2 values by calling the appropriate
+        ``WeightSolver.solve()`` method.
+
         Parameters
         ----------
         orblib : a ``dyn.orblib.OrbitLibrary`` object
 
         Returns
         -------
-        a ``dyn.weight_solver.WeightSolver`` object
+        weight_solver : a ``dyn.weight_solver.WeightSolver`` object
+            sets attributes:
+                - ``self.weights``
+                - ``self.chi2``
+                - ``self.kinchi2``
+                - ``self.kinmapchi2``
 
         """
         ws_type = self.config.settings.weight_solver_settings['type']
@@ -905,7 +1041,7 @@ class Model(object):
                     config=self.config,
                     directory_with_ml=self.directory)
         else:
-            raise ValueError('Unknown WeightSolver type')
+            raise ValueError(f'Unknown WeightSolver type {ws_type}.')
         weights, chi2_tot, chi2_kin, chi2_kinmap = weight_solver.solve(orblib)
         self.chi2 = chi2_tot # instrinsic/projected mass + GH coeeficients 1-Ngh
         self.kinchi2 = chi2_kin # GH coeeficients 1-Ngh

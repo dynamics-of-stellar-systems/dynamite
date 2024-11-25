@@ -28,9 +28,9 @@ module dmpotent
 contains
 
     subroutine dm_setup()
-        use triaxpotent, only: tp_setup
+        ! use triaxpotent, only: tp_setup
         real(kind=dp) :: darkmass, dm_zeta, zh_betai, tmp_gamma, zh_gammln
-        call tp_setup()
+        ! call tp_setup()
 
         select case (dm_profile_type)
         case (0)

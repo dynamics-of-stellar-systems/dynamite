@@ -90,16 +90,38 @@ class ModelIterator(object):
                 self.logger.info(f'{par_generator_type}: iterations 0 and 1')
                 iteration += 2
             status = model_inner_iterator.run_iteration()
-            if plots:
+            if plots and not status['last_iter_added_no_new_models']:
                 try:
-                    the_plotter.make_chi2_vs_model_id_plot()
-                    the_plotter.make_chi2_plot()
-                    the_plotter.plot_kinematic_maps(kin_set='all',
-                                                    cbar_lims='default')
-                    plt.close('all') # just to make sure...
-                except ValueError:
+                    self.chi2_vs_model_id_plot = \
+                        the_plotter.make_chi2_vs_model_id_plot()
+                    self.chi2_plot = the_plotter.make_chi2_plot()
+                    self.kinematic_maps = \
+                        the_plotter.plot_kinematic_maps(kin_set='all',
+                                                        cbar_lims='default')
+                    plt.close('all')  # just to make sure...
+                except:
                     self.logger.warning(f'Iteration {total_iter}: '
                                         'plotting failed!')
+
+    def get_plots(self):
+        """
+        Returns the latest iteration's plots as figure objects.
+
+        Returns
+        -------
+        tuple of matplotlib.pyplot.figure:
+            matplotlib.pyplot.figure: chi2 vs. model id plot
+            matplotlib.pyplot.figure: chisquare plot
+            (matplotlib.pyplot.figure, str): kinematic maps of best model so
+            far, kinematics name
+
+        """
+        chi2_vs_model_id_plot = self.chi2_vs_model_id_plot \
+            if hasattr(self, 'chi2_vs_model_id_plot') else None
+        chi2_plot = self.chi2_plot if hasattr(self, 'chi2_plot') else None
+        kinematic_maps = self.kinematic_maps \
+            if hasattr(self, 'kinematic_maps') else None
+        return chi2_vs_model_id_plot, chi2_plot, kinematic_maps
 
     def reattempt_failed_weights(self):
         config = self.config
@@ -122,11 +144,15 @@ class ModelIterator(object):
                 config.all_models.table[row]['kinchi2'] = kinchi2
                 config.all_models.table[row]['kinmapchi2'] = kinmapchi2
                 config.all_models.table[row]['time_modified'] = time
-                config.all_models.table[row]['weights_done'] = True
-                config.all_models.table[row]['all_done'] = True
+                if not all(np.isnan([chi2, kinchi2, kinmapchi2])):
+                    config.all_models.table[row]['weights_done'] = True
+                    config.all_models.table[row]['all_done'] = True
+                    self.logger.debug('Reattempting weight solving for model '
+                                      f'in row {i} successful.')
+                else:
+                    self.logger.info('Reattempting weight solving for model '
+                                     f'in row {i} failed.')
             config.all_models.save()
-            self.logger.debug('Reattempted weight solving for models in in rows'
-                             f' {rows_with_orbits_but_no_weights} successful.')
 
     def get_missing_weights(self, row):
         self.logger.debug(f'Reattempting weight solving for model {row}.')
@@ -413,7 +439,8 @@ class ModelInnerIterator(object):
                 orb_done = True
                 if get_weights:
                     weight_solver = mod.get_weights(orblib)
-                    wts_done = True
+                    if not np.isnan(mod.weights[0]):
+                        wts_done = True
                 else:
                     mod.chi2, mod.kinchi2, mod.kinmapchi2 \
                         = np.nan, np.nan, np.nan

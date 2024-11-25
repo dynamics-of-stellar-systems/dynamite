@@ -7,6 +7,7 @@ import cmasher as cmr
 import astropy
 import dynamite as dyn
 
+
 class Decomposition:
     """
     Class for decomposition.
@@ -17,8 +18,9 @@ class Decomposition:
     and velocity dispersion only) are plotted by calling ``self.plot_decomp``
     which also writes the plotted data into the model directory.
 
-    The methodology in this class has been contributed by Giulia Santucci.
-    Please cite Santucci+22, ApJ 930, 2, 153 if used.
+    The methodology in this class has been contributed by Ling Zhu and
+    Giulia Santucci. Please cite Zhu+18, MNRAS 473, 3000 and
+    Santucci+22, ApJ 930, 153 if used.
 
     Parameters
     ----------
@@ -327,22 +329,22 @@ class Decomposition:
         t = []
         totalf = 0
         for i in range(len(comps)):
-                labels = [comps[i] + qq for qq in quant]
-                flux = comp_kinem_moments[labels[0]]
-                w = weights[[comps[i] in s for s in self.decomp['component']]]
-                fhist, fbinedge = np.histogram(grid[s_wide], bins=len(flux))
-                flux = flux / fhist
-                tt = flux[grid]*1.
-                tt = tt * np.sum(w)/np.sum(tt)
-                t.append(tt.copy())
-                if comps[i] in ['thin_d', 'warm_d', 'bulge']:
-                    totalf += np.sum(tt)
-                    if comps[i] == 'thin_d':
-                        fluxtot = tt
-                    else:
-                        fluxtot += tt
-                vel.append(comp_kinem_moments[labels[1]])
-                sig.append(comp_kinem_moments[labels[2]])
+            labels = [comps[i] + qq for qq in quant]
+            flux = comp_kinem_moments[labels[0]]
+            w = weights[[comps[i] in s for s in self.decomp['component']]]
+            fhist, fbinedge = np.histogram(grid[s_wide], bins=len(flux))
+            flux = flux / fhist
+            tt = flux[grid]*1.
+            tt = tt * np.sum(w)/np.sum(tt)
+            t.append(tt.copy())
+            if comps[i] in ['thin_d', 'warm_d', 'bulge']:
+                totalf += np.sum(tt)
+                if comps[i] == 'thin_d':
+                    fluxtot = tt
+                else:
+                    fluxtot += tt
+            vel.append(comp_kinem_moments[labels[1]])
+            sig.append(comp_kinem_moments[labels[2]])
 
         t = t/totalf
 
@@ -359,10 +361,10 @@ class Decomposition:
 
         table = {'x/arcs':xi_t,'y/arcs':yi_t}
         for i in range(len(comps)):
-                labels = [comps[i] + qq for qq in quant]
-                table.update({labels[0]:t[i][s],
-                             labels[1]:vel[i][grid[s]],
-                             labels[2]:sig[i][grid[s]]})
+            labels = [comps[i] + qq for qq in quant]
+            table.update({labels[0]:t[i][s],
+                         labels[1]:vel[i][grid[s]],
+                         labels[2]:sig[i][grid[s]]})
         comps_kin = astropy.table.Table(table)
 
         kin_name = stars.kinematic_data[self.kin_set].name
@@ -453,7 +455,8 @@ class Analysis:
                                     model=None,
                                     kin_set=None,
                                     v_sigma_option='fit',
-                                    kinematics_as='table'):
+                                    kinematics_as='table',
+                                    weights=None):
         """
         Generates an astropy table in the model directory that holds the
         model's data for creating Gauss-Hermite kinematic maps:
@@ -478,6 +481,9 @@ class Analysis:
             format and return its full path ``f_name``, if 'both', write the
             table to disk and return a tuple ``(gh_table, f_name)``.
             The default is 'table'.
+        weights : ``numpy.array`` like, optional
+            Orbital weights to use. The default is ``None`` and will
+            determine the weights via ``model.get_weights(orblib)``.
 
         Raises
         ------
@@ -512,8 +518,9 @@ class Analysis:
         kin_name = stars.kinematic_data[kin_set].name
         self.logger.info('Getting model projected masses and losvds.')
         orblib = model.get_orblib()
-        _ = model.get_weights(orblib)
-        weights = model.weights
+        if weights is None:
+            _ = model.get_weights(orblib)
+            weights = model.weights
         # get losvd_histograms and projected masses:
         orblib.read_losvd_histograms()
         # get all orbits' losvds; orbits_losvd.shape = n_orb,n_vbin,n_aperture

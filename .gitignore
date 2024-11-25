@@ -1,6 +1,7 @@
 # Compiled source #
 ###################
 .DS_Store
+.venv
 dynamite/__pycache__
 legacy_fortran/galahad-2.3/bin/sys/*
 legacy_fortran/galahad-2.3/makefiles/*
@@ -16,19 +17,24 @@ legacy_fortran/*.mod
 legacy_fortran/*.o
 legacy_fortran/modelgen
 legacy_fortran/orbitstart
+legacy_fortran/orbitstart_bar
 legacy_fortran/orblib
+legacy_fortran/orblib_bar
 legacy_fortran/orblib_new_mirror
-legacy_fortran/partgen
 legacy_fortran/triaxmass
+legacy_fortran/triaxmass_bar
 legacy_fortran/triaxmassbin
+legacy_fortran/triaxmassbin_bar
 legacy_fortran/triaxnnls_CRcut
 legacy_fortran/triaxnnls_noCRcut
+legacy_fortran/triaxnnls_bar
 legacy_fortran/.DS_Store
 .spyproject
 dev_tests/.DS_Store
 dev_tests/output_*.txt
 dev_tests/__pycache__
 dev_tests/NGC6278_output/*
+dev_tests/bartest_output
 dev_tests/FCC047_2kin
 dev_tests/GAMA30890
 dev_tests/test_validate_pqu_output

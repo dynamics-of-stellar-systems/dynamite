@@ -11,10 +11,14 @@ Welcome to DYNAMITE's documentation!
 How to cite
 ================
 
-If you use DYNAMITE, please cite our `ASCL entry <http://www.ascl.net/code/v/2684>`_ using the following `BibTex citation <https://ui.adsabs.harvard.edu/abs/2020ascl.soft11007J/exportcitation>`_.
-Moreover, please cite the paper presenting the original code, `van den Bosch et al. 2008 <https://ui.adsabs.harvard.edu/abs/2008MNRAS.385..647V/exportcitation>`_, and our most recent contribution, `Thater et al. 2022 <https://ui.adsabs.harvard.edu/abs/2022A%26A...667A..51T/exportcitation>`_.
+If you use DYNAMITE, please cite our `ASCL entry <http://www.ascl.net/code/v/2684>`_ using the following `BibTeX citation <https://ui.adsabs.harvard.edu/abs/2020ascl.soft11007J/exportcitation>`_.
+Moreover, please cite the paper presenting the original code, `van den Bosch et al. 2008 <https://ui.adsabs.harvard.edu/abs/2008MNRAS.385..647V/abstract>`_, and our most recent contribution, `Thater et al. 2022 <https://ui.adsabs.harvard.edu/abs/2022A%26A...667A..51T/abstract>`_.
 
-If you use the ``dynamite.analysis.Decomposition`` class, please cite the paper describing its methodology, `Santucci et al. 2022 <https://ui.adsabs.harvard.edu/abs/2022ApJ...930..153S/exportcitation>`_.
+If you use the ``dynamite.analysis.Decomposition`` class, please cite the papers describing its methodology,
+`Zhu et al. 2018 <https://ui.adsabs.harvard.edu/abs/2018MNRAS.473.3000Z/abstract>`_ and
+`Santucci et al. 2022 <https://ui.adsabs.harvard.edu/abs/2022ApJ...930..153S/abstract>`_.
+
+If you model a galaxy having a bar/disk (i.e., if your configuration file includes a ``bardisk`` component), please cite `Tahmasebzadeh et al. 2022 <https://ui.adsabs.harvard.edu/abs/2022ApJ...941..109T/abstract>`_.
 
 ===================
 Orbit mirroring bug
@@ -34,8 +38,8 @@ To get started with DYNAMITE,
 1. Get the latest stable version from our `GitHub release page <https://github.com/dynamics-of-stellar-systems/dynamite/releases>`_. If you want the current version in development, you can also download this from our `GitHub page <https://github.com/dynamics-of-stellar-systems/dynamite>`_.
 2. Install. The `installation page <https://dynamics.univie.ac.at/dynamite_docs/getting_started/installation.html>`_ has the full instructions. An overview is:
 
-  a. Install Galahad: in the directory ``legacy_fortran/galahad-2.3/`` run the command ``./install_Galahad``
-  b. Compile the Fortran programs: in the directory ``legacy_fortran/``  run the command ``make all``
+  a. (optional) Install Galahad: in the directory ``legacy_fortran/galahad-2.3/`` run the command ``./install_Galahad``
+  b. Compile the Fortran programs: in the directory ``legacy_fortran/``  run the command ``make all`` if you have installed Galahad, or the command ``make nogal`` if you have not installed it
   c. Install DYNAMITE Python package: in the main directory run the command ``python setup.py install``
 
 3. Run orbit-based models! The following program will run a single model,
@@ -59,8 +63,7 @@ The following pages give all the information needed to get started,
   getting_started/installation.rst
   getting_started/code_overview.rst
   getting_started/configuration.rst
-  getting_started/getting_help.rst
-  how_to_cite.rst
+  getting_started/getting_help_contributing.rst
 
 The tutorials also show an example of running DYNAMITE from start to finish - this could also be a great place to start getting acquainted with the code. Further sections show other API-documentation for specific classes and methods, and other miscellaneous information.
 
@@ -74,13 +77,13 @@ Each page is an ipython notebook which you can either view in the browser, or do
    :maxdepth: 1
    :caption: Tutorials:
 
-   tutorial_notebooks/1_data_prep_for_gauss_hermites.ipynb
+   tutorial_notebooks/1_data_prep_for_gauss_hermite.ipynb
    tutorial_notebooks/2_quickstart.ipynb
    tutorial_notebooks/3_model_iterations_and_plots.ipynb
    tutorial_notebooks/4_BayesLOSVD.ipynb
    tutorial_notebooks/5_parameter_space.ipynb
    tutorial_notebooks/6_orbits_and_weights.ipynb
-
+   tutorial_notebooks/7_orbital_distributions.ipynb
 
 API Documentation
 =================
@@ -117,7 +120,6 @@ More Information
    more_info/team.rst
    more_info/publications.rst
    more_info/changelog.rst
-   more_info/getting_involved.rst
    more_info/license.rst
    more_info/making_the_docs.rst
 
