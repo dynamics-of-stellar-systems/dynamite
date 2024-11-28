@@ -991,6 +991,9 @@ class Configuration(object):
                              'not both')
 
         if ws_type == 'LegacyWeightSolver':
+            self.logger.warning('LegacyWeightSolver is DEPRECATED and will be '
+                                'removed in a future version of DYNAMITE. Use '
+                                'weight solver type NNLS instead if you can.')
             # check velocity histograms settings if LegacyWeightSolver is used.
             # (i) check all velocity histograms have center 0, (ii) force them
             # all to have equal widths and (odd) number of bins
