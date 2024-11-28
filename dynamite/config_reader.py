@@ -86,7 +86,7 @@ class Settings(object):
            not importlib.util.find_spec('cvxopt'):
             text = "nnls_solver 'cvxopt' is not installed. Use a different " \
                    "nnls_solver setting or try to install cvxopt e.g., via " \
-                   "'python -m pip install .[cvxopt]'."
+                   "'python -m pip install cvxopt'."
             self.logger.error(text)
             raise ModuleNotFoundError(text)
         if self.orblib_settings['nI2'] < 4:
