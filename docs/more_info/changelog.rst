@@ -4,7 +4,7 @@
 Change Log
 ****************
 
-- Improvement: Updated requirements e.g., to Python 3.9 or later (Python 3.8 has reached its end of life Oct 7, 2024)
+- Improvement: Updated requirements to Python 3.9 or later (Python 3.8 end of life was Oct 7, 2024) and numpy<1.27.0, scipy>=1.11,<1.12 to avoid Python NNLS freeze
 - Improvement: made DYNAMITE compatible with numpy 2.0.0 and matplotlib 3.9.0 (removed use of deprecated features)
 - Bugfix: fix a bug that prevents Bayes LOSVD kinemtic maps from being created more than once
 - Improvement: misc. improvements in documentation and tutorials.
