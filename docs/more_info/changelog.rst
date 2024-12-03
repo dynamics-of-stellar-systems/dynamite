@@ -4,14 +4,17 @@
 Change Log
 ****************
 
+Version: 4.3
+================
+
 - Improvement: Updated requirements to Python 3.9 or later (Python 3.8 end of life was Oct 7, 2024) and numpy<1.27.0, scipy>=1.11,<1.12 to avoid Python NNLS freeze
 - Improvement: made DYNAMITE compatible with numpy 2.0.0 and matplotlib 3.9.0 (removed use of deprecated features)
-- Bugfix: fix a bug that prevents Bayes LOSVD kinemtic maps from being created more than once
+- Bugfix: fix a bug that prevents Bayes LOSVD kinematic maps from being created more than once
 - Improvement: misc. improvements in documentation and tutorials.
 - Improvement: Sampling of grid recording the intrinsic moments (in r, theta, phi) can optionally be defined in the config file's orblib settings.
 - Improvement: The installation procedure has been changed to make DYNAMITE compatible with Python 3.12. Installing and uninstalling is now done using pip.
 - Improvement: added a new tutorial notebook ``7_orbital_distributions.ipynb`` which takes a closer look at orbit distributions.
-- Improvement: the ``weight`` attribute of kinematics and populations is now officially DEPRECATED as it has always been ignored by DYNAMITE.
+- Improvement: the ``weight`` attribute of kinematics is now officially DEPRECATED as it has always been ignored by DYNAMITE.
 - Improvement: DYNAMITE now checks for nan values in the kinematics and mges when first reading the data
 - Improvement: prevent DYNAMITE from crashing if NNLS weight solving fails.
 - Improvement: the Gauss Hermite kinematic maps new parameter value `cbar_lims='user'` allows user-defined velocity and velocity dispersion limits (see `Plotter.plot_kinematic_maps()`).
