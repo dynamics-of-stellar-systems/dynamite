@@ -258,9 +258,9 @@ class LegacyOrbitLibrary(OrbitLibrary):
             f.write('#counterrotation_setupfile_version_1\n')
             f.write('infil/parameters_pot.in\n')
             if box:
-                f.write(f'datfil/beginbox.dat\n')
+                f.write('datfil/beginbox.dat\n')
             else:
-                f.write(f'datfil/begin.dat\n')
+                f.write('datfil/begin.dat\n')
             label = '[number of orbital periods to integrate]'
             line = f"{self.settings['orbital_periods']}{tab}{label}\n"
             f.write(line)
@@ -364,9 +364,9 @@ class LegacyOrbitLibrary(OrbitLibrary):
                 line = f'"infil/{pop_i.binfile}"{tab[:-3]}{label}\n'
                 f.write(line)
             if box:
-                f.write(f'datfil/orblibbox.dat\n')
+                f.write('datfil/orblibbox.dat\n')
             else:
-                f.write(f'datfil/orblib.dat\n')
+                f.write('datfil/orblib.dat\n')
             f.close()
         write_orblib_dot_in(box=False)
         write_orblib_dot_in(box=True)
@@ -747,6 +747,10 @@ class LegacyOrbitLibrary(OrbitLibrary):
         # set up a list of arrays to hold the results
         tmp = zip(hist_bins,n_apertures)
         velhist0 = [np.zeros((norb, nv, na)) for (nv,na) in tmp]
+        tmp = zip(hist_bins,n_apertures)
+        velhistx = [np.zeros((norb, nv, na)) for (nv,na) in tmp]
+        tmp = zip(hist_bins,n_apertures)
+        velhisty = [np.zeros((norb, nv, na)) for (nv,na) in tmp]
         # Next read the histograms themselves.
         orbtypes = np.zeros((norb, ndith**3), dtype=int)
         density_3D = np.zeros((norb, size_qlr, size_qth, size_qph))
@@ -768,14 +772,24 @@ class LegacyOrbitLibrary(OrbitLibrary):
             density_3D[j] = quad_light[:,:,:,0]
             for i_ap in range(nconstr):
                 kinpop_idx = kinpop_idx_per_ap[i_ap]
+                nv0 = (hist_bins[kinpop_idx]-1)/2
+                # ^--- this is an integer since hist_bins is odd
+                nv0 = int(nv0)
                 i_ap0 = i_ap - idx_ap_reset[kinpop_idx]
                 ivmin, ivmax = orblibf.read_ints(np.int32)
                 if ivmin <= ivmax:
-                    nv0 = (hist_bins[kinpop_idx]-1)/2
-                    # ^--- this is an integer since hist_bins is odd
-                    nv0 = int(nv0)
                     tmp = orblibf.read_reals(float)
                     velhist0[kinpop_idx][j, ivmin+nv0:ivmax+nv0+1, i_ap0] = tmp
+                # READ PROPER MOTION HISTOGRAMS START
+                ivmin, ivmax = orblibf.read_ints(np.int32)
+                if ivmin <= ivmax:
+                    tmp = orblibf.read_reals(float)
+                    velhistx[kinpop_idx][j, ivmin+nv0:ivmax+nv0+1, i_ap0] = tmp
+                ivmin, ivmax = orblibf.read_ints(np.int32)
+                if ivmin <= ivmax:
+                    tmp = orblibf.read_reals(float)
+                    velhisty[kinpop_idx][j, ivmin+nv0:ivmax+nv0+1, i_ap0] = tmp
+                # READ PROPER MOTION HISTOGRAMS END
             if return_instrisic_moments:
                 intrinsic_moms[j] = quad_light
         orblibf.close()
