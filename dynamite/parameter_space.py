@@ -597,12 +597,8 @@ class ParameterGenerator(object):
             # Don't use abs() so we stop on increasing chi2 values, too:
             delta_chi2 = previous_chi2 - last_chi2
             if self.min_delta_chi2_rel:
-                if self.min_delta_chi2_rel >= np.spacing(1.):
-                    if delta_chi2 / previous_chi2 < self.min_delta_chi2_rel:
-                        self.status['min_delta_chi2_reached'] = True
-                else:  # Catch cases where min_delta_chi2_rel < eps
-                    if delta_chi2  < 0:
-                        self.status['min_delta_chi2_reached'] = True
+                if delta_chi2 / previous_chi2 < self.min_delta_chi2_rel:
+                    self.status['min_delta_chi2_reached'] = True
             else:
                 if delta_chi2 < self.min_delta_chi2_abs:
                     self.status['min_delta_chi2_reached'] = True
