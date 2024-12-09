@@ -34,6 +34,7 @@ dev_tests/.DS_Store
 dev_tests/output_*.txt
 dev_tests/__pycache__
 dev_tests/NGC6278_output/*
+dev_tests/NGC4550_output
 dev_tests/bartest_output
 dev_tests/FCC047_2kin
 dev_tests/GAMA30890

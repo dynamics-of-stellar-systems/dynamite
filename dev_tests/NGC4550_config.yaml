@@ -1,0 +1,147 @@
+# Example yaml configuration file for the legacy implementation
+# All relevant input is in one file with two sections: SYSTEM and SETTINGS
+
+# Start of yaml document
+---
+###############################################################################
+# SECTION 1 : SYSTEM
+# Define the physical system (e.g. the galaxy or globular cluster being )
+###############################################################################
+
+system_attributes:
+    distMPc: 15.5
+    name: "NGC4550"
+    position_angle: 0.0
+
+system_components:
+
+    black_hole:
+        type: Plummer
+        parameters:
+            m:
+                fixed: True
+                value: 6.0
+                logarithmic: True
+                LaTeX: "$\\log(M_\\mathrm{BH}/M_\\odot)$"
+            a:
+                fixed: True
+                value: 1.e-3
+                LaTeX: "$a_\\mathrm{BH}$"
+        include: True
+        contributes_to_potential: True
+
+    dm_halo:
+        type: NFW
+        parameters:
+            c: # NFW halo concentration
+                fixed: True
+                value: 10.0
+                LaTeX: "$c_\\mathrm{NFW}$"
+            f: # dark matter fraction M200/M*
+                fixed: False
+                value: 0.0
+                LaTeX: "$\\log(M_{200}/M_*)$"
+                logarithmic: True
+                par_generator_settings:
+                    lo: -1.
+                    hi: 1.
+                    step: 0.5
+                    minstep: 0.01
+        include: True
+        contributes_to_potential: True
+
+    stars:
+        type: TriaxialVisibleComponent
+        parameters:
+            q: # intrinsic flattening (C/A)
+                fixed: True
+                value: 0.1
+                LaTeX: "$q_\\mathrm{min}$"
+            p: # intrinsic flattening B/A
+                fixed: True
+                value: 0.99
+                LaTeX: "$p_\\mathrm{min}$"
+            u: # sigma_obs / sigma_intrinsic
+                fixed: True
+                value: 0.9999
+                LaTeX: "$u_\\mathrm{min}$"
+        mge_pot: "mge.ecsv"
+        mge_lum: "mge.ecsv"
+        kinematics:
+            sauron:
+                type: BayesLOSVD
+                datafile: "bayes_losvd_kins.ecsv"
+                aperturefile: "aperture.dat"
+                binfile: "bins.dat"
+        proper_motions:  # optional
+            vx:
+                type: pm_x
+                datafile: "bayes_vxd_kins.ecsv"
+                aperturefile: "aperture_vx.dat"
+                binfile: "bins_vx.dat"
+            vy:
+                type: pm_y
+                datafile: "bayes_vyd_kins.ecsv"
+                aperturefile: "aperture_vy.dat"
+                binfile: "bins_vy.dat"
+        read_proper_motions: False #  True if proper motion data shall be read from models
+        include: True
+        contributes_to_potential: True
+
+system_parameters: # physical system standalone parameters
+    ml:
+        fixed: False
+        value: 3.
+        par_generator_settings:
+            lo: 0.5
+            hi: 8.0
+            step: 1.0
+            minstep: 0.1
+        LaTeX: "$Y_\\mathrm{r}$"
+
+###############################################################################
+# SECTION 2: SETTINGS
+# Define other settings e.g. for the orbit library and weight solver
+###############################################################################
+
+orblib_settings:
+    nE: 6             # use small orblib (6,5,5) for fast tutorial
+    logrmin: -0.101275
+    logrmax: 1.99123
+    nI2: 5            # must be >= 4
+    nI3: 5
+    dithering: 1      # use dithering=1 for fast tutorial
+    random_seed: 4242 # fix rnd. seed for tutorial, use 0 for stochastic seed
+    # the following values should usually not be changed
+    orbital_periods: 200
+    sampling: 50000
+    starting_orbit: 1
+    number_orbits: -1
+    accuracy: '1.0d-5'
+
+weight_solver_settings:
+    type: "NNLS"      # must use "NNLS" with BayesLOSVD
+    nnls_solver: 'scipy'
+    lum_intr_rel_err: 0.01
+    sb_proj_rel_err: 0.02
+
+parameter_space_settings:
+    generator_type: "LegacyGridSearch"
+    which_chi2: "kinchi2"
+    generator_settings:
+        threshold_del_chi2_as_frac_of_sqrt2nobs: 0.1
+    stopping_criteria:
+        min_delta_chi2_rel : 0.1
+        n_max_mods : 3
+        n_max_iter : 2
+
+multiprocessing_settings:
+  ncpus: 4
+
+legacy_settings:
+    directory: "default"
+
+io_settings: # paths can be given with or without trailing slash
+    input_directory: "NGC4550_input/dynamite_input/"
+    output_directory: "NGC4550_output/"
+    all_models_file: "all_models.ecsv"

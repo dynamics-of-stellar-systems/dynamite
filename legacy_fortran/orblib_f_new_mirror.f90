@@ -862,11 +862,11 @@ module projection
     ! stop projection module
     public :: projection_stop
 
-    ! Project pos(3,:),vel(3,:) to proj(2,:),lofvel(:)
+    ! Project pos(3,:),vel(3,:) to proj(2,:),losvel(:),velx(:),vely(:)
     ! Using the n'th projection
     private :: project_n
 
-    ! Project pos(3,:),vel(3,:) to proj(2,:),lofvel(:)
+    ! Project pos(3,:),vel(3,:) to proj(2,:),losvel(:),velx(:),vely(:)
     !Done is set to .true. if all projections are finished
     public :: project
 
@@ -926,7 +926,7 @@ contains
     end subroutine projection_stop
 
     !++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-    subroutine project_n(type, pos, vel, proj, losvel, n)
+    subroutine project_n(type, pos, vel, proj, losvel, velx, vely, n)
       use initial_parameters, only :  Omega ! (BT)
         ! use initial_parameters, only : theta_view, phi_view
         ! pos( :, (r,z) )
@@ -937,6 +937,8 @@ contains
         real(kind=dp), intent(out), dimension(size(pos, 1), 2)           :: proj
         ! losvd (:)
         real(kind=dp), intent(out), dimension(size(pos, 1))             :: losvel
+        ! velx(:), vely(:)
+        real(kind=dp), intent(out), dimension(size(pos, 1))             :: velx, vely
         integer(kind=i4b), intent(in)                       :: type, n
         !----------------------------------------------------------------------
         real(kind=dp)              :: t1, t2, t3, theta, phi
@@ -1027,6 +1029,17 @@ contains
         t3 = cos(theta)*vsgn(3, n, type)
         losvel(:) = t1*vel(:, 1) + t2*vel(:, 2) + t3*vel(:, 3)
 
+        ! pm_x
+        t1 = -sin(phi)*vsgn(1, n, type)
+        t2 = cos(phi)*vsgn(2, n, type)
+        velx(:) = t1*vel(:, 1) + t2*vel(:, 2)
+
+        ! pm_y
+        t1 = -cos(theta)*cos(phi)*vsgn(1, n, type)
+        t2 = -cos(theta)*sin(phi)*vsgn(2, n, type)
+        t3 = sin(theta)*vsgn(3, n, type)
+        vely(:) = t1*vel(:, 1) + t2*vel(:, 2) + t3*vel(:, 3)
+
         !xaa = (-sin(phi)*x+cos(phi)*y)*sin(psi)-(-cos(theta)*cos(phi)*x-cos(theta)*sin(phi)*y+sin(theta)*z)*cos(psi);
         !yaa = (-sin(phi)*x+cos(phi)*y)*cos(psi)+(-cos(theta)*cos(phi)*x-cos(theta)*sin(phi)*y+sin(theta)*z)*sin(psi);
 
@@ -1047,14 +1060,14 @@ contains
     end subroutine project_n
 
     !++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-    subroutine project(type, pos, vel, proj, lofvel, done, first)
+    subroutine project(type, pos, vel, proj, losvel, velx, vely, done, first)
         integer(kind=i4b), intent(in)                        :: type
         real(kind=dp), intent(in), dimension(:, :) :: pos
         real(kind=dp), intent(in), dimension(size(pos, 1), 3) :: vel
         real(kind=dp), intent(out), dimension(size(pos, 1)*projection_symmetry, 2) &
              & :: proj
         real(kind=dp), intent(out), dimension(size(pos, 1)*projection_symmetry) &
-             & :: lofvel
+             & :: losvel, velx, vely
         logical, intent(out)                          :: done
         logical, intent(in)                          :: first
         !----------------------------------------------------------------------
@@ -1066,12 +1079,14 @@ contains
         done = .false.
 
         if (count <= proj_number) then
-            call project_n(type, pos, vel, proj, lofvel, count)
+            call project_n(type, pos, vel, proj, losvel, velx, vely, count)
         else
             count = proj_number + 1
             done = .true.
             proj(:, :) = 0.0_dp
-            lofvel(:) = 0.0_dp
+            losvel(:) = 0.0_dp
+            velx(:) = 0.0_dp
+            vely(:) = 0.0_dp
         end if
 
     end subroutine project
@@ -2049,6 +2064,7 @@ module histograms
     !h_beg,h_end : begin/end of histogram
     !h_bin,width : amount of / width of histogram pixels
     real(kind=dp), Dimension(:), private, allocatable  :: h_beg, h_end, h_width
+    integer(kind=i4b), Dimension(:), private, allocatable :: hist_use
     integer(kind=i4b), Dimension(:), private, allocatable:: h_bin
     ! h_start(n)  :  where start the first histogram of aperture n
     integer(kind=i4b), Dimension(:), private, allocatable:: h_start
@@ -2160,14 +2176,15 @@ contains
     end subroutine histogram_write_compat_sparse
 
     !++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-    subroutine histogram_velbin(pf, vel, bin)
+    subroutine histogram_velbin(pf, losvel, vx, vy, bin)
         use aperture, only: aperture_psf
         integer(kind=i4b), intent(in) :: pf
-        real(kind=dp), dimension(:), intent(in) :: vel
-        integer(kind=i4b), dimension(size(vel)), intent(out) :: bin
+        real(kind=dp), dimension(:), intent(in) :: losvel, vx, vy
+        integer(kind=i4b), dimension(size(losvel)), intent(out) :: bin
         !----------------------------------------------------------------------
         integer(kind=i4b) :: i, ap, bins
         real(kind=dp) :: v, beg, width, hend
+        real(kind=dp), dimension(size(losvel)) :: velocity
         ! find an aperture which is in this pf
         do i = 1, h_n
             if (aperture_psf(i) == pf) ap = i
@@ -2178,8 +2195,19 @@ contains
         width = h_width(ap)
         bins = h_bin(ap)
 
-        do i = 1, size(vel)
-            v = vel(i)
+        select case (hist_use(ap))
+        case (0)
+            velocity = losvel
+        case (1)
+            velocity = vx
+        case (2)
+            velocity = vy
+        case default
+            stop " Unknown histogram use."
+        end select
+
+        do i = 1, size(losvel)
+            v = velocity(i)
             if (v > beg) then
                 if (v < hend) then
                     ! photon lies within the velocity range
@@ -2238,13 +2266,14 @@ contains
         use binning, only: binning_setup, bin_max
         use psf, only: psf_n
         !----------------------------------------------------------------------
-        integer(kind=i4b)  :: i, j, ap
+        integer(kind=i4b)  :: i, j, ap, h_use
         real(kind=dp)  :: width, center, bins
 
         print *, "  * Starting Histogram module"
         h_n = aperture_n
         allocate (hist_basic(h_n, 3), h_beg(h_n), h_end(h_n), h_bin(h_n))
         allocate (h_width(h_n), h_start(h_n), h_n_stored(h_n), h_blocks(h_n))
+        allocate (hist_use(h_n))
 
         do i = 1, psf_n
             print *, "  * Give for psf ", i, " the histogram width, center and"
@@ -2253,11 +2282,17 @@ contains
             print *, width, center, bins
             if (width <= 0) stop " Width to small"
             if (bins < 1) stop " Too few bins"
+            print *, "  * Give for psf ", i, " the histogram use"
+            print *, "    0=losvd, 1=vx, 2=vy"
+            read *, h_use
+            print *, h_use
+            if (h_use < 0 .or. h_use > 2) stop " Valid: 0=losvd, 1=vx, 2=vy"
             do j = 1, h_n
                 if (aperture_psf(j) == i) then
                     hist_basic(j, 1) = width
                     hist_basic(j, 2) = center
                     hist_basic(j, 3) = bins
+                    hist_use(j) = h_use
                 end if
             end do
         end do
@@ -2881,7 +2916,7 @@ contains
         real(kind=dp), dimension(integrator_points, 3) :: pos
         real(kind=dp), dimension(integrator_points, 3) :: vel
         real(kind=dp), dimension(integrator_points*projection_symmetry, 2):: proj, vec_gauss
-        real(kind=dp), dimension(integrator_points*projection_symmetry):: losvel
+        real(kind=dp), dimension(integrator_points*projection_symmetry):: losvel, velx, vely
         integer(kind=i4b), dimension(integrator_points*projection_symmetry):: velb, poly
         integer(kind=i4b)                                          :: ap, i, pf
 
@@ -2905,13 +2940,17 @@ contains
                 call qgrid_store(pos(:, :), vel(:, :), type)
                 first = .true.
                 do ! for all projections
-                    call project(type, pos, vel, proj, losvel, done, first)
+                    call project(type, pos, vel, proj, losvel, velx, vely, done, first)
                     if (done) exit
                     first = .false.
 
-                    if (hist_thesame) call histogram_velbin(1, losvel, velb)
+                    if (hist_thesame) then
+                        call histogram_velbin(1, losvel, velx, vely, velb)
+                    end if
                     do i = 1, psf_n
-                        if (.not. hist_thesame) call histogram_velbin(i, losvel, velb)
+                        if (.not. hist_thesame) then
+                            call histogram_velbin(i, losvel, velx, vely, velb)
+                        end if
                         call psf_gaussian(i, proj, vec_gauss)
                         do ap = 1, aperture_n
                             if (i == aperture_psf(ap)) then
