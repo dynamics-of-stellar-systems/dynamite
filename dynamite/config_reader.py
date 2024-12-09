@@ -266,10 +266,17 @@ class Configuration(object):
                             contributes_to_potential \
                             = data_comp['contributes_to_potential'])
 
+                    # for testing: set read_proper_motions flag
+                    if 'read_proper_motions' in data_comp:
+                        c.read_proper_motions = data_comp['read_proper_motions']
+                    else:
+                        c.read_proper_motions = False
+
                     # initialize the component's paramaters, kinematics,
-                    # and populations
+                    # proper motions, and populations
 
                     par_list, kin_list = [], []
+                    c.proper_motions = []
                     c.population_data = []
 
                     # read parameters
@@ -324,6 +331,18 @@ class Configuration(object):
                             kin_list.append(kinematics_set)
                             kin_id += 1
                         c.kinematic_data = kin_list
+
+                    # read proper motions (DRAFT keys must be 'vx', 'vy')
+
+                    if 'proper_motions' in data_comp:
+                        logger.debug('Has proper motions '
+                                    f'{list(data_comp["proper_motions"].keys())}')
+                        c.proper_motions = {}
+                        for v, v_data in data_comp['proper_motions'].items():
+                            path = self.settings.io_settings['input_directory']
+                            c.proper_motions[v] = kinem.BayesLOSVD(name=v,
+                                                    input_directory=path,
+                                                    **v_data)
 
                     # read populations
 

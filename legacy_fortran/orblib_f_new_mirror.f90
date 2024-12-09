@@ -2057,7 +2057,6 @@ module histograms
 
     ! histogram data (aperture,vel)
     real(kind=dp), Dimension(:, :), private, allocatable  :: histogram
-    real(kind=dp), Dimension(:, :), private, allocatable  :: histogramx, histogramy
     ! hist_basic(n,i) n=aperture number, i=width,center,#bins
     real(kind=dp), Dimension(:, :), public, allocatable  :: hist_basic
     ! Are the velocity bins all the same?
@@ -2065,6 +2064,7 @@ module histograms
     !h_beg,h_end : begin/end of histogram
     !h_bin,width : amount of / width of histogram pixels
     real(kind=dp), Dimension(:), private, allocatable  :: h_beg, h_end, h_width
+    integer(kind=i4b), Dimension(:), private, allocatable :: hist_use
     integer(kind=i4b), Dimension(:), private, allocatable:: h_bin
     ! h_start(n)  :  where start the first histogram of aperture n
     integer(kind=i4b), Dimension(:), private, allocatable:: h_start
@@ -2100,8 +2100,6 @@ contains
     subroutine histogram_reset()
         !----------------------------------------------------------------------
         histogram(:, :) = 0.0_dp
-        histogramx(:, :) = 0.0_dp
-        histogramy(:, :) = 0.0_dp
         h_n_stored(:) = 0.0_dp
 
     end subroutine histogram_reset
@@ -2148,20 +2146,6 @@ contains
             !conversion normalizing
             histogram(bg:ed, 1:h_bin(i)) = h_n_stored(i)*histogram(bg:ed, 1:h_bin(i))
             call histogram_write_compat_sparse(handle, histogram(bg:ed, 1:h_bin(i)))
-
-            ed = h_blocks(i) + h_start(i) - 1
-            call binning_bin(i, histogramx(bg:ed, 1:h_bin(i)), ed)
-            ed = h_start(i) - 1 + ed
-            !conversion normalizing
-            histogramx(bg:ed, 1:h_bin(i)) = h_n_stored(i)*histogramx(bg:ed, 1:h_bin(i))
-            call histogram_write_compat_sparse(handle, histogramx(bg:ed, 1:h_bin(i)))
-
-            ed = h_blocks(i) + h_start(i) - 1
-            call binning_bin(i, histogramy(bg:ed, 1:h_bin(i)), ed)
-            ed = h_start(i) - 1 + ed
-            !conversion normalizing
-            histogramy(bg:ed, 1:h_bin(i)) = h_n_stored(i)*histogramy(bg:ed, 1:h_bin(i))
-            call histogram_write_compat_sparse(handle, histogramy(bg:ed, 1:h_bin(i)))
         end do
     end subroutine histogram_write
 
@@ -2192,14 +2176,15 @@ contains
     end subroutine histogram_write_compat_sparse
 
     !++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-    subroutine histogram_velbin(pf, vel, bin)
+    subroutine histogram_velbin(pf, losvel, vx, vy, bin)
         use aperture, only: aperture_psf
         integer(kind=i4b), intent(in) :: pf
-        real(kind=dp), dimension(:), intent(in) :: vel
-        integer(kind=i4b), dimension(size(vel)), intent(out) :: bin
+        real(kind=dp), dimension(:), intent(in) :: losvel, vx, vy
+        integer(kind=i4b), dimension(size(losvel)), intent(out) :: bin
         !----------------------------------------------------------------------
         integer(kind=i4b) :: i, ap, bins
         real(kind=dp) :: v, beg, width, hend
+        real(kind=dp), dimension(size(losvel)) :: velocity
         ! find an aperture which is in this pf
         do i = 1, h_n
             if (aperture_psf(i) == pf) ap = i
@@ -2210,8 +2195,19 @@ contains
         width = h_width(ap)
         bins = h_bin(ap)
 
-        do i = 1, size(vel)
-            v = vel(i)
+        select case (hist_use(ap))
+        case (0)
+            velocity = losvel
+        case (1)
+            velocity = vx
+        case (2)
+            velocity = vy
+        case default
+            stop " Unknown histogram use."
+        end select
+
+        do i = 1, size(losvel)
+            v = velocity(i)
             if (v > beg) then
                 if (v < hend) then
                     ! photon lies within the velocity range
@@ -2231,11 +2227,11 @@ contains
     end subroutine histogram_velbin
 
     !++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-    subroutine histogram_store(ap, n, velb, velbx, velby, tot)
+    subroutine histogram_store(ap, n, velb, tot)
         integer(kind=i4b), intent(in)  :: ap
         integer(kind=i4b)                                   :: i, k, v
         integer(kind=i4b), dimension(:), intent(in)  :: n
-        integer(kind=i4b), dimension(size(n, 1)), intent(in)  :: velb, velbx, velby
+        integer(kind=i4b), dimension(size(n, 1)), intent(in)  :: velb
         integer(kind=i4b), intent(in)  :: tot
         !----------------------------------------------------------------------
         !update number of points stored (including points not stored)
@@ -2248,10 +2244,6 @@ contains
                 k = k + h_start(ap) - 1
                 v = velb(i)
                 histogram(k, v) = histogram(k, v) + 1.0_dp
-                v = velbx(i)
-                histogramx(k, v) = histogramx(k, v) + 1.0_dp
-                v = velby(i)
-                histogramy(k, v) = histogramy(k, v) + 1.0_dp
             end if
         end do
 
@@ -2263,7 +2255,6 @@ contains
         !----------------------------------------------------------------------
         if (allocated(h_bin)) then
             deallocate (hist_basic, h_beg, h_end, h_bin, h_width, h_start, histogram)
-            deallocate (histogramx, histogramy)
         end if
         call binning_stop()
 
@@ -2275,13 +2266,14 @@ contains
         use binning, only: binning_setup, bin_max
         use psf, only: psf_n
         !----------------------------------------------------------------------
-        integer(kind=i4b)  :: i, j, ap
+        integer(kind=i4b)  :: i, j, ap, h_use
         real(kind=dp)  :: width, center, bins
 
         print *, "  * Starting Histogram module"
         h_n = aperture_n
         allocate (hist_basic(h_n, 3), h_beg(h_n), h_end(h_n), h_bin(h_n))
         allocate (h_width(h_n), h_start(h_n), h_n_stored(h_n), h_blocks(h_n))
+        allocate (hist_use(h_n))
 
         do i = 1, psf_n
             print *, "  * Give for psf ", i, " the histogram width, center and"
@@ -2290,11 +2282,17 @@ contains
             print *, width, center, bins
             if (width <= 0) stop " Width to small"
             if (bins < 1) stop " Too few bins"
+            print *, "  * Give for psf ", i, " the histogram use"
+            print *, "    0=losvd, 1=vx, 2=vy"
+            read *, h_use
+            print *, h_use
+            if (h_use < 0 .or. h_use > 2) stop " Valid: 0=losvd, 1=vx, 2=vy"
             do j = 1, h_n
                 if (aperture_psf(j) == i) then
                     hist_basic(j, 1) = width
                     hist_basic(j, 2) = center
                     hist_basic(j, 3) = bins
+                    hist_use(j) = h_use
                 end if
             end do
         end do
@@ -2305,8 +2303,6 @@ contains
         h_width(:) = hist_basic(:, 1)/hist_basic(:, 3)
 
         allocate (histogram(sum(aperture_size(:)), maxval(h_bin(:))))
-        allocate (histogramx(sum(aperture_size(:)), maxval(h_bin(:))))
-        allocate (histogramy(sum(aperture_size(:)), maxval(h_bin(:))))
         print *, "  * Histogram size : ", size(histogram), "=", size(histogram, 1), "*",&
              & size(histogram, 2)
 
@@ -2921,7 +2917,7 @@ contains
         real(kind=dp), dimension(integrator_points, 3) :: vel
         real(kind=dp), dimension(integrator_points*projection_symmetry, 2):: proj, vec_gauss
         real(kind=dp), dimension(integrator_points*projection_symmetry):: losvel, velx, vely
-        integer(kind=i4b), dimension(integrator_points*projection_symmetry):: velb, velbx, velby, poly
+        integer(kind=i4b), dimension(integrator_points*projection_symmetry):: velb, poly
         integer(kind=i4b)                                          :: ap, i, pf
 
         integer(kind=i4b) :: type
@@ -2949,21 +2945,17 @@ contains
                     first = .false.
 
                     if (hist_thesame) then
-                        call histogram_velbin(1, losvel, velb)
-                        call histogram_velbin(1, velx, velbx)
-                        call histogram_velbin(1, vely, velby)
+                        call histogram_velbin(1, losvel, velx, vely, velb)
                     end if
                     do i = 1, psf_n
                         if (.not. hist_thesame) then
-                            call histogram_velbin(i, losvel, velb)
-                            call histogram_velbin(i, velx, velbx)
-                            call histogram_velbin(i, vely, velby)
+                            call histogram_velbin(i, losvel, velx, vely, velb)
                         end if
                         call psf_gaussian(i, proj, vec_gauss)
                         do ap = 1, aperture_n
                             if (i == aperture_psf(ap)) then
                                 call aperture_find(ap, vec_gauss, poly)
-                                call histogram_store(ap, poly, velb, velbx, velby, size(proj, 1))
+                                call histogram_store(ap, poly, velb, size(proj, 1))
                             end if
                         end do
                     end do
