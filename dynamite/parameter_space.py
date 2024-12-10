@@ -596,7 +596,7 @@ class ParameterGenerator(object):
                 return
             # Don't use abs() so we stop on increasing chi2 values, too:
             delta_chi2 = previous_chi2 - last_chi2
-            if self.min_delta_chi2_rel:
+            if self.min_delta_chi2_rel is not None:
                 if delta_chi2 / previous_chi2 < self.min_delta_chi2_rel:
                     self.status['min_delta_chi2_reached'] = True
             else:
@@ -747,8 +747,12 @@ class LegacyGridSearch(ParameterGenerator):
             raise ValueError(text)
         if stop_abs:
             self.min_delta_chi2_abs = stop_crit['min_delta_chi2_abs']
+        else:
+            self.min_delta_chi2_abs = None
         if stop_rel:
             self.min_delta_chi2_rel = stop_crit['min_delta_chi2_rel']
+        else:
+            self.min_delta_chi2_rel = None
 
     def specific_generate_method(self, **kwargs):
         r"""
@@ -871,8 +875,12 @@ class GridWalk(ParameterGenerator):
             raise ValueError(text)
         if stop_abs:
             self.min_delta_chi2_abs = stop_crit['min_delta_chi2_abs']
+        else:
+            self.min_delta_chi2_abs = None
         if stop_rel:
             self.min_delta_chi2_rel = stop_crit['min_delta_chi2_rel']
+        else:
+            self.min_delta_chi2_rel = None
 
     def specific_generate_method(self, **kwargs):
         """
@@ -1067,8 +1075,12 @@ class FullGrid(ParameterGenerator):
             raise ValueError(text)
         if stop_abs:
             self.min_delta_chi2_abs = stop_crit['min_delta_chi2_abs']
+        else:
+            self.min_delta_chi2_abs = None
         if stop_rel:
             self.min_delta_chi2_rel = stop_crit['min_delta_chi2_rel']
+        else:
+            self.min_delta_chi2_rel = None
 
     def specific_generate_method(self, **kwargs):
         """
