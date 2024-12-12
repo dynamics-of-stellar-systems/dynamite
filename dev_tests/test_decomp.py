@@ -28,4 +28,5 @@ for v_sigma_option in ('moments', 'fit'):
                        comps_plot={'thin_d': True, 'thick_d': True,
                                    'disk': True, 'cr_thin_d': True,
                                    'cr_thick_d': True, 'cr_disk': True,
-                                   'bulge': True, 'all': True})
+                                   'bulge': True, 'all': True},
+                        individual_sb_colorbars=True)

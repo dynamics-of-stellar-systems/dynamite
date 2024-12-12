@@ -107,7 +107,12 @@ class Decomposition:
                          f'{table_file_name}.')
 
 
-    def plot_decomp(self, xlim, ylim, v_sigma_option='fit', comps_plot='all'):
+    def plot_decomp(self,
+                    xlim,
+                    ylim,
+                    v_sigma_option='fit',
+                    comps_plot='all',
+                    individual_sb_colorbars=False):
         """ Generate decomposition plots.
 
         Parameters
@@ -128,6 +133,10 @@ class Decomposition:
                           'cr_disk: False', 'bulge': False, 'all': False} will
             only create the plots for 'thin_d', 'thick_d', and 'disk'. `False`
             entries can be omitted in the dictionary. The default is 'all'.
+        individual_sb_colorbars : bool, optional
+            If True, then each component's surface brightness colorbar adapts
+            to its respective value range. This can be useful for identifying
+            structures invisible otherwise. The default is False.
 
         Returns
         -------
@@ -136,9 +145,11 @@ class Decomposition:
         """
         comp_kinem_moments = self.comps_aphist(v_sigma_option)
         self.logger.info('Component data done.')
-        self.plot_comps(xlim=xlim, ylim=ylim,
+        self.plot_comps(xlim=xlim,
+                        ylim=ylim,
                         comp_kinem_moments=comp_kinem_moments,
-                        comps_plot=comps_plot)
+                        comps_plot=comps_plot,
+                        individual_sb_colorbars=individual_sb_colorbars)
         self.logger.info('Plots done.')
 
     def comps_aphist(self, v_sigma_option='fit'):
@@ -326,6 +337,7 @@ class Decomposition:
                    ylim,
                    comp_kinem_moments,
                    comps_plot='all',
+                   individual_sb_colorbars=False,
                    figtype='.png'):
         """ Generate decomposition plots.
 
@@ -348,6 +360,10 @@ class Decomposition:
                           'cr_disk: False', 'bulge': False, 'all': False} will
             only create the plots for 'thin_d', 'thick_d', and 'disk'. `False`
             entries can be omitted in the dictionary. The default is 'all'.
+        individual_sb_colorbars : bool, optional
+            If True, then each component's surface brightness colorbar adapts
+            to its respective value range. This can be useful for identifying
+            structures invisible otherwise. The default is False.
         figtype : str, optional
             Determines the file format and extension to use when saving the
             figure. The default is '.png'.
@@ -394,8 +410,11 @@ class Decomposition:
         vel = []
         sig = []
         t = []
+        min_flux = {}
+        max_flux = {}
         # totalf = 0
-        for comp in comps:
+        last_comps_idx = len(comps) - 1
+        for c_idx, comp in enumerate(comps):
             labels = [col for col in comp_kinem_moments.colnames
                           if col.startswith(comp)]
             flux = comp_kinem_moments[labels[0]]
@@ -413,10 +432,19 @@ class Decomposition:
             #         fluxtot += tt
             vel.append(comp_kinem_moments[labels[1]])
             sig.append(comp_kinem_moments[labels[2]])
+            min_flux[comp] = np.nanmin(np.log10(tt))
+            max_flux[comp] = np.nanmax(np.log10(tt[tt != 0]))
+            if c_idx == last_comps_idx:  # the last item MUST be 'all'
+                minf = np.nanmin(np.log10(tt))
+                maxf = np.nanmax(np.log10(tt[tt !=0]))
+
+        # fluxtot = tt
+        if not individual_sb_colorbars:
+            for comp in comps:
+                min_flux[comp] = minf
+                max_flux[comp] = maxf
 
         totalf = np.sum(tt)  # tt refers to the 'all' comp (the last in comps)
-        fluxtot = tt
-
         t = t/totalf
 
         vmax = np.nanmax(vel)
@@ -425,8 +453,8 @@ class Decomposition:
         smax = np.nanmax(sig_t[sig_t > 0])
         smin = np.nanmin(sig_t[sig_t > 0])
 
-        minf=np.nanmin(np.log10(fluxtot))
-        maxf=np.nanmax(np.log10(fluxtot[fluxtot !=0]))
+        # minf=np.nanmin(np.log10(fluxtot))
+        # maxf=np.nanmax(np.log10(fluxtot[fluxtot !=0]))
         xi_t=(xi[s])
         yi_t=(yi[s])
 
@@ -460,8 +488,8 @@ class Decomposition:
         # titles = ['THIN DISK','THICK DISK','DISK','BULGE','ALL']
         # compon = np.array(['thin_d','thick_d','disk','bulge','all'])
         titles = [c.replace('_disk', ' disk').replace('_d', ' disk').replace('_',' ')
-                  for c in self.comps]
-        compon = np.array(self.comps)
+                  for c in comps]
+        compon = np.array(comps)
         kwtext = dict(size=20, ha='center', va='center', rotation=90.)
         kw_display1 = dict(pixelsize=dx, colorbar=True,
                                   nticks=7, cmap=map1)
@@ -472,28 +500,34 @@ class Decomposition:
         plt.subplots_adjust(hspace=0.7, wspace=0.01, left=0.01,
                             bottom=0.05, top=0.99, right=0.99)
 
-        for ii in range(len(comps)):
-            if not comps_plot[self.comps[ii]]:
+        i_plot = 0
+        for comp in comps:
+            if not comps_plot[comp]:
                 continue
-            ax = plt.subplot(LL, 3, 3*ii+1)
-            if ii == 0:
+            ax = plt.subplot(LL, 3, 3*i_plot+1)
+            if i_plot == 0:
                 ax.set_title('surface brightness (log)',fontsize=20,pad=20)
-            display_pixels(xi_t, yi_t, np.log10(t[ii][s])-maxf,
-                           vmin=minf-maxf, vmax=0, **kw_display1)
-            ax.text(-0.2, 0.5, titles[np.where(compon==comps[ii])[0][0]],
+            display_pixels(xi_t,
+                           yi_t,
+                           np.log10(t[i_plot][s])-max_flux[comp],
+                           vmin=min_flux[comp]-max_flux[comp],
+                           vmax=0,
+                           **kw_display1)
+            ax.text(-0.2, 0.5, titles[np.where(compon==comp)[0][0]],
                     **kwtext, transform=ax.transAxes)
 
-            plt.subplot(LL, 3, 3*ii+2)
-            if ii == 0:
+            plt.subplot(LL, 3, 3*i_plot+2)
+            if i_plot == 0:
                 plt.title('velocity',fontsize=20,pad=20)
-            display_pixels(xi_t, yi_t, vel[ii][grid[s]],
+            display_pixels(xi_t, yi_t, vel[i_plot][grid[s]],
                            vmin=-1.0*vmax, vmax=vmax, **kw_display2)
 
-            plt.subplot(LL, 3, 3*ii+3)
-            if ii == 0:
+            plt.subplot(LL, 3, 3*i_plot+3)
+            if i_plot == 0:
                 plt.title('velocity dispersion',fontsize=20,pad=20)
-            display_pixels(xi_t, yi_t, sig[ii][grid[s]],
+            display_pixels(xi_t, yi_t, sig[i_plot][grid[s]],
                            vmin=smin, vmax=smax, **kw_display1)
+            i_plot += 1
 
         plt.tight_layout()
         plt.savefig(plot_file_name)
