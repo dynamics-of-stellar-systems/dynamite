@@ -90,7 +90,7 @@ class Decomposition:
         # self.losvd_histograms, self.proj_mass, self.decomp = self.run_dec()
         self.logger.info('Orbits read and velocity histogram created.')
 
-    def plot_decomp(self, xlim, ylim, v_sigma_option='fit'):
+    def plot_decomp(self, xlim, ylim, v_sigma_option='fit', comps_plot='all'):
         """ Generate decomposition plots.
 
         Parameters
@@ -103,6 +103,14 @@ class Decomposition:
             If 'fit', v_mean and v_sigma are calculated based on fitting
             Gaussians, if 'moments', v_mean and v_sigma are calculated
             directly from the model's losvd histograms. The default is 'fit'.
+        comps_plot : dict or string 'all', optional
+            If 'all', all components will be in the decomposition plot.
+            Specific components can be selected by passing a dictionary, e.g.,
+            comps_plot = {'thin_d': True, 'thick_d': True, 'disk': True,
+                          'cr_thin_d': False, 'cr_thick_d': False,
+                          'cr_disk: False', 'bulge': False, 'all': False} will
+            only create the plots for 'thin_d', 'thick_d', and 'disk'. `False`
+            entries can be omitted in the dictionary. The default is 'all'.
 
         Returns
         -------
@@ -112,7 +120,8 @@ class Decomposition:
         comp_kinem_moments = self.comps_aphist(v_sigma_option)
         self.logger.info('Component data done.')
         self.plot_comps(xlim=xlim, ylim=ylim,
-                        comp_kinem_moments=comp_kinem_moments)
+                        comp_kinem_moments=comp_kinem_moments,
+                        comps_plot=comps_plot)
         self.logger.info('Plots done.')
 
     def comps_aphist(self, v_sigma_option='fit'):
@@ -299,6 +308,7 @@ class Decomposition:
                    xlim,
                    ylim,
                    comp_kinem_moments,
+                   comps_plot='all',
                    figtype='.png'):
         """ Generate decomposition plots.
 
@@ -313,6 +323,14 @@ class Decomposition:
             by three columns per component holding the flux, mean velocity,
             and velocity dispersion.
             The chosen v_sigma_option is in the table meta data.
+        comps_plot : dict or string 'all', optional
+            If 'all', all components will be in the decomposition plot.
+            Specific components can be selected by passing a dictionary, e.g.,
+            comps_plot = {'thin_d': True, 'thick_d': True, 'disk': True,
+                          'cr_thin_d': False, 'cr_thick_d': False,
+                          'cr_disk: False', 'bulge': False, 'all': False} will
+            only create the plots for 'thin_d', 'thick_d', and 'disk'. `False`
+            entries can be omitted in the dictionary. The default is 'all'.
         figtype : str, optional
             Determines the file format and extension to use when saving the
             figure. The default is '.png'.
@@ -330,6 +348,13 @@ class Decomposition:
 
         weights = self.model.weights
         comps = self.decomp.meta["comps"]
+
+        if comps_plot == 'all':
+            comps_plot = {comp: True for comp in comps}
+        for comp in comps:
+            if comp not in comps_plot:
+                comps_plot[comp] = False
+        self.logger.info(f'Plotting data for components {comps_plot}.')
 
         stars = \
         self.config.system.get_component_from_class(
@@ -411,7 +436,8 @@ class Decomposition:
 
         self.logger.debug(f'{v_sigma_option}: {vmax=}, {smax=}, {smin=}.')
 
-        LL = len(comps)
+        c_skipped = len([comp for comp in comps_plot if not comps_plot[comp]])
+        LL = len(comps) - c_skipped
         map1 = cmr.get_sub_cmap('twilight_shifted', 0.05, 0.6)
         map2 = cmr.get_sub_cmap('twilight_shifted', 0.05, 0.95)
         # titles = ['THIN DISK','THICK DISK','DISK','BULGE','ALL']
@@ -430,6 +456,8 @@ class Decomposition:
                             bottom=0.05, top=0.99, right=0.99)
 
         for ii in range(len(comps)):
+            if not comps_plot[self.comps[ii]]:
+                continue
             ax = plt.subplot(LL, 3, 3*ii+1)
             if ii == 0:
                 ax.set_title('surface brightness (log)',fontsize=20,pad=20)
