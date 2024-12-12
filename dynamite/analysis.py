@@ -39,6 +39,9 @@ class Decomposition:
         The cuts in lambda_z. The default is None, which translates to
         ocut=[0.8, 0.25, -0.25, -0.8], the selection in lambda_z
         following Santucci+22.
+    decomp_table : bool, optional
+        If True, write a table mapping each orbit to its respective
+        component(s). The default is False.
 
     Raises
     ------
@@ -46,7 +49,12 @@ class Decomposition:
         if no config object is given or the kin_set does not exist.
 
     """
-    def __init__(self, config=None, model=None, kin_set=0, ocut=None):
+    def __init__(self,
+                 config=None,
+                 model=None,
+                 kin_set=0,
+                 ocut=None,
+                 decomp_table=False):
         self.logger = logging.getLogger(f'{__name__}.{__class__.__name__}')
         if config is None:
             text = f'{__class__.__name__} needs configuration object, ' \
@@ -87,8 +95,17 @@ class Decomposition:
             self.ocut = [  0.8,     0.25,   -0.25,        -0.8        ]
         #             thin_d  thick_d   bulge    cr_thick_d   cr_thin_d
         self.decomp = self.decompose_orbits()
-        # self.losvd_histograms, self.proj_mass, self.decomp = self.run_dec()
         self.logger.info('Orbits read and velocity histogram created.')
+        if decomp_table:
+            kin_name = stars.kinematic_data[self.kin_set].name
+            file_name = f'decomp_table_{kin_name}'
+            table_file_name = self.model.directory + file_name + '.ecsv'
+            self.decomp.write(f'{table_file_name}',
+                              format='ascii.ecsv',
+                              overwrite=True)
+            self.logger.info('Orbit decomposition information written to '
+                         f'{table_file_name}.')
+
 
     def plot_decomp(self, xlim, ylim, v_sigma_option='fit', comps_plot='all'):
         """ Generate decomposition plots.
@@ -414,7 +431,7 @@ class Decomposition:
         yi_t=(yi[s])
 
         table = {'x/arcs':xi_t,'y/arcs':yi_t}
-        for i in range(len(comps)):
+        for i, comp in enumerate(comps):
             labels = [col for col in comp_kinem_moments.colnames
                           if col.startswith(comp)]
             table.update({labels[0]:t[i][s],
