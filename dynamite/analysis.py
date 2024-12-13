@@ -42,6 +42,9 @@ class Decomposition:
     decomp_table : bool, optional
         If True, write a table mapping each orbit to its respective
         component(s). The default is False.
+    comps_weights : bool, optional
+        If True, write a table of aggregated weights in each component.
+        The default is False.
 
     Raises
     ------
@@ -54,7 +57,8 @@ class Decomposition:
                  model=None,
                  kin_set=0,
                  ocut=None,
-                 decomp_table=False):
+                 decomp_table=False,
+                 comps_weights=False):
         self.logger = logging.getLogger(f'{__name__}.{__class__.__name__}')
         if config is None:
             text = f'{__class__.__name__} needs configuration object, ' \
@@ -97,15 +101,12 @@ class Decomposition:
         self.decomp = self.decompose_orbits()
         self.logger.info('Orbits read and velocity histogram created.')
         if decomp_table:
-            kin_name = stars.kinematic_data[self.kin_set].name
-            file_name = f'decomp_table_{kin_name}'
-            table_file_name = self.model.directory + file_name + '.ecsv'
-            self.decomp.write(f'{table_file_name}',
-                              format='ascii.ecsv',
-                              overwrite=True)
+            file_name = self.model.directory + 'decomp_table.ecsv'
+            self.decomp.write(file_name, format='ascii.ecsv', overwrite=True)
             self.logger.info('Orbit decomposition information written to '
-                         f'{table_file_name}.')
-
+                             f'{file_name}.')
+        if comps_weights:
+            self.comps_weights()
 
     def plot_decomp(self,
                     xlim,
@@ -188,7 +189,7 @@ class Decomposition:
             labels = [col for col in comp_kinem_moments.colnames
                           if col.startswith(comp)]
             flux = comp_kinem_moments[labels[0]]
-            w = weights[[comp in s for s in self.decomp['component']]]
+            w = weights[[f'|{comp}|' in s for s in self.decomp['component']]]
             fhist, fbinedge = np.histogram(grid[s_wide], bins=len(flux))
             flux = flux / fhist
             tt = flux[grid]*1.
@@ -234,9 +235,7 @@ class Decomposition:
         plot_file_name = self.config.settings.io_settings['plot_directory'] \
                          + file_name \
                          + figtype
-        comps_kin.write(f'{table_file_name}',
-                        format='ascii.ecsv',
-                        overwrite=True)
+        comps_kin.write(table_file_name, format='ascii.ecsv', overwrite=True)
         self.logger.info('Component grid kinematics written to '
                          f'{table_file_name}.')
 
@@ -334,7 +333,7 @@ class Decomposition:
         for comp in self.decomp.meta['comps']:
             self.logger.info(f'Component {comp}...')
             # calculate flux and losvd histograms for component
-            orb_sel = np.array([comp in s for s in self.decomp['component']],
+            orb_sel = np.array([f'|{comp}|' in s for s in self.decomp['component']],
                                dtype=bool)
             flux=np.dot(self.proj_mass[orb_sel].T, self.model.weights[orb_sel])
             losvd = np.dot(self.losvd_histograms.y[orb_sel,:,:].T,
@@ -474,6 +473,23 @@ class Decomposition:
                 if comp_map[i] & (1 << k):
                     decomp['component'][i] += f'|{comp}|'
         return decomp
+
+    def comps_weights(self):
+        """ Write a table of aggregated weights in each component.
+        """
+        weights = self.model.weights
+        comps = self.decomp.meta["comps"]
+        comps_weights = []
+        for comp in comps:
+            w = weights[[f'|{comp}|' in s for s in self.decomp['component']]]
+            comps_weights.append(sum(w))
+        weights_table = astropy.table.Table([comps, comps_weights],
+                                            names=('component', 'weight'),
+                                            dtype=['U256', float])
+        file_name = self.model.directory + 'comps_weights.ecsv'
+        weights_table.write(file_name, format='ascii.ecsv', overwrite=True)
+        self.logger.info(f'Component aggregate weights written to {file_name}.')
+
 
 
 class Analysis:

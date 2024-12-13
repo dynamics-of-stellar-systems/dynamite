@@ -16,7 +16,8 @@ dyn.model_iterator.ModelIterator(c) # generate models
 
 decomp = dyn.analysis.Decomposition(config=c,
                                     kin_set=0,
-                                    decomp_table=True) # do the decomposition
+                                    decomp_table=True,
+                                    comps_weights=True) # do the decomposition
 
 for v_sigma_option in ('moments', 'fit'):
     #select the components and calculate the kinematics for each
