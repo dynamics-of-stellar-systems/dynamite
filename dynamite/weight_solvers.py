@@ -169,10 +169,6 @@ class LegacyWeightSolver(WeightSolver):
         # prepare fortran input file for nnls
         self.copy_kinematic_data()
         self.create_fortran_input_nnls()
-        self.logger.info(f'{__class__.__name__} is DEPRECATED and '
-                         'will be removed in a future version of '
-                         f'DYNAMITE. Use weight solver type NNLS instead '
-                         f'of {__class__.__name__} if you can.')
 
     def copy_kinematic_data(self):
         """Copy kin data to infil/ direc
