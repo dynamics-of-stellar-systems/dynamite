@@ -26,8 +26,8 @@ class Kinematics(data.Data):
                  ):
         super().__init__(**kwargs)
         self.logger = logging.getLogger(f'{__name__}.{__class__.__name__}')
+        self.type = type
         if hasattr(self, 'data'):
-            self.type = type
             if hist_width=='default':
                 self.set_default_hist_width()
             else:
@@ -57,6 +57,8 @@ class Kinematics(data.Data):
                 self.logger.error(text)
                 raise ValueError(text)
             self.n_spatial_bins = len(self.data)
+        else:
+            self.has_pops = False
 
     def has_pops(self):
         """
