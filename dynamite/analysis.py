@@ -112,7 +112,8 @@ class Decomposition:
                     ylim,
                     v_sigma_option='fit',
                     comps_plot='all',
-                    individual_sb_colorbars=False):
+                    individual_sb_colorbars=False,
+                    figtype='.png'):
         """ Generate decomposition plots.
 
         Parameters
@@ -137,6 +138,9 @@ class Decomposition:
             If True, then each component's surface brightness colorbar adapts
             to its respective value range. This can be useful for identifying
             structures invisible otherwise. The default is False.
+        figtype : str, optional
+            Determines the file format and extension to use when saving the
+            figure. The default is '.png'.
 
         Returns
         -------
@@ -144,13 +148,152 @@ class Decomposition:
 
         """
         comp_kinem_moments = self.comps_aphist(v_sigma_option)
-        self.logger.info('Component data done.')
-        self.plot_comps(xlim=xlim,
-                        ylim=ylim,
-                        comp_kinem_moments=comp_kinem_moments,
-                        comps_plot=comps_plot,
-                        individual_sb_colorbars=individual_sb_colorbars)
-        self.logger.info('Plots done.')
+        self.logger.info('Component data done. '
+                         f'Plotting decomposition for {v_sigma_option=}.')
+        weights = self.model.weights
+        comps = self.decomp.meta["comps"]
+
+        if comps_plot == 'all':
+            comps_plot = {comp: True for comp in comps}
+        for comp in comps:
+            if comp not in comps_plot:
+                comps_plot[comp] = False
+        self.logger.info(f'Plotting data for components {comps_plot}.')
+
+        stars = \
+        self.config.system.get_component_from_class(
+                                dyn.physical_system.TriaxialVisibleComponent)
+        dp_args = stars.kinematic_data[self.kin_set].dp_args
+        xi = dp_args['x']
+        yi = dp_args['y']
+        dx = dp_args['dx']
+        grid = dp_args['idx_bin_to_pix']
+        # The angle that is saved in this file is measured counter clock-wise
+        # from the galaxy major axis to the X-axis of the input data.
+        angle_deg = dp_args['angle']
+        self.logger.debug(f'Pixel grid dimension is {dx=}, {len(xi)=}, '
+                          f'{len(yi)=}, {grid.shape}, {angle_deg=}.')
+
+        s = np.ravel(np.where((grid >= 0) & (np.abs(xi) <= xlim)
+                              & (np.abs(yi) <= ylim)))
+        s_wide = np.ravel(np.where(grid >= 0))
+
+        vel = []
+        sig = []
+        t = []
+        min_flux = {}
+        max_flux = {}
+        last_comps_idx = len(comps) - 1
+        for c_idx, comp in enumerate(comps):
+            labels = [col for col in comp_kinem_moments.colnames
+                          if col.startswith(comp)]
+            flux = comp_kinem_moments[labels[0]]
+            w = weights[[comp in s for s in self.decomp['component']]]
+            fhist, fbinedge = np.histogram(grid[s_wide], bins=len(flux))
+            flux = flux / fhist
+            tt = flux[grid]*1.
+            tt = tt * np.sum(w)/np.sum(tt)
+            t.append(tt.copy())
+            vel.append(comp_kinem_moments[labels[1]])
+            sig.append(comp_kinem_moments[labels[2]])
+            min_flux[comp] = np.nanmin(np.log10(tt))
+            max_flux[comp] = np.nanmax(np.log10(tt[tt != 0]))
+            if c_idx == last_comps_idx:  # the last item MUST be 'all'
+                minf = np.nanmin(np.log10(tt))
+                maxf = np.nanmax(np.log10(tt[tt !=0]))
+                totalf = np.sum(tt)  # tt here refers to the 'all' comp
+
+        t = t/totalf
+
+        if not individual_sb_colorbars:
+            for comp in comps:
+                min_flux[comp] = minf
+                max_flux[comp] = maxf
+
+        vmax = np.nanmax(vel)
+        sig_t = np.array(sig)
+
+        smax = np.nanmax(sig_t[sig_t > 0])
+        smin = np.nanmin(sig_t[sig_t > 0])
+
+        xi_t=(xi[s])
+        yi_t=(yi[s])
+
+        table = {'x/arcs':xi_t,'y/arcs':yi_t}
+        for c_idx, comp in enumerate(comps):
+            labels = [col for col in comp_kinem_moments.colnames
+                          if col.startswith(comp)]
+            table.update({labels[0]:t[c_idx][s],
+                         labels[1]:vel[c_idx][grid[s]],
+                         labels[2]:sig[c_idx][grid[s]]})
+        comps_kin = astropy.table.Table(table)
+
+        kin_name = stars.kinematic_data[self.kin_set].name
+        file_name = f'comps_kin_{v_sigma_option}_{kin_name}'
+        table_file_name = self.model.directory + file_name + '.ecsv'
+        plot_file_name = self.config.settings.io_settings['plot_directory'] \
+                         + file_name \
+                         + figtype
+        comps_kin.write(f'{table_file_name}',
+                        format='ascii.ecsv',
+                        overwrite=True)
+        self.logger.info('Component grid kinematics written to '
+                         f'{table_file_name}.')
+
+        self.logger.debug(f'{v_sigma_option}: {vmax=}, {smax=}, {smin=}.')
+
+        c_skipped = len([comp for comp in comps_plot if not comps_plot[comp]])
+        LL = len(comps) - c_skipped
+        map1 = cmr.get_sub_cmap('twilight_shifted', 0.05, 0.6)
+        map2 = cmr.get_sub_cmap('twilight_shifted', 0.05, 0.95)
+        # titles = ['THIN DISK','THICK DISK','DISK','BULGE','ALL']
+        # compon = np.array(['thin_d','thick_d','disk','bulge','all'])
+        titles = [c.replace('_disk', ' disk').replace('_d', ' disk').replace('_',' ')
+                  for c in comps]
+        compon = np.array(comps)
+        kwtext = dict(size=20, ha='center', va='center', rotation=90.)
+        kw_display1 = dict(pixelsize=dx, colorbar=True,
+                                  nticks=7, cmap=map1)
+        kw_display2 = dict(pixelsize=dx, colorbar=True,
+                                  nticks=7, cmap=map2)
+
+        plt.figure(figsize=(16, int((LL+2)*3)*ylim/xlim))
+        plt.subplots_adjust(hspace=0.7, wspace=0.01, left=0.01,
+                            bottom=0.05, top=0.99, right=0.99)
+
+        i_plot = 0
+        for c_idx, comp in enumerate(comps):
+            if not comps_plot[comp]:
+                continue
+            ax = plt.subplot(LL, 3, 3*i_plot+1)
+            if i_plot == 0:
+                ax.set_title('surface brightness (log)',fontsize=20,pad=20)
+            display_pixels(xi_t,
+                           yi_t,
+                           np.log10(t[c_idx][s])-max_flux[comp],
+                           vmin=min_flux[comp]-max_flux[comp],
+                           vmax=0,
+                           **kw_display1)
+            ax.text(-0.2, 0.5, titles[np.where(compon==comp)[0][0]],
+                    **kwtext, transform=ax.transAxes)
+
+            plt.subplot(LL, 3, 3*i_plot+2)
+            if i_plot == 0:
+                plt.title('velocity',fontsize=20,pad=20)
+            display_pixels(xi_t, yi_t, vel[c_idx][grid[s]],
+                           vmin=-1.0*vmax, vmax=vmax, **kw_display2)
+
+            plt.subplot(LL, 3, 3*i_plot+3)
+            if i_plot == 0:
+                plt.title('velocity dispersion',fontsize=20,pad=20)
+            display_pixels(xi_t, yi_t, sig[c_idx][grid[s]],
+                           vmin=smin, vmax=smax, **kw_display1)
+            i_plot += 1
+
+        plt.tight_layout()
+        plt.savefig(plot_file_name)
+        self.logger.info(f'Component plots written to {plot_file_name}.')
+        plt.close()
 
     def comps_aphist(self, v_sigma_option='fit'):
         """Calculate components' flux, mean velocity, and velocity dispersion.
@@ -331,208 +474,6 @@ class Decomposition:
                 if comp_map[i] & (1 << k):
                     decomp['component'][i] += f'|{comp}|'
         return decomp
-
-    def plot_comps(self,
-                   xlim,
-                   ylim,
-                   comp_kinem_moments,
-                   comps_plot='all',
-                   individual_sb_colorbars=False,
-                   figtype='.png'):
-        """ Generate decomposition plots.
-
-        Parameters
-        ----------
-        xlim : float
-            restricts plot x-coordinates to abs(x) <= xlim.
-        ylim : float
-            restricts plot y-coordinates to abs(y) <= ylim.
-        comp_kinem_moments : astropy table
-            The table columns are: aperture index (starting with 0), followed
-            by three columns per component holding the flux, mean velocity,
-            and velocity dispersion.
-            The chosen v_sigma_option is in the table meta data.
-        comps_plot : dict or string 'all', optional
-            If 'all', all components will be in the decomposition plot.
-            Specific components can be selected by passing a dictionary, e.g.,
-            comps_plot = {'thin_d': True, 'thick_d': True, 'disk': True,
-                          'cr_thin_d': False, 'cr_thick_d': False,
-                          'cr_disk: False', 'bulge': False, 'all': False} will
-            only create the plots for 'thin_d', 'thick_d', and 'disk'. `False`
-            entries can be omitted in the dictionary. The default is 'all'.
-        individual_sb_colorbars : bool, optional
-            If True, then each component's surface brightness colorbar adapts
-            to its respective value range. This can be useful for identifying
-            structures invisible otherwise. The default is False.
-        figtype : str, optional
-            Determines the file format and extension to use when saving the
-            figure. The default is '.png'.
-
-        Returns
-        -------
-        None.
-
-        """
-
-        v_sigma_option = comp_kinem_moments.meta['v_sigma_option'] \
-                         if 'v_sigma_option' in comp_kinem_moments.meta.keys()\
-                         else ''
-        self.logger.info(f'Plotting decomposition for {v_sigma_option=}.')
-
-        weights = self.model.weights
-        comps = self.decomp.meta["comps"]
-
-        if comps_plot == 'all':
-            comps_plot = {comp: True for comp in comps}
-        for comp in comps:
-            if comp not in comps_plot:
-                comps_plot[comp] = False
-        self.logger.info(f'Plotting data for components {comps_plot}.')
-
-        stars = \
-        self.config.system.get_component_from_class(
-                                dyn.physical_system.TriaxialVisibleComponent)
-        dp_args = stars.kinematic_data[self.kin_set].dp_args
-        xi = dp_args['x']
-        yi = dp_args['y']
-        dx = dp_args['dx']
-        grid = dp_args['idx_bin_to_pix']
-        # The angle that is saved in this file is measured counter clock-wise
-        # from the galaxy major axis to the X-axis of the input data.
-        angle_deg = dp_args['angle']
-        self.logger.debug(f'Pixel grid dimension is {dx=}, {len(xi)=}, '
-                          f'{len(yi)=}, {grid.shape}, {angle_deg=}.')
-
-        s = np.ravel(np.where((grid >= 0) & (np.abs(xi) <= xlim)
-                              & (np.abs(yi) <= ylim)))
-        s_wide = np.ravel(np.where(grid >= 0))
-
-        vel = []
-        sig = []
-        t = []
-        min_flux = {}
-        max_flux = {}
-        # totalf = 0
-        last_comps_idx = len(comps) - 1
-        for c_idx, comp in enumerate(comps):
-            labels = [col for col in comp_kinem_moments.colnames
-                          if col.startswith(comp)]
-            flux = comp_kinem_moments[labels[0]]
-            w = weights[[comp in s for s in self.decomp['component']]]
-            fhist, fbinedge = np.histogram(grid[s_wide], bins=len(flux))
-            flux = flux / fhist
-            tt = flux[grid]*1.
-            tt = tt * np.sum(w)/np.sum(tt)
-            t.append(tt.copy())
-            # if comps[i] in ['thin_d', 'thick_d', 'bulge']:
-            #     totalf += np.sum(tt)
-            #     if comps[i] == 'thin_d':
-            #         fluxtot = tt
-            #     else:
-            #         fluxtot += tt
-            vel.append(comp_kinem_moments[labels[1]])
-            sig.append(comp_kinem_moments[labels[2]])
-            min_flux[comp] = np.nanmin(np.log10(tt))
-            max_flux[comp] = np.nanmax(np.log10(tt[tt != 0]))
-            if c_idx == last_comps_idx:  # the last item MUST be 'all'
-                minf = np.nanmin(np.log10(tt))
-                maxf = np.nanmax(np.log10(tt[tt !=0]))
-
-        # fluxtot = tt
-        if not individual_sb_colorbars:
-            for comp in comps:
-                min_flux[comp] = minf
-                max_flux[comp] = maxf
-
-        totalf = np.sum(tt)  # tt refers to the 'all' comp (the last in comps)
-        t = t/totalf
-
-        vmax = np.nanmax(vel)
-        sig_t = np.array(sig)
-
-        smax = np.nanmax(sig_t[sig_t > 0])
-        smin = np.nanmin(sig_t[sig_t > 0])
-
-        # minf=np.nanmin(np.log10(fluxtot))
-        # maxf=np.nanmax(np.log10(fluxtot[fluxtot !=0]))
-        xi_t=(xi[s])
-        yi_t=(yi[s])
-
-        table = {'x/arcs':xi_t,'y/arcs':yi_t}
-        for i, comp in enumerate(comps):
-            labels = [col for col in comp_kinem_moments.colnames
-                          if col.startswith(comp)]
-            table.update({labels[0]:t[i][s],
-                         labels[1]:vel[i][grid[s]],
-                         labels[2]:sig[i][grid[s]]})
-        comps_kin = astropy.table.Table(table)
-
-        kin_name = stars.kinematic_data[self.kin_set].name
-        file_name = f'comps_kin_{v_sigma_option}_{kin_name}'
-        table_file_name = self.model.directory + file_name + '.ecsv'
-        plot_file_name = self.config.settings.io_settings['plot_directory'] \
-                         + file_name \
-                         + figtype
-        comps_kin.write(f'{table_file_name}',
-                        format='ascii.ecsv',
-                        overwrite=True)
-        self.logger.info('Component grid kinematics written to '
-                         f'{table_file_name}.')
-
-        self.logger.debug(f'{v_sigma_option}: {vmax=}, {smax=}, {smin=}.')
-
-        c_skipped = len([comp for comp in comps_plot if not comps_plot[comp]])
-        LL = len(comps) - c_skipped
-        map1 = cmr.get_sub_cmap('twilight_shifted', 0.05, 0.6)
-        map2 = cmr.get_sub_cmap('twilight_shifted', 0.05, 0.95)
-        # titles = ['THIN DISK','THICK DISK','DISK','BULGE','ALL']
-        # compon = np.array(['thin_d','thick_d','disk','bulge','all'])
-        titles = [c.replace('_disk', ' disk').replace('_d', ' disk').replace('_',' ')
-                  for c in comps]
-        compon = np.array(comps)
-        kwtext = dict(size=20, ha='center', va='center', rotation=90.)
-        kw_display1 = dict(pixelsize=dx, colorbar=True,
-                                  nticks=7, cmap=map1)
-        kw_display2 = dict(pixelsize=dx, colorbar=True,
-                                  nticks=7, cmap=map2)
-
-        plt.figure(figsize=(16, int((LL+2)*3)*ylim/xlim))
-        plt.subplots_adjust(hspace=0.7, wspace=0.01, left=0.01,
-                            bottom=0.05, top=0.99, right=0.99)
-
-        i_plot = 0
-        for comp in comps:
-            if not comps_plot[comp]:
-                continue
-            ax = plt.subplot(LL, 3, 3*i_plot+1)
-            if i_plot == 0:
-                ax.set_title('surface brightness (log)',fontsize=20,pad=20)
-            display_pixels(xi_t,
-                           yi_t,
-                           np.log10(t[i_plot][s])-max_flux[comp],
-                           vmin=min_flux[comp]-max_flux[comp],
-                           vmax=0,
-                           **kw_display1)
-            ax.text(-0.2, 0.5, titles[np.where(compon==comp)[0][0]],
-                    **kwtext, transform=ax.transAxes)
-
-            plt.subplot(LL, 3, 3*i_plot+2)
-            if i_plot == 0:
-                plt.title('velocity',fontsize=20,pad=20)
-            display_pixels(xi_t, yi_t, vel[i_plot][grid[s]],
-                           vmin=-1.0*vmax, vmax=vmax, **kw_display2)
-
-            plt.subplot(LL, 3, 3*i_plot+3)
-            if i_plot == 0:
-                plt.title('velocity dispersion',fontsize=20,pad=20)
-            display_pixels(xi_t, yi_t, sig[i_plot][grid[s]],
-                           vmin=smin, vmax=smax, **kw_display1)
-            i_plot += 1
-
-        plt.tight_layout()
-        plt.savefig(plot_file_name)
-        self.logger.info(f'Component plots written to {plot_file_name}.')
-        plt.close()
 
 
 class Analysis:
