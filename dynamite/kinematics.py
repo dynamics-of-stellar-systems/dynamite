@@ -539,7 +539,7 @@ class GaussHermite(Kinematics, data.Integrated):
         w_pow_i = np.stack([w**i for i in range(n_herm)])
         # coeffients has shape (n_herm, n_herm)
         # w_pow_i has shape (n_herm, n_regions, n_vbins)
-        result = np.einsum('ij,jkl->ikl', coeffients, w_pow_i, optimize=True)
+        result = np.einsum('ij,jkl->ikl', coeffients, w_pow_i, optimize=False)
         return result
 
     def evaluate_losvd(self, v, v_mu, v_sig, h):
@@ -582,7 +582,7 @@ class GaussHermite(Kinematics, data.Integrated):
                           nrm.pdf(w),
                           h,
                           hpolys,
-                          optimize=True)
+                          optimize=False)
         return losvd
 
     def evaluate_losvd_normalisation(self, h):
@@ -676,7 +676,7 @@ class GaussHermite(Kinematics, data.Integrated):
                       nrm.pdf(w),
                       hpolys,
                       vel_hist.dx,
-                      optimize=True)
+                      optimize=False)
         h *= 2 * np.pi**0.5 # pre-factor in eqn 7
         return h
 
@@ -975,8 +975,9 @@ class BayesLOSVD(Kinematics, data.Integrated):
 
         """
         kin_cols = ['binID_BayesLOSVD', 'bin_flux', 'binID_dynamite',
-                    'v', 'sigma', 'xbin', 'ybin', 'losvd', 'dlosvd']
-        pop_cols = [c for c in self.data.colnames if c not in kin_cols]
+                    'v', 'sigma', 'xbin', 'ybin']
+        pop_cols = [c for c in self.data.colnames if c not in kin_cols
+                    and not any(c.startswith(s) for s in ['losvd', 'dlosvd'])]
         self.data.remove_columns(pop_cols)
         has_pops = len(pop_cols) > 0
         pop_cols = ['binID_dynamite'] + pop_cols
@@ -1441,7 +1442,7 @@ class BayesLOSVD(Kinematics, data.Integrated):
         rebined_orbit_vel_hist = np.einsum('ijk,lj->ilk',
                                            losvd_histograms.y,
                                            f,
-                                           optimize=True)
+                                           optimize=False)
         return rebined_orbit_vel_hist
 
     def transform_orblib_to_observables(self,

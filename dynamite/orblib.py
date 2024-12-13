@@ -229,6 +229,9 @@ class LegacyOrbitLibrary(OrbitLibrary):
         text += f"{settngs['nI2']}\n"
         text += f"{settngs['nI3']}\n"
         text += f"{settngs['dithering']}\n"
+        text += f"{settngs['quad_nr']}\n"
+        text += f"{settngs['quad_nth']}\n"
+        text += f"{settngs['quad_nph']}\n"
         text += f"{dm_specs}\n"
         text += f"{dm_par_vals}"
         if self.system.is_bar_disk_system():

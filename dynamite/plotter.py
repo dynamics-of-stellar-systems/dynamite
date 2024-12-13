@@ -20,6 +20,8 @@ from dynamite import kinematics
 from dynamite import physical_system as physys
 from dynamite import analysis
 import cmasher as cmr
+
+
 class ReorderLOSVDError(Exception):
     pass
 
@@ -224,7 +226,7 @@ class Plotter():
         figname = self.plotdir + which_chi2 + '_plot' + figtype
 
         colormap_orig = mpl.cm.viridis
-        colormap = mpl.cm.get_cmap('viridis_r')
+        colormap = mpl.colormaps.get_cmap('viridis_r')
 
         size = 12+len(nofix_islog)
         fontsize = max(size-4,15)
@@ -400,7 +402,7 @@ class Plotter():
 
         list or `matplotlib.pyplot.figure`
             if kin_set == 'all', returns `(matplotlib.pyplot.figure, string)`,
-            i.e. Figure instances along with kinemtics name or figure instance
+            i.e. Figure instances along with kinematics name or figure instance
             else, returns a `matplotlib.pyplot.figure`
 
         """
@@ -1511,7 +1513,8 @@ class Plotter():
             cdict['alpha'].append((si, a, a))
 
         newcmap = mpl.colors.LinearSegmentedColormap(name, cdict)
-        plt.register_cmap(cmap=newcmap)
+        if name not in mpl.colormaps or mpl.colormaps[name] != newcmap:
+            mpl.colormaps.register(cmap=newcmap, force=True)
 
         return newcmap
 

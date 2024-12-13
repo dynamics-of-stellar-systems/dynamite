@@ -924,8 +924,8 @@ class Model(object):
                                              self.config.config_file_name)
             except ValueError:
                 self.logger.warning('More than one .yaml file found in '
-                                    f'{self.directory}, no file name match'
-                                    'with the config file, no check possible.')
+                                    f'{self.directory}. No file name matches '
+                                    'the config file, no check possible.')
                 return True  # ####################
         model_config_file_name = model_yaml_files[f_i]
         with open(self.config.config_file_name) as c_f:

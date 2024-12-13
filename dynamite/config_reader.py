@@ -86,7 +86,7 @@ class Settings(object):
            not importlib.util.find_spec('cvxopt'):
             text = "nnls_solver 'cvxopt' is not installed. Use a different " \
                    "nnls_solver setting or try to install cvxopt e.g., via " \
-                   "'python -m pip install .[cvxopt]'."
+                   "'python -m pip install cvxopt'."
             self.logger.error(text)
             raise ModuleNotFoundError(text)
         if self.orblib_settings['nI2'] < 4:
@@ -94,6 +94,13 @@ class Settings(object):
                    f"{self.orblib_settings['nI2']}."
             self.logger.error(text)
             raise ValueError(text)
+        for quad in ['nr', 'nth', 'nph']:
+            key = 'quad_' + quad
+            if key not in self.orblib_settings.keys():
+                default = 10 if quad == 'nr' else 6
+                self.orblib_settings[key] = default
+                self.logger.info(f'No value given for orblib setting {key} '
+                                 f'- set to its default {default}.')
         self.logger.debug('Settings validated.')
 
     def __repr__(self):
@@ -465,7 +472,7 @@ class Configuration(object):
                     value['modeliterator'] = 'ModelInnerIterator'
                 logger.debug(f"... using iterator {value['modeliterator']}.")
                 if 'orblibs_in_parallel' not in value:
-                    value['orblibs_in_parallel'] = True
+                    value['orblibs_in_parallel'] = False
                 logger.debug("... integrate orblibs in parallel: "
                              f"{value['orblibs_in_parallel']}.")
                 logger.debug(f'multiprocessing_settings: {tuple(value.keys())}')
@@ -483,10 +490,9 @@ class Configuration(object):
             self.logger.error(text)
             raise ValueError(text)
         logger.info('System assembled')
+        self.validate()
         logger.debug(f'System: {self.system}')
         logger.debug(f'Settings: {self.settings}')
-
-        self.validate()
         logger.info('Configuration validated')
 
         if 'generator_settings' in self.settings.parameter_space_settings:
@@ -792,8 +798,8 @@ class Configuration(object):
                     os.remove(f_name)
             self.logger.debug(f'{dest_directory}*.yaml files deleted.')
         shutil.copy2(self.config_file_name, dest_directory)
-        self.logger.info('Config file copied to '
-                         f'{dest_directory}{self.config_file_name}.')
+        self.logger.info(f'Config file {self.config_file_name} copied to '
+                         f'{dest_directory}.')
 
     def backup_config_file(self, reset=False, keep=None, delete_other=False):
         """
@@ -877,7 +883,7 @@ class Configuration(object):
 
         """
         self.settings.validate()
-        _ = self.validate_chi2()
+        which_chi2 = self.validate_chi2()
         if sum(1 for i in self.system.cmp_list \
                if isinstance(i, physys.Plummer)) != 1:
             self.logger.error('System must have exactly one Plummer object')
@@ -927,6 +933,12 @@ class Configuration(object):
                             if ws_type == 'LegacyWeightSolver':
                                 txt = "LegacyWeightSolver can't be used with "\
                                       "BayesLOSVD - use weight-solver type NNLS"
+                                self.logger.error(txt)
+                                raise ValueError(txt)
+                            # check for compatible chi2 variant
+                            if which_chi2 == 'kinmapchi2':
+                                txt = 'kinmapchi2 cannot be used with ' \
+                                      'BayesLOSVD - use chi2 or kinchi2.'
                                 self.logger.error(txt)
                                 raise ValueError(txt)
                 else:
@@ -979,6 +991,9 @@ class Configuration(object):
                              'not both')
 
         if ws_type == 'LegacyWeightSolver':
+            self.logger.warning('LegacyWeightSolver is DEPRECATED and will be '
+                                'removed in a future version of DYNAMITE. Use '
+                                'weight solver type NNLS instead if you can.')
             # check velocity histograms settings if LegacyWeightSolver is used.
             # (i) check all velocity histograms have center 0, (ii) force them
             # all to have equal widths and (odd) number of bins
