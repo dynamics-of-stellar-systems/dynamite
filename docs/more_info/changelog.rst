@@ -4,7 +4,7 @@
 Change Log
 ****************
 
-
+- Improvement: better crash recovery by re-using existing tube orbits when recalculating orblib.
 - Improvement: minor improvements of tutorials 2 and 3
 
 Version: 4.3
