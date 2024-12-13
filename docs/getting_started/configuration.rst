@@ -305,7 +305,7 @@ Settings relevant for parameter search.
     - ``stopping_criteria``: all of the following must be specified. If any of the criteria are met, then the parameter generation will stop:
         - One of ``min_delta_chi2_abs`` or ``min_delta_chi2_rel`` must be set: float, absolute or relative tolerance for ending the parameter search. If an iteration does not improve the minimum chi2 by this threshold, no new iteration will be performed.
         - ``n_max_mods``: int, maximum number of models desired
-        - ``n_max_iter``: int, maximum number of iterations desired
+        - ``n_max_iter``: int, maximum number of iterations to be run. The iteration a model was created in is listed under the ``which_iter`` column of the ``all_models`` table, and these are indexed from ``0,... n_max_iter-1``. The ``n_max_iter`` setting controls the total *cumulative* number of iterations to run i.e. if you specify ``n_max_iter=10`` and there are existing models which ``which_iter=9``, then no new iterations will be run. Note that the first two iterations are always run together i.e. whether you specify ``n_max_iter=1`` or ``n_max_iter=2``, iterations 0 and 1 will both be run.
 
 ``io_settings``
 =====================
@@ -325,13 +325,19 @@ Settings for multiprocessing. Models can be evaluated in parallel, with the numb
   multiprocessing_settings:
       ncpus: 4                              # integer or string 'all_available' (default: 'all_available')
       ncpus_weights: 4                      # int or 'all_available', optional (default: ncpus), not used by all iterators
-      orblibs_in_parallel: True             # calculate tube and box orbits in parallel (default: True)
+      orblibs_in_parallel: True             # calculate tube and box orbits in parallel (default: False)
       modeliterator: 'SplitModelIterator'   # optional (default: 'ModelInnerIterator')
 
-Due to very different CPU and memory consumption of orbit integration and weight solving, there are two different settings: while orbit integration will use ``ncpus``, weight solving will use ``ncpus_weights`` parallel processes. Note that ``ncpus_weights`` will default to ``ncpus`` if not specified. Currently, only the ``SplitModelIterator`` model iterator and recovering from an unsuccessful weight solving attempt (``reattempt_failures=True``) use the ``ncpus_weights`` setting.
+Due to very different CPU and memory consumption of orbit integration and weight solving, there are two different settings: while orbit integration will use ``ncpus``, weight solving will use ``ncpus_weights`` parallel processes, with ``ncpus`` ≥ ``ncpus_weights`` in general. Note that ``ncpus_weights`` will default to ``ncpus`` if not specified. Currently, only the ``SplitModelIterator`` model iterator and recovering from an unsuccessful weight solving attempt (``reattempt_failures=True``) use the ``ncpus_weights`` setting.
 
-If ``ncpus : 'all_available'`` or ``ncpus_weights : 'all_available'`` is set, then DYNAMITE automatically detects the number of available cpus for parallelisation.
+If ``orblibs_in_parallel`` is set to ``False``, DYNAMITE will first integrate the tube orbits and then the box orbits. If it is set to ``True``, the tube and box orbits will be integrated in parallel, which will use 2 parallel processes per model.
 
+If ``ncpus : 'all_available'`` or ``ncpus_weights : 'all_available'`` is set, then DYNAMITE automatically detects the number of available cpus :math:`N_\mathrm{CPU}` for parallelisation and will set ``ncpus`` = ``ncpus_weights`` = :math:`N_\mathrm{CPU}`.
+
+Important performance hint:
+
+- Most ``numpy`` and ``scipy`` implementations are compiled for shared-memory parallelism (e.g., involving blas/openblas). This can be verified by inspecting the ``MAX_THREADS`` values in the output of ``numpy.__config__.show()`` and ``scipy.__config__.show()``, respectively. The number of threads to be used by ``numpy`` and ``scipy`` can be limited by setting the environment variable ``OMP_NUM_THREADS`` to the desired value before executing DYNAMITE.
+- Recommendation: ``OMP_NUM_THREADS=n`` with ``ncpus * n`` ≤ :math:`N_\mathrm{CPU}` if ``orblibs_in_parallel`` is set to ``False`` and ``ncpus * n`` ≤ :math:`\frac{1}{2}\,N_\mathrm{CPU}` if ``orblibs_in_parallel`` is set to ``True``.
 
 ``legacy_settings``
 =====================

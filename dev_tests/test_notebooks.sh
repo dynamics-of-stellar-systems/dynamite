@@ -16,7 +16,7 @@ EOI
 exit
 fi
 
-notebooks="1_data_prep_for_gauss_hermite.ipynb 2_quickstart.ipynb 3_model_iterations_and_plots.ipynb 4_BayesLOSVD.ipynb 5_parameter_space.ipynb 6_orbits_and_weights.ipynb"
+notebooks="1_data_prep_for_gauss_hermite.ipynb 2_quickstart.ipynb 3_model_iterations_and_plots.ipynb 4_BayesLOSVD.ipynb 5_parameter_space.ipynb 6_orbits_and_weights.ipynb 7_orbital_distributions.ipynb"
 
 cd $testdir
 

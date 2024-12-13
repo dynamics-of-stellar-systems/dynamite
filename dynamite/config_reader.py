@@ -86,7 +86,7 @@ class Settings(object):
            not importlib.util.find_spec('cvxopt'):
             text = "nnls_solver 'cvxopt' is not installed. Use a different " \
                    "nnls_solver setting or try to install cvxopt e.g., via " \
-                   "'python -m pip install .[cvxopt]'."
+                   "'python -m pip install cvxopt'."
             self.logger.error(text)
             raise ModuleNotFoundError(text)
         if self.orblib_settings['nI2'] < 4:
@@ -472,7 +472,7 @@ class Configuration(object):
                     value['modeliterator'] = 'ModelInnerIterator'
                 logger.debug(f"... using iterator {value['modeliterator']}.")
                 if 'orblibs_in_parallel' not in value:
-                    value['orblibs_in_parallel'] = True
+                    value['orblibs_in_parallel'] = False
                 logger.debug("... integrate orblibs in parallel: "
                              f"{value['orblibs_in_parallel']}.")
                 logger.debug(f'multiprocessing_settings: {tuple(value.keys())}')
@@ -991,6 +991,9 @@ class Configuration(object):
                              'not both')
 
         if ws_type == 'LegacyWeightSolver':
+            self.logger.warning('LegacyWeightSolver is DEPRECATED and will be '
+                                'removed in a future version of DYNAMITE. Use '
+                                'weight solver type NNLS instead if you can.')
             # check velocity histograms settings if LegacyWeightSolver is used.
             # (i) check all velocity histograms have center 0, (ii) force them
             # all to have equal widths and (odd) number of bins
