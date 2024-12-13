@@ -4,7 +4,8 @@
 Change Log
 ****************
 
-
+- Improvement: added counter-rotating components to decomposition.
+- Bugfix: fix a bug that prevents Bayes LOSVD kinemtic maps from being created more than once
 - Improvement: minor improvements of tutorials 2 and 3
 
 Version: 4.3
