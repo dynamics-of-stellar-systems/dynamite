@@ -425,12 +425,13 @@ class LegacyOrbitLibrary(OrbitLibrary):
         cur_dir = os.getcwd()
         os.chdir(self.mod_dir)
         cmdstr = self.write_executable_for_ics()
-        self.logger.info('Calculating initial conditions')
+        self.logger.info(f'Calculating initial conditions for {self.mod_dir}.')
         # p = subprocess.call('bash '+cmdstr, shell=True)
         p = subprocess.run('bash '+cmdstr,
                            stdout=subprocess.PIPE,
                            stderr=subprocess.STDOUT,
                            shell=True)
+        os.chdir(cur_dir)
         log_file = f'Logfile: {self.mod_dir}datfil/orbstart.log.'
         if not p.stdout.decode("UTF-8"):
             self.logger.info(f'...done - {cmdstr} exit code {p.returncode}. '
@@ -446,7 +447,6 @@ class LegacyOrbitLibrary(OrbitLibrary):
                 text += f'{log_file} Be wary: DYNAMITE may crash...'
                 self.logger.warning(text)
                 raise RuntimeError(text)
-        os.chdir(cur_dir)
 
     def write_executable_for_ics(self):
         """Write the bash script to calculate orbit ICs
@@ -471,12 +471,15 @@ class LegacyOrbitLibrary(OrbitLibrary):
         cur_dir = os.getcwd()
         os.chdir(self.mod_dir)
         cmdstr = self.write_executable_for_integrate_orbits_par()
-        self.logger.info('Integrating orbit library tube and box orbits')
+        self.logger.info('Integrating orbit library tube and box orbits '
+                         f'for {self.mod_dir}.')
         # p = subprocess.call('bash '+cmdstr_tube, shell=True)
         p = subprocess.run('bash '+cmdstr,
                            stdout=subprocess.PIPE,
                            stderr=subprocess.STDOUT,
                            shell=True)
+        # move back to original directory
+        os.chdir(cur_dir)
         log_files = f'Logfiles: {self.mod_dir}datfil/orblib.log, ' \
                     f'{self.mod_dir}datfil/orblibbox.log, ' \
                     f'{self.mod_dir}datfil/triaxmass.log, ' \
@@ -495,8 +498,6 @@ class LegacyOrbitLibrary(OrbitLibrary):
                 text += f'{log_files} Be wary: DYNAMITE may crash...'
                 self.logger.warning(text)
                 raise RuntimeError(text)
-        # move back to original directory
-        os.chdir(cur_dir)
 
     def get_orbit_library(self):
         """Execute the bash script to calculate orbit libraries
@@ -505,12 +506,15 @@ class LegacyOrbitLibrary(OrbitLibrary):
         cur_dir = os.getcwd()
         os.chdir(self.mod_dir)
         cmdstr_tube, cmdstr_box = self.write_executable_for_integrate_orbits()
-        self.logger.info('Integrating orbit library tube orbits')
+        self.logger.info('Integrating orbit library tube orbits '
+                         f'for {self.mod_dir}.')
         # p = subprocess.call('bash '+cmdstr_tube, shell=True)
         p = subprocess.run('bash '+cmdstr_tube,
                            stdout=subprocess.PIPE,
                            stderr=subprocess.STDOUT,
                            shell=True)
+        # move back to original directory
+        os.chdir(cur_dir)
         log_files = f'Logfiles: {self.mod_dir}datfil/orblib.log, ' \
                     f'{self.mod_dir}datfil/triaxmass.log, ' \
                     f'{self.mod_dir}datfil/triaxmassbin.log.'
@@ -528,12 +532,16 @@ class LegacyOrbitLibrary(OrbitLibrary):
                 text += f'{log_files} Be wary: DYNAMITE may crash...'
                 self.logger.warning(text)
                 raise RuntimeError(text)
-        self.logger.info('Integrating orbit library box orbits')
+        os.chdir(self.mod_dir)
+        self.logger.info('Integrating orbit library box orbits '
+                         f'for {self.mod_dir}.')
         # p = subprocess.call('bash '+cmdstr_box, shell=True)
         p = subprocess.run('bash '+cmdstr_box,
                            stdout=subprocess.PIPE,
                            stderr=subprocess.STDOUT,
                            shell=True)
+        # move back to original directory
+        os.chdir(cur_dir)
         log_file = f'Logfile: {self.mod_dir}datfil/orblibbox.log.'
         if not p.stdout.decode("UTF-8"):
             self.logger.info(f'...done - {cmdstr_box} exit code '
@@ -549,8 +557,6 @@ class LegacyOrbitLibrary(OrbitLibrary):
                 text += f'{log_file} Be wary: DYNAMITE may crash...'
                 self.logger.warning(text)
                 raise RuntimeError(text)
-        # move back to original directory
-        os.chdir(cur_dir)
 
     def write_executable_for_integrate_orbits_par(self):
         """Write the bash script to calculate orbit libraries
