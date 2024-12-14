@@ -932,7 +932,14 @@ class LegacyOrbitLibrary(OrbitLibrary):
 
         # TODO: check if this ordering is compatible with weights read in by
         # LegacyWeightSolver.read_weights
-        tube_orblib, tube_density_3D = self.read_orbit_base('orblib')
+        try:
+            tube_orblib, tube_density_3D = self.read_orbit_base('orblib')
+        except:
+            self.logger.error('Something went seriously wrong when reading '
+                              'the tube orbit library. Check disk quota, file '
+                              'integrity, and consistent config files. '
+                              f'Model: {self.mod_dir}.')
+            raise
         if not (kins or pops):
             txt = 'Specify kins or pops.'
             self.logger.error(txt)
@@ -960,7 +967,14 @@ class LegacyOrbitLibrary(OrbitLibrary):
             tube_density_3D = np.repeat(tube_density_3D, 2, axis=0)
 
         # read box orbits
-        box_orblib, box_density_3D = self.read_orbit_base('orblibbox')
+        try:
+            box_orblib, box_density_3D = self.read_orbit_base('orblibbox')
+        except:
+            self.logger.error('Something went seriously wrong when reading '
+                              'the box orbit library. Check disk quota, file '
+                              'integrity, and consistent config files. '
+                              f'Model: {self.mod_dir}.')
+            raise
         if kins and not pops:
             box_orblib = box_orblib[:n_kins]
         else:  # pops is True
