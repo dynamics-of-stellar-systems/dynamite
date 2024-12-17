@@ -889,7 +889,7 @@ class Model(object):
         """
         if not os.path.isfile(self.config.config_file_name):
             txt = f'Unexpected: config file {self.config.config_file_name}' + \
-                  ' not found.'
+                  f' not found (looking in {os.getcwd()}).'
             self.logger.error(txt)
             raise FileNotFoundError(txt)
         model_yaml_files = glob.glob(self.directory+'*.yaml')
