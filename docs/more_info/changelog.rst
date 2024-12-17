@@ -4,7 +4,7 @@
 Change Log
 ****************
 
-
+- Improvement: better error messages to improve debugging with multiprocessing
 - Improvement: minor improvements of tutorials 2 and 3
 
 Version: 4.3
