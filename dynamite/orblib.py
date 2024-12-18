@@ -728,11 +728,15 @@ class LegacyOrbitLibrary(OrbitLibrary):
         hist_centers += [p.hist_center for p in pops]
         hist_bins = [k.hist_bins for k in stars.kinematic_data]
         hist_bins += [p.hist_bins for p in pops]
-        self.logger.debug('Checking number of velocity bins...')
-        error_msg = 'must have odd number of velocity bins for all ' \
-                    'kinematics and populations'
-        assert np.all(np.array(hist_bins) % 1==0), error_msg
-        self.logger.debug('...checks ok.')
+        self.logger.debug(f'{self.mod_dir}{tmpfname}: '
+                          'checking number of velocity bins...')
+        if np.all(np.array(hist_bins) % 2 == 0):
+            error_msg = f'{self.mod_dir}{tmpfname}: must have odd number of ' \
+                        'velocity bins for all kinematics and populations.'
+            self.logger.error(error_msg)
+            os.chdir(cur_dir)
+            raise ValueError(error_msg)
+        self.logger.debug(f'...{self.mod_dir}{tmpfname}: checks ok.')
         n_apertures = [k.n_spatial_bins for k in stars.kinematic_data]
         n_apertures += [p.n_spatial_bins for p in pops]
         # get index linking  kinematic set to aperture
