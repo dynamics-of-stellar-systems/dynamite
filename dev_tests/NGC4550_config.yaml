@@ -136,7 +136,10 @@ parameter_space_settings:
         n_max_iter : 2
 
 multiprocessing_settings:
-  ncpus: 4
+    ncpus: 4 # integer or 'all_available' for multiprocessing
+    ncpus_weights: 4 # integer or 'all_available', optional, defaults to ncpus (not used by all iterators)
+    #modeliterator: 'SplitModelIterator' # optional, default 'ModelInnerIterator'
+    orblibs_in_parallel: True
 
 legacy_settings:
     directory: "default"
