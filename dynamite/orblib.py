@@ -735,7 +735,7 @@ class LegacyOrbitLibrary(OrbitLibrary):
         # ...
         pass
 
-    def read_orbit_base(self, fileroot, return_instrisic_moments=False):
+    def read_orbit_base(self, fileroot, return_intrinsic_moments=False):
         """
         Read orbit library from file datfil/{fileroot}.dat.bz2'
 
@@ -749,17 +749,17 @@ class LegacyOrbitLibrary(OrbitLibrary):
         ----------
         fileroot : string
             this will probably be either 'orblib' or 'orblibbox'
-        return_instrisic_moments: boolean
-            whether to return_instrisic_moments of the orblib
+        return_intrinsic_moments: boolean
+            whether to return_intrinsic_moments of the orblib
 
         Returns
         -------
-        if return_instrisic_moments is False, this returns a tuple of type
+        if return_intrinsic_moments is False, this returns a tuple of type
         (Histogram, array) where the orbit library LOSVDs are stored in the
         Histogram object, and the 3D density of the orbits are stored in the
         array object.
-        if return_instrisic_moments is True, returns a tuple
-        (array, list) where the array stores the intrinsic momenmts of the
+        if return_intrinsic_moments is True, returns a tuple
+        (array, list) where the array stores the intrinsic moments of the
         orblib and the list contains the bin edges of the 3D grid.
 
         """
@@ -789,8 +789,8 @@ class LegacyOrbitLibrary(OrbitLibrary):
         quad_lr = orblib_in.read_reals(float)
         quad_lth = orblib_in.read_reals(float)
         quad_lph = orblib_in.read_reals(float)
-        if return_instrisic_moments:
-            instrisic_grid = [quad_lr, quad_lth, quad_lph]
+        if return_intrinsic_moments:
+            intrinsic_grid = [quad_lr, quad_lth, quad_lph]
             intrinsic_moms = np.zeros((norb, size_qlr, size_qth, size_qph, 16))
         orbtypes = np.zeros((norb, ndith**3), dtype=int)
         density_3D = np.zeros((norb, size_qlr, size_qth, size_qph))
@@ -809,7 +809,7 @@ class LegacyOrbitLibrary(OrbitLibrary):
                 # in the bin indexed by (ir,it,ip).
                 # We need to extract 3D density for use in weight solving.
                 density_3D[j] = quad_light[:,:,:,0]
-                if return_instrisic_moments:
+                if return_intrinsic_moments:
                     intrinsic_moms[j] = quad_light
             # done with orblib_qgrid.dat.bz2,
             # now switch to orblib_losvd_hist.dat.bz2
@@ -882,7 +882,7 @@ class LegacyOrbitLibrary(OrbitLibrary):
                 # in the bin indexed by (ir,it,ip).
                 # We need to extract 3D density for use in weight solving.
                 density_3D[j] = quad_light[:,:,:,0]
-                if return_instrisic_moments:
+                if return_intrinsic_moments:
                     intrinsic_moms[j] = quad_light
             for i_ap in range(nconstr):
                 kinpop_idx = kinpop_idx_per_ap[i_ap]
@@ -915,8 +915,8 @@ class LegacyOrbitLibrary(OrbitLibrary):
                                     y=velhist0[i],
                                     normalise=False)
             velhists += [vvv]
-        if return_instrisic_moments:
-            return intrinsic_moms, instrisic_grid
+        if return_intrinsic_moments:
+            return intrinsic_moms, intrinsic_grid
         else:
             return velhists, density_3D
 
@@ -1101,8 +1101,8 @@ class LegacyOrbitLibrary(OrbitLibrary):
         """Read the intrinsic moments of the orbit library.
 
         Moments stored in 3D grid over spherical co-ords (r,theta,phi). This
-        function reads the data from files, formats them correctly, and coverts
-        to physical units.
+        function reads the data from files, formats them correctly, and
+        converts to physical units.
 
         Parameters
         ----------
@@ -1133,12 +1133,12 @@ class LegacyOrbitLibrary(OrbitLibrary):
         else:
             intmom_tubes, int_grid = self.read_orbit_base(
                 'orblib',
-                return_instrisic_moments=True)
+                return_intrinsic_moments=True)
             intmom_tubes = \
                 self.duplicate_flip_and_interlace_intmoms(intmom_tubes)
             intmom_boxes, _ = self.read_orbit_base(
                 'orblibbox',
-                return_instrisic_moments=True)
+                return_intrinsic_moments=True)
             intmoms = np.concatenate((intmom_tubes, intmom_boxes), 0)
             velscale = self.velocity_scaling_factor
             conversion_factor = self.system.distMPc * 1e6 * \
