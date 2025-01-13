@@ -812,10 +812,13 @@ class LegacyOrbitLibrary(OrbitLibrary):
                 if return_intrinsic_moments:
                     intrinsic_moms[j] = quad_light
             # done with orblib_qgrid.dat.bz2,
-            # now switch to orblib_losvd_hist.dat.bz2
             orblib_in.close()
             # remove temporary file
             os.remove(tmpfname)
+            if return_intrinsic_moments:  # in that case, we are actually done
+                os.chdir(cur_dir)
+                return intrinsic_moms, intrinsic_grid  #######################
+            # now switch to orblib_losvd_hist.dat.bz2
             orblib_file = f'datfil/{fileroot}_losvd_hist.dat.bz2'
             tmpfname = f'datfil/{fileroot}_losvd_hist_{ml}.dat'
             subprocess.run(f'bunzip2 -c {orblib_file} > {tmpfname}', shell=True)
@@ -898,27 +901,26 @@ class LegacyOrbitLibrary(OrbitLibrary):
         # remove temporary file
         os.remove(tmpfname)
         os.chdir(cur_dir)
-        # For now, also calculate velocity histograms for population data...
-        velhists = []
-        for i in range(n_kins + len(pops)):
-            center0 = hist_centers[i]
-            width0 = hist_widths[i]
-            bins0 = hist_bins[i]
-            idx_center = (bins0-1)/2 # this is an integer since hist_bins is odd
-            idx_center = int(idx_center)
-            dvhist0 = width0/bins0
-            vedg = np.arange(bins0+1) * dvhist0
-            v = (vedg[1:] + vedg[:-1])/2.
-            v_cent = v[idx_center]
-            vedg -= v_cent
-            vvv = dyn_kin.Histogram(xedg=vedg,
-                                    y=velhist0[i],
-                                    normalise=False)
-            velhists += [vvv]
         if return_intrinsic_moments:
-            return intrinsic_moms, intrinsic_grid
+            return intrinsic_moms, intrinsic_grid  #######################
         else:
-            return velhists, density_3D
+            # For now, also calculate velocity histograms for population data...
+            velhists = []
+            for i in range(n_kins + len(pops)):
+                width0 = hist_widths[i]
+                bins0 = hist_bins[i]
+                idx_center = (bins0-1)/2 # is an integer since hist_bins is odd
+                idx_center = int(idx_center)
+                dvhist0 = width0/bins0
+                vedg = np.arange(bins0+1) * dvhist0
+                v = (vedg[1:] + vedg[:-1])/2.
+                v_cent = v[idx_center]
+                vedg -= v_cent
+                vvv = dyn_kin.Histogram(xedg=vedg,
+                                        y=velhist0[i],
+                                        normalise=False)
+                velhists += [vvv]
+            return velhists, density_3D  #######################
 
     def duplicate_flip_and_interlace_orblib(self, orblib):
         """flip the tube orbits
