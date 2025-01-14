@@ -4,7 +4,7 @@
 Change Log
 ****************
 
-
+- Improvement: Reduced disk space requirements and performance by splitting orbit library files while maintaining backward compatibility.
 - Improvement: minor improvements of tutorials 2 and 3
 
 Version: 4.3
