@@ -862,11 +862,11 @@ module projection
     ! stop projection module
     public :: projection_stop
 
-    ! Project pos(3,:),vel(3,:) to proj(2,:),lofvel(:)
+    ! Project pos(3,:),vel(3,:) to proj(2,:),losvel(:),velr(:),velt(:)
     ! Using the n'th projection
     private :: project_n
 
-    ! Project pos(3,:),vel(3,:) to proj(2,:),lofvel(:)
+    ! Project pos(3,:),vel(3,:) to proj(2,:),losvel(:),velr(:),velt(:)
     !Done is set to .true. if all projections are finished
     public :: project
 
@@ -926,20 +926,23 @@ contains
     end subroutine projection_stop
 
     !++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-    subroutine project_n(type, pos, vel, proj, losvel, n)
+    subroutine project_n(type, pos, vel, proj, losvel, velr, velt, n)
       use initial_parameters, only :  Omega ! (BT)
         ! use initial_parameters, only : theta_view, phi_view
         ! pos( :, (r,z) )
-        real(kind=dp), intent(in), dimension(:, :)   :: pos
+        real(kind=dp), intent(in), dimension(:, :)             :: pos
         ! vel (:, (r,z,theta))
-        real(kind=dp), intent(in), dimension(size(pos, 1), 3) :: vel
+        real(kind=dp), intent(in), dimension(size(pos, 1), 3)  :: vel
         ! proj(:,(x',y'))
-        real(kind=dp), intent(out), dimension(size(pos, 1), 2)           :: proj
+        real(kind=dp), intent(out), dimension(size(pos, 1), 2) :: proj
         ! losvd (:)
-        real(kind=dp), intent(out), dimension(size(pos, 1))             :: losvel
-        integer(kind=i4b), intent(in)                       :: type, n
+        real(kind=dp), intent(out), dimension(size(pos, 1))    :: losvel
+        ! velr(:), velt(:)
+        real(kind=dp), intent(out), dimension(size(pos, 1))    :: velr, velt
+        integer(kind=i4b), intent(in)                          :: type, n
         !----------------------------------------------------------------------
-        real(kind=dp)              :: t1, t2, t3, theta, phi
+        real(kind=dp)                          :: t1, t2, t3, theta, phi
+        real(kind=dp), dimension(size(pos, 1)) :: projr, velx, vely
 
         real (kind=dp),dimension(3,8,5) ::vsgn          ! (BT)
         real (kind=dp),dimension(3,8) ::psgn            ! (BT)
@@ -1027,6 +1030,26 @@ contains
         t3 = cos(theta)*vsgn(3, n, type)
         losvel(:) = t1*vel(:, 1) + t2*vel(:, 2) + t3*vel(:, 3)
 
+        ! pm_x
+        t1 = -sin(phi)*vsgn(1, n, type)
+        t2 = cos(phi)*vsgn(2, n, type)
+        velx(:) = t1*vel(:, 1) + t2*vel(:, 2)
+
+        ! pm_y
+        t1 = -cos(theta)*cos(phi)*vsgn(1, n, type)
+        t2 = -cos(theta)*sin(phi)*vsgn(2, n, type)
+        t3 = sin(theta)*vsgn(3, n, type)
+        vely(:) = t1*vel(:, 1) + t2*vel(:, 2) + t3*vel(:, 3)
+
+        ! r'
+        projr = sqrt(proj(:, 1)**2 + proj(:, 2)**2)
+
+        ! pm_radial
+        velr = ( proj(:, 1)*velx(:) + proj(:, 2)*vely(:) ) / projr
+
+        ! pm_tangential
+        velt = ( proj(:, 1)*vely(:) + proj(:, 2)*velx(:) ) / projr
+
         !xaa = (-sin(phi)*x+cos(phi)*y)*sin(psi)-(-cos(theta)*cos(phi)*x-cos(theta)*sin(phi)*y+sin(theta)*z)*cos(psi);
         !yaa = (-sin(phi)*x+cos(phi)*y)*cos(psi)+(-cos(theta)*cos(phi)*x-cos(theta)*sin(phi)*y+sin(theta)*z)*sin(psi);
 
@@ -1047,14 +1070,14 @@ contains
     end subroutine project_n
 
     !++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-    subroutine project(type, pos, vel, proj, lofvel, done, first)
+    subroutine project(type, pos, vel, proj, losvel, velr, velt, done, first)
         integer(kind=i4b), intent(in)                        :: type
         real(kind=dp), intent(in), dimension(:, :) :: pos
         real(kind=dp), intent(in), dimension(size(pos, 1), 3) :: vel
         real(kind=dp), intent(out), dimension(size(pos, 1)*projection_symmetry, 2) &
              & :: proj
         real(kind=dp), intent(out), dimension(size(pos, 1)*projection_symmetry) &
-             & :: lofvel
+             & :: losvel, velr, velt
         logical, intent(out)                          :: done
         logical, intent(in)                          :: first
         !----------------------------------------------------------------------
@@ -1066,12 +1089,14 @@ contains
         done = .false.
 
         if (count <= proj_number) then
-            call project_n(type, pos, vel, proj, lofvel, count)
+            call project_n(type, pos, vel, proj, losvel, velr, velt, count)
         else
             count = proj_number + 1
             done = .true.
             proj(:, :) = 0.0_dp
-            lofvel(:) = 0.0_dp
+            losvel(:) = 0.0_dp
+            velr(:) = 0.0_dp
+            velt(:) = 0.0_dp
         end if
 
     end subroutine project
@@ -2906,7 +2931,7 @@ contains
         real(kind=dp), dimension(integrator_points, 3) :: pos
         real(kind=dp), dimension(integrator_points, 3) :: vel
         real(kind=dp), dimension(integrator_points*projection_symmetry, 2):: proj, vec_gauss
-        real(kind=dp), dimension(integrator_points*projection_symmetry):: losvel
+        real(kind=dp), dimension(integrator_points*projection_symmetry):: losvel, velr, velt
         integer(kind=i4b), dimension(integrator_points*projection_symmetry):: velb, poly
         integer(kind=i4b)                                          :: ap, i, pf
 
@@ -2930,7 +2955,7 @@ contains
                 call qgrid_store(pos(:, :), vel(:, :), type)
                 first = .true.
                 do ! for all projections
-                    call project(type, pos, vel, proj, losvel, done, first)
+                    call project(type, pos, vel, proj, losvel, velr, velt, done, first)
                     if (done) exit
                     first = .false.
 
