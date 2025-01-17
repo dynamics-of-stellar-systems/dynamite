@@ -90,17 +90,15 @@ class LegacyOrbitLibrary(OrbitLibrary):
 
         """
         # check if orbit library was calculated already (FIXME: improve this!)
-        check1 = os.path.isfile(self.mod_dir+'datfil/orblib.dat.bz2')
-        check2 = os.path.isfile(self.mod_dir+'datfil/orblibbox.dat.bz2')
-        if check1 and check2:
-            calculate_orblib = False
-        else:
-            check1 = os.path.isfile(self.mod_dir+'datfil/orblib_qgrid.dat.bz2')
-            check1 = check1 and os.path.isfile(self.mod_dir+'datfil/orblib_losvd_hist.dat.bz2')
-            check1 = check1 and os.path.isfile(self.mod_dir+'datfil/orblibbox_qgrid.dat.bz2')
-            check1 = check1 and os.path.isfile(self.mod_dir+'datfil/orblibbox_losvd_hist.dat.bz2')
-            calculate_orblib = False if check1 else True
-        if calculate_orblib:
+        f_root = self.mod_dir + 'datfil/'
+        check = os.path.isfile(f_root + 'orblib.dat.bz2') \
+                and os.path.isfile(f_root + 'datfil/orblibbox.dat.bz2')
+        if not check:
+            check = os.path.isfile(f_root + 'orblib_qgrid.dat.bz2') \
+                    and os.path.isfile(f_root + 'orblib_losvd_hist.dat.bz2') \
+                    and os.path.isfile(f_root + 'orblibbox_qgrid.dat.bz2') \
+                    and os.path.isfile(f_root + 'orblibbox_losvd_hist.dat.bz2')
+        if not check:  # need to calculate orblib
             # prepare the fortran input files for orblib
             self.create_fortran_input_orblib(self.mod_dir+'infil/')
             if self.system.is_bar_disk_system():
@@ -820,7 +818,7 @@ class LegacyOrbitLibrary(OrbitLibrary):
         velhist0 = [np.zeros((norb, nv, na)) for (nv,na) in tmp]
         # Next read the histograms themselves.
         for j in range(norb):
-            if legacy_file:  # Enter this loop if orblib is in a single file
+            if legacy_file:  # Execute this if orblib is in a single file
                 _, _, _, _, _ = orblib_in.read_ints(np.int32)
                 orbtypes[j, :] = orblib_in.read_ints(np.int32)
                 quad_light = orblib_in.read_reals(float)
