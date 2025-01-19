@@ -90,9 +90,9 @@ class Settings(object):
             self.logger.error(text)
             raise ModuleNotFoundError(text)
         if 'use_new_mirroring' in self.orblib_settings:
-            self.logger.info('As DYNAMITE always uses the new mirroring, the '
-                             'orblib_setting \'use_new_mirroring\' is '
-                             'DEPRECATED and will be ignored.')
+            self.logger.warning('As DYNAMITE always uses the new mirroring, '
+                                'the orblib_setting \'use_new_mirroring\' is '
+                                'DEPRECATED and will be ignored.')
         if self.orblib_settings['nI2'] < 4:
             text = "orblib_settings: nI2 must be >= 4, but is " \
                    f"{self.orblib_settings['nI2']}."
