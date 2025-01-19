@@ -254,7 +254,6 @@ orbitstart_bar : $(ORBLIBNMOBJ) orbitstart_f.o orbitstart_bar.f90
 #
 # triaxnnls_CRcut
 # triaxnnls_noCRcut
-# triaxnnls_scratch_nosave
 ##############################################################
 
 OBJECTS5_out = nnls95.o iniparam_f.o numeric_kinds_f.o gausherm.o triaxnnls_CRcut.o
@@ -268,16 +267,6 @@ triaxnnls_CRcut.o : triaxnnls_CRcut.f90 numeric_kinds_f.o iniparam_f.o
 
 ##############################################################
 #
-##############################################################
-
-OBJECTS5 = nnls95.o iniparam_f.o numeric_kinds_f.o gausherm.o triaxnnls_scratch_nosave.o
-
-triaxnnls_scratch_nosave : $(OBJECTS5)
-	$(link) triaxnnls_scratch_nosave $(OBJECTS5)   -I$(GALAHADDIR)/modules/$(GALAHADTYPE)  -L$(GALAHADDIR)/objects/$(GALAHADTYPE)  -lgalahad  -lgalahad_hsl -lgalahad_metis -lgalahad_lapack -lgalahad_blas
-
-triaxnnls_scratch_nosave.o : triaxnnls_scratch_nosave.f90 numeric_kinds_f.o iniparam_f.o
-	$(fortran90) triaxnnls_scratch_nosave.f90  -I$(GALAHADDIR)/modules/$(GALAHADTYPE)  -L$(GALAHADDIR)/objects/$(GALAHADTYPE)
-
 ##############################################################
 
 OBJECTS5_out_nl = nnls95.o iniparam_f.o numeric_kinds_f.o gausherm.o triaxnnls_bar.o
