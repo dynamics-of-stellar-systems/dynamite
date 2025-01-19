@@ -21,13 +21,18 @@
 ! 2021/01/18 Prashin Jethwa
 ! create output file `*_orbmat.out` with A,b,x from NNLS problem Ax=b
 
+! 2025/01/19 Thomas I. Maindl
+! can read the orbit library and losvd histograms from either one file (likely
+! (orblib.dat) or separate files (likely orblib_qgrid.dat,
+! orblib_losvd_hist.dat).
+
 module NNLSfit
 
     use numeric_kinds
     implicit none
     private
 
-    character(len=256), private :: orbfile1, orbfile2, outroot
+    character(len=256), private :: orbfile1_1, orbfile1_2, orbfile2_1, orbfile2_2, outroot
 
     integer(kind=i4b), private :: hermax
     integer(kind=i4b), private :: nconstr, massconstr, orbitsinfit, convecl
@@ -95,20 +100,36 @@ contains
         integer(kind=i4b) :: naperture_cut
         real(kind=dp), dimension(:), allocatable ::  aperture_cut
 
+        integer(kind=i4b) :: qgrid_unit1, qgrid_unit2, hist_unit1, hist_unit2, read_from
+
         print *, "  * What is the velocity scaling factor?"
         read *, velunit
         print *, velunit
 
         print *, "  * Reading orbit libraries"
 
-        print *, "Give first orbitlibrary name:"
-        read (unit=*, fmt="(a256)") orbfile1
-        print *, orbfile1
-        open (unit=27, file=orbfile1, action="read", &
-              status="old", form="unformatted", position="rewind")
-        read (unit=27) norb(1), t1, t2, t3, ndith(1)
+        ! the orbit library can be in one or two files
+        print *, "Give first orbitlibrary name, file 1:"
+        read (unit=*, fmt="(a256)") orbfile1_1
+        orbfile1_1 = trim(orbfile1_1)
+        print *, orbfile1_1
+        print *, "Give first orbitlibrary name, file 2:"
+        read (unit=*, fmt="(a256)") orbfile1_2
+        orbfile1_2 = trim(orbfile1_2)
+        print *, orbfile1_2
+        qgrid_unit1 = 27
+        open (unit=qgrid_unit1, file=orbfile1_1, action="read", &
+            status="old", form="unformatted", position="rewind")
+        if (orbfile1_1 == orbfile1_2) then
+            hist_unit1 = qgrid_unit1
+        else
+            hist_unit1 = 37
+            open (unit=hist_unit1, file=orbfile1_2, action="read", &
+                status="old", form="unformatted", position="rewind")
+        end if
+        read (unit=qgrid_unit1) norb(1), t1, t2, t3, ndith(1)
         print *, norb(1), t1, t2, t3, ndith(1)
-        read (unit=27) smom1, sph1, sth1, slr1
+        read (unit=qgrid_unit1) smom1, sph1, sth1, slr1
         print *, smom1, sph1, sth1, slr1
         smom1 = 16
         if (slr1*sth1*sph1 /= massconstr) &
@@ -116,27 +137,42 @@ contains
         ! remember that N bins have N+1 boundaries
         allocate (quad_lr(slr1 + 1), quad_lth(sth1 + 1), quad_lph(sph1 + 1), &
                   quad_light(smom1, sph1, sth1, slr1))
-        read (unit=27) quad_lr(:)
+        read (unit=qgrid_unit1) quad_lr(:)
         print *, "  * Intrinisic grid radii:"
         print *, quad_lr/conversion_factor
-        read (unit=27) quad_lth(:)
-        read (unit=27) quad_lph(:)
-        read (unit=27) nconstrl(1), nvhist(1), dvhist(1)
+        read (unit=qgrid_unit1) quad_lth(:)
+        read (unit=qgrid_unit1) quad_lph(:)
+        read (unit=hist_unit1) nconstrl(1), nvhist(1), dvhist(1)
 
-        print *, "Give second orbitlibrary name:"
+        print *, "Give second orbitlibrary name, file 1:"
         print *, "Remember that this library is not (velocity) mirrored"
-        read (unit=*, fmt="(a256)") orbfile2
-        open (unit=28, file=orbfile2, action="read", &
-              status="old", form="unformatted", position="rewind")
-        read (unit=28) norb(2), t1, t2, t3, ndith(2)
-        read (unit=28) smom2, sph2, sth2, slr2
+        read (unit=*, fmt="(a256)") orbfile2_1
+        orbfile2_1 = trim(orbfile2_1)
+        print *, orbfile2_1
+        print *, "Give second orbitlibrary name, file 2:"
+        print *, "Remember that this library is not (velocity) mirrored"
+        read (unit=*, fmt="(a256)") orbfile2_2
+        orbfile2_2 = trim(orbfile2_2)
+        print *, orbfile2_2
+        qgrid_unit2 = 28
+        open (unit=qgrid_unit2, file=orbfile2_1, action="read", &
+            status="old", form="unformatted", position="rewind")
+        if (orbfile2_1 == orbfile2_2) then
+            hist_unit2 = qgrid_unit2
+        else
+            hist_unit2 = 38
+            open (unit=hist_unit2, file=orbfile2_2, action="read", &
+                status="old", form="unformatted", position="rewind")
+        end if
+        read (unit=qgrid_unit2) norb(2), t1, t2, t3, ndith(2)
+        read (unit=qgrid_unit2) smom2, sph2, sth2, slr2
         !if ( smom1 /= smom2 .or. slr1 /= slr2 .or. sth1 /= sth2 .or. sph1 /= sph2 ) &
         !     stop "  Intrinsic grid is not the same size as the other library"
 
-        read (unit=28) quad_lr(:)
-        read (unit=28) quad_lth(:)
-        read (unit=28) quad_lph(:)
-        read (unit=28) nconstrl(2), nvhist(2), dvhist(2)
+        read (unit=qgrid_unit2) quad_lr(:)
+        read (unit=qgrid_unit2) quad_lth(:)
+        read (unit=qgrid_unit2) quad_lph(:)
+        read (unit=hist_unit2) nconstrl(2), nvhist(2), dvhist(2)
 
         print *, nconstrl(2), nvhist(2), dvhist(2)
         deallocate (quad_lr, quad_lth, quad_lph)
@@ -164,16 +200,26 @@ contains
 
             do j = 1, norb(i) ! loop over orbits
                 print *, " Orbit :", j, orboffset
-                read (unit=26 + i) t1, orbnumbers(1:4)
+                if (i == 1) then
+                    read_from = qgrid_unit1
+                else
+                    read_from = qgrid_unit2
+                end if
+                read (read_from) t1, orbnumbers(1:4)
                 if (t1 /= j) stop " orbit number does not match"
-                read (unit=26 + i) orbtypes(:)
-                read (unit=26 + i) quad_light(:, :, :, :)
+                read (unit=read_from) orbtypes(:)
+                read (unit=read_from) quad_light(:, :, :, :)
 
+                if (i == 1) then
+                    read_from = hist_unit1
+                else
+                    read_from = hist_unit2
+                end if
                 velhist(:, :) = 0.0_dp
                 do k = 1, nconstr ! loop over apertures
-                    read (unit=26 + i) ivmin, ivmax
+                    read (unit=read_from) ivmin, ivmax
                     if (ivmin <= ivmax) &
-                        read (unit=26 + i) velhist(ivmin:ivmax, k)
+                        read (unit=read_from) velhist(ivmin:ivmax, k)
                 end do
                 ! Loop over orbit with reverse angular momentum.
                 ! Do not loop when i=2 (=second orbitlibray)
@@ -309,8 +355,10 @@ contains
             deallocate (velhist, veltmp, orbtypes)
         end do
 
-        close (unit=27)
-        close (unit=28)
+        close (unit=qgrid_unit1)
+        if (qgrid_unit1 /= hist_unit1) close (unit=hist_unit1)
+        close (unit=qgrid_unit2)
+        if (qgrid_unit2 /= hist_unit2) close (unit=hist_unit2)
 
         orbitsinfit = orboffset
         print *, "  * Orbits in fit :", orbitsinfit
@@ -1360,29 +1408,48 @@ contains
         real(kind=dp), dimension(nconstr, hermax) :: modvel
         real(kind=dp), dimension(nconstr)        :: fitapermass
         character(len=260) :: outroot_kinem
+
+        integer(kind=i4b) :: qgrid_unit1, qgrid_unit2, hist_unit1, hist_unit2, read_from
+
         print *, "  * Reading orbit libraries"
 
-        open (unit=27, file=orbfile1, action="read", &
-              status="old", form="unformatted", position="rewind")
-        read (unit=27) norb(1), t1, t2, t3, ndith(1)
-        read (unit=27) smom1, sph1, sth1, slr1
+        qgrid_unit1 = 27
+        open (unit=qgrid_unit1, file=orbfile1_1, action="read", &
+            status="old", form="unformatted", position="rewind")
+        if (orbfile1_1 == orbfile1_2) then
+            hist_unit1 = qgrid_unit1
+        else
+            hist_unit1 = 37
+            open (unit=hist_unit1, file=orbfile1_2, action="read", &
+                status="old", form="unformatted", position="rewind")
+        end if
+        read (unit=qgrid_unit1) norb(1), t1, t2, t3, ndith(1)
+        read (unit=qgrid_unit1) smom1, sph1, sth1, slr1
         smom1 = 16
         allocate (quad_lr(slr1 + 1), quad_lth(sth1 + 1), quad_lph(sph1 + 1), &
                   quad_light(smom1, sph1, sth1, slr1), quad_store(smom1, sph1, sth1, slr1))
-        read (unit=27) quad_lr(:)
-        read (unit=27) quad_lth(:)
-        read (unit=27) quad_lph(:)
-        read (unit=27) nconstrl(1), nvhist(1), dvhist(1)
+        read (unit=qgrid_unit1) quad_lr(:)
+        read (unit=qgrid_unit1) quad_lth(:)
+        read (unit=qgrid_unit1) quad_lph(:)
+        read (unit=hist_unit1) nconstrl(1), nvhist(1), dvhist(1)
 
-        open (unit=28, file=orbfile2, action="read", &
-              status="old", form="unformatted", position="rewind")
-        read (unit=28) norb(2), t1, t2, t3, ndith(2)
-        read (unit=28) smom2, sph2, sth2, slr2
+        qgrid_unit2 = 28
+        open (unit=qgrid_unit2, file=orbfile2_1, action="read", &
+            status="old", form="unformatted", position="rewind")
+        if (orbfile2_1 == orbfile2_2) then
+            hist_unit2 = qgrid_unit2
+        else
+            hist_unit2 = 38
+            open (unit=hist_unit2, file=orbfile2_2, action="read", &
+                status="old", form="unformatted", position="rewind")
+        end if
+        read (unit=qgrid_unit2) norb(2), t1, t2, t3, ndith(2)
+        read (unit=qgrid_unit2) smom2, sph2, sth2, slr2
 
-        read (unit=28) quad_lr(:)
-        read (unit=28) quad_lth(:)
-        read (unit=28) quad_lph(:)
-        read (unit=28) nconstrl(2), nvhist(2), dvhist(2)
+        read (unit=qgrid_unit2) quad_lr(:)
+        read (unit=qgrid_unit2) quad_lth(:)
+        read (unit=qgrid_unit2) quad_lph(:)
+        read (unit=hist_unit2) nconstrl(2), nvhist(2), dvhist(2)
 
         if (nvhist(1) /= nvhist(2) .or. dvhist(1) /= dvhist(2)) &
             stop " Velocity histograms of both libs are inconsistent"
@@ -1406,16 +1473,26 @@ contains
             allocate (orbtypes(ndith(i)**3))
 
             do j = 1, norb(i) ! loop over orbits
-                read (unit=26 + i) t1, t2, t3, t4
+                if (i == 1) then
+                    read_from = qgrid_unit1
+                else
+                    read_from = qgrid_unit2
+                end if
+                read (unit=read_from) t1, t2, t3, t4
                 if (t1 /= j) stop " orbit number does not match"
-                read (unit=26 + i) orbtypes(:)
-                read (unit=26 + i) quad_light(:, :, :, :)
+                read (unit=read_from) orbtypes(:)
+                read (unit=read_from) quad_light(:, :, :, :)
                 velhist(:, :) = 0.0_dp
 
+                if (i == 1) then
+                    read_from = hist_unit1
+                else
+                    read_from = hist_unit2
+                end if
                 do k = 1, nconstr ! loop over apertures
-                    read (unit=26 + i) ivmin, ivmax
+                    read (unit=read_from) ivmin, ivmax
                     if (ivmin <= ivmax) &
-                        read (unit=26 + i) velhist(ivmin:ivmax, k)
+                        read (unit=read_from) velhist(ivmin:ivmax, k)
                 end do
 
                 ! Loop over orbit with reverse angular momentum.
@@ -1507,8 +1584,10 @@ contains
             deallocate (orbtypes)
         end do
 
-        close (unit=27)
-        close (unit=28)
+        close (unit=qgrid_unit1)
+        if (qgrid_unit1 /= hist_unit1) close (unit=hist_unit1)
+        close (unit=qgrid_unit2)
+        if (qgrid_unit2 /= hist_unit2) close (unit=hist_unit2)
 
         print *, "  done reading orblibs"
 
