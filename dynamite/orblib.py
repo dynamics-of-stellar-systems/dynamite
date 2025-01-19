@@ -92,7 +92,7 @@ class LegacyOrbitLibrary(OrbitLibrary):
         # check if orbit library was calculated already (FIXME: improve this!)
         f_root = self.mod_dir + 'datfil/'
         check = os.path.isfile(f_root + 'orblib.dat.bz2') \
-                and os.path.isfile(f_root + 'datfil/orblibbox.dat.bz2')
+                and os.path.isfile(f_root + 'orblibbox.dat.bz2')
         if not check:
             check = os.path.isfile(f_root + 'orblib_qgrid.dat.bz2') \
                     and os.path.isfile(f_root + 'orblib_losvd_hist.dat.bz2') \
