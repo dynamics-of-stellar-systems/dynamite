@@ -134,14 +134,14 @@ The following types of component are available, listed with their parameters:
     - ``gam``: AKA gamma, the inner logarithmic density slope, must be :math:`\leq 1`
 
 .. note::
-  currently, there is only one combination of component types that is valid. This is to ensure compatibility with the Fortran implementation of the orbit integrator. Later implementations may offer more flexibility. The only current valid combination of components is:
+  currently, there are only two combinations of component types that are valid. This is to ensure compatibility with the Fortran implementation of the orbit integrator. Later implementations may offer more flexibility. The current valid combinations of components are:
 
   - one ``Plummer`` component
       - representing the black hole
       - the scale length ``a`` should be fixed to some arbitrarily small value
   - one ``TriaxialVisibleComponent`` component
       - representing the stars
-  - exactly one out of [``NFW``, ``NFW_m200_c``, ``Hernquist``, ``TriaxialCoredLogPotential``, ``GeneralisedNFW``]
+  - either no dark halo or exactly one out of [``NFW``, ``NFW_m200_c``, ``Hernquist``, ``TriaxialCoredLogPotential``, ``GeneralisedNFW``]
       - representing the dark halo
 
 .. _observed_data:

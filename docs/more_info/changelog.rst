@@ -4,7 +4,7 @@
 Change Log
 ****************
 
-- Bugfix: a dark halo is no longer mandatory (models can consist of either zero or one dark halo component)
+- New feature: a dark halo is no longer mandatory (models can consist of either zero or one dark halo component)
 - Improvement: minor improvements of tutorials 2 and 3
 
 Version: 4.3
