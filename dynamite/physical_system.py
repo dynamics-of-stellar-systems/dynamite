@@ -381,6 +381,8 @@ class Component(object):
             self.name = name
         self.visible = visible
         self.contributes_to_potential = contributes_to_potential
+        self.logger.info(f'{self.name}: DYNAMITE will currently ignore the '
+                         'mandatory attribute contributes_to_potential.')
         self.symmetry = symmetry
         self.kinematic_data = kinematic_data
         self.population_data = population_data
