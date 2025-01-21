@@ -30,4 +30,4 @@ for v_sigma_option in ('moments', 'fit'):
                                    'disk': True, 'cr_thin_d': True,
                                    'cr_thick_d': True, 'cr_disk': True,
                                    'bulge': True, 'all': True},
-                        individual_sb_colorbars=True)
+                        individual_colorbars=True)

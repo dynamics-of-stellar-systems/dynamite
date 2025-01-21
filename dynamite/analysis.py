@@ -113,7 +113,7 @@ class Decomposition:
                     ylim,
                     v_sigma_option='fit',
                     comps_plot='all',
-                    individual_sb_colorbars=False,
+                    individual_colorbars=False,
                     figtype='.png'):
         """ Generate decomposition plots.
 
@@ -135,10 +135,18 @@ class Decomposition:
                           'cr_disk: False', 'bulge': False, 'all': False} will
             only create the plots for 'thin_d', 'thick_d', and 'disk'. `False`
             entries can be omitted in the dictionary. The default is 'all'.
-        individual_sb_colorbars : bool, optional
-            If True, then each component's surface brightness colorbar adapts
-            to its respective value range. This can be useful for identifying
-            structures invisible otherwise. The default is False.
+        individual_colorbars : bool or dict, optional
+            If True, then the sb (surface brightness), vel (velocity), and
+            sig (velocity dispersion) colorbars adapt to their respective
+            value ranges. This can be useful for identifying structures
+            invisible otherwise.
+            If False, the sb, vel, and sig colorbars will be the same for all
+            components.
+            The individual colorbars are accessed by passing a dict. For
+            example: {'sb': True, 'vel': False, 'sig': False} will only
+            adapt the sb colorbar to the respective component's value range.
+            'False' entries can be omitted.
+            The default is individual_colorbars=False.
         figtype : str, optional
             Determines the file format and extension to use when saving the
             figure. The default is '.png'.
@@ -160,6 +168,14 @@ class Decomposition:
             if comp not in comps_plot:
                 comps_plot[comp] = False
         self.logger.info(f'Plotting data for components {comps_plot}.')
+
+        if type(individual_colorbars) is bool:
+            switch = individual_colorbars
+            individual_colorbars = {k: switch for k in ['sb', 'vel', 'sig']}
+        else:
+            for k in ['sb', 'vel', 'sig']:
+                if k not in individual_colorbars:
+                    individual_colorbars[k] = False
 
         stars = \
         self.config.system.get_component_from_class(
@@ -184,6 +200,9 @@ class Decomposition:
         t = []
         min_flux = {}
         max_flux = {}
+        max_vel = {}
+        min_sig = {}
+        max_sig = {}
         last_comps_idx = len(comps) - 1
         for c_idx, comp in enumerate(comps):
             labels = [col for col in comp_kinem_moments.colnames
@@ -197,25 +216,40 @@ class Decomposition:
             t.append(tt.copy())
             vel.append(comp_kinem_moments[labels[1]])
             sig.append(comp_kinem_moments[labels[2]])
-            min_flux[comp] = np.nanmin(np.log10(tt))
+            min_flux[comp] = np.nanmin(np.log10(tt[tt != 0]))
             max_flux[comp] = np.nanmax(np.log10(tt[tt != 0]))
+            max_vel[comp] = max(np.nanmax(vel[c_idx]), -np.nanmin(vel[c_idx]))
+            min_sig[comp] = np.nanmin(np.array(sig[c_idx])[np.array(sig[c_idx]) > 0])
+            max_sig[comp] = np.nanmax(np.array(sig[c_idx])[np.array(sig[c_idx]) > 0])
             if c_idx == last_comps_idx:  # the last item MUST be 'all'
-                minf = np.nanmin(np.log10(tt))
-                maxf = np.nanmax(np.log10(tt[tt !=0]))
+                # minf = np.nanmin(np.log10(tt))
+                # maxf = np.nanmax(np.log10(tt[tt !=0]))
+                # maxv = max_vel[comp]
+                # mins = min_sig[comp]
+                # maxs = max_sig[comp]
                 totalf = np.sum(tt)  # tt here refers to the 'all' comp
 
         t = t/totalf
+        for comp in comps:
+            if not individual_colorbars['sb']:
+                min_flux[comp] = min(min_flux[c] for c in comps)
+                max_flux[comp] = max(max_flux[c] for c in comps)
+            if not individual_colorbars['vel']:
+                max_vel[comp] = max(max_vel[c] for c in comps)
+            if not individual_colorbars['sig']:
+                min_sig[comp] = min(min_sig[c] for c in comps)
+                max_sig[comp] = max(max_sig[c] for c in comps)
 
-        if not individual_sb_colorbars:
-            for comp in comps:
-                min_flux[comp] = minf
-                max_flux[comp] = maxf
+        # if not individual_sb_colorbars:
+        #     for comp in comps:
+        #         min_flux[comp] = minf
+        #         max_flux[comp] = maxf
 
-        vmax = np.nanmax(vel)
-        sig_t = np.array(sig)
+        # vmax = np.nanmax(vel)
+        # sig_t = np.array(sig)
 
-        smax = np.nanmax(sig_t[sig_t > 0])
-        smin = np.nanmin(sig_t[sig_t > 0])
+        # smax = np.nanmax(sig_t[sig_t > 0])
+        # smin = np.nanmin(sig_t[sig_t > 0])
 
         xi_t=(xi[s])
         yi_t=(yi[s])
@@ -239,7 +273,8 @@ class Decomposition:
         self.logger.info('Component grid kinematics written to '
                          f'{table_file_name}.')
 
-        self.logger.debug(f'{v_sigma_option}: {vmax=}, {smax=}, {smin=}.')
+        self.logger.debug(f'{v_sigma_option}: {min_flux=}, {max_flux=}, '
+                          f'{max_vel=}, {min_sig=}, {max_sig=}.')
 
         c_skipped = len([comp for comp in comps_plot if not comps_plot[comp]])
         LL = len(comps) - c_skipped
@@ -280,13 +315,15 @@ class Decomposition:
             if i_plot == 0:
                 plt.title('velocity',fontsize=20,pad=20)
             display_pixels(xi_t, yi_t, vel[c_idx][grid[s]],
-                           vmin=-1.0*vmax, vmax=vmax, **kw_display2)
+                           vmin=-1.0*max_vel[comp], vmax=max_vel[comp],
+                           **kw_display2)
 
             plt.subplot(LL, 3, 3*i_plot+3)
             if i_plot == 0:
                 plt.title('velocity dispersion',fontsize=20,pad=20)
             display_pixels(xi_t, yi_t, sig[c_idx][grid[s]],
-                           vmin=smin, vmax=smax, **kw_display1)
+                           vmin=min_sig[comp], vmax=max_sig[comp],
+                           **kw_display1)
             i_plot += 1
 
         plt.tight_layout()
