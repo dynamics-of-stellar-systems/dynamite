@@ -4,7 +4,8 @@
 Change Log
 ****************
 
-
+- Bugfix: avoid DYNAMITE crashing because it gets stuck in a model directory due to a Fortran error
+- Improvement: better error messages to improve debugging with multiprocessing
 - Improvement: minor improvements of tutorials 2 and 3
 
 Version: 4.3
