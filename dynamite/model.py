@@ -452,7 +452,8 @@ class AllModels(object):
             if np.allclose(row_comp, tuple(row)):
                 break
         else:
-            text = 'Cannot find model in all_models table.'
+            text = 'Cannot find model with parset ' \
+                   f'{row_comp} in all_models table.'
             self.logger.error(text)
             raise ValueError(text)
         return row_id
@@ -489,16 +490,18 @@ class AllModels(object):
                               "implementation")
             raise
         row_comp = tuple(self.table[orblib_parameters][model_id])
+        model_dir = self.table['directory'][model_id]
         for row_id, row in enumerate( \
                                  self.table[orblib_parameters][:model_id+1]):
             if np.allclose(row_comp, tuple(row)):
                 ml_orblib = self.table['ml'][row_id]
-                self.logger.debug(f'Orblib of model #{model_id} has original '
+                ml_orblib_dir = self.table['directory'][row_id]
+                self.logger.debug(f'Orblib of model {model_dir} has original '
                                   f'ml value of {ml_orblib} '
-                                  f'(model #{row_id}).')
+                                  f'(model {ml_orblib_dir}).')
                 break
         else:
-            text = f'Cannot find orblib for model #{model_id} in ' \
+            text = f'Cannot find orblib of model {model_dir} in ' \
                    'all_models table.'
             self.logger.error(text)
             raise ValueError(text)
@@ -889,7 +892,7 @@ class Model(object):
         """
         if not os.path.isfile(self.config.config_file_name):
             txt = f'Unexpected: config file {self.config.config_file_name}' + \
-                  ' not found.'
+                  f' not found (looking in {os.getcwd()}).'
             self.logger.error(txt)
             raise FileNotFoundError(txt)
         model_yaml_files = glob.glob(self.directory+'*.yaml')

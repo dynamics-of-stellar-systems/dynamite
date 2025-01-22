@@ -276,7 +276,8 @@ class LegacyWeightSolver(WeightSolver):
         """
         self.logger.info(f"Using WeightSolver: {__class__.__name__}")
         if (not ignore_existing_weights) and self.weight_file_exists():
-            self.logger.info("Reading NNLS solution from existing output.")
+            self.logger.info("Reading NNLS solution from existing output "
+                             f"{self.weight_file}.")
             results = ascii.read(self.weight_file)
             weights = results['weights']
             chi2_tot = results.meta['chi2_tot']
@@ -824,7 +825,8 @@ class NNLS(WeightSolver):
                                         # orblib.projected_masses
         if (not ignore_existing_weights) and self.weight_file_exists():
             results = ascii.read(self.weight_file, format='ecsv')
-            self.logger.info("NNLS solution read from existing output")
+            self.logger.info("NNLS solution read from existing output "
+                             f"{self.weight_file}.")
             weights = results['weights']
             chi2_tot = results.meta['chi2_tot']
             chi2_kin = results.meta['chi2_kin']
@@ -873,7 +875,8 @@ class NNLS(WeightSolver):
                 results.write(self.weight_file,
                               format='ascii.ecsv',
                               overwrite=True)
-                self.logger.info("NNLS problem solved and chi2 calculated.")
+                self.logger.info("NNLS problem solved and chi2 calculated for "
+                                 f"model {self.direc_with_ml}.")
             else:
                 chi2_tot = chi2_kin = chi2_kinmap = np.nan
             # delete existing .yaml files and copy current config file
