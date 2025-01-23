@@ -89,10 +89,16 @@ class LegacyOrbitLibrary(OrbitLibrary):
             - +8 log and status files
 
         """
-        # check if orbit library was calculated already
-        check1 = os.path.isfile(self.mod_dir+'datfil/orblib.dat.bz2')
-        check2 = os.path.isfile(self.mod_dir+'datfil/orblibbox.dat.bz2')
-        if not check1 or not check2:
+        # check if orbit library was calculated already (FIXME: improve this!)
+        f_root = self.mod_dir + 'datfil/'
+        check = os.path.isfile(f_root + 'orblib.dat.bz2') \
+                and os.path.isfile(f_root + 'orblibbox.dat.bz2')
+        if not check:
+            check = os.path.isfile(f_root + 'orblib_qgrid.dat.bz2') \
+                    and os.path.isfile(f_root + 'orblib_losvd_hist.dat.bz2') \
+                    and os.path.isfile(f_root + 'orblibbox_qgrid.dat.bz2') \
+                    and os.path.isfile(f_root + 'orblibbox_losvd_hist.dat.bz2')
+        if not check:  # need to calculate orblib
             # prepare the fortran input files for orblib
             self.create_fortran_input_orblib(self.mod_dir+'infil/')
             if self.system.is_bar_disk_system():
@@ -363,10 +369,16 @@ class LegacyOrbitLibrary(OrbitLibrary):
                 label = f'[binfile for populations aperture {1+i}]'
                 line = f'"infil/{pop_i.binfile}"{tab[:-3]}{label}\n'
                 f.write(line)
-            if box:
-                f.write(f'datfil/orblibbox.dat\n')
-            else:
-                f.write(f'datfil/orblib.dat\n')
+            o_file = 'datfil/orblibbox' if box else 'datfil/orblib'
+            f_name = f'"{o_file}_qgrid.dat"'
+            f.write(f'{f_name}{tab[:-4] if len(f_name) >= 32 else tab[:-3]}'
+                    '[orbit qgrid file]\n')
+            f_name = f'"{o_file}_losvd_hist.dat"'
+            f.write(f'{f_name}{tab[:-4] if len(f_name) >= 32 else tab[:-3]}'
+                    '[orbit losvd 1d hist file]\n')
+            f_name = f'"{o_file}.dat_orbclass.out"'
+            f.write(f'{f_name}{tab[:-4] if len(f_name) >= 32 else tab[:-3]}'
+                    '[orbit classification file]\n')
             f.close()
         write_orblib_dot_in(box=False)
         write_orblib_dot_in(box=True)
@@ -374,7 +386,7 @@ class LegacyOrbitLibrary(OrbitLibrary):
         #write triaxmass.in
         #-------------------
         text='infil/parameters_lum.in' +'\n' + \
-        'datfil/orblib.dat' +'\n' + \
+        'datfil/orblib_qgrid.dat' +'\n' + \
         'datfil/mass_radmass.dat' +'\n' + \
         'datfil/mass_qgrid.dat'
         triaxmass_file= open(path+'triaxmass.in',"w")
@@ -425,12 +437,13 @@ class LegacyOrbitLibrary(OrbitLibrary):
         cur_dir = os.getcwd()
         os.chdir(self.mod_dir)
         cmdstr = self.write_executable_for_ics()
-        self.logger.info('Calculating initial conditions')
+        self.logger.info(f'Calculating initial conditions for {self.mod_dir}.')
         # p = subprocess.call('bash '+cmdstr, shell=True)
         p = subprocess.run('bash '+cmdstr,
                            stdout=subprocess.PIPE,
                            stderr=subprocess.STDOUT,
                            shell=True)
+        os.chdir(cur_dir)
         log_file = f'Logfile: {self.mod_dir}datfil/orbstart.log.'
         if not p.stdout.decode("UTF-8"):
             self.logger.info(f'...done - {cmdstr} exit code {p.returncode}. '
@@ -446,7 +459,6 @@ class LegacyOrbitLibrary(OrbitLibrary):
                 text += f'{log_file} Be wary: DYNAMITE may crash...'
                 self.logger.warning(text)
                 raise RuntimeError(text)
-        os.chdir(cur_dir)
 
     def write_executable_for_ics(self):
         """Write the bash script to calculate orbit ICs
@@ -471,12 +483,15 @@ class LegacyOrbitLibrary(OrbitLibrary):
         cur_dir = os.getcwd()
         os.chdir(self.mod_dir)
         cmdstr = self.write_executable_for_integrate_orbits_par()
-        self.logger.info('Integrating orbit library tube and box orbits')
+        self.logger.info('Integrating orbit library tube and box orbits '
+                         f'for {self.mod_dir}.')
         # p = subprocess.call('bash '+cmdstr_tube, shell=True)
         p = subprocess.run('bash '+cmdstr,
                            stdout=subprocess.PIPE,
                            stderr=subprocess.STDOUT,
                            shell=True)
+        # move back to original directory
+        os.chdir(cur_dir)
         log_files = f'Logfiles: {self.mod_dir}datfil/orblib.log, ' \
                     f'{self.mod_dir}datfil/orblibbox.log, ' \
                     f'{self.mod_dir}datfil/triaxmass.log, ' \
@@ -495,8 +510,6 @@ class LegacyOrbitLibrary(OrbitLibrary):
                 text += f'{log_files} Be wary: DYNAMITE may crash...'
                 self.logger.warning(text)
                 raise RuntimeError(text)
-        # move back to original directory
-        os.chdir(cur_dir)
 
     def get_orbit_library(self):
         """Execute the bash script to calculate orbit libraries
@@ -505,12 +518,15 @@ class LegacyOrbitLibrary(OrbitLibrary):
         cur_dir = os.getcwd()
         os.chdir(self.mod_dir)
         cmdstr_tube, cmdstr_box = self.write_executable_for_integrate_orbits()
-        self.logger.info('Integrating orbit library tube orbits')
+        self.logger.info('Integrating orbit library tube orbits '
+                         f'for {self.mod_dir}.')
         # p = subprocess.call('bash '+cmdstr_tube, shell=True)
         p = subprocess.run('bash '+cmdstr_tube,
                            stdout=subprocess.PIPE,
                            stderr=subprocess.STDOUT,
                            shell=True)
+        # move back to original directory
+        os.chdir(cur_dir)
         log_files = f'Logfiles: {self.mod_dir}datfil/orblib.log, ' \
                     f'{self.mod_dir}datfil/triaxmass.log, ' \
                     f'{self.mod_dir}datfil/triaxmassbin.log.'
@@ -528,12 +544,16 @@ class LegacyOrbitLibrary(OrbitLibrary):
                 text += f'{log_files} Be wary: DYNAMITE may crash...'
                 self.logger.warning(text)
                 raise RuntimeError(text)
-        self.logger.info('Integrating orbit library box orbits')
+        os.chdir(self.mod_dir)
+        self.logger.info('Integrating orbit library box orbits '
+                         f'for {self.mod_dir}.')
         # p = subprocess.call('bash '+cmdstr_box, shell=True)
         p = subprocess.run('bash '+cmdstr_box,
                            stdout=subprocess.PIPE,
                            stderr=subprocess.STDOUT,
                            shell=True)
+        # move back to original directory
+        os.chdir(cur_dir)
         log_file = f'Logfile: {self.mod_dir}datfil/orblibbox.log.'
         if not p.stdout.decode("UTF-8"):
             self.logger.info(f'...done - {cmdstr_box} exit code '
@@ -549,18 +569,14 @@ class LegacyOrbitLibrary(OrbitLibrary):
                 text += f'{log_file} Be wary: DYNAMITE may crash...'
                 self.logger.warning(text)
                 raise RuntimeError(text)
-        # move back to original directory
-        os.chdir(cur_dir)
 
     def write_executable_for_integrate_orbits_par(self):
         """Write the bash script to calculate orbit libraries
         """
         if self.system.is_bar_disk_system():
             orb_prgrm = 'orblib_bar'
-        elif self.settings['use_new_mirroring']:
-            orb_prgrm = 'orblib_new_mirror'
         else:
-            orb_prgrm = 'orblib'
+            orb_prgrm = 'orblib_new_mirror'
         cmd_string = 'cmd_tube_box_orbs'
         txt_file = open(cmd_string, "w")
         txt_file.write('#!/bin/bash\n')
@@ -569,7 +585,8 @@ class LegacyOrbitLibrary(OrbitLibrary):
             txt_file.write(f'test -e {self.legacy_directory}/{f_name} || ' +
                            f'{{ echo "File {self.legacy_directory}/{f_name} ' +
                            'not found." && exit 127; }\n')
-        txt_file.write('(rm -f datfil/orblib.dat.tmp datfil/orblib.dat\n')
+        txt_file.write('(rm -f datfil/orblib.dat.tmp datfil/orblib_qgrid.dat '
+                        'datfil/orblib_losvd_hist.dat\n')
         txt_file.write(f'{self.legacy_directory}/{orb_prgrm} < infil/orblib.in '
                         '>> datfil/orblib.log\n')
         txt_file.write('rm -f datfil/mass_qgrid.dat datfil/mass_radmass.dat '
@@ -586,16 +603,24 @@ class LegacyOrbitLibrary(OrbitLibrary):
             txt_file.write(f'{self.legacy_directory}/triaxmassbin '
                            '< infil/triaxmassbin.in >> datfil/triaxmassbin.log\n')
 
-        txt_file.write('rm -f datfil/orblib.dat.bz2 '
-                        '&& bzip2 -k datfil/orblib.dat\n')
-        txt_file.write('rm datfil/orblib.dat) &\n')
+        txt_file.write('rm -f datfil/orblib_qgrid.dat.bz2 '
+                    '&& bzip2 -k datfil/orblib_qgrid.dat\n')
+        txt_file.write('rm datfil/orblib_qgrid.dat\n')
+        txt_file.write('rm -f datfil/orblib_losvd_hist.dat.bz2 '
+                    '&& bzip2 -k datfil/orblib_losvd_hist.dat\n')
+        txt_file.write('rm datfil/orblib_losvd_hist.dat) &\n')
         txt_file.write('orblib=$!\n')
-        txt_file.write('(rm -f datfil/orblibbox.dat.tmp datfil/orblibbox.dat\n')
+        txt_file.write('(rm -f datfil/orblibbox.dat.tmp '
+                        'datfil/orblibbox_qgrid.dat '
+                        'datfil/orblibbox_losvd_hist.dat\n')
         txt_file.write(f'{self.legacy_directory}/{orb_prgrm} '
                        '< infil/orblibbox.in >> datfil/orblibbox.log\n')
-        txt_file.write('rm -f datfil/orblibbox.dat.bz2 '
-                       '&& bzip2 -k datfil/orblibbox.dat\n')
-        txt_file.write('rm datfil/orblibbox.dat) &\n')
+        txt_file.write('rm -f datfil/orblibbox_qgrid.dat.bz2 '
+                    '&& bzip2 -k datfil/orblibbox_qgrid.dat\n')
+        txt_file.write('rm datfil/orblibbox_qgrid.dat\n')
+        txt_file.write('rm -f datfil/orblibbox_losvd_hist.dat.bz2 '
+                    '&& bzip2 -k datfil/orblibbox_losvd_hist.dat\n')
+        txt_file.write('rm datfil/orblibbox_losvd_hist.dat) &\n')
         txt_file.write('orblibbox=$!\n')
         txt_file.write('wait $orblib $orblibbox\n')
         txt_file.close()
@@ -607,10 +632,8 @@ class LegacyOrbitLibrary(OrbitLibrary):
         """
         if self.system.is_bar_disk_system():
             orb_prgrm = 'orblib_bar'
-        elif self.settings['use_new_mirroring']:
-            orb_prgrm = 'orblib_new_mirror'
         else:
-            orb_prgrm = 'orblib'
+            orb_prgrm = 'orblib_new_mirror'
         # tubeorbits
         cmdstr_tube = 'cmd_tube_orbs'
         txt_file = open(cmdstr_tube, "w")
@@ -620,8 +643,10 @@ class LegacyOrbitLibrary(OrbitLibrary):
             txt_file.write(f'test -e {self.legacy_directory}/{f_name} || ' +
                            f'{{ echo "File {self.legacy_directory}/{f_name} ' +
                            'not found." && exit 127; }\n')
-        txt_file.write('rm -f datfil/orblib.dat.tmp datfil/orblib.dat '
-                       'datfil/orblib.dat.bz2\n')
+        txt_file.write('rm -f datfil/orblib.dat.tmp datfil/orblib_qgrid.dat '
+                        'datfil/orblib_qgrid.dat.bz2 '
+                        'datfil/orblib_losvd_hist.dat '
+                        'datfil/orblib_losvd_hist.dat.bz2\n')
         txt_file.write(f'{self.legacy_directory}/{orb_prgrm} < infil/orblib.in '
                        '>> datfil/orblib.log\n')
         txt_file.write('rm -f datfil/mass_qgrid.dat datfil/mass_radmass.dat '
@@ -630,10 +655,10 @@ class LegacyOrbitLibrary(OrbitLibrary):
                        '< infil/triaxmass.in >> datfil/triaxmass.log\n')
         txt_file.write(f'{self.legacy_directory}/triaxmassbin '
                        '< infil/triaxmassbin.in >> datfil/triaxmassbin.log\n')
-        txt_file.write(
-            'bzip2 -kc datfil/orblib.dat > datfil/orblib.dat.staging.bz2 '
-            '&& mv datfil/orblib.dat.staging.bz2 datfil/orblib.dat.bz2\n')
-        txt_file.write('rm datfil/orblib.dat\n')
+        for f_name in 'datfil/orblib_qgrid', 'datfil/orblib_losvd_hist':
+            txt_file.write(f'bzip2 -kc {f_name}.dat > {f_name}.dat.staging.bz2 '
+                           f'&& mv {f_name}.dat.staging.bz2 {f_name}.dat.bz2\n')
+            txt_file.write(f'rm {f_name}.dat\n')
         txt_file.close()
         # boxorbits
         cmdstr_box = 'cmd_box_orbs'
@@ -643,14 +668,18 @@ class LegacyOrbitLibrary(OrbitLibrary):
         txt_file.write(f'test -e {self.legacy_directory}/{orb_prgrm} || ' +
                        f'{{ echo "File {self.legacy_directory}/{orb_prgrm} ' +
                        'not found." && exit 127; }\n')
-        txt_file.write('rm -f datfil/orblibbox.dat.tmp datfil/orblibbox.dat '
-                       'datfil/orblibbox.dat.bz2\n')
+        txt_file.write('rm -f datfil/orblibbox.dat.tmp '
+                        'datfil/orblibbox_qgrid.dat '
+                        'datfil/orblibbox_qgrid.dat.bz2 '
+                        'datfil/orblibbox_losvd_hist.dat '
+                        'datfil/orblibbox_losvd_hist.dat.bz2\n')
         txt_file.write(f'{self.legacy_directory}/{orb_prgrm} '
                        '< infil/orblibbox.in >> datfil/orblibbox.log\n')
-        txt_file.write(
-            'bzip2 -kc datfil/orblibbox.dat > datfil/orblibbox.dat.staging.bz2 '
-            '&& mv datfil/orblibbox.dat.staging.bz2 datfil/orblibbox.dat.bz2\n')
-        txt_file.write('rm datfil/orblibbox.dat\n')
+        for f_name in 'datfil/orblibbox_qgrid', 'datfil/orblibbox_losvd_hist':
+            txt_file.write(
+                f'bzip2 -kc {f_name}.dat > {f_name}.dat.staging.bz2 '
+                f'&& mv {f_name}.dat.staging.bz2 {f_name}.dat.bz2\n')
+            txt_file.write(f'rm {f_name}.dat\n')
         txt_file.close()
         # returns the name of the executables
         return cmdstr_tube, cmdstr_box
@@ -659,51 +688,97 @@ class LegacyOrbitLibrary(OrbitLibrary):
         # ...
         pass
 
-    def read_orbit_base(self, fileroot, return_instrisic_moments=False):
+    def read_orbit_base(self, fileroot, return_intrinsic_moments=False):
         """
         Read orbit library from file datfil/{fileroot}.dat.bz2'
+
+        Depending on the DYNAMITE version, the orbit library will reside in
+        either datfil/{fileroot}.dat.bz2 (legacy behavior) or in two separate
+        files datfil/{fileroot}_qgrid.dat.bz2 and
+        datfil/{fileroot}_losvd_hist.dat.bz2 (new behavior). If both
+        alterntives exist, default to the new behavior.
 
         Parameters
         ----------
         fileroot : string
             this will probably be either 'orblib' or 'orblibbox'
-        return_instrisic_moments: boolean
-            whether to return_instrisic_moments of the orblib
+        return_intrinsic_moments: boolean
+            whether to return_intrinsic_moments of the orblib
 
         Returns
         -------
-        if return_instrisic_moments is False, this returns a tuple of type
+        if return_intrinsic_moments is False, this returns a tuple of type
         (Histogram, array) where the orbit library LOSVDs are stored in the
         Histogram object, and the 3D density of the orbits are stored in the
         array object.
-        if return_instrisic_moments is True, returns a tuple
-        (array, list) where the array stores the intrinsic momenmts of the
+        if return_intrinsic_moments is True, returns a tuple
+        (array, list) where the array stores the intrinsic moments of the
         orblib and the list contains the bin edges of the 3D grid.
 
         """
         cur_dir = os.getcwd()
         os.chdir(self.mod_dir)
+        check = os.path.isfile(f'datfil/{fileroot}_qgrid.dat.bz2')
+        check = check and os.path.isfile(f'datfil/{fileroot}_losvd_hist.dat.bz2')
+        legacy_file = False if check else True
         # unzip orblib to a temporary file with ml value attached
         # ml value is needed to prevent different processes clashing
         ml = self.parset['ml']
-        tmpfname = f'datfil/{fileroot}_{ml}.dat'
-        subprocess.run(f'bunzip2 -c datfil/{fileroot}.dat.bz2 > {tmpfname}',
-                       shell=True)
+        if legacy_file:
+            orblib_file = f'datfil/{fileroot}.dat.bz2'
+            tmpfname = f'datfil/{fileroot}_{ml}.dat'
+        else:
+            orblib_file = f'datfil/{fileroot}_qgrid.dat.bz2'
+            tmpfname = f'datfil/{fileroot}_qgrid_{ml}.dat'
+        subprocess.run(f'bunzip2 -c {orblib_file} > {tmpfname}', shell=True)
         # read the fortran file
-        orblibf = FortranFile(tmpfname, 'r')
+        orblib_in = FortranFile(tmpfname, 'r')
         # read size of orbit library
         # from integrator_setup_write, lines 506 - 5129:
-        norb, _, _, _, ndith = orblibf.read_ints(np.int32)
+        norb, _, _, _, ndith = orblib_in.read_ints(np.int32)
         # from qgrid_setup_write, lines 2339-1350:
-        quad_light_grid_sizes = orblibf.read_ints(np.int32)
+        quad_light_grid_sizes = orblib_in.read_ints(np.int32)
         size_ql, size_qph, size_qth, size_qlr = quad_light_grid_sizes
-        quad_lr = orblibf.read_reals(float)
-        quad_lth = orblibf.read_reals(float)
-        quad_lph = orblibf.read_reals(float)
-        if return_instrisic_moments:
-            instrisic_grid = [quad_lr, quad_lth, quad_lph]
+        quad_lr = orblib_in.read_reals(float)
+        quad_lth = orblib_in.read_reals(float)
+        quad_lph = orblib_in.read_reals(float)
+        if return_intrinsic_moments:
+            intrinsic_grid = [quad_lr, quad_lth, quad_lph]
+            intrinsic_moms = np.zeros((norb, size_qlr, size_qth, size_qph, 16))
+        orbtypes = np.zeros((norb, ndith**3), dtype=int)
+        density_3D = np.zeros((norb, size_qlr, size_qth, size_qph))
+        if not legacy_file:  # Enter this loop if orblib is in multiple files
+            for j in range(norb):
+                _, _, _, _, _ = orblib_in.read_ints(np.int32)
+                orbtypes[j, :] = orblib_in.read_ints(np.int32)
+                quad_light = orblib_in.read_reals(float)
+                quad_light = np.reshape(quad_light, quad_light_grid_sizes[::-1])
+                # quad_light stores orbit features in 3D (r,th,phi) bins.
+                # Quad_light[ir,it,ip,XXX] stores
+                # - the zeroth moment i.e. density for XXX=0,
+                # - the first moments x,y,z,vx,vy,vz for XXX=slice(1,7)
+                # - 2nd moments vx^2,vy^2,vz^2,vx*vy,vy*vz,vz*vx for XXX=slice(7,13)
+                # - an averaged orbit classification for XXX=slice(13,None)
+                # in the bin indexed by (ir,it,ip).
+                # We need to extract 3D density for use in weight solving.
+                density_3D[j] = quad_light[:,:,:,0]
+                if return_intrinsic_moments:
+                    intrinsic_moms[j] = quad_light
+            # done with orblib_qgrid.dat.bz2,
+            orblib_in.close()
+            # remove temporary file
+            os.remove(tmpfname)
+            if return_intrinsic_moments:  # in that case, we are actually done
+                os.chdir(cur_dir)
+                return intrinsic_moms, intrinsic_grid  #######################
+            # now switch to orblib_losvd_hist.dat.bz2
+            orblib_file = f'datfil/{fileroot}_losvd_hist.dat.bz2'
+            tmpfname = f'datfil/{fileroot}_losvd_hist_{ml}.dat'
+            subprocess.run(f'bunzip2 -c {orblib_file} > {tmpfname}', shell=True)
+            # read the fortran file
+            orblib_in = FortranFile(tmpfname, 'r')
         # from histogram_setup_write, lines 1917-1926:
-        tmp = orblibf.read_record(np.int32, np.int32, float)
+        tmp = orblib_in.read_record(np.int32, np.int32, float)
         nconstr = tmp[0][0] # = total number of apertures for ALL kinematics
                             #   and populations with own apertures
         # nvhist = tmp[1][0] # = (nvbins-1)/2 for histo of FIRST kinematic set
@@ -722,11 +797,15 @@ class LegacyOrbitLibrary(OrbitLibrary):
         hist_centers += [p.hist_center for p in pops]
         hist_bins = [k.hist_bins for k in stars.kinematic_data]
         hist_bins += [p.hist_bins for p in pops]
-        self.logger.debug('Checking number of velocity bins...')
-        error_msg = 'must have odd number of velocity bins for all ' \
-                    'kinematics and populations'
-        assert np.all(np.array(hist_bins) % 1==0), error_msg
-        self.logger.debug('...checks ok.')
+        self.logger.debug(f'{self.mod_dir}{tmpfname}: '
+                          'checking number of velocity bins...')
+        if np.all(np.array(hist_bins) % 2 == 0):
+            error_msg = f'{self.mod_dir}{tmpfname}: must have odd number of ' \
+                        'velocity bins for all kinematics and populations.'
+            self.logger.error(error_msg)
+            os.chdir(cur_dir)
+            raise ValueError(error_msg)
+        self.logger.debug(f'...{self.mod_dir}{tmpfname}: checks ok.')
         n_apertures = [k.n_spatial_bins for k in stars.kinematic_data]
         n_apertures += [p.n_spatial_bins for p in pops]
         # get index linking  kinematic set to aperture
@@ -748,61 +827,57 @@ class LegacyOrbitLibrary(OrbitLibrary):
         tmp = zip(hist_bins,n_apertures)
         velhist0 = [np.zeros((norb, nv, na)) for (nv,na) in tmp]
         # Next read the histograms themselves.
-        orbtypes = np.zeros((norb, ndith**3), dtype=int)
-        density_3D = np.zeros((norb, size_qlr, size_qth, size_qph))
-        if return_instrisic_moments:
-            intrinsic_moms = np.zeros((norb, size_qlr, size_qth, size_qph, 16))
         for j in range(norb):
-            _, _, _, _, _ = orblibf.read_ints(np.int32)
-            orbtypes[j, :] = orblibf.read_ints(np.int32)
-            quad_light = orblibf.read_reals(float)
-            quad_light = np.reshape(quad_light, quad_light_grid_sizes[::-1])
-            # quad_light stores orbit features in 3D (r,th,phi) bins.
-            # Quad_light[ir,it,ip,XXX] stores
-            # - the zeroth moment i.e. density for XXX=0,
-            # - the first moments x,y,z,vx,vy,vz for XXX=slice(1,7)
-            # - 2nd moments vx^2,vy^2,vz^2,vx*vy,vy*vz,vz*vx for XXX=slice(7,13)
-            # - an averaged orbit classification for XXX=slice(13,None)
-            # in the bin indexed by (ir,it,ip).
-            # We need to extract 3D density for use in weight solving.
-            density_3D[j] = quad_light[:,:,:,0]
+            if legacy_file:  # Execute this if orblib is in a single file
+                _, _, _, _, _ = orblib_in.read_ints(np.int32)
+                orbtypes[j, :] = orblib_in.read_ints(np.int32)
+                quad_light = orblib_in.read_reals(float)
+                quad_light = np.reshape(quad_light, quad_light_grid_sizes[::-1])
+                # quad_light stores orbit features in 3D (r,th,phi) bins.
+                # Quad_light[ir,it,ip,XXX] stores
+                # - the zeroth moment i.e. density for XXX=0,
+                # - the first moments x,y,z,vx,vy,vz for XXX=slice(1,7)
+                # - 2nd moments vx^2,vy^2,vz^2,vx*vy,vy*vz,vz*vx for XXX=slice(7,13)
+                # - an averaged orbit classification for XXX=slice(13,None)
+                # in the bin indexed by (ir,it,ip).
+                # We need to extract 3D density for use in weight solving.
+                density_3D[j] = quad_light[:,:,:,0]
+                if return_intrinsic_moments:
+                    intrinsic_moms[j] = quad_light
             for i_ap in range(nconstr):
                 kinpop_idx = kinpop_idx_per_ap[i_ap]
                 i_ap0 = i_ap - idx_ap_reset[kinpop_idx]
-                ivmin, ivmax = orblibf.read_ints(np.int32)
+                ivmin, ivmax = orblib_in.read_ints(np.int32)
                 if ivmin <= ivmax:
                     nv0 = (hist_bins[kinpop_idx]-1)/2
                     # ^--- this is an integer since hist_bins is odd
                     nv0 = int(nv0)
-                    tmp = orblibf.read_reals(float)
+                    tmp = orblib_in.read_reals(float)
                     velhist0[kinpop_idx][j, ivmin+nv0:ivmax+nv0+1, i_ap0] = tmp
-            if return_instrisic_moments:
-                intrinsic_moms[j] = quad_light
-        orblibf.close()
+        orblib_in.close()
         # remove temporary file
         os.remove(tmpfname)
         os.chdir(cur_dir)
-        # For now, also calculate velocity histograms for population data...
-        velhists = []
-        for i in range(n_kins + len(pops)):
-            center0 = hist_centers[i]
-            width0 = hist_widths[i]
-            bins0 = hist_bins[i]
-            idx_center = (bins0-1)/2 # this is an integer since hist_bins is odd
-            idx_center = int(idx_center)
-            dvhist0 = width0/bins0
-            vedg = np.arange(bins0+1) * dvhist0
-            v = (vedg[1:] + vedg[:-1])/2.
-            v_cent = v[idx_center]
-            vedg -= v_cent
-            vvv = dyn_kin.Histogram(xedg=vedg,
-                                    y=velhist0[i],
-                                    normalise=False)
-            velhists += [vvv]
-        if return_instrisic_moments:
-            return intrinsic_moms, instrisic_grid
+        if return_intrinsic_moments:
+            return intrinsic_moms, intrinsic_grid  #######################
         else:
-            return velhists, density_3D
+            # For now, also calculate velocity histograms for population data...
+            velhists = []
+            for i in range(n_kins + len(pops)):
+                width0 = hist_widths[i]
+                bins0 = hist_bins[i]
+                idx_center = (bins0-1)/2 # is an integer since hist_bins is odd
+                idx_center = int(idx_center)
+                dvhist0 = width0/bins0
+                vedg = np.arange(bins0+1) * dvhist0
+                v = (vedg[1:] + vedg[:-1])/2.
+                v_cent = v[idx_center]
+                vedg -= v_cent
+                vvv = dyn_kin.Histogram(xedg=vedg,
+                                        y=velhist0[i],
+                                        normalise=False)
+                velhists += [vvv]
+            return velhists, density_3D  #######################
 
     def duplicate_flip_and_interlace_orblib(self, orblib):
         """flip the tube orbits
@@ -926,7 +1001,14 @@ class LegacyOrbitLibrary(OrbitLibrary):
 
         # TODO: check if this ordering is compatible with weights read in by
         # LegacyWeightSolver.read_weights
-        tube_orblib, tube_density_3D = self.read_orbit_base('orblib')
+        try:
+            tube_orblib, tube_density_3D = self.read_orbit_base('orblib')
+        except:
+            self.logger.error('Something went seriously wrong when reading '
+                              'the tube orbit library. Check disk quota, file '
+                              'integrity, and consistent config files. '
+                              f'Model: {self.mod_dir}.')
+            raise
         if not (kins or pops):
             txt = 'Specify kins or pops.'
             self.logger.error(txt)
@@ -954,7 +1036,14 @@ class LegacyOrbitLibrary(OrbitLibrary):
             tube_density_3D = np.repeat(tube_density_3D, 2, axis=0)
 
         # read box orbits
-        box_orblib, box_density_3D = self.read_orbit_base('orblibbox')
+        try:
+            box_orblib, box_density_3D = self.read_orbit_base('orblibbox')
+        except:
+            self.logger.error('Something went seriously wrong when reading '
+                              'the box orbit library. Check disk quota, file '
+                              'integrity, and consistent config files. '
+                              f'Model: {self.mod_dir}.')
+            raise
         if kins and not pops:
             box_orblib = box_orblib[:n_kins]
         else:  # pops is True
@@ -985,8 +1074,8 @@ class LegacyOrbitLibrary(OrbitLibrary):
         """Read the intrinsic moments of the orbit library.
 
         Moments stored in 3D grid over spherical co-ords (r,theta,phi). This
-        function reads the data from files, formats them correctly, and coverts
-        to physical units.
+        function reads the data from files, formats them correctly, and
+        converts to physical units.
 
         Parameters
         ----------
@@ -1017,12 +1106,12 @@ class LegacyOrbitLibrary(OrbitLibrary):
         else:
             intmom_tubes, int_grid = self.read_orbit_base(
                 'orblib',
-                return_instrisic_moments=True)
+                return_intrinsic_moments=True)
             intmom_tubes = \
                 self.duplicate_flip_and_interlace_intmoms(intmom_tubes)
             intmom_boxes, _ = self.read_orbit_base(
                 'orblibbox',
-                return_instrisic_moments=True)
+                return_intrinsic_moments=True)
             intmoms = np.concatenate((intmom_tubes, intmom_boxes), 0)
             velscale = self.velocity_scaling_factor
             conversion_factor = self.system.distMPc * 1e6 * \
