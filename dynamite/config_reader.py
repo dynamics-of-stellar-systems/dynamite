@@ -898,13 +898,11 @@ class Configuration(object):
                 raise ValueError('System needs to have exactly one '
                                  'VisibleComponent object')
 
-        if sum(1 for i in self.system.cmp_list \
-               if issubclass(type(i), physys.DarkComponent)
-               and not isinstance(i, physys.Plummer)) > 1:
+        if len(self.system.get_all_dark_non_plummer_components()) > 1:
             self.logger.error('System must have zero or one DM Halo object')
             raise ValueError('System must have zero or one DM Halo object')
 
-        if not 1 < len(self.system.cmp_list) < 5:
+        if not 1 < len(self.system.cmp_list) < 4:
             self.logger.error('System needs to comprise exactly one Plummer, '
                               'one VisibleComponent, and zero or one DM Halo '
                               'object(s)')

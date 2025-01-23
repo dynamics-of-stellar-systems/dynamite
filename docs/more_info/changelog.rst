@@ -4,6 +4,7 @@
 Change Log
 ****************
 
+- New feature: a dark halo is no longer mandatory (models can consist of either zero or one dark halo component)
 - Improvement: Reduced disk space requirements and performance by splitting orbit library files while maintaining backward compatibility.
 - Bugfix: avoid DYNAMITE crashing because it gets stuck in a model directory due to a Fortran error
 - Improvement: better error messages to improve debugging with multiprocessing
