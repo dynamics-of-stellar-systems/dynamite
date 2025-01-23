@@ -2618,7 +2618,7 @@ module output
     private
 
     integer(kind=i4b), private :: out_handle = 0_i4b
-    character(len=80), public  :: out_file
+    character(len=80), public  :: out_file_qgrid, out_file_losvd, out_file_orbclass
     character(len=84), private :: out_tmp_file
 
     public :: output_setup
@@ -2643,14 +2643,24 @@ contains
         integer(kind=i4b)  :: error, tmp
 
         print *, "  ** Setting up output module"
-        print *, "  * Give the name of the histogram outputfile:"
-        read (unit=*, fmt="(a80)"), out_file
+        print *, "  * Give the name of the qgrid outputfile:"
+        ! read (unit=*, fmt="(a80)"), out_file
+        read *, out_file_qgrid
+        print *, out_file_qgrid
 
-        out_file = adjustl(out_file)
-        print *, out_file
+        print *, "  * Give the name of the 1d losvd histogram outputfile:"
+        read *, out_file_losvd
+        print *, out_file_losvd
 
-        out_tmp_file = out_file
-        out_tmp_file(len_trim(out_file) + 1:len_trim(out_file) + 4) = ".tmp"
+        print *, "  * Give the name of the orbit classification outputfile:"
+        read *, out_file_orbclass
+        print *, out_file_orbclass
+
+        ! out_file = adjustl(out_file)
+        ! print *, out_file
+
+        out_tmp_file = out_file_qgrid
+        out_tmp_file(len_trim(out_file_qgrid) + 1:len_trim(out_file_qgrid) + 4) = ".tmp"
         print *, out_tmp_file
 
         call date_and_time(date=d, time=t, zone=g)
@@ -2665,13 +2675,17 @@ contains
 
             if (error /= 0) stop "  Error opening file."
             ! Write orbit library header in *binary* (typically orblib.dat)
-            open (unit=out_handle, iostat=error, file=out_file, action="write", &
+            open (unit=out_handle, iostat=error, file=out_file_qgrid, action="write", &
                   status="new", form="unformatted")
             call integrator_setup_write(out_handle)
             call qgrid_setup_write(out_handle)
+            close (unit=out_handle, iostat=error)
+            if (error /= 0) stop "  Error closing qgrid file."
+            open (unit=out_handle, iostat=error, file=out_file_losvd, action="write", &
+                  status="new", form="unformatted")
             call histogram_setup_write(out_handle)
             close (unit=out_handle, iostat=error)
-            if (error /= 0) stop "  Error closing file."
+            if (error /= 0) stop "  Error closing losvd file."
 
             ! Write status file
             write (unit=out_handle + 1, fmt=*, iostat=error) integrator_current
@@ -2692,7 +2706,7 @@ contains
             if (error /= 0) stop "  Error closing status file."
 
             ! Checking if orbit library file exists
-            open (unit=out_handle, iostat=error, file=out_file, action="write", &
+            open (unit=out_handle, iostat=error, file=out_file_qgrid, action="write", &
                  & status="old", position="append", form="unformatted")
             if (error /= 0) stop "  Error opening library file. Does it exist?"
             close (unit=out_handle, iostat=error)
@@ -2700,10 +2714,9 @@ contains
             print *, "  * Resuming with orbit :", tmp + 1
         end if
 
-        open (unit=30, file=trim(out_file)//"_orbclass.out", status="replace", &
-              action="write")
+        open (unit=30, file=out_file_orbclass, status="replace", action="write")
 
-        print *, "  ** Ouput file setup finished."
+        print *, "  ** Output file setup finished."
 
     end subroutine output_setup
 
@@ -2714,13 +2727,20 @@ contains
         integer :: error
         print *, "  * Closing files and stopping output module"
         if (out_handle /= 0) then
-            open (unit=out_handle, iostat=error, file=out_file, action="write", &
+            open (unit=out_handle, iostat=error, file=out_file_qgrid, action="write", &
                  & status="old", position="append", form="unformatted")
-            if (error /= 0) stop "  Error opening file."
+            if (error /= 0) stop "  Error opening qgrid file."
             write (unit=out_handle, iostat=error) " "
-            if (error /= 0) stop "  Error writing to file. Disk full?"
+            if (error /= 0) stop "  Error writing to qgrid file. Disk full?"
             close (unit=out_handle, iostat=error)
-            if (error /= 0) stop "  Error closing file."
+            if (error /= 0) stop "  Error closing qgrid file."
+            open (unit=out_handle, iostat=error, file=out_file_losvd, action="write", &
+                 & status="old", position="append", form="unformatted")
+            if (error /= 0) stop "  Error opening losvd file."
+            write (unit=out_handle, iostat=error) " "
+            if (error /= 0) stop "  Error writing to losvd file. Disk full?"
+            close (unit=out_handle, iostat=error)
+            if (error /= 0) stop "  Error closing losvd file."
         end if
 
         ! Update the temp file to finished status
@@ -2758,14 +2778,19 @@ contains
         if (error /= 0) stop "  Error closing status file."
 
         ! Write the orbit to the *binary* output file (typically orblib.dat).
-        open (unit=out_handle, iostat=error, file=out_file, action="write", &
+        open (unit=out_handle, iostat=error, file=out_file_qgrid, action="write", &
              & status="old", position="append", form="unformatted")
-        if (error /= 0) stop "  Error opening file."
+        if (error /= 0) stop "  Error opening qgrid file."
         call integrator_write(out_handle)
         call qgrid_write(out_handle)
+        close (unit=out_handle, iostat=error)
+        if (error /= 0) stop "  Error closing qgrid file."
+        open (unit=out_handle, iostat=error, file=out_file_losvd, action="write", &
+             & status="old", position="append", form="unformatted")
+        if (error /= 0) stop "  Error opening losvd file."
         call histogram_write(out_handle)
         close (unit=out_handle, iostat=error)
-        if (error /= 0) stop "  Error closing file."
+        if (error /= 0) stop "  Error closing losvd file."
 
         ! Update the temp file to intermediate status
         open (unit=out_handle + 1, iostat=error, file=out_tmp_file, action="write", &
