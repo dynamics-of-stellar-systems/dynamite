@@ -85,9 +85,7 @@ ifeq ($(compiler),gfortran)
   link = gfortran $(flags) -o
 endif
 
-# define local Galahad directory --> need to be changed for your system
-#GALAHADDIR =/Users/pjethwa/Astro/Science/dynamite/dynamite_repo/legacy_fortran/galahad-2.3
-#GALAHADDIR =/home/alice/old_home/Work/Vienna/DYNAMITE/dynamite/legacy_fortran/galahad-2.3
+# define local Galahad directory --> might need to be changed for your system
 GALAHADDIR =$(CURDIR)/galahad-2.3
 
 # Define galahad compiled libary choice (platform dependant)
@@ -100,8 +98,8 @@ GALAHADTYPE= mac.osx.gfo/double/
 #GALAHADTYPE= pc.lnx.gfo/double
 ##########################################################
 
-all : orbitstart orbitstart_bar orblib orblib_new_mirror orblib_bar triaxmass triaxmass_bar triaxmassbin triaxmassbin_bar triaxnnls_CRcut triaxnnls_noCRcut triaxnnls_bar modelgen
-nogal : orbitstart orbitstart_bar orblib orblib_new_mirror orblib_bar triaxmass triaxmassbin triaxmass_bar triaxmassbin_bar
+all : orbitstart orbitstart_bar orblib_new_mirror orblib_bar triaxmass triaxmass_bar triaxmassbin triaxmassbin_bar triaxnnls_CRcut triaxnnls_noCRcut triaxnnls_bar
+nogal : orbitstart orbitstart_bar orblib_new_mirror orblib_bar triaxmass triaxmassbin triaxmass_bar triaxmassbin_bar
 
 #########################################################
 #
@@ -109,8 +107,8 @@ nogal : orbitstart orbitstart_bar orblib orblib_new_mirror orblib_bar triaxmass 
 #
 #########################################################
 
-RCS : Makefile run_model.sh iniparam_f.f90 orblib_f.f90 orblib_f_new_mirror.f90 triaxpotent.f90 interpolpotent.f90 orblibprogram.f90 triaxmassbin.f90 modelgen.f90 triaxmass.f90 orbitstart.f90 triaxnnls_CRcut.f90 triaxnnls_noCRcut.f90 dmpotent.f90
-	ci -q -l -mcompile Makefile run_model.sh iniparam_f.f90 orblib_f.f90 orblib_f_new_mirror.f90 triaxpotent.f90 interpolpotent.f90 orblibprogram.f90 triaxmassbin.f90 modelgen.f90 triaxmass.f90 orbitstart.f90 triaxnnls_CRcut.f90 triaxnnls_noCRcut.f90 dmpotent.f90
+RCS : Makefile iniparam_f.f90 orblib_f_new_mirror.f90 triaxpotent.f90 interpolpotent.f90 orblibprogram.f90 triaxmassbin.f90 triaxmass.f90 orbitstart.f90 triaxnnls_CRcut.f90 triaxnnls_noCRcut.f90 dmpotent.f90
+	ci -q -l -mcompile Makefile iniparam_f.f90 orblib_f_new_mirror.f90 triaxpotent.f90 interpolpotent.f90 orblibprogram.f90 triaxmassbin.f90 triaxmass.f90 orbitstart.f90 triaxnnls_CRcut.f90 triaxnnls_noCRcut.f90 dmpotent.f90
 
 ##########################################################
 #
@@ -227,21 +225,12 @@ triaxmassbin_bar: $(MGEOBJ) triaxmassbin_f.o triaxmassbin_bar.f90
 #
 #######################################################
 
-ORBLIBCDE= $(MGECDE) sub/numrec_arloc.f $(DOPCDE) orblib_f.f90
-ORBLIBOBJ= $(MGEOBJ) numrec_arloc.o $(DOPOBJ) orblib_f.o
 ORBLIBNMCDE= $(MGECDE) sub/numrec_arloc.f $(DOPCDE) orblib_f_new_mirror.f90
 ORBLIBNMOBJ= $(MGEOBJ) numrec_arloc.o $(DOPOBJ) orblib_f_new_mirror.o
 
 ifeq ($(FAST),TRUE)
-  ORBLIBOBJ=$(ORBLIBCDE)
   ORBLIBNMOBJ=$(ORBLIBNMCDE)
 endif
-
-orblib_f.o : orblib_f.f90 $(MGEOBJ) numrec_arloc.o $(DOPOBJ)
-	$(fortran90) orblib_f.f90
-
-orblib : $(ORBLIBOBJ) orblibprogram.f90
-	$(link) orblib  $(ORBLIBOBJ) orblibprogram.f90
 
 orblib_f_new_mirror.o : orblib_f_new_mirror.f90 $(MGEOBJ) numrec_arloc.o $(DOPOBJ)
 	$(fortran90) orblib_f_new_mirror.f90
@@ -252,23 +241,19 @@ orblib_new_mirror : $(ORBLIBNMOBJ) orblibprogram.f90
 orblib_bar : $(ORBLIBNMOBJ) orblibprogram_bar.f90
 	$(link) orblib_bar  $(ORBLIBNMOBJ) orblibprogram_bar.f90
 
-modelgen : $(ORBLIBOBJ) modelgen.f90
-	$(link) modelgen  $(ORBLIBOBJ) modelgen.f90
-
-orbitstart_f.o : $(ORBLIBOBJ) $(MGEOBJ) orbitstart_f.f90
+orbitstart_f.o : $(ORBLIBNMOBJ) $(MGEOBJ) orbitstart_f.f90
 	$(fortran90) orbitstart_f.f90
 
-orbitstart : $(ORBLIBOBJ) orbitstart_f.o orbitstart.f90
-	$(link) orbitstart  $(ORBLIBOBJ) orbitstart_f.o orbitstart.f90
+orbitstart : $(ORBLIBNMOBJ) orbitstart_f.o orbitstart.f90
+	$(link) orbitstart  $(ORBLIBNMOBJ) orbitstart_f.o orbitstart.f90
 
-orbitstart_bar : $(ORBLIBOBJ) orbitstart_f.o orbitstart_bar.f90
-	$(link) orbitstart_bar  $(ORBLIBOBJ) orbitstart_f.o orbitstart_bar.f90
+orbitstart_bar : $(ORBLIBNMOBJ) orbitstart_f.o orbitstart_bar.f90
+	$(link) orbitstart_bar  $(ORBLIBNMOBJ) orbitstart_f.o orbitstart_bar.f90
 
 ##############################################################
 #
 # triaxnnls_CRcut
 # triaxnnls_noCRcut
-# triaxnnls_scratch_nosave
 ##############################################################
 
 OBJECTS5_out = nnls95.o iniparam_f.o numeric_kinds_f.o gausherm.o triaxnnls_CRcut.o
@@ -284,22 +269,12 @@ triaxnnls_CRcut.o : triaxnnls_CRcut.f90 numeric_kinds_f.o iniparam_f.o
 #
 ##############################################################
 
-OBJECTS5 = nnls95.o iniparam_f.o numeric_kinds_f.o gausherm.o triaxnnls_scratch_nosave.o
-
-triaxnnls_scratch_nosave : $(OBJECTS5)
-	$(link) triaxnnls_scratch_nosave $(OBJECTS5)   -I$(GALAHADDIR)/modules/$(GALAHADTYPE)  -L$(GALAHADDIR)/objects/$(GALAHADTYPE)  -lgalahad  -lgalahad_hsl -lgalahad_metis -lgalahad_lapack -lgalahad_blas
-
-triaxnnls_scratch_nosave.o : triaxnnls_scratch_nosave.f90 numeric_kinds_f.o iniparam_f.o
-	$(fortran90) triaxnnls_scratch_nosave.f90  -I$(GALAHADDIR)/modules/$(GALAHADTYPE)  -L$(GALAHADDIR)/objects/$(GALAHADTYPE)
-
-##############################################################
-
 OBJECTS5_out_nl = nnls95.o iniparam_f.o numeric_kinds_f.o gausherm.o triaxnnls_bar.o
 
-triaxnnls_bar : $(OBJECTS5_out_nl)  
+triaxnnls_bar : $(OBJECTS5_out_nl)
 	$(link) triaxnnls_bar $(OBJECTS5_out_nl)   -I$(GALAHADDIR)/modules/$(GALAHADTYPE)  -L$(GALAHADDIR)/objects/$(GALAHADTYPE)  -lgalahad  -lgalahad_hsl -lgalahad_metis -lgalahad_lapack -lgalahad_blas
 
-triaxnnls_bar.o : triaxnnls_bar.f90 numeric_kinds_f.o iniparam_f.o 
+triaxnnls_bar.o : triaxnnls_bar.f90 numeric_kinds_f.o iniparam_f.o
 	$(fortran90) triaxnnls_bar.f90  -I$(GALAHADDIR)/modules/$(GALAHADTYPE)  -L$(GALAHADDIR)/objects/$(GALAHADTYPE)
 
 
@@ -323,7 +298,7 @@ triaxnnls_noCRcut.o : triaxnnls_noCRcut.f90 numeric_kinds_f.o iniparam_f.o
 ##########################################
 
 distclean:
-	rm -f *.o *.il *.mod *.dyn work.* *.d *.exe ifc* *.dpi *.spi gmon.out orbitstart orbitstart_bar orblib orblib_new_mirror orblib_bar triaxmass triaxmass_bar triaxmassbin triaxmassbin_bar triaxnnls_CRcut triaxnnls_noCRcut triaxnnls_bar modelgen
+	rm -f *.o *.il *.mod *.dyn work.* *.d *.exe ifc* *.dpi *.spi gmon.out orbitstart orbitstart_bar orblib_new_mirror orblib_bar triaxmass triaxmass_bar triaxmassbin triaxmassbin_bar triaxnnls_CRcut triaxnnls_noCRcut triaxnnls_bar
 
 clean:
 	rm -f *.o *.il *.mod work.* *.d ifc*
