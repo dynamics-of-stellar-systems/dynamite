@@ -89,6 +89,10 @@ class Settings(object):
                    "'python -m pip install cvxopt'."
             self.logger.error(text)
             raise ModuleNotFoundError(text)
+        if 'use_new_mirroring' in self.orblib_settings:
+            self.logger.warning('As DYNAMITE always uses the new mirroring, '
+                                'the orblib_setting \'use_new_mirroring\' is '
+                                'DEPRECATED and will be ignored.')
         if self.orblib_settings['nI2'] < 4:
             text = "orblib_settings: nI2 must be >= 4, but is " \
                    f"{self.orblib_settings['nI2']}."
@@ -399,12 +403,6 @@ class Configuration(object):
             # add orbit library settings to Settings object
 
             elif key == 'orblib_settings':
-                # set a default value to
-                #      orblib_settings --> use_new_mirroring : False
-                if 'use_new_mirroring' in value.keys():
-                    pass
-                else:
-                    value.update({'use_new_mirroring':True})
                 logger.info('orblib_settings...')
                 logger.debug(f'orblib_settings: {tuple(value.keys())}')
                 self.settings.add('orblib_settings', value)
@@ -900,13 +898,11 @@ class Configuration(object):
                 raise ValueError('System needs to have exactly one '
                                  'VisibleComponent object')
 
-        if sum(1 for i in self.system.cmp_list \
-               if issubclass(type(i), physys.DarkComponent)
-               and not isinstance(i, physys.Plummer)) > 1:
+        if len(self.system.get_all_dark_non_plummer_components()) > 1:
             self.logger.error('System must have zero or one DM Halo object')
             raise ValueError('System must have zero or one DM Halo object')
 
-        if not 1 < len(self.system.cmp_list) < 5:
+        if not 1 < len(self.system.cmp_list) < 4:
             self.logger.error('System needs to comprise exactly one Plummer, '
                               'one VisibleComponent, and zero or one DM Halo '
                               'object(s)')

@@ -516,7 +516,8 @@ class Analysis:
         stars = self.config.system.get_component_from_class(
                                 dyn.physical_system.TriaxialVisibleComponent)
         kin_name = stars.kinematic_data[kin_set].name
-        self.logger.info('Getting model projected masses and losvds.')
+        self.logger.info('Getting projected masses and losvds for '
+                         f'model {model.directory}.')
         orblib = model.get_orblib()
         if weights is None:
             _ = model.get_weights(orblib)

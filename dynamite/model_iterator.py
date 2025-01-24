@@ -144,20 +144,22 @@ class ModelIterator(object):
                 config.all_models.table[row]['kinchi2'] = kinchi2
                 config.all_models.table[row]['kinmapchi2'] = kinmapchi2
                 config.all_models.table[row]['time_modified'] = time
+                directory = config.all_models.table[row]['directory']
                 if not all(np.isnan([chi2, kinchi2, kinmapchi2])):
                     config.all_models.table[row]['weights_done'] = True
                     config.all_models.table[row]['all_done'] = True
                     self.logger.debug('Reattempting weight solving for model '
-                                      f'in row {i} successful.')
+                                      f'in row {i}, {directory=} successful.')
                 else:
                     self.logger.info('Reattempting weight solving for model '
-                                     f'in row {i} failed.')
+                                     f'in row {i}, {directory=} failed.')
             config.all_models.save()
 
     def get_missing_weights(self, row):
-        self.logger.debug(f'Reattempting weight solving for model {row}.')
         mod = self.config.all_models.get_model_from_row(row)
         mod.setup_directories()
+        self.logger.debug(f'Reattempting weight solving for model {row}, '
+                          f'directory={mod.directory}.')
         orblib = mod.get_orblib()
         weight_solver = mod.get_weights(orblib)
         time = str(np.datetime64('now', 'ms'))
@@ -412,8 +414,9 @@ class ModelInnerIterator(object):
             msg = 'Unexpected input, need a tuple of length 2 or 4.'
             self.logger.error(msg)
             raise ValueError(msg)
-        self.logger.info(f'... running model {i+1} out of {self.n_to_do}')
         mod = self.all_models.get_model_from_row(row)
+        self.logger.info(f'... running model {i+1} out of {self.n_to_do}: '
+                         f'{mod.directory}.')
         orb_done = False
         wts_done = False
         if self.do_dummy_run:
@@ -429,7 +432,8 @@ class ModelInnerIterator(object):
             mod.setup_directories()
             if not get_orblib and self.is_new_orblib(row) and \
                               not self.all_models.table['orblib_done'][row]:
-                msg = f'Unexpected: orbit library in row {row} not existing! ' \
+                msg = f'Unexpected: orbit library in row {row}, ' \
+                      f'directory {mod.directory} not existing! ' \
                       'Will calculate it (beware of multiprocessing - use ' \
                       'the restart feature or ncpus=1 in case of problems)...'
                 self.logger.warning(msg)
@@ -447,7 +451,8 @@ class ModelInnerIterator(object):
             except RuntimeError:
                 os.chdir(cwd)
                 mod.chi2, mod.kinchi2, mod.kinmapchi2 = np.nan, np.nan, np.nan
-                w_txt = f'Model {i+1} (row {row}): get_orblib ' \
+                w_txt = f'Model {i+1} (row {row}, ' \
+                        f'directory {mod.directory}): get_orblib ' \
                         + ('or get_weights ' if get_weights else '')+'failed.'\
                         + (' all chi2 values set to nan!' \
                            if get_weights else '')
