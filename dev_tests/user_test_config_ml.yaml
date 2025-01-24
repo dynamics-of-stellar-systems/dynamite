@@ -120,7 +120,7 @@ system_components:
                 datafile: "gauss_hermite_kins_with_pops.ecsv"  # both discr. & integrated
                 aperturefile: "aperture.dat" # integrated only
                 binfile: "bins.dat"          # integrated only
-                with_pops: False # If True, pop columns will create pop object
+                with_pops: True # If True, pop columns will create pop object
         # populations: # optional, only specified for components with kinematics
         #     pop1:
         #         hist_width: '2719.8215332031'
@@ -168,10 +168,10 @@ orblib_settings:
     random_seed: 4242 # integer; any value <= 0 results in stochastic seed
 
 weight_solver_settings:
-    # type: "LegacyWeightSolver"
-    # nnls_solver: 1
-    type: "NNLS"
-    nnls_solver: 'scipy'
+    type: "LegacyWeightSolver"
+    nnls_solver: 1
+    # type: "NNLS"
+    # nnls_solver: 'scipy'
     CRcut: True
     regularisation: 0
     number_GH: 4

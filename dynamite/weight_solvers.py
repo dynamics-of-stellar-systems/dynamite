@@ -623,18 +623,11 @@ class NNLS(WeightSolver):
         self.nnls_solver = nnls_solver
         self.get_observed_mass_constraints()
 
-    def get_observed_mass_constraints(self, kins=True, pops=False):
+    def get_observed_mass_constraints(self):
         """Get aperture+intrinsic mass constraints from MGE
 
-        Parameters
-        ----------
-        kins : Bool
-            If True, returns the projected masses of the MGE for the
-            kinematic data apertures.
-        pops : Bool
-            If True, returns the projected masses of the MGE for the
-            population data apertures. If both kins and pops are True,
-            population data is returned following kinematic data.
+        Returns the projected masses of the MGE for the kinematic data
+        apertures.
 
         Returns
         -------
@@ -652,11 +645,9 @@ class NNLS(WeightSolver):
         if self.system.is_bar_disk_system():
             bardisk = self.system.get_unique_bar_component()
             mge = bardisk.mge_lum + bardisk.disk_lum
-            n_kin_ap = [k.n_spatial_bins for k in bardisk.kinematic_data]
         else:
             stars = self.system.get_unique_triaxial_visible_component()
             mge = stars.mge_lum
-            n_kin_ap = [k.n_spatial_bins for k in stars.kinematic_data]
 
         # intrinsic mass
         intrinsic_masses = mge.get_intrinsic_masses_from_file(self.direc_no_ml)
@@ -664,25 +655,7 @@ class NNLS(WeightSolver):
         self.intrinsic_mass_error = self.settings['lum_intr_rel_err']
         # projected
         projected_masses = mge.get_projected_masses_from_file(self.direc_no_ml)
-        if kins and pops:
-            self.projected_masses = projected_masses
-        elif kins:
-            self.projected_masses = projected_masses[:sum(n_kin_ap)]
-        elif pops:
-            i_kins = set(p.kin_aper  # collect all apertures used by pops
-                         for p in stars.population_data
-                         if p.kin_aper is not None)
-            cum_n_kin_ap = np.cumsum(n_kin_ap)
-            pr_masses = []
-            for i_kin in i_kins:  # add proj ms for kin apertures used by pops
-                i_ap0 = cum_n_kin_ap[i_kin - 1] if i_kin > 0 else 0
-                pr_masses += projected_masses[i_ap0:cum_n_kin_ap[i_kin]]
-            pr_masses += projected_masses[sum(n_kin_ap):]
-            self.projected_masses = pr_masses
-        else:
-            txt = 'Specify kins or pops.'
-            self.logger.error(txt)
-            raise ValueError(txt)
+        self.projected_masses = projected_masses
         self.projected_mass_error = self.settings['sb_proj_rel_err']
         # total mass constraint
         self.total_mass = np.sum(intrinsic_masses)

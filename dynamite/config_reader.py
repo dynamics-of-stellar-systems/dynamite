@@ -942,12 +942,6 @@ class Configuration(object):
                                       'either GaussHermite or BayesLOSVD')
                     raise ValueError('VisibleComponent must have kinematics: '
                                      'either GaussHermite or BayesLOSVD')
-                n_pops = len(c.population_data)
-                if n_pops > 0 and ws_type == 'LegacyWeightSolver':
-                    txt = 'LegacyWeightSolver cannot be used with population '\
-                        'data - use weight-solver type NNLS.'
-                    self.logger.error(txt)
-                    raise ValueError(txt)
                 if c.symmetry != 'triax':
                     self.logger.error('Legacy mode: VisibleComponent must be '
                                       'triaxial')
