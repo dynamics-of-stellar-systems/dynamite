@@ -919,9 +919,10 @@ class Configuration(object):
                     for kin_data in c.kinematic_data:
                         check_gh = (kin_data.type == 'GaussHermite')
                         check_bl = (kin_data.type == 'BayesLOSVD')
-                        if (not check_gh) and (not check_bl):
+                        check_pm = (kin_data.type == 'ProperMotions')
+                        if not (check_gh or check_bl or check_pm):
                             txt = 'VisibleComponent kinematics type must be ' \
-                                  'GaussHermite or BayesLOSVD'
+                                  'GaussHermite, BayesLOSVD, or ProperMotions.'
                             self.logger.error(txt)
                             raise ValueError(txt)
                         if check_bl:
@@ -931,17 +932,19 @@ class Configuration(object):
                                       "BayesLOSVD - use weight-solver type NNLS"
                                 self.logger.error(txt)
                                 raise ValueError(txt)
+                        if check_bl or check_pm:
                             # check for compatible chi2 variant
                             if which_chi2 == 'kinmapchi2':
                                 txt = 'kinmapchi2 cannot be used with ' \
-                                      'BayesLOSVD - use chi2 or kinchi2.'
+                                      'BayesLOSVD nor ProperMotions - ' \
+                                      'use chi2 or kinchi2.'
                                 self.logger.error(txt)
                                 raise ValueError(txt)
                 else:
-                    self.logger.error('VisibleComponent must have kinematics: '
-                                      'either GaussHermite or BayesLOSVD')
-                    raise ValueError('VisibleComponent must have kinematics: '
-                                     'either GaussHermite or BayesLOSVD')
+                    txt = 'VisibleComponent must have kinematics: ' \
+                          'GaussHermite, BayesLOSVD, and/or ProperMotions.'
+                    self.logger.error(txt)
+                    raise ValueError(txt)
                 n_pops = len(c.population_data)
                 if n_pops > 0 and ws_type == 'LegacyWeightSolver':
                     txt = 'LegacyWeightSolver cannot be used with population '\

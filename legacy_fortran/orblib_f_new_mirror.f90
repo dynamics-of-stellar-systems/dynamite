@@ -1125,6 +1125,8 @@ module psf
 
     ! how many psf are there?
     integer(kind=i4b), public                           :: psf_n
+    ! how many psf with 1d histograms are there?
+    integer(kind=i4b), public                           :: psf_1dhist_n
     ! kind of psf(psf_n)
     integer(kind=i4b), private, allocatable, dimension(:) :: psf_kind
     ! size of psf for (n,psf)
@@ -1313,8 +1315,12 @@ module aperture
 
     ! Total number of apertures
     integer(kind=i4b), public                          :: aperture_n
+    ! Number of apertures with 2d histograms
+    integer(kind=i4b), public                          :: ap_hist2d_n
     ! type of aperture (1=poly,2=box)
     integer(kind=i4b), public, allocatable, dimension(:) :: aperture_type
+    ! histogram dimension for each aperture (1=1D, 2=2D)
+    integer(kind=i4b), public, allocatable, dimension(:) :: ap_hist_dim
 
     ! number of bins in aperture
     integer(kind=i4b), public, allocatable, dimension(:) :: aperture_size
@@ -1334,6 +1340,7 @@ contains
             deallocate (aperture_type)
             deallocate (aperture_size)
             deallocate (aperture_start)
+            deallocate (ap_hist_dim)
         end if
         print *, "  * Aperture module stopped"
 
@@ -1774,8 +1781,10 @@ contains
         allocate (aperture_start(aperture_n))
         allocate (aperture_type(aperture_n))
         allocate (aperture_psf(aperture_n))
+        allocate (ap_hist_dim(aperture_n))
         print *, "  * using ", aperture_n, " aperture(s)"
 
+        ap_hist2d_n = 0
         do i = 1, aperture_n
             print *, "  * What's the filename of the ", i, " aperture file ? :"
             read *, file
@@ -1806,6 +1815,14 @@ contains
             if (aperture_psf(i) < 1 .or. aperture_psf(i) > psf_n) then
                 stop " That PSF does not exist!"
             end if
+
+            print *, "  * Histogram dimensions for this aperture (1 or 2)?"
+            read *, ap_hist_dim(i)
+            print *, "  * The histograms are ", ap_hist_dim(i), " dimensional."
+            if (ap_hist_dim(i) /= 1 .and. ap_hist_dim(i) /= 2) then
+                stop "  Histogram dimension must be 1 or 2!"
+            end if
+            if (ap_hist_dim(i) == 2) ap_hist2d_n = ap_hist2d_n + 1
         end do
         print *, "  ** aperture setup finished"
 
@@ -2081,7 +2098,7 @@ module histograms
     ! number of polygons/bins in each histogram for each aperture
     integer(kind=i4b), Dimension(:), private, allocatable:: h_blocks
     ! number of histograms
-    integer(kind=i4b), private                           :: h_n
+    integer(kind=i4b), private                           :: h_n, h2d_n
     ! number of points stored in histogram ( Used in normalising. )
     real(kind=dp), Dimension(:), private, allocatable     :: h_n_stored
     ! total number of histograms/constraints  after binning
@@ -2260,19 +2277,29 @@ contains
 
     !++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
     subroutine histogram_setup()
-        use aperture, only: aperture_n, aperture_size, aperture_psf
+        use aperture, only: aperture_n, aperture_size, aperture_psf, ap_hist_dim
         use binning, only: binning_setup, bin_max
-        use psf, only: psf_n
+        use psf, only: psf_n, psf_1dhist_n
         !----------------------------------------------------------------------
+        logical :: has_1dhist
         integer(kind=i4b)  :: i, j, ap
         real(kind=dp)  :: width, center, bins
 
         print *, "  * Starting Histogram module"
-        h_n = aperture_n
+
+        psf_1dhist_n = 0
+        do i = 1, psf_n
+            has_1dhist = .false.
+            do j = 1, aperture_n
+                if (aperture_psf(j) == i .and. ap_hist_dim(j) == 1) has_1dhist = .true.
+            end do
+            if (has_1dhist) psf_1dhist_n = psf_1dhist_n + 1
+        end do
+        h_n = psf_1dhist_n  ! assuming 1 psf per aperture
         allocate (hist_basic(h_n, 3), h_beg(h_n), h_end(h_n), h_bin(h_n))
         allocate (h_width(h_n), h_start(h_n), h_n_stored(h_n), h_blocks(h_n))
-
-        do i = 1, psf_n
+        do i = 1, psf_1dhist_n  ! PSFs and apertures with 1d histograms must come first
+            print *, "  * PSF ", i, " has 1D histograms"
             print *, "  * Give for psf ", i, " the histogram width, center and"
             print *, "    amount of bins"
             read *, width, center, bins
@@ -2329,9 +2356,9 @@ contains
             if (bins /= hist_basic(ap, 3)) hist_thesame = .false.
         end do
         if (hist_thesame) then
-            print *, "  * All velocity-bins are the same"
+            print *, "  * All LOSVD velocity-bins are the same"
         else
-            print *, "  * Velocity-bins are not the same. The standard NNLS will not"
+            print *, "  * LOSVD velocity-bins are not the same. The standard NNLS will not"
             print *, "  * Understand the ouput correctly."
         end if
         print *, "  ** Histogram module setup finished"
@@ -2644,7 +2671,8 @@ module output
     private
 
     integer(kind=i4b), private :: out_handle = 0_i4b
-    character(len=80), public  :: out_file_qgrid, out_file_losvd, out_file_orbclass
+    character(len=80), public  :: out_file_qgrid, out_file_losvd &
+                                  , out_file_pm, out_file_orbclass
     character(len=84), private :: out_tmp_file
 
     public :: output_setup
@@ -2659,6 +2687,7 @@ contains
     subroutine output_setup()
         use integrator, only: integrator_setup_write, integrator_set_current,&
              &                   integrator_current
+        use aperture, only: ap_hist2d_n
         use histograms, only: histogram_setup_write
         use histograms, only: histogram_setup_write_mass
         use quadrantgrid, only: qgrid_setup_write
@@ -2674,9 +2703,15 @@ contains
         read *, out_file_qgrid
         print *, out_file_qgrid
 
-        print *, "  * Give the name of the 1d losvd histogram outputfile:"
+        print *, "  * Give the name of the losvd 1d histogram outputfile:"
         read *, out_file_losvd
         print *, out_file_losvd
+
+        if (ap_hist2d_n > 0) then
+            print *, "  * Give the name of the proper motions 2d histogram outputfile:"
+            read *, out_file_pm
+            print *, out_file_pm
+        end if
 
         print *, "  * Give the name of the orbit classification outputfile:"
         read *, out_file_orbclass
@@ -2712,6 +2747,11 @@ contains
             call histogram_setup_write(out_handle)
             close (unit=out_handle, iostat=error)
             if (error /= 0) stop "  Error closing losvd file."
+            open (unit=out_handle, iostat=error, file=out_file_pm, action="write", &
+                  status="new", form="unformatted")  ! FIXME: make conditional
+            ! FIXME: need to implement call histogram2d_setup_write(out_handle)
+            close (unit=out_handle, iostat=error)
+            if (error /= 0) stop "  Error closing proper motions file."
 
             ! Write status file
             write (unit=out_handle + 1, fmt=*, iostat=error) integrator_current
@@ -2749,6 +2789,7 @@ contains
     !++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
     subroutine output_close()
         use integrator, only: integrator_current
+        use aperture, only: ap_hist2d_n
         !----------------------------------------------------------------------
         integer :: error
         print *, "  * Closing files and stopping output module"
@@ -2767,6 +2808,15 @@ contains
             if (error /= 0) stop "  Error writing to losvd file. Disk full?"
             close (unit=out_handle, iostat=error)
             if (error /= 0) stop "  Error closing losvd file."
+            if (ap_hist2d_n > 0) then
+                open (unit=out_handle, iostat=error, file=out_file_pm, action="write", &
+                    & status="old", position="append", form="unformatted")
+                if (error /= 0) stop "  Error opening proper motions file."
+                write (unit=out_handle, iostat=error) " "
+                if (error /= 0) stop "  Error writing to proper motions file. Disk full?"
+                close (unit=out_handle, iostat=error)
+                if (error /= 0) stop "  Error closing proper motions file."
+            end if
         end if
 
         ! Update the temp file to finished status
@@ -2789,6 +2839,7 @@ contains
     !++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
     subroutine output_write()
         use histograms, only: histogram_write
+        use aperture, only: ap_hist2d_n
         use quadrantgrid, only: qgrid_write
         use integrator, only: integrator_write, integrator_current
         !----------------------------------------------------------------------
@@ -2817,6 +2868,14 @@ contains
         call histogram_write(out_handle)
         close (unit=out_handle, iostat=error)
         if (error /= 0) stop "  Error closing losvd file."
+        if (ap_hist2d_n > 0) then
+            open (unit=out_handle, iostat=error, file=out_file_pm, action="write", &
+                & status="old", position="append", form="unformatted")
+            if (error /= 0) stop "  Error opening proper motions file."
+            ! FIXME: need to implement call histogram2d_write(out_handle)
+            close (unit=out_handle, iostat=error)
+            if (error /= 0) stop "  Error closing proper motions file."
+        end if
 
         ! Update the temp file to intermediate status
         open (unit=out_handle + 1, iostat=error, file=out_tmp_file, action="write", &
@@ -2923,8 +2982,8 @@ contains
         use integrator, only: integrator_integrate, integrator_points
         use output, only: output_write
         use quadrantgrid, only: qgrid_reset, qgrid_store
-        use psf, only: psf_n, psf_gaussian
-        use aperture, only: aperture_n, aperture_psf
+        use psf, only: psf_1dhist_n, psf_gaussian
+        use aperture, only: aperture_n, ap_hist2d_n, aperture_psf
         use aperture_routines, only: aperture_find
 
         !----------------------------------------------------------------------
@@ -2934,7 +2993,7 @@ contains
         real(kind=dp), dimension(integrator_points*projection_symmetry, 2):: proj, vec_gauss
         real(kind=dp), dimension(integrator_points*projection_symmetry):: losvel, velx, vely
         integer(kind=i4b), dimension(integrator_points*projection_symmetry):: velb, poly
-        integer(kind=i4b)                                          :: ap, i, pf
+        integer(kind=i4b)                                          :: ap, i
 
         integer(kind=i4b) :: type
         real(kind=dp) :: t1, t2
@@ -2961,10 +3020,10 @@ contains
                     first = .false.
 
                     if (hist_thesame) call histogram_velbin(1, losvel, velb)
-                    do i = 1, psf_n
+                    do i = 1, psf_1dhist_n
                         if (.not. hist_thesame) call histogram_velbin(i, losvel, velb)
                         call psf_gaussian(i, proj, vec_gauss)
-                        do ap = 1, aperture_n
+                        do ap = 1, aperture_n - ap_hist2d_n
                             if (i == aperture_psf(ap)) then
                                 call aperture_find(ap, vec_gauss, poly)
                                 call histogram_store(ap, poly, velb, size(proj, 1))
