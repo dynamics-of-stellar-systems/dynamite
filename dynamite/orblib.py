@@ -178,18 +178,23 @@ class LegacyOrbitLibrary(OrbitLibrary):
             theta, psi, phi = stars.triax_pqu2tpp(p,q,u)
         # get dark halo
         dh = self.system.get_all_dark_non_plummer_components()
-        self.logger.debug('Checking number of non-plummer dark components')
-        error_msg = 'only one non-plummer dark component should be present'
-        assert len(dh)==1, error_msg
-        self.logger.debug('...checks ok.')
-        dh = dh[0]  # extract the one and only dm component
+        if len(dh) > 1:
+            txt = 'Zero or one non-plummer dark component should be ' \
+                  f' present, not {len(dh)}.'
+            self.logger.error(txt)
+            raise ValueError(txt)
+        if len(dh) > 0:
+            dh = dh[0]  # extract the one and only dm component
 
-        if isinstance(dh, physys.NFW_m200_c):
-            #fix c via m200_c relation, for legacy Fortran it is still NFW
-            dm_specs, dm_par_vals = dh.get_dh_legacy_strings(self.parset,
-                                                             self.system)
+            if isinstance(dh, physys.NFW_m200_c):
+                #fix c via m200_c relation, for legacy Fortran it is still NFW
+                dm_specs, dm_par_vals = dh.get_dh_legacy_strings(self.parset,
+                                                                self.system)
+            else:
+                dm_specs, dm_par_vals = dh.get_dh_legacy_strings(self.parset)
         else:
-            dm_specs, dm_par_vals = dh.get_dh_legacy_strings(self.parset)
+            dm_specs = '0 0'
+            dm_par_vals = ''
 
         # header
         len_mge_pot = len(stars.mge_pot.data)
