@@ -1,6 +1,7 @@
 import os
 import logging
 import numpy as np
+import matplotlib as mpl
 import matplotlib.pyplot as plt
 from plotbin.display_pixels import display_pixels
 import cmasher as cmr
@@ -114,7 +115,8 @@ class Decomposition:
                     v_sigma_option='fit',
                     comps_plot='all',
                     individual_colorbars=False,
-                    figtype='.png'):
+                    figtype='.png',
+                    dpi=100):
         """ Generate decomposition plots.
 
         Parameters
@@ -150,12 +152,16 @@ class Decomposition:
         figtype : str, optional
             Determines the file format and extension to use when saving the
             figure. The default is '.png'.
+        dpi : float, optional
+            The resolution of saved figures (if not overridden later). The
+            default is 100 dpi.
 
         Returns
         -------
         None.
 
         """
+        mpl.rcParams['savefig.dpi'] = dpi
         comp_kinem_moments = self.comps_aphist(v_sigma_option)
         self.logger.info('Component data done. '
                          f'Plotting decomposition for {v_sigma_option=}.')
@@ -308,22 +314,29 @@ class Decomposition:
                            vmin=min_flux[comp]-max_flux[comp],
                            vmax=0,
                            **kw_display1)
-            ax.text(-0.2, 0.5, titles[np.where(compon==comp)[0][0]],
+            ax.text(-0.32, 0.5, titles[np.where(compon==comp)[0][0]],
                     **kwtext, transform=ax.transAxes)
+            ax.set_ylabel('arcsec')
+            if i_plot == LL - 1:
+                ax.set_xlabel('arcsec')
 
-            plt.subplot(LL, 3, 3*i_plot+2)
+            ax = plt.subplot(LL, 3, 3*i_plot+2)
             if i_plot == 0:
                 plt.title('velocity',fontsize=20,pad=20)
             display_pixels(xi_t, yi_t, vel[c_idx][grid[s]],
                            vmin=-1.0*max_vel[comp], vmax=max_vel[comp],
                            **kw_display2)
+            if i_plot == LL - 1:
+                ax.set_xlabel('arcsec')
 
-            plt.subplot(LL, 3, 3*i_plot+3)
+            ax = plt.subplot(LL, 3, 3*i_plot+3)
             if i_plot == 0:
                 plt.title('velocity dispersion',fontsize=20,pad=20)
             display_pixels(xi_t, yi_t, sig[c_idx][grid[s]],
                            vmin=min_sig[comp], vmax=max_sig[comp],
                            **kw_display1)
+            if i_plot == LL - 1:
+                ax.set_xlabel('arcsec')
             i_plot += 1
 
         plt.tight_layout()
