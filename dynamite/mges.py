@@ -136,8 +136,8 @@ class MGE(data.Data):
         -------
         array
             3D intrinsic_masses masses of the MGE in a polar grid with sizes
-            (n_r, n_theta, n_phi) which is defined (in Fortran files) to be
-            (6,6,10)
+            (n_r, n_theta, n_phi) which are defined in the config file.
+            Their defaults are (6,6,10)
 
         """
         fname = f'{directory_noml}datfil/mass_qgrid.dat'

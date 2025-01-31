@@ -18,9 +18,6 @@ class Populations(data.Integrated):
     """
     values = []
     def __init__(self,
-                 hist_width='default',
-                 hist_center='default',
-                 hist_bins='default',
                  kin_aper=None,
                  pop_cols=None,
                  **kwargs):
@@ -29,27 +26,8 @@ class Populations(data.Integrated):
         if hasattr(self, 'data'):
             if pop_cols is not None:
                 self.clean_data(pop_cols)
-            if hist_width=='default':
-                self.set_default_hist_width()  # needed for pop data?
-            else:
-                self.hist_width = float(hist_width)
-            if hist_center=='default':
-                self.set_default_hist_center()  # needed for pop data?
-            else:
-                self.hist_center = float(hist_center)
-            if hist_bins=='default':
-                self.set_default_hist_bins()  # needed for pop data?
-            else:
-                self.hist_bins = int(hist_bins)
             self.__class__.values = list(self.__dict__.keys())
             self.logger = logging.getLogger(f'{__name__}.{__class__.__name__}')
-            if self.hist_width is None or \
-                    self.hist_center is None or self.hist_bins is None:
-                text = 'Populations need (hist_width, hist_center, '\
-                   f'hist_bins), but has ' \
-                   f'({self.hist_width}, {self.hist_center}, {self.hist_bins})'
-                self.logger.error(text)
-                raise ValueError(text)
             self.n_spatial_bins = len(self.data)
 
         # self.__class__.values = list(self.__dict__.keys())
