@@ -1050,7 +1050,7 @@ class LegacyOrbitLibrary(OrbitLibrary):
                 else:
                     tube_pops.append(tube_orblib[population.kin_aper])
             if len(tube_orblib) != n_kins:
-                err_msg = 'Number of tube orbits does not match.'
+                err_msg = f'Number of tube orbits does not match: {self.mod_dir}.'
                 self.logger.error(err_msg)
                 raise ValueError(err_msg)
 
@@ -1079,7 +1079,7 @@ class LegacyOrbitLibrary(OrbitLibrary):
                 else:
                     box_pops.append(box_orblib[population.kin_aper])
             if len(box_orblib) != n_kins:
-                err_msg = 'Number of box orbits does not match.'
+                err_msg = f'Number of box orbits does not match: {self.mod_dir}.'
                 self.logger.error(err_msg)
                 raise ValueError(err_msg)
 

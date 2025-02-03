@@ -579,7 +579,7 @@ class Analysis:
         """
         Generates an astropy table in the model directory that holds the
         model's data for creating Gauss-Hermite kinematic maps:
-        v, sigma, h3 ... h<number_GH>.
+        flux, v, sigma, h3 ... h<number_GH>.
         v and sigma are either directly calculated from the model's losvd
         histograms or from fitting a Gaussian in each aperture.
 
