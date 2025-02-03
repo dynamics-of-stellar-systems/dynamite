@@ -347,9 +347,11 @@ class LegacyWeightSolver(WeightSolver):
                     if p.returncode == 127: # command not found
                         text += 'Check DYNAMITE legacy_fortran executables.'
                         self.logger.error(text)
+                        os.chdir(cur_dir)
                         raise FileNotFoundError(text)
                     text += f'{log_file} Be wary: DYNAMITE may crash...'
                     self.logger.warning(text)
+                    os.chdir(cur_dir)
                     raise RuntimeError(text)
                 # set the current directory to the dynamite directory
                 os.chdir(cur_dir)

@@ -2309,10 +2309,12 @@ contains
         ! Figure out how many histograms there are.
         h_nconstr = 0
         do ap = 1, h_n
-            if (bin_max(ap) == 0) then
-                h_nconstr = h_nconstr + aperture_size(ap)
-            else
-                h_nconstr = h_nconstr + bin_max(ap)
+            if (ap_hist_dim(ap) == 1) then  ! only count 1d histograms (required by LegacyWeightSolver)
+                if (bin_max(ap) == 0) then
+                    h_nconstr = h_nconstr + aperture_size(ap)
+                else
+                    h_nconstr = h_nconstr + bin_max(ap)
+                end if
             end if
         end do
 
