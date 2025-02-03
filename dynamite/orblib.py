@@ -914,7 +914,7 @@ class LegacyOrbitLibrary(OrbitLibrary):
                 os.chdir(cur_dir)
                 # append the populations data to the velhists
                 for i in range(len(pops)):
-                    vvv = dyn_kin.Histogram(xedg=np.array([-1., 1.]),
+                    vvv = dyn_kin.Histogram(xedg=np.array([-0.5, 0.5]),
                                             y=mass0[i],
                                             normalise=False)
                     velhists += [vvv]
@@ -1031,6 +1031,7 @@ class LegacyOrbitLibrary(OrbitLibrary):
             stars = self.system.get_unique_triaxial_visible_component()
         n_kins = len(stars.kinematic_data)
         n_pops = len(stars.population_data)
+
         # TODO: check if this ordering is compatible with weights read in by
         # LegacyWeightSolver.read_weights
         try:
