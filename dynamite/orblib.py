@@ -1042,8 +1042,8 @@ class LegacyOrbitLibrary(OrbitLibrary):
                               'integrity, and consistent config files. '
                               f'Model: {self.mod_dir}.')
             raise
-        if n_pops > 0:
-            tube_pops = []
+        if n_pops > 0:      # build tube_pops from re-used kin and
+            tube_pops = []  # genuine pops apertures
             for pop_idx, population in enumerate(stars.population_data):
                 if population.kin_aper is None:
                     tube_pops.append(tube_orblib.pop(n_kins))
@@ -1061,6 +1061,11 @@ class LegacyOrbitLibrary(OrbitLibrary):
                 tmp += [self.duplicate_flip_and_interlace_orblib(tube_orblib0)]
             tube_orblib = tmp
             tube_density_3D = np.repeat(tube_density_3D, 2, axis=0)
+            if n_pops > 0:
+                tmp = []
+                for t in tube_pops:
+                    tmp.append(self.duplicate_flip_and_interlace_orblib(t))
+                tube_pops = tmp
 
         # read box orbits
         try:
