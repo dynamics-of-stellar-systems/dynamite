@@ -69,18 +69,20 @@ class Decomposition:
         self.config = config
         if model is None:
             best_model_idx = config.all_models.get_best_n_models_idx(n=1)[0]
-            self.model = config.all_models.get_model_from_row(best_model_idx)
-        stars = \
-          config.system.get_component_from_class(
-                                  dyn.physical_system.TriaxialVisibleComponent)
-        n_kin = len(stars.kinematic_data)
+            model = config.all_models.get_model_from_row(best_model_idx)
+        self.model = model
+        if config.system.is_bar_disk_system():
+            self.stars = self.system.get_unique_bar_component()
+        else:
+            self.stars = self.system.get_unique_triaxial_visible_component()
+        n_kin = len(self.stars.kinematic_data)
         if kin_set >= n_kin:
             text = f'kin_set must be < {n_kin}, but it is {kin_set}'
             self.logger.error(text)
             raise ValueError(text)
         self.kin_set = kin_set
         self.logger.info(f'Performing decomposition for kin_set no {kin_set}: '
-                         f'{stars.kinematic_data[kin_set].name}')
+                         f'{self.stars.kinematic_data[kin_set].name}')
         # Get losvd_histograms and projected_masses
         self.orblib = self.model.get_orblib()
         self.orblib.read_losvd_histograms()
@@ -183,10 +185,7 @@ class Decomposition:
                 if k not in individual_colorbars:
                     individual_colorbars[k] = False
 
-        stars = \
-        self.config.system.get_component_from_class(
-                                dyn.physical_system.TriaxialVisibleComponent)
-        dp_args = stars.kinematic_data[self.kin_set].dp_args
+        dp_args = self.stars.kinematic_data[self.kin_set].dp_args
         xi = dp_args['x']
         yi = dp_args['y']
         dx = dp_args['dx']
@@ -269,7 +268,7 @@ class Decomposition:
                          labels[2]:sig[c_idx][grid[s]]})
         comps_kin = astropy.table.Table(table)
 
-        kin_name = stars.kinematic_data[self.kin_set].name
+        kin_name = self.stars.kinematic_data[self.kin_set].name
         file_name = f'comps_kin_{v_sigma_option}_{kin_name}'
         table_file_name = self.model.directory + file_name + '.ecsv'
         plot_file_name = self.config.settings.io_settings['plot_directory'] \
@@ -632,8 +631,10 @@ class Analysis:
                    "'both'."
             self.logger.error(txt)
             raise ValueError(txt)
-        stars = self.config.system.get_component_from_class(
-                                dyn.physical_system.TriaxialVisibleComponent)
+        if self.config.system.is_bar_disk_system():
+            stars = self.system.get_unique_bar_component()
+        else:
+            stars = self.system.get_unique_triaxial_visible_component()
         kin_name = stars.kinematic_data[kin_set].name
         self.logger.info('Getting projected masses and losvds for '
                          f'model {model.directory}.')
