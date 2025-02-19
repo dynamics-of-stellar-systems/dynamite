@@ -120,15 +120,12 @@ system_components:
                 datafile: "gauss_hermite_kins_with_pops.ecsv"  # both discr. & integrated
                 aperturefile: "aperture.dat" # integrated only
                 binfile: "bins.dat"          # integrated only
-                with_pops: False # If True, pop columns will create pop object
-        # populations: # optional, only specified for components with kinematics
-        #     pop1:
-        #         hist_width: '2719.8215332031'
-        #         hist_center: '0.0000'
-        #         hist_bins: '203'
-        #         datafile: "stellar_pops.ecsv"  # both discr. & integrated
-        #         aperturefile: "aperture_for_pops.dat" # integrated only
-        #         binfile: "bins_for_pops.dat"          # integrated only
+                with_pops: True # If True, pop columns will create pop object
+        populations: # optional, only specified for components with kinematics
+            pop1:
+                datafile: "stellar_pops.ecsv"  # both discr. & integrated
+                aperturefile: "aperture_for_pops.dat" # integrated only
+                binfile: "bins_for_pops.dat"          # integrated only
 
 system_parameters:
     ml: # M/L
