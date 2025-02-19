@@ -2152,7 +2152,7 @@ contains
                 if (h_bin(i) /= 1) stop " 0d histogram must have 1 bin only."
                 write (unit=handle_pops) histogram(bg:ed, 1:h_bin(i))
             else
-                call histogram_write_compat_sparse(handle, histogram(bg:ed, 1:h_bin(i)))
+                call histogram_write_compat_sparse(handle, i, histogram(bg:ed, 1:h_bin(i)))
             end if
         end do
     end subroutine histogram_write
