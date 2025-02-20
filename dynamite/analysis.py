@@ -632,9 +632,9 @@ class Analysis:
             self.logger.error(txt)
             raise ValueError(txt)
         if self.config.system.is_bar_disk_system():
-            stars = self.system.get_unique_bar_component()
+            stars = self.config.system.get_unique_bar_component()
         else:
-            stars = self.system.get_unique_triaxial_visible_component()
+            stars = self.config.system.get_unique_triaxial_visible_component()
         kin_name = stars.kinematic_data[kin_set].name
         self.logger.info('Getting projected masses and losvds for '
                          f'model {model.directory}.')
