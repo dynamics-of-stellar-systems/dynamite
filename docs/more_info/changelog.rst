@@ -4,6 +4,7 @@
 Change Log
 ****************
 
+- Improvement: provided system parameter to adjust ml directory string format for use with old DYNAMITE results
 - Improvement: added counter-rotating components to decomposition.
 - Bugfix: fix a bug that prevents Bayes LOSVD kinemtic maps from being created more than once
 - New feature: a dark halo is no longer mandatory (models can consist of either zero or one dark halo component)

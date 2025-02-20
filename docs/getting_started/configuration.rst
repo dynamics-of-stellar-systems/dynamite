@@ -190,6 +190,7 @@ Specifying the ``ml`` parameter in the configuration file follows the same patte
             - ``step``: initial step size for parameter search
             - ``minstep``: minimum allowed stepsize for this parameter
         - ``logarithmic``: Boolean, whether logarithmic steps should be used for parameter search. If true, then (``value``, ``lo``, ``hi``) must all have log units
+        - ``sformat``: format string for this parameter to be used in directory names. Should normally be omitted or set to the default of "05.2f". Provided for re-use of older DYNAMITE results that follow a different format.
         - ``LaTeX``: LaTeX format string for this parameter to be used for plots, e.g. in axis labels.
 
 
