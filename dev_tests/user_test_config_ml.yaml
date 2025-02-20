@@ -136,6 +136,8 @@ system_parameters:
             minstep: 0.5
         fixed: False
         value: 5.
+        sformat: "05.2f"  # sformat of ml in directory names, default: "05.2f"
+                          # don't change unless you know what you're doing
         LaTeX: "$Y_\\mathrm{r}$"
 
 ###############################################################################

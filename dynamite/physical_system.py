@@ -89,7 +89,9 @@ class System(object):
             self.logger.error(text)
             raise ValueError(text)
         ml = self.parameters[0]
-        ml.update(sformat = '05.2f') # sformat of ml parameter
+        if ml.sformat is None:
+            ml.update(sformat = '05.2f') # default sformat of ml parameter
+            self.logger.info(f"Setting ml parameter's sformat to {ml.sformat}")
         if not ml.fixed and 'minstep' in ml.par_generator_settings:
             generator_settings = ml.par_generator_settings
             if generator_settings['minstep'] > generator_settings['step']:
