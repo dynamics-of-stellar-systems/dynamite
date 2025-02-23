@@ -282,9 +282,12 @@ class ModelInnerIterator(object):
                         if len(input_list_ml) > 0:
                             output_ml = p.map(self.create_and_run_model,
                                               input_list_ml)
-                self.write_output_to_all_models_table(rows_to_do_orblib,
-                                                      output_orblib)
-                self.write_output_to_all_models_table(rows_to_do_ml, output_ml)
+                    if len(input_list_orblib) > 0:
+                        self.write_output_to_all_models_table(rows_to_do_orblib,
+                                                              output_orblib)
+                    if len(input_list_ml) > 0:
+                        self.write_output_to_all_models_table(rows_to_do_ml,
+                                                              output_ml)
             self.all_models.save()  # save all_models table once models are run
             self.logger.info('Iteration done, '
                              f'{self.n_to_do} model(s) calculated.')
