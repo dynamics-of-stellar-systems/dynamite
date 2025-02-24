@@ -137,9 +137,6 @@ system_components:
             #     binfile: "bins_for_pm.dat"
         # populations: # optional, only specified for components with kinematics
         #     pop1:
-        #         hist_width: '2719.8215332031'
-        #         hist_center: '0.0000'
-        #         hist_bins: '203'
         #         datafile: "stellar_pops.ecsv"  # both discr. & integrated
         #         aperturefile: "aperture_for_pops.dat" # integrated only
         #         binfile: "bins_for_pops.dat"          # integrated only

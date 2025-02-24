@@ -8,7 +8,6 @@ import logging
 import importlib
 import yaml
 import datetime
-import numpy as np
 
 import dynamite as dyn
 from dynamite import constants as const
@@ -317,9 +316,6 @@ class Configuration(object):
                                         aperturefile=data_kin['aperturefile'],
                                         binfile=data_kin['binfile'],
                                         datafile=data_kin['datafile'],
-                                        hist_width=data_kin['hist_width'],
-                                        hist_center=data_kin['hist_center'],
-                                        hist_bins=data_kin['hist_bins'],
                                         kin_aper=kin_id,
                                         pop_cols=kinematics_set.pop_cols)
                                 c.population_data.append(populations_set)
@@ -943,12 +939,6 @@ class Configuration(object):
                 else:
                     txt = 'VisibleComponent must have kinematics: ' \
                           'GaussHermite, BayesLOSVD, and/or ProperMotions.'
-                    self.logger.error(txt)
-                    raise ValueError(txt)
-                n_pops = len(c.population_data)
-                if n_pops > 0 and ws_type == 'LegacyWeightSolver':
-                    txt = 'LegacyWeightSolver cannot be used with population '\
-                        'data - use weight-solver type NNLS.'
                     self.logger.error(txt)
                     raise ValueError(txt)
                 if c.symmetry != 'triax':
