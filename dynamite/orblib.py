@@ -782,10 +782,7 @@ class LegacyOrbitLibrary(OrbitLibrary):
         list contains the bin edges of the 3D grid.
 
         """
-        if self.system.is_bar_disk_system():
-            stars = self.system.get_unique_bar_component()
-        else:
-            stars = self.system.get_unique_triaxial_visible_component()
+        stars = self.stars
         norb = self.settings['nE'] * self.settings['nI2'] * self.settings['nI3']
         ml = self.parset['ml']
         cur_dir = os.getcwd()
@@ -801,6 +798,7 @@ class LegacyOrbitLibrary(OrbitLibrary):
         if pops and return_intrinsic_moments:
             err_msg = 'Pops=True not compatible with return_intrinsic_moments' \
                       f'=True, will set pops to False: {self.mod_dir}.'
+            pops = False
             self.logger.warning(err_msg)
 
         if not pops:  # need orbit properties in 'non-populations' mode only
@@ -1095,12 +1093,8 @@ class LegacyOrbitLibrary(OrbitLibrary):
                 populations data
 
         """
-        if self.system.is_bar_disk_system():
-            stars = self.system.get_unique_bar_component()
-        else:
-            stars = self.system.get_unique_triaxial_visible_component()
-        n_kins = len(stars.kinematic_data)  # currently, only 1D histograms are supported
-        n_pops = len(stars.population_data) if pops else 0
+        n_kins = len(self.stars.kinematic_data)  # currently, only 1D histograms are supported
+        n_pops = len(self.stars.population_data) if pops else 0
 
         # TODO: check if this ordering is compatible with weights read in by
         # LegacyWeightSolver.read_weights
@@ -1115,7 +1109,7 @@ class LegacyOrbitLibrary(OrbitLibrary):
             raise
         if n_pops > 0:      # build tube_pops from re-used kin and
             tube_pops = []  # genuine pops apertures
-            for pop_idx, population in enumerate(stars.population_data):
+            for pop_idx, population in enumerate(self.stars.population_data):
                 if population.kin_aper is None:
                     tube_pops.append(tube_orblib.pop(n_kins))
                 else:
@@ -1151,7 +1145,7 @@ class LegacyOrbitLibrary(OrbitLibrary):
             raise
         if n_pops > 0:
             box_pops = []
-            for pop_idx, population in enumerate(stars.population_data):
+            for pop_idx, population in enumerate(self.stars.population_data):
                 if population.kin_aper is None:
                     box_pops.append(box_orblib.pop(n_kins))
                 else:
