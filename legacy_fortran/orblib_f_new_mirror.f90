@@ -1125,8 +1125,8 @@ module psf
 
     ! how many psf are there?
     integer(kind=i4b), public                           :: psf_n
-    ! how many psf with 1d histograms are there?
-    integer(kind=i4b), public                           :: psf_1dhist_n
+    ! how many psf with 0d and 1d histograms are there?
+    integer(kind=i4b), public                     :: psf_0dhist_n, psf_1dhist_n
     ! kind of psf(psf_n)
     integer(kind=i4b), private, allocatable, dimension(:) :: psf_kind
     ! size of psf for (n,psf)
@@ -2289,7 +2289,7 @@ contains
     subroutine histogram_setup()
         use aperture, only: aperture_n, aperture_size, aperture_psf, ap_hist_dim
         use binning, only: binning_setup, bin_max
-        use psf, only: psf_n, psf_1dhist_n
+        use psf, only: psf_n, psf_0dhist_n, psf_1dhist_n
         !----------------------------------------------------------------------
         logical :: has_1dhist
         integer(kind=i4b)  :: i, j, ap
@@ -2297,19 +2297,25 @@ contains
 
         print *, "  * Starting Histogram module"
 
+        psf_0dhist_n = 0
         psf_1dhist_n = 0
         do i = 1, psf_n
-            has_1dhist = .false.
             do j = 1, aperture_n
-                if (aperture_psf(j) == i .and. ap_hist_dim(j) == 1) has_1dhist = .true.
+                if (aperture_psf(j) == i .and. ap_hist_dim(j) == 0) then
+                    psf_0dhist_n = psf_0dhist_n + 1
+                    exit
+                end if
+                if (aperture_psf(j) == i .and. ap_hist_dim(j) == 1) then
+                    psf_1dhist_n = psf_1dhist_n + 1
+                    exit
+                end if
             end do
-            if (has_1dhist) psf_1dhist_n = psf_1dhist_n + 1
         end do
-        h_n = psf_1dhist_n  ! assuming 1 psf per aperture
+        h_n = psf_0dhist_n + psf_1dhist_n  ! assuming 1 psf per aperture
         allocate (hist_basic(h_n, 3), h_beg(h_n), h_end(h_n), h_bin(h_n))
         allocate (h_width(h_n), h_start(h_n), h_n_stored(h_n), h_blocks(h_n))
-        do i = 1, psf_1dhist_n  ! PSFs and apertures with 1d histograms must come first
-            print *, "  * PSF ", i, " has 1D histograms"
+        do i = 1, psf_0dhist_n + psf_1dhist_n  ! PSFs and apertures with 0d and 1d histograms must come first
+            print *, "  * PSF ", i, " has 0D or 1D histograms"
             print *, "  * Give for psf ", i, " the histogram width, center and"
             print *, "    amount of bins"
             read *, width, center, bins
@@ -3028,7 +3034,7 @@ contains
         use integrator, only: integrator_integrate, integrator_points
         use output, only: output_write
         use quadrantgrid, only: qgrid_reset, qgrid_store
-        use psf, only: psf_1dhist_n, psf_gaussian
+        use psf, only: psf_0dhist_n, psf_1dhist_n, psf_gaussian
         use aperture, only: aperture_n, ap_hist2d_n, aperture_psf
         use aperture_routines, only: aperture_find
 
@@ -3066,7 +3072,7 @@ contains
                     first = .false.
 
                     if (hist_thesame) call histogram_velbin(1, losvel, velb)
-                    do i = 1, psf_1dhist_n
+                    do i = 1, psf_0dhist_n + psf_1dhist_n
                         if (.not. hist_thesame) call histogram_velbin(i, losvel, velb)
                         call psf_gaussian(i, proj, vec_gauss)
                         do ap = 1, aperture_n - ap_hist2d_n

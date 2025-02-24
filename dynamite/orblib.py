@@ -626,7 +626,7 @@ class LegacyOrbitLibrary(OrbitLibrary):
             f_name = 'datfil/orblibbox_' + f + '.dat'
             txt_file.write(f'\ntest -e {f_name} '
                            f'&& rm -f {f_name}.bz2 && bzip2 -k {f_name}\n')
-            txt_file.write(f'rm {f_name}')
+            txt_file.write(f'rm -f {f_name}')
         txt_file.write(') &\n')
         txt_file.write('orblibbox=$!\n')
         txt_file.write('wait $orblib $orblibbox\n')
