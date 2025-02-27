@@ -355,13 +355,6 @@ class LegacyOrbitLibrary(OrbitLibrary):
                 w, c, b = kin_i.hist_width, kin_i.hist_center, kin_i.hist_bins
                 line = f'{w} {c} {b}{tab[:-2]}{label}\n'
                 f.write(line)
-            for i in psf_pop_idx:
-                pop_i = stars.population_data[i]
-                label = '[vhist width, center, nbins are trivial for pops ' \
-                        f'{pop_i.name}]'
-                w, c, b = 1., 0., 1
-                line = f'{w} {c} {b}{tab[:-1]}{label}\n'
-                f.write(line)
             for i in np.arange(n_aperture_kin):
                 label = f'[use binning for kinematics aperture {1+i}? ' \
                         '0/1 = yes/no]'
