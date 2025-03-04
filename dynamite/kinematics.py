@@ -956,20 +956,18 @@ class Histogram2D(object):
 
     Parameters
     ----------
-    xedg : array (n_bins+1,)
-        histogram bin edges in x
-    yedg : array (n_bins+1,)
-        histogram bin edges in y
-    vel : (n_orbits, n_bins+1, n_apertures, 2)
-        histogram values (2 velocity components per orbit, )
+    xedg : tuple (array(n_bins[0]+1), array(n_bins[1]+1))
+        2d histogram bin edges
+    y : array (n_orbits, n_bins[0]+1, nx_bins[1]+1, n_apertures)
+        histogram values
     normalise : bool, default=True
         whether to normalise to pdf
 
     Attributes
     ----------
-    x : array (n_bins,)
+    x : array (n_bins, 2)
         bin centers
-    dx : array (n_bins,)
+    dx : array (n_bins, 2)
         bin widths
     normalised : bool
         whether or not has been normalised to pdf
@@ -1654,5 +1652,3 @@ class ProperMotions(Kinematics, data.Integrated):
         self.logger = logging.getLogger(f'{__name__}.{__class__.__name__}')
         if hasattr(self, 'data'):
             pass
-        self.logger.warning(f'{self.hist_width=}, {self.hist_center=}, '
-                            f'{self.hist_bins=}')
