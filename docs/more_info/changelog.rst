@@ -4,6 +4,7 @@
 Change Log
 ****************
 
+- Improvement: the orbit_plot now allows custom orbit cuts via the ocut parameter (same behavior as in the Decomposition class)
 - Improvement: added counter-rotating components to decomposition.
 - Bugfix: fix a bug that prevents Bayes LOSVD kinemtic maps from being created more than once
 - New feature: a dark halo is no longer mandatory (models can consist of either zero or one dark halo component)
