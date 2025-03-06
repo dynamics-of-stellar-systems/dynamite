@@ -2349,7 +2349,7 @@ contains
             hend2 = h_end(ap, :)
             width2 = h_width(ap, :)
             bins2 = h_bin(ap, :)
-            do i = 1, size(vel2d, 2)
+            do i = 1, size(vel2d, 1)
                 v2 = vel2d(i, :)
                 do dim = 1, size(vel2d, 2)
                     if (v2(dim) > beg2(dim)) then
@@ -2429,7 +2429,6 @@ contains
         use binning, only: binning_setup, bin_max
         use psf, only: psf_n, psf_hist_dim
         !----------------------------------------------------------------------
-        logical :: has_1dhist
         integer(kind=i4b)  :: i, j, ap, h_bin_max
         integer(kind=i4b), dimension(2)      :: h_bin_max2d
         integer(kind=i4b), dimension(psf_n)  :: psf_aperture
@@ -2500,7 +2499,7 @@ contains
             ! FIXME: sum(aperture_size(:)) is too large
             allocate (histogram2d(sum(aperture_size(:)), h_bin_max2d(1), h_bin_max2d(2)))
             print *, "  * 2d Histogram size : ", size(histogram2d), "=", size(histogram2d, 1), "*",&
-                & size(histogram2d, 2) * size(histogram2d, 3)
+                & size(histogram2d, 2), "*", size(histogram2d, 3)
         end if
 
         h_blocks(:) = aperture_size(:)
@@ -3225,8 +3224,8 @@ contains
         use integrator, only: integrator_integrate, integrator_points
         use output, only: output_write
         use quadrantgrid, only: qgrid_reset, qgrid_store
-        use psf, only: psf_n, psf_gaussian, psf_hist_dim
-        use aperture, only: aperture_n, ap_hist2d_n, aperture_psf
+        use psf, only: psf_n, psf_gaussian
+        use aperture, only: aperture_n, aperture_psf
         use aperture_routines, only: aperture_find
 
         !----------------------------------------------------------------------
@@ -3264,18 +3263,20 @@ contains
                     if (done) exit
                     first = .false.
 
-                    if (hist_thesame .and. h_maxdim <= 1) call histogram_velbin(1, losvel, vel2d, velb, velb2d)
+                    if (hist_thesame .and. h_maxdim <= 1) then
+                        call histogram_velbin(1, losvel, vel2d, velb, velb2d)
+                    end if
                     do i = 1, psf_n
-                        if (psf_hist_dim(i) == 0 .or. psf_hist_dim(i) == 1) then
-                            if (.not. hist_thesame .or. h_maxdim >= 2) call histogram_velbin(i, losvel, vel2d, velb, velb2d)
-                            call psf_gaussian(i, proj, vec_gauss)
-                            do ap = 1, aperture_n - ap_hist2d_n
-                                if (i == aperture_psf(ap)) then
-                                    call aperture_find(ap, vec_gauss, poly)
-                                    call histogram_store(ap, poly, velb, velb2d, size(proj, 1))
-                                end if
-                            end do
+                        if (.not. hist_thesame .or. h_maxdim >= 2) then
+                            call histogram_velbin(i, losvel, vel2d, velb, velb2d)
                         end if
+                        call psf_gaussian(i, proj, vec_gauss)
+                        do ap = 1, aperture_n
+                            if (i == aperture_psf(ap)) then
+                                call aperture_find(ap, vec_gauss, poly)
+                                call histogram_store(ap, poly, velb, velb2d, size(proj, 1))
+                            end if
+                        end do
                     end do
                 end do
             end do

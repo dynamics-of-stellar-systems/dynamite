@@ -874,7 +874,7 @@ class LegacyOrbitLibrary(OrbitLibrary):
             hist_bins = [k.hist_bins for k in stars.kinematic_data]
             # kinematics k have 1d losvd histograms if type(k.hist_bins)=int and
             # 2d proper motion hists otherwise (k.hist_bins is a list then)
-            hist_dim = [1 if type(k.hist_bins) == int else 2
+            hist_dim = [1 if type(k.hist_bins) is int else 2
                         for k in stars.kinematic_data]
             if not legacy_file:  # open losvd_hist and pm_hist file(s) if needed
                 os.chdir(self.mod_dir)
@@ -889,7 +889,7 @@ class LegacyOrbitLibrary(OrbitLibrary):
                     tmpfname_pm = f'datfil/{fileroot}_pm_hist_{ml}.dat'
                     subprocess.run(f'bunzip2 -c {orblib_file} > {tmpfname_pm}',
                                    shell=True)
-                    orblib_pm_in = FortranFile(tmpfname, 'r')
+                    orblib_pm_in = FortranFile(tmpfname_pm, 'r')
             # read the losvd histogram data
             # from histogram_setup_write, lines 1917-1926:
             _ = orblib_in.read_record(np.int32, np.int32, float)
@@ -903,8 +903,8 @@ class LegacyOrbitLibrary(OrbitLibrary):
             # these aren't stored in orblib.dat so must read from kinematics objects
             self.logger.debug(f'{self.mod_dir}{tmpfname}: '
                               'checking number of velocity bins...')
-            hist_bins_1d = np.array([i for i in hist_bins if type(i) == int])
-            hist_bins_2d = np.array([i for i in hist_bins if type(i) != int])
+            hist_bins_1d = np.array([i for i in hist_bins if type(i) is int])
+            hist_bins_2d = np.array([i for i in hist_bins if type(i) is not int])
             if np.any(np.concatenate((hist_bins_1d,
                                       hist_bins_2d.flatten())) % 2 == 0):
                 error_msg = f'{self.mod_dir}{tmpfname}: all kinematics ' \
@@ -982,10 +982,12 @@ class LegacyOrbitLibrary(OrbitLibrary):
                                    int((hist_bins[kin_idx][1]-1)/2)]
                             # ^--- these are integers since hist_bins is odd
                             tmp = orblib_pm_in.read_reals(float)
+                            tmp = tmp.reshape((ivmax1-ivmin1+1,
+                                               ivmax2-ivmin2+1), order='F')
                             velhist0[kin_idx][j,
-                                            ivmin1+nv0[0]:ivmax1+nv0[0]+1,
-                                            ivmin2+nv0[1]:ivmax2+nv0[1]+1,
-                                            i_ap0] = tmp
+                                              ivmin1+nv0[0]:ivmax1+nv0[0]+1,
+                                              ivmin2+nv0[1]:ivmax2+nv0[1]+1,
+                                              i_ap0] = tmp
                     else:
                         error_msg = 'Invalid histogram dimension.'
                         self.logger.error(error_msg)    # should never happen
@@ -1583,7 +1585,7 @@ class LegacyOrbitLibrary(OrbitLibrary):
         n_ytish = np.sum(bool_ytish)
         n_ztish = np.sum(bool_ztish)
         n_other = np.sum(bool_other)
-        n_sum = n_box + n_xtish + n_ytish + n_ztish + n_other
+        # UNUSED n_sum = n_box + n_xtish + n_ytish + n_ztish + n_other
         n_xt_exact = np.sum(bool_xtube)
         n_yt_exact = np.sum(bool_ytube)
         n_zt_exact = np.sum(bool_ztube)
