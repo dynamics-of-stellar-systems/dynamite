@@ -1194,16 +1194,18 @@ class LegacyOrbitLibrary(OrbitLibrary):
         """Read the orbit library
 
         Read box orbits and tube orbits, mirrors the latter, and combines.
-        Rescales the velocity axis according to the ``ml`` value. Sets LOSVDs
-        and 3D grid/aperture masses of the combined orbit library.
+        Rescales the velocity axis according to the ``ml`` value. Sets LOSVDs,
+        proper motions, and 3D grid/aperture masses of the combined orbit
+        library.
         If pops=True, only calculates the populations' projected masses.
 
         Returns
         -------
         If pops is False, sets the attributes:
-            -   ``self.losvd_histograms``: a list, whose i'th entry is a
-                ``dyn.kinematics.Histogram`` object holding the orbit lib LOSVDs
-                binned for the i'th kinematic set
+            -   ``self.losvd_histograms``: a list, whose i'th entry is EITHER a
+                ``dyn.kinematics.Histogram`` object holding the orbit library
+                LOSVDs OR a ``dyn.kinematics.Histogram2D`` object holding the
+                orbit library proper motions, binned for the i'th kinematic set
             -   ``self.intrinsic_masses``: 3D grid/intrinsic masses of orbit lib
             -   ``self.projected_masses``: aperture/proj. masses of orbit lib
             -   ``self.n_orbs``: number of orbits in the orbit library
@@ -1212,7 +1214,7 @@ class LegacyOrbitLibrary(OrbitLibrary):
                 populations data
 
         """
-        n_kins = len(self.stars.kinematic_data)  # currently, only 1D histograms are supported
+        n_kins = len(self.stars.kinematic_data)
         n_pops = len(self.stars.population_data) if pops else 0
 
         # TODO: check if this ordering is compatible with weights read in by
