@@ -1,3 +1,4 @@
+from matplotlib import axes
 import numpy as np
 from scipy import special, stats
 from scipy.optimize import curve_fit
@@ -796,7 +797,7 @@ class Histogram(object):
     ----------
     xedg : array (n_bins+1,)
         histogram bin edges
-    y : (n_orbits, n_bins+1, n_apertures)
+    y : (n_orbits, n_bins, n_apertures)
         histogram values
     normalise : bool, default=True
         whether to normalise to pdf
@@ -958,16 +959,16 @@ class Histogram2D(object):
     ----------
     xedg : tuple (array(n_bins[0]+1), array(n_bins[1]+1))
         2d histogram bin edges
-    y : array (n_orbits, n_bins[0]+1, nx_bins[1]+1, n_apertures)
+    y : array (n_orbits, n_bins[0], nx_bins[1], n_apertures)
         histogram values
     normalise : bool, default=True
         whether to normalise to pdf
 
     Attributes
     ----------
-    x : array (n_bins, 2)
+    x : tuple (array(n_bins[0], ), array(n_bins[1], ))
         bin centers
-    dx : array (n_bins, 2)
+    dx : tuple (array(n_bins[0], ), array(n_bins[1], ))
         bin widths
     normalised : bool
         whether or not has been normalised to pdf
@@ -975,9 +976,9 @@ class Histogram2D(object):
     """
     def __init__(self, xedg=None, y=None, normalise=False):
         self.logger = logging.getLogger(f'{__name__}.{__class__.__name__}')
-        self.xedg = xedg
-        self.x = (xedg[:-1] + xedg[1:])/2.
-        self.dx = xedg[1:] - xedg[:-1]
+        self.xedg = tuple(xedg)
+        self.x = tuple( (x[:-1] + x[1:]) / 2 for x in xedg )  # (xedg[:-1] + xedg[1:])/2.
+        self.dx = tuple( x[1:] - x[:-1] for x in xedg )  #xedg[1:] - xedg[:-1]
         self.y = y
         if normalise:
             self.normalise()
@@ -985,7 +986,7 @@ class Histogram2D(object):
     def get_normalisation(self):
         """Get the normalsition
 
-        Calculates ``Sum_i losvd_i * dv_i``
+        Calculates ``Sum_ij y_ij * area_ij = Sum_ij y_ij * dx[0]_i * dx[1]_j``
 
         Returns
         -------
@@ -994,7 +995,8 @@ class Histogram2D(object):
 
         """
         na = np.newaxis
-        norm = np.sum(self.y*self.dx[na,:,na], axis=1)
+        norm = np.sum(self.y * self.dx[0][na,:,na,na] * self.dx[1][na,na,:,na],
+                      axis=(1,2))
         return norm
 
     def normalise(self):
@@ -1008,10 +1010,10 @@ class Histogram2D(object):
         """
         norm = self.get_normalisation()
         na = np.newaxis
-        tmp = self.y/norm[:,na,:]
+        tmp = self.y/norm[:,na,na,:]
         # where norm=0, tmp=nan. Fix this:
         idx = np.where(norm==0.)
-        tmp[idx[0],:,idx[1]] = 0.
+        tmp[idx[0],:,:,idx[1]] = 0.
         # replace self.y with normalised y
         self.y = tmp
 
@@ -1030,25 +1032,28 @@ class Histogram2D(object):
             resets ``self.xedg``, ``self.x``, ``self.dx`` to rescaled versions
 
         """
-        self.xedg *= scale_factor
-        self.x *= scale_factor
-        self.dx *= scale_factor
+        self.xedg = tuple( x * scale_factor for x in self.xedg )
+        self.x = tuple( x * scale_factor for x in self.x )
+        self.dx = tuple( x * scale_factor for x in self.dx )
 
     def get_mean(self):
-        """Get the mean velocity
+        """Get the mean velocities
 
         Returns
         -------
         array shape (n_orbits, n_apertures)
-            mean velcoity of losvd
+            mean velocity components
 
         """
         na = np.newaxis
-        mean = np.sum(self.x[na,:,na] * self.y * self.dx[na,:,na], axis=1)
+        # mean = np.sum(self.x[na,:,na] * self.y * self.dx[na,:,na], axis=1)
+        mean = (np.sum(self.x[0][na,:,na] * np.sum(self.y*self.dx[1][na,na,:,na], axis=2) * self.dx[0][na,:,na], axis=1),
+                np.sum(self.x[1][na,:,na] * np.sum(self.y*self.dx[0][na,:,na,na], axis=1) * self.dx[1][na,:,na], axis=1))
         norm = self.get_normalisation()
         # ignore invalid operations resulting in np.nan (such as 0/0 -> np.nan)
         with np.errstate(invalid='ignore'):
-            mean /= norm
+            # mean /= norm
+            mean = tuple(m / norm for m in mean)
         return mean
 
     def get_sigma(self):
@@ -1062,16 +1067,19 @@ class Histogram2D(object):
         """
         na = np.newaxis
         mean = self.get_mean()
-        v_minus_mu = self.x[na,:,na]-mean[:,na,:]
-        var = np.sum(v_minus_mu**2. * self.y * self.dx[na,:,na],
-                     axis=1)
+        v_minus_mu = tuple(self.x[dim][na,:,na]-mean[dim][:,na,:] for dim in range(2))
+        var = (np.sum(v_minus_mu[0]**2. * np.sum(self.y*self.dx[1][na,na,:,na], axis=2) * self.dx[0][na,:,na], axis=1),
+               np.sum(v_minus_mu[1]**2. * np.sum(self.y*self.dx[0][na,:,na,na], axis=1) * self.dx[1][na,:,na], axis=1))
         norm = self.get_normalisation()
-        var /= norm
-        sigma = var**0.5
+        # var /= norm
+        var = tuple(v / norm for v in var)
+        # sigma = var**0.5
+        sigma = tuple(v**0.5 for v in var)
         return sigma
 
     def get_mean_sigma_gaussfit(self):
         """Get the mean velocity and velocity dispersion from fitted Gaussians
+        FIXME: NOT IMPLEMENTED YET
 
         Returns
         -------

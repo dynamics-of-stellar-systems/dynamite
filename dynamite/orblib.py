@@ -950,8 +950,6 @@ class LegacyOrbitLibrary(OrbitLibrary):
                     error_msg = 'Invalid histogram dimension.'
                     self.logger.error(error_msg)    # should never happen
                     raise ValueError(error_msg)
-            # tmp = zip(hist_bins,n_apertures)
-            # velhist0 = [np.zeros((norb, nv, na)) for (nv,na) in tmp]
             # Next read the histograms themselves.
             for j in range(norb):
                 if legacy_file:  # orbit info is interlaced in the legacy file
@@ -968,24 +966,25 @@ class LegacyOrbitLibrary(OrbitLibrary):
                     if hist_dim[kin_idx] == 1:
                         ivmin, ivmax = orblib_in.read_ints(np.int32)
                         if ivmin <= ivmax:
-                            nv0 = (hist_bins[kin_idx]-1)/2
+                            nv0 = (hist_bins[kin_idx] -1 ) // 2
                             # ^--- this is an integer since hist_bins is odd
-                            nv0 = int(nv0)
                             tmp = orblib_in.read_reals(float)
-                            velhist0[kin_idx][j, ivmin+nv0:ivmax+nv0+1, i_ap0] = tmp
+                            velhist0[kin_idx][j,
+                                              ivmin+nv0:ivmax+nv0+1,
+                                              i_ap0] = tmp
                     elif hist_dim[kin_idx] == 2:
-                        ivmin1, ivmin2, ivmax1, ivmax2 = \
+                        ivmin0, ivmin1, ivmax0, ivmax1 = \
                             orblib_pm_in.read_ints(np.int32)
-                        if ivmin1 <= ivmax1 and ivmin2 <= ivmax2:
-                            nv0 = [int((hist_bins[kin_idx][0]-1)/2),
-                                   int((hist_bins[kin_idx][1]-1)/2)]
+                        if ivmin0 <= ivmax0 and ivmin1 <= ivmax1:
+                            nv0 = [(hist_bins[kin_idx][0] - 1) // 2,
+                                   (hist_bins[kin_idx][1] - 1) // 2]
                             # ^--- these are integers since hist_bins is odd
                             tmp = orblib_pm_in.read_reals(float)
-                            tmp = tmp.reshape((ivmax1-ivmin1+1,
-                                               ivmax2-ivmin2+1), order='F')
+                            tmp = tmp.reshape((ivmax0-ivmin0+1,
+                                               ivmax1-ivmin1+1), order='F')
                             velhist0[kin_idx][j,
-                                              ivmin1+nv0[0]:ivmax1+nv0[0]+1,
-                                              ivmin2+nv0[1]:ivmax2+nv0[1]+1,
+                                              ivmin0+nv0[0]:ivmax0+nv0[0]+1,
+                                              ivmin1+nv0[1]:ivmax1+nv0[1]+1,
                                               i_ap0] = tmp
                     else:
                         error_msg = 'Invalid histogram dimension.'
@@ -1002,14 +1001,14 @@ class LegacyOrbitLibrary(OrbitLibrary):
                 return intrinsic_moms, intrinsic_grid  #######################
             else:
                 velhists = []
-                for i, velhist in enumerate(velhist0):
-                    if hist_dim[i] == 1:
-                        width0 = hist_widths[i]
-                        bins0 = hist_bins[i]
-                        idx_center = (bins0-1)/2 # integer since hist_bins is odd
+                for kin_idx, velhist in enumerate(velhist0):
+                    if hist_dim[kin_idx] == 1:
+                        width = hist_widths[kin_idx]
+                        bins = hist_bins[kin_idx]
+                        idx_center = (bins-1)/2 # integer since hist_bins is odd
                         idx_center = int(idx_center)
-                        dvhist0 = width0/bins0
-                        vedg = np.arange(bins0+1) * dvhist0
+                        dvhist0 = width / bins
+                        vedg = np.arange(bins + 1) * dvhist0
                         v = (vedg[1:] + vedg[:-1])/2.
                         v_cent = v[idx_center]
                         vedg -= v_cent
@@ -1017,17 +1016,12 @@ class LegacyOrbitLibrary(OrbitLibrary):
                                                 y=velhist,
                                                 normalise=False)
                         velhists += [vvv]
-                    elif hist_dim[i] == 2:
-                        width = np.array(hist_widths[i])
-                        bins = np.array(hist_bins[i], dtype=int)
-                        idx_center = (bins - 1) // 2
+                    elif hist_dim[kin_idx] == 2:
+                        width = np.array(hist_widths[kin_idx])
+                        bins = np.array(hist_bins[kin_idx], dtype=int)
                         dvhist = width / bins
-                        vedg = []
-                        for j in range(2):
-                            vedg_tmp = np.arange(bins[j] + 1) * dvhist[j]
-                            v = (vedg_tmp[1:] + vedg_tmp[:-1]) / 2.
-                            v_cent = v[idx_center[j]]
-                            vedg.append(vedg_tmp - v_cent)
+                        vedg = (np.arange(bins[0] + 1)*dvhist[0] - width[0]/2,
+                                np.arange(bins[1] + 1)*dvhist[1] - width[1]/2)
                         vvv = dyn_kin.Histogram2D(xedg=vedg,
                                                   y=velhist,
                                                   normalise=False)
@@ -1090,7 +1084,11 @@ class LegacyOrbitLibrary(OrbitLibrary):
         """
         self.logger.debug('Checking for symmetric velocity array...')
         error_msg = 'velocity array must be symmetric'
-        assert np.allclose(orblib.xedg, -orblib.xedg[::-1]), error_msg
+        if orblib.y.ndim == 3:  # 1D histograms
+            assert np.allclose(orblib.xedg, -orblib.xedg[::-1]), error_msg
+        else:  # 2D histograms
+            assert np.allclose(orblib.xedg[0], -orblib.xedg[0][::-1]), error_msg
+            assert np.allclose(orblib.xedg[1], -orblib.xedg[1][::-1]), error_msg
         self.logger.debug('...check ok.')
         losvd = orblib.y
         if losvd.ndim == 3:  # 1D histograms
@@ -1145,19 +1143,28 @@ class LegacyOrbitLibrary(OrbitLibrary):
 
         """
         # check orblibs are compatible
+        tmp1 = orblib1.y.shape
+        tmp2 = orblib2.y.shape
+        n_orbs1 = tmp1[0]
+        n_orbs2 = tmp2[0]
+        n_spatial_bins1 = tmp1[-1]
+        n_spatial_bins2 = tmp2[-1]
         if orblib1.y.ndim == 3:  # 1D histograms
-            n_orbs1, n_vel_bins1, n_spatial_bins1 = orblib1.y.shape
-            n_orbs2, n_vel_bins2, n_spatial_bins2 = orblib2.y.shape
+            n_vel_bins1 = tmp1[1]
+            n_vel_bins2 = tmp2[1]
         else:  # 2D histograms
-            n_vel_bins1, n_vel_bins2 = [], []
-            n_orbs1, n_vel_bins1[0:2], n_spatial_bins1 = orblib1.y.shape
-            n_orbs2, n_vel_bins2[0:2], n_spatial_bins2 = orblib2.y.shape
+            n_vel_bins1 = (tmp1[1:3])
+            n_vel_bins2 = (tmp2[1:3])
         self.logger.debug('Checking number of velocity bins...')
         error_msg = 'orblibs have different number of velocity bins'
         assert n_vel_bins1==n_vel_bins2, error_msg
         self.logger.debug('Checking velocity arrays...')
         error_msg = 'orblibs have different velocity arrays'
-        assert np.array_equal(orblib1.x, orblib2.x), error_msg
+        if orblib1.y.ndim == 3:  # 1D histograms
+            assert np.array_equal(orblib1.x, orblib2.x), error_msg
+        else:  # 2D histograms
+            assert np.array_equal(orblib1.x[0], orblib2.x[0]), error_msg
+            assert np.array_equal(orblib1.x[1], orblib2.x[1]), error_msg
         self.logger.debug('Checking number of spatial bins...')
         error_msg = 'orblibs have different number of spatial bins'
         assert n_spatial_bins1==n_spatial_bins2, error_msg
