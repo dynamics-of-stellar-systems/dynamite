@@ -4,6 +4,7 @@
 Change Log
 ****************
 
+- New feature: DYNAMITE models now support multiple kinematic data sets of different types and with different histogram settings
 - Improvement: more robust directory naming when failed models are present in the all_models table
 - Bugfix: don't crash with pops data when using ModelInnerIterator.
 - Bugfix: don't crash when continuing a run with just one valid model.
