@@ -190,7 +190,7 @@ parameter_space_settings:
     stopping_criteria:
         min_delta_chi2_abs : 0.5  # absolute "optimality tolerance"
         #min_delta_chi2_rel : 0.05 # relative "optimality tolerance"
-        n_max_mods : 4
+        n_max_mods : 3
         n_max_iter : 10
 
 legacy_settings:
@@ -204,7 +204,7 @@ io_settings: # paths can be given with or without trailing slash
 multiprocessing_settings:
     ncpus: 'all_available' # integer or 'all_available' for multiprocessing
     ncpus_weights: 'all_available' # integer or 'all_available', optional, defaults to ncpus (not used by all iterators)
-    # modeliterator: 'SplitModelIterator' # optional, default 'ModelInnerIterator'
-    orblibs_in_parallel: False
+    modeliterator: 'SplitModelIterator' # optional, default 'ModelInnerIterator'
+    orblibs_in_parallel: True
 
 # end
