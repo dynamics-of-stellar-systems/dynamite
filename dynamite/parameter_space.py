@@ -591,6 +591,8 @@ class ParameterGenerator(object):
                 return
             mask = self.current_models.table['which_iter'] <= last_iter
             models1 = self.current_models.table[mask]
+            if len(models1) == 0:
+                return
             previous_chi2 = np.nanmin(models1[self.chi2])
             if np.isnan(previous_chi2):
                 return
