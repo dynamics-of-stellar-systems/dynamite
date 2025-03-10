@@ -107,9 +107,8 @@ class LegacyOrbitLibrary(OrbitLibrary):
                 stars = self.system.get_unique_triaxial_visible_component()
             # create the kinematics and populations input files for each
             # kinematic dataset and population dataset with own apertures
-            kin_pops = stars.kinematic_data
-            kin_pops += [p for p in stars.population_data if p.kin_aper is None]
-            for data_set in kin_pops:
+            pops = [p for p in stars.population_data if p.kin_aper is None]
+            for data_set in stars.kinematic_data + pops:
                 # copy aperture and bins files across
                 shutil.copyfile(self.in_dir + data_set.aperturefile,
                                 self.mod_dir + f'infil/{data_set.aperturefile}')

@@ -5,6 +5,9 @@ Change Log
 ****************
 
 - Improvement: the orbit_plot now allows custom orbit cuts via the ocut parameter (same behavior as in the Decomposition class)
+- Improvement: more robust directory naming when failed models are present in the all_models table
+- Bugfix: don't crash with pops data when using ModelInnerIterator.
+- Bugfix: don't crash when continuing a run with just one valid model.
 - Improvement: added counter-rotating components to decomposition.
 - Bugfix: fix a bug that prevents Bayes LOSVD kinemtic maps from being created more than once
 - New feature: a dark halo is no longer mandatory (models can consist of either zero or one dark halo component)

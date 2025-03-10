@@ -921,7 +921,8 @@ class Model(object):
         c_diff = difflib.unified_diff(config_file,
                                       model_config_file,
                                       fromfile=self.config.config_file_name,
-                                      tofile=model_config_file_name)
+                                      tofile=model_config_file_name,
+                                      n=0)
         c_diff = list(c_diff)
         if len(c_diff) > 0:
             self.logger.warning('ACTION REQUIRED, PLEASE CHECK: '
