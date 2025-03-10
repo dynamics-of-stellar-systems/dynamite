@@ -244,14 +244,6 @@ The following settings must also be set in the configuration files but have *typ
     - ``number_orbits``: integer, the number of orbits to integrate, if -1 then integrate all orbits
     - ``accuracy``: typical ``1.0d-5``, the accuracy of the orbit integrator
 
-There is also an optional setting,
-
-- ``orblib_settings``
-    - ``use_new_mirroring``: boolean
-
-This controls whether or not to use the correction to orbit mirroring introduces in `Quenneville et al 2021 <https://arxiv.org/abs/2111.06904>`_ . This is optional: if omitted, the default is True.
-
-
 ``weight_solver_settings``
 ==========================
 
