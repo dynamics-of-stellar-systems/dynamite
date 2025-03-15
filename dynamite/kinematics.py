@@ -977,8 +977,8 @@ class Histogram2D(object):
     def __init__(self, xedg=None, y=None, normalise=False):
         self.logger = logging.getLogger(f'{__name__}.{__class__.__name__}')
         self.xedg = tuple(xedg)
-        self.x = tuple( (x[:-1] + x[1:]) / 2 for x in xedg )  # (xedg[:-1] + xedg[1:])/2.
-        self.dx = tuple( x[1:] - x[:-1] for x in xedg )  #xedg[1:] - xedg[:-1]
+        self.x = tuple( (x[:-1] + x[1:]) / 2 for x in xedg )
+        self.dx = tuple( x[1:] - x[:-1] for x in xedg )
         self.y = y
         if normalise:
             self.normalise()

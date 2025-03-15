@@ -141,11 +141,9 @@ class AllModels(object):
                 f_root = mod.directory_noml + 'datfil/'
                 check = os.path.isfile(f_root + 'orblib.dat.bz2') \
                         and os.path.isfile(f_root + 'orblibbox.dat.bz2')
-                if not check:
+                if not check:  # new files: use *qgrid.dat as orblib indicator
                     check = os.path.isfile(f_root + 'orblib_qgrid.dat.bz2') \
-                     and os.path.isfile(f_root + 'orblib_losvd_hist.dat.bz2') \
-                     and os.path.isfile(f_root + 'orblibbox_qgrid.dat.bz2') \
-                     and os.path.isfile(f_root + 'orblibbox_losvd_hist.dat.bz2')
+                     and os.path.isfile(f_root + 'orblibbox_qgrid.dat.bz2')
                 if os.path.isfile(staging_filename):
                     # the model has completed but was not entered in the table
                     staging_file = ascii.read(staging_filename)

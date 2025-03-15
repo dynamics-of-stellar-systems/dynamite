@@ -2177,9 +2177,9 @@ contains
 
     !++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
     subroutine histogram_reset()
-        use aperture, only: ap_hist2d_n
+        use aperture, only: aperture_n, ap_hist2d_n
         !----------------------------------------------------------------------
-        histogram(:, :) = 0.0_dp
+        if (aperture_n - ap_hist2d_n > 0) histogram(:, :) = 0.0_dp
         if (ap_hist2d_n > 0) histogram2d(:, :, :) = 0.0_dp
         h_n_stored(:) = 0.0_dp
 
@@ -2414,8 +2414,9 @@ contains
         use binning, only: binning_stop
         !----------------------------------------------------------------------
         if (allocated(h_bin)) then
-            deallocate (hist_basic, h_beg, h_end, h_bin, h_width, h_start, histogram)
+            deallocate (hist_basic, h_beg, h_end, h_bin, h_width, h_start)
             deallocate (h_n_stored, h_blocks)
+            if (allocated(histogram)) deallocate (histogram)
             if (allocated(histogram2d)) deallocate (histogram2d)
         end if
         call binning_stop()
@@ -2483,13 +2484,16 @@ contains
         h_width(:, :) = hist_basic(:, 1, :)/hist_basic(:, 3, :)
 
         ! allocate memory for 0d and 1d histograms
-        h_bin_max = 0
-        do ap = 1, h_n
-            if (ap_hist_dim(ap) < 2) h_bin_max = max(h_bin_max, h_bin(ap, 1))
-        end do
-        allocate (histogram(sum(aperture_size(:)), h_bin_max))  ! FIXME: sum(aperture_size(:)) is too large
-        print *, "  * Histogram size : ", size(histogram), "=", size(histogram, 1), "*",&
-             & size(histogram, 2)
+        if (aperture_n - ap_hist2d_n > 0) then
+            h_bin_max = 0
+            do ap = 1, h_n
+                if (ap_hist_dim(ap) < 2) h_bin_max = max(h_bin_max, h_bin(ap, 1))
+            end do
+            ! FIXME: sum(aperture_size(:)) is too large
+            allocate (histogram(sum(aperture_size(:)), h_bin_max))
+            print *, "  * Histogram size : ", size(histogram), "=", size(histogram, 1), "*",&
+                & size(histogram, 2)
+        end if
         ! allocate memory for 2d histograms
         if (ap_hist2d_n > 0) then
             h_bin_max2d = 0
@@ -2879,7 +2883,7 @@ contains
     subroutine output_setup()
         use integrator, only: integrator_setup_write, integrator_set_current,&
              &                   integrator_current
-        use aperture, only: ap_hist0d_n, ap_hist2d_n
+        use aperture, only: aperture_n, ap_hist0d_n, ap_hist2d_n
         use histograms, only: histogram_setup_write
         use histograms, only: histogram_setup_write_mass
         use quadrantgrid, only: qgrid_setup_write
@@ -2901,9 +2905,11 @@ contains
             print *, out_file_pops
         end if
 
-        print *, "  * Give the name of the 1d losvd histogram outputfile:"
-        read *, out_file_losvd
-        print *, out_file_losvd
+        if (aperture_n - ap_hist0d_n - ap_hist2d_n > 0) then
+            print *, "  * Give the name of the 1d losvd histogram outputfile:"
+            read *, out_file_losvd
+            print *, out_file_losvd
+        end if
 
         if (ap_hist2d_n > 0) then
             print *, "  * Give the name of the proper motions 2d histogram outputfile:"
@@ -2946,11 +2952,13 @@ contains
                 close (unit=out_handle, iostat=error)  ! no setup, just create file
                 if (error /= 0) stop "  Error closing pops file."
             end if
-            open (unit=out_handle, iostat=error, file=out_file_losvd, action="write", &
-                  status="new", form="unformatted")
-            call histogram_setup_write(out_handle)
-            close (unit=out_handle, iostat=error)
-            if (error /= 0) stop "  Error closing losvd file."
+            if (aperture_n - ap_hist0d_n - ap_hist2d_n > 0) then
+                open (unit=out_handle, iostat=error, file=out_file_losvd, action="write", &
+                    status="new", form="unformatted")
+                call histogram_setup_write(out_handle)  ! for LegacyWeightSolver only
+                close (unit=out_handle, iostat=error)
+                if (error /= 0) stop "  Error closing losvd file."
+            end if
             if (ap_hist2d_n > 0) then
                 open (unit=out_handle, iostat=error, file=out_file_pm, action="write", &
                   status="new", form="unformatted")
@@ -2994,7 +3002,7 @@ contains
     !++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
     subroutine output_close()
         use integrator, only: integrator_current
-        use aperture, only: ap_hist0d_n, ap_hist2d_n
+        use aperture, only: aperture_n, ap_hist0d_n, ap_hist2d_n
         !----------------------------------------------------------------------
         integer :: error
         print *, "  * Closing files and stopping output module"
@@ -3015,13 +3023,15 @@ contains
                 close (unit=out_handle, iostat=error)
                 if (error /= 0) stop "  Error closing pops file."
             end if
-            open (unit=out_handle, iostat=error, file=out_file_losvd, action="write", &
-                 & status="old", position="append", form="unformatted")
-            if (error /= 0) stop "  Error opening losvd file."
-            write (unit=out_handle, iostat=error) " "
-            if (error /= 0) stop "  Error writing to losvd file. Disk full?"
-            close (unit=out_handle, iostat=error)
-            if (error /= 0) stop "  Error closing losvd file."
+            if (aperture_n - ap_hist0d_n - ap_hist2d_n > 0) then
+                open (unit=out_handle, iostat=error, file=out_file_losvd, action="write", &
+                    & status="old", position="append", form="unformatted")
+                if (error /= 0) stop "  Error opening losvd file."
+                write (unit=out_handle, iostat=error) " "
+                if (error /= 0) stop "  Error writing to losvd file. Disk full?"
+                close (unit=out_handle, iostat=error)
+                if (error /= 0) stop "  Error closing losvd file."
+            end if
             if (ap_hist2d_n > 0) then
                 open (unit=out_handle, iostat=error, file=out_file_pm, action="write", &
                     & status="old", position="append", form="unformatted")
@@ -3053,7 +3063,7 @@ contains
     !++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
     subroutine output_write()
         use histograms, only: histogram_write
-        use aperture, only: ap_hist0d_n, ap_hist2d_n
+        use aperture, only: aperture_n, ap_hist0d_n, ap_hist2d_n
         use quadrantgrid, only: qgrid_write
         use integrator, only: integrator_write, integrator_current
         !----------------------------------------------------------------------
@@ -3090,10 +3100,12 @@ contains
         else
             out_handle_pops = 0
         end if
-        ! open the losvd file
-        open (unit=out_handle, iostat=error, file=out_file_losvd, action="write", &
-            & status="old", position="append", form="unformatted")
-        if (error /= 0) stop "  Error opening losvd file."
+        ! open the losvd file if 1d histograms exist
+        if (aperture_n - ap_hist0d_n - ap_hist2d_n > 0) then
+            open (unit=out_handle, iostat=error, file=out_file_losvd, action="write", &
+                & status="old", position="append", form="unformatted")
+            if (error /= 0) stop "  Error opening losvd file."
+        end if
         ! open the proper motions file if 2d histograms exist
         if (ap_hist2d_n > 0) then
             out_handle_pm = out_handle + 20
@@ -3103,16 +3115,18 @@ contains
         else
             out_handle_pm = 0
         end if
-        ! write 0d (if existing), 1d, and 2d (if existing) histograms
+        ! write 0d, 1d, and 2d (if existing) histograms
         call histogram_write(out_handle, out_handle_pops, out_handle_pm)
         ! close the pops file if 0d histograms exist
         if (ap_hist0d_n > 0) then
             close (unit=out_handle_pops, iostat=error)
             if (error /= 0) stop "  Error closing pops file."
         end if
-        ! close the losvd file
-        close (unit=out_handle, iostat=error)
-        if (error /= 0) stop "  Error closing losvd file."
+        ! close the losvd file if 1d histograms exist
+        if (aperture_n - ap_hist0d_n - ap_hist2d_n > 0) then
+            close (unit=out_handle, iostat=error)
+            if (error /= 0) stop "  Error closing losvd file."
+        end if
         ! close the proper motions file if 2d histograms exist
         if (ap_hist2d_n > 0) then
             close (unit=out_handle_pm, iostat=error)

@@ -63,9 +63,10 @@ class LegacyOrbitLibrary(OrbitLibrary):
             self.stars = self.system.get_unique_bar_component()
         else:
             self.stars = self.system.get_unique_triaxial_visible_component()
-        self.n_psf_hist1d = len([k for k in self.stars.kinematic_data
-                                 if not isinstance(k, dyn_kin.ProperMotions)])
-        self.has_pms = self.n_psf_hist1d < len(self.stars.kinematic_data)
+        self.n_hist1d = len([k for k in self.stars.kinematic_data
+                             if not isinstance(k, dyn_kin.ProperMotions)])
+        self.n_hist2d = len([k for k in self.stars.kinematic_data
+                             if isinstance(k, dyn_kin.ProperMotions)])
         if len(config.all_models.table) == 0:
             self.velocity_scaling_factor = 1.0
         else:
@@ -100,11 +101,9 @@ class LegacyOrbitLibrary(OrbitLibrary):
         f_root = self.mod_dir + 'datfil/'
         check = os.path.isfile(f_root + 'orblib.dat.bz2') \
                 and os.path.isfile(f_root + 'orblibbox.dat.bz2')
-        if not check:
+        if not check:  # use *_qgrid.dat as indicator for existing orblib
             check = os.path.isfile(f_root + 'orblib_qgrid.dat.bz2') \
-                    and os.path.isfile(f_root + 'orblib_losvd_hist.dat.bz2') \
-                    and os.path.isfile(f_root + 'orblibbox_qgrid.dat.bz2') \
-                    and os.path.isfile(f_root + 'orblibbox_losvd_hist.dat.bz2')
+                    and os.path.isfile(f_root + 'orblibbox_qgrid.dat.bz2')
         if not check:  # need to calculate orblib
             # prepare the fortran input files for orblib
             self.create_fortran_input_orblib(self.mod_dir+'infil/')
@@ -393,10 +392,11 @@ class LegacyOrbitLibrary(OrbitLibrary):
                 f_name = f'"{o_file}_pops.dat"'
                 f.write(f'{f_name}{tab[:-4] if len(f_name) >= 32 else tab[:-3]}'
                         '[pops \'0d hist\' file]\n')
-            f_name = f'"{o_file}_losvd_hist.dat"'
-            f.write(f'{f_name}{tab[:-4] if len(f_name) >= 32 else tab[:-3]}'
-                    '[orbit losvd 1d hist file]\n')
-            if self.has_pms:
+            if self.n_hist1d > 0:
+                f_name = f'"{o_file}_losvd_hist.dat"'
+                f.write(f'{f_name}{tab[:-4] if len(f_name) >= 32 else tab[:-3]}'
+                        '[orbit losvd 1d hist file]\n')
+            if self.n_hist2d > 0:
                 f_name = f'"{o_file}_pm_hist.dat"'
                 f.write(f'{f_name}{tab[:-4] if len(f_name) >= 32 else tab[:-3]}'
                         '[orbit proper motions 2d hist file]\n')
@@ -753,9 +753,10 @@ class LegacyOrbitLibrary(OrbitLibrary):
         Read orbit library from file datfil/{fileroot}.dat.bz2'
 
         Depending on the DYNAMITE version, the orbit library will reside in
-        either datfil/{fileroot}.dat.bz2 (legacy behavior) or in two separate
-        files datfil/{fileroot}_qgrid.dat.bz2 and
-        datfil/{fileroot}_losvd_hist.dat.bz2 (new behavior).
+        either datfil/{fileroot}.dat.bz2 (legacy behavior) or in separate
+        files datfil/{fileroot}_qgrid.dat.bz2 and one or both of
+        datfil/{fileroot}_losvd_hist.dat.bz2 and
+        datfil/{fileroot}_pm_hist.dat.bz2 (new behavior).
         If both "legacy" and "new" files exist, default to the new behavior.
         With 'new behavior', populations data (projected masses) may exist in
         datfil/{fileroot}_pops.dat.bz2 and can be read by setting pops=True.
@@ -775,12 +776,12 @@ class LegacyOrbitLibrary(OrbitLibrary):
         -------
         If return_intrinsic_moments is False:
         pops==False will return a tuple of type (list, array) where the
-        orbit library LOSVDs are stored in the list of Histogram objects, and
-        the 3D density of the orbits are stored in the array object.
+        orbit library velocities are stored in the list of Histogram objects,
+        and the 3D density of the orbits are stored in the array object.
         pops==True will return a tuple of type (list, None) where the
         populations' projected masses are in the list of Histogram objects.
 
-        return_intrinsic_moments is True will returns a tuple (array, list)
+        return_intrinsic_moments=True will return a tuple (array, list)
         where the array stores the intrinsic moments of the orblib and the
         list contains the bin edges of the 3D grid.
 
@@ -791,7 +792,6 @@ class LegacyOrbitLibrary(OrbitLibrary):
         cur_dir = os.getcwd()
         os.chdir(self.mod_dir)
         check = os.path.isfile(f'datfil/{fileroot}_qgrid.dat.bz2')
-        check = check and os.path.isfile(f'datfil/{fileroot}_losvd_hist.dat.bz2')
         os.chdir(cur_dir)
         legacy_file = False if check else True
         if pops and legacy_file:
@@ -861,8 +861,7 @@ class LegacyOrbitLibrary(OrbitLibrary):
         else:
             density_3D = None
 
-        # next, we check whether we need to read the losvd_hist and
-        # the pm_hist file:
+        # next, check if we need to read the losvd_hist and the pm_hist files:
         # note: legacy_file=True never has 2d histograms
         # either pops=False or pops=True and some pops and kins share apertures
         pops_unique = [p for p in stars.population_data if p.kin_aper is None]
@@ -875,23 +874,25 @@ class LegacyOrbitLibrary(OrbitLibrary):
             # 2d proper motion hists otherwise (k.hist_bins is a list then)
             hist_dim = [1 if type(k.hist_bins) is int else 2
                         for k in stars.kinematic_data]
-            if not legacy_file:  # open losvd_hist and pm_hist file(s) if needed
+            if not legacy_file:  # open losvd_hist and pm_hist files if needed
                 os.chdir(self.mod_dir)
-                orblib_file = f'datfil/{fileroot}_losvd_hist.dat.bz2'
-                tmpfname = f'datfil/{fileroot}_losvd_hist_{ml}.dat'
-                subprocess.run(f'bunzip2 -c {orblib_file} > {tmpfname}',
-                               shell=True)
-                # read the fortran file
-                orblib_in = FortranFile(tmpfname, 'r')
+                if any(i == 1 for i in hist_dim):
+                    orblib_file = f'datfil/{fileroot}_losvd_hist.dat.bz2'
+                    tmpfname = f'datfil/{fileroot}_losvd_hist_{ml}.dat'
+                    subprocess.run(f'bunzip2 -c {orblib_file} > {tmpfname}',
+                                shell=True)
+                    # read the fortran file
+                    orblib_in = FortranFile(tmpfname, 'r')
                 if any(i == 2 for i in hist_dim):
                     orblib_file = f'datfil/{fileroot}_pm_hist.dat.bz2'
                     tmpfname_pm = f'datfil/{fileroot}_pm_hist_{ml}.dat'
                     subprocess.run(f'bunzip2 -c {orblib_file} > {tmpfname_pm}',
                                    shell=True)
-                    orblib_pm_in = FortranFile(tmpfname_pm, 'r')
-            # read the losvd histogram data
-            # from histogram_setup_write, lines 1917-1926:
-            _ = orblib_in.read_record(np.int32, np.int32, float)
+                    orblib_in_pm = FortranFile(tmpfname_pm, 'r')
+            # read the losvd and pm histogram data
+            # from histogram_setup_write, lines 1917-1926: (losvd only)
+            if legacy_file or any(i == 1 for i in hist_dim):
+                _ = orblib_in.read_record(np.int32, np.int32, float)
             # tmp = orblib_in.read_record(np.int32, np.int32, float)
             # nconstr = tmp[0][0] # = total number of apertures for ALL kinematics
             # nvhist = tmp[1][0] # = (nvbins-1)/2 for histo of FIRST kinematic set
@@ -909,10 +910,11 @@ class LegacyOrbitLibrary(OrbitLibrary):
                 error_msg = f'{self.mod_dir}{tmpfname}: all kinematics ' \
                             'need odd number of velocity bins.'
                 self.logger.error(error_msg)
-                orblib_in.close()
-                os.remove(tmpfname)
+                if legacy_file or any(i == 1 for i in hist_dim):
+                    orblib_in.close()
+                    os.remove(tmpfname)
                 if any(i == 2 for i in hist_dim):
-                    orblib_pm_in.close()
+                    orblib_in_pm.close()
                     os.remove(tmpfname_pm)
                 os.chdir(cur_dir)
                 raise ValueError(error_msg)
@@ -974,12 +976,12 @@ class LegacyOrbitLibrary(OrbitLibrary):
                                               i_ap0] = tmp
                     elif hist_dim[kin_idx] == 2:
                         ivmin0, ivmin1, ivmax0, ivmax1 = \
-                            orblib_pm_in.read_ints(np.int32)
+                            orblib_in_pm.read_ints(np.int32)
                         if ivmin0 <= ivmax0 and ivmin1 <= ivmax1:
                             nv0 = [(hist_bins[kin_idx][0] - 1) // 2,
                                    (hist_bins[kin_idx][1] - 1) // 2]
                             # ^--- these are integers since hist_bins is odd
-                            tmp = orblib_pm_in.read_reals(float)
+                            tmp = orblib_in_pm.read_reals(float)
                             tmp = tmp.reshape((ivmax0-ivmin0+1,
                                                ivmax1-ivmin1+1), order='F')
                             velhist0[kin_idx][j,
@@ -991,10 +993,11 @@ class LegacyOrbitLibrary(OrbitLibrary):
                         self.logger.error(error_msg)    # should never happen
                         raise ValueError(error_msg)
 
-            orblib_in.close()
-            os.remove(tmpfname)
+            if legacy_file or any(i == 1 for i in hist_dim):
+                orblib_in.close()
+                os.remove(tmpfname)
             if any(i == 2 for i in hist_dim):
-                orblib_pm_in.close()
+                orblib_in_pm.close()
                 os.remove(tmpfname_pm)
             os.chdir(cur_dir)
             if return_intrinsic_moments:
