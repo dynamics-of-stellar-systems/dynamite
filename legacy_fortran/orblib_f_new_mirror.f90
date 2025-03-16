@@ -2430,7 +2430,7 @@ contains
         use binning, only: binning_setup, bin_max
         use psf, only: psf_n, psf_hist_dim
         !----------------------------------------------------------------------
-        integer(kind=i4b)  :: i, j, ap, h_bin_max
+        integer(kind=i4b)  :: i, j, ap, h_bin_max, ap_size
         integer(kind=i4b), dimension(2)      :: h_bin_max2d
         integer(kind=i4b), dimension(psf_n)  :: psf_aperture
         real(kind=dp)  :: width, center, bins
@@ -2486,32 +2486,57 @@ contains
         ! allocate memory for 0d and 1d histograms
         if (aperture_n - ap_hist2d_n > 0) then
             h_bin_max = 0
+            ap_size = 0
             do ap = 1, h_n
-                if (ap_hist_dim(ap) < 2) h_bin_max = max(h_bin_max, h_bin(ap, 1))
+                if (ap_hist_dim(ap) < 2) then
+                    h_bin_max = max(h_bin_max, h_bin(ap, 1))
+                    ap_size = ap_size + aperture_size(ap)
+                end if
             end do
             ! FIXME: sum(aperture_size(:)) is too large
-            allocate (histogram(sum(aperture_size(:)), h_bin_max))
+            ! allocate (histogram(sum(aperture_size(:)), h_bin_max))
+            allocate (histogram(ap_size, h_bin_max))
             print *, "  * Histogram size : ", size(histogram), "=", size(histogram, 1), "*",&
                 & size(histogram, 2)
         end if
         ! allocate memory for 2d histograms
         if (ap_hist2d_n > 0) then
             h_bin_max2d = 0
+            ap_size = 0
             do ap = 1, h_n
-                if (ap_hist_dim(ap) == 2) h_bin_max2d(:) = max(h_bin_max2d(:), h_bin(ap, :))
+                if (ap_hist_dim(ap) == 2) then
+                    h_bin_max2d(:) = max(h_bin_max2d(:), h_bin(ap, :))
+                    ap_size = ap_size + aperture_size(ap)
+                end if
             end do
             ! FIXME: sum(aperture_size(:)) is too large
-            allocate (histogram2d(sum(aperture_size(:)), h_bin_max2d(1), h_bin_max2d(2)))
+            ! allocate (histogram2d(sum(aperture_size(:)), h_bin_max2d(1), h_bin_max2d(2)))
+            allocate (histogram2d(ap_size, h_bin_max2d(1), h_bin_max2d(2)))
             print *, "  * 2d Histogram size : ", size(histogram2d), "=", size(histogram2d, 1), "*",&
                 & size(histogram2d, 2), "*", size(histogram2d, 3)
         end if
 
         h_blocks(:) = aperture_size(:)
-        i = 1
-
+        ! i = 1
+        ! do ap = 1, h_n
+        !     h_start(ap) = i
+        !     i = i + h_blocks(ap)
+        ! end do
+        ! IMPORTANT
+        !   0d and 1d histograms:
+        !     h_start(ap) points into histogram(individual_aperture, velbin)
+        !   2d histograms:
+        !     h_start(ap) points into histogram2d(individual_aperture, velbin1, velbin2)
+        i = 1  ! 1d histogram counter
+        j = 1  ! 2d histogram counter
         do ap = 1, h_n
-            h_start(ap) = i
-            i = i + h_blocks(ap)
+            if (ap_hist_dim(ap) < 2) then  ! 0d or 1d histograms
+                h_start(ap) = i
+                i = i + h_blocks(ap)
+            else  ! 2d histograms
+                h_start(ap) = j
+                j = j + h_blocks(ap)
+            end if
         end do
 
         call histogram_reset()
