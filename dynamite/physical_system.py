@@ -6,13 +6,9 @@ from scipy import special
 
 # some tricks to add the current path to sys.path (so the imports below work)
 
-import os.path
-import sys
 import logging
 
 from dynamite import mges as mge
-from dynamite import constants as const
-from dynamite import orblib as orb
 
 class System(object):
     """The physical system being modelled
@@ -293,6 +289,23 @@ class System(object):
         dark_cmp = self.get_all_dark_components()
         dark_non_plum_cmp = [c for c in dark_cmp if not isinstance(c, Plummer)]
         return dark_non_plum_cmp
+
+    def get_unique_chi2_ext_component(self):
+        """Return the unique Chi2Ext component (raises an error if there are multiple such components)
+
+        Returns
+        -------
+            a ``dyn.physical_system.Chi2Ext`` object
+
+        """
+        chi2_ext_cmp = [c for c in self.cmp_list if isinstance(c, Chi2Ext)]
+        if len(chi2_ext_cmp) > 1:
+            self.logger.error('Found more than one Chi2Ext component')
+            raise ValueError('Found more than one Chi2Ext component')
+        if len(chi2_ext_cmp) == 0:
+            return None
+        else:
+            return chi2_ext_cmp[0]
 
     def get_all_kinematic_data(self):
         """get_all_kinematic_data
@@ -818,6 +831,7 @@ class TriaxialVisibleComponent(VisibleComponent):
             text += f'\t\t value : {val:.2f}\n'
         return text
 
+
 class BarDiskComponent(TriaxialVisibleComponent):
     """Rotating triaxial component with a MGE projected density (i.e. a bar)
 
@@ -834,6 +848,7 @@ class BarDiskComponent(TriaxialVisibleComponent):
         self.logger = logging.getLogger(f'{__name__}.{__class__.__name__}')
         self.qobs = np.nan
         self.par = ['q', 'p', 'u', 'qdisk']
+
 
 class BarDiskComponentAngles(BarDiskComponent):
     """Rotating triaxial component with a MGE projected density (i.e. a bar),
@@ -856,6 +871,7 @@ class BarDiskComponentAngles(BarDiskComponent):
     def validate_parset(self, par):
         # Skip validation as we already know the angles
         return True
+
 
 class DarkComponent(Component):
     """Any dark component of the sytem, with no observed MGE or kinemtics
@@ -1200,5 +1216,48 @@ class GeneralisedNFW(DarkComponent):
         rhoc, rc, gamma = pars
         xi = r/(r + rc)
         Menc = 4*np.pi*rc**3*rhoc*xi**(3-gamma)/(3-gamma)*special.hyp2f1(3-gamma,1,4-gamma,xi)
+
+
+class Chi2Ext(Component):
+    """External component independent of DYNAMITE orbit and weight calculations
+
+    This is a wrapper for an external routine that returns a chi2 value which
+    is added to the total chi2 value of the system after DYNAMITE's orbit
+    calculation and weight solving is completed.
+
+    """
+    def __init__(self, module_file=None, ext_class=None, **kwds):
+        super().__init__(**kwds)
+        self.logger = logging.getLogger(f'{__name__}.{__class__.__name__}')
+        self.contributes_to_potential = False
+        self.visible = True
+        import importlib
+        self.logger.debug(f'Importing {module_file}')
+        chi2_ext_module = importlib.import_module(module_file)
+        self.logger.debug(f'Getting {ext_class} from {module_file}')
+        ext_object = getattr(chi2_ext_module, ext_class)()
+        self.get_chi2 = ext_object.get_chi2
+        self.logger.debug(f'{self.get_chi2(parset=25)=}')
+
+    def validate(self):  # allow any parameter names
+        pars = [self.get_parname(p.name) for p in self.parameters]
+        super().validate(par=pars)
+
+    def get_chi2(self, parset):
+        """
+        Returns the chi2 value for the system and parameter set.
+
+        Parameters
+        ----------
+        parset : astropy table row
+            must contain all parameters needed for the chi2 calculation
+
+        Returns
+        -------
+        float
+            The chi2 value
+
+        """
+        return self.get_chi2(parset)
 
 # end

@@ -258,16 +258,23 @@ class Configuration(object):
 
                     logger.debug(f"{comp}... instantiating {data_comp['type']} "
                               "object")
-                    if 'contributes_to_potential' not in data_comp:
-                        text = f'Component {comp} needs ' + \
-                                'contributes_to_potential attribute'
-                        logger.error(text)
-                        raise ValueError(text)
-#                    c = globals()[data_comp['type']](contributes_to_potential
-#                        = data_comp['contributes_to_potential'])
-                    c = getattr(physys,data_comp['type'])(name = comp,
-                            contributes_to_potential \
-                            = data_comp['contributes_to_potential'])
+                    if comp != 'chi2_ext':  # all 'regular' components
+                        if 'contributes_to_potential' not in data_comp:
+                            text = f'Component {comp} needs ' + \
+                                    'contributes_to_potential attribute'
+                            logger.error(text)
+                            raise ValueError(text)
+    #                    c = globals()[data_comp['type']](contributes_to_potential
+    #                        = data_comp['contributes_to_potential'])
+                        c = getattr(physys,data_comp['type'])(name = comp,
+                                contributes_to_potential \
+                                = data_comp['contributes_to_potential'])
+                    else:  # chi2_ext component
+                        if 'contributes_to_potential' not in data_comp:
+                            data_comp['contributes_to_potential'] = False
+                        c = getattr(physys,data_comp['type'])(name = comp,
+                                module_file=data_comp['module_file'],
+                                ext_class=data_comp['ext_class'])
 
                     # initialize the component's paramaters, kinematics,
                     # and populations
@@ -339,6 +346,8 @@ class Configuration(object):
                                                 input_directory=path,
                                                 **data_pop)
                             c.population_data.append(populations_set)
+
+                    # read other data
 
                     if 'mge_pot' in data_comp:
                         path = self.settings.io_settings['input_directory']
@@ -898,13 +907,15 @@ class Configuration(object):
             self.logger.error('System must have zero or one DM Halo object')
             raise ValueError('System must have zero or one DM Halo object')
 
-        if not 1 < len(self.system.cmp_list) < 4:
-            self.logger.error('System needs to comprise exactly one Plummer, '
-                              'one VisibleComponent, and zero or one DM Halo '
-                              'object(s)')
-            raise ValueError('System needs to comprise exactly one Plummer, '
-                             'one VisibleComponent, and zero or one DM Halo '
-                             'object(s)')
+        if self.system.get_unique_chi2_ext_component() is None:
+            check = (2, 3)
+        else:
+            check = (3, 4)
+        if len(self.system.cmp_list) not in check:
+            txt = 'System needs to comprise exactly one Plummer, ' \
+                  'one VisibleComponent, and zero or one DM Halo object(s)'
+            self.logger.error(txt)
+            raise ValueError(txt)
 
         ws_type = self.settings.weight_solver_settings['type']
 

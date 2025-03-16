@@ -27,7 +27,7 @@ def run_user_test(make_comp=False):
             os.chdir(file_dir)
     else:
         file_dir = None
-    fname = 'user_test_config_ml.yaml'
+    fname = 'user_test_config_ml_gas.yaml'
     # fname = 'FCC047_2kin/FCC047_config.yaml'
     # fname = 'user_test_config_fixedvalues.yaml'
     c = dyn.config_reader.Configuration(fname,
