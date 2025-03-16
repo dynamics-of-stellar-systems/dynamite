@@ -1,3 +1,4 @@
+from matplotlib import axes
 import numpy as np
 from scipy import special, stats
 from scipy.optimize import curve_fit
@@ -28,18 +29,23 @@ class Kinematics(data.Data):
         self.logger = logging.getLogger(f'{__name__}.{__class__.__name__}')
         if hasattr(self, 'data'):
             self.type = type
+            def _list_or_float(x):
+                return [float(y) for y in x] if isinstance(x, list) \
+                    else float(x)
+            def _list_or_int(x):
+                return [int(y) for y in x] if isinstance(x, list) else int(x)
             if hist_width=='default':
                 self.set_default_hist_width()
             else:
-                self.hist_width = float(hist_width)
+                self.hist_width = _list_or_float(hist_width)
             if hist_center=='default':
                 self.set_default_hist_center()
             else:
-                self.hist_center = float(hist_center)
+                self.hist_center = _list_or_float(hist_center)
             if hist_bins=='default':
                 self.set_default_hist_bins()
             else:
-                self.hist_bins = int(hist_bins)
+                self.hist_bins = _list_or_int(hist_bins)
             has_pops, pop_cols = self.has_pops()
             if has_pops and with_pops:
                 self.with_pops = True
@@ -49,8 +55,8 @@ class Kinematics(data.Data):
                 self.with_pops = False
                 self.pop_cols = []
             self.__class__.values = list(self.__dict__.keys())
-            if self.type==None or self.hist_width==None or \
-                    self.hist_center==None or self.hist_bins==None:
+            if self.type is None or self.hist_width is None or \
+                    self.hist_center is None or self.hist_bins is None:
                 text = 'Kinematics need (type, hist_width, hist_center, '\
                    f'hist_bins), but has ({self.type}, ' \
                    f'{self.hist_width}, {self.hist_center}, {self.hist_bins})'
@@ -791,7 +797,7 @@ class Histogram(object):
     ----------
     xedg : array (n_bins+1,)
         histogram bin edges
-    y : (n_orbits, n_bins+1, n_apertures)
+    y : (n_orbits, n_bins, n_apertures)
         histogram values
     normalise : bool, default=True
         whether to normalise to pdf
@@ -946,6 +952,175 @@ class Histogram(object):
                     self.logger.info(f'{err_msg}')
         return v_mean, v_sigma
 
+class Histogram2D(object):
+    """Proper motion histograms  !!!WORK IN PROGRESS!!!
+
+    Parameters
+    ----------
+    xedg : tuple (array(n_bins[0]+1), array(n_bins[1]+1))
+        2d histogram bin edges
+    y : array (n_orbits, n_bins[0], nx_bins[1], n_apertures)
+        histogram values
+    normalise : bool, default=True
+        whether to normalise to pdf
+
+    Attributes
+    ----------
+    x : tuple (array(n_bins[0], ), array(n_bins[1], ))
+        bin centers
+    dx : tuple (array(n_bins[0], ), array(n_bins[1], ))
+        bin widths
+    normalised : bool
+        whether or not has been normalised to pdf
+
+    """
+    def __init__(self, xedg=None, y=None, normalise=False):
+        self.logger = logging.getLogger(f'{__name__}.{__class__.__name__}')
+        self.xedg = tuple(xedg)
+        self.x = tuple( (x[:-1] + x[1:]) / 2 for x in xedg )
+        self.dx = tuple( x[1:] - x[:-1] for x in xedg )
+        self.y = y
+        if normalise:
+            self.normalise()
+
+    def get_normalisation(self):
+        """Get the normalsition
+
+        Calculates ``Sum_ij y_ij * area_ij = Sum_ij y_ij * dx[0]_i * dx[1]_j``
+
+        Returns
+        -------
+        float
+            the normalisation
+
+        """
+        na = np.newaxis
+        norm = np.sum(self.y * self.dx[0][na,:,na,na] * self.dx[1][na,na,:,na],
+                      axis=(1,2))
+        return norm
+
+    def normalise(self):
+        """normalises the LOSVDs
+
+        Returns
+        -------
+        None
+            resets ``self.y`` to a normalised version
+
+        """
+        norm = self.get_normalisation()
+        na = np.newaxis
+        tmp = self.y/norm[:,na,na,:]
+        # where norm=0, tmp=nan. Fix this:
+        idx = np.where(norm==0.)
+        tmp[idx[0],:,:,idx[1]] = 0.
+        # replace self.y with normalised y
+        self.y = tmp
+
+    def scale_x_values(self, scale_factor):
+        """scale the velocity array
+
+        scales vel array, and dv
+
+        Parameters
+        ----------
+        scale_factor : float
+
+        Returns
+        -------
+        None
+            resets ``self.xedg``, ``self.x``, ``self.dx`` to rescaled versions
+
+        """
+        self.xedg = tuple( x * scale_factor for x in self.xedg )
+        self.x = tuple( x * scale_factor for x in self.x )
+        self.dx = tuple( x * scale_factor for x in self.dx )
+
+    def get_mean(self):
+        """Get the mean velocities
+
+        Returns
+        -------
+        array shape (n_orbits, n_apertures)
+            mean velocity components
+
+        """
+        na = np.newaxis
+        # mean = np.sum(self.x[na,:,na] * self.y * self.dx[na,:,na], axis=1)
+        mean = (np.sum(self.x[0][na,:,na] * np.sum(self.y*self.dx[1][na,na,:,na], axis=2) * self.dx[0][na,:,na], axis=1),
+                np.sum(self.x[1][na,:,na] * np.sum(self.y*self.dx[0][na,:,na,na], axis=1) * self.dx[1][na,:,na], axis=1))
+        norm = self.get_normalisation()
+        # ignore invalid operations resulting in np.nan (such as 0/0 -> np.nan)
+        with np.errstate(invalid='ignore'):
+            # mean /= norm
+            mean = tuple(m / norm for m in mean)
+        return mean
+
+    def get_sigma(self):
+        """Get the velocity dispersions
+
+        Returns
+        -------
+        array shape (n_orbits, n_apertures)
+            velocity dispersion of losvd
+
+        """
+        na = np.newaxis
+        mean = self.get_mean()
+        v_minus_mu = tuple(self.x[dim][na,:,na]-mean[dim][:,na,:] for dim in range(2))
+        var = (np.sum(v_minus_mu[0]**2. * np.sum(self.y*self.dx[1][na,na,:,na], axis=2) * self.dx[0][na,:,na], axis=1),
+               np.sum(v_minus_mu[1]**2. * np.sum(self.y*self.dx[0][na,:,na,na], axis=1) * self.dx[1][na,:,na], axis=1))
+        norm = self.get_normalisation()
+        # var /= norm
+        var = tuple(v / norm for v in var)
+        # sigma = var**0.5
+        sigma = tuple(v**0.5 for v in var)
+        return sigma
+
+    def get_mean_sigma_gaussfit(self):
+        """Get the mean velocity and velocity dispersion from fitted Gaussians
+        FIXME: NOT IMPLEMENTED YET
+
+        Returns
+        -------
+        array shape (n_orbits, n_apertures)
+            mean velocity of losvd
+        array shape (n_orbits, n_apertures)
+            velocity dispersion of losvd
+
+        """
+        v_mean = self.get_mean() # starting values for fit
+        v_sigma = self.get_sigma() # starting values for fit
+        def gauss(x, a, mean, sigma):
+            return a*np.exp(-(x-mean)**2/(2.*sigma**2))
+        for orbit in range(self.y.shape[0]):
+            for aperture in range(self.y.shape[-1]):
+                err_msg=f'{orbit=}, {aperture=}: mean or sigma is nan.'
+                if not (np.isnan(v_mean[orbit,aperture]) or
+                        np.isnan(v_sigma[orbit,aperture])): # nan?
+                    p_initial = [1/(v_sigma[orbit,aperture]*np.sqrt(2*np.pi)),
+                                 v_mean[orbit,aperture],
+                                 v_sigma[orbit,aperture]]
+                    try:
+                        p_opt, _ = curve_fit(gauss,
+                                             self.x,
+                                             self.y[orbit,:,aperture],
+                                             p0=p_initial,
+                                             method='trf')
+                    except:
+                        self.logger.warning(f'{err_msg} Gaussfit failed. '
+                            'Check data. Histogram moments '
+                            f'suggested mean={v_mean[orbit,aperture]}, '
+                            f'sigma={v_sigma[orbit,aperture]}.')
+                        v_mean[orbit,aperture] = np.nan # overwrite v_mean
+                        v_sigma[orbit,aperture] = np.nan # overwrite v_sigma
+                    else:
+                        v_mean[orbit,aperture] = p_opt[1] # overwrite v_mean
+                        v_sigma[orbit,aperture] = p_opt[2] # overwrite v_sigma
+                else:
+                    self.logger.info(f'{err_msg}')
+        return v_mean, v_sigma
+
 class BayesLOSVD(Kinematics, data.Integrated):
     """Bayes LOSVD kinematic data
 
@@ -1020,7 +1195,7 @@ class BayesLOSVD(Kinematics, data.Integrated):
         i = 1, ..., N_LOSVD_bins
 
         """
-        nbins = self.data.meta['nbins']
+        # UNUSED nbins = self.data.meta['nbins']
         nv = self.data.meta['nvbins']
         losvd_mean = self.data['losvd']
         losvd_sigma = self.data['dlosvd']
@@ -1087,7 +1262,7 @@ class BayesLOSVD(Kinematics, data.Integrated):
                 self.logger.error(f'{txt} at: '
                                   f'{np.argwhere(np.isnan(struct[key]))}.')
                 raise ValueError(txt)
-        if f.get("out") != None:
+        if f.get("out") is not None:
             self.logger.debug("# Loading Stan results:")
             output_data = f['out']
             bins_list   = list(output_data.keys())
@@ -1348,7 +1523,7 @@ class BayesLOSVD(Kinematics, data.Integrated):
         Sets the result to attribute `self.hist_bins`
 
         """
-        data_dv = self.data.meta['dv']
+        # UNUSED data_dv = self.data.meta['dv']
         orblib_dv = self.data.meta['dv']/oversampling_factor
         orblib_nbins = self.hist_width/orblib_dv
         orblib_nbins = int(np.ceil(orblib_nbins))
@@ -1474,4 +1649,14 @@ class BayesLOSVD(Kinematics, data.Integrated):
         uncertainties = self.data['dlosvd'] # shape = (n_aperture, n_vbins)
         return observed_values, uncertainties
 
-# end
+class ProperMotions(Kinematics, data.Integrated):
+    """Proper motions 2D kinematic data
+
+    """
+    def __init__(self, **kwargs):
+        # super goes left to right, i.e. first calls "Kinematics" __init__, then
+        # calls data.Integrated's __init__
+        super().__init__(**kwargs)
+        self.logger = logging.getLogger(f'{__name__}.{__class__.__name__}')
+        if hasattr(self, 'data'):
+            pass
