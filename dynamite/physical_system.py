@@ -290,8 +290,13 @@ class System(object):
         dark_non_plum_cmp = [c for c in dark_cmp if not isinstance(c, Plummer)]
         return dark_non_plum_cmp
 
-    def get_unique_chi2_ext_component(self):
-        """Return the unique Chi2Ext component (raises an error if there are multiple such components)
+    def get_unique_ext_chi2_component(self):
+        """Return the unique Chi2Ext component
+
+        Raises
+        ------
+        ValueError
+            If there are multiple Chi2Ext components
 
         Returns
         -------
@@ -1225,6 +1230,16 @@ class Chi2Ext(Component):
     is added to the total chi2 value of the system after DYNAMITE's orbit
     calculation and weight solving is completed.
 
+    Parameters
+    ----------
+    ext_module : _type_, optional
+        _description_, by default None
+    ext_class : _type_, optional
+        _description_, by default None
+    ext_class_args : _type_, optional
+        _description_, by default None
+    ext_chi2 : _type_, optional
+        _description_, by default None
     """
     def __init__(self,
                  ext_module=None,

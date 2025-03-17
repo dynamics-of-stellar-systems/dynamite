@@ -222,6 +222,9 @@ class AllModels(object):
     def retrofit_kinmapchi2(self):
         """Calculates kinmapchi2 for DYNAMITE legacy tables if possible.
 
+        Note that kinmapchi2 adjustments due to external chi2 calculations
+        (if existing) will be ignored.
+
         Returns
         -------
         None.
@@ -1048,7 +1051,7 @@ class Model(object):
         else:
             raise ValueError(f'Unknown WeightSolver type {ws_type}.')
         weights, chi2_tot, chi2_kin, chi2_kinmap = weight_solver.solve(orblib)
-        self.chi2 = chi2_tot # instrinsic/projected mass + GH coeeficients 1-Ngh
+        self.chi2 = chi2_tot # intrinsic/projected mass + GH coeeficients 1-Ngh
         self.kinchi2 = chi2_kin # GH coeeficients 1-Ngh
         self.kinmapchi2 = chi2_kinmap
         self.weights = weights

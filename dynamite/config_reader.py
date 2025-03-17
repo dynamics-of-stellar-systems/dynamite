@@ -916,7 +916,7 @@ class Configuration(object):
             self.logger.error('System must have zero or one DM Halo object')
             raise ValueError('System must have zero or one DM Halo object')
 
-        if self.system.get_unique_chi2_ext_component() is None:
+        if self.system.get_unique_ext_chi2_component() is None:
             check = (2, 3)
         else:
             check = (3, 4)

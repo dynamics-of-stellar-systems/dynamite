@@ -129,7 +129,7 @@ system_components:
 
     chi2_ext:
         parameters:
-            a:  # choose any name
+            a:  # choose any name and number of parameters
                 par_generator_settings:
                     lo: 0.0
                     hi: 1.0
@@ -139,7 +139,7 @@ system_components:
                 fixed: True
                 value: 0.5
                 LaTeX: "$\\chi^2 API a$"
-            b:  # choose any name
+            b:  # choose any name and number of parameters
                 par_generator_settings:
                     lo: 0.0
                     hi: 1.0
@@ -151,7 +151,7 @@ system_components:
                 LaTeX: "$\\chi^2 API b$"
         ext_module: "chi2_ext"  # module implementing external chi2 calculation
         ext_class: "Chi2Ext"  # class name in module_file.py
-        ext_class_args: {arg1 : 47, arg2 : val2}  # ext_class parameters
+        ext_class_args: {arg1 : 47, arg2 : "val2"}  # ext_class parameters
         ext_chi2: "chi2"  # method in ext_class returning the chi2 value
         include: True
 
