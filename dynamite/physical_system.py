@@ -1226,18 +1226,24 @@ class Chi2Ext(Component):
     calculation and weight solving is completed.
 
     """
-    def __init__(self, module_file=None, ext_class=None, **kwds):
+    def __init__(self,
+                 ext_module=None,
+                 ext_class=None,
+                 ext_class_args=None,
+                 ext_chi2=None,
+                 **kwds):
         super().__init__(**kwds)
         self.logger = logging.getLogger(f'{__name__}.{__class__.__name__}')
         self.contributes_to_potential = False
         self.visible = True
-        import importlib
-        self.logger.debug(f'Importing {module_file}')
-        chi2_ext_module = importlib.import_module(module_file)
-        self.logger.debug(f'Getting {ext_class} from {module_file}')
-        ext_object = getattr(chi2_ext_module, ext_class)()
-        self.get_chi2 = ext_object.get_chi2
-        self.logger.debug(f'{self.get_chi2(parset=25)=}')
+        self.logger.debug(f'Importing {ext_module=}')
+        import importlib  # only used once and only if Chi2Ext component exists
+        the_ext_module = importlib.import_module(ext_module)
+        args = tuple(f'{a}={ext_class_args[a]}' for a in ext_class_args)
+        self.logger.debug('Instantiating '
+                          f'{ext_module}.{ext_class}({args}).')
+        self.ext_object = getattr(the_ext_module, ext_class)(**ext_class_args)
+        self.ext_chi2 = getattr(self.ext_object, ext_chi2)
 
     def validate(self):  # allow any parameter names
         pars = [self.get_parname(p.name) for p in self.parameters]
@@ -1258,6 +1264,7 @@ class Chi2Ext(Component):
             The chi2 value
 
         """
-        return self.get_chi2(parset)
+        self.logger.debug(f'Calling external chi2 method with {parset=}.')
+        return self.ext_chi2(parset)
 
 # end

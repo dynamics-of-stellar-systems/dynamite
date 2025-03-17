@@ -256,25 +256,34 @@ class Configuration(object):
 
                     # instantiate the component
 
-                    logger.debug(f"{comp}... instantiating {data_comp['type']} "
-                              "object")
-                    if comp != 'chi2_ext':  # all 'regular' components
+                    if comp == 'chi2_ext':  # chi2_ext component
+                        if 'type' in data_comp:
+                            if data_comp['type'] != 'Chi2Ext':
+                                logger.warning(f'{comp}: DYNAMITE class '
+                                               'reset to Chi2Ext.')
+                        data_comp['type'] = 'Chi2Ext'
+                        logger.debug(f"{comp}... instantiating "
+                                     f"{data_comp['type']} object.")
+                        if 'contributes_to_potential' not in data_comp:
+                            data_comp['contributes_to_potential'] = False
+                        c = getattr(physys,data_comp['type'])(name = comp,
+                                ext_module=data_comp['ext_module'],
+                                ext_class=data_comp['ext_class'],
+                                ext_class_args=data_comp['ext_class_args'],
+                                ext_chi2=data_comp['ext_chi2'])
+                    else:  # all 'regular' components
                         if 'contributes_to_potential' not in data_comp:
                             text = f'Component {comp} needs ' + \
                                     'contributes_to_potential attribute'
                             logger.error(text)
                             raise ValueError(text)
+                        logger.debug(f"{comp}... instantiating "
+                                     f"{data_comp['type']} object.")
     #                    c = globals()[data_comp['type']](contributes_to_potential
     #                        = data_comp['contributes_to_potential'])
                         c = getattr(physys,data_comp['type'])(name = comp,
                                 contributes_to_potential \
                                 = data_comp['contributes_to_potential'])
-                    else:  # chi2_ext component
-                        if 'contributes_to_potential' not in data_comp:
-                            data_comp['contributes_to_potential'] = False
-                        c = getattr(physys,data_comp['type'])(name = comp,
-                                module_file=data_comp['module_file'],
-                                ext_class=data_comp['ext_class'])
 
                     # initialize the component's paramaters, kinematics,
                     # and populations

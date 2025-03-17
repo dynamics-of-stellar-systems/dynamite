@@ -149,9 +149,10 @@ system_components:
                 fixed: True
                 value: 0.25
                 LaTeX: "$\\chi^2 API b$"
-        type: "Chi2Ext"  # DYNAMITE class name (don't change)
-        module_file: "chi2_ext"  # module implementing the chi2 calculation
-        ext_class: "Chi2Ext"  # class name in module_file.py, must have "get_chi2" method
+        ext_module: "chi2_ext"  # module implementing external chi2 calculation
+        ext_class: "Chi2Ext"  # class name in module_file.py
+        ext_class_args: {arg1 : 47, arg2 : val2}  # ext_class parameters
+        ext_chi2: "chi2"  # method in ext_class returning the chi2 value
         include: True
 
 system_parameters:
