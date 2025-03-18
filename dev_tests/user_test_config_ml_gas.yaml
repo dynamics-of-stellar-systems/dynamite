@@ -138,7 +138,7 @@ system_components:
                 logarithmic: True
                 fixed: True
                 value: 0.5
-                LaTeX: "$\\chi^2 API a$"
+                LaTeX: "$\\chi^2$ EXT a"
             b:  # choose any name and number of parameters
                 par_generator_settings:
                     lo: 0.0
@@ -146,9 +146,9 @@ system_components:
                     step: 0.1
                     minstep: 0.01
                 logarithmic: False
-                fixed: True
+                fixed: False
                 value: 0.25
-                LaTeX: "$\\chi^2 API b$"
+                LaTeX: "$\\chi^2$ EXT b"
         ext_module: "chi2_ext"  # module implementing external chi2 calculation
         ext_class: "Chi2Ext"  # class name in module_file.py
         ext_class_args: {arg1 : 47, arg2 : "val2"}  # ext_class parameters

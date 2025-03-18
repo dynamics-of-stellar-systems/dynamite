@@ -1250,7 +1250,7 @@ class Chi2Ext(Component):
         super().__init__(**kwds)
         self.logger = logging.getLogger(f'{__name__}.{__class__.__name__}')
         self.contributes_to_potential = False
-        self.visible = True
+        self.visible = False
         self.logger.debug(f'Importing {ext_module=}')
         import importlib  # only used once and only if Chi2Ext component exists
         the_ext_module = importlib.import_module(ext_module)
