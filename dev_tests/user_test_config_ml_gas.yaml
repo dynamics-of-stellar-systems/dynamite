@@ -127,7 +127,8 @@ system_components:
         #         aperturefile: "aperture_for_pops.dat" # integrated only
         #         binfile: "bins_for_pops.dat"          # integrated only
 
-    chi2_ext:
+    gas:
+        type: Chi2Ext  # static external chi2 component's DYNAMITE class name
         parameters:
             a:  # choose any name and number of parameters
                 par_generator_settings:

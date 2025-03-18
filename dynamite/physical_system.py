@@ -1257,8 +1257,8 @@ class Chi2Ext(Component):
         args = tuple(f'{a}={ext_class_args[a]}' for a in ext_class_args)
         self.logger.debug('Instantiating '
                           f'{ext_module}.{ext_class}({args}).')
-        self.ext_object = getattr(the_ext_module, ext_class)(**ext_class_args)
-        self.ext_chi2 = getattr(self.ext_object, ext_chi2)
+        ext_object = getattr(the_ext_module, ext_class)(**ext_class_args)
+        self.ext_chi2 = getattr(ext_object, ext_chi2)
 
     def validate(self):  # allow any parameter names
         pars = [self.get_parname(p.name) for p in self.parameters]

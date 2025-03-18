@@ -256,29 +256,24 @@ class Configuration(object):
 
                     # instantiate the component
 
-                    if comp == 'chi2_ext':  # chi2_ext component
-                        if 'type' in data_comp:
-                            if data_comp['type'] != 'Chi2Ext':
-                                logger.warning(f'{comp}: DYNAMITE class '
-                                               'reset to Chi2Ext.')
-                        data_comp['type'] = 'Chi2Ext'
-                        logger.debug(f"{comp}... instantiating "
-                                     f"{data_comp['type']} object.")
-                        if 'contributes_to_potential' not in data_comp:
-                            data_comp['contributes_to_potential'] = False
+                    logger.debug(f"{comp}... instantiating "
+                                 f"{data_comp['type']} object.")
+                    if data_comp['type'] == 'Chi2Ext':  # Chi2Ext component
+                        # data_comp['contributes_to_potential'] = False
+                        logger.info(f'{comp}: contributes_to_potential will '
+                                    'be set to False')
                         c = getattr(physys,data_comp['type'])(name = comp,
                                 ext_module=data_comp['ext_module'],
                                 ext_class=data_comp['ext_class'],
                                 ext_class_args=data_comp['ext_class_args'],
-                                ext_chi2=data_comp['ext_chi2'])
+                                ext_chi2=data_comp['ext_chi2'],
+                                contributes_to_potential=False)
                     else:  # all 'regular' components
                         if 'contributes_to_potential' not in data_comp:
                             text = f'Component {comp} needs ' + \
                                     'contributes_to_potential attribute'
                             logger.error(text)
                             raise ValueError(text)
-                        logger.debug(f"{comp}... instantiating "
-                                     f"{data_comp['type']} object.")
     #                    c = globals()[data_comp['type']](contributes_to_potential
     #                        = data_comp['contributes_to_potential'])
                         c = getattr(physys,data_comp['type'])(name = comp,
