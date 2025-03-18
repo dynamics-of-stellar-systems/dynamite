@@ -1226,20 +1226,26 @@ class GeneralisedNFW(DarkComponent):
 class Chi2Ext(Component):
     """External component independent of DYNAMITE orbit and weight calculations
 
-    This is a wrapper for an external routine that returns a chi2 value which
-    is added to the total chi2 value of the system after DYNAMITE's orbit
-    calculation and weight solving is completed.
+    This component interfaces to an external class that implements a chi2
+    calculation independent of DYNAMITE orbit integration and weight solving.
+    That chi2 value is added to all three chi2 values right after weight
+    solving and is used by the parameter generator.
 
     Parameters
     ----------
-    ext_module : _type_, optional
-        _description_, by default None
-    ext_class : _type_, optional
-        _description_, by default None
-    ext_class_args : _type_, optional
-        _description_, by default None
-    ext_chi2 : _type_, optional
-        _description_, by default None
+    ext_module : str
+        the name of the module implementing the external :math:`\chi^2`
+        calculation. The associated .py file should be in the Python path.
+    ext_class : str
+        the class name in the external module implementing the external
+        :math:`\chi^2` calculation. It will be instantiated once, at the time
+        the config file is read.
+    ext_class_args : dict
+        the class parameters, can be empty (``{}``)
+    ext_chi2 : str
+        the name of the ``ext_class`` method returning :math:`\chi^2`
+        as a single ``float``. In DYNAMITE, it will be called right after
+        weight solving, passing the entire current parset.
     """
     def __init__(self,
                  ext_module=None,
@@ -1249,6 +1255,12 @@ class Chi2Ext(Component):
                  **kwds):
         super().__init__(**kwds)
         self.logger = logging.getLogger(f'{__name__}.{__class__.__name__}')
+        if ext_module is None or ext_class is None or ext_class_args is None \
+           or ext_chi2 is None:
+            txt = 'ext_module, ext_class, ext_class_args, ext_chi2 ' \
+                  'cannot be None.'
+            self.logger.error(txt)
+            raise ValueError(txt)
         self.contributes_to_potential = False
         self.visible = False
         self.logger.debug(f'Importing {ext_module=}')
@@ -1266,12 +1278,12 @@ class Chi2Ext(Component):
 
     def get_chi2(self, parset):
         """
-        Returns the chi2 value for the system and parameter set.
+        Returns the chi2 value for the parameter set.
 
         Parameters
         ----------
-        parset : astropy table row
-            must contain all parameters needed for the chi2 calculation
+        parset : dict
+            based on an astropy table row, containing all current parameters
 
         Returns
         -------
