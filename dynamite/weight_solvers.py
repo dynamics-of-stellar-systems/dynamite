@@ -366,11 +366,26 @@ class LegacyWeightSolver(WeightSolver):
             weights, chi2_tot, chi2_kin = \
                 self.get_weights_and_chi2_from_orbmat_file()
             chi2_kinmap = self.chi2_kinmap(weights)
+            # if applicable, add externally calculated chi2 to all chi2
+            ext_chi2_component=self.system.get_unique_ext_chi2_component()
+            if ext_chi2_component is not None:
+                dir = self.direc_with_ml
+                self.logger.debug(f'{dir}: calling ext. chi2 calculation.')
+                mod = self.config.all_models.get_model_from_directory(dir)
+                ext_chi2 = ext_chi2_component.get_chi2(dict(mod.parset))
+                chi2_tot += ext_chi2
+                chi2_kin += ext_chi2
+                chi2_kinmap += ext_chi2
+                self.logger.info(f'{dir}: external {ext_chi2=} '
+                                 'calculated and added to chi2 values.')
+            # save the output
             results = table.Table()
             results['weights'] = weights
             results.meta = {'chi2_tot': chi2_tot,
                             'chi2_kin': chi2_kin,
                             'chi2_kinmap': chi2_kinmap}
+            if ext_chi2_component is not None:
+                results.meta['ext_chi2_included'] = ext_chi2
             results.write(self.weight_file,
                           format='ascii.ecsv',
                           overwrite=True)
@@ -877,7 +892,7 @@ class NNLS(WeightSolver):
                     chi2_kin += ext_chi2
                     chi2_kinmap += ext_chi2
                     self.logger.info(f'{dir}: external {ext_chi2=} '
-                                    'calculated and added to chi2 values.')
+                                     'calculated and added to chi2 values.')
                 # save the output
                 results = table.Table()
                 results['weights'] = weights
@@ -885,6 +900,8 @@ class NNLS(WeightSolver):
                 results.meta = {'chi2_tot': chi2_tot,
                                 'chi2_kin': chi2_kin,
                                 'chi2_kinmap': chi2_kinmap}
+                if ext_chi2_component is not None:
+                    results.meta['ext_chi2_included'] = ext_chi2
                 results.write(self.weight_file,
                               format='ascii.ecsv',
                               overwrite=True)
