@@ -102,6 +102,28 @@ The system consists of a number of physical components - e.g. the stars, black h
         - ``logarithmic``: Boolean, whether logarithmic steps should be used for parameter search. If true, then (``value``, ``lo``, ``hi``) must all have log units.
         - ``LaTeX``: LaTeX string for this parameter to be used for plots.
 
+There is a special component ``type: Chi2Ext`` that allows calculating a :math:`\chi^2` externally which will be added to all three :math:`\chi^2` values calculated by weight solving in DYNAMITE (see ``which_chi2`` in `parameter_space_settings`_).
+This may be useful for e.g., gas kinematics that do not affect the potential. That component type has different settings from the ones built in DYNAMITE:
+
+- ``component name``: a descriptive name, but preferably short as this will be used to refer to the component in the code (e.g. ``gas``)
+    - ``type``: ``Chi2Ext``
+    - ``contributes_to_potential``: optional, will always be set to False (not currently used)
+    - ``include``: Boolean, whether to include this component or not. If False, equivalent to omitting this component entirely
+    - ``parameters``: Choose any parameter names as you see fit (e.g., par1, par2,...). Each parameter must have values specified for
+        - ``fixed``: Boolean, whether the parameter is to be kept fixed
+        - ``value``: an initial value for the parameter
+        - ``par_generator_settings``: settings controlling parameter search (can be omitted if ``fixed=True``). Note that if these settings are given, then ``value`` must be consistent with ``lo`` and ``hi``.
+            - ``lo``: minimum value
+            - ``hi``: maximum value
+            - ``step``: initial step size for parameter search
+            - ``minstep``: minimum allowed stepsize for this parameter
+        - ``logarithmic``: Boolean, whether logarithmic steps should be used for parameter search. If true, then (``value``, ``lo``, ``hi``) must all have log units.
+        - ``LaTeX``: LaTeX string for this parameter to be used for plots.
+    - ``ext_module``: a string which is the name of the module implementing the external :math:`\chi^2` calculation. The associated .py file should be in the Python path.
+    - ``ext_class``: a string denoting the class name in the external module implementing the external :math:`\chi^2` calculation. It will be instantiated once, at the time the config file is read.
+    - ``ext_class_args``: a dict holding the class parameters, can be empty (``{}``). Example: if ``ext_class_args: {arg1:47, arg2:"val2"}`` and ``ext_class: Chi2``, it will be instantiated via ``Chi2(arg1=47, arg2="val2")``.
+    - ``ext_chi2``: a string which is the name of the ``ext_class`` method returning :math:`\chi^2` as a single ``float``. In DYNAMITE, it will be called right after weight solving, passing the entire current parameter set as a dict, e.g. ``{a-bh:<val1>, m-bh:<val2>, ... ,p-stars:<valx>, q-stars:<valy>, ..., par1-gas:<valg1>, par2-gas:<valg2>}``.
+
 ``component types``
 ^^^^^^^^^^^^^^^^^^^^
 
@@ -132,9 +154,11 @@ The following types of component are available, listed with their parameters:
     - ``c``: concentration parameter [:math:`R_{200}` / NFW-scale-length]
     - ``Mvir``: virial mass :math:`M_{200}` [:math:`M_\odot`]
     - ``gam``: AKA gamma, the inner logarithmic density slope, must be :math:`\leq 1`
+- ``Chi2Ext``
+    - Choose any parameter names as you see fit (e.g., ``par1``, ``par2``,...)
 
 .. note::
-  currently, there are only two combinations of component types that are valid. This is to ensure compatibility with the Fortran implementation of the orbit integrator. Later implementations may offer more flexibility. The current valid combinations of components are:
+  currently, there are limited combinations of component types that are valid. This is to ensure compatibility with the Fortran implementation of the orbit integrator. Later implementations may offer more flexibility. The current valid combinations of components are:
 
   - one ``Plummer`` component
       - representing the black hole
@@ -143,6 +167,8 @@ The following types of component are available, listed with their parameters:
       - representing the stars
   - either no dark halo or exactly one out of [``NFW``, ``NFW_m200_c``, ``Hernquist``, ``TriaxialCoredLogPotential``, ``GeneralisedNFW``]
       - representing the dark halo
+  - either no or one ``Chi2Ext`` component
+      - calculating the external additive :math:`\chi^2`
 
 .. _observed_data:
 
