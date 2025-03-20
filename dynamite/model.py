@@ -75,8 +75,14 @@ class AllModels(object):
         names = self.config.parspace.par_names.copy()
         dtype = [float for n in names]
         # add the columns from legacy version
-        names += ['chi2', 'kinchi2', 'kinmapchi2', 'time_modified']
-        dtype += [float, float, float, 'U256']
+        if self.system.has_chi2_ext():
+            names += ['chi2', 'kinchi2', 'kinmapchi2', 'chi2_ext_added']
+            dtype += [float, float, float, float]
+        else:
+            names += ['chi2', 'kinchi2', 'kinmapchi2']
+            dtype += [float, float, float]
+        names += ['time_modified']
+        dtype += ['U256']
         # add extra columns
         names += ['orblib_done', 'weights_done', 'all_done']
         dtype += [bool, bool, bool]

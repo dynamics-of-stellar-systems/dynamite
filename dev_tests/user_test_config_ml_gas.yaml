@@ -233,6 +233,7 @@ io_settings: # paths can be given with or without trailing slash
 multiprocessing_settings:
     ncpus: 'all_available' # integer or 'all_available' for multiprocessing
     ncpus_weights: 'all_available' # integer or 'all_available', optional, defaults to ncpus (not used by all iterators)
+    ncpus_ext: 'all_available' # integer or 'all_available', optional, defaults to ncpus (only used for external chi2)
     modeliterator: 'SplitModelIterator' # optional, default 'ModelInnerIterator'
     orblibs_in_parallel: True
 

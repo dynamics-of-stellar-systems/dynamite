@@ -2,6 +2,7 @@ import os
 import logging
 import numpy as np
 from astropy import table
+from astropy.io import ascii
 from pathos.multiprocessing import Pool
 import matplotlib.pyplot as plt
 
@@ -161,7 +162,7 @@ class ModelIterator(object):
         self.logger.debug(f'Reattempting weight solving for model {row}, '
                           f'directory={mod.directory}.')
         orblib = mod.get_orblib()
-        weight_solver = mod.get_weights(orblib)
+        _ = mod.get_weights(orblib)
         time = str(np.datetime64('now', 'ms'))
         return mod.chi2, mod.kinchi2, mod.kinmapchi2, time
 
@@ -191,13 +192,19 @@ class ModelInnerIterator(object):
         self.system = config.system
         self.all_models = config.all_models
         self.orblib_parameters = config.parspace.par_names[:]
-        ml = 'ml'
-        try:
-            self.orblib_parameters.remove(ml)
-        except:
-            self.logger.error(f"Parameter '{ml}' not found - check "
-                              "implementation")
-            raise
+        if self.system.has_chi2_ext:
+            ext_chi2_component = self.system.get_unique_ext_chi2_component()
+            non_orblib_pars = [p.name for p in ext_chi2_component.parameters]
+        else:
+            non_orblib_pars = []
+        non_orblib_pars.append('ml')
+        for par_name in non_orblib_pars:
+            try:
+                self.orblib_parameters.remove(par_name)
+            except:
+                self.logger.error(f"Parameter '{par_name}' not found - check "
+                                "implementation")
+                raise
         self.logger.debug(f'orblib_parameters: {self.orblib_parameters}')
         self.par_generator = par_generator
         self.do_dummy_run = do_dummy_run
@@ -206,6 +213,7 @@ class ModelInnerIterator(object):
             # TODO: assert dummy_chi2_function is a valid function of parset
         self.dummy_chi2_function = dummy_chi2_function
         self.ncpus = config.settings.multiprocessing_settings['ncpus']
+        self.ncpus_ext = config.settings.multiprocessing_settings['ncpus_ext']
         self.n_to_do = 0
 
     def run_iteration(self, split_orblib_weights=False):
@@ -216,15 +224,18 @@ class ModelInnerIterator(object):
         library and (2) execute weight_solver. The models are run in parallel
         threads as defined in the ncpus parameter in the configuration file.
         In case multiple models comprise the same (new) orbit library it is
-        ensured that they are calculated only once, avoiding conflicting
-        threads.
+        ensured that it is calculated only once, avoiding conflicting
+        threads and saving resources. If a method that calculates an external
+        chi2 exists, the resulting chi2 value will be added to the DYNAMITE
+        chi2 values.
 
         Parameters
         ----------
         split_orblib_weights : bool, optional
             If True, first the orbit libraries are calculated in self.ncpus
             parallel pools, then the weights in self.ncpus_weights parallel
-            pools. The default is False.
+            pools, and finally the external chi2 values in self.ncpus_ext
+            parallel pools. The default is False.
 
         Returns
         -------
@@ -249,12 +260,17 @@ class ModelInnerIterator(object):
             # rows_to_do_ml are the rows that need weight_solver only
             rows_to_do_ml=[i for i in rows_to_do if i not in rows_to_do_orblib]
             self.assign_model_directories(rows_to_do_orblib, rows_to_do_ml)
+            # don't do weight solving for models that just differ in chi2_ext
+            # parameters
+            if self.system.has_chi2_ext:
+                for row in self.chi2_ext_duplicates(rows_to_do_ml):
+                    rows_to_do_ml.remove(row)
             # save all_models here - as it is useful to have directories saved
             # even if the run fails and we don't reach the next save
             self.all_models.save()
             if split_orblib_weights:  # first the orblibs, then all weights
-                do_orblib, do_weights = True, False  # orblibs only
-                input_list_orblib = [i + (do_orblib, do_weights)
+                do_orblib, do_weights, do_chi2_ext = True, False, False
+                input_list_orblib = [i + (do_orblib, do_weights, do_chi2_ext)
                                      for i in enumerate(rows_to_do_orblib)]
                 if len(input_list_orblib) > 0:
                     with Pool(self.ncpus) as p:
@@ -263,13 +279,14 @@ class ModelInnerIterator(object):
                     self.write_output_to_all_models_table(rows_to_do_orblib,
                                                           output)
                     self.all_models.save()
-                do_orblib, do_weights = False, True  # all the weights
-                input_list_ml = [i + (do_orblib, do_weights)
-                                 for i in enumerate(rows_to_do)]
-                if len(rows_to_do) > 0:
+                do_orblib, do_weights, do_chi2_ext = False, True, False
+                input_list_ml = [i + (do_orblib, do_weights, do_chi2_ext)
+                        for i in enumerate(rows_to_do_orblib + rows_to_do_ml)]
+                if len(rows_to_do_orblib + rows_to_do_ml) > 0:
                     with Pool(self.ncpus_weights) as p:
                         output = p.map(self.create_and_run_model, input_list_ml)
-                    self.write_output_to_all_models_table(rows_to_do, output)
+                    self.write_output_to_all_models_table(
+                        rows_to_do_orblib + rows_to_do_ml, output)
             else:  # first the orblibs + their weights, then remaining weights
                 input_list_orblib = list(enumerate(rows_to_do_orblib,
                                                    start=n_orblib))
@@ -288,10 +305,19 @@ class ModelInnerIterator(object):
                     if len(input_list_ml) > 0:
                         self.write_output_to_all_models_table(rows_to_do_ml,
                                                               output_ml)
+            # add ext_chi2
+            if self.system.has_chi2_ext:
+                do_orblib, do_weights, do_chi2_ext = False, False, True
+                input_list = [i + (do_orblib, do_weights, do_chi2_ext)
+                              for i in enumerate(rows_to_do)]
+                with Pool(self.ncpus_ext) as p:
+                    output = p.map(self.create_and_run_model, input_list)
+                self.write_output_to_all_models_table(rows_to_do, output)
             self.all_models.save()  # save all_models table once models are run
             self.logger.info('Iteration done, '
                              f'{self.n_to_do} model(s) calculated.')
-            self.delete_staging_files(rows_to_do) # delete all staging files
+            if not self.system.has_chi2_ext:  # no staging files for chi2_ext
+                self.delete_staging_files(rows_to_do) # delete staging files
         return self.par_generator.status
 
     def delete_staging_files(self, rows):
@@ -348,6 +374,31 @@ class ModelInnerIterator(object):
             # self.logger.debug(f'New orblib: {row_data}.')
             is_new = True
         return is_new
+
+    def chi2_ext_duplicates(self, rows):
+        """Check for duplicate orblib and ml parameters
+
+        Parameters
+        ----------
+        rows : list of ints
+            List of row indices in the all_models table.
+
+        Returns
+        -------
+        list of ints
+            Those indices in the argument rows that share orblib and ml
+            parameters with an earlier model in the all_models table.
+        """
+        dupl = []
+        if self.system.has_chi2_ext:
+            all_data = self.all_models.table[self.orblib_parameters + ['ml']]
+            for row_idx in rows:
+                row_data = all_data[row_idx]
+                previous_data = all_data[:row_idx]
+                if any(np.allclose(tuple(row_data), tuple(r))
+                       for r in previous_data):
+                    dupl.append(row_idx)
+        return dupl
 
     def assign_model_directories(self, rows_orblib=[], rows_ml=[]):
         """
@@ -419,15 +470,19 @@ class ModelInnerIterator(object):
 
         Parameters
         ----------
-        data_input : tuple of length 2 or 4
+        data_input : tuple of length 2 or 5
             len(input)==2:
             (i, row) where i is the index of a model in this iteration, and row
-            is the row index of the all_models table for this model
-            Both the orblib and the weights will be computed.
-            len(input==4):
-            (i, row, get_orblib, get_weights) where i and row are as above,
+            is the row index of the all_models table for this model. Both the
+            orblib and the weights will be computed, but no external chi2.
+            len(input)==5:
+            (i, row, get_orblib, get_weights, get_chi2_ext) where i and row
+            are as above,
             get_orblib==True if the orblib needs to be computed
             get_weights==True if the weights need to be computed
+            get_chi2_ext==True if the external chi2 needs to be computed and
+            added to all DYNAMITE chi2 values (incompatible with
+            get_orblib==True or get_weights==True)
 
         Returns
         -------
@@ -437,11 +492,19 @@ class ModelInnerIterator(object):
         """
         if len(data_input) == 2:
             i, row = data_input
-            get_orblib, get_weights = True, True
-        elif len(data_input) == 4:
-            i, row, get_orblib, get_weights = data_input
+            get_orblib, get_weights, get_chi2_ext = True, True, False
+        elif len(data_input) == 5:
+            i, row, get_orblib, get_weights, get_chi2_ext = data_input
         else:
-            msg = 'Unexpected input, need a tuple of length 2 or 4.'
+            msg = 'Unexpected input, need a tuple of length 2 or 5.'
+            self.logger.error(msg)
+            raise ValueError(msg)
+        if not (get_orblib or get_weights or get_chi2_ext):
+            msg = 'Specify get_orblib and/or get_weights or get_chi2_ext'
+            self.logger.error(msg)
+            raise ValueError(msg)
+        if get_chi2_ext and (get_orblib or get_weights):
+            msg = 'get_chi2_ext cannot be used with get_orblib or get_weights.'
             self.logger.error(msg)
             raise ValueError(msg)
         mod = self.all_models.get_model_from_row(row)
@@ -455,10 +518,6 @@ class ModelInnerIterator(object):
             mod.kinchi2 = np.nan
             mod.kinmapchi2 = np.nan
         else:
-            if not (get_orblib or get_weights):
-                msg = 'Nothing to run, specify get_orblib and/or get_weights'
-                self.logger.error(msg)
-                raise ValueError(msg)
             mod.setup_directories()
             if not get_orblib and self.is_new_orblib(row) and \
                               not self.all_models.table['orblib_done'][row]:
@@ -471,10 +530,24 @@ class ModelInnerIterator(object):
             try:
                 orblib = mod.get_orblib()
                 orb_done = True
+                if self.system.has_chi2_ext:
+                    mod.chi2_ext = np.nan
                 if get_weights:
-                    weight_solver = mod.get_weights(orblib)
+                    _ = mod.get_weights(orblib)
                     if not np.isnan(mod.weights[0]):
                         wts_done = True
+                elif get_chi2_ext:  # here, the orblib and weights must exist
+                    weight_file = f'{mod.directory}orbit_weights.ecsv'
+                    mod_chi2 = ascii.read(weight_file).meta
+                    orb_done = True # assumed...
+                    wts_done = True # assumed...
+                    ext_chi2_comp = self.system.get_unique_ext_chi2_component()
+                    parset = self.all_models.get_parset_from_row(row)
+                    chi2_ext = ext_chi2_comp.get_chi2(dict(parset))
+                    mod.chi2 = mod_chi2['chi2_tot'] + chi2_ext
+                    mod.kinchi2 = mod_chi2['chi2_kin'] + chi2_ext
+                    mod.kinmapchi2 = mod_chi2['chi2_kinmap'] + chi2_ext
+                    mod.chi2_ext = chi2_ext
                 else:
                     mod.chi2, mod.kinchi2, mod.kinmapchi2 \
                         = np.nan, np.nan, np.nan
@@ -483,25 +556,33 @@ class ModelInnerIterator(object):
                 mod.chi2, mod.kinchi2, mod.kinmapchi2 = np.nan, np.nan, np.nan
                 w_txt = f'Model {i+1} (row {row}, ' \
                         f'directory {mod.directory}): get_orblib ' \
-                        + ('or get_weights ' if get_weights else '')+'failed.'\
+                        + ('or get_weights ' if get_weights else '') \
+                        + ('or get_chi2_ext' if get_chi2_ext else '') \
+                        + 'failed.' \
                         + (' all chi2 values set to nan!' \
                            if get_weights else '')
                 self.logger.warning(w_txt)
         all_done = orb_done and wts_done
         time = str(np.datetime64('now', 'ms'))
         # Build and write model_done_staging.ecsv
-        current_model_row = table.Table(self.all_models.table[row])
-        for name, value in zip(
-                ['orblib_done','weights_done','chi2',
-                 'kinchi2','kinmapchi2','all_done','time_modified'],
-                [orb_done, wts_done, mod.chi2,
-                 mod.kinchi2, mod.kinmapchi2, all_done, time]):
-            current_model_row[name][0] = value
-        file_name = mod.directory + 'model_done_staging.ecsv'
-        current_model_row.write(file_name, format='ascii.ecsv', overwrite=True)
-        self.logger.info(f'Model {i+1}: {file_name} written.')
-        output = orb_done, wts_done, mod.chi2, \
-                 mod.kinchi2, mod.kinmapchi2, all_done, time
+        # not available when there is an external chi2 method
+        if not self.system.has_chi2_ext:
+            current_model_row = table.Table(self.all_models.table[row])
+            for name, value in zip(
+                    ['orblib_done','weights_done','chi2',
+                    'kinchi2','kinmapchi2','all_done','time_modified'],
+                    [orb_done, wts_done, mod.chi2,
+                    mod.kinchi2, mod.kinmapchi2, all_done, time]):
+                current_model_row[name][0] = value
+            file_name = mod.directory + 'model_done_staging.ecsv'
+            current_model_row.write(file_name, format='ascii.ecsv',
+                                    overwrite=True)
+            self.logger.info(f'Model {i+1}: {file_name} written.')
+            output = orb_done, wts_done, mod.chi2, \
+                    mod.kinchi2, mod.kinmapchi2, all_done, time
+        else:
+            output = orb_done, wts_done, mod.chi2, \
+                    mod.kinchi2, mod.kinmapchi2, mod.chi2_ext, all_done, time
         return output
 
     def write_output_to_all_models_table(self, rows_to_do, output):
@@ -520,8 +601,13 @@ class ModelInnerIterator(object):
 
         """
         for i, row in enumerate(rows_to_do):
-            orb_done, wts_done, \
-                chi2, kinchi2, kinmapchi2, all_done, time = output[i]
+            if self.system.has_chi2_ext:
+                orb_done, wts_done, chi2, kinchi2, kinmapchi2, chi2_ext, \
+                    all_done, time = output[i]
+                self.all_models.table['chi2_ext_added'] = chi2_ext
+            else:
+                orb_done, wts_done, \
+                    chi2, kinchi2, kinmapchi2, all_done, time = output[i]
             self.all_models.table['orblib_done'][row] = orb_done
             self.all_models.table['weights_done'][row] = wts_done
             self.all_models.table['chi2'][row] = chi2

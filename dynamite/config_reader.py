@@ -465,16 +465,16 @@ class Configuration(object):
                     pass
                 if 'ncpus' not in value:
                     value['ncpus'] = 'all_available'
-                if value['ncpus']=='all_available':
+                if value['ncpus'] == 'all_available':
                     value['ncpus'] = self.get_n_cpus()
                 logger.info(f"... using {value['ncpus']} CPUs "
                              "for orbit integration.")
-                if 'ncpus_weights' not in value:
-                    value['ncpus_weights'] = value['ncpus']
-                elif value['ncpus_weights'] == 'all_available':
-                    value['ncpus_weights'] = self.get_n_cpus()
-                logger.info(f"... using {value['ncpus_weights']} CPUs "
-                            "for weight solving.")
+                for ncpus in ('ncpus_weights', 'ncpus_ext'):
+                    if ncpus not in value:
+                        value[ncpus] = value['ncpus']
+                    elif value[ncpus] == 'all_available':
+                        value[ncpus] = self.get_n_cpus()
+                    logger.info(f'... using {value[ncpus]} CPUs for {ncpus}.')
                 if 'modeliterator' not in value:
                     value['modeliterator'] = 'ModelInnerIterator'
                 logger.debug(f"... using iterator {value['modeliterator']}.")
