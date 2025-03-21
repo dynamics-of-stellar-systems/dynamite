@@ -7,6 +7,7 @@ from pathos.multiprocessing import Pool
 import matplotlib.pyplot as plt
 
 from dynamite import parameter_space
+from dynamite import weight_solvers as ws
 from dynamite import plotter
 
 class ModelIterator(object):
@@ -69,7 +70,7 @@ class ModelIterator(object):
         status = {}
         status['stop'] = False
         # if configured, re-calculate weights for past models where weight
-        # calculation failed
+        # calculation failed, include chi2_ext if applicable
         if config.settings.weight_solver_settings['reattempt_failures']:
             self.reattempt_failed_weights()
         iteration = 1
@@ -125,14 +126,28 @@ class ModelIterator(object):
         return chi2_vs_model_id_plot, chi2_plot, kinematic_maps
 
     def reattempt_failed_weights(self):
+        """Recalculates weights and - if applicable - chi2_ext for failed models
+
+        Returns
+        -------
+        Updates the all_models table
+
+        """
         config = self.config
+        system = self.config.system
+        all_models = self.config.all_models
         rows_with_orbits_but_no_weights = \
-            [i for i,t in enumerate(config.all_models.table) \
+            [i for i, t in enumerate(all_models.table) \
                 if t['orblib_done'] \
                     and not t['weights_done'] \
                     and not t['all_done']]
+        # don't do weight solving for models that just differ in chi2_ext pars
+        if system.has_chi2_ext:
+            for row in all_models.get_chi2_ext_duplicates(
+                                            rows_with_orbits_but_no_weights):
+                rows_with_orbits_but_no_weights.remove(row)
         if len(rows_with_orbits_but_no_weights) > 0:
-            to_do = config.all_models.table[rows_with_orbits_but_no_weights]
+            to_do = all_models.table[rows_with_orbits_but_no_weights]
             to_do = to_do['directory']
             self.logger.info(f'Reattempting weight solving: models {to_do}.')
             n_proc = config.settings.multiprocessing_settings['ncpus_weights']
@@ -141,22 +156,56 @@ class ModelIterator(object):
                                rows_with_orbits_but_no_weights)
             for i, row in enumerate(rows_with_orbits_but_no_weights):
                 chi2, kinchi2, kinmapchi2, time = output[i]
-                config.all_models.table[row]['chi2'] = chi2
-                config.all_models.table[row]['kinchi2'] = kinchi2
-                config.all_models.table[row]['kinmapchi2'] = kinmapchi2
-                config.all_models.table[row]['time_modified'] = time
-                directory = config.all_models.table[row]['directory']
+                all_models.table[row]['chi2'] = chi2
+                all_models.table[row]['kinchi2'] = kinchi2
+                all_models.table[row]['kinmapchi2'] = kinmapchi2
+                all_models.table[row]['time_modified'] = time
+                directory = all_models.table[row]['directory']
                 if not all(np.isnan([chi2, kinchi2, kinmapchi2])):
-                    config.all_models.table[row]['weights_done'] = True
-                    config.all_models.table[row]['all_done'] = True
+                    all_models.table[row]['weights_done'] = True
+                    all_models.table[row]['all_done'] = True
                     self.logger.info('Reattempting weight solving for model '
                                      f'in row {i}, {directory=} successful.')
                 else:
                     self.logger.info('Reattempting weight solving for model '
                                      f'in row {i}, {directory=} failed.')
-            config.all_models.save()
+            all_models.save()
+        if system.has_chi2_ext:
+            rows_with_no_chi2_ext = [i for i, t in enumerate(all_models.table)\
+                                     if np.isnan(t['chi2_ext_added'])]
+            if len(rows_with_no_chi2_ext) > 0:
+                to_do = all_models.table[rows_with_no_chi2_ext]
+                to_do = list(zip(rows_with_no_chi2_ext, to_do['directory']))
+                self.logger.info(f'Reattempting chi2_ext: models {to_do}.')
+                n_proc = config.settings.multiprocessing_settings['ncpus_ext']
+                with Pool(n_proc) as p:
+                    output = p.map(self.get_missing_chi2_ext,
+                                   rows_with_no_chi2_ext)
+                for i, row in enumerate(rows_with_no_chi2_ext):
+                    chi2, kinchi2, kinmapchi2, chi2_ext, time = output[i]
+                    all_models.table[row]['chi2'] += chi2
+                    all_models.table[row]['kinchi2'] += kinchi2
+                    all_models.table[row]['kinmapchi2'] += kinmapchi2
+                    all_models.table[row]['chi2_ext_added'] = chi2_ext
+                    all_models.table[row]['time_modified'] = time
+                    directory = all_models.table[row]['directory']
+                    if not np.isnan(chi2_ext):
+                        self.logger.info('Reattempting chi2_ext for model '
+                                        f'in row {i}, {directory=} successful.')
+                    else:
+                        self.logger.info('Reattempting chi2_ext for model '
+                                        f'in row {i}, {directory=} failed.')
+                all_models.save()
 
     def get_missing_weights(self, row):
+        """Recalculate weights for the model in a row of the all_models table
+
+        Returns
+        -------
+        tuple (float, float, float, float, time object)
+            The model's chi2, kinchi2, kinmapchi2, chi2_ext_added, time_modified
+
+        """
         mod = self.config.all_models.get_model_from_row(row)
         mod.setup_directories()
         self.logger.debug(f'Reattempting weight solving for model {row}, '
@@ -165,6 +214,31 @@ class ModelIterator(object):
         _ = mod.get_weights(orblib)
         time = str(np.datetime64('now', 'ms'))
         return mod.chi2, mod.kinchi2, mod.kinmapchi2, time
+
+    def get_missing_chi2_ext(self, row):
+        """Recalculate chi2_ext for the model in a row of the all_models table
+
+        Returns
+        -------
+        tuple (float, float, float, float, time object)
+            The model's chi2, kinchi2, kinmapchi2, chi2_ext_added, time_modified
+
+        """
+        mod = self.config.all_models.get_model_from_row(row)
+        self.logger.debug(f'Reattempting chi2_ext calculation for model {row}, '
+                          f'directory={mod.directory}.')
+        orblib = mod.get_orblib()
+        _ = mod.get_weights(orblib)
+        ext_chi2_comp=self.config.system.get_unique_ext_chi2_component()
+        parset = self.config.all_models.get_parset_from_row(row)
+        chi2_ext = ext_chi2_comp.get_chi2(dict(parset))
+        mod.chi2 += chi2_ext
+        mod.kinchi2 += chi2_ext
+        mod.kinmapchi2 += chi2_ext
+        mod.chi2_ext = chi2_ext
+        time = str(np.datetime64('now', 'ms'))
+        return mod.chi2, mod.kinchi2, mod.kinmapchi2, mod.chi2_ext, time
+
 
 class ModelInnerIterator(object):
     """Class to run all models in a single iteration.
@@ -263,7 +337,7 @@ class ModelInnerIterator(object):
             # don't do weight solving for models that just differ in chi2_ext
             # parameters
             if self.system.has_chi2_ext:
-                for row in self.chi2_ext_duplicates(rows_to_do_ml):
+                for row in self.all_models.get_chi2_ext_duplicates(rows_to_do_ml):
                     rows_to_do_ml.remove(row)
             # save all_models here - as it is useful to have directories saved
             # even if the run fails and we don't reach the next save
@@ -373,32 +447,6 @@ class ModelInnerIterator(object):
             # self.logger.debug(f'New orblib: {row_data}.')
             is_new = True
         return is_new
-
-    def chi2_ext_duplicates(self, rows):
-        """Check for models that only differ in external chi2 parameters
-
-        Parameters
-        ----------
-        rows : list of ints
-            List of row indices in the all_models table.
-
-        Returns
-        -------
-        list of ints
-            Those row indices in the all_models table that share orblib and ml
-            parameters with an earlier model and hence only differ in their
-            respective external chi2 parameters.
-        """
-        dupl = []
-        if self.system.has_chi2_ext:
-            all_data = self.all_models.table[self.orblib_parameters + ['ml']]
-            for row_idx in rows:
-                row_data = all_data[row_idx]
-                previous_data = all_data[:row_idx]
-                if any(np.allclose(tuple(row_data), tuple(r))
-                       for r in previous_data):
-                    dupl.append(row_idx)
-        return dupl
 
     def assign_model_directories(self, rows_orblib=[], rows_ml=[]):
         """
@@ -539,17 +587,16 @@ class ModelInnerIterator(object):
                     _ = mod.get_weights(orblib)
                     if not np.isnan(mod.weights[0]):
                         wts_done = True
-                elif get_chi2_ext:  # here, the orblib and weights must exist
-                    orb_done = True # assumed...
-                    wts_done = True # assumed...
-                    ext_chi2_comp = self.system.get_unique_ext_chi2_component()
+                elif get_chi2_ext:  # here, orblib and weights already exist
+                    wts_done = True  # hopefully...
+                    ext_chi2_comp=self.system.get_unique_ext_chi2_component()
                     parset = self.all_models.get_parset_from_row(row)
                     chi2_ext = ext_chi2_comp.get_chi2(dict(parset))
-                    weight_file = f'{mod.directory}orbit_weights.ecsv'
-                    mod_chi2 = ascii.read(weight_file).meta
-                    mod.chi2 = mod_chi2['chi2_tot'] + chi2_ext
-                    mod.kinchi2 = mod_chi2['chi2_kin'] + chi2_ext
-                    mod.kinmapchi2 = mod_chi2['chi2_kinmap'] + chi2_ext
+                    w_solver = ws.WeightSolver(self.config, mod.directory)
+                    mod_chi2_dict = ascii.read(w_solver.weight_file).meta
+                    mod.chi2 = mod_chi2_dict['chi2_tot'] + chi2_ext
+                    mod.kinchi2 = mod_chi2_dict['chi2_kin'] + chi2_ext
+                    mod.kinmapchi2 = mod_chi2_dict['chi2_kinmap'] + chi2_ext
                     mod.chi2_ext = chi2_ext
                 else:
                     mod.chi2, mod.kinchi2, mod.kinmapchi2 \

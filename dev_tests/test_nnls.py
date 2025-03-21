@@ -33,7 +33,7 @@ def run_user_test(make_comp=False):
     c = dyn.config_reader.Configuration(fname,
                                         reset_logging=True,
                                         user_logfile='test_nnls',
-                                        reset_existing_output=True)
+                                        reset_existing_output=False)
 
     # delete previous output if available
     # c.remove_existing_orblibs()

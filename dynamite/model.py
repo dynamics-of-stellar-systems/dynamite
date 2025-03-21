@@ -35,6 +35,11 @@ class AllModels(object):
         self.system = config.system
         self.set_filename(config.settings.io_settings['all_models_file'])
         self.make_empty_table()
+        self.dynamite_parameters = config.parspace.par_names[:]
+        if self.system.has_chi2_ext:
+            ext_chi2_component = self.system.get_unique_ext_chi2_component()
+            for par in [p.name for p in ext_chi2_component.parameters]:
+                self.dynamite_parameters.remove(par)
         if from_file and os.path.isfile(self.filename):
             self.logger.info('Previous models have been found: '
                              f'Reading {self.filename} into '
@@ -128,6 +133,11 @@ class AllModels(object):
         Note that orbit libraries on disk will not be deleted as they
         may be in use by other models.
 
+        If external chi2 calculation exists, then models with nan values for
+        chi2_ext_added will be treated the same as models with
+        weights_done==False (deleted if reattempt_failures==False,
+        re-calculated if reattempt_failures==True).
+
         Up to DYNAMITE 3.0 there was no kinmapchi2 column in the all_models
         table. If possible (data exists on disk), calculate and add the values,
         otherwise set to np.nan.
@@ -140,7 +150,7 @@ class AllModels(object):
         """
         table_modified = False
         for i, row in enumerate(self.table):
-            if not row['all_done']:
+            if not row['all_done'] or np.isnan(row['chi2_ext_added']):
                 table_modified = True
                 mod = self.get_model_from_row(i)
                 staging_filename = mod.directory+'model_done_staging.ecsv'
@@ -152,6 +162,8 @@ class AllModels(object):
                      and os.path.isfile(f_root + 'orblib_losvd_hist.dat.bz2') \
                      and os.path.isfile(f_root + 'orblibbox_qgrid.dat.bz2') \
                      and os.path.isfile(f_root + 'orblibbox_losvd_hist.dat.bz2')
+                weight_solver = ws.WeightSolver(self.config, mod.directory)
+                weight_file_exists = os.path.isfile(weight_solver.weight_file)
                 if os.path.isfile(staging_filename):
                     # the model has completed but was not entered in the table
                     staging_file = ascii.read(staging_filename)
@@ -162,9 +174,11 @@ class AllModels(object):
                     self.logger.debug(
                         f'Staging file {staging_filename} deleted.')
                 elif check:
-                    self.logger.debug(f'Row {i}: orblibs were computed '
-                                      'but not weights.')
+                    self.logger.debug(f'Row {i}: orblibs were computed.')
                     self.table[i]['orblib_done'] = True
+                elif weight_file_exists:
+                    self.logger.debug(f'Row {i}: weights were computed.')
+                    self.table[i]['weights_done'] = True
                 else:
                     self.logger.debug(f'Row {i}: neither orblibs nor '
                                       'weights were completed.')
@@ -184,6 +198,12 @@ class AllModels(object):
                     to_delete.append(i)
                     self.logger.info('No finished model found in '
                                      f'{row["directory"]} - removing row {i}.')
+            if self.system.has_chi2_ext:  # check for nan in chi2_ext
+                for i, row in enumerate(self.table):
+                    if np.isnan(row['chi2_ext_added']):
+                        to_delete.append(i)
+                        self.logger.info(f'No chi2_ext value in row {i} ('
+                                         f'{row["directory"]}) - deleting row.')
         # do the deletion
         # note: only models without orblibs are deleted, so we delete the
         # entire orblibs' directories
@@ -823,6 +843,33 @@ class AllModels(object):
         self.logger.info(f'Removed data of {n_removed} of '
                          f'{len(model_rows_del)} identified models from disk.')
         return True
+
+    def get_chi2_ext_duplicates(self, rows):
+        """Check for models that only differ in external chi2 parameters
+
+        Parameters
+        ----------
+        rows : list of ints
+            List of row indices in the all_models table to validate against
+            existing models.
+
+        Returns
+        -------
+        list of ints
+            Those row indices in the all_models table that share orblib and ml
+            parameters with an earlier model and hence only differ in their
+            respective external chi2 parameters.
+        """
+        dupl = []
+        if self.system.has_chi2_ext:
+            all_data = self.table[self.dynamite_parameters]
+            for row_idx in rows:
+                row_data = all_data[row_idx]
+                previous_data = all_data[:row_idx]
+                if any(np.allclose(tuple(row_data), tuple(r))
+                       for r in previous_data):
+                    dupl.append(row_idx)
+        return dupl
 
 
 class Model(object):
