@@ -36,7 +36,7 @@ class AllModels(object):
         self.set_filename(config.settings.io_settings['all_models_file'])
         self.make_empty_table()
         self.dynamite_parameters = config.parspace.par_names[:]
-        if self.system.has_chi2_ext:
+        if self.system.has_chi2_ext():
             ext_chi2_component = self.system.get_unique_ext_chi2_component()
             for par in [p.name for p in ext_chi2_component.parameters]:
                 self.dynamite_parameters.remove(par)
@@ -198,7 +198,7 @@ class AllModels(object):
                     to_delete.append(i)
                     self.logger.info('No finished model found in '
                                      f'{row["directory"]} - removing row {i}.')
-            if self.system.has_chi2_ext:  # check for nan in chi2_ext
+            if self.system.has_chi2_ext():  # check for nan in chi2_ext
                 for i, row in enumerate(self.table):
                     if np.isnan(row['chi2_ext_added']):
                         to_delete.append(i)
@@ -248,10 +248,8 @@ class AllModels(object):
     def retrofit_kinmapchi2(self):
         """Calculates kinmapchi2 for DYNAMITE legacy tables if possible.
 
-        Note that kinmapchi2 adjustments due to external chi2 calculations
-        (if existing) will be ignored. This is not a real limitation because
-        external chi2 calculations have been introdued to DYNAMITE after adding
-        kinmapchi2.
+        Note that existing Chi2Ext components are currently not supported, all
+        kinmapchi2 will be set to nan then.
 
         Returns
         -------
@@ -261,24 +259,29 @@ class AllModels(object):
         which_chi2 = 'kinmapchi2'
         self.logger.info('Legacy all_models table read, updating '
                          f'{which_chi2} column...')
-        for row_id, row in enumerate(self.table):
-            if row['orblib_done'] and row['weights_done']:
-                # both orblib_done==True and weights_done==True indicates
-                # that data for kinmapchi2 is on the disk -> calculate
-                # kinmapchi2
-                mod = self.get_model_from_row(row_id)
-                ws_type = self.config.settings.weight_solver_settings['type']
-                weight_solver = getattr(ws, ws_type)(
-                                        config=self.config,
-                                        directory_with_ml=mod.directory)
-                orblib = mod.get_orblib()
-                _, _, _, row[which_chi2] = weight_solver.solve(orblib)
-                self.logger.info(f'Model {row_id}: {which_chi2} = '
-                                 f'{row[which_chi2]}')
-            else:
-                row[which_chi2] = np.nan
-                self.logger.warning(f'Model {row_id}: cannot update '
-                                    f'{which_chi2} - data deleted?')
+        if not self.system.has_chi2_ext():
+            for row_id, row in enumerate(self.table):
+                if row['orblib_done'] and row['weights_done']:
+                    # both orblib_done==True and weights_done==True indicates
+                    # that data for kinmapchi2 is on the disk -> calculate
+                    # kinmapchi2
+                    mod = self.get_model_from_row(row_id)
+                    ws_type=self.config.settings.weight_solver_settings['type']
+                    weight_solver = getattr(ws, ws_type)(
+                                            config=self.config,
+                                            directory_with_ml=mod.directory)
+                    orblib = mod.get_orblib()
+                    _, _, _, row[which_chi2] = weight_solver.solve(orblib)
+                    self.logger.info(f'Model {row_id}: {which_chi2} = '
+                                    f'{row[which_chi2]}')
+                else:
+                    row[which_chi2] = np.nan
+                    self.logger.warning(f'Model {row_id}: cannot update '
+                                        f'{which_chi2} - data deleted?')
+        else:
+            self.table[which_chi2] = np.nan
+            self.logger.info(f'Cannot update {which_chi2} - Chi2Ext component '
+                             'currently not supported.')
 
     def read_legacy_chi2_file(self, legacy_filename):
         """
@@ -861,7 +864,7 @@ class AllModels(object):
             respective external chi2 parameters.
         """
         dupl = []
-        if self.system.has_chi2_ext:
+        if self.system.has_chi2_ext():
             all_data = self.table[self.dynamite_parameters]
             for row_idx in rows:
                 row_data = all_data[row_idx]
