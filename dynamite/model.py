@@ -229,7 +229,9 @@ class AllModels(object):
         """Calculates kinmapchi2 for DYNAMITE legacy tables if possible.
 
         Note that kinmapchi2 adjustments due to external chi2 calculations
-        (if existing) will be ignored.
+        (if existing) will be ignored. This is not a real limitation because
+        external chi2 calculations have been introdued to DYNAMITE after adding
+        kinmapchi2.
 
         Returns
         -------
@@ -239,7 +241,6 @@ class AllModels(object):
         which_chi2 = 'kinmapchi2'
         self.logger.info('Legacy all_models table read, updating '
                          f'{which_chi2} column...')
-        # self.table[which_chi2] = np.nan
         for row_id, row in enumerate(self.table):
             if row['orblib_done'] and row['weights_done']:
                 # both orblib_done==True and weights_done==True indicates
