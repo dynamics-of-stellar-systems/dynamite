@@ -1787,8 +1787,8 @@ class Plotter():
         Vp = np.zeros((100,n))
 
         for i in range(n):
-            model_dir = self.modeldir + val['directory'][i]
-            model = self.all_models.get_model_from_directory(model_dir)
+            parset = val[i][self.config.parspace.par_names]
+            model = self.all_models.get_model_from_parset(parset)
             rr, orotR, Rad, vzz_r, vrr_r, vpp_r, vp_r = \
                 self.anisotropy_single(model)
             nrr = len(rr)

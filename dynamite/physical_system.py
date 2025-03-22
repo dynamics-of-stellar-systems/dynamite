@@ -312,13 +312,9 @@ class System(object):
         else:
             return chi2_ext_cmp[0]
 
+    @property
     def has_chi2_ext(self):
-        """Returns True if the system has a external chi2 component, else False
-
-        Returns
-        -------
-        Bool
-            True if the system has a external chi2 component, else False
+        """True if the system has an external chi2 component, else False
         """
         return False if self.get_unique_ext_chi2_component() is None else True
 

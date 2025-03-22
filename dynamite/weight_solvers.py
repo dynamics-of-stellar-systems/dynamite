@@ -26,8 +26,7 @@ class WeightSolver(object):
     Parameters
     ----------
     config : a ``dyn.config_reader.Configuration`` object
-    directory_with_ml : string
-        model directory with the ml extension
+    model : a ``dyn.model.Model`` object
     CRcut : Bool, default False
         whether to use the `CRcut` solution for the counter-rotating orbit
         problem. See Zhu et al. 2018 for more. If `CRcut` is given in the
@@ -36,14 +35,14 @@ class WeightSolver(object):
 
     """
 
-    def __init__(self, config, directory_with_ml, CRcut=False):
+    def __init__(self, config, model, CRcut=False):
         self.logger = logging.getLogger(f'{__name__}.{__class__.__name__}')
         self.config = config
         self.system = config.system
         self.settings = config.settings.weight_solver_settings
-        self.direc_with_ml = directory_with_ml
-        self.direc_no_ml \
-            = directory_with_ml[:directory_with_ml[:-1].rindex('/')+1]
+        self.model = model
+        self.direc_with_ml = model.directory
+        self.direc_no_ml = model.directory_noml
         if 'CRcut' in self.settings.keys():
             CRcut = self.settings['CRcut']
         self.CRcut = CRcut
@@ -114,13 +113,14 @@ class WeightSolver(object):
                              "kinmapchi2. Value set to nan.")
             return float('nan')  # #######################################
         number_gh = self.settings['number_GH']
-        mod=self.config.all_models.get_model_from_directory(self.direc_with_ml)
         chi2_kinmap = 0.
         for kin_set, kin_data in enumerate(stars.kinematic_data):
             n_gh = min(number_gh, kin_data.max_gh_order)
             coefs = ['v', 'sigma'] + [f'h{i}' for i in range(3, n_gh + 1)]
             # get the model's projected masses=flux (unused) and kinematic data
-            a=analysis.Analysis(config=self.config, model=mod, kin_set=kin_set)
+            a=analysis.Analysis(config=self.config,
+                                model=self.model,
+                                kin_set=kin_set)
             model_gh_coef = a.get_gh_model_kinematic_maps(v_sigma_option='fit',
                                                           weights=weights)
             # get the observed projected masses (unused) and kinematic data
@@ -224,9 +224,9 @@ class LegacyWeightSolver(WeightSolver):
         # When varying ml the LOSVD is scaled - no new orbits are calculated.
         # Therefore we need to know the ml that was used for the orbit library.
         # The scaling factor is sqrt(model_ml/original_orblib_ml).
-        mod=self.config.all_models.get_model_from_directory(self.direc_with_ml)
         ml_scaling_factor = \
-            self.config.all_models.get_model_velocity_scaling_factor(model=mod)
+            self.config.all_models.get_model_velocity_scaling_factor(
+                model=self.model)
         #-------------------
         #write nn.in
         #-------------------
@@ -366,26 +366,12 @@ class LegacyWeightSolver(WeightSolver):
             weights, chi2_tot, chi2_kin = \
                 self.get_weights_and_chi2_from_orbmat_file()
             chi2_kinmap = self.chi2_kinmap(weights)
-            # if applicable, add externally calculated chi2 to all chi2
-            ext_chi2_component=self.system.get_unique_ext_chi2_component()
-            if ext_chi2_component is not None:
-                dir = self.direc_with_ml
-                self.logger.debug(f'{dir}: calling ext. chi2 calculation.')
-                mod = self.config.all_models.get_model_from_directory(dir)
-                ext_chi2 = ext_chi2_component.get_chi2(dict(mod.parset))
-                chi2_tot += ext_chi2
-                chi2_kin += ext_chi2
-                chi2_kinmap += ext_chi2
-                self.logger.info(f'{dir}: external {ext_chi2=} '
-                                 'calculated and added to chi2 values.')
             # save the output
             results = table.Table()
             results['weights'] = weights
             results.meta = {'chi2_tot': chi2_tot,
                             'chi2_kin': chi2_kin,
                             'chi2_kinmap': chi2_kinmap}
-            if ext_chi2_component is not None:
-                results.meta['ext_chi2_included'] = ext_chi2
             results.write(self.weight_file,
                           format='ascii.ecsv',
                           overwrite=True)

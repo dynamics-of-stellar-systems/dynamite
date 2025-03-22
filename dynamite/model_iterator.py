@@ -142,7 +142,7 @@ class ModelIterator(object):
                     and not t['weights_done'] \
                     and not t['all_done']]
         # don't do weight solving for models that just differ in chi2_ext pars
-        if system.has_chi2_ext():
+        if system.has_chi2_ext:
             for row in all_models.get_chi2_ext_duplicates(
                                             rows_with_orbits_but_no_weights):
                 rows_with_orbits_but_no_weights.remove(row)
@@ -170,7 +170,7 @@ class ModelIterator(object):
                     self.logger.info('Reattempting weight solving for model '
                                      f'in row {i}, {directory=} failed.')
             all_models.save()
-        if system.has_chi2_ext():
+        if system.has_chi2_ext:
             rows_with_no_chi2_ext = [i for i, t in enumerate(all_models.table)\
                                      if np.isnan(t['chi2_ext_added'])]
             if len(rows_with_no_chi2_ext) > 0:
@@ -265,9 +265,9 @@ class ModelInnerIterator(object):
         self.config = config
         self.system = config.system
         self.all_models = config.all_models
-        self.external_chi2 = self.system.has_chi2_ext()  # for performance
+        self.has_chi2_ext = self.system.has_chi2_ext  # for performance
         self.orblib_parameters = config.parspace.par_names[:]
-        if self.external_chi2:
+        if self.has_chi2_ext:
             ext_chi2_component = self.system.get_unique_ext_chi2_component()
             non_orblib_pars = [p.name for p in ext_chi2_component.parameters]
         else:
@@ -337,7 +337,7 @@ class ModelInnerIterator(object):
             self.assign_model_directories(rows_to_do_orblib, rows_to_do_ml)
             # don't do weight solving for models that just differ in chi2_ext
             # parameters
-            if self.external_chi2:
+            if self.has_chi2_ext:
                 for row in self.all_models.get_chi2_ext_duplicates(rows_to_do_ml):
                     rows_to_do_ml.remove(row)
             # save all_models here - as it is useful to have directories saved
@@ -380,7 +380,7 @@ class ModelInnerIterator(object):
                         self.write_output_to_all_models_table(rows_to_do_ml,
                                                               output_ml)
             # add ext_chi2
-            if self.external_chi2:
+            if self.has_chi2_ext:
                 do_orblib, do_weights, do_chi2_ext = False, False, True
                 input_list = [i + (do_orblib, do_weights, do_chi2_ext)
                               for i in enumerate(rows_to_do)]
@@ -390,7 +390,7 @@ class ModelInnerIterator(object):
             self.all_models.save()  # save all_models table once models are run
             self.logger.info('Iteration done, '
                              f'{self.n_to_do} model(s) calculated.')
-            if not self.external_chi2:  # no staging files for chi2_ext
+            if not self.has_chi2_ext:  # no staging files for chi2_ext
                 self.delete_staging_files(rows_to_do) # delete staging files
         return self.par_generator.status
 
@@ -582,7 +582,7 @@ class ModelInnerIterator(object):
             try:
                 orblib = mod.get_orblib()
                 orb_done = True
-                if self.external_chi2:
+                if self.has_chi2_ext:
                     mod.chi2_ext = np.nan
                 if get_weights:
                     _ = mod.get_weights(orblib)
@@ -593,7 +593,7 @@ class ModelInnerIterator(object):
                     ext_chi2_comp=self.system.get_unique_ext_chi2_component()
                     parset = self.all_models.get_parset_from_row(row)
                     chi2_ext = ext_chi2_comp.get_chi2(dict(parset))
-                    w_solver = ws.WeightSolver(self.config, mod.directory)
+                    w_solver = ws.WeightSolver(self.config, mod)
                     mod_chi2_dict = ascii.read(w_solver.weight_file).meta
                     mod.chi2 = mod_chi2_dict['chi2_tot'] + chi2_ext
                     mod.kinchi2 = mod_chi2_dict['chi2_kin'] + chi2_ext
@@ -617,7 +617,7 @@ class ModelInnerIterator(object):
         time = str(np.datetime64('now', 'ms'))
         # Build and write model_done_staging.ecsv
         # not available when there is an external chi2 method
-        if not self.external_chi2:
+        if not self.has_chi2_ext:
             current_model_row = table.Table(self.all_models.table[row])
             for name, value in zip(
                     ['orblib_done','weights_done','chi2',
@@ -652,7 +652,7 @@ class ModelInnerIterator(object):
 
         """
         for i, row in enumerate(rows_to_do):
-            if self.external_chi2:
+            if self.has_chi2_ext:
                 orb_done, wts_done, chi2, kinchi2, kinmapchi2, chi2_ext, \
                     all_done, time = output[i]
                 self.all_models.table['chi2_ext_added'] = chi2_ext
