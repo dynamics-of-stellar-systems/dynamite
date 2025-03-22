@@ -122,7 +122,7 @@ This may be useful for e.g., gas kinematics that do not affect the potential. Th
     - ``ext_module``: a string which is the name of the module implementing the external :math:`\chi^2` calculation. The associated .py file should be in the Python path.
     - ``ext_class``: a string denoting the class name in the external module implementing the external :math:`\chi^2` calculation. It will be instantiated once, at the time the config file is read.
     - ``ext_class_args``: a dict holding the class parameters, can be empty (``{}``). Example: if ``ext_class_args: {arg1:47, arg2:"val2"}`` and ``ext_class: Chi2``, it will be instantiated via ``Chi2(arg1=47, arg2="val2")``.
-    - ``ext_chi2``: a string which is the name of the ``ext_class`` method returning :math:`\chi^2` as a single ``float``. In DYNAMITE, it will be called right after weight solving, passing the entire current parameter set as a dict, e.g. ``{a-bh:<val1>, m-bh:<val2>, ... ,p-stars:<valx>, q-stars:<valy>, ..., par1-gas:<valg1>, par2-gas:<valg2>}``.
+    - ``ext_chi2``: a string which is the name of the ``ext_class`` method returning :math:`\chi^2` as a single ``float``. In DYNAMITE, it will be called after weight solving, passing the entire current parameter set as a dict, e.g. ``{a-bh:<val1>, m-bh:<val2>, ... ,p-stars:<valx>, q-stars:<valy>, ..., par1-gas:<valg1>, par2-gas:<valg2>}``.
 
 ``component types``
 ^^^^^^^^^^^^^^^^^^^^

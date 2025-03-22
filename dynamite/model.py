@@ -150,7 +150,10 @@ class AllModels(object):
         """
         table_modified = False
         for i, row in enumerate(self.table):
-            if not row['all_done'] or np.isnan(row['chi2_ext_added']):
+            is_incomplete = not row['all_done']  # refers to orblib + weights
+            if self.system.has_chi2_ext:  # has chi2_ext been added?
+                is_incomplete = is_incomplete or np.isnan(row['chi2_ext_added'])
+            if is_incomplete:
                 table_modified = True
                 mod = self.get_model_from_row(i)
                 staging_filename = mod.directory+'model_done_staging.ecsv'
@@ -173,15 +176,21 @@ class AllModels(object):
                     os.remove(staging_filename)
                     self.logger.debug(
                         f'Staging file {staging_filename} deleted.')
-                elif check:
-                    self.logger.debug(f'Row {i}: orblibs were computed.')
-                    self.table[i]['orblib_done'] = True
-                elif weight_file_exists:
-                    self.logger.debug(f'Row {i}: weights were computed.')
-                    self.table[i]['weights_done'] = True
                 else:
-                    self.logger.debug(f'Row {i}: neither orblibs nor '
-                                      'weights were completed.')
+                    if check:
+                        self.logger.debug(f'Row {i}: orblibs were computed.')
+                        self.table[i]['orblib_done'] = True
+                    if weight_file_exists:
+                        self.logger.debug(f'Row {i}: weights were computed.')
+                        if np.isnan(row['chi2']): # are the chi2s in the table?
+                            c_dict = ascii.read(weight_solver.weight_file).meta
+                            row['chi2'] = c_dict['chi2_tot']
+                            row['kinchi2'] = c_dict['chi2_kin']
+                            row['kinmapchi2'] = c_dict['chi2_kinmap']
+                        self.table[i]['weights_done'] = True
+                    if not (check or weight_file_exists):
+                        self.logger.debug(f'Row {i}: neither orblibs nor '
+                                        'weights were completed.')
         # collect failed models to delete (both their directory and table entry)
         to_delete = []
         # if we will reattempt weight solving, only delete models with no orblib
@@ -192,6 +201,7 @@ class AllModels(object):
                     self.logger.info('No orblibs calculated for model in '
                                      f'{row["directory"]} - removing row {i}.')
         # otherwise delete any model which is not `all_done`
+        # or - if an Chi2Ext component exists - has chi2_ext == nan
         else:
             for i, row in enumerate(self.table):
                 if not row['all_done']:
