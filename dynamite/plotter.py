@@ -1725,8 +1725,6 @@ class Plotter():
         deviation of the anisotropy of models having parameters in a
         confidence region around the minimum chisquare.
 
-        Currently, this method only works with the ``LegacyWeightSolver``.
-
         Parameters
         ----------
         which_chi2 : STR, optional
