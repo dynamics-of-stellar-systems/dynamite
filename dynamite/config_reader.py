@@ -256,18 +256,29 @@ class Configuration(object):
 
                     # instantiate the component
 
-                    logger.debug(f"{comp}... instantiating {data_comp['type']} "
-                              "object")
-                    if 'contributes_to_potential' not in data_comp:
-                        text = f'Component {comp} needs ' + \
-                                'contributes_to_potential attribute'
-                        logger.error(text)
-                        raise ValueError(text)
-#                    c = globals()[data_comp['type']](contributes_to_potential
-#                        = data_comp['contributes_to_potential'])
-                    c = getattr(physys,data_comp['type'])(name = comp,
-                            contributes_to_potential \
-                            = data_comp['contributes_to_potential'])
+                    logger.debug(f"{comp}... instantiating "
+                                 f"{data_comp['type']} object.")
+                    if data_comp['type'] == 'Chi2Ext':  # Chi2Ext component
+                        # data_comp['contributes_to_potential'] = False
+                        logger.info(f'{comp}: contributes_to_potential will '
+                                    'be set to False')
+                        c = getattr(physys,data_comp['type'])(name = comp,
+                                ext_module=data_comp['ext_module'],
+                                ext_class=data_comp['ext_class'],
+                                ext_class_args=data_comp['ext_class_args'],
+                                ext_chi2=data_comp['ext_chi2'],
+                                contributes_to_potential=False)
+                    else:  # all 'regular' components
+                        if 'contributes_to_potential' not in data_comp:
+                            text = f'Component {comp} needs ' + \
+                                    'contributes_to_potential attribute'
+                            logger.error(text)
+                            raise ValueError(text)
+    #                    c = globals()[data_comp['type']](contributes_to_potential
+    #                        = data_comp['contributes_to_potential'])
+                        c = getattr(physys,data_comp['type'])(name = comp,
+                                contributes_to_potential \
+                                = data_comp['contributes_to_potential'])
 
                     # initialize the component's paramaters, kinematics,
                     # and populations
@@ -339,6 +350,8 @@ class Configuration(object):
                                                 input_directory=path,
                                                 **data_pop)
                             c.population_data.append(populations_set)
+
+                    # read other data
 
                     if 'mge_pot' in data_comp:
                         path = self.settings.io_settings['input_directory']
@@ -452,16 +465,16 @@ class Configuration(object):
                     pass
                 if 'ncpus' not in value:
                     value['ncpus'] = 'all_available'
-                if value['ncpus']=='all_available':
+                if value['ncpus'] == 'all_available':
                     value['ncpus'] = self.get_n_cpus()
                 logger.info(f"... using {value['ncpus']} CPUs "
                              "for orbit integration.")
-                if 'ncpus_weights' not in value:
-                    value['ncpus_weights'] = value['ncpus']
-                elif value['ncpus_weights'] == 'all_available':
-                    value['ncpus_weights'] = self.get_n_cpus()
-                logger.info(f"... using {value['ncpus_weights']} CPUs "
-                            "for weight solving.")
+                for ncpus in ('ncpus_weights', 'ncpus_ext'):
+                    if ncpus not in value:
+                        value[ncpus] = value['ncpus']
+                    elif value[ncpus] == 'all_available':
+                        value[ncpus] = self.get_n_cpus()
+                    logger.info(f'... using {value[ncpus]} CPUs for {ncpus}.')
                 if 'modeliterator' not in value:
                     value['modeliterator'] = 'ModelInnerIterator'
                 logger.debug(f"... using iterator {value['modeliterator']}.")
@@ -898,13 +911,15 @@ class Configuration(object):
             self.logger.error('System must have zero or one DM Halo object')
             raise ValueError('System must have zero or one DM Halo object')
 
-        if not 1 < len(self.system.cmp_list) < 4:
-            self.logger.error('System needs to comprise exactly one Plummer, '
-                              'one VisibleComponent, and zero or one DM Halo '
-                              'object(s)')
-            raise ValueError('System needs to comprise exactly one Plummer, '
-                             'one VisibleComponent, and zero or one DM Halo '
-                             'object(s)')
+        if self.system.get_unique_ext_chi2_component() is None:
+            check = (2, 3)
+        else:
+            check = (3, 4)
+        if len(self.system.cmp_list) not in check:
+            txt = 'System needs to comprise exactly one Plummer, ' \
+                  'one VisibleComponent, and zero or one DM Halo object(s)'
+            self.logger.error(txt)
+            raise ValueError(txt)
 
         ws_type = self.settings.weight_solver_settings['type']
 
