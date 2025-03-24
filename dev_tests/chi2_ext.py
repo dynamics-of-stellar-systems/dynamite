@@ -54,6 +54,6 @@ class Chi2Ext:
         self.logger.debug(f'This is chi2() and I got {parset=}.')
         # ...
         # Code that calculates the external, additive chi2
-        chi2 = 42
+        chi2 = 42.
         # ...
         return chi2
