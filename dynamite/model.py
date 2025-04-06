@@ -180,14 +180,32 @@ class AllModels(object):
                     if check:
                         self.logger.debug(f'Row {i}: orblibs were computed.')
                         self.table[i]['orblib_done'] = True
-                    if weight_file_exists:
+                    if weight_file_exists and not self.system.has_chi2_ext:
                         self.logger.debug(f'Row {i}: weights were computed.')
                         if np.isnan(row['chi2']): # are the chi2s in the table?
                             c_dict = ascii.read(weight_solver.weight_file).meta
                             row['chi2'] = c_dict['chi2_tot']
                             row['kinchi2'] = c_dict['chi2_kin']
                             row['kinmapchi2'] = c_dict['chi2_kinmap']
-                        self.table[i]['weights_done'] = True
+                    if weight_file_exists and self.system.has_chi2_ext:
+                        self.logger.debug(f'Row {i}: weights were computed.')
+                        if np.isnan(row['chi2']): # are the chi2s in the table?
+                            c_dict = ascii.read(weight_solver.weight_file).meta
+                            row['chi2'] = c_dict['chi2_tot']
+                            row['kinchi2'] = c_dict['chi2_kin']
+                            row['kinmapchi2'] = c_dict['chi2_kinmap']
+                        # Now we know that chi2_ext hasn't been added yet
+                        # (see is_incomplete above) - calculate and add it.
+                        ext_chi2_comp=self.system.get_unique_ext_chi2_component()
+                        parset = self.get_parset_from_row(i)
+                        chi2_ext = ext_chi2_comp.get_chi2(dict(parset))
+                        row['chi2'] = row['chi2'] + chi2_ext
+                        row['kinchi2'] = row['kinchi2'] + chi2_ext
+                        row['kinmapchi2'] = row['kinmapchi2'] + chi2_ext
+                        row['chi2_ext_added'] = chi2_ext
+                        self.logger.debug(f'Row {i}: chi2_ext added.')
+                    self.table[i]['weights_done'] = True
+                    self.table[i]['all_done'] = True
                     if not (check or weight_file_exists):
                         self.logger.debug(f'Row {i}: neither orblibs nor '
                                         'weights were completed.')
@@ -290,8 +308,8 @@ class AllModels(object):
                                         f'{which_chi2} - data deleted?')
         else:
             self.table[which_chi2] = np.nan
-            self.logger.info(f'Cannot update {which_chi2} - Chi2Ext component '
-                             'currently not supported.')
+            self.logger.warning(f'Cannot update {which_chi2} - Chi2Ext '
+                                'component currently not supported.')
 
     def read_legacy_chi2_file(self, legacy_filename):
         """
