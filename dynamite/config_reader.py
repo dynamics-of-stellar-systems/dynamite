@@ -921,14 +921,14 @@ class Configuration(object):
                                   'GaussHermite, BayesLOSVD, or ProperMotions.'
                             self.logger.error(txt)
                             raise ValueError(txt)
-                        if check_bl:
+                        if check_bl or check_pm:
                             # check weight solver type
                             if ws_type == 'LegacyWeightSolver':
                                 txt = "LegacyWeightSolver can't be used with "\
-                                      "BayesLOSVD - use weight-solver type NNLS"
+                                      "BayesLOSVD nor ProperMotions - " \
+                                      "use weight-solver type NNLS"
                                 self.logger.error(txt)
                                 raise ValueError(txt)
-                        if check_bl or check_pm:
                             # check for compatible chi2 variant
                             if which_chi2 == 'kinmapchi2':
                                 txt = 'kinmapchi2 cannot be used with ' \
