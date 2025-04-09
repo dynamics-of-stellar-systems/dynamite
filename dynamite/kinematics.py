@@ -959,7 +959,7 @@ class Histogram2D(object):
     ----------
     xedg : tuple (array(n_bins[0]+1), array(n_bins[1]+1))
         2d histogram bin edges
-    y : array (n_orbits, n_bins[0], nx_bins[1], n_apertures)
+    y : array (n_orbits, n_bins[0], n_bins[1], n_apertures)
         histogram values
     normalise : bool, default=True
         whether to normalise to pdf
