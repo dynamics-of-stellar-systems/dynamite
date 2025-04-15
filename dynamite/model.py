@@ -10,6 +10,7 @@ from astropy.io import ascii
 
 from dynamite import weight_solvers as ws
 from dynamite import orblib as dyn_orblib
+from dynamite import parameter_space as dyn_parspace
 
 class AllModels(object):
     """All models which have been run so far
@@ -846,7 +847,7 @@ class Model(object):
             self.logger.error(text)
             raise ValueError(text)
         self.config = config
-        self.check_parset(config.parspace, parset)
+        self.check_parset(parset)
         self.parset = parset
         # directory of the input kinematics
         if directory is None:
@@ -1052,36 +1053,35 @@ class Model(object):
         self.weights = weights
         return weight_solver
 
-    def check_parset(self, parspace, parset):
+    def check_parset(self, parset):
         """
         Validate a parset
 
         Given parameter values in parset, the validate_parspace method of
-        the parameter space is executed. If a parameter exists in parspace
-        but not in parset, a warning will be issued and the parameter
+        the parameter space is executed. If a parameter exists in the parameter
+        space but not in parset, a warning will be issued and the parameter
         will remain unchanged. If parset tries to set the value of
-        a parameter not existing in parspace, an exception will be raised.
-        Validating relies on exceptions raised by validate_parspace.
+        a parameter not existing in the parameter space, an exception will be
+        raised. Validating relies on exceptions raised by validate_parspace.
 
         Parameters
         ----------
-        parspace : ``dyn.parameter_space.ParameterSpace``
-            A list of parameter objects.
         parset : row of an Astropy Table
-            Contains parameter values to be checked against the settings in
-            parspace.
+            Contains parameter values to be checked against the parameter
+            space.
 
         Raises
         ------
         ValueError
-            If at least one parameter in parset is unknown to parspace.
+            If at least one parameter in parset is unknown to the parameter
+            space.
 
         Returns
         -------
         None.
 
         """
-        parspace_copy = copy.deepcopy(parspace)
+        parspace_copy = dyn_parspace.ParameterSpace(self.config.system)
         parspace_par_names = [p.name for p in parspace_copy]
         unknown_pars = [p for p in parset.colnames
                           if p not in parspace_par_names]

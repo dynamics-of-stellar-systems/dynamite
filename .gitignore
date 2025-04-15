@@ -65,3 +65,4 @@ ran1_nr
 rantest
 rantest.f90-e
 *.log
+dev_tests/propermotions/F2_output11

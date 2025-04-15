@@ -495,7 +495,7 @@ class Configuration(object):
 
         self.parspace = parspace.ParameterSpace(self.system)
         logger.info('Instantiated parameter space')
-        logger.debug(f'Parameter space: {self.parspace}')
+        logger.debug(f'Parameter space: {[p for p in self.parspace]}')
 
         self.all_models = model.AllModels(config=self)
         logger.info('Instantiated AllModels object')

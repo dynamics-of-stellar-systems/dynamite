@@ -2515,8 +2515,6 @@ class Plotter():
 
                 for k in range(len(sigmas)):
                     self.draw_ellipse_cov(axs,aux_cov,[aux_vx,aux_vy],sigmas[k],line='-',alpha=1/sigmas[k])
-
-
         else:
             axs = fig.add_subplot(111)
             axs.imshow(data,origin='lower',aspect='equal',extent=extent,cmap='Greys')
@@ -2535,13 +2533,10 @@ class Plotter():
 
                 for k in range(len(sigmas)):
                     self.draw_ellipse_cov(axs,aux_cov,[aux_vx,aux_vy],sigmas[k],line='-',alpha=1/sigmas[k])
-
-
         #####
         #empty bins
         if empty_bins:
             idx_zero = np.where(data.T==0)  # shape=(n_bins_x, n_bins_y)
-
             for k in range(len(idx_zero[1])):
                 aux_a = hist2d.x[0][idx_zero[0][k]]
                 aux_b = hist2d.x[1][idx_zero[1][k]]
@@ -2549,7 +2544,5 @@ class Plotter():
                 # aux_b = 0.5*(y_edges[idx_zero[1][k]]+y_edges[idx_zero[1][k]+1])
 
                 axs.plot(aux_a,aux_b,'xm',alpha=0.5)
-
-
         return fig
         #fig.savefig('hist2d.png')
