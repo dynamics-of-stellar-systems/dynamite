@@ -1040,7 +1040,7 @@ class Histogram2D(object):
 
         Returns
         -------
-        array shape (n_orbits, n_apertures)
+        tuple of arrays, shape ((n_orbits, n_apertures),(n_orbits, n_apertures))
             mean velocity components
 
         """
@@ -1060,8 +1060,8 @@ class Histogram2D(object):
 
         Returns
         -------
-        array shape (n_orbits, n_apertures)
-            velocity dispersion of losvd
+        tuple of arrays, shape ((n_orbits, n_apertures),(n_orbits, n_apertures))
+            velocity dispersion components
 
         """
         na = np.newaxis
