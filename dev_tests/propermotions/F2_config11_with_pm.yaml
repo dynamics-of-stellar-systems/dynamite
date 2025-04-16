@@ -1,0 +1,194 @@
+# Example yaml configuration file for the legacy implementation
+# All relevant input is in one file with two sections: SYSTEM and SETTINGS
+
+# Start of yaml document
+---
+###################################################################################
+# SECTION 1 : SYSTEM
+# Define the physical system (e.g. the galaxy, globular cluster etc being modelled)
+###################################################################################
+
+system_attributes:
+    distMPc: 0.0083
+    name: "F2"
+    position_angle: 90.0
+
+system_components:
+
+    bh:
+        parameters:
+            m:
+                par_generator_settings:
+                    lo: 6.301
+                    #2e6
+                    hi: 6.778
+                    #6e6
+                    step: 0.1
+                    minstep: 0.01
+                fixed: False
+                value: 6.63346
+                #np.log10(4.3e6)
+                logarithmic: True
+                LaTeX: "$\\log(M_\\bullet/M_\\odot)$"
+            a:
+                fixed: True
+                value: 0.01
+                # scale length in arcsec
+                LaTeX: "$a_\\mathrm{BH}$"
+        type: "Plummer"
+        include: True
+        contributes_to_potential: True
+
+    dh: # dark_halo
+        parameters:
+            f: # NFW Darkmatter fraction
+                par_generator_settings:
+                    lo: -5.0
+                    hi: 0.0
+                    step: 2
+                    minstep: 0.5
+                logarithmic: True
+                fixed: False
+                value: -3.
+                LaTeX: "$(M_{200}/M_{star})$"
+        type: NFW_m200_c
+        include: False
+        contributes_to_potential: True
+
+    stars:
+        parameters:
+            q: # intrinsic flattening (C/A)
+                par_generator_settings:
+                    lo: 0.15
+                    hi: 0.2999
+                    step: 0.04
+                    minstep: 0.01
+                fixed: False
+                value: 0.29
+                LaTeX: "$q$"
+            p: # intrinsic flattening (B/A)
+                par_generator_settings:
+                    lo: 0.6
+                    hi: 0.9999
+                    step: 0.04
+                    minstep: 0.01
+                fixed: False
+                value: 0.94
+                LaTeX: "$p$"
+            u: # sigma_obs / sigma_intrinsic
+                par_generator_settings:
+                    lo: 0.8
+                    hi: 1.0
+                    step: 0.04
+                    minstep: 0.01
+                fixed: False
+                value: 0.99
+                LaTeX: "$u$"
+        type: "TriaxialVisibleComponent"
+        mge_pot: "mge.ecsv"
+        mge_lum: "mge.ecsv"
+        include: True
+        contributes_to_potential: True
+        kinematics:
+            f2:
+                weight: 1.0
+                type: GaussHermite
+                hist_width: 'default'
+                hist_center: 'default'
+                hist_bins: 'default'
+                datafile: "gauss_hermite_kins.ecsv"
+                aperturefile: "aperture.dat"
+                binfile: "bins.dat"
+            propermotions:
+                type: ProperMotions
+                hist_width: 'default'
+                    # - '2719.8215332031'
+                    # - '1000.'
+                hist_center: 'default'
+                    # - '0.0000'
+                    # - '0.0000'
+                hist_bins: 'default'
+                    # - '15'
+                    # - '11'
+                datafile: "PM_kinfile.npz"
+                aperturefile: "apertureVirac2_pix4_SN500.dat"
+                binfile: "binsVirac2_pix4_SN500.dat"
+
+system_parameters:
+    ml:
+        par_generator_settings:
+            lo: 0.1
+            hi: 2.
+            step: 0.15
+            minstep: 0.01
+        fixed: False
+        value: 1.
+        LaTeX: "$Y_\\mathrm{4.5}$"
+
+###############################################################################
+# SECTION 2: SETTINGS
+# Define other settings e.g. for the orbit library and weight solver
+###############################################################################
+
+orblib_settings:
+    nE: 6 # 35                 # pick small orbit library for fast tutorial exaecution
+    logrmin: 0.5          # log10 of minimum orbit radius in arcsecs   np.log(3.16)
+    logrmax: 3.86         # np.log10(1466.690*5)
+    nI2: 5 # 11                # must be >= 4
+    nI3: 4 # 11
+    dithering: 1 # 3 #change from output5 to output6         # pick dithering=1 for for fast tutorial exaecution
+    # the following values should usually not be changed
+    orbital_periods: 200
+    sampling: 50000
+    starting_orbit: 1
+    number_orbits: -1     # i.e. integrate all orbits
+    accuracy: '1.0d-5'
+    random_seed: -1     # fixed rnd. seed for reproducible tutorial (set to 0 for stochastic seed)
+    # use_new_mirroring: True # default
+
+weight_solver_settings:
+    type: "NNLS"
+    nnls_solver: "scipy"
+    regularisation: 0
+    number_GH: 4
+    GH_sys_err: '0.0 0.0 0.0 0.0 0.3 0.3 0.6 0.6'
+    lum_intr_rel_err: 0.01
+    sb_proj_rel_err: 0.02
+    reattempt_failures: True
+
+parameter_space_settings:
+    generator_type: "LegacyGridSearch"
+    # which_chi2: "kinmapchi2"  # only use kinematic part of chi2 for parameter search (recommended), used by Sabine. should ask what difference is
+    which_chi2: "kinchi2"  # only use kinematic part of chi2 for parameter search (recommended)
+    generator_settings:
+        # For LegacyGridSearch, specify ONE of the following two settings
+        # threshold_del_chi2_abs: 0.5  # absolute change in chi2 threshold
+        # threshold_del_chi2_as_frac_of_sqrt2nobs: 0.05  #0.1
+        # threshold_del_chi2_as_frac_of_sqrt2nobs: 0.1
+        threshold_del_chi2_as_frac_of_sqrt2nobs: 1.5  #2  larger threshold means more new models are generated?
+    stopping_criteria:
+        # min_delta_chi2_abs : 0.5  # absolute "optimality tolerance" try 0.1?
+        # min_delta_chi2_abs : 0.001
+        min_delta_chi2_rel : 0.00001 # relative "optimality tolerance"
+        n_max_mods : 10 # 8200
+        n_max_iter : 2 # 30
+
+io_settings:        # paths can be given with or without trailing slash
+    input_directory: "dynamite_input/"
+    output_directory: "F2_output11/"
+    all_models_file: "all_models.ecsv"
+
+multiprocessing_settings:
+    ncpus: 'all_available' # integer or 'all_available'
+    ncpus_weights: 'all_available' # 8
+    modeliterator: 'SplitModelIterator'
+    # ncpus: 24  #24 #'all_available' # integer or 'all_available'
+    # ncpus_weights: 16 # integer, optional, defaults to ncpus (not used by all iterators)
+    # modeliterator: 'SplitModelIterator' # optional, default 'ModelInnerIterator'    # ncpus: 4        # integer or 'all_available'
+    # # ncpus: 48        # integer or 'all_available'
+    # # ncpus_weights: 16 # integer, optional, defaults to ncpus (not used by all iterators)
+    # # modeliterator: 'SplitModelIterator' # optional, default 'ModelInnerIterator'
+    orblibs_in_parallel: True
+
+legacy_settings:
+    directory: "default"
