@@ -50,18 +50,14 @@ class Data(object):
                     self.data = np.load(self.input_directory + self.datafile)
                     self.logger.debug(f'Data {self.name} read from '
                                     f'{self.input_directory}{self.datafile}')
-                    self.n_spatial_bins = len(self.data['xbin'])
-                    dv_x = self.data['xvbin'][1:] - self.data['xvbin'][:-1]
-                    dv_y = self.data['yvbin'][1:] - self.data['yvbin'][:-1]
-                    if not np.allclose(dv_x, dv_x[0]):
-                        txt = 'x velocity bins not uniform.'
-                        self.logger.error(txt)
-                        raise ValueError(txt)
-                    if not np.allclose(dv_y, dv_y[0]):
-                        txt = 'y velocity bins not uniform.'
-                        self.logger.error(txt)
-                        raise ValueError(txt)
-                    # FIXME: check for nans in the data
+                    self.n_spatial_bins = self.data['PM_2dhist'].shape[0]
+                    for array in 'PM_2dhist', 'PM_2dhist_sigma':
+                        if np.isnan(self.data[array]).any():
+                            txt = 'Input file ' \
+                                  f'{self.input_directory}{datafile} has nans'
+                            self.logger.error(f'{txt} at: '
+                                f'{np.argwhere(np.isnan(self.data[array]))}.')
+                            raise ValueError(txt)
 
 
 class Discrete(Data):
@@ -234,7 +230,6 @@ class Integrated(Data):
                 self.logger.error(txt)
                 raise ValueError(txt)
         else:
-            n_bins_kinem = n_bins = self.n_spatial_bins
             if not (self.n_spatial_bins == max(grid)):
                 txt = 'Numbers of kinematic bins do not match: '\
                   f'{self.n_spatial_bins} (length of data in {self.datafile})'\

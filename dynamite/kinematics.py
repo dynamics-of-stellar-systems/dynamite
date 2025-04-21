@@ -1670,49 +1670,34 @@ class ProperMotions(Kinematics, data.Integrated):
 
         """
         # move spatial bin axis to the end
-        y = np.moveaxis(self.data['PM_2dhist'], 0, -1)
+        y = np.moveaxis(self.data['PM_2dhist'], 0, -1).copy()
         # get the bin edges
-        data_dv = np.array([self.data['xvbin'][1] - self.data['xvbin'][0],
-                            self.data['yvbin'][1] - self.data['yvbin'][0]])
-        data_nbins = np.array([self.data['xvbin'].shape[0],
-                               self.data['yvbin'].shape[0]])
-        vxedg = np.linspace(self.data['xvbin'][0] - data_dv[0]/2,
-                            self.data['xvbin'][-1] + data_dv[0]/2,
-                            num=data_nbins[0]+1, endpoint=True)
-        vyedg = np.linspace(self.data['yvbin'][0] - data_dv[1]/2,
-                            self.data['yvbin'][-1] + data_dv[1]/2,
-                            num=data_nbins[1]+1, endpoint=True)
+        vxedg = np.linspace(-self.data['vxrange'],
+                            self.data['vxrange'],
+                            num=y.shape[0]+1,
+                            endpoint=True)
+        vyedg = np.linspace(-self.data['vyrange'],
+                            self.data['vyrange'],
+                            num=y.shape[1]+1,
+                            endpoint=True)
         # create and return the histogram object
         return Histogram2D(xedg=(vxedg, vyedg), y=y[np.newaxis,:,:,:])
 
-    def set_default_hist_width(self, scale=2.):
-        """Set orbit histogram width
+    def set_default_hist_width(self):
+        """Set 2d histogram widths
 
-        Set it to a multiple of data histogram widths in vx and vy. Default 2
-        i.e. double the width of observed data. Sets result to attribute
-        ``self.hist_width``.
-
-        Parameters
-        ----------
-        scale : float, optional
-            Scale factor applied to both vx and vy. The default is 2.
+        Set it to the data histogram widths in vx and vy.
 
         Returns
         -------
-        Sets the result to attribute `self.hist_width`
+        Sets the attribute `self.hist_width`
 
         """
-        data_dv = np.array([self.data['xvbin'][1] - self.data['xvbin'][0],
-                            self.data['yvbin'][1] - self.data['yvbin'][0]])
-        vmin = np.array([self.data['xvbin'][0] - data_dv[0] / 2,
-                         self.data['yvbin'][0] - data_dv[1] / 2])
-        vmax = np.array([self.data['xvbin'][-1] + data_dv[0] / 2,
-                         self.data['yvbin'][-1] + data_dv[1] / 2])
-        max_vabs = np.max(np.abs([vmin, vmax]), axis=0)
-        self.hist_width = 2. * scale * max_vabs
+        self.hist_width = 2 * np.array((self.data['vxrange'],
+                                        self.data['vyrange']))
 
     def set_default_hist_center(self):
-        """Sets orbit histogram center to (0, 0)
+        """Sets 2d histogram center to (0, 0)
 
         Returns
         -------
@@ -1721,29 +1706,14 @@ class ProperMotions(Kinematics, data.Integrated):
         """
         self.hist_center = np.array([0., 0.])
 
-    def set_default_hist_bins(self, oversampling_factor=3):
+    def set_default_hist_bins(self):
         """Set default number of bins in vx and vy
 
-        Uses the number of velocity bins of the data multiplied with
-        oversampling_factor. Also forces the number of bins to be odd, so that
-        the center bin is (0, 0).
-
-        Parameters
-        ----------
-        oversampling_factor : float, optional
-            Scale factor to multiply the number of data velocity bins in each
-            dimension.
-            The default is 3.
+        Uses the number of velocity bins in the data.
 
         Returns
         -------
-        Sets the result to attribute `self.hist_bins`
+        Sets the attribute `self.hist_bins`
 
         """
-        data_nbins = np.array([self.data['xvbin'].shape[0],
-                               self.data['yvbin'].shape[0]])
-        orblib_nbins = (data_nbins * oversampling_factor).astype(int)
-        # make nbins odd so histogrammed centered on 0 (allows orbit flipping)
-        orblib_nbins = np.where(orblib_nbins % 2 == 0,
-                                orblib_nbins + 1, orblib_nbins)
-        self.hist_bins = orblib_nbins
+        self.hist_bins = np.array(self.data['PM_2dhist'].shape[1:3])

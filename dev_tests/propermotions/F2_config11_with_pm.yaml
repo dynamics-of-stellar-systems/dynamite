@@ -110,9 +110,9 @@ system_components:
                 hist_bins: 'default'
                     # - '15'
                     # - '11'
-                datafile: "PM_kinfile.npz"
-                aperturefile: "apertureVirac2_pix4_SN500.dat"
-                binfile: "binsVirac2_pix4_SN500.dat"
+                datafile: "PM_kinfile_dv100.npz"
+                aperturefile: "apertureVirac2_pix4_SN350_dv100.dat"
+                binfile: "binsVirac2_pix4_SN350_dv100.dat"
 
 system_parameters:
     ml:
