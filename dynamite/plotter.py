@@ -607,9 +607,9 @@ class Plotter():
         # get the model LOSVDs
         orblib = model.get_orblib()
         weight_solver = model.get_weights(orblib)
-        orblib.read_losvd_histograms()
+        orblib.read_vel_histograms()
         losvd_orblib = kin_set.transform_orblib_to_observables(
-            orblib.losvd_histograms[0],
+            orblib.vel_histograms[0],
             None)
         losvd_model = np.einsum('ijk,i->jk', losvd_orblib, model.weights)
         # normalise LOSVDs to same scale at data, i.e. summing to 1

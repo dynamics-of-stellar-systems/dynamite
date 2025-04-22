@@ -765,12 +765,14 @@ class LegacyOrbitLibrary(OrbitLibrary):
         ----------
         fileroot : string
             This will probably be either 'orblib' or 'orblibbox'.
-        return_intrinsic_moments: boolean
+        return_intrinsic_moments: boolean, optional
             Whether to return_intrinsic_moments of the orblib.
-        pops: boolean
-            False (the default): only read the orbit library and LOSVD
+            The default is False.
+        pops: boolean, optional
+            False: only read the orbit library and velocity
             histograms, as needed by the weight solvers.
             True: only read the population data's orbit densities.
+            The default is False.
 
         Returns
         -------
@@ -1093,27 +1095,27 @@ class LegacyOrbitLibrary(OrbitLibrary):
             assert np.allclose(orblib.xedg[0], -orblib.xedg[0][::-1]), error_msg
             assert np.allclose(orblib.xedg[1], -orblib.xedg[1][::-1]), error_msg
         self.logger.debug('...check ok.')
-        losvd = orblib.y
-        if losvd.ndim == 3:  # 1D histograms
-            n_orbs, n_vel_bins, n_spatial_bins = losvd.shape
-            reversed_losvd = losvd[:, ::-1, :]
-            new_losvd = np.zeros((2*n_orbs, n_vel_bins, n_spatial_bins))
-        else:  # 2D histograms
-            n_orbs, n_vel_bins1, n_vel_bins2, n_spatial_bins = losvd.shape
-            reversed_losvd = losvd[:, ::-1, ::-1, :]
-            new_losvd = np.zeros((2*n_orbs,
+        vel_d = orblib.y
+        if vel_d.ndim == 3:  # 1D histograms (losvd)
+            n_orbs, n_vel_bins, n_spatial_bins = vel_d.shape
+            reversed_vel_d = vel_d[:, ::-1, :]
+            new_vel_d = np.zeros((2*n_orbs, n_vel_bins, n_spatial_bins))
+        else:  # 2D histograms (proper motion)
+            n_orbs, n_vel_bins1, n_vel_bins2, n_spatial_bins = vel_d.shape
+            reversed_vel_d = vel_d[:, ::-1, ::-1, :]
+            new_vel_d = np.zeros((2*n_orbs,
                                   n_vel_bins1,
                                   n_vel_bins2,
                                   n_spatial_bins))
-        new_losvd[0::2] = losvd
-        new_losvd[1::2, :] = reversed_losvd
-        if losvd.ndim == 3:  # 1D histograms
+        new_vel_d[0::2] = vel_d
+        new_vel_d[1::2, :] = reversed_vel_d
+        if vel_d.ndim == 3:  # 1D histograms
             new_orblib = dyn_kin.Histogram(xedg=orblib.xedg,
-                                           y=new_losvd,
+                                           y=new_vel_d,
                                            normalise=False)
         else:  # 2D histograms
             new_orblib = dyn_kin.Histogram2D(xedg=orblib.xedg,
-                                             y=new_losvd,
+                                             y=new_vel_d,
                                              normalise=False)
         return new_orblib
 
@@ -1132,7 +1134,7 @@ class LegacyOrbitLibrary(OrbitLibrary):
         return new_intmom
 
     def combine_orblibs(self, orblib1, orblib2):
-        """Combine two LOSVD histograms into one.
+        """Combine two velocity distribution histograms into one.
 
         Parameters
         ----------
@@ -1173,42 +1175,43 @@ class LegacyOrbitLibrary(OrbitLibrary):
         assert n_spatial_bins1==n_spatial_bins2, error_msg
         self.logger.debug('...checks ok.')
         if orblib1.y.ndim == 3:
-            new_losvd = np.zeros((n_orbs1 + n_orbs2,
+            new_vel_d = np.zeros((n_orbs1 + n_orbs2,
                                   n_vel_bins1,
                                   n_spatial_bins1))
         else:
-            new_losvd = np.zeros((n_orbs1 + n_orbs2,
+            new_vel_d = np.zeros((n_orbs1 + n_orbs2,
                                   n_vel_bins1[0],
                                   n_vel_bins1[1],
                                   n_spatial_bins1))
-        new_losvd[:n_orbs1] = orblib1.y
-        new_losvd[n_orbs1:] = orblib2.y
+        new_vel_d[:n_orbs1] = orblib1.y
+        new_vel_d[n_orbs1:] = orblib2.y
         if orblib1.y.ndim == 3:
             new_orblib = dyn_kin.Histogram(xedg=orblib1.xedg,
-                                           y=new_losvd,
+                                           y=new_vel_d,
                                            normalise=False)
         else:
             new_orblib = dyn_kin.Histogram2D(xedg=orblib1.xedg,
-                                             y=new_losvd,
+                                             y=new_vel_d,
                                              normalise=False)
         return new_orblib
 
-    def read_losvd_histograms(self, pops=False):
+    def read_vel_histograms(self, pops=False):
         """Read the orbit library
 
         Read box orbits and tube orbits, mirrors the latter, and combines.
         Rescales the velocity axis according to the ``ml`` value. Sets LOSVDs,
-        proper motions, and 3D grid/aperture masses of the combined orbit
-        library.
+        proper motion velocity distributions, and 3D grid/aperture masses of
+        the combined orbit library.
         If pops=True, only calculates the populations' projected masses.
 
         Returns
         -------
         If pops is False, sets the attributes:
-            -   ``self.losvd_histograms``: a list, whose i'th entry is EITHER a
+            -   ``self.vel_histograms``: a list, whose i'th entry is EITHER a
                 ``dyn.kinematics.Histogram`` object holding the orbit library
                 LOSVDs OR a ``dyn.kinematics.Histogram2D`` object holding the
-                orbit library proper motions, binned for the i'th kinematic set
+                orbit library proper motion velocity distributions, binned for
+                the i'th kinematic set
             -   ``self.intrinsic_masses``: 3D grid/intrinsic masses of orbit lib
             -   ``self.projected_masses``: aperture/proj. masses of orbit lib
             -   ``self.n_orbs``: number of orbits in the orbit library
@@ -1294,16 +1297,16 @@ class LegacyOrbitLibrary(OrbitLibrary):
             density_3D = np.vstack((tube_density_3D, box_density_3D))
             for i in range(n_kins):
                 orblib[i].scale_x_values(self.velocity_scaling_factor)
-            self.losvd_histograms = orblib
+            self.vel_histograms = orblib
             self.intrinsic_masses = density_3D
             self.n_orbs = \
-                self.losvd_histograms[0].y.shape[0] if n_kins > 0 else 0
+                self.vel_histograms[0].y.shape[0] if n_kins > 0 else 0
             proj_mass = []
             for kin in range(n_kins):
-                if self.losvd_histograms[kin].y.ndim == 3:  # 1D histograms
-                    proj_mass.append(np.sum(self.losvd_histograms[kin].y, 1))
+                if self.vel_histograms[kin].y.ndim == 3:  # 1D histograms
+                    proj_mass.append(np.sum(self.vel_histograms[kin].y, 1))
                 else:  # 2D histograms
-                    proj_mass.append(np.sum(self.losvd_histograms[kin].y, (1,2)))
+                    proj_mass.append(np.sum(self.vel_histograms[kin].y, (1,2)))
             self.projected_masses = proj_mass
         else:  # FIXME: this will not work if pops share apertures with 2d histogram kins
             proj_mass = [np.sum(pops[i].y,1) for i in range(n_pops)]

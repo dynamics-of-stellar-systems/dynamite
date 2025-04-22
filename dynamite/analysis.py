@@ -83,8 +83,8 @@ class Decomposition:
                          f'{stars.kinematic_data[kin_set].name}')
         # Get losvd_histograms and projected_masses
         self.orblib = self.model.get_orblib()
-        self.orblib.read_losvd_histograms()
-        self.losvd_histograms = self.orblib.losvd_histograms[self.kin_set]
+        self.orblib.read_vel_histograms()
+        self.losvd_histograms = self.orblib.vel_histograms[self.kin_set]
         self.proj_mass = self.orblib.projected_masses[self.kin_set]
         self.logger.debug(f'{self.losvd_histograms.y.shape=}, '
                           f'{self.proj_mass.shape=}.')
@@ -642,9 +642,9 @@ class Analysis:
             _ = model.get_weights(orblib)
             weights = model.weights
         # get losvd_histograms and projected masses:
-        orblib.read_losvd_histograms()
+        orblib.read_vel_histograms()
         # get all orbits' losvds; orbits_losvd.shape = n_orb,n_vbin,n_aperture
-        orbits_losvd = orblib.losvd_histograms[kin_set].y[:,:,]
+        orbits_losvd = orblib.vel_histograms[kin_set].y[:,:,]
         # weighted sum of orbits_losvd; model_losvd.shape = 1,n_vbin,n_aperture
         model_losvd = np.dot(orbits_losvd.T, weights).T[np.newaxis]
         #model_losvd /= np.sum(model_losvd, 0) # normalisation not necessary
@@ -652,7 +652,7 @@ class Analysis:
                                    weights) # .shape = n_aperture
         # calculate v_mean and v_sigma values from the losvd histograms
         model_losvd_hist = \
-            dyn.kinematics.Histogram(xedg=orblib.losvd_histograms[kin_set].xedg,
+            dyn.kinematics.Histogram(xedg=orblib.vel_histograms[kin_set].xedg,
                                      y=model_losvd,
                                      normalise=False)
         if v_sigma_option == 'moments':

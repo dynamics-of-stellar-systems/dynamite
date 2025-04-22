@@ -713,7 +713,7 @@ class NNLS(WeightSolver):
         orbmat[idx,:] = np.hstack(orblib.projected_masses).T
         # add kinematics to con, econ, orbmat
         stars = self.system.get_unique_triaxial_visible_component()
-        kins_and_orb_losvds = zip(stars.kinematic_data, orblib.losvd_histograms)
+        kins_and_orb_losvds = zip(stars.kinematic_data, orblib.vel_histograms)
         idx_ap_start = 0
         for (kins, orb_losvd) in kins_and_orb_losvds:
             # pick out the projected masses for this kinematic set
@@ -821,9 +821,9 @@ class NNLS(WeightSolver):
         """
         self.logger.info(f"Using WeightSolver: {__class__.__name__}/"
                          f"{self.nnls_solver}")
-        orblib.read_losvd_histograms()  # sets orblib.losvd_histograms,
-                                        # orblib.intrinsic_masses, and
-                                        # orblib.projected_masses
+        orblib.read_vel_histograms()  # sets orblib.vel_histograms,
+                                      # orblib.intrinsic_masses, and
+                                      # orblib.projected_masses
         if (not ignore_existing_weights) and self.weight_file_exists():
             results = ascii.read(self.weight_file, format='ecsv')
             self.logger.info("NNLS solution read from existing output "
