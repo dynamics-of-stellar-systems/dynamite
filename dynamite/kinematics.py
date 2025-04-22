@@ -1653,11 +1653,36 @@ class ProperMotions(Kinematics, data.Integrated):
 
     """
     def __init__(self, **kwargs):
-        # super goes left to right, i.e. first calls "Kinematics" __init__, then
-        # calls data.Integrated's __init__
+        # super goes left to right, i.e. first calls "Kinematics" __init__,
+        # then calls data.Integrated's __init__
         super().__init__(proper_motions=True, **kwargs)
         self.logger = logging.getLogger(f'{__name__}.{__class__.__name__}')
         if hasattr(self, 'data'):
+            # sanity check: dv <= sigma_global/4, width >= 5*sigma_global
+            max_dv_factor = 0.25
+            min_width_factor = 5
+            h2d = self.as_histogram2d()
+            h2d_global = Histogram2D(xedg=h2d.xedg,
+                                     y=np.sum(h2d.y, axis=3)[:,:,:,np.newaxis],
+                                     normalise=False)
+            # mean = h2d_global.get_mean()
+            sigma = h2d_global.get_sigma()
+            dv = (h2d_global.dx[0][0], h2d_global.dx[1][0])
+            width = self.hist_width
+            for xy, idx in zip(['vx', 'vy'], [0, 1]):
+                dv_factor = dv[idx] / sigma[idx][0,0]
+                width_factor = width[idx] / sigma[idx][0,0]
+                self.logger.info(f'{self.name}: {xy}_sigma={sigma[idx][0,0]}, '
+                    f'd{xy}={dv[idx]}={dv_factor}*{xy}_sigma, '
+                    f'{xy}_width={width[idx]}={width_factor}*{xy}_sigma')
+                if dv_factor > max_dv_factor:
+                    self.logger.warning(f'{self.name}: d{xy} larger than '
+                        'maximum recommended value of '
+                        f'{max_dv_factor}*{xy}_sigma!')
+                if width_factor < min_width_factor:
+                    self.logger.warning(f'{self.name}: {xy}_width smaller than'
+                        ' minimum recommended value of '
+                        f'{min_width_factor}*{xy}_sigma!')
             pass
 
     def as_histogram2d(self):
