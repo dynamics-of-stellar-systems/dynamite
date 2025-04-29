@@ -101,15 +101,6 @@ system_components:
                 binfile: "bins.dat"
             propermotions:
                 type: ProperMotions
-                hist_width: 'default'
-                    # - '2719.8215332031'
-                    # - '1000.'
-                hist_center: 'default'
-                    # - '0.0000'
-                    # - '0.0000'
-                hist_bins: 'default'
-                    # - '15'
-                    # - '11'
                 datafile: "PM_kinfile_dv100.npz"
                 aperturefile: "apertureVirac2_pix4_SN350_dv100.dat"
                 binfile: "binsVirac2_pix4_SN350_dv100.dat"

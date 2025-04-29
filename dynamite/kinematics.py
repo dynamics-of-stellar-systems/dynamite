@@ -68,7 +68,8 @@ class Kinematics(data.Data):
         Identifies population data in the kinematics data file.
 
         If there is population data, it is removed from self.data. This
-        method needs to be implemented for all Kinematics subclasses.
+        method needs to be implemented for all Kinematics subclasses that
+        also hold population data.
 
         Returns
         -------
@@ -305,8 +306,7 @@ class GaussHermite(Kinematics, data.Integrated):
         """
         Identifies population data in the kinematics data file.
 
-        If there is population data, it is removed from self.data. This
-        method needs to be implemented for all Kinematics subclasses.
+        If there is population data, it is removed from self.data.
 
         Returns
         -------
@@ -1137,8 +1137,7 @@ class BayesLOSVD(Kinematics, data.Integrated):
         """
         Identifies population data in the kinematics data file.
 
-        If there is population data, it is removed from self.data. This
-        method needs to be implemented for all Kinematics subclasses.
+        If there is population data, it is removed from self.data.
 
         Returns
         -------
@@ -1651,12 +1650,42 @@ class BayesLOSVD(Kinematics, data.Integrated):
 class ProperMotions(Kinematics, data.Integrated):
     """Proper motions 2D kinematic data
 
+    Proper motion kinematics. While it expects the aperturefile and binfile in
+    the same way as the other kinematics classes, the data is expected as an
+    .npz archive that contains the following files which in turn hold one
+    array each:
+
+    'PM_2dhist' : 2D histogram of proper motions,
+                  shape=(n_apertures, n_bins[0], n_bins[1])
+    'PM_2dhist_sigma' : 2D histogram of proper motion uncertainties,
+                        shape=(n_apertures, n_bins[0], n_bins[1])
+    'PSF_sigma' : 2D histogram of PSF sigma, shape=() or shape=(n_PSFs,)
+    'PSF_weight' : 2D histogram of PSF weight, shape=() or shape=(n_PSFs,)
+    'binID_dynamite' : spatial bin IDs starting with 1, shape=(n_apertures,)
+    'nstarbin' : number of stars in each spatial bin, shape=(n_apertures,)
+    'vxrange' : half the velocity range in x (-vxrange <= vx <= vxrange),
+                shape=()
+    'vyrange' : half the velocity range in y (-vyrange <= vy <= vyrange),
+                shape=()
+    'xbin' : x coordinates of the spatial bin centers, shape=(n_apertures,)
+    'ybin' : y coordinates of the spatial bin centers, shape=(n_apertures,)
+
     """
     def __init__(self, **kwargs):
+        self.logger = logging.getLogger(f'{__name__}.{__class__.__name__}')
+        # 2d histogram metadata is always determined by the data
+        for attr in ['hist_width', 'hist_center', 'hist_bins']:
+            if attr in kwargs:
+                txt = f'Cannot use attribute {attr} for {__class__.__name__}!'
+                self.logger.error(txt)
+                raise ValueError(txt)
+        if 'with_pops' in kwargs:
+            txt = f'Cannot use attribute with_pops for {__class__.__name__}!'
+            self.logger.error(txt)
+            raise ValueError(txt)
         # super goes left to right, i.e. first calls "Kinematics" __init__,
         # then calls data.Integrated's __init__
         super().__init__(proper_motions=True, **kwargs)
-        self.logger = logging.getLogger(f'{__name__}.{__class__.__name__}')
         if hasattr(self, 'data'):
             # sanity check: dv <= sigma_global/4, width >= 5*sigma_global
             max_dv_factor = 0.25
@@ -1741,4 +1770,5 @@ class ProperMotions(Kinematics, data.Integrated):
         Sets the attribute `self.hist_bins`
 
         """
-        self.hist_bins = np.array(self.data['PM_2dhist'].shape[1:3])
+        # self.data['PM_2dhist'].shape = (n_apertures, n_bins[0], n_bins[1])
+        self.hist_bins = np.array(self.data['PM_2dhist'].shape[1:])

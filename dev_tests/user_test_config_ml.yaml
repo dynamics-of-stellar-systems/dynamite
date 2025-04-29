@@ -123,15 +123,6 @@ system_components:
                 with_pops: False # If True, pop columns will create pop object, default: False
             # propermotions:
             #     type: ProperMotions
-            #     hist_width:
-            #         - '2719.8215332031'
-            #         - '1000.'
-            #     hist_center:
-            #         - '0.0000'
-            #         - '0.0000'
-            #     hist_bins:
-            #         - '15'
-            #         - '11'
             #     datafile: "proper_motions_dummy.ecsv"
             #     aperturefile: "aperture_for_pm.dat"
             #     binfile: "bins_for_pm.dat"

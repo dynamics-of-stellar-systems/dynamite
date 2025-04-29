@@ -17,6 +17,10 @@ class Data(object):
         name of the Astropy ECSV datafile
     input_directory : string, or None
         location of the data file
+    proper_motions : bool, optional
+        if True, the datafile is assumed to be a proper motions data file
+        (i.e. a .npz file) as described in the ``dyn.kinematics.ProperMotions``
+        class. The default is False.
 
     """
 
