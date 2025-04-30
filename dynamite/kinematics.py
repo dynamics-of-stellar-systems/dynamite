@@ -1483,7 +1483,7 @@ class BayesLOSVD(Kinematics, data.Integrated):
         binID_dynamite[idx_missing] = 0
         return binID_dynamite
 
-    def set_default_hist_width(self, scale=2.):
+    def set_default_hist_width(self, scale=1):
         """Set orbit histogram width
 
         Set it to a multiple of data histogram width. Default 2 i.e. double to
@@ -1495,17 +1495,17 @@ class BayesLOSVD(Kinematics, data.Integrated):
             scale factor
 
         """
-        vmin = self.data.meta['vcent'][0] - self.data.meta['dv']/2.
-        vmax = self.data.meta['vcent'][-1] + self.data.meta['dv']/2.
+        vmin = self.data.meta['vcent'][0] - self.data.meta['dv']/2
+        vmax = self.data.meta['vcent'][-1] + self.data.meta['dv']/2
         max_vabs = np.max(np.abs([vmin, vmax]))
-        self.hist_width = 2. * scale * max_vabs
+        self.hist_width = 2 * scale * max_vabs
 
     def set_default_hist_center(self):
         """Sets orbit histogram center to 0
         """
         self.hist_center = 0.
 
-    def set_default_hist_bins(self, oversampling_factor=10):
+    def set_default_hist_bins(self, oversampling_factor=1):
         """Set default LOSVD nbins for orblibs
 
         Uses velocity spacing of the data divided by oversampling_factor.
