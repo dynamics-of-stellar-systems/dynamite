@@ -4,6 +4,7 @@
 Change Log
 ****************
 
+- New feature: support for adding externally calculated chi2 values for components not interacting with DYNAMITE components
 - Improvement: more robust directory naming when failed models are present in the all_models table
 - Bugfix: don't crash with pops data when using ModelInnerIterator.
 - Bugfix: don't crash when continuing a run with just one valid model.
