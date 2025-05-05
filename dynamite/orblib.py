@@ -1308,7 +1308,7 @@ class LegacyOrbitLibrary(OrbitLibrary):
                 else:  # 2D histograms
                     proj_mass.append(np.sum(self.vel_histograms[kin].y, (1,2)))
             self.projected_masses = proj_mass
-        else:  # FIXME: this will not work if pops share apertures with 2d histogram kins
+        else:  # note: pops cannot share apertures with 2d histogram kins
             proj_mass = [np.sum(pops[i].y,1) for i in range(n_pops)]
             self.pops_projected_masses = proj_mass
 

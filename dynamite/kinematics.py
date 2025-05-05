@@ -29,23 +29,32 @@ class Kinematics(data.Data):
         self.logger = logging.getLogger(f'{__name__}.{__class__.__name__}')
         if hasattr(self, 'data'):
             self.type = type
-            def _list_or_float(x):
-                return [float(y) for y in x] if isinstance(x, list) \
-                    else float(x)
-            def _list_or_int(x):
-                return [int(y) for y in x] if isinstance(x, list) else int(x)
+            def _iter_or_float(x):
+                try:
+                    r = float(x) if type(x) == str else [float(y) for y in x]
+                    return r
+                except TypeError:
+                    # if x is not iterable but a single value, return float(x)
+                    return float(x)
+            def _iter_or_int(x):
+                try:
+                    r = int(x) if type(x) == str else [int(y) for y in x]
+                    return r
+                except TypeError:
+                    # if x is not iterable but a single value, return int(x)
+                    return int(x)
             if hist_width=='default':
                 self.set_default_hist_width()
             else:
-                self.hist_width = _list_or_float(hist_width)
+                self.hist_width = _iter_or_float(hist_width)
             if hist_center=='default':
                 self.set_default_hist_center()
             else:
-                self.hist_center = _list_or_float(hist_center)
+                self.hist_center = _iter_or_float(hist_center)
             if hist_bins=='default':
                 self.set_default_hist_bins()
             else:
-                self.hist_bins = _list_or_int(hist_bins)
+                self.hist_bins = _iter_or_int(hist_bins)
             has_pops, pop_cols = self.has_pops()
             if has_pops and with_pops:
                 self.with_pops = True
@@ -1078,7 +1087,7 @@ class Histogram2D(object):
 
     def get_mean_sigma_gaussfit(self):
         """Get the mean velocity and velocity dispersion from fitted Gaussians
-        FIXME: NOT IMPLEMENTED YET
+        FIXME: NOT IMPLEMENTED YET!!!
 
         Returns
         -------
@@ -1118,7 +1127,9 @@ class Histogram2D(object):
                         v_sigma[orbit,aperture] = p_opt[2] # overwrite v_sigma
                 else:
                     self.logger.info(f'{err_msg}')
-        return v_mean, v_sigma
+        # return v_mean, v_sigma
+        return np.nan, np.nan
+
 
 class BayesLOSVD(Kinematics, data.Integrated):
     """Bayes LOSVD kinematic data
@@ -1586,8 +1597,8 @@ class BayesLOSVD(Kinematics, data.Integrated):
 
         Returns
         -------
-        ``dyn.kinematics.Histogram``
-            a orblib LOSVD re-binned to the data velocity spacing
+        array of shape (n_orbits, n_vbins, n_apertures)
+            the orblib LOSVD re-binned to the data velocity spacing
 
         """
         v_cent, dv = np.array(self.data.meta['vcent']), self.data.meta['dv']
@@ -1612,18 +1623,18 @@ class BayesLOSVD(Kinematics, data.Integrated):
         f = np.minimum(f1, f2)
         # TODO:  check if the following is faster if we use sparseness of f
         # sparse matrix multiplication won't work with einsum, but may be faster
-        rebined_orbit_vel_hist = np.einsum('ijk,lj->ilk',
+        rebinned_orbit_vel_hist = np.einsum('ijk,lj->ilk',
                                            losvd_histograms.y,
                                            f,
                                            optimize=False)
-        return rebined_orbit_vel_hist
+        return rebinned_orbit_vel_hist
 
     def transform_orblib_to_observables(self,
                                         losvd_histograms,
                                         weight_solver_settings):
         losvd_histograms = self.rebin_orblib_to_observations(losvd_histograms)
-        # losvd_histograms has shape (n_orbs, n_vbins, n_aperture)
-        # weight solver expects (n_orbs, n_aperture, n_vbins)
+        # losvd_histograms has shape (n_orbits, n_vbins, n_apertures)
+        # weight solver expects (n_orbits, n_apertures, n_vbins)
         losvd_histograms = np.swapaxes(losvd_histograms, 1, 2)
         return losvd_histograms
 
@@ -1646,6 +1657,7 @@ class BayesLOSVD(Kinematics, data.Integrated):
         observed_values = self.data['losvd'] # shape = (n_aperture, n_vbins)
         uncertainties = self.data['dlosvd'] # shape = (n_aperture, n_vbins)
         return observed_values, uncertainties
+
 
 class ProperMotions(Kinematics, data.Integrated):
     """Proper motions 2D kinematic data
@@ -1765,6 +1777,11 @@ class ProperMotions(Kinematics, data.Integrated):
 
         Uses the number of velocity bins in the data.
 
+        Raises
+        ------
+        ValueError
+            If the number of velocity bins in vx or vy is not odd.
+
         Returns
         -------
         Sets the attribute `self.hist_bins`
@@ -1772,3 +1789,51 @@ class ProperMotions(Kinematics, data.Integrated):
         """
         # self.data['PM_2dhist'].shape = (n_apertures, n_bins[0], n_bins[1])
         self.hist_bins = np.array(self.data['PM_2dhist'].shape[1:])
+        for n_bins in [b for b in self.hist_bins if b % 2 == 0]:
+            txt = f'Number of bins {n_bins} must be odd!'
+            self.logger.error(txt)
+            raise ValueError(txt)
+
+    def get_observed_values_and_uncertainties(self, weight_solver_settings):
+        """Get observed velocity distribution values and uncertainties
+
+        Parameters
+        ----------
+        weight_solver_settings : dict
+
+        Returns
+        -------
+        tuple
+            (observed_values, uncertainties), where:
+            - observed_values array of shape (n_aperture, n_vbins)
+            - uncertainties array of shape (n_aperture, n_vbins)
+
+        """
+        # weight solver expects arrays of shape (n_aperture, n_vbins)
+        observed_values = np.reshape(self.data['PM_2dhist'],
+                                     (self.n_spatial_bins, -1))
+        uncertainties = np.reshape(self.data['PM_2dhist_sigma'],
+                                   (self.n_spatial_bins, -1))
+        return observed_values, uncertainties
+
+    def transform_orblib_to_observables(self,
+                                        vel_histograms,
+                                        weight_solver_settings):
+        """Transform orbit library to observed kinematics
+
+        Parameters
+        ----------
+        vel_histograms : ``dyn.kinematics.Histogram2D``
+            the 2d velocity distribution of an orbit library
+        weight_solver_settings : dict
+            weight solver settings
+
+        Returns
+        -------
+        array of shape (n_orbits, n_apertures, n_vxbins, n_vybins)
+            the vel_histograms data transformed for use by the weight solvers
+
+        """
+        # vel_histograms has shape (n_orbits, n_vxbins, n_vybins, n_apertures)
+        # weight solver expects (n_orbits, n_apertures, n_vxbins, n_vybins)
+        return np.moveaxis(vel_histograms, 3, 1)

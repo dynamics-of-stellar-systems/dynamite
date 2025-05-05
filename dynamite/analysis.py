@@ -632,8 +632,7 @@ class Analysis:
                    "'both'."
             self.logger.error(txt)
             raise ValueError(txt)
-        stars = self.config.system.get_component_from_class(
-                                dyn.physical_system.TriaxialVisibleComponent)
+        stars = self.config.system.get_unique_triaxial_visible_component()
         kin_name = stars.kinematic_data[kin_set].name
         self.logger.info('Getting projected masses and losvds for '
                          f'model {model.directory}.')
