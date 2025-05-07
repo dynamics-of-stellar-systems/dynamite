@@ -1682,6 +1682,9 @@ class ProperMotions(Kinematics, data.Integrated):
     'xbin' : x coordinates of the spatial bin centers, shape=(n_apertures,)
     'ybin' : y coordinates of the spatial bin centers, shape=(n_apertures,)
 
+    Upon reading the data, the ``self.data`` attribute will hold the data in
+    a dictionary with the keys as above.
+
     """
     def __init__(self, **kwargs):
         self.logger = logging.getLogger(f'{__name__}.{__class__.__name__}')

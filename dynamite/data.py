@@ -37,28 +37,25 @@ class Data(object):
             self.datafile = datafile
             self.input_directory=input_directory if input_directory else ''
             if datafile is not None:
+                f_name = self.input_directory + self.datafile
                 if not proper_motions:
-                    self.data = ascii.read(self.input_directory+self.datafile)
-                    self.logger.debug(f'Data {self.name} read from '
-                                    f'{self.input_directory}{self.datafile}')
+                    self.data = ascii.read(f_name)
+                    self.logger.debug(f'Data {self.name} read from {f_name}.')
                     data_array=np.lib.recfunctions.structured_to_unstructured(
                         self.data.as_array())
                     if np.isnan(data_array).any():
-                        txt = f'Input file {self.input_directory}{datafile} ' \
-                              'has nans'
+                        txt = f'Input file {f_name} has nans'
                         self.logger.error(f'{txt} at: '
                             f'{np.argwhere(np.isnan(data_array))}.')
                         raise ValueError(txt)
                     self.n_spatial_bins = len(self.data)
                 else:  # proper motions data is in a different format (.npz)
-                    self.data = np.load(self.input_directory + self.datafile)
-                    self.logger.debug(f'Data {self.name} read from '
-                                    f'{self.input_directory}{self.datafile}')
+                    self.data = dict(np.load(f_name, allow_pickle=False))
+                    self.logger.debug(f'Data {self.name} read from {f_name}.')
                     self.n_spatial_bins = self.data['PM_2dhist'].shape[0]
                     for array in 'PM_2dhist', 'PM_2dhist_sigma':
                         if np.isnan(self.data[array]).any():
-                            txt = 'Input file ' \
-                                  f'{self.input_directory}{datafile} has nans'
+                            txt = f'Input file {f_name} has nans in {array}'
                             self.logger.error(f'{txt} at: '
                                 f'{np.argwhere(np.isnan(self.data[array]))}.')
                             raise ValueError(txt)
