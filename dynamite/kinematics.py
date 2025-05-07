@@ -1632,6 +1632,21 @@ class BayesLOSVD(Kinematics, data.Integrated):
     def transform_orblib_to_observables(self,
                                         losvd_histograms,
                                         weight_solver_settings):
+        """Transform orbit library to observed kinematics
+
+        Parameters
+        ----------
+        losvd_histograms : ``dyn.kinematics.Histogram``
+            the LOSVD of an orbit library
+        weight_solver_settings : dict
+            weight solver settings
+
+        Returns
+        -------
+        array of shape (n_orbits, n_apertures, n_vbins)
+            the losvd_histograms data transformed for use by the weight solvers
+
+        """
         losvd_histograms = self.rebin_orblib_to_observations(losvd_histograms)
         # losvd_histograms has shape (n_orbits, n_vbins, n_apertures)
         # weight solver expects (n_orbits, n_apertures, n_vbins)
@@ -1837,6 +1852,6 @@ class ProperMotions(Kinematics, data.Integrated):
             the vel_histograms data transformed for use by the weight solvers
 
         """
-        # vel_histograms has shape (n_orbits, n_vxbins, n_vybins, n_apertures)
+        # vel_histograms.y.shape is (n_orbits, n_vxbins, n_vybins, n_apertures)
         # weight solver expects (n_orbits, n_apertures, n_vxbins, n_vybins)
-        return np.moveaxis(vel_histograms, 3, 1)
+        return np.moveaxis(vel_histograms.y, 3, 1)
