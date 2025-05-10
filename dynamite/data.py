@@ -7,7 +7,8 @@ from plotbin import display_pixels
 class Data(object):
     """Abstract class for data in Astropy ECSV files
 
-    The data is stored in the Astropy table at ``self.data``
+    The data is stored in the Astropy table at ``self.data`` if proper_motions
+    is False, or in a dictionary at ``self.data`` if proper_motions is True.
 
     Parameters
     ----------

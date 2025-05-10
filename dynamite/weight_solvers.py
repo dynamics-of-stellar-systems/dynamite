@@ -747,9 +747,25 @@ class NNLS(WeightSolver):
             orb_kins = np.reshape(orb_kins, (orblib.n_orbs, -1))
             orbmat = np.vstack((orbmat, orb_kins.T))
         # divide constraint vector and matrix by errors
-        rhs = con/econ
-        orbmat = (orbmat.T/econ).T
-        return orbmat, rhs
+        if np.any(con[econ==0] != 0):
+            txt = 'Weight solving fail: zero errors for nonzero constraints!'
+            self.logger.error(txt)
+            raise ValueError(txt)
+        # previous statement: rhs = con/econ
+        rhs = np.zeros_like(con)
+        np.divide(con, econ, out=rhs, where=econ!=0)  # con = econ = 0 is ok
+        if np.any(np.ravel(orbmat[econ==0]) != 0):
+            err_loc = np.nonzero(((orbmat != 0).T * (econ == 0)).T)
+            txt = 'Weight solving problem: zero errors for nonzero matrix ' \
+                  f'coefficients at [constraint no, orbit no] = {err_loc}! ' \
+                  f'Matrix value(s) there ({orbmat[err_loc]}), ' \
+                  f'will be considered zero.'
+            self.logger.warning(txt)
+            orbmat[err_loc] = 0
+        # previous statement: orbmat = (orbmat.T/econ).T
+        orbmat = orbmat.T
+        np.divide(orbmat, econ, out=orbmat, where=econ!=0)
+        return orbmat.T, rhs
 
     def apply_CR_cut(self, kins, orb_losvd, orb_gh):
         r"""apply `CRcut`
