@@ -81,15 +81,18 @@ class Decomposition:
         self.kin_set = kin_set
         self.logger.info(f'Performing decomposition for kin_set no {kin_set}: '
                          f'{stars.kinematic_data[kin_set].name}')
-        # Get losvd_histograms and projected_masses
+        # Get the model's orblib
         self.orblib = self.model.get_orblib()
-        self.orblib.read_vel_histograms()
+        # Get orbit weights and store them in self.model.weights
+        _ = self.model.get_weights(self.orblib)
+        # Get losvd_histograms and projected_masses if necessary
+        if not (hasattr(self.orblib, 'vel_histograms')
+                and hasattr(self.orblib, 'projected_masses')):
+            self.orblib.read_vel_histograms()
         self.losvd_histograms = self.orblib.vel_histograms[self.kin_set]
         self.proj_mass = self.orblib.projected_masses[self.kin_set]
         self.logger.debug(f'{self.losvd_histograms.y.shape=}, '
                           f'{self.proj_mass.shape=}.')
-        # Get orbit weights and store them in self.model.weights
-        _ = self.model.get_weights(self.orblib)
         # Do the decomposition
         self.comps=['thin_d', 'thick_d', 'disk',
                     'cr_thin_d', 'cr_thick_d', 'cr_disk', 'bulge', 'all']
@@ -640,8 +643,10 @@ class Analysis:
         if weights is None:
             _ = model.get_weights(orblib)
             weights = model.weights
-        # get losvd_histograms and projected masses:
-        orblib.read_vel_histograms()
+        # get losvd_histograms and projected masses if necessary:
+        if not (hasattr(orblib, 'vel_histograms')
+                and hasattr(orblib, 'projected_masses')):
+            orblib.read_vel_histograms()
         # get all orbits' losvds; orbits_losvd.shape = n_orb,n_vbin,n_aperture
         orbits_losvd = orblib.vel_histograms[kin_set].y[:,:,]
         # weighted sum of orbits_losvd; model_losvd.shape = 1,n_vbin,n_aperture

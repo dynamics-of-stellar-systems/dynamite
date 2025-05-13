@@ -818,6 +818,10 @@ class NNLS(WeightSolver):
         **Note:** the returned chi2 values are not the same as
         ``LegacyWeightSolver.read_chi2`` - see the docstring for more info
 
+        Apart from weight solving, the attributes ``orblib.intrinsic_masses``,
+        ``orblib.projected_masses``, and ``orblib.vel_histograms`` are set
+        via calling ``orblib.read_vel_histograms()``.
+
         Parameters
         ----------
         orblib : dyn.OrbitLibrary

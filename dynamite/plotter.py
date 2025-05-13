@@ -606,8 +606,9 @@ class Plotter():
             return idx_to_plot
         # get the model LOSVDs
         orblib = model.get_orblib()
-        weight_solver = model.get_weights(orblib)
-        orblib.read_vel_histograms()
+        _ = model.get_weights(orblib)
+        if not hasattr(orblib, 'vel_histograms'):  # only if not already there
+            orblib.read_vel_histograms()
         losvd_orblib = kin_set.transform_orblib_to_observables(
             orblib.vel_histograms[0],
             None)
