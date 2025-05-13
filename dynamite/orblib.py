@@ -939,7 +939,7 @@ class LegacyOrbitLibrary(OrbitLibrary):
             # of 1D velocity bins and na is the number of apertures (=spatial
             # bins) for the kinematic set
             # OR a 4D array of shape (norb, nv[0], nv[1], na) where nv[0] and
-            # nv[1] are the number of 2D velocity bins for the two proper
+            # nv[1] are the number of 2D velocity bins for the proper
             # motion histograms
             velhist0 = []
             for kin_idx, nv in enumerate(hist_bins):
@@ -970,7 +970,7 @@ class LegacyOrbitLibrary(OrbitLibrary):
                     if hist_dim[kin_idx] == 1:
                         ivmin, ivmax = orblib_in.read_ints(np.int32)
                         if ivmin <= ivmax:
-                            nv0 = (hist_bins[kin_idx] -1 ) // 2
+                            nv0 = (hist_bins[kin_idx] - 1) // 2
                             # ^--- this is an integer since hist_bins is odd
                             tmp = orblib_in.read_reals(float)
                             velhist0[kin_idx][j,
@@ -1025,8 +1025,14 @@ class LegacyOrbitLibrary(OrbitLibrary):
                         width = np.array(hist_widths[kin_idx])
                         bins = np.array(hist_bins[kin_idx], dtype=int)
                         dvhist = width / bins
-                        vedg = (np.arange(bins[0] + 1)*dvhist[0] - width[0]/2,
-                                np.arange(bins[1] + 1)*dvhist[1] - width[1]/2)
+                        vedg = (np.linspace(start=-width[0] / 2,
+                                            stop=width[0] / 2,
+                                            num=bins[0] + 1,
+                                            endpoint=True),
+                                np.linspace(start=-width[1] / 2,
+                                            stop=width[1] / 2,
+                                            num=bins[1] + 1,
+                                            endpoint=True))
                         vvv = dyn_kin.Histogram2D(xedg=vedg,
                                                   y=velhist,
                                                   normalise=False)

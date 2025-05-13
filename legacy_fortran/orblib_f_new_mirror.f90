@@ -2163,7 +2163,7 @@ module histograms
     ! Store velocities in the histogram(n).
     public :: histogram_store
 
-    ! Calculate the velocity bin from the losvd
+    ! Calculate the velocity bin from the velocity distribution
     public :: histogram_velbin
 
     ! function to reset the histogram for the next orbit

@@ -31,14 +31,14 @@ class Kinematics(data.Data):
             self.type = type
             def _iter_or_float(x):
                 try:
-                    r = float(x) if type(x) == str else [float(y) for y in x]
+                    r=float(x) if isinstance(x, str) else [float(y) for y in x]
                     return r
                 except TypeError:
                     # if x is not iterable but a single value, return float(x)
                     return float(x)
             def _iter_or_int(x):
                 try:
-                    r = int(x) if type(x) == str else [int(y) for y in x]
+                    r = int(x) if isinstance(x, str) else [int(y) for y in x]
                     return r
                 except TypeError:
                     # if x is not iterable but a single value, return int(x)
@@ -992,13 +992,15 @@ class Histogram2D(object):
             self.normalise()
 
     def get_normalisation(self):
-        """Get the normalsition
+        """Get the normalisation
+
+        2D normalisation of the form
 
         Calculates ``Sum_ij y_ij * area_ij = Sum_ij y_ij * dx[0]_i * dx[1]_j``
 
         Returns
         -------
-        float
+        array (n_orbits, n_apertures)
             the normalisation
 
         """
@@ -1717,32 +1719,41 @@ class ProperMotions(Kinematics, data.Integrated):
         # then calls data.Integrated's __init__
         super().__init__(proper_motions=True, **kwargs)
         if hasattr(self, 'data'):
-            # sanity check: dv <= sigma_global/4, width >= 5*sigma_global
-            max_dv_factor = 0.25
-            min_width_factor = 5
-            h2d = self.as_histogram2d()
-            h2d_global = Histogram2D(xedg=h2d.xedg,
-                                     y=np.sum(h2d.y, axis=3)[:,:,:,np.newaxis],
-                                     normalise=False)
-            # mean = h2d_global.get_mean()
-            sigma = h2d_global.get_sigma()
-            dv = (h2d_global.dx[0][0], h2d_global.dx[1][0])
-            width = self.hist_width
-            for xy, idx in zip(['vx', 'vy'], [0, 1]):
-                dv_factor = dv[idx] / sigma[idx][0,0]
-                width_factor = width[idx] / sigma[idx][0,0]
-                self.logger.info(f'{self.name}: {xy}_sigma={sigma[idx][0,0]}, '
-                    f'd{xy}={dv[idx]}={dv_factor}*{xy}_sigma, '
-                    f'{xy}_width={width[idx]}={width_factor}*{xy}_sigma')
-                if dv_factor > max_dv_factor:
-                    self.logger.warning(f'{self.name}: d{xy} larger than '
-                        'maximum recommended value of '
-                        f'{max_dv_factor}*{xy}_sigma!')
-                if width_factor < min_width_factor:
-                    self.logger.warning(f'{self.name}: {xy}_width smaller than'
-                        ' minimum recommended value of '
-                        f'{min_width_factor}*{xy}_sigma!')
-            pass
+            self.sanity_ceck()
+
+    def sanity_ceck(self, max_dv_factor=0.25, min_width_factor=5):
+        """Check the data for sanity
+
+        Parameters
+        ----------
+        max_dv_factor : float, optional
+            Maximum allowed value of dv/sigma_global. Default is 0.25.
+        min_width_factor : float, optional
+            Minimum allowed value of width/sigma_global. Default is 5.
+
+        """
+        h2d = self.as_histogram2d()
+        h2d_global = Histogram2D(xedg=h2d.xedg,
+                                 y=np.sum(h2d.y, axis=3)[:,:,:,np.newaxis],
+                                 normalise=False)
+        # mean = h2d_global.get_mean()
+        sigma = h2d_global.get_sigma()
+        dv = (h2d_global.dx[0][0], h2d_global.dx[1][0])
+        width = self.hist_width
+        for xy, idx in zip(['vx', 'vy'], [0, 1]):
+            dv_factor = dv[idx] / sigma[idx][0,0]
+            width_factor = width[idx] / sigma[idx][0,0]
+            self.logger.info(f'{self.name}: {xy}_sigma={sigma[idx][0,0]}, '
+                f'd{xy}={dv[idx]}={dv_factor}*{xy}_sigma, '
+                f'{xy}_width={width[idx]}={width_factor}*{xy}_sigma')
+            if dv_factor > max_dv_factor:
+                self.logger.warning(f'{self.name}: d{xy} larger than '
+                    'maximum recommended value of '
+                    f'{max_dv_factor}*{xy}_sigma!')
+            if width_factor < min_width_factor:
+                self.logger.warning(f'{self.name}: {xy}_width smaller than'
+                    ' minimum recommended value of '
+                    f'{min_width_factor}*{xy}_sigma!')
 
     def as_histogram2d(self):
         """Return the data as Histogram2D object.
@@ -1828,6 +1839,7 @@ class ProperMotions(Kinematics, data.Integrated):
 
         """
         # weight solver expects arrays of shape (n_aperture, n_vbins)
+        # with n_vbins = n_bins[0] * n_bins[1]
         observed_values = np.reshape(self.data['PM_2dhist'],
                                      (self.n_spatial_bins, -1))
         uncertainties = np.reshape(self.data['PM_2dhist_sigma'],
@@ -1837,7 +1849,7 @@ class ProperMotions(Kinematics, data.Integrated):
     def transform_orblib_to_observables(self,
                                         vel_histograms,
                                         weight_solver_settings):
-        """Transform orbit library to observed kinematics
+        """Transform orbit library to observed kinematics parameterisation
 
         Parameters
         ----------
