@@ -751,18 +751,18 @@ class NNLS(WeightSolver):
             txt = 'Weight solving fail: zero errors for nonzero constraints!'
             self.logger.error(txt)
             raise ValueError(txt)
-        # previous statement: rhs = con/econ
+        # previous statement: rhs = con/econ, np.divide has the "where" clause
         rhs = np.zeros_like(con)
         np.divide(con, econ, out=rhs, where=econ!=0)  # con = econ = 0 is ok
         if np.any(np.ravel(orbmat[econ==0]) != 0):
             err_loc = np.nonzero(((orbmat != 0).T * (econ == 0)).T)
-            txt = 'Weight solving problem: zero errors for nonzero matrix ' \
-                  f'coefficients at [constraint no, orbit no] = {err_loc}! ' \
-                  f'Matrix value(s) there ({orbmat[err_loc]}), ' \
-                  f'will be considered zero.'
+            txt = f'Weight solving problem in {self.direc_with_ml}: ' \
+                  'zero errors for nonzero matrix coefficients at ' \
+                  f'[constraint no, orbit no] = {err_loc}! Matrix value(s) ' \
+                  f'there ({orbmat[err_loc]}) will be considered zero.'
             self.logger.warning(txt)
             orbmat[err_loc] = 0
-        # previous statement: orbmat = (orbmat.T/econ).T
+        # previous statement: orbmat = (orbmat.T/econ).T, np.divide has "where"
         orbmat = orbmat.T
         np.divide(orbmat, econ, out=orbmat, where=econ!=0)
         return orbmat.T, rhs
