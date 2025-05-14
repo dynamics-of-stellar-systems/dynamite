@@ -29,7 +29,9 @@ class Coloring:
                         vor_weight=0.01,
                         vor_ignore_zeros=False,
                         make_diagnostic_plots=False,
-                        extra_diagnostic_output=False):
+                        extra_diagnostic_output=False,
+                        cvt=False,
+                        wvt=False):
         """
         Perform Voronoi binning of orbits in the radius-circularity phase
         space. The goal is to group the "original" n_orbits orbit bundles into
@@ -75,6 +77,15 @@ class Coloring:
         extra_diagnostic_output : bool, optional
             If ``True``, vorbin will print details on the binning to stdout.
             The default is ``False``.
+        cvt : bool, optional
+            If ``True``, the Voronoi binning will be performed using the
+            CVT (Centroidal Voronoi Tessellation) algorithm. For details,
+            refer to the ``vorbin`` documentation. The default is ``False``.
+        wvt : bool, optional
+            If ``True``, the Voronoi binning will be performed using the
+            WVT (Weighted Voronoi Tessellation) algorithm (Diehl & Statler
+            2006, MNRAS, 368, 497). For details, refer to the ``vorbin``
+            documentation. The default is ``False``.
 
         Returns
         -------
@@ -177,7 +188,9 @@ class Coloring:
                                target_sn=vor_weight,
                                plot=make_diagnostic_plots,
                                sn_func=_sum_weights,
-                               quiet=not extra_diagnostic_output)
+                               quiet=not extra_diagnostic_output,
+                               cvt=cvt,
+                               wvt=wvt)
         phase_space_binning = {'in':vor_in,
                                'out':np.vstack((r_bar, l_bar, bin_weights)),
                                'map':binning}  # Vor bin numbers of r, l bins
