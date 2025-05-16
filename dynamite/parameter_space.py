@@ -1366,14 +1366,14 @@ class SpecificModels(ParameterGenerator):
         if self.mode == 'list':
             for i in range(n_mod):
                 new_parset = [copy.deepcopy(p) for p in self.par_space]
-                for idx in par_list_idx:
-                    new_parset[idx].raw_value = fixed_values[idx][i]
+                for val_idx, idx in enumerate(par_list_idx):
+                    new_parset[idx].raw_value = fixed_values[val_idx][i]
                 self.model_list.append([copy.deepcopy(p) for p in new_parset])
         else:
             for val in itertools.product(*fixed_values):
                 new_parset = [copy.deepcopy(p) for p in self.par_space]
-                for idx in par_list_idx:
-                    new_parset[idx].raw_value = val[idx]
+                for val_idx, idx in enumerate(par_list_idx):
+                    new_parset[idx].raw_value = val[val_idx]
                 self.model_list.append([copy.deepcopy(p) for p in new_parset])
 
         return

@@ -4,6 +4,7 @@
 Change Log
 ****************
 
+- Bugfix: the SpecificModels parameter generator no longer crashes when the varied parameters' indices don't start with 0 and have no gaps.
 - Improvement: Upon restart, always generate models for first iteration, even if stopping criteria are fulfilled.
 - Improvement: more robust directory naming when failed models are present in the all_models table
 - Bugfix: don't crash with pops data when using ModelInnerIterator.
