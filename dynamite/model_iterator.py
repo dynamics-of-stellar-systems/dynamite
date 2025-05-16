@@ -63,8 +63,12 @@ class ModelIterator(object):
             dummy_chi2_function=dummy_chi2_function)
         if len(config.all_models.table)>0:
             previous_iter = np.max(config.all_models.table['which_iter'])
+            continued_run = True
+            self.logger.info(f'Continuing run from iteration {previous_iter}.')
         else:
             previous_iter = -1
+            continued_run = False
+            self.logger.info('Starting new run.')
         status = {}
         status['stop'] = False
         # if configured, re-calculate weights for past models where weight
@@ -89,7 +93,9 @@ class ModelIterator(object):
             else:
                 self.logger.info(f'{par_generator_type}: iterations 0 and 1')
                 iteration += 2
-            status = model_inner_iterator.run_iteration()
+            status = \
+                model_inner_iterator.run_iteration(continued_run=continued_run)
+            continued_run = False
             if plots and not status['last_iter_added_no_new_models']:
                 try:
                     self.chi2_vs_model_id_plot = \
@@ -208,7 +214,7 @@ class ModelInnerIterator(object):
         self.ncpus = config.settings.multiprocessing_settings['ncpus']
         self.n_to_do = 0
 
-    def run_iteration(self, split_orblib_weights=False):
+    def run_iteration(self, split_orblib_weights=False, continued_run=False):
         """Run one iteration step
 
         Executes one iteration step: run all models in self.all_models.table
@@ -225,6 +231,10 @@ class ModelInnerIterator(object):
             If True, first the orbit libraries are calculated in self.ncpus
             parallel pools, then the weights in self.ncpus_weights parallel
             pools. The default is False.
+        continued_run : bool, optional
+            If True, the DYNAMITE run is continued from a previous iteration.
+            In that case, the first iteration is always executed, independently
+            of the stopping criteria. The default is False.
 
         Returns
         -------
@@ -233,7 +243,8 @@ class ModelInnerIterator(object):
 
         """
 
-        self.par_generator.generate(current_models=self.all_models)
+        self.par_generator.generate(current_models=self.all_models,
+                                    continued_run=continued_run)
         self.all_models.save() # save all_models table once parameters are added
         if not self.par_generator.status['stop']:
             # find new models which are those with an empty directory string
@@ -556,7 +567,7 @@ class SplitModelIterator(ModelInnerIterator):
         self.ncpus_weights = \
             self.config.settings.multiprocessing_settings['ncpus_weights']
 
-    def run_iteration(self):
+    def run_iteration(self, **kwargs):
         """Execute one iteration step
 
         Calls the parameter generator and (a) calculates all new orbit
@@ -570,6 +581,6 @@ class SplitModelIterator(ModelInnerIterator):
             ParameterGenerator.status.
 
         """
-        return super().run_iteration(split_orblib_weights=True)
+        return super().run_iteration(split_orblib_weights=True, **kwargs)
 
 # end

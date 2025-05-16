@@ -349,7 +349,7 @@ class ParameterGenerator(object):
     evaluate models based on existing models. This is an abstrct class, specific
     implementations should be implemented as child-classes (e.g.
     ``LegacyGridSearch``). Every implementation may have a method
-    ``check_specific_stopping_critera`` and must have a method
+    ``check_specific_stopping_criteria`` and must have a method
     ``specific_generate_method`` which
     define the stopping criteria and parameter generation algorithm for that
     implementation. These are exectuted in addition to ``generic`` methods,
@@ -409,13 +409,15 @@ class ParameterGenerator(object):
 
     def generate(self,
                  current_models=None,
+                 continued_run=False,
                  kw_specific_generate_method={}):
         """Generate new parameter sets.
 
         This is a wrapper method around the ``specific_generate_method`` of
         child generator classes. This wrapper does the following:
 
-            1.   evaluates stopping criteria, and stops if necessary
+            1.   evaluates stopping criteria, and stops if necessary (omitted
+                 for the first iteration if ``continued_run`` is True)
             2.   runs the ``specific_generate_method`` of the child class, which
                  updates ``self.model_list`` with a list of proposal models
             3.   removes previously run and invalid models from ``self.model_list``
@@ -426,9 +428,13 @@ class ParameterGenerator(object):
         Parameters
         ----------
         current_models : dynamite.AllModels
-        kw_specific_generate_method : dict
-            keyword arguments passed to the specific_generate_method of the
-            child class
+        continued_run : bool, optional
+            If True, the DYNAMITE run is continued from a previous iteration.
+            In that case, the first iteration is always executed, independently
+            of the stopping criteria. The default is False.
+        kw_specific_generate_method : dict, optional
+            Keyword arguments passed to the specific_generate_method of the
+            child class. The default is {}.
 
         Returns
         -------
@@ -449,7 +455,7 @@ class ParameterGenerator(object):
             self.logger.error(errormsg)
             raise ValueError(errormsg)
         self.current_models = current_models
-        self.check_stopping_critera()
+        self.check_stopping_criteria(continued_run=continued_run)
         if len(self.current_models.table)==0:
             this_iter = 0
         else:
@@ -534,49 +540,87 @@ class ParameterGenerator(object):
             row.append(val)
         self.current_models.table.add_row(row)
 
-    def check_stopping_critera(self):
+    def check_stopping_criteria(self, continued_run=False):
         """Check stopping criteria
 
         This is a wrapper which checks both the generic stopping criteria and
-        also the ``specific_stopping_critera`` revelant for any particular
+        also the ``specific_stopping_criteria`` revelant for any particular
         ``ParameterGenerator`` used.
+
+        Parameters
+        ----------
+        continued_run : bool, optional
+            If True, the DYNAMITE run is continued from a previous iteration.
+            In that case, the first iteration is always executed, independently
+            of the stopping criteria. The default is False.
+
+        Returns
+        -------
+        None
+            Sets the attribute ``self.status['stop']`` to True if any of the
+            stopping criteria are met, else to False.
+
         """
         self.status['stop'] = False
         if len(self.current_models.table) > 0:
             # never stop when current_models is empty
-            self.check_generic_stopping_critera()
-            self.check_specific_stopping_critera()
+            self.check_generic_stopping_criteria(continued_run)
+            self.check_specific_stopping_criteria(continued_run)
             if any(v for v in self.status.values() if type(v) is bool):
                 self.status['stop'] = True
                 self.logger.info(f'Stopping criteria met: {self.status}.')
 
-    def check_generic_stopping_critera(self):
-        """check generic stopping critera
+    def check_generic_stopping_criteria(self, continued_run=False):
+        """check generic stopping criteria
+
+        Parameters
+        ----------
+        continued_run : bool, optional
+            If True, the DYNAMITE run is continued from a previous iteration.
+            In that case, the first iteration is always executed, independently
+            of the stopping criteria. The default is False.
+
+        Returns
+        -------
+        None
+            Sets the attributes ``self.status['n_max_mods_reached']`` and
+            ``self.status['n_max_iter_reached']``.
         """
         self.status['n_max_mods_reached'] = \
             len(self.current_models.table) \
-                >= self.parspace_settings['stopping_criteria']['n_max_mods']
+                >= self.parspace_settings['stopping_criteria']['n_max_mods'] \
+                and not continued_run
         self.status['n_max_iter_reached'] = \
             np.max(self.current_models.table['which_iter']) \
-                >= self.parspace_settings['stopping_criteria']['n_max_iter']
+                >= self.parspace_settings['stopping_criteria']['n_max_iter'] \
+                and not continued_run
         # iii) ...
 
-    def check_specific_stopping_critera(self):
-        """checks specific stopping critera
+    def check_specific_stopping_criteria(self, continued_run=False):
+        """checks specific stopping criteria
 
         If the last iteration did not improve the chi2 by at least
         min_delta_chi2, then stop. May be overwritten or extended in
         each ``ParameterGenerator`` class.
 
+        Parameters
+        ----------
+        continued_run : bool, optional
+            If True, the DYNAMITE run is continued from a previous iteration.
+            In that case, the first iteration is always executed, independently
+            of the stopping criteria. The default is False.
+
         Returns
         -------
         None
-            sets Bool to ``self.status['min_delta_chi2_reached']``
+            Sets the attribute ``self.status['min_delta_chi2_reached']``
 
         """
         # stop if...
         # (i) if iter>1, last iteration did not improve chi2 by min_delta_chi2
         self.status['min_delta_chi2_reached'] = False
+        if continued_run:
+            return
         last_iter = np.max(self.current_models.table['which_iter'])
         if last_iter > 0:
             last_chi2 = np.nan
@@ -695,7 +739,7 @@ class LegacyGridSearch(ParameterGenerator):
     """Search around all reasonable models
 
     This is the method used by previous code versions AKA schwpy. See docstrings
-    for ``specific_generate_method`` and ``check_specific_stopping_critera``
+    for ``specific_generate_method`` and ``check_specific_stopping_criteria``
     for full description.
 
     Parameters
@@ -835,7 +879,7 @@ class GridWalk(ParameterGenerator):
     """Walk after the current best fit
 
     See docstrings for ``specific_generate_method`` and
-    ``check_specific_stopping_critera`` for full description.
+    ``check_specific_stopping_criteria`` for full description.
 
     Parameters
     ----------
@@ -1334,17 +1378,24 @@ class SpecificModels(ParameterGenerator):
 
         return
 
-    def check_specific_stopping_critera(self):
-        """The specific stopping critera
+    def check_specific_stopping_criteria(self, continued_run=False):
+        """The specific stopping criteria
 
         Will always stop after creating all specific models.
+
+        Parameters
+        ----------
+        continued_run : bool, optional
+            If True, the DYNAMITE run is continued from a previous iteration.
+            In that case, the first iteration is always executed, independently
+            of the stopping criteria. The default is False.
 
         Returns
         -------
         None
-            sets ``self.status['min_delta_chi2_reached']`` to ``True``
+            Sets the attribute ``self.status['min_delta_chi2_reached']``
 
         """
-        self.status['min_delta_chi2_reached'] = True
+        self.status['min_delta_chi2_reached'] = not continued_run
 
 # end
