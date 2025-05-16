@@ -4,6 +4,7 @@
 Change Log
 ****************
 
+- Improvement: Upon restart, always generate models for first iteration, even if stopping criteria are fulfilled.
 - Improvement: more robust directory naming when failed models are present in the all_models table
 - Bugfix: don't crash with pops data when using ModelInnerIterator.
 - Bugfix: don't crash when continuing a run with just one valid model.
