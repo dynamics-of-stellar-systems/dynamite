@@ -104,8 +104,8 @@ class Integrated(Data):
                 sigma = 0.8
                 weight = 1.0
                 self.PSF = {'sigma':[sigma], 'weight':[weight]}
-                self.logger.info('Proper motions: using default PSF: '
-                                 f'{self.PSF}.')
+                self.logger.debug('Proper motions: using default PSF: '
+                                  f'{self.PSF}.')
             else:
                 self.PSF = self.data.meta['PSF']
                 if abs(sum(self.PSF['weight']) - 1.0) > 1e-8:
