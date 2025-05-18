@@ -100,33 +100,24 @@ class Integrated(Data):
         super().__init__(**kwargs)
         self.logger = logging.getLogger(f'{__name__}.{__class__.__name__}')
         if hasattr(self, 'data'):
-            if not self.proper_motions:
-                self.PSF = self.data.meta['PSF']
+            if self.proper_motions:
+                sigma = 0.8
+                weight = 1.0
+                self.PSF = {'sigma':[sigma], 'weight':[weight]}
+                self.logger.info('Proper motions: using default PSF: '
+                                 f'{self.PSF}.')
             else:
-                sigma = self.data['PSF_sigma']
-                weight = self.data['PSF_weight']
-                if sigma.ndim == 0 and weight.ndim == 0:
-                    sigma = list(sigma[np.newaxis])
-                    weight = list(weight[np.newaxis])
-                elif sigma.ndim == 1 and weight.ndim == 1:
-                    sigma = list(sigma)
-                    weight = list(weight)
-                else:
-                    txt = 'PSF_sigma and PSF_weight must be 1D ' \
-                          'arrays or scalars.'
+                self.PSF = self.data.meta['PSF']
+                if abs(sum(self.PSF['weight']) - 1.0) > 1e-8:
+                    txt = f"PSF weights add up to {sum(self.PSF['weight'])}," \
+                          " not 1.0."
+                    if hasattr(self, 'datafile'):
+                        txt += ' Check input data in '
+                        if hasattr(self, 'input_directory'):
+                            txt += f'{self.input_directory}'
+                        txt += f'{self.datafile}.'
                     self.logger.error(txt)
                     raise ValueError(txt)
-                self.PSF = {'sigma':sigma, 'weight':weight}
-            if abs(sum(self.PSF['weight'])-1.0) > 1e-8:
-                txt = f"PSF weights add up to {sum(self.PSF['weight'])}, " + \
-                      "not 1.0."
-                if hasattr(self, 'datafile'):
-                    txt += ' Check input data in '
-                    if hasattr(self, 'input_directory'):
-                        txt += f'{self.input_directory}'
-                    txt += f'{self.datafile}.'
-                self.logger.error(txt)
-                raise ValueError(txt)
         if self.aperturefile is not None and self.binfile is not None:
             self.read_aperture_and_bin_files()
 

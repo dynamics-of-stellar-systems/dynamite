@@ -1688,8 +1688,6 @@ class ProperMotions(Kinematics, data.Integrated):
                   shape=(n_apertures, n_bins[0], n_bins[1])
     'PM_2dhist_sigma' : 2D histogram of proper motion uncertainties,
                         shape=(n_apertures, n_bins[0], n_bins[1])
-    'PSF_sigma' : 2D histogram of PSF sigma, shape=() or shape=(n_PSFs,)
-    'PSF_weight' : 2D histogram of PSF weight, shape=() or shape=(n_PSFs,)
     'binID_dynamite' : spatial bin IDs starting with 1, shape=(n_apertures,)
     'nstarbin' : number of stars in each spatial bin, shape=(n_apertures,)
     'vxrange' : half the velocity range in x (-vxrange <= vx <= vxrange),
