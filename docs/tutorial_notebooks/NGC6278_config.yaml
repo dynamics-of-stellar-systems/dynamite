@@ -123,7 +123,7 @@ orblib_settings:
     logrmax: 1.99123
     nI2: 5                # must be >= 4
     nI3: 4
-    dithering: 1          # pick dithering=1 for for fast tutorial exaecution
+    dithering: 2          # pick dithering=1 for for fast tutorial exaecution
     # the following values should usually not be changed
     orbital_periods: 200
     sampling: 50000

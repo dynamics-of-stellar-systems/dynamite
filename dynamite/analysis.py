@@ -451,6 +451,98 @@ class Analysis:
         self.model = model
         self.kin_set = kin_set
 
+    def get_flux_for_selected_orbit_bundles(self,
+                                            model=None,
+                                            kin_set=None,
+                                            weights=None,
+                                            bundle_mapping=None,
+                                            flux_as='table'):
+        """
+        Generates an astropy table that holds the weighted contribution of the
+        orbit bundles defined in bundle_mapping to the model's projected mass
+        in each aperture.
+
+        Parameters
+        ----------
+        model : a ``dyn.model.Model`` object, optional
+            The default is the Analysis object's model.
+        kin_set : int, optional
+            Which kinematics set to use for the spatial binning. The default
+            is the Analysis object's kin_set.
+        weights : ``numpy.array`` like, shape=(n_orbits,), optional
+            Orbital weights to use. The default is ``None`` and will
+            determine the weights via ``model.get_weights(orblib)``.
+        bundle_mapping : ``numpy.array`` like, shape=(n_bundles, n_orbits),
+                         mandatory
+            The mapping of orbits to orbit bundles. The values in the array
+            indicate what weight a specific orbit contributes to a specific
+            bundle. Note that an orbit may contribute to more than one bundle
+            because - depending on the ``dithering`` configuration setting -
+            each orbit may in fact represent a family of similar orbits (not
+            to be mistaken for the bundles in the sense of this method).
+        flux_as : str, optional
+            If 'table', return ``map_table``, if 'file', write the table to
+            the model directory in ascii.ecsv format and return its full path
+            ``f_name``, if 'both', write the table to disk and return a tuple
+            ``(gh_table, f_name)``. The default is 'table'.
+
+        Raises
+        ------
+        ValueError
+            if flux_as is invalid.
+
+        Returns
+        -------
+        map_table : astropy table (if flux_as='table')
+            The astropy table holding the model's weighted contribution of the
+            orbit bundles defined in bundle_mapping to the model's projected
+            mass in each aperture. The table columns are flux_000, ...,
+            flux_n_b, flux_all, where flux_xxx is the weighted contribution of
+            orbit bundle xxx, flux_all the weighted contribution of all orbit
+            bundles, and n_b is the number of orbit bundles.
+        f_name : str (if flux_as='file')
+            The file name (full path) of the astropy table holding the model's
+            gh kinematics.
+        (gh_table, f_name) : tuple  (if flux_as='both')
+
+        """
+        if flux_as not in ['table', 'file', 'both']:
+            txt = f"{flux_as=} but must be either 'table', 'file', or 'both'."
+            self.logger.error(txt)
+            raise ValueError(txt)
+        if model is None:
+            model = self.model
+        if kin_set is None:
+            kin_set = self.kin_set
+        stars = self.config.system.get_unique_triaxial_visible_component()
+        kin_name = stars.kinematic_data[kin_set].name
+        self.logger.info('Getting model projected masses.')
+        orblib = model.get_orblib()
+        if weights is None:
+            _ = model.get_weights(orblib)
+            weights = model.weights
+        # Get projected masses if necessary
+        if not hasattr(orblib, 'projected_masses'):
+            orblib.read_losvd_histograms()
+        # flux.shape = (n_bundles, n_aperture)
+        flux = np.matmul(bundle_mapping, orblib.projected_masses[kin_set])
+        flux_all = np.sum(flux, axis=0)
+        n_bins = flux.shape[0]
+        map_table = astropy.table.Table(
+            np.hstack((flux.T, flux_all[:,np.newaxis])),
+            names = [f'flux_{i:03d}' for i in range(n_bins)] + ['flux_all'],
+            meta={'kin_set': kin_name})
+        if flux_as == 'table':
+            return map_table
+        f_name = f'{model.directory}orbit_bundle_flux_{kin_name}.ecsv'
+        map_table.write(f_name, format='ascii.ecsv', overwrite=True)
+        self.logger.info('Flux for orbit bundles binned for kinematics '
+                         f'{kin_name} written to {f_name}.')
+        if flux_as == 'file':
+            return f_name
+        return (map_table, f_name)
+
+
     def get_gh_model_kinematic_maps(self,
                                     model=None,
                                     kin_set=None,
@@ -458,7 +550,7 @@ class Analysis:
                                     kinematics_as='table',
                                     weights=None):
         """
-        Generates an astropy table in the model directory that holds the
+        Generates an astropy table that holds the
         model's data for creating Gauss-Hermite kinematic maps:
         v, sigma, h3 ... h<number_GH>.
         v and sigma are either directly calculated from the model's losvd
@@ -477,9 +569,9 @@ class Analysis:
             directly from the model's losvd histograms. The default is 'fit'.
         kinematics_as : str, optional
             If 'table', return ``gh_table``, the model's kinematics as an
-            astropy table, if 'file', write the table to disk in ascii.ecsv
-            format and return its full path ``f_name``, if 'both', write the
-            table to disk and return a tuple ``(gh_table, f_name)``.
+            astropy table, if 'file', write the table to the model directory in
+            ascii.ecsv format and return its full path ``f_name``, if 'both',
+            write the table to disk and return a tuple ``(gh_table, f_name)``.
             The default is 'table'.
         weights : ``numpy.array`` like, optional
             Orbital weights to use. The default is ``None`` and will
