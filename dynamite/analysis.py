@@ -454,21 +454,31 @@ class Analysis:
     def get_flux_for_selected_orbit_bundles(self,
                                             model=None,
                                             kin_set=None,
+                                            pop_set=None,
                                             weights=None,
                                             bundle_mapping=None,
                                             flux_as='table'):
         """
         Generates an astropy table that holds the weighted contribution of the
         orbit bundles defined in bundle_mapping to the model's projected mass
-        in each aperture.
+        in each aperture. The spatial binning of the apertures is defined in
+        either a Kinematics or a Populations object.
 
         Parameters
         ----------
         model : a ``dyn.model.Model`` object, optional
             The default is the Analysis object's model.
-        kin_set : int, optional
-            Which kinematics set to use for the spatial binning. The default
-            is the Analysis object's kin_set.
+        kin_set : int or None, optional
+        pop_set : int or None, optional
+            kin_set and pop_set determine, which kinematics set to use for the
+            spatial binning.
+            If kin_set=None and pop_set=None, then the Analysis object's
+            kin_set is used.
+            If kin_set is an integer, then the kinematics set with that index
+            is used for the spatial binning, regardless of pop_set.
+            If kin_set=None and pop_set!=0, then the spatial
+            binning defined in the pop_set is used.
+            The default is kin_set=None, pop_set=None.
         weights : ``numpy.array`` like, shape=(n_orbits,), optional
             Orbital weights to use. The default is ``None`` and will
             determine the weights via ``model.get_weights(orblib)``.
@@ -512,32 +522,55 @@ class Analysis:
             raise ValueError(txt)
         if model is None:
             model = self.model
-        if kin_set is None:
-            kin_set = self.kin_set
         stars = self.config.system.get_unique_triaxial_visible_component()
-        kin_name = stars.kinematic_data[kin_set].name
+        if isinstance(kin_set, int) or (kin_set is None and pop_set is None):
+            if kin_set is None:
+                kin_set = self.kin_set
+            self.logger.debug(f'Using kinematics set {kin_set} for spatial '
+                              'binning.')
+            kin = True
+            kinpop_name = stars.kinematic_data[kin_set].name
+        elif kin_set is None and isinstance(pop_set, int):
+            self.logger.debug(f'Using populations set {pop_set} for spatial '
+                              'binning.')
+            kin = False
+            kinpop_name = stars.population_data[pop_set].name
+        else:
+            text = f'Invalid {kin_set=}, {pop_set=}. ' \
+                   'Choose (kin_set,pop_set) = ' \
+                   '(None,None), (None,<int>), or (<int>,None).'
+            self.logger.error(text)
+            raise ValueError(text)
         self.logger.info('Getting model projected masses.')
         orblib = model.get_orblib()
         if weights is None:
             _ = model.get_weights(orblib)
             weights = model.weights
         # Get projected masses if necessary
-        if not hasattr(orblib, 'projected_masses'):
-            orblib.read_losvd_histograms()
+        if kin and not hasattr(orblib, 'projected_masses'):
+            orblib.read_losvd_histograms()  # kins=True, pops=False is default
+        elif not kin:
+            # If kin is False, we need to read the projected masses binned for
+            # the populations.
+            orblib.read_losvd_histograms(kins=False, pops=True)
         # flux.shape = (n_bundles, n_aperture)
-        flux = np.matmul(bundle_mapping, orblib.projected_masses[kin_set])
+        if kin:
+            flux = np.matmul(bundle_mapping, orblib.projected_masses[kin_set])
+        else:
+            flux = np.matmul(bundle_mapping, orblib.projected_masses[pop_set])
         flux_all = np.sum(flux, axis=0)
         n_bins = flux.shape[0]
         map_table = astropy.table.Table(
             np.hstack((flux.T, flux_all[:,np.newaxis])),
             names = [f'flux_{i:03d}' for i in range(n_bins)] + ['flux_all'],
-            meta={'kin_set': kin_name})
+            meta={('kin_set' if kin else 'pop_set'): kinpop_name})
         if flux_as == 'table':
             return map_table
-        f_name = f'{model.directory}orbit_bundle_flux_{kin_name}.ecsv'
+        f_name = f'{model.directory}orbit_bundle_flux_{kinpop_name}.ecsv'
         map_table.write(f_name, format='ascii.ecsv', overwrite=True)
-        self.logger.info('Flux for orbit bundles binned for kinematics '
-                         f'{kin_name} written to {f_name}.')
+        self.logger.info('Flux for orbit bundles binned for ' +
+                         ('kinematics ' if kin else 'populations ') +
+                         f'{kinpop_name} written to {f_name}.')
         if flux_as == 'file':
             return f_name
         return (map_table, f_name)
