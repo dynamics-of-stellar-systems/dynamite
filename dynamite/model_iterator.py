@@ -80,7 +80,7 @@ class ModelIterator(object):
                 status['stop'] = True
             if status['stop'] is True:
                 self.logger.info(f'Stopping at iteration {total_iter}')
-                self.logger.debug(status)
+                self.logger.info(status)
                 break
             if total_iter > 0:
                 self.logger.info(f'{par_generator_type}: iteration '
