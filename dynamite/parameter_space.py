@@ -1235,20 +1235,20 @@ class SpecificModels(ParameterGenerator):
     Create specific models.
 
     Creates models with parameter values according to the entries in the
-    lists ``fixed_values`` in a single iteration. If any parameter's
-    ``fixed_values`` entry is missing, its ``value`` entry will be used.
+    lists ``specific_values`` in a single iteration. If any parameter's
+    ``specific_values`` entry is missing, its ``value`` entry will be used.
     ``parspace_settings['generator_settings']['SpecificModels_mode']``
     determines how models are constructed:
     ``list``: selects parameter values element-wise. All parameters'
-    ``fixed_values`` lists must be of equal length (or zero length if their
+    ``specific_values`` lists must be of equal length (or zero length if their
     respective ``value`` entry is to be used).
-    ``cartesian``: Cartesian product of fixed parameter values. The parameters'
-    ``fixed_values`` lists don't need to be of equal length. May result
-    in a large number of models.
+    ``cartesian``: Cartesian product of specific parameter values. The
+    parameters' ``specific_values`` lists don't need to be of equal length.
+    May result in a large number of models.
 
-    Note that this parameter generator ignores ``step``, ``minstep``,
-    ``lo``, and ``high``. Also, ``fixed`` will be ignored if ``fixed_values``
-    is specified.
+    Note that this parameter generator ignores ``lo``, ``high``, ``step``,
+    ``minstep``, and ``fixed``. Also, ``value`` will be ignored if
+    ``specific_values`` is specified.
 
     Further, all models are run in a single iteration and the optimality
     tolerances in the ``stopping_criteria`` section in the configuration file's
@@ -1297,18 +1297,18 @@ class SpecificModels(ParameterGenerator):
         par_list_idx = \
           [i for i in range(len(self.par_space))
              if self.par_space[i].par_generator_settings
-             if 'fixed_values' in self.par_space[i].par_generator_settings]
+             if 'specific_values' in self.par_space[i].par_generator_settings]
         if len(par_list_idx) == 0: # nothing to do really...
             self.model_list.append([copy.deepcopy(p) for p in self.par_space])
             self.logger.info('Found ONE individual model.')
             return ###########################################################
 
         lengths = \
-            [len(self.par_space[i].par_generator_settings['fixed_values'])
+            [len(self.par_space[i].par_generator_settings['specific_values'])
              for i in par_list_idx]
         if self.mode == 'list':
             if len(set(lengths)) > 1:
-                text = 'For a simple list of new models all fixed_values ' \
+                text = 'For a simple list of new models all specific_values ' \
                        'lists must be of equal length.'
                 self.logger.error(text)
                 raise ValueError(text)
@@ -1317,16 +1317,17 @@ class SpecificModels(ParameterGenerator):
             n_mod = np.prod(lengths)
         self.logger.info(f'Adding {n_mod} individual models.')
 
-        fixed_values=[self.par_space[i].par_generator_settings['fixed_values']
-                      for i in par_list_idx]
+        specific_values = \
+            [self.par_space[i].par_generator_settings['specific_values']
+             for i in par_list_idx]
         if self.mode == 'list':
             for i in range(n_mod):
                 new_parset = [copy.deepcopy(p) for p in self.par_space]
                 for val_idx, idx in enumerate(par_list_idx):
-                    new_parset[idx].raw_value = fixed_values[val_idx][i]
+                    new_parset[idx].raw_value = specific_values[val_idx][i]
                 self.model_list.append([copy.deepcopy(p) for p in new_parset])
         else:
-            for val in itertools.product(*fixed_values):
+            for val in itertools.product(*specific_values):
                 new_parset = [copy.deepcopy(p) for p in self.par_space]
                 for val_idx, idx in enumerate(par_list_idx):
                     new_parset[idx].raw_value = val[val_idx]

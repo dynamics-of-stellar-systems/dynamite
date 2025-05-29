@@ -23,7 +23,7 @@ system_components:
                     hi: 10.0
                     step: 1.
                     minstep: 0.
-                    fixed_values:
+                    specific_values:
                         - 5.0
                         - 5.5
                 fixed: True
@@ -32,7 +32,7 @@ system_components:
                 LaTeX: "$\\log(M_\\mathrm{BH}/M_\\odot)$"
             a: # scale length
                 par_generator_settings:
-                    fixed_values:
+                    specific_values:
                         - 0.001
                         - 0.002
                 fixed: True
@@ -60,7 +60,7 @@ system_components:
                     hi: 2.0
                     step: 0.5
                     minstep: 0.1
-                    fixed_values:
+                    specific_values:
                         - 1.0
                         - 1.5
                 logarithmic: True
