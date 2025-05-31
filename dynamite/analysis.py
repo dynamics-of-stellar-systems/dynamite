@@ -451,13 +451,15 @@ class Analysis:
         self.model = model
         self.kin_set = kin_set
 
-    def get_flux_for_selected_orbit_bundles(self,
+    def get_flux_for_orbit_bundles(self,
                                             model=None,
                                             kin_set=None,
                                             pop_set=None,
                                             weights=None,
                                             bundle_mapping=None,
-                                            flux_as='table'):
+                                            flux_as='table',
+                                            sb_maps=False,
+                                            figtype='.png'):
         """
         Generates an astropy table that holds the weighted contribution of the
         orbit bundles defined in bundle_mapping to the model's projected mass
@@ -495,6 +497,12 @@ class Analysis:
             the model directory in ascii.ecsv format and return its full path
             ``f_name``, if 'both', write the table to disk and return a tuple
             ``(gh_table, f_name)``. The default is 'table'.
+        sb_maps : bool, optional
+            If True, the method will also create surface brightness maps
+            for the orbit bundles and all orbits. The default is False.
+        figtype : str, optional
+            Determines the file format and extension to use when saving the
+            sb maps. The default is '.png'.
 
         Raises
         ------
@@ -516,6 +524,10 @@ class Analysis:
         (gh_table, f_name) : tuple  (if flux_as='both')
 
         """
+        if bundle_mapping is None:
+            txt = 'No bundle_mapping provided, cannot calculate flux.'
+            self.logger.error(txt)
+            raise ValueError(txt)
         if flux_as not in ['table', 'file', 'both']:
             txt = f"{flux_as=} but must be either 'table', 'file', or 'both'."
             self.logger.error(txt)
@@ -547,23 +559,66 @@ class Analysis:
             _ = model.get_weights(orblib)
             weights = model.weights
         # Get projected masses if necessary
-        if kin and not hasattr(orblib, 'projected_masses'):
-            orblib.read_losvd_histograms()  # kins=True, pops=False is default
+        # and calculate flux, flux.shape = (n_bundles, n_aperture)
+        if kin:
+            if not hasattr(orblib, 'projected_masses'):
+                orblib.read_losvd_histograms()  # default kins=True, pops=False
+            flux = np.matmul(bundle_mapping, orblib.projected_masses[kin_set])
         elif not kin:
             # If kin is False, we need to read the projected masses binned for
             # the populations.
             orblib.read_losvd_histograms(kins=False, pops=True)
-        # flux.shape = (n_bundles, n_aperture)
-        if kin:
-            flux = np.matmul(bundle_mapping, orblib.projected_masses[kin_set])
-        else:
             flux = np.matmul(bundle_mapping, orblib.projected_masses[pop_set])
         flux_all = np.sum(flux, axis=0)
-        n_bins = flux.shape[0]
+        n_bundles = bundle_mapping.shape[0]  # number of orbit bundles
         map_table = astropy.table.Table(
             np.hstack((flux.T, flux_all[:,np.newaxis])),
-            names = [f'flux_{i:03d}' for i in range(n_bins)] + ['flux_all'],
+            names = [f'flux_{i:03d}' for i in range(n_bundles)] + ['flux_all'],
             meta={('kin_set' if kin else 'pop_set'): kinpop_name})
+        # Create surface brightness maps if requested
+        if sb_maps:
+            if kin:  # get mapping aperture -> pixel, grid.shape=(n_pixels,)
+                grid = stars.kinematic_data[kin_set].dp_args['idx_bin_to_pix']
+                map_plotter = stars.kinematic_data[kin_set].get_map_plotter()
+            else:
+                grid = stars.population_data[pop_set].dp_args['idx_bin_to_pix']
+                map_plotter = stars.population_data[pop_set].get_map_plotter()
+            # count multiplicity of each aperture in aperture->pixel mapping
+            # bin_mult.shape=(n_aperture,)
+            s = np.ravel(np.where((grid >= 0)))
+            bin_mult, _ = np.histogram(grid[s], bins=len(map_table))
+            fig_cols = 5
+            fig_rows = (n_bundles + 1) // fig_cols
+            if (n_bundles + 1) % 5 > 0:
+                fig_rows += 1
+            fig = plt.figure(figsize=(30, 30 / fig_cols * fig_rows * 0.6))
+            fig.subplots_adjust(wspace=0.5,
+                                left=1/30,
+                                bottom=0.05,
+                                top=0.99,
+                                right=29/30)
+            for i, colname in enumerate(map_table.colnames):
+                ax = plt.subplot(fig_rows, fig_cols, i + 1)
+                # divide aperture flux by number of pixels in aperture
+                # to get surface brightness in each pixel
+                flux = map_table[colname] / bin_mult
+                map_plotter(np.log10(flux / np.nanmax(flux)),
+                            label='surface brightness (log)',
+                            colorbar=True,
+                            cmap=cmr.get_sub_cmap('twilight_shifted',
+                                                  0.05,
+                                                  0.6))
+                ax.set_title(f'{colname}')
+                ax.set_xlabel('x [arcsec]')
+                ax.set_ylabel('y [arcsec]')
+            f_name = f'bundle_sb_maps_{"kin" if kin else "pop"}_{kinpop_name}'
+            f_name = self.config.settings.io_settings['plot_directory'] \
+                     + f_name \
+                     + figtype
+            plt.savefig(f_name)
+            self.logger.info(f'Surface brightness maps written to {f_name}.')
+            plt.close()
+        # Write the flux table to disk or return it
         if flux_as == 'table':
             return map_table
         f_name = f'{model.directory}orbit_bundle_flux_{kinpop_name}.ecsv'
