@@ -1287,8 +1287,12 @@ module aperture
 
     ! Total number of apertures
     integer(kind=i4b), public                          :: aperture_n
+    ! Number of apertures with 0d histograms (mass only)
+    integer(kind=i4b), public                          :: ap_hist0d_n
     ! type of aperture (1=poly,2=box)
     integer(kind=i4b), public, allocatable, dimension(:) :: aperture_type
+    ! histogram dimension for each aperture (0=0D, 1=1D, 2=2D)
+    integer(kind=i4b), public, allocatable, dimension(:) :: ap_hist_dim
 
     ! number of bins in aperture
     integer(kind=i4b), public, allocatable, dimension(:) :: aperture_size
@@ -1308,6 +1312,7 @@ contains
             deallocate (aperture_type)
             deallocate (aperture_size)
             deallocate (aperture_start)
+            deallocate (ap_hist_dim)
         end if
         print *, "  * Aperture module stopped"
 
@@ -1748,8 +1753,10 @@ contains
         allocate (aperture_start(aperture_n))
         allocate (aperture_type(aperture_n))
         allocate (aperture_psf(aperture_n))
+        allocate (ap_hist_dim(aperture_n))
         print *, "  * using ", aperture_n, " aperture(s)"
 
+        ap_hist0d_n = 0
         do i = 1, aperture_n
             print *, "  * What's the filename of the ", i, " aperture file ? :"
             read *, file
@@ -1780,6 +1787,17 @@ contains
             if (aperture_psf(i) < 1 .or. aperture_psf(i) > psf_n) then
                 stop " That PSF does not exist!"
             end if
+
+            ! print *, "  * Histogram dimensions for this aperture (0, 1, or 2)?"
+            print *, "  * Histogram dimensions for this aperture (0 or 1)?"
+            read *, ap_hist_dim(i)
+            print *, "  * The histograms are ", ap_hist_dim(i), " dimensional."
+            ! if (ap_hist_dim(i) < 0 .or. ap_hist_dim(i) > 2) then
+            !     stop "  Histogram dimension must be 0, 1, or 2!"
+            if (ap_hist_dim(i) < 0 .or. ap_hist_dim(i) > 1) then
+                stop "  Histogram dimension must be 0 or 1!"
+            end if
+            if (ap_hist_dim(i) == 0) ap_hist0d_n = ap_hist0d_n + 1
         end do
         print *, "  ** aperture setup finished"
 
@@ -2109,9 +2127,10 @@ contains
     end subroutine histogram_setup_write_mass
 
     !++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-    subroutine histogram_write(handle)
+    subroutine histogram_write(handle, handle_pops)
+        use aperture, only: ap_hist_dim
         use binning, only: binning_bin
-        integer(kind=i4b), intent(in) :: handle
+        integer(kind=i4b), intent(in) :: handle, handle_pops
         !----------------------------------------------------------------------
         integer(kind=i4b)            :: i, bg, ed
         print *, "  * Normalising and Writing histogram data."
@@ -2129,7 +2148,12 @@ contains
             ed = h_start(i) - 1 + ed
             !conversion normalizing
             histogram(bg:ed, 1:h_bin(i)) = h_n_stored(i)*histogram(bg:ed, 1:h_bin(i))
-            call histogram_write_compat_sparse(handle, histogram(bg:ed, 1:h_bin(i)))
+            if (handle_pops > 0 .and. ap_hist_dim(i) == 0) then
+                if (h_bin(i) /= 1) stop " 0d histogram must have 1 bin only."
+                write (unit=handle_pops) histogram(bg:ed, 1:h_bin(i))
+            else
+                call histogram_write_compat_sparse(handle, histogram(bg:ed, 1:h_bin(i)))
+            end if
         end do
     end subroutine histogram_write
 
@@ -2234,7 +2258,7 @@ contains
 
     !++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
     subroutine histogram_setup()
-        use aperture, only: aperture_n, aperture_size, aperture_psf
+        use aperture, only: aperture_n, aperture_size, aperture_psf, ap_hist_dim
         use binning, only: binning_setup, bin_max
         use psf, only: psf_n
         !----------------------------------------------------------------------
@@ -2285,10 +2309,12 @@ contains
         ! Figure out how many histograms there are.
         h_nconstr = 0
         do ap = 1, h_n
-            if (bin_max(ap) == 0) then
-                h_nconstr = h_nconstr + aperture_size(ap)
-            else
-                h_nconstr = h_nconstr + bin_max(ap)
+            if (ap_hist_dim(ap) == 1) then  ! only count 1d histograms (required by LegacyWeightSolver)
+                if (bin_max(ap) == 0) then
+                    h_nconstr = h_nconstr + aperture_size(ap)
+                else
+                    h_nconstr = h_nconstr + bin_max(ap)
+                end if
             end if
         end do
 
@@ -2306,7 +2332,8 @@ contains
             print *, "  * All velocity-bins are the same"
         else
             print *, "  * Velocity-bins are not the same. The standard NNLS will not"
-            print *, "  * Understand the ouput correctly."
+            print *, "  * understand the ouput correctly (exception: pops data "
+            print *, "  * velocity-bins may differ)."
         end if
         print *, "  ** Histogram module setup finished"
 
@@ -2618,7 +2645,8 @@ module output
     private
 
     integer(kind=i4b), private :: out_handle = 0_i4b
-    character(len=80), public  :: out_file
+    character(len=80), public  :: out_file_qgrid, out_file_pops &
+                                  , out_file_losvd, out_file_orbclass
     character(len=84), private :: out_tmp_file
 
     public :: output_setup
@@ -2633,6 +2661,7 @@ contains
     subroutine output_setup()
         use integrator, only: integrator_setup_write, integrator_set_current,&
              &                   integrator_current
+        use aperture, only: ap_hist0d_n
         use histograms, only: histogram_setup_write
         use histograms, only: histogram_setup_write_mass
         use quadrantgrid, only: qgrid_setup_write
@@ -2643,14 +2672,30 @@ contains
         integer(kind=i4b)  :: error, tmp
 
         print *, "  ** Setting up output module"
-        print *, "  * Give the name of the histogram outputfile:"
-        read (unit=*, fmt="(a80)"), out_file
+        print *, "  * Give the name of the qgrid outputfile:"
+        ! read (unit=*, fmt="(a80)"), out_file
+        read *, out_file_qgrid
+        print *, out_file_qgrid
 
-        out_file = adjustl(out_file)
-        print *, out_file
+        if (ap_hist0d_n > 0) then
+            print *, "  * Give the name of the pops '0d histogram' outputfile:"
+            read *, out_file_pops
+            print *, out_file_pops
+        end if
 
-        out_tmp_file = out_file
-        out_tmp_file(len_trim(out_file) + 1:len_trim(out_file) + 4) = ".tmp"
+        print *, "  * Give the name of the 1d losvd histogram outputfile:"
+        read *, out_file_losvd
+        print *, out_file_losvd
+
+        print *, "  * Give the name of the orbit classification outputfile:"
+        read *, out_file_orbclass
+        print *, out_file_orbclass
+
+        ! out_file = adjustl(out_file)
+        ! print *, out_file
+
+        out_tmp_file = out_file_qgrid
+        out_tmp_file(len_trim(out_file_qgrid) + 1:len_trim(out_file_qgrid) + 4) = ".tmp"
         print *, out_tmp_file
 
         call date_and_time(date=d, time=t, zone=g)
@@ -2665,13 +2710,23 @@ contains
 
             if (error /= 0) stop "  Error opening file."
             ! Write orbit library header in *binary* (typically orblib.dat)
-            open (unit=out_handle, iostat=error, file=out_file, action="write", &
+            open (unit=out_handle, iostat=error, file=out_file_qgrid, action="write", &
                   status="new", form="unformatted")
             call integrator_setup_write(out_handle)
             call qgrid_setup_write(out_handle)
+            close (unit=out_handle, iostat=error)
+            if (error /= 0) stop "  Error closing qgrid file."
+            if (ap_hist0d_n > 0) then
+                open (unit=out_handle, iostat=error, file=out_file_pops, action="write", &
+                    status="new", form="unformatted")
+                close (unit=out_handle, iostat=error)  ! no setup, just create file
+                if (error /= 0) stop "  Error closing pops file."
+            end if
+            open (unit=out_handle, iostat=error, file=out_file_losvd, action="write", &
+                  status="new", form="unformatted")
             call histogram_setup_write(out_handle)
             close (unit=out_handle, iostat=error)
-            if (error /= 0) stop "  Error closing file."
+            if (error /= 0) stop "  Error closing losvd file."
 
             ! Write status file
             write (unit=out_handle + 1, fmt=*, iostat=error) integrator_current
@@ -2692,7 +2747,7 @@ contains
             if (error /= 0) stop "  Error closing status file."
 
             ! Checking if orbit library file exists
-            open (unit=out_handle, iostat=error, file=out_file, action="write", &
+            open (unit=out_handle, iostat=error, file=out_file_qgrid, action="write", &
                  & status="old", position="append", form="unformatted")
             if (error /= 0) stop "  Error opening library file. Does it exist?"
             close (unit=out_handle, iostat=error)
@@ -2700,27 +2755,43 @@ contains
             print *, "  * Resuming with orbit :", tmp + 1
         end if
 
-        open (unit=30, file=trim(out_file)//"_orbclass.out", status="replace", &
-              action="write")
+        open (unit=30, file=out_file_orbclass, status="replace", action="write")
 
-        print *, "  ** Ouput file setup finished."
+        print *, "  ** Output file setup finished."
 
     end subroutine output_setup
 
     !++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
     subroutine output_close()
         use integrator, only: integrator_current
+        use aperture, only: ap_hist0d_n
         !----------------------------------------------------------------------
         integer :: error
         print *, "  * Closing files and stopping output module"
         if (out_handle /= 0) then
-            open (unit=out_handle, iostat=error, file=out_file, action="write", &
+            open (unit=out_handle, iostat=error, file=out_file_qgrid, action="write", &
                  & status="old", position="append", form="unformatted")
-            if (error /= 0) stop "  Error opening file."
+            if (error /= 0) stop "  Error opening qgrid file."
             write (unit=out_handle, iostat=error) " "
-            if (error /= 0) stop "  Error writing to file. Disk full?"
+            if (error /= 0) stop "  Error writing to qgrid file. Disk full?"
             close (unit=out_handle, iostat=error)
-            if (error /= 0) stop "  Error closing file."
+            if (error /= 0) stop "  Error closing qgrid file."
+            if (ap_hist0d_n > 0) then
+                open (unit=out_handle, iostat=error, file=out_file_pops, action="write", &
+                    & status="old", position="append", form="unformatted")
+                if (error /= 0) stop "  Error opening pops file."
+                write (unit=out_handle, iostat=error) " "
+                if (error /= 0) stop "  Error writing to pops file. Disk full?"
+                close (unit=out_handle, iostat=error)
+                if (error /= 0) stop "  Error closing pops file."
+            end if
+            open (unit=out_handle, iostat=error, file=out_file_losvd, action="write", &
+                 & status="old", position="append", form="unformatted")
+            if (error /= 0) stop "  Error opening losvd file."
+            write (unit=out_handle, iostat=error) " "
+            if (error /= 0) stop "  Error writing to losvd file. Disk full?"
+            close (unit=out_handle, iostat=error)
+            if (error /= 0) stop "  Error closing losvd file."
         end if
 
         ! Update the temp file to finished status
@@ -2743,10 +2814,11 @@ contains
     !++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
     subroutine output_write()
         use histograms, only: histogram_write
+        use aperture, only: ap_hist0d_n
         use quadrantgrid, only: qgrid_write
         use integrator, only: integrator_write, integrator_current
         !----------------------------------------------------------------------
-        integer :: error
+        integer :: error, out_handle_pops
         ! Update the temp file to writing status
         open (unit=out_handle + 1, iostat=error, file=out_tmp_file, action="write", &
              & status="old", position="rewind")
@@ -2758,14 +2830,31 @@ contains
         if (error /= 0) stop "  Error closing status file."
 
         ! Write the orbit to the *binary* output file (typically orblib.dat).
-        open (unit=out_handle, iostat=error, file=out_file, action="write", &
+        open (unit=out_handle, iostat=error, file=out_file_qgrid, action="write", &
              & status="old", position="append", form="unformatted")
-        if (error /= 0) stop "  Error opening file."
+        if (error /= 0) stop "  Error opening qgrid file."
         call integrator_write(out_handle)
         call qgrid_write(out_handle)
-        call histogram_write(out_handle)
         close (unit=out_handle, iostat=error)
-        if (error /= 0) stop "  Error closing file."
+        if (error /= 0) stop "  Error closing qgrid file."
+        if (ap_hist0d_n > 0) then
+            out_handle_pops = out_handle + 10
+            open (unit=out_handle_pops, iostat=error, file=out_file_pops, action="write", &
+                & status="old", position="append", form="unformatted")
+            if (error /= 0) stop "  Error opening pops file."
+        else
+            out_handle_pops = 0
+        end if
+        open (unit=out_handle, iostat=error, file=out_file_losvd, action="write", &
+        & status="old", position="append", form="unformatted")
+        if (error /= 0) stop "  Error opening losvd file."
+        call histogram_write(out_handle, out_handle_pops)
+        if (ap_hist0d_n > 0) then
+            close (unit=out_handle_pops, iostat=error)
+            if (error /= 0) stop "  Error closing pops file."
+        end if
+        close (unit=out_handle, iostat=error)
+        if (error /= 0) stop "  Error closing losvd file."
 
         ! Update the temp file to intermediate status
         open (unit=out_handle + 1, iostat=error, file=out_tmp_file, action="write", &

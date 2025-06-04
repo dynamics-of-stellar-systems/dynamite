@@ -138,13 +138,14 @@ class AllModels(object):
                 table_modified = True
                 mod = self.get_model_from_row(i)
                 staging_filename = mod.directory+'model_done_staging.ecsv'
-                check1 = os.path.isfile(
-                    mod.directory_noml+'datfil/orblib.dat.bz2'
-                    )
-                check2 = os.path.isfile(
-                    mod.directory_noml+'datfil/orblibbox.dat.bz2'
-                    )
-                check_if_orblibs_present = check1 and check2
+                f_root = mod.directory_noml + 'datfil/'
+                check = os.path.isfile(f_root + 'orblib.dat.bz2') \
+                        and os.path.isfile(f_root + 'orblibbox.dat.bz2')
+                if not check:
+                    check = os.path.isfile(f_root + 'orblib_qgrid.dat.bz2') \
+                     and os.path.isfile(f_root + 'orblib_losvd_hist.dat.bz2') \
+                     and os.path.isfile(f_root + 'orblibbox_qgrid.dat.bz2') \
+                     and os.path.isfile(f_root + 'orblibbox_losvd_hist.dat.bz2')
                 if os.path.isfile(staging_filename):
                     # the model has completed but was not entered in the table
                     staging_file = ascii.read(staging_filename)
@@ -154,7 +155,7 @@ class AllModels(object):
                     os.remove(staging_filename)
                     self.logger.debug(
                         f'Staging file {staging_filename} deleted.')
-                elif check_if_orblibs_present:
+                elif check:
                     self.logger.debug(f'Row {i}: orblibs were computed '
                                       'but not weights.')
                     self.table[i]['orblib_done'] = True
@@ -452,7 +453,8 @@ class AllModels(object):
             if np.allclose(row_comp, tuple(row)):
                 break
         else:
-            text = 'Cannot find model in all_models table.'
+            text = 'Cannot find model with parset ' \
+                   f'{row_comp} in all_models table.'
             self.logger.error(text)
             raise ValueError(text)
         return row_id
@@ -489,16 +491,18 @@ class AllModels(object):
                               "implementation")
             raise
         row_comp = tuple(self.table[orblib_parameters][model_id])
+        model_dir = self.table['directory'][model_id]
         for row_id, row in enumerate( \
                                  self.table[orblib_parameters][:model_id+1]):
             if np.allclose(row_comp, tuple(row)):
                 ml_orblib = self.table['ml'][row_id]
-                self.logger.debug(f'Orblib of model #{model_id} has original '
+                ml_orblib_dir = self.table['directory'][row_id]
+                self.logger.debug(f'Orblib of model {model_dir} has original '
                                   f'ml value of {ml_orblib} '
-                                  f'(model #{row_id}).')
+                                  f'(model {ml_orblib_dir}).')
                 break
         else:
-            text = f'Cannot find orblib for model #{model_id} in ' \
+            text = f'Cannot find orblib of model {model_dir} in ' \
                    'all_models table.'
             self.logger.error(text)
             raise ValueError(text)
@@ -889,7 +893,7 @@ class Model(object):
         """
         if not os.path.isfile(self.config.config_file_name):
             txt = f'Unexpected: config file {self.config.config_file_name}' + \
-                  ' not found.'
+                  f' not found (looking in {os.getcwd()}).'
             self.logger.error(txt)
             raise FileNotFoundError(txt)
         model_yaml_files = glob.glob(self.directory+'*.yaml')
@@ -917,7 +921,8 @@ class Model(object):
         c_diff = difflib.unified_diff(config_file,
                                       model_config_file,
                                       fromfile=self.config.config_file_name,
-                                      tofile=model_config_file_name)
+                                      tofile=model_config_file_name,
+                                      n=0)
         c_diff = list(c_diff)
         if len(c_diff) > 0:
             self.logger.warning('ACTION REQUIRED, PLEASE CHECK: '

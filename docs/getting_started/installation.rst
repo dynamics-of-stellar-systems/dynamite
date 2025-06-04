@@ -118,7 +118,9 @@ returns its location, something like ``/opt/local/bin/gfortran``.
 Python
 ------
 
-The user is communicating with the Fortran source code via Python. The basic requirement for DYNAMITE is therefore a reasonably current version of Python (Python 3.8 or later).
+The user is communicating with the Fortran source code via Python.
+The basic requirement for DYNAMITE is therefore a reasonably current version of Python
+(Python 3.9 or later as Python 3.8 has reached its end of life as of October 7, 2024).
 
 
 
@@ -334,10 +336,9 @@ Update in .bashrc::
 2. Compiling the Fortran programs
 ----------------------------------
 
-Go back to ``.../legacy_fortran``. Before you proceed, it is necessary to make the following changes to the ``Makefile``:
+Go to the ``.../legacy_fortran`` folder. Before you proceed, it may be necessary to make the following change to the ``Makefile``:
 
-* DYNAMITE installation option (A) only: Select the appropriate choice of ``GALAHADTYPE`` variable depending on your system (comment out the options that don't apply')
-* Look for the definition of the ``all:`` (this should be right after the definition of the ``GALAHADTYPE`` variable). Make sure that ``triaxgasnnls`` is **NOT** in the list.
+* DYNAMITE installation option (A) only (i.e., including the ``LegacyWeightSolver``): Select the appropriate choice of ``GALAHADTYPE`` variable depending on your system (comment out the options that don't apply).
 
 Proceed with the following command from the terminal, depending on your choice of the DYNAMITE installation option.
 
@@ -349,9 +350,7 @@ DYNAMITE installation option (A)
 
 Your terminal will likely express several warnings again, but these are not critical and refer to different coding conventions in earlier Fortran versions. Now, take a look in the directory ``.../legacy_fortran`` and check that you have .f90 files and executables (no file name extension) for:
 
-* modelgen
 * orbitstart
-* orblib
 * orblib_new_mirror
 * triaxmass
 * triaxmassbin
@@ -367,7 +366,6 @@ DYNAMITE installation option (B)
 Your terminal will likely express several warnings again, but these are not critical and refer to different coding conventions in earlier Fortran versions. Now, take a look in the directory ``.../legacy_fortran`` and check that you have .f90 files and executables (no file name extension) for:
 
 * orbitstart
-* orblib
 * orblib_new_mirror
 * triaxmass
 * triaxmassbin
@@ -501,7 +499,7 @@ or::
 
 and in ``.../dynamite``, re-install with the command::
 
-    python setup.py install
+    python -m pip install .
 
 Python install fails
 --------------------
@@ -512,9 +510,9 @@ Try ``python3`` instead of ``python``::
 
     python3 -m pip install .
 
-If ``setup.py`` still does not work, this may be because of failed package installations. Make sure to have at least ``numpy`` installed beforehand. Running ``setup.py`` will install the necessary packages for you, but you can also install some packages manually if needed::
+If installing DYNAMITE still does not work, this may be because of failed package installations. Make sure to have at least ``numpy`` installed beforehand. Running ``python -m pip install .`` will install the necessary packages for you, but you can also install some packages manually if needed::
 
-    pip install astropy
+    python -m pip install astropy
 
 Or, if you are using conda::
 
@@ -553,8 +551,8 @@ The 'G / P' column refers to the weight solver:
    :header-rows: 1
 
    OS and release,  Fortran release,    Python rel.,    G / P,  Date tested,    Remarks
-   macOS 14.4.1,    gfortran 12.2.0,    3.8.19,         G,      2024-04-23
    macOS 14.4.1,    gfortran 12.2.0,    3.9.19,         G,      2024-04-23
+   macOS 14.6.1,    gfortran 12.4.0,    3.11.10,        G,      2024-11-30
    macOS 14.4.1,    gfortran 12.2.0,    3.12.3,         G,      2024-04-23
    AlmaLinux 8.5,   gfortran 8.5.0,     3.10.14,        G,      2024-04-23,     VSC5 w/o modules loaded
    AlmaLinux 8.5,   gfortran 8.5.0,     3.12.3,         G,      2024-04-23,     VSC5 w/o modules loaded, with miniconda

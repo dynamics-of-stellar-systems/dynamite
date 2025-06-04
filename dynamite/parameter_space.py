@@ -587,23 +587,23 @@ class ParameterGenerator(object):
                 models0 = self.current_models.table[mask]
                 last_chi2 = np.nanmin(models0[self.chi2])
                 last_iter -= 1
-            previous_chi2 = np.nan
-            while np.isnan(previous_chi2): # look for non-nan (kin)chi2 value
-                if last_iter < 0:
-                    return
-                mask = self.current_models.table['which_iter'] == last_iter
-                models1 = self.current_models.table[mask]
-                previous_chi2 = np.nanmin(models1[self.chi2])
-                last_iter -= 1
+            if last_iter < 0:
+                return
+            mask = self.current_models.table['which_iter'] <= last_iter
+            models1 = self.current_models.table[mask]
+            if len(models1) == 0:
+                return
+            previous_chi2 = np.nanmin(models1[self.chi2])
+            if np.isnan(previous_chi2):
+                return
             # Don't use abs() so we stop on increasing chi2 values, too:
             delta_chi2 = previous_chi2 - last_chi2
-            if self.min_delta_chi2_rel:
-                delta_chi2 /= previous_chi2
-                delta_chi2 /= self.min_delta_chi2_rel
+            if self.min_delta_chi2_rel is not None:
+                if delta_chi2 / previous_chi2 < self.min_delta_chi2_rel:
+                    self.status['min_delta_chi2_reached'] = True
             else:
-                delta_chi2 /= self.min_delta_chi2_abs
-            if delta_chi2 <= 1:
-                self.status['min_delta_chi2_reached'] = True
+                if delta_chi2 < self.min_delta_chi2_abs:
+                    self.status['min_delta_chi2_reached'] = True
         # (ii) if step_size < min_step_size for all params
         #       => dealt with by grid_walk (doesn't create such models)
 
@@ -740,15 +740,21 @@ class LegacyGridSearch(ParameterGenerator):
             self.logger.error(text)
             raise ValueError(text)
         stop_crit = parspace_settings['stopping_criteria']
-        self.min_delta_chi2_abs = stop_crit.get('min_delta_chi2_abs', False)
-        self.min_delta_chi2_rel = stop_crit.get('min_delta_chi2_rel', False)
-        if (not self.min_delta_chi2_abs and not self.min_delta_chi2_rel) \
-           or \
-           (self.min_delta_chi2_abs and self.min_delta_chi2_rel):
+        stop_abs = 'min_delta_chi2_abs' in stop_crit
+        stop_rel = 'min_delta_chi2_rel' in stop_crit
+        if (stop_abs and stop_rel) or not (stop_abs or stop_rel):
             text = 'LegacyGridSearch: specify exactly one of the ' + \
                    'options min_delta_chi2_abs, min_delta_chi2_rel'
             self.logger.error(text)
             raise ValueError(text)
+        if stop_abs:
+            self.min_delta_chi2_abs = stop_crit['min_delta_chi2_abs']
+        else:
+            self.min_delta_chi2_abs = None
+        if stop_rel:
+            self.min_delta_chi2_rel = stop_crit['min_delta_chi2_rel']
+        else:
+            self.min_delta_chi2_rel = None
 
     def specific_generate_method(self, **kwargs):
         r"""
@@ -862,15 +868,21 @@ class GridWalk(ParameterGenerator):
             self.logger.error(text)
             raise ValueError(text)
         stop_crit = parspace_settings['stopping_criteria']
-        self.min_delta_chi2_abs = stop_crit.get('min_delta_chi2_abs', False)
-        self.min_delta_chi2_rel = stop_crit.get('min_delta_chi2_rel', False)
-        if (not self.min_delta_chi2_abs and not self.min_delta_chi2_rel) \
-           or \
-           (self.min_delta_chi2_abs and self.min_delta_chi2_rel):
+        stop_abs = 'min_delta_chi2_abs' in stop_crit
+        stop_rel = 'min_delta_chi2_rel' in stop_crit
+        if (stop_abs and stop_rel) or not (stop_abs or stop_rel):
             text = 'GridWalk: specify exactly one of the ' + \
                    'options min_delta_chi2_abs, min_delta_chi2_rel'
             self.logger.error(text)
             raise ValueError(text)
+        if stop_abs:
+            self.min_delta_chi2_abs = stop_crit['min_delta_chi2_abs']
+        else:
+            self.min_delta_chi2_abs = None
+        if stop_rel:
+            self.min_delta_chi2_rel = stop_crit['min_delta_chi2_rel']
+        else:
+            self.min_delta_chi2_rel = None
 
     def specific_generate_method(self, **kwargs):
         """
@@ -1056,15 +1068,21 @@ class FullGrid(ParameterGenerator):
             raise ValueError(text)
 
         stop_crit = parspace_settings['stopping_criteria']
-        self.min_delta_chi2_abs = stop_crit.get('min_delta_chi2_abs', False)
-        self.min_delta_chi2_rel = stop_crit.get('min_delta_chi2_rel', False)
-        if (not self.min_delta_chi2_abs and not self.min_delta_chi2_rel) \
-           or \
-           (self.min_delta_chi2_abs and self.min_delta_chi2_rel):
+        stop_abs = 'min_delta_chi2_abs' in stop_crit
+        stop_rel = 'min_delta_chi2_rel' in stop_crit
+        if (stop_abs and stop_rel) or not (stop_abs or stop_rel):
             text = 'FullGrid: specify exactly one of the ' + \
                    'options min_delta_chi2_abs, min_delta_chi2_rel'
             self.logger.error(text)
             raise ValueError(text)
+        if stop_abs:
+            self.min_delta_chi2_abs = stop_crit['min_delta_chi2_abs']
+        else:
+            self.min_delta_chi2_abs = None
+        if stop_rel:
+            self.min_delta_chi2_rel = stop_crit['min_delta_chi2_rel']
+        else:
+            self.min_delta_chi2_rel = None
 
     def specific_generate_method(self, **kwargs):
         """

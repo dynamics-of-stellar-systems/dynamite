@@ -166,13 +166,19 @@ class LegacyWeightSolver(WeightSolver):
         self.ml = float(ml_str[:-1]) if ml_str[-1] == '/' else float(ml_str)
         self.fname_nn_kinem = self.direc_with_ml + 'nn_kinem.out'
         self.fname_nn_nnls = self.direc_with_ml + 'nn_nnls.out'
+        # check the format of the orbit library files
+        # check == True means there are 2 orblib_* and 2 orblibbox_* files
+        # check == False means there are only two orblib files,
+        # orblib.dat.bz2 and orbibbox.dat.bz2 (legacy behavior)
+        pth = self.direc_no_ml + 'datfil/'
+        check = os.path.isfile(f'{pth}orblib_qgrid.dat.bz2') \
+                and os.path.isfile(f'{pth}orblib_losvd_hist.dat.bz2') \
+                and os.path.isfile(f'{pth}orblibbox_qgrid.dat.bz2') \
+                and os.path.isfile(f'{pth}orblibbox_losvd_hist.dat.bz2')
+        self.legacy_files = False if check else True
         # prepare fortran input file for nnls
         self.copy_kinematic_data()
         self.create_fortran_input_nnls()
-        self.logger.info(f'{__class__.__name__} is DEPRECATED and '
-                         'will be removed in a future version of '
-                         f'DYNAMITE. Use weight solver type NNLS instead '
-                         f'of {__class__.__name__} if you can.')
 
     def copy_kinematic_data(self):
         """Copy kin data to infil/ direc
@@ -242,10 +248,14 @@ class LegacyWeightSolver(WeightSolver):
         str(self.settings['GH_sys_err']) + '    [ systemic error of v, sigma, h3, h4... ]' + '\n' + \
         str(self.settings['lum_intr_rel_err']) + '                               [ relative error for intrinsic luminosity ]' +'\n' + \
         str(self.settings['sb_proj_rel_err']) + '                               [ relative error for projected SB ]' + '\n' + \
-        str(ml_scaling_factor)  + '                                [ scale factor related to M/L, sqrt( (M/L)_k / (M/L)_ref ) ]' + '\n' + \
-        f'datfil/orblib_{self.ml}.dat\n' + \
-        f'datfil/orblibbox_{self.ml}.dat\n' + \
-        str(self.settings['nnls_solver']) + '                                  [ nnls solver ]'
+        str(ml_scaling_factor)  + '                                [ scale factor related to M/L, sqrt( (M/L)_k / (M/L)_ref ) ]' + '\n'
+        if self.legacy_files:
+            text += 2 * f'datfil/orblib_{self.ml}.dat\n' + \
+                    2 * f'datfil/orblibbox_{self.ml}.dat\n'  # yes, really...
+        else:
+            for f in '_qgrid', '_losvd_hist', 'box_qgrid', 'box_losvd_hist':
+                text += f'datfil/orblib{f}_{self.ml}.dat\n'
+        text += str(self.settings['nnls_solver']) + '                                  [ nnls solver ]'
 
         nn_file = open(self.direc_no_ml + f'ml{self.ml:{self.sformat}}/nn.in',
                        "w")
@@ -280,7 +290,8 @@ class LegacyWeightSolver(WeightSolver):
         """
         self.logger.info(f"Using WeightSolver: {__class__.__name__}")
         if (not ignore_existing_weights) and self.weight_file_exists():
-            self.logger.info("Reading NNLS solution from existing output.")
+            self.logger.info("Reading NNLS solution from existing output "
+                             f"{self.weight_file}.")
             results = ascii.read(self.weight_file)
             weights = results['weights']
             chi2_tot = results.meta['chi2_tot']
@@ -316,10 +327,16 @@ class LegacyWeightSolver(WeightSolver):
                                    stderr=subprocess.STDOUT,
                                    shell=True)
                 # clean up decompressed files
-                for f_name in [f'datfil/orblib_{self.ml}.dat',
-                               f'datfil/orblibbox_{self.ml}.dat']:
-                    if os.path.isfile(f_name):
-                        os.remove(f_name)
+                if self.legacy_files:
+                    for f_name in [f'datfil/orblib_{self.ml}.dat',
+                                f'datfil/orblibbox_{self.ml}.dat']:
+                        if os.path.isfile(f_name):
+                            os.remove(f_name)
+                else:
+                    for f in '_qgrid', '_losvd_hist', 'box_qgrid', 'box_losvd_hist':
+                        f_name = f'datfil/orblib{f}_{self.ml}.dat'
+                        if os.path.isfile(f_name):
+                            os.remove(f_name)
                 log_file = f'Logfile: {self.direc_no_ml+logfile}.'
                 if not p.stdout.decode("UTF-8"):
                     self.logger.info(f'...done, NNLS problem solved - {cmdstr}'
@@ -330,9 +347,11 @@ class LegacyWeightSolver(WeightSolver):
                     if p.returncode == 127: # command not found
                         text += 'Check DYNAMITE legacy_fortran executables.'
                         self.logger.error(text)
+                        os.chdir(cur_dir)
                         raise FileNotFoundError(text)
                     text += f'{log_file} Be wary: DYNAMITE may crash...'
                     self.logger.warning(text)
+                    os.chdir(cur_dir)
                     raise RuntimeError(text)
                 # set the current directory to the dynamite directory
                 os.chdir(cur_dir)
@@ -378,8 +397,14 @@ class LegacyWeightSolver(WeightSolver):
         txt_file = open(cmdstr, "w")
         txt_file.write('#!/bin/bash' + '\n')
         txt_file.write('# if the gzipped orbit library exist unzip it' + '\n')
-        txt_file.write(f'test -e datfil/orblib_{self.ml}.dat || bunzip2 -c  datfil/orblib.dat.bz2 > datfil/orblib_{self.ml}.dat' + '\n')
-        txt_file.write(f'test -e datfil/orblibbox_{self.ml}.dat || bunzip2 -c  datfil/orblibbox.dat.bz2 > datfil/orblibbox_{self.ml}.dat' + '\n')
+        if self.legacy_files:
+            txt_file.write(f'test -e datfil/orblib_{self.ml}.dat || bunzip2 -c  datfil/orblib.dat.bz2 > datfil/orblib_{self.ml}.dat' + '\n')
+            txt_file.write(f'test -e datfil/orblibbox_{self.ml}.dat || bunzip2 -c  datfil/orblibbox.dat.bz2 > datfil/orblibbox_{self.ml}.dat' + '\n')
+        else:
+            for f in '_qgrid', '_losvd_hist', 'box_qgrid', 'box_losvd_hist':
+                file_name = f'datfil/orblib{f}_{self.ml}.dat'
+                txt_file.write(f'test -e {file_name} || '
+                               f'bunzip2 -c  datfil/orblib{f}.dat.bz2 > {file_name}\n')
         if self.system.is_bar_disk_system():
             txt_file.write(f'test -e {self.legacy_directory}/triaxnnls_bar' +
                            f' || {{ echo "File {self.legacy_directory}/triaxnnls_bar not found." && exit 127; }}\n')
@@ -600,18 +625,11 @@ class NNLS(WeightSolver):
         self.nnls_solver = nnls_solver
         self.get_observed_mass_constraints()
 
-    def get_observed_mass_constraints(self, kins=True, pops=False):
+    def get_observed_mass_constraints(self):
         """Get aperture+intrinsic mass constraints from MGE
 
-        Parameters
-        ----------
-        kins : Bool
-            If True, returns the projected masses of the MGE for the
-            kinematic data apertures.
-        pops : Bool
-            If True, returns the projected masses of the MGE for the
-            population data apertures. If both kins and pops are True,
-            population data is returned following kinematic data.
+        Returns the projected masses of the MGE for the kinematic data
+        apertures.
 
         Returns
         -------
@@ -629,11 +647,9 @@ class NNLS(WeightSolver):
         if self.system.is_bar_disk_system():
             bardisk = self.system.get_unique_bar_component()
             mge = bardisk.mge_lum + bardisk.disk_lum
-            n_kin_ap = [k.n_spatial_bins for k in bardisk.kinematic_data]
         else:
             stars = self.system.get_unique_triaxial_visible_component()
             mge = stars.mge_lum
-            n_kin_ap = [k.n_spatial_bins for k in stars.kinematic_data]
 
         # intrinsic mass
         intrinsic_masses = mge.get_intrinsic_masses_from_file(self.direc_no_ml)
@@ -641,25 +657,7 @@ class NNLS(WeightSolver):
         self.intrinsic_mass_error = self.settings['lum_intr_rel_err']
         # projected
         projected_masses = mge.get_projected_masses_from_file(self.direc_no_ml)
-        if kins and pops:
-            self.projected_masses = projected_masses
-        elif kins:
-            self.projected_masses = projected_masses[:sum(n_kin_ap)]
-        elif pops:
-            i_kins = set(p.kin_aper  # collect all apertures used by pops
-                         for p in stars.population_data
-                         if p.kin_aper is not None)
-            cum_n_kin_ap = np.cumsum(n_kin_ap)
-            pr_masses = []
-            for i_kin in i_kins:  # add proj ms for kin apertures used by pops
-                i_ap0 = cum_n_kin_ap[i_kin - 1] if i_kin > 0 else 0
-                pr_masses += projected_masses[i_ap0:cum_n_kin_ap[i_kin]]
-            pr_masses += projected_masses[sum(n_kin_ap):]
-            self.projected_masses = pr_masses
-        else:
-            txt = 'Specify kins or pops.'
-            self.logger.error(txt)
-            raise ValueError(txt)
+        self.projected_masses = projected_masses
         self.projected_mass_error = self.settings['sb_proj_rel_err']
         # total mass constraint
         self.total_mass = np.sum(intrinsic_masses)
@@ -828,7 +826,8 @@ class NNLS(WeightSolver):
                                         # orblib.projected_masses
         if (not ignore_existing_weights) and self.weight_file_exists():
             results = ascii.read(self.weight_file, format='ecsv')
-            self.logger.info("NNLS solution read from existing output")
+            self.logger.info("NNLS solution read from existing output "
+                             f"{self.weight_file}.")
             weights = results['weights']
             chi2_tot = results.meta['chi2_tot']
             chi2_kin = results.meta['chi2_kin']
@@ -877,7 +876,8 @@ class NNLS(WeightSolver):
                 results.write(self.weight_file,
                               format='ascii.ecsv',
                               overwrite=True)
-                self.logger.info("NNLS problem solved and chi2 calculated.")
+                self.logger.info("NNLS problem solved and chi2 calculated for "
+                                 f"model {self.direc_with_ml}.")
             else:
                 chi2_tot = chi2_kin = chi2_kinmap = np.nan
             # delete existing .yaml files and copy current config file

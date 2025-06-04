@@ -8,7 +8,6 @@ import logging
 import importlib
 import yaml
 import datetime
-import numpy as np
 
 import dynamite as dyn
 from dynamite import constants as const
@@ -86,9 +85,13 @@ class Settings(object):
            not importlib.util.find_spec('cvxopt'):
             text = "nnls_solver 'cvxopt' is not installed. Use a different " \
                    "nnls_solver setting or try to install cvxopt e.g., via " \
-                   "'python -m pip install .[cvxopt]'."
+                   "'python -m pip install cvxopt'."
             self.logger.error(text)
             raise ModuleNotFoundError(text)
+        if 'use_new_mirroring' in self.orblib_settings:
+            self.logger.warning('As DYNAMITE always uses the new mirroring, '
+                                'the orblib_setting \'use_new_mirroring\' is '
+                                'DEPRECATED and will be ignored.')
         if self.orblib_settings['nI2'] < 4:
             text = "orblib_settings: nI2 must be >= 4, but is " \
                    f"{self.orblib_settings['nI2']}."
@@ -396,12 +399,6 @@ class Configuration(object):
             # add orbit library settings to Settings object
 
             elif key == 'orblib_settings':
-                # set a default value to
-                #      orblib_settings --> use_new_mirroring : False
-                if 'use_new_mirroring' in value.keys():
-                    pass
-                else:
-                    value.update({'use_new_mirroring':True})
                 logger.info('orblib_settings...')
                 logger.debug(f'orblib_settings: {tuple(value.keys())}')
                 self.settings.add('orblib_settings', value)
@@ -469,7 +466,7 @@ class Configuration(object):
                     value['modeliterator'] = 'ModelInnerIterator'
                 logger.debug(f"... using iterator {value['modeliterator']}.")
                 if 'orblibs_in_parallel' not in value:
-                    value['orblibs_in_parallel'] = True
+                    value['orblibs_in_parallel'] = False
                 logger.debug("... integrate orblibs in parallel: "
                              f"{value['orblibs_in_parallel']}.")
                 logger.debug(f'multiprocessing_settings: {tuple(value.keys())}')
@@ -897,13 +894,11 @@ class Configuration(object):
                 raise ValueError('System needs to have exactly one '
                                  'VisibleComponent object')
 
-        if sum(1 for i in self.system.cmp_list \
-               if issubclass(type(i), physys.DarkComponent)
-               and not isinstance(i, physys.Plummer)) > 1:
+        if len(self.system.get_all_dark_non_plummer_components()) > 1:
             self.logger.error('System must have zero or one DM Halo object')
             raise ValueError('System must have zero or one DM Halo object')
 
-        if not 1 < len(self.system.cmp_list) < 5:
+        if not 1 < len(self.system.cmp_list) < 4:
             self.logger.error('System needs to comprise exactly one Plummer, '
                               'one VisibleComponent, and zero or one DM Halo '
                               'object(s)')
@@ -943,12 +938,6 @@ class Configuration(object):
                                       'either GaussHermite or BayesLOSVD')
                     raise ValueError('VisibleComponent must have kinematics: '
                                      'either GaussHermite or BayesLOSVD')
-                n_pops = len(c.population_data)
-                if n_pops > 0 and ws_type == 'LegacyWeightSolver':
-                    txt = 'LegacyWeightSolver cannot be used with population '\
-                        'data - use weight-solver type NNLS.'
-                    self.logger.error(txt)
-                    raise ValueError(txt)
                 if c.symmetry != 'triax':
                     self.logger.error('Legacy mode: VisibleComponent must be '
                                       'triaxial')
@@ -988,6 +977,9 @@ class Configuration(object):
                              'not both')
 
         if ws_type == 'LegacyWeightSolver':
+            self.logger.warning('LegacyWeightSolver is DEPRECATED and will be '
+                                'removed in a future version of DYNAMITE. Use '
+                                'weight solver type NNLS instead if you can.')
             # check velocity histograms settings if LegacyWeightSolver is used.
             # (i) check all velocity histograms have center 0, (ii) force them
             # all to have equal widths and (odd) number of bins

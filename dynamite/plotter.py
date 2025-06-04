@@ -169,22 +169,28 @@ class Plotter():
                                                             model_id=model_id)
 
         dh = self.system.get_all_dark_non_plummer_components()
-        dh = dh[0]  # take the first as there should only be one of these
-        if type(dh) is physys.NFW:
-            val[f'c-{dh.name}'] = val[f'c-{dh.name}']
-            val[f'f-{dh.name}'] = val[f'f-{dh.name}']
-        elif type(dh) is physys.NFW_m200_c:
-            pass
-        elif type(dh) is physys.Hernquist:
-            val[f'rhoc-{dh.name}']= val[f'rhoc-{dh.name}']*scale_factor**2
-        elif type(dh) is physys.TriaxialCoredLogPotential:
-            val[f'Vc-{dh.name}'] = val[f'Vc-{dh.name}']*scale_factor
-        elif type(dh) is physys.GeneralisedNFW:
-            val[f'Mvir-{dh.name}'] = val[f'Mvir-{dh.name}']*scale_factor**2
-        else:
-            text = f'unknown dark halo type component'
-            self.logger.error(text)
-            raise ValueError(text)
+        if len(dh) > 1:
+            txt = 'Zero or one non-plummer dark component should be ' \
+                  f' present, not {len(dh)}.'
+            self.logger.error(txt)
+            raise ValueError(txt)
+        if len(dh) > 0:
+            dh = dh[0]  # take the first as there should only be one of these
+            if type(dh) is physys.NFW:
+                val[f'c-{dh.name}'] = val[f'c-{dh.name}']
+                val[f'f-{dh.name}'] = val[f'f-{dh.name}']
+            elif type(dh) is physys.NFW_m200_c:
+                pass
+            elif type(dh) is physys.Hernquist:
+                val[f'rhoc-{dh.name}']= val[f'rhoc-{dh.name}']*scale_factor**2
+            elif type(dh) is physys.TriaxialCoredLogPotential:
+                val[f'Vc-{dh.name}'] = val[f'Vc-{dh.name}']*scale_factor
+            elif type(dh) is physys.GeneralisedNFW:
+                val[f'Mvir-{dh.name}'] = val[f'Mvir-{dh.name}']*scale_factor**2
+            else:
+                text = f'unknown dark halo type component'
+                self.logger.error(text)
+                raise ValueError(text)
 
         # get the plummer component i.e. black hole
         bh = self.system.get_component_from_class(physys.Plummer)
@@ -250,7 +256,8 @@ class Plotter():
                 for k in range(nf - 1, -1, -1):
                     if val['chi2t'][k]/chlim<=3: #only significant chi2 values
 
-                        color = colormap(val['chi2t'][k]/chlim)
+                        norm = mpl.colors.Normalize(vmin=0., vmax=3)
+                        color = colormap(norm(val['chi2t'][k]/chlim))
                         # * 240) #colours the significant chi2
 
                         markersize = 15-3*(val['chi2t'][k]/(chlim))
@@ -1148,11 +1155,15 @@ class Plotter():
         stars = \
             self.system.get_component_from_class(physys.TriaxialVisibleComponent)
         dh = self.system.get_all_dark_non_plummer_components()
-        self.logger.debug('Checking number of non-plummer dark components')
-        error_msg = 'only one non-plummer dark component should be present'
-        assert len(dh)==1, error_msg
-        self.logger.debug('...checks ok.')
-        dh = dh[0]  # extract the one and only dm component
+        if len(dh) > 1:
+            txt = 'Zero or one non-plummer dark component should be ' \
+                  f' present, not {len(dh)}.'
+            self.logger.error(txt)
+            raise ValueError(txt)
+        if len(dh) > 0:
+            dh = dh[0]  # extract the one and only dm component
+        else:
+            dh = None
 
         val0 = deepcopy(self.all_models.table)
         arg = np.argsort(np.array(val0[which_chi2]))
@@ -1208,18 +1219,21 @@ class Plotter():
                                 sigobs_pot_pc=sigobs_pc, qobs_pot=mgeq,
                                 psi_off=psi_off, incl=incl_view)
 
-            dmR = val['f-dh'][i]
-            if isinstance(dh, physys.NFW):
-                dmconc = val['c-dh'][i]
-            elif isinstance(dh, physys.NFW_m200_c):
-                dmconc = dh.get_c200(system=self.system, parset=val[i])
+            if dh is not None:
+                dmR = val['f-dh'][i]
+                if isinstance(dh, physys.NFW):
+                    dmconc = val['c-dh'][i]
+                elif isinstance(dh, physys.NFW_m200_c):
+                    dmconc = dh.get_c200(system=self.system, parset=val[i])
+                else:
+                    raise ValueError(f'Unsupported dh halo type {type(dh)}')
+                #rhoc, rc = self.NFW_getpar(mstars=Mstarstot, cc=dmconc,
+                #                           dmfrac=dmR)[:2]
+                #mdm = self.NFW_enclosemass(rho=rhoc, Rs=rc, R=r_pc*parsec_km)
+                mdm = self.NFW_enclosemass(mstars=Mstarstot, cc=dmconc,
+                                        dmfrac=dmR, R=r_pc*parsec_km)
             else:
-                raise ValueError(f'Unsupported dh halo type {type(dh)}')
-            #rhoc, rc = self.NFW_getpar(mstars=Mstarstot, cc=dmconc,
-            #                           dmfrac=dmR)[:2]
-            #mdm = self.NFW_enclosemass(rho=rhoc, Rs=rc, R=r_pc*parsec_km)
-            mdm = self.NFW_enclosemass(mstars=Mstarstot, cc=dmconc,
-                                       dmfrac=dmR, R=r_pc*parsec_km)
+                mdm = 0.
 
             mbh = val['m-bh'][i]
 
@@ -1262,15 +1276,16 @@ class Plotter():
         ax.fill_between(R, np.min(mm,axis=1),
                         np.max(mm,axis=1),facecolor='k',alpha=0.1)
 
-        ax.plot(R,mass[:,0,0], '-', color='r', linewidth=2.0,
-                label='Mass-follows-Light')
-        ax.fill_between(R, np.min(mass[:,:,0],axis=1),
-                        np.max(mass[:,:,0],axis=1),facecolor='r',alpha=0.1)
+        if dh is not None:  # w/o Dark Matter, Total = Mass-follows-light
+            ax.plot(R,mass[:,0,0], '-', color='r', linewidth=2.0,
+                    label='Mass-follows-Light')
+            ax.fill_between(R, np.min(mass[:,:,0],axis=1),
+                            np.max(mass[:,:,0],axis=1),facecolor='r',alpha=0.1)
 
-        ax.plot(R,mass[:,0,1], '-', color='b', linewidth=2.0,
-                label='Dark Matter')
-        ax.fill_between(R, np.min(mass[:,:,1],axis=1),
-                        np.max(mass[:,:,1],axis=1),facecolor='b',alpha=0.1)
+            ax.plot(R,mass[:,0,1], '-', color='b', linewidth=2.0,
+                    label='Dark Matter')
+            ax.fill_between(R, np.min(mass[:,:,1],axis=1),
+                            np.max(mass[:,:,1],axis=1),facecolor='b',alpha=0.1)
 
         ax.legend(loc='upper left', fontsize=8)
         plt.tight_layout()
@@ -1710,8 +1725,6 @@ class Plotter():
         Solid lines and shaded areas represent the mean and standard
         deviation of the anisotropy of models having parameters in a
         confidence region around the minimum chisquare.
-
-        Currently, this method only works with the ``LegacyWeightSolver``.
 
         Parameters
         ----------
