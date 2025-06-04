@@ -101,9 +101,8 @@ class LegacyOrbitLibrary(OrbitLibrary):
                 stars = self.system.get_unique_triaxial_visible_component()
             # create the kinematics and populations input files for each
             # kinematic dataset and population dataset with own apertures
-            kin_pops = stars.kinematic_data
-            kin_pops += [p for p in stars.population_data if p.kin_aper is None]
-            for data_set in kin_pops:
+            pops = [p for p in stars.population_data if p.kin_aper is None]
+            for data_set in stars.kinematic_data + pops:
                 # copy aperture and bins files across
                 shutil.copyfile(self.in_dir + data_set.aperturefile,
                                 self.mod_dir + f'infil/{data_set.aperturefile}')
@@ -258,9 +257,9 @@ class LegacyOrbitLibrary(OrbitLibrary):
             f.write('#counterrotation_setupfile_version_1\n')
             f.write('infil/parameters_pot.in\n')
             if box:
-                f.write(f'datfil/beginbox.dat\n')
+                f.write('datfil/beginbox.dat\n')
             else:
-                f.write(f'datfil/begin.dat\n')
+                f.write('datfil/begin.dat\n')
             label = '[number of orbital periods to integrate]'
             line = f"{self.settings['orbital_periods']}{tab}{label}\n"
             f.write(line)
@@ -364,9 +363,9 @@ class LegacyOrbitLibrary(OrbitLibrary):
                 line = f'"infil/{pop_i.binfile}"{tab[:-3]}{label}\n'
                 f.write(line)
             if box:
-                f.write(f'datfil/orblibbox.dat\n')
+                f.write('datfil/orblibbox.dat\n')
             else:
-                f.write(f'datfil/orblib.dat\n')
+                f.write('datfil/orblib.dat\n')
             f.close()
         write_orblib_dot_in(box=False)
         write_orblib_dot_in(box=True)
