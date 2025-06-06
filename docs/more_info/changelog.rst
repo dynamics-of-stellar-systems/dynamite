@@ -4,6 +4,7 @@
 Change Log
 ****************
 
+- Bugfix: fixed a bug that prevented sensible kinematic maps colorbar limits if flux is zero in one or more bins
 - Improvement: more robust directory naming when failed models are present in the all_models table
 - Bugfix: don't crash with pops data when using ModelInnerIterator.
 - Bugfix: don't crash when continuing a run with just one valid model.

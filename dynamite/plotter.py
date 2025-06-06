@@ -848,10 +848,16 @@ class Plotter():
 
         # plot settings
 
-        minf = min(np.array(list(map(np.log10, flux[grid[s]] / max(flux)))))
-        maxf = max(np.array(list(map(np.log10, flux[grid[s]] / max(flux)))))
-        minfm = min(np.array(list(map(np.log10, fluxm[grid[s]] / max(fluxm)))))
-        maxfm = max(np.array(list(map(np.log10, fluxm[grid[s]] / max(fluxm)))))
+        # calculate log10 values, keep flux and fluxm for plotting residuals
+        flux_plot = flux / max(flux)
+        flux_plot[flux_plot==0] = np.nan  # deal with zero fluxes for log10
+        flux_plot = np.log10(flux_plot, where=flux_plot is not np.nan)
+        fluxm_plot = fluxm / max(fluxm)
+        fluxm_plot[fluxm_plot==0] = np.nan  # deal with zero fluxes for log10
+        fluxm_plot = np.log10(fluxm_plot, where=fluxm_plot is not np.nan)
+
+        minf, maxf = min(flux_plot), max(flux_plot)
+        minfm, maxfm = min(fluxm_plot), max(fluxm_plot)
         minsb = min(minf,minfm)
         maxsb = max(maxf,maxfm)
 
@@ -892,8 +898,7 @@ class Plotter():
 
         # PLOT THE REAL DATA
         ax1 = plt.subplot(3, n_col, (1 - 1) * n_col + 1)
-        c = np.array(list(map(np.log10, flux[grid[s]] / max(flux))))
-        display_pixels.display_pixels(x, y, c,
+        display_pixels.display_pixels(x, y, flux_plot[grid[s]],
                                       vmin=minsb, vmax=maxsb,
                                       **kw_display_pixels1)
         ax1.set_title('surface brightness (log)',fontsize=20, pad=20)
@@ -916,8 +921,7 @@ class Plotter():
 
         # PLOT THE MODEL DATA
         plt.subplot(3, n_col, (2 - 1) * n_col + 1)
-        c = np.array(list(map(np.log10, fluxm[grid[s]] / max(fluxm))))
-        display_pixels.display_pixels(x, y, c,
+        display_pixels.display_pixels(x, y, fluxm_plot[grid[s]],
                                       vmin=minsb, vmax=maxsb,
                                       **kw_display_pixels1)
         plt.subplot(3, n_col, (2 - 1) * n_col + 2)
