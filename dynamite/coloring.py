@@ -144,7 +144,9 @@ class Coloring:
         # build the input for vorbin
         if r_logscale:
             dr = (log_maxr - log_minr) / nr
-            input_bins_r = np.linspace(log_minr + dr / 2, log_maxr - dr / 2, num=nr)
+            input_bins_r = np.linspace(log_minr + dr / 2,
+                                       log_maxr - dr / 2,
+                                       num=nr)
         else:
             dr = (maxr - minr) / nr
             input_bins_r = np.linspace(minr + dr / 2, maxr - dr / 2, num=nr)

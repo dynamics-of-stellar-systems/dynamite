@@ -681,13 +681,14 @@ class Analysis:
         # and calculate flux, flux.shape = (n_bundles, n_aperture)
         if kin:
             if not hasattr(orblib, 'projected_masses'):
-                orblib.read_losvd_histograms()  # default kins=True, pops=False
+                orblib.read_losvd_histograms()  # default is pops=False
             flux = np.matmul(bundle_mapping, orblib.projected_masses[kin_set])
         elif not kin:
             # If kin is False, we need to read the projected masses binned for
             # the populations.
-            orblib.read_losvd_histograms(kins=False, pops=True)
-            flux = np.matmul(bundle_mapping, orblib.projected_masses[pop_set])
+            orblib.read_losvd_histograms(pops=True)
+            flux = np.matmul(bundle_mapping,
+                             orblib.pops_projected_masses[pop_set])
         flux_all = np.sum(flux, axis=0)
         n_bundles = bundle_mapping.shape[0]  # number of orbit bundles
         map_table = astropy.table.Table(
