@@ -722,7 +722,12 @@ class Analysis:
                 # divide aperture flux by number of pixels in aperture
                 # to get surface brightness in each pixel
                 flux = map_table[colname] / bin_mult
-                map_plotter(np.log10(flux / np.nanmax(flux)),
+                flux = flux / max(flux)
+                flux[flux==0] = np.nan  # deal with zero fluxes for log10
+                flux = np.log10(flux, where=flux is not np.nan)
+                map_plotter(flux,
+                            vmin=min(flux),
+                            vmax=max(flux),
                             label='surface brightness (log)',
                             colorbar=True,
                             cmap=cmr.get_sub_cmap('twilight_shifted',
@@ -822,8 +827,10 @@ class Analysis:
         if weights is None:
             _ = model.get_weights(orblib)
             weights = model.weights
-        # get losvd_histograms and projected masses:
-        orblib.read_losvd_histograms()
+        # get losvd_histograms and projected masses if necessary:
+        if not (hasattr(orblib, 'losvd_histograms')
+                and hasattr(orblib, 'projected_masses')):
+            orblib.read_losvd_histograms()
         # get all orbits' losvds; orbits_losvd.shape = n_orb,n_vbin,n_aperture
         orbits_losvd = orblib.losvd_histograms[kin_set].y[:,:,]
         # weighted sum of orbits_losvd; model_losvd.shape = 1,n_vbin,n_aperture
