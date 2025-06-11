@@ -149,7 +149,7 @@ orblib_settings:
     logrmax: 1.99123
     nI2: 5        # must be >= 4
     nI3: 4
-    dithering: 2
+    dithering: 1
     # sampling of grid recording the intrinsic moments, default: 10, 6, 6
     quad_nr: 10
     quad_nth: 6
