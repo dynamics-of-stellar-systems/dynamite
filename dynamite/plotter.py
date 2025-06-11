@@ -256,7 +256,8 @@ class Plotter():
                 for k in range(nf - 1, -1, -1):
                     if val['chi2t'][k]/chlim<=3: #only significant chi2 values
 
-                        color = colormap(val['chi2t'][k]/chlim)
+                        norm = mpl.colors.Normalize(vmin=0., vmax=3)
+                        color = colormap(norm(val['chi2t'][k]/chlim))
                         # * 240) #colours the significant chi2
 
                         markersize = 15-3*(val['chi2t'][k]/(chlim))
@@ -1725,8 +1726,6 @@ class Plotter():
         Solid lines and shaded areas represent the mean and standard
         deviation of the anisotropy of models having parameters in a
         confidence region around the minimum chisquare.
-
-        Currently, this method only works with the ``LegacyWeightSolver``.
 
         Parameters
         ----------
