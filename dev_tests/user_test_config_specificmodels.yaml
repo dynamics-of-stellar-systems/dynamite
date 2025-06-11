@@ -23,7 +23,7 @@ system_components:
                     hi: 10.0
                     step: 1.
                     minstep: 0.
-                    fixed_values:
+                    specific_values:
                         - 5.0
                         - 5.5
                 fixed: True
@@ -32,7 +32,7 @@ system_components:
                 LaTeX: "$\\log(M_\\mathrm{BH}/M_\\odot)$"
             a: # scale length
                 par_generator_settings:
-                    fixed_values:
+                    specific_values:
                         - 0.001
                         - 0.002
                 fixed: True
@@ -60,6 +60,9 @@ system_components:
                     hi: 2.0
                     step: 0.5
                     minstep: 0.1
+                    specific_values:
+                        - 1.0
+                        - 1.5
                 logarithmic: True
                 fixed: True
                 value: 1.0
@@ -162,10 +165,10 @@ orblib_settings:
     random_seed: 4242 # integer; any value <= 0 results in stochastic seed
 
 weight_solver_settings:
-    type: "LegacyWeightSolver"
-    nnls_solver: 1
-    # type: "NNLS"
-    # nnls_solver: 'scipy'
+    # type: "LegacyWeightSolver"
+    # nnls_solver: 1
+    type: "NNLS"
+    nnls_solver: 'scipy'
     CRcut: True
     regularisation: 0
     number_GH: 4
