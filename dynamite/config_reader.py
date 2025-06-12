@@ -485,7 +485,7 @@ class Configuration(object):
             raise ValueError(text)
         logger.info('System assembled')
         self.validate()
-        logger.debug(f'System: {self.system}')
+        # logger.debug(f'System: {self.system}')  # logged as part of parspace
         logger.debug(f'Settings: {self.settings}')
         logger.info('Configuration validated')
 
@@ -938,6 +938,11 @@ class Configuration(object):
                                       'either GaussHermite or BayesLOSVD')
                     raise ValueError('VisibleComponent must have kinematics: '
                                      'either GaussHermite or BayesLOSVD')
+                if c.population_data and len(c.population_data) > 1:
+                    txt = 'VisibleComponent can either have 0 or 1 set(s) ' \
+                          f'of population data, not {len(c.population_data)}.'
+                    self.logger.error(txt)
+                    raise ValueError(txt)
                 if c.symmetry != 'triax':
                     self.logger.error('Legacy mode: VisibleComponent must be '
                                       'triaxial')
