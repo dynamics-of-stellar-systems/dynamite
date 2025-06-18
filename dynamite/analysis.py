@@ -570,17 +570,18 @@ class Analysis:
         self.model = model
         self.kin_set = kin_set
 
-    def get_flux_for_orbit_bundles(self,
-                                            model=None,
-                                            kin_set=None,
-                                            pop_set=None,
-                                            weights=None,
-                                            bundle_mapping=None,
-                                            flux_as='table',
-                                            sb_maps=False,
-                                            figtype='.png'):
+    def get_orbit_bundle_maps(self,
+                              model=None,
+                              kin_set=None,
+                              pop_set=None,
+                              weights=None,
+                              bundle_mapping=None,
+                              normalize=False,
+                              flux_as='table',
+                              sb_maps=False,
+                              figtype='.png'):
         """
-        Generates an astropy table that holds the weighted contribution of the
+        Generates an astropy table that holds the weight-contribution of the
         orbit bundles defined in bundle_mapping to the model's projected mass
         in each aperture. The spatial binning of the apertures is defined in
         either a Kinematics or a Populations object.
@@ -611,13 +612,18 @@ class Analysis:
             because - depending on the ``dithering`` configuration setting -
             each orbit may in fact represent a family of similar orbits (not
             to be mistaken for the bundles in the sense of this method).
+        normalize : bool, optional
+            If True, the fluxes in the returned table are normalized to the
+            total flux in each aperture, i.e., the sum of all bundles' fluxes
+            in each aperture is 1. If False, the fluxes are the raw
+            contributions of the orbit bundles' weights. The default is False.
         flux_as : str, optional
             If 'table', return ``map_table``, if 'file', write the table to
             the model directory in ascii.ecsv format and return its full path
             ``f_name``, if 'both', write the table to disk and return a tuple
             ``(gh_table, f_name)``. The default is 'table'.
         sb_maps : bool, optional
-            If True, the method will also create surface brightness maps
+            If True, the method will also plot surface brightness maps
             for the orbit bundles and all orbits. The default is False.
         figtype : str, optional
             Determines the file format and extension to use when saving the
@@ -630,17 +636,29 @@ class Analysis:
 
         Returns
         -------
-        map_table : astropy table (if flux_as='table')
+        map_table : if flux_as='table', sb_maps=False
+        (map_table, figure) : if flux_as='table', sb_maps=True
+        f_name : if flux_as='file', sb_maps=False
+        (f_name, figure) : if flux_as='file', sb_maps=True
+        (map_table, f_name) : if flux_as='both', sb_maps=False
+        (map_table, f_name, figure) : if flux_as='both', sb_maps=True
+
+        where
+
+        map_table : astropy table
             The astropy table holding the model's weighted contribution of the
             orbit bundles defined in bundle_mapping to the model's projected
             mass in each aperture. The table columns are flux_000, ...,
             flux_n_b, flux_all, where flux_xxx is the weighted contribution of
             orbit bundle xxx, flux_all the weighted contribution of all orbit
-            bundles, and n_b is the number of orbit bundles.
-        f_name : str (if flux_as='file')
+            bundles, and n_b is the number of orbit bundles. If normalized is
+            True, the fluxes are normalized to the total flux in each aperture,
+            i.e., the sum of all bundles' fluxes in each aperture is 1.
+        f_name : str
             The file name (full path) of the astropy table holding the model's
             gh kinematics.
-        (gh_table, f_name) : tuple  (if flux_as='both')
+        figure : matplotlib figure
+            The matplotlib figure holding the orbit bundle maps.
 
         """
         if bundle_mapping is None:
@@ -690,6 +708,12 @@ class Analysis:
             flux = np.matmul(bundle_mapping,
                              orblib.pops_projected_masses[pop_set])
         flux_all = np.sum(flux, axis=0)
+        if normalize:
+            # Normalize fluxes to total flux in each aperture,
+            # deal with zero flux apertures
+            flux = np.divide(flux,
+                             flux_all[np.newaxis, :],
+                             where=flux_all[np.newaxis, :] != 0)
         n_bundles = bundle_mapping.shape[0]  # number of orbit bundles
         map_table = astropy.table.Table(
             np.hstack((flux.T, flux_all[:,np.newaxis])),
@@ -740,20 +764,19 @@ class Analysis:
             f_name = self.config.settings.io_settings['plot_directory'] \
                      + f_name \
                      + figtype
-            plt.savefig(f_name)
-            self.logger.info(f'Surface brightness maps written to {f_name}.')
-            plt.close()
+            fig.savefig(f_name)
+            self.logger.info(f'Orbit bundle maps written to {f_name}.')
         # Write the flux table to disk or return it
         if flux_as == 'table':
-            return map_table
+            return (map_table, fig) if sb_maps else map_table
         f_name = f'{model.directory}orbit_bundle_flux_{kinpop_name}.ecsv'
         map_table.write(f_name, format='ascii.ecsv', overwrite=True)
         self.logger.info('Flux for orbit bundles binned for ' +
                          ('kinematics ' if kin else 'populations ') +
                          f'{kinpop_name} written to {f_name}.')
         if flux_as == 'file':
-            return f_name
-        return (map_table, f_name)
+            return (f_name, fig) if sb_maps else f_name
+        return (map_table, f_name, fig) if sb_maps else (map_table, f_name)
 
 
     def get_gh_model_kinematic_maps(self,
