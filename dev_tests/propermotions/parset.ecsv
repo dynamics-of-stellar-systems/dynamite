@@ -1,0 +1,12 @@
+# %ECSV 1.0
+# ---
+# datatype:
+# - {name: m-bh, datatype: float64}
+# - {name: a-bh, datatype: float64}
+# - {name: q-stars, datatype: float64}
+# - {name: p-stars, datatype: float64}
+# - {name: u-stars, datatype: float64}
+# - {name: ml, datatype: float64}
+# schema: astropy-2.0
+m-bh a-bh q-stars p-stars u-stars ml
+4299916.281141509 0.01 0.29 0.94 0.99 1.15
