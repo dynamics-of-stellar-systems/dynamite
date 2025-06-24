@@ -84,7 +84,7 @@ The Multi Gaussian Expansion (MGE) in ``mge.ecsv`` describes the galaxy's 2D sur
 It is also possible to provide two separate MGE's for the surface-brightness and surface mass-density (see the :ref:`observed_data` section of the Configuration page for details.
 
 Two types of kinematic are supported: tables of Gauss Hermite expansion coefficients, or histogrammed LOSVDs output by `BayesLOSVD <https://github.com/jfalconbarroso/BAYES-LOSVD>`_.
-These must be in the form of `Astropy ECSV files <https://docs.astropy.org/en/stable/api/astropy.io.ascii.Ecsv.html>`_ e.g., ``kinematics.ecsv``. The files ``aperture.dat`` and ``bins.dat`` contain information about the spatial binning of your kinematic data. Convenience functions are provided for creating converting some standard kinematic data files, and examples demonstrating these can be found in the tutorials.
+These must be in the form of `Astropy ECSV files <https://docs.astropy.org/en/stable/api/astropy.io.ascii.Ecsv.html>`_ e.g., ``kinematics.ecsv``. The files ``aperture.dat`` and ``bins.dat`` contain information about the spatial binning of your kinematic data. Convenience functions are provided for creating and converting some standard kinematic data files, and examples demonstrating these can be found in the tutorials.
 Note that the kinematics need to be centered at the center of the MGE.
 
 The file ``aperture.dat`` file contains the spatial extent in arcseconds, the angle (in degrees ) ``90 - position_angle``, and size of the grid in pixels::
