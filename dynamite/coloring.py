@@ -3,6 +3,10 @@ import logging
 import matplotlib.pyplot as plt
 import numpy as np
 
+import pymc as pm
+
+import cmasher
+
 from vorbin.voronoi_2d_binning import voronoi_2d_binning
 
 
@@ -248,3 +252,115 @@ class Coloring:
         # vor_bundle_mapping[binning[:]] += orb_frac[:]
 
         return vor_bundle_mapping, phase_space_binning
+
+    def fit_normal(self,
+                   prior,
+                   flux_data_norm,
+                   age,
+                   sample):
+    # prior_t['mu'], prior_t['sigma'], prior_t['lower'], prior_t['upper']
+    # sample['n_draws'], sample['n_tune'], sample['advi_init']
+    # returns the InferenceData object containing the samples collected,
+    # along with other useful attributes like statistics of the sampling run
+    # and a copy of the observed data
+        with pm.Model() as model_t:
+            t_k = pm.TruncatedNormal('t_k',
+                                     mu=prior['mu'],
+                                     sigma=prior['sigma'],
+                                     lower=prior['lower'],
+                                     upper=prior['upper'],
+                                     shape=prior['mu'].size)  # (11)
+            student_t_sigma = pm.HalfCauchy('student_t_sigma', 5)
+            student_t_nu = pm.Exponential('student_t_nu', 1/30)
+            student_t_mu = pm.math.dot(flux_data_norm, t_k)
+            t_obs = pm.StudentT('t_obs',
+                                mu=student_t_mu,
+                                sigma=student_t_sigma,
+                                nu=student_t_nu,
+                                observed=age)
+            trace_t = pm.sample(draws=sample['n_draws'],
+                                tune=sample['n_tune'],
+                                step=None,
+                                init='advi',
+                                n_init=sample['advi_init'])
+        return model_t, trace_t
+
+    def fit_lognormal(self,
+                      prior,
+                      flux_data_norm,
+                      metallicity,
+                      sample):
+        with pm.Model() as model_z:
+            LogNormalDist = pm.LogNormal.dist(mu=prior['mu'],
+                                              sigma=prior['sigma'],
+                                              shape=prior['mu'].size)
+            z_k = pm.Truncated(name="z_k",
+                               dist=LogNormalDist,
+                               lower=prior['lower'],
+                               upper=prior['upper'],
+                               shape=prior['mu'].size)  # (16)
+            student_t_sigma = pm.HalfCauchy('student_t_sigma', 5)
+            student_t_nu = pm.Exponential('student_t_nu', 1/30)
+            student_t_mu = pm.math.dot(flux_data_norm, z_k)
+            z_obs = pm.StudentT('z_obs',
+                                mu=student_t_mu,
+                                sigma=student_t_sigma,
+                                nu=student_t_nu,
+                                observed=metallicity)
+            trace_z = pm.sample(draws=sample['n_draws'],
+                                tune=sample['n_tune'],
+                                step=None,
+                                init='advi',
+                                n_init=sample['advi_init'])
+        return model_z, trace_z
+
+    def color_maps(self, model_data=None, flux_data_rel=None):
+        if model_data is None:
+            model_data = {}
+        n_models = len(model_data)
+        stars = self.config.system.get_unique_triaxial_visible_component()
+        pops = stars.population_data[0]
+        age, dage, met, dmet = [pops.get_data()[i]
+                                for i in ('age', 'dage', 'met', 'dmet')]
+        map_plotter = pops.get_map_plotter()
+        n_cols = 4
+        n_rows = 1 + n_models
+        fig = plt.figure(figsize=(20, 2 * n_rows))
+        fig.subplots_adjust(wspace=0.5)
+        col_min = [min(a) for a in (age, dage, met, dmet)]
+        col_max = [max(a) for a in (age, dage, met, dmet)]
+        for i_plot, col in enumerate((age, dage, met, dmet)):
+            ax = plt.subplot(n_rows, n_cols, i_plot + 1)
+            map_plotter(col,
+                        vmin=col_min[i_plot % n_cols],
+                        vmax=col_max[i_plot % n_cols],
+                        # label=col.name,
+                        colorbar=True,
+                        cmap=cmasher.get_sub_cmap('twilight_shifted',
+                                                  0.05,
+                                                  0.6))
+            ax.set_title(f'{col.name}')
+            if i_plot + 1 > (n_rows - 1) * (n_cols - 1):  # last row
+                ax.set_xlabel('x [arcsec]')
+            if i_plot % n_cols == 0:  # first column
+                ax.set_ylabel('Observed\ny [arcsec]')
+
+        for m_name, m_data in model_data.items():
+            for col in m_data:
+                i_plot += 1
+                if col is None:
+                    continue
+                ax = plt.subplot(n_rows, n_cols, i_plot + 1)
+                col_data_aperture = np.dot(flux_data_rel, col)
+                map_plotter(col_data_aperture,
+                            vmin=col_min[i_plot % n_cols],
+                            vmax=col_max[i_plot % n_cols],
+                            colorbar=True,
+                            cmap=cmasher.get_sub_cmap('twilight_shifted',
+                                                      0.05,
+                                                      0.6))
+                if i_plot + 1 > (n_rows - 1) * (n_cols - 1):  # last row
+                    ax.set_xlabel('x [arcsec]')
+                if i_plot % n_cols == 0:  # first column
+                    ax.set_ylabel(f'{m_name}\ny [arcsec]')
+        return fig
