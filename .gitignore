@@ -65,3 +65,6 @@ ran1_nr
 rantest
 rantest.f90-e
 *.log
+dev_tests/.ipynb_checkpoints
+dev_tests/FCC167/output
+dev_tests/propermotions
