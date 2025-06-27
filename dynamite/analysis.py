@@ -643,6 +643,12 @@ class Analysis:
         (map_table, f_name) : if flux_as='both', sb_maps=False
         (map_table, f_name, figure) : if flux_as='both', sb_maps=True
 
+                         map_table f_name figure
+        flux_as='table'     X
+        flux_as='file'              X
+        flux_as='both'      X       X
+        sb_maps=True                        X
+
         where
 
         map_table : astropy table
@@ -686,8 +692,8 @@ class Analysis:
             kinpop_name = stars.population_data[pop_set].name
         else:
             text = f'Invalid {kin_set=}, {pop_set=}. ' \
-                   'Choose (kin_set,pop_set) = ' \
-                   '(None,None), (None,<int>), or (<int>,None).'
+                   'Choose (kin_set, pop_set) = ' \
+                   '(None, None), (None, <int>), or (<int>, None).'
             self.logger.error(text)
             raise ValueError(text)
         self.logger.info('Getting model projected masses.')
@@ -696,12 +702,12 @@ class Analysis:
             _ = model.get_weights(orblib)
             weights = model.weights
         # Get projected masses if necessary
-        # and calculate flux, flux.shape = (n_bundles, n_aperture)
+        # and calculate flux. flux.shape = (n_bundles, n_aperture)
         if kin:
             if not hasattr(orblib, 'projected_masses'):
                 orblib.read_losvd_histograms()  # default is pops=False
             flux = np.matmul(bundle_mapping, orblib.projected_masses[kin_set])
-        elif not kin:
+        else:
             # If kin is False, we need to read the projected masses binned for
             # the populations.
             orblib.read_losvd_histograms(pops=True)

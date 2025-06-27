@@ -318,6 +318,8 @@ class Coloring:
         if model_data is None:
             model_data = {}
         n_models = len(model_data)
+
+        # Plot the observed data in the first row
         stars = self.config.system.get_unique_triaxial_visible_component()
         pops = stars.population_data[0]
         age, dage, met, dmet = [pops.get_data()[i]
@@ -345,16 +347,25 @@ class Coloring:
             if i_plot % n_cols == 0:  # first column
                 ax.set_ylabel('Observed\ny [arcsec]')
 
+        # Plot the model data in the remaining rows
         for m_name, m_data in model_data.items():
-            for col in m_data:
+            for i_col, col in enumerate(m_data):  # even columns are data,
+                                                  # odd columns are errors
                 i_plot += 1
                 if col is None:
                     continue
                 ax = plt.subplot(n_rows, n_cols, i_plot + 1)
-                col_data_aperture = np.dot(flux_data_rel, col)
+                if i_col % 2 == 0:  # data
+                    col_data_aperture = np.dot(flux_data_rel, col)
+                    vmin = col_min[i_plot % n_cols]
+                    vmax = col_max[i_plot % n_cols]
+                else:  # error
+                    col_data_aperture = np.dot(flux_data_rel, np.square(col))
+                    col_data_aperture = np.sqrt(col_data_aperture)
+                    vmin = vmax = None  # no limits for errors
                 map_plotter(col_data_aperture,
-                            vmin=col_min[i_plot % n_cols],
-                            vmax=col_max[i_plot % n_cols],
+                            vmin=vmin,
+                            vmax=vmax,
                             colorbar=True,
                             cmap=cmasher.get_sub_cmap('twilight_shifted',
                                                       0.05,
