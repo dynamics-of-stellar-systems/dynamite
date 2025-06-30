@@ -661,8 +661,8 @@ class Analysis:
             True, the fluxes are normalized to the total flux in each aperture,
             i.e., the sum of all bundles' fluxes in each aperture is 1.
         f_name : str
-            The file name (full path) of the astropy table holding the model's
-            gh kinematics.
+            The file name (full path) of the astropy table holding the data
+            in map_table.
         figure : matplotlib figure
             The matplotlib figure holding the orbit bundle maps.
 

@@ -1,8 +1,10 @@
 
 import logging
+import os
 import matplotlib.pyplot as plt
 import numpy as np
 
+import yaml
 import pymc as pm
 
 import cmasher
@@ -35,12 +37,14 @@ class Coloring:
                         make_diagnostic_plots=False,
                         extra_diagnostic_output=False,
                         cvt=False,
-                        wvt=False):
+                        wvt=False,
+                        use_cache=True):
         """
         Perform Voronoi binning of orbits in the radius-circularity phase
         space. The goal is to group the "original" n_orbits orbit bundles into
         fewer n_bundle "Voronoi" bundles with each of these Voronoi bundles
-        accounting for a weight of at least ``vor_weight``.
+        accounting for a weight of at least ``vor_weight``. The resulting
+        orbit bundle mapping is returned and written to the model directory.
         This method uses the ``vorbin`` package by Michele Cappellari
         (M. Cappellari, Y. Copin, 2003, MNRAS 342, 345).
 
@@ -90,6 +94,11 @@ class Coloring:
             WVT (Weighted Voronoi Tessellation) algorithm (Diehl & Statler
             2006, MNRAS, 368, 497). For details, refer to the ``vorbin``
             documentation. The default is ``False``.
+        use_cache : bool, optional
+            If ``True``, the method will use cached results if available.
+            If the Voronoi binning has already been performed, the results
+            will be loaded from the cache in the model directory instead of
+            recalculating them. The default is ``True``.
 
         Returns
         -------
@@ -109,9 +118,42 @@ class Coloring:
             Voronoi bin numbers for each input bin
 
         """
+        # save parameters relevant for caching
+        params = dict(locals())
+        params.pop('self', None)  # remove self from the parameters
+        params.pop('model', None)  # remove model from the parameters
+        params['code_version'] = '0.1'  # version of this method
+        params['f_name'] = f_name = None
         if model is None:
             best_model_idx = self.config.all_models.get_best_n_models_idx(1)[0]
             model = self.config.all_models.get_model_from_row(best_model_idx)
+        f_metadata = model.directory + 'voronoi_orbit_bundles.yaml'
+        bundle_metadata = None
+
+        if use_cache:
+            try:
+                with open(f_metadata, 'r') as f:
+                    bundle_metadata = yaml.safe_load(f)
+                self.logger.info('Voronoi binning metadata read from '
+                                f'{f_metadata}.')
+            except FileNotFoundError:
+                bundle_metadata = []
+                self.logger.info('No Voronoi binning metadata found.')
+            for dat in bundle_metadata:
+                if all(dat[k] == params[k] for k in params
+                       if k not in ['code_version', 'f_name']):
+                    f_name = dat['f_name']
+                    self.logger.info('Reading Voronoi orbit bundle data from '
+                        f'existing file {model.directory}{f_name}.')
+                    self.logger.debug(f'Existing metadata: {dat}.')
+                    break
+            if f_name is not None:  # existing Voronoi binning data found
+                data = np.load(model.directory + f_name)
+                vor_bundle_mapping = data['vor_bundle_mapping']
+                phase_space_binning = \
+                    dict((iom, data[iom]) for iom in ('in', 'out', 'map'))
+                return vor_bundle_mapping, phase_space_binning  ############
+
         orblib = model.get_orblib()
         _ = model.get_weights(orblib)
         weights = model.weights
@@ -232,7 +274,7 @@ class Coloring:
             plt.ylabel('Circularity $\\lambda_z$')
             plt.colorbar(label='Voronoi bin id')
             plt.savefig(f'{self.config.settings.io_settings["plot_directory"]}'
-                        'coloring_voronoi_binning.png')
+                        'voronoi_orbit_bundles.png')
 
         # map "original" orbit bundles to Voronoi bundles
         # calculate weighted orbit fractions in the input bins: "flatten"
@@ -250,6 +292,46 @@ class Coloring:
         for i in range(orb_frac.shape[0]):  # collect weighted orbit fractions
             vor_bundle_mapping[binning[i]] += orb_frac[i]
         # vor_bundle_mapping[binning[:]] += orb_frac[:]
+
+        # save the Voronoi binning results to the model directory
+        # Voronoi binning metadata already exists? -> use that filename
+        if bundle_metadata is None:  # otherwise, it has been read already
+            try:
+                with open(f_metadata, 'r') as f:
+                    bundle_metadata = yaml.safe_load(f)
+                self.logger.info('Voronoi binning metadata read from '
+                                f'{f_metadata}.')
+            except FileNotFoundError:
+                bundle_metadata = []
+                self.logger.info('No Voronoi binning metadata exists.')
+        for dat in bundle_metadata:
+            if all(dat[k] == params[k] for k in params
+                   if k not in ['code_version', 'f_name']):
+                self.logger.info('Voronoi binning metadata exists, will '
+                                 'overwrite bundle data.')
+                self.logger.debug(f'Existing metadata: {dat}.')
+                f_name = dat['f_name']
+                break
+        else:
+            # no existing metadata found, create anew
+            idx = len(bundle_metadata)
+            while True:
+                f_name = f'voronoi_orbit_bundles_{idx:03d}.npz'
+                if not os.path.isfile(model.directory + f_name):
+                    break
+                idx += 1
+            params['f_name'] = f_name
+            self.logger.debug(f'Creating metadata: {params}.')
+            bundle_metadata.append(params)
+            with open(f_metadata, 'w') as f:
+                yaml.dump(bundle_metadata, f)
+            self.logger.info('Voronoi binning metadata saved to '
+                             f'{f_metadata}.')
+        np.savez(model.directory + f_name,
+                 vor_bundle_mapping=vor_bundle_mapping,
+                 **phase_space_binning)
+        self.logger.info('Voronoi orbit bundle mapping saved to '
+                         f'{model.directory + f_name}.')
 
         return vor_bundle_mapping, phase_space_binning
 

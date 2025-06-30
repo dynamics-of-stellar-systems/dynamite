@@ -907,7 +907,7 @@ class Model(object):
         else:
             try:
                 f_i = model_yaml_files.index(self.directory +
-                                             self.config.config_file_name)
+                    os.path.basename(self.config.config_file_name))
             except ValueError:
                 self.logger.warning('More than one .yaml file found in '
                                     f'{self.directory}. No file name matches '
