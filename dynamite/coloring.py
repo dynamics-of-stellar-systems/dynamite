@@ -342,7 +342,7 @@ class Coloring:
                                                   0.05,
                                                   0.6))
             ax.set_title(f'{col.name}')
-            if i_plot + 1 > (n_rows - 1) * (n_cols - 1):  # last row
+            if i_plot + 1 > (n_rows - 1) * n_cols:  # last row
                 ax.set_xlabel('x [arcsec]')
             if i_plot % n_cols == 0:  # first column
                 ax.set_ylabel('Observed\ny [arcsec]')
@@ -370,7 +370,7 @@ class Coloring:
                             cmap=cmasher.get_sub_cmap('twilight_shifted',
                                                       0.05,
                                                       0.6))
-                if i_plot + 1 > (n_rows - 1) * (n_cols - 1):  # last row
+                if i_plot + 1 > (n_rows - 1) * n_cols:  # last row
                     ax.set_xlabel('x [arcsec]')
                 if i_plot % n_cols == 0:  # first column
                     ax.set_ylabel(f'{m_name}\ny [arcsec]')
