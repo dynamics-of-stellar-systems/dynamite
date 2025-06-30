@@ -335,66 +335,47 @@ class Coloring:
 
         return vor_bundle_mapping, phase_space_binning
 
-    def fit_normal(self,
-                   prior,
-                   flux_data_norm,
-                   age,
-                   sample):
-    # prior_t['mu'], prior_t['sigma'], prior_t['lower'], prior_t['upper']
-    # sample['n_draws'], sample['n_tune'], sample['advi_init']
-    # returns the InferenceData object containing the samples collected,
-    # along with other useful attributes like statistics of the sampling run
-    # and a copy of the observed data
-        with pm.Model() as model_t:
-            t_k = pm.TruncatedNormal('t_k',
-                                     mu=prior['mu'],
-                                     sigma=prior['sigma'],
-                                     lower=prior['lower'],
-                                     upper=prior['upper'],
-                                     shape=prior['mu'].size)  # (11)
+    def fit_bayesian(self,
+                     prior_dist,
+                     prior_par,
+                     flux_data_norm,
+                     obs_data,
+                     sample):
+        with pm.Model() as model:
+            if prior_dist == 'normal':  # truncated normal distribution
+                qty = pm.TruncatedNormal(name='qty',
+                                         mu=prior_par['mu'],
+                                         sigma=prior_par['sigma'],
+                                         lower=prior_par['lower'],
+                                         upper=prior_par['upper'],
+                                         shape=prior_par['mu'].size)
+            elif prior_dist == 'lognormal':  # truncated lognormal distribution
+                LogNormalDist = pm.LogNormal.dist(mu=prior_par['mu'],
+                                                  sigma=prior_par['sigma'],
+                                                  shape=prior_par['mu'].size)
+                qty = pm.Truncated(name='qty',
+                                   dist=LogNormalDist,
+                                   lower=prior_par['lower'],
+                                   upper=prior_par['upper'],
+                                   shape=prior_par['mu'].size)
+            else:
+                txt = f'Prior distribution {prior_dist} not implemented.'
+                self.logger.error(txt)
+                raise NotImplementedError(txt)
             student_t_sigma = pm.HalfCauchy('student_t_sigma', 5)
             student_t_nu = pm.Exponential('student_t_nu', 1/30)
-            student_t_mu = pm.math.dot(flux_data_norm, t_k)
-            t_obs = pm.StudentT('t_obs',
-                                mu=student_t_mu,
-                                sigma=student_t_sigma,
-                                nu=student_t_nu,
-                                observed=age)
-            trace_t = pm.sample(draws=sample['n_draws'],
-                                tune=sample['n_tune'],
-                                step=None,
-                                init='advi',
-                                n_init=sample['advi_init'])
-        return model_t, trace_t
-
-    def fit_lognormal(self,
-                      prior,
-                      flux_data_norm,
-                      metallicity,
-                      sample):
-        with pm.Model() as model_z:
-            LogNormalDist = pm.LogNormal.dist(mu=prior['mu'],
-                                              sigma=prior['sigma'],
-                                              shape=prior['mu'].size)
-            z_k = pm.Truncated(name="z_k",
-                               dist=LogNormalDist,
-                               lower=prior['lower'],
-                               upper=prior['upper'],
-                               shape=prior['mu'].size)  # (16)
-            student_t_sigma = pm.HalfCauchy('student_t_sigma', 5)
-            student_t_nu = pm.Exponential('student_t_nu', 1/30)
-            student_t_mu = pm.math.dot(flux_data_norm, z_k)
-            z_obs = pm.StudentT('z_obs',
-                                mu=student_t_mu,
-                                sigma=student_t_sigma,
-                                nu=student_t_nu,
-                                observed=metallicity)
-            trace_z = pm.sample(draws=sample['n_draws'],
-                                tune=sample['n_tune'],
-                                step=None,
-                                init='advi',
-                                n_init=sample['advi_init'])
-        return model_z, trace_z
+            student_t_mu = pm.math.dot(flux_data_norm, qty)
+            obs = pm.StudentT('obs',
+                              mu=student_t_mu,
+                              sigma=student_t_sigma,
+                              nu=student_t_nu,
+                              observed=obs_data)
+            trace = pm.sample(draws=sample['n_draws'],
+                              tune=sample['n_tune'],
+                              step=None,
+                              init='advi',
+                              n_init=sample['advi_init'])
+            return model, trace
 
     def color_maps(self, model_data=None, flux_data_rel=None):
         if model_data is None:
