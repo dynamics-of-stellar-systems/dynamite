@@ -5,6 +5,7 @@ Change Log
 ****************
 
 - Improvement: Changed the default BayesLOSVD histogram width and number of velocity bins to be consistent with the data (no oversampling by default).
+- Improvement: the orbit_plot now allows custom orbit cuts via the ocut parameter (same behavior as in the Decomposition class)
 - Bugfix: fixed a crash of the SpecificModels parameter generator with certain specific value lists.
 - Improvement: more robust directory naming when failed models are present in the all_models table
 - Bugfix: don't crash with pops data when using ModelInnerIterator.

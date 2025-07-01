@@ -1301,7 +1301,11 @@ class Plotter():
 ######## Routines from schw_orbit.py, necessary for orbit_plot ##############
 #############################################################################
 
-    def orbit_plot(self, model=None, Rmax_arcs=None, figtype=None):
+    def orbit_plot(self,
+                   model=None,
+                   Rmax_arcs=None,
+                   ocut=(0.8, 0.25, -0.25, -0.8),
+                   figtype=None):
         """
         Generates an orbit plot for the selected model
 
@@ -1319,8 +1323,19 @@ class Plotter():
             file's parameter settings is used to determine which chisquare
             to consider. The default is None.
         Rmax_arcs : numerical value
-             upper radial limit for orbit selection, in arcsec i.e only orbits
-             extending up to Rmax_arcs are plotted
+            upper radial limit for orbit selection, in arcsec i.e only orbits
+            extending up to Rmax_arcs are plotted
+        ocut : iterable of numerical values, optional
+            The orbit cuts in lambda_z. The plot will include horizontal
+            dashed lines at the lambda_z levels in ocut.
+            Per default, ocut will have four levels (0.8, 0.25, -0.25, -0.8),
+            interpreted as (lim_cold, lim_warm, lim_hot, lim_cr_warm),
+            decomposing the plot into five regions:
+            cold (lambda_z > lim_cold>),
+            warm (lim_cold >= lambda_z > lim_warm),
+            hot (lim_warm >= lambda_z > lim_hot),
+            counter-rotating warm (lim_hot >= lambda_z > lim_cr_warm),
+            and counter-rotating cold (lim_cr_warm >= lambda_z) orbits.
         figtype : STR, optional
             Determines the file extension to use when saving the figure.
             If None, the default setting is used ('.png').
@@ -1341,9 +1356,11 @@ class Plotter():
             figtype = '.png'
 
         if Rmax_arcs is None:
-            text = f'Rmax_arcs must be a number, but it is {Rmax_arcs}'
+            text = 'Rmax_arcs is a mandatory argument and must be a number.'
             self.logger.error(text)
             raise ValueError(text)
+
+        self.logger.debug(f'Orbit plot parameters: {ocut=}, {Rmax_arcs=}')
 
         if model is None:
             which_chi2 = \
@@ -1451,14 +1468,16 @@ class Plotter():
         ax.set_xlabel(r'$r$ [arcsec]', fontsize=9)
         ax.set_ylabel(r'Circularity $\lambda_{z}$', fontsize=9)
 
-        fig.colorbar(cax, orientation='vertical', pad=0.1)
+        cb = fig.colorbar(cax, orientation='vertical', pad=0.05)
+        cb.set_label('Relative orbit density', labelpad=10)
 
-        ax.plot(imgxrange, np.array([1,1])*0.80, '--', color='black',
-                 linewidth=1)
-        ax.plot(imgxrange, np.array([1,1])*0.25, '--', color='black',
-                 linewidth=1)
-        ax.plot(imgxrange, np.array([1,1])*(-0.25), '--', color='black',
-                 linewidth=1)
+        for cut in ocut:
+            ax.plot(imgxrange,
+                    np.array([1,1])*cut,
+                    '--',
+                    color='black',
+                    linewidth=1)
+
         plt.tight_layout()
         plt.savefig(filename5)
 

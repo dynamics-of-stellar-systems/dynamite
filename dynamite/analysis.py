@@ -37,7 +37,7 @@ class Decomposition:
         The value of this parameter is the index of the data
         set (e.g. kin_set=0, kin_set=1). The default is 0.
     ocut : list of floats, optional
-        The cuts in lambda_z. The default is None, which translates to
+        The orbit cuts in lambda_z. The default is None, which translates to
         ocut=[0.8, 0.25, -0.25, -0.8], the selection in lambda_z
         following Santucci+22.
     decomp_table : bool, optional
@@ -496,11 +496,11 @@ class Decomposition:
         # map components
         comp_map = np.zeros(n_orbs, dtype=int)
         # cold component (thin disk)
-        comp_map[np.ravel(np.where(lzm_sign >= ocut[0]))] += \
+        comp_map[np.ravel(np.where(lzm_sign > ocut[0]))] += \
             2**comps.index('thin_d')
         # warm component (thick disk)
         comp_map[np.ravel(np.where((lzm_sign > ocut[1])
-                                 & (lzm_sign < ocut[0])))] += \
+                                 & (lzm_sign <= ocut[0])))] += \
             2**comps.index('thick_d')
         # hot component (bulge)
         comp_map[np.ravel(np.where((lzm_sign > ocut[2])
