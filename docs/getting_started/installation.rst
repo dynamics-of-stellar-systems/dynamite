@@ -21,19 +21,32 @@ Computers running the DYNAMITE models must meet the following hardware requireme
 
 **Recommended Hardware Requirements**
 
-We recommend at least 50-100 GB of hard disk space for running the dynamical models. The DYNAMITE software only takes 150 MB, but the orbit libraries can become very large. As examples one model for the following orbit libraries has the size:
+We recommend at least 50-100 GB of hard disk space for running the dynamical models.
+The DYNAMITE software only takes 150 MB, but the orbit libraries can become very large. The table below shows some examples for model sizes of different orbit libraries (see the `configuration documentation <configuration.html#orblib-settings>`_ for more information on orbit library settings).
+Note that the total memory requirements may be lower due to model sharing orbit libraries.
 
-* (nE, nI2, nI3) = (5,4,3)    : 85 MB
-* (nE, nI2, nI3) = (21,8,7)   : 664 MB
-* (nE, nI2, nI3) = (41,11,11) : 2.55 GB
+.. table::
+   :widths: auto
 
-And usually, for one galaxy you will create at least 30 models to find the best-fitting model parameters.
+   =====  =====  =====  ===========  =========  ================================================
+     nE    nI2    nI3    dithering    Size       Example use
+   =====  =====  =====  ===========  =========  ================================================
+     5      4      3         1          71 MB    Good for tests (recommended minimum), too small for science
+     6      5      4         1          79 MB    Used for test cases, too small for science
+    21      8      7         1         213 MB
+    21     10      7         5         461 MB    CALIFA and ATLAS3D
+    41     11     11         1         733 MB
+   =====  =====  =====  ===========  =========  ================================================
+
+Usually, for one galaxy you will create at least 30 models to find the best-fitting model parameters.
 
 
 .. _software-requirements:
 
 Software requirements
 =====================
+
+Supplementary to this section, please also see the list of tested platforms as well as Fortran and Python releases at the `bottom of this document <#tested-platforms>`_.
 
 Fortran compiler
 ----------------
@@ -53,7 +66,12 @@ displays the version. We recommend version 10.4 or later.
 macOS
 ^^^^^
 
-In the following, we explain the installation of the GNU Fortran compiler via Homebrew and via MacPorts. **Homebrew** can be used to install the latest ``gcc`` and all additional libraries in the following way::
+In the following, we explain the installation of the GNU Fortran compiler via Homebrew and via MacPorts.
+
+Homebrew
+""""""""
+
+**Homebrew** can be used to install the latest ``gcc`` and all additional libraries in the following way::
 
     brew update
     brew install gcc
@@ -71,6 +89,9 @@ with the output: ``gfortran(1) - GNU Fortran compiler`` (please ignore any lines
     which gfortran
 
 returns its location, for example: ``/usr/local/bin/gfortran``.
+
+MacPorts
+""""""""
 
 Alternatively, you can also install ``gcc`` with **MacPorts**. The installation is then a bit different::
 
@@ -97,7 +118,9 @@ returns its location, something like ``/opt/local/bin/gfortran``.
 Python
 ------
 
-The user is communicating with the Fortran source code via Python. The basic requirement for DYNAMITE is therefore a reasonably current version of Python (Python 3.8 or later).
+The user is communicating with the Fortran source code via Python.
+The basic requirement for DYNAMITE is therefore a reasonably current version of Python
+(Python 3.9 or later as Python 3.8 has reached its end of life as of October 7, 2024).
 
 
 
@@ -118,7 +141,7 @@ Known problems
 
 .. _install-procedure:
 
-Installation and Configure Procedure
+Installation and configure procedure
 ====================================
 
 Download from `github <https://github.com/dynamics-of-stellar-systems/dynamite>`_, unzip and move the DYNAMITE code to the directory in which you want to install it. Make sure that your system fulfills the :ref:`software-requirements` listed above (in particular the Fortran compiler).
@@ -127,8 +150,8 @@ If you encouter problems during the installation process, have a look at the sec
 
 There are two major installation options for DYNAMITE:
 
-(A) DYNAMITE with the GALAHAD (the ``LegacyWeightSolver``) and the SciPy-based ``NNLS`` weight solvers.
-(B) DYNAMITE with just the SciPy-based ``NNLS`` weight solver.
+(A) DYNAMITE with the GALAHAD (the ``LegacyWeightSolver``) and the Python (SciPy and cvxopt) ``NNLS`` weight solvers.
+(B) DYNAMITE with just the Python (SciPy and cvxopt) ``NNLS`` weight solvers.
 
 In case of installation option (A), the installation of DYNAMITE consists of three steps; in case of (B), it consists of two steps, as detailed below.
 
@@ -147,7 +170,7 @@ In the following installation, a number of prompts start. The answers differ for
 
 During the installation, your terminal might express several warnings. These are however not critical if your installation finishes properly.
 
-Install Galahad, Version 2.3 - Prompt answers for Linux
+Install Galahad, version 2.3 - prompt answers for Linux
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 Prompts from ``./install_galahad``. The answers for the recommended installation are marked in bold.
@@ -221,7 +244,7 @@ Prompts from ``./install_galahad``. The answers for the recommended installation
 * y(es)
 * **n(o) <--**
 
-Install Galahad, Version 2.3 - Prompt answers for macOS
+Install Galahad, version 2.3 - prompt answers for macOS
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 Prompts from ``./install_galahad``. The answers for the recommended installation are marked in bold.
 
@@ -313,10 +336,9 @@ Update in .bashrc::
 2. Compiling the Fortran programs
 ----------------------------------
 
-Go back to ``.../legacy_fortran``. Before you proceed, it is necessary to make the following changes to the ``Makefile``:
+Go to the ``.../legacy_fortran`` folder. Before you proceed, it may be necessary to make the following change to the ``Makefile``:
 
-* DYNAMITE installation option (A) only: Select the appropriate choice of ``GALAHADTYPE`` variable depending on your system (comment out the options that don't apply')
-* Look for the definition of the ``all:`` (this should be right after the definition of the ``GALAHADTYPE`` variable). Make sure that ``triaxgasnnls`` is **NOT** in the list.
+* DYNAMITE installation option (A) only (i.e., including the ``LegacyWeightSolver``): Select the appropriate choice of ``GALAHADTYPE`` variable depending on your system (comment out the options that don't apply).
 
 Proceed with the following command from the terminal, depending on your choice of the DYNAMITE installation option.
 
@@ -328,9 +350,7 @@ DYNAMITE installation option (A)
 
 Your terminal will likely express several warnings again, but these are not critical and refer to different coding conventions in earlier Fortran versions. Now, take a look in the directory ``.../legacy_fortran`` and check that you have .f90 files and executables (no file name extension) for:
 
-* modelgen
 * orbitstart
-* orblib
 * orblib_new_mirror
 * triaxmass
 * triaxmassbin
@@ -346,7 +366,6 @@ DYNAMITE installation option (B)
 Your terminal will likely express several warnings again, but these are not critical and refer to different coding conventions in earlier Fortran versions. Now, take a look in the directory ``.../legacy_fortran`` and check that you have .f90 files and executables (no file name extension) for:
 
 * orbitstart
-* orblib
 * orblib_new_mirror
 * triaxmass
 * triaxmassbin
@@ -357,15 +376,24 @@ Your terminal will likely express several warnings again, but these are not crit
 
 If all these files are there, you can proceed with the installation, by going back to ``.../dynamite`` and running::
 
-    python setup.py install
+    python -m pip install .
 
-On systems you don't have root privileges on (such as a cluster), you can choose to install into your user directory by adding the ``--user`` flag::
+On systems you don't have root privileges on (such as a cluster), ``pip`` should automatically install into your user directory.
+You can also explicitly choose to install into your user directory by adding the ``--user`` flag::
 
-    python setup.py install --user
+    python -m pip install . --user
 
-To make uninstalling easier, it is useful to record the files which have been created when you install the package. This can be done by::
+This will install the DYNAMITE Python scripts as well as the previously compiled Fortran programs.
+However, the weight solver ``cvxopt`` is optional and not included in the standard DYNAMITE installation because its installation proved to
+be problematic for some users. To include ``cvxopt``, it can be specified (with or without a following ``--user``) as::
 
-    python setup.py install --record list_of_created_files.txt
+    python -m pip install .[cvxopt]
+
+or installed manually.
+
+For a detailed report of what the installation did, ``pip`` can create a JSON file. This can be done by::
+
+    python -m pip install . --report what_pip_did.json
 
 Several Python packages are installed in this way (if they are not already), including:
 
@@ -387,8 +415,11 @@ To remove all compiled Fortran codes, go back to ``.../legacy_fortran``, and typ
 
     make distclean
 
-If you used the ``--record`` option suggested above when installing the python part of the code, you can easily uninstall it by manually removing all the files listed in the text file.
+The system's (or your user's) installation directory can be cleaned up by::
 
+    python -m pip uninstall dynamite
+
+Before actual deletion takes place, ``pip`` will display a list of files and directories that will be removed and wait for your confirmation.
 
 ..
     Post-Installation
@@ -432,7 +463,7 @@ in the ``.../dev_tests/`` directory, which takes less than two minutes to run.
 
 You can check the output in the directory ``.../tests/NGC6278_output/plots``, where you should find a plot called ``chi2_vs_model_id.png``, looking like the following figure.
 
-.. image:: chi2_vs_model_id.png
+.. image:: kinchi2_vs_model_id.png
 
 This figure shows the values of the :math:`\chi^2` obtained for the three models run in the test file, as a function of the ID of each model, and shown with red crosses. The black circles represent the range of expected values for this quantity, which can vary because of details in the numerical computation, depending on the system and the compiler used. If you obtain a figure similar to the one provided here, the code is running correctly (no need to worry if your crosses are falling slightly outside the circles).
 
@@ -456,25 +487,32 @@ Troubleshooting
 Fortran code calls fail
 -----------------------
 
-Try to clean up and recompile. In ``.../legacy_fortran``, issue::
+Try to clean up and recompile. In ``.../legacy_fortran``, issue one of the following, depending on your installation option::
 
     make distclean
     make all
 
+or::
+
+    make distclean
+    make nogal
+
 and in ``.../dynamite``, re-install with the command::
 
-    python setup.py install
+    python -m pip install .
 
 Python install fails
 --------------------
 
-Try ``python3``instead of ``python``::
+If the installation fails and the error message complains about the distutils package, please make sure that the environment variable ``SETUPTOOLS_USE_DISTUTILS`` is NOT set (remove from your shell startup script or ``unset SETUPTOOLS_USE_DISTUTILS``).
 
-    python3 setup.py install
+Try ``python3`` instead of ``python``::
 
-If ``setup.py`` still does not work, this may be because of failed package installations. Make sure to have at least ``numpy`` installed beforehand. Running ``setup.py`` will install the necessary packages for you, but you can also install some packages manually if needed:
+    python3 -m pip install .
 
-    pip install astropy
+If installing DYNAMITE still does not work, this may be because of failed package installations. Make sure to have at least ``numpy`` installed beforehand. Running ``python -m pip install .`` will install the necessary packages for you, but you can also install some packages manually if needed::
+
+    python -m pip install astropy
 
 Or, if you are using conda::
 
@@ -499,3 +537,22 @@ to::
 
 (``-ftree-loop-linear`` is the same as ``-floop-nest-optimize`` and poses a problem if gcc/gfortran is compiled without isl).
 
+Tested platforms
+----------------
+
+The following table states the platforms / Fortran compilers / Python releases which were successfully used to build DYNAMITE and run the ``dev_test/test_nnls.py`` test script.
+
+The 'G / P' column refers to the weight solver:
+
+- \(G) means that both GALAHAD and Python (SciPy and cvxopt) NNLS were successfully compiled and used. This corresponds to installation option (A).
+- \(P) means that only the Python (SciPy and cvxopt) NNLS solvers were successfully compiled and used. This corresponds to installation option (B).
+
+.. csv-table:: Tested platforms / Fortran compilers / Python releases
+   :header-rows: 1
+
+   OS and release,  Fortran release,    Python rel.,    G / P,  Date tested,    Remarks
+   macOS 14.4.1,    gfortran 12.2.0,    3.9.19,         G,      2024-04-23
+   macOS 14.6.1,    gfortran 12.4.0,    3.11.10,        G,      2024-11-30
+   macOS 14.4.1,    gfortran 12.2.0,    3.12.3,         G,      2024-04-23
+   AlmaLinux 8.5,   gfortran 8.5.0,     3.10.14,        G,      2024-04-23,     VSC5 w/o modules loaded
+   AlmaLinux 8.5,   gfortran 8.5.0,     3.12.3,         G,      2024-04-23,     VSC5 w/o modules loaded, with miniconda

@@ -4,6 +4,54 @@
 Change Log
 ****************
 
+- Improvement: the orbit_plot now allows custom orbit cuts via the ocut parameter (same behavior as in the Decomposition class)
+- Bugfix: fixed a crash of the SpecificModels parameter generator with certain specific value lists.
+- Improvement: more robust directory naming when failed models are present in the all_models table
+- Bugfix: don't crash with pops data when using ModelInnerIterator.
+- Bugfix: don't crash when continuing a run with just one valid model.
+- Improvement: added counter-rotating components to decomposition.
+- Bugfix: fix a bug that prevents Bayes LOSVD kinemtic maps from being created more than once
+- New feature: a dark halo is no longer mandatory (models can consist of either zero or one dark halo component)
+- Improvement: Reduced disk space requirements and performance by splitting orbit library files while maintaining backward compatibility.
+- Bugfix: avoid DYNAMITE crashing because it gets stuck in a model directory due to a Fortran error
+- Improvement: better error messages to improve debugging with multiprocessing
+- Improvement: minor improvements of tutorials 2 and 3
+
+Version: 4.3
+================
+
+- Improvement: Updated requirements to Python 3.9 or later (Python 3.8 end of life was Oct 7, 2024) and numpy<1.27.0, scipy>=1.11,<1.12 to avoid Python NNLS freeze
+- Improvement: made DYNAMITE compatible with numpy 2.0.0 and matplotlib 3.9.0 (removed use of deprecated features)
+- Bugfix: fix a bug that prevents Bayes LOSVD kinematic maps from being created more than once
+- Improvement: misc. improvements in documentation and tutorials.
+- Improvement: Sampling of grid recording the intrinsic moments (in r, theta, phi) can optionally be defined in the config file's orblib settings.
+- Improvement: The installation procedure has been changed to make DYNAMITE compatible with Python 3.12. Installing and uninstalling is now done using pip.
+- Improvement: added a new tutorial notebook ``7_orbital_distributions.ipynb`` which takes a closer look at orbit distributions.
+- Improvement: the ``weight`` attribute of kinematics is now officially DEPRECATED as it has always been ignored by DYNAMITE.
+- Improvement: DYNAMITE now checks for nan values in the kinematics and mges when first reading the data
+- Improvement: prevent DYNAMITE from crashing if NNLS weight solving fails.
+- Improvement: the Gauss Hermite kinematic maps new parameter value `cbar_lims='user'` allows user-defined velocity and velocity dispersion limits (see `Plotter.plot_kinematic_maps()`).
+- Improvement: reduced the main memory requirements of the Python NNLS solvers.
+- Bugfix: fix a crash when creating the BayesLOSVD kinematics file in rare cases where the completed bins were determined incorrectly.
+- New feature: ``data_prep/generate_kin_input.py`` implements reading NIFS kinematics with an arbitrary number of GH moments.
+- Improvement: improved checks and error messages for velocity and spatial bin input data inconsistencies.
+- Improvement: save disk space by cleaning up decompressed files after a crash and removing unused legacy file nn_orbmat.out after solving.
+- Improvement: stability fix in MGE: if q>0.9999 it will be set to 0.9999 (before, it was 0.99999).
+- Bugfix: the chi2 plot now shows correct axis ticks for log quantities.
+- Bugfix: fixed colorbar overlap with x-axis in the chi2 plot if only two parameters are varied and added label to chi2 plot colorbar.
+- Improvement: ``LegacyWeightSolver`` is now DEPRECATED and will be removed along with GALAHAD in a future version of DYNAMITE. Use weight solver ``type: "NNLS"`` instead if you can.
+
+Version: 4.2
+================
+
+- Improvement: if ``number_GH`` in the config file is larger than the kinematic order of the observed data, then DYNAMITE ensures that the corresponding systematic errors are > 0.
+- Bugfix: fixed a bug in the kinematics errors (affects NNLS solves).
+- New feature: Gauss-Hermite kinematic maps can now be plotted for any number of Gauss-Hermite coefficients.
+- Improvement: removed broken link from tutorial 2 and added some data preparation comments to tutorials 1 and 2
+- Bugfix: fixed crash when different kinematics had different numbers of PSF components.
+- Bugfix: fixed a bug in retrofitting kinmapchi2 in old all_models tables.
+- Improvement: removed deprecated silent option from config reader.
+- Improvement: the Plotter's new optional argument ``dpi`` (default: 100) allows to change the resolution of all saved figures except the kinematic maps (always 300 dpi).
 - Improvement: the beta plots now work for all implemented weight solvers.
 
 Version: 4.1

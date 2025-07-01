@@ -21,7 +21,7 @@ class AllModels(object):
     ----------
     config : a ``dyn.config_reader.Configuration`` object
     from_file : bool
-        whether to create this ojbect from a saved `all_models.ecsv` file
+        whether to create this object from a saved `all_models.ecsv` file
 
     """
     def __init__(self, config=None, from_file=True):
@@ -37,13 +37,13 @@ class AllModels(object):
         self.make_empty_table()
         if from_file and os.path.isfile(self.filename):
             self.logger.info('Previous models have been found: '
-                        f'Reading {self.filename} into '
-                        f'{__class__.__name__}.table')
-            self.read_completed_model_file()
+                             f'Reading {self.filename} into '
+                             f'{__class__.__name__}.table')
+            self.read_model_table()
         else:
             self.logger.info(f'No previous models (file {self.filename}) '
-                        'have been found: '
-                        f'Made an empty table in {__class__.__name__}.table')
+                             'have been found: Made '
+                             f'an empty table in {__class__.__name__}.table')
 
     def set_filename(self, filename):
         """Set the name (including path) for this model
@@ -88,8 +88,24 @@ class AllModels(object):
         dtype.append('U256')
         self.table = table.Table(names=names, dtype=dtype)
 
-    def read_completed_model_file(self):
+    def read_model_table(self):
         """Read table from file ``self.filename``
+
+        Returns
+        -------
+        None
+            sets ``self.table``
+
+        """
+        table_read = ascii.read(self.filename)
+        self.table = table.vstack((self.table, table_read),
+                                  join_type='outer',
+                                  metadata_conflicts='error')
+        self.logger.debug(f'{len(self.table)} models read '
+                          f'from file {self.filename}')
+
+    def update_model_table(self):
+        """all_models table update: fix incomplete models, add kinmapchi2.
 
         Dealing with incomplete models:
         Models with all_done==False but an existing model_done_staging.ecsv
@@ -106,32 +122,30 @@ class AllModels(object):
         Note that orbit libraries on disk will not be deleted as they
         may be in use by other models.
 
+        Up to DYNAMITE 3.0 there was no kinmapchi2 column in the all_models
+        table. If possible (data exists on disk), calculate and add the values,
+        otherwise set to np.nan.
+
         Returns
         -------
         None
             sets ``self.table``
 
         """
-        table_read = ascii.read(self.filename)
-        self.table = table.vstack((self.table, table_read),
-                                  join_type='outer',
-                                  metadata_conflicts='error')
-        self.logger.debug(f'{len(self.table)} models read '
-                          f'from file {self.filename}')
-
         table_modified = False
         for i, row in enumerate(self.table):
             if not row['all_done']:
                 table_modified = True
                 mod = self.get_model_from_row(i)
                 staging_filename = mod.directory+'model_done_staging.ecsv'
-                check1 = os.path.isfile(
-                    mod.directory_noml+'datfil/orblib.dat.bz2'
-                    )
-                check2 = os.path.isfile(
-                    mod.directory_noml+'datfil/orblibbox.dat.bz2'
-                    )
-                check_if_orblibs_present = check1 and check2
+                f_root = mod.directory_noml + 'datfil/'
+                check = os.path.isfile(f_root + 'orblib.dat.bz2') \
+                        and os.path.isfile(f_root + 'orblibbox.dat.bz2')
+                if not check:
+                    check = os.path.isfile(f_root + 'orblib_qgrid.dat.bz2') \
+                     and os.path.isfile(f_root + 'orblib_losvd_hist.dat.bz2') \
+                     and os.path.isfile(f_root + 'orblibbox_qgrid.dat.bz2') \
+                     and os.path.isfile(f_root + 'orblibbox_losvd_hist.dat.bz2')
                 if os.path.isfile(staging_filename):
                     # the model has completed but was not entered in the table
                     staging_file = ascii.read(staging_filename)
@@ -141,7 +155,7 @@ class AllModels(object):
                     os.remove(staging_filename)
                     self.logger.debug(
                         f'Staging file {staging_filename} deleted.')
-                elif check_if_orblibs_present:
+                elif check:
                     self.logger.debug(f'Row {i}: orblibs were computed '
                                       'but not weights.')
                     self.table[i]['orblib_done'] = True
@@ -194,37 +208,47 @@ class AllModels(object):
                         ' perhaps it has already been removed before.')
             os.chdir(cwd)
             self.table.remove_rows(to_delete)
-
-        which_chi2 = 'kinmapchi2'
-        if which_chi2 not in self.table.colnames:
+        # Up to DYNAMITE 3.0 there was no kinmapchi2 column -> retrofit.
+        if isinstance(self.table['kinmapchi2'], table.column.MaskedColumn):
             table_modified = True
-            # a legacy all_models table does not have the kinmapchi2 column
-            # add that column to the table and initialize with nan
-            self.logger.info('Legacy all_models table read, adding and '
-                             f'updating {which_chi2} column...')
-            self.table.add_column(float('nan'),
-                                  index=self.table.colnames.index('kinchi2')+1,
-                                  name=which_chi2,
-                                  copy=True)
-            for row_id, row in enumerate(self.table):
-                if row['orblib_done'] and row['weights_done']:
-                    # both orblib_done and weights_done being True indicates
-                    # that data for kinmapchi2 is on the disk -> calculate
-                    # kinmapchi2 (not nan only for LegacyWeightSolver)
-                    mod = self.get_model_from_row(row_id)
-                    ws_type=self.config.settings.weight_solver_settings['type']
-                    weight_solver = getattr(ws,ws_type)(
-                                            config=self.config,
-                                            directory_with_ml=mod.directory)
-                    row[which_chi2] = weight_solver.chi2_kinmap()
-                    self.logger.info(f'Model {row_id}: {which_chi2} = '
-                                     f'{row[which_chi2]}')
-                else:
-                    self.logger.warning(f'Model {row_id}: cannot update '
-                                        f'{which_chi2} - data deleted?')
-
+            self.retrofit_kinmapchi2()
+        # If the table has been modified, save it.
         if table_modified:
             self.save()
+            self.logger.info('all_models table updated and saved.')
+        else:
+            self.logger.info('No all_models table update required.')
+
+    def retrofit_kinmapchi2(self):
+        """Calculates kinmapchi2 for DYNAMITE legacy tables if possible.
+
+        Returns
+        -------
+        None.
+            updates ``self.table``
+        """
+        which_chi2 = 'kinmapchi2'
+        self.logger.info('Legacy all_models table read, updating '
+                         f'{which_chi2} column...')
+        # self.table[which_chi2] = np.nan
+        for row_id, row in enumerate(self.table):
+            if row['orblib_done'] and row['weights_done']:
+                # both orblib_done==True and weights_done==True indicates
+                # that data for kinmapchi2 is on the disk -> calculate
+                # kinmapchi2
+                mod = self.get_model_from_row(row_id)
+                ws_type = self.config.settings.weight_solver_settings['type']
+                weight_solver = getattr(ws, ws_type)(
+                                        config=self.config,
+                                        directory_with_ml=mod.directory)
+                orblib = mod.get_orblib()
+                _, _, _, row[which_chi2] = weight_solver.solve(orblib)
+                self.logger.info(f'Model {row_id}: {which_chi2} = '
+                                 f'{row[which_chi2]}')
+            else:
+                row[which_chi2] = np.nan
+                self.logger.warning(f'Model {row_id}: cannot update '
+                                    f'{which_chi2} - data deleted?')
 
     def read_legacy_chi2_file(self, legacy_filename):
         """
@@ -429,7 +453,8 @@ class AllModels(object):
             if np.allclose(row_comp, tuple(row)):
                 break
         else:
-            text = 'Cannot find model in all_models table.'
+            text = 'Cannot find model with parset ' \
+                   f'{row_comp} in all_models table.'
             self.logger.error(text)
             raise ValueError(text)
         return row_id
@@ -466,16 +491,18 @@ class AllModels(object):
                               "implementation")
             raise
         row_comp = tuple(self.table[orblib_parameters][model_id])
+        model_dir = self.table['directory'][model_id]
         for row_id, row in enumerate( \
                                  self.table[orblib_parameters][:model_id+1]):
             if np.allclose(row_comp, tuple(row)):
                 ml_orblib = self.table['ml'][row_id]
-                self.logger.debug(f'Orblib of model #{model_id} has original '
+                ml_orblib_dir = self.table['directory'][row_id]
+                self.logger.debug(f'Orblib of model {model_dir} has original '
                                   f'ml value of {ml_orblib} '
-                                  f'(model #{row_id}).')
+                                  f'(model {ml_orblib_dir}).')
                 break
         else:
-            text = f'Cannot find orblib for model #{model_id} in ' \
+            text = f'Cannot find orblib of model {model_dir} in ' \
                    'all_models table.'
             self.logger.error(text)
             raise ValueError(text)
@@ -866,7 +893,7 @@ class Model(object):
         """
         if not os.path.isfile(self.config.config_file_name):
             txt = f'Unexpected: config file {self.config.config_file_name}' + \
-                  'not found.'
+                  f' not found (looking in {os.getcwd()}).'
             self.logger.error(txt)
             raise FileNotFoundError(txt)
         model_yaml_files = glob.glob(self.directory+'*.yaml')
@@ -883,8 +910,8 @@ class Model(object):
                                              self.config.config_file_name)
             except ValueError:
                 self.logger.warning('More than one .yaml file found in '
-                                    f'{self.directory}, no file name match'
-                                    'with the config file, no check possible.')
+                                    f'{self.directory}. No file name matches '
+                                    'the config file, no check possible.')
                 return True  # ####################
         model_config_file_name = model_yaml_files[f_i]
         with open(self.config.config_file_name) as c_f:
@@ -894,7 +921,8 @@ class Model(object):
         c_diff = difflib.unified_diff(config_file,
                                       model_config_file,
                                       fromfile=self.config.config_file_name,
-                                      tofile=model_config_file_name)
+                                      tofile=model_config_file_name,
+                                      n=0)
         c_diff = list(c_diff)
         if len(c_diff) > 0:
             self.logger.warning('ACTION REQUIRED, PLEASE CHECK: '
@@ -991,13 +1019,21 @@ class Model(object):
     def get_weights(self, orblib=None):
         """Get the orbital weights
 
+        Gets the orbital weights and chi2 values by calling the appropriate
+        ``WeightSolver.solve()`` method.
+
         Parameters
         ----------
         orblib : a ``dyn.orblib.OrbitLibrary`` object
 
         Returns
         -------
-        a ``dyn.weight_solver.WeightSolver`` object
+        weight_solver : a ``dyn.weight_solver.WeightSolver`` object
+            sets attributes:
+                - ``self.weights``
+                - ``self.chi2``
+                - ``self.kinchi2``
+                - ``self.kinmapchi2``
 
         """
         ws_type = self.config.settings.weight_solver_settings['type']

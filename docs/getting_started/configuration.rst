@@ -99,6 +99,7 @@ The system consists of a number of physical components - e.g. the stars, black h
             - ``hi``: maximum value
             - ``step``: initial step size for parameter search
             - ``minstep``: minimum allowed stepsize for this parameter
+            - ``specific_values``: only for ``SpecificModels`` parameter generator, a list of fixed values for this parameter. If specified, then ``lo``, ``hi``, ``step``, ``minstep``, ``fixed``, and ``value`` are ignored.
         - ``logarithmic``: Boolean, whether logarithmic steps should be used for parameter search. If true, then (``value``, ``lo``, ``hi``) must all have log units.
         - ``LaTeX``: LaTeX string for this parameter to be used for plots.
 
@@ -134,14 +135,14 @@ The following types of component are available, listed with their parameters:
     - ``gam``: AKA gamma, the inner logarithmic density slope, must be :math:`\leq 1`
 
 .. note::
-  currently, there is only one combination of component types that is valid. This is to ensure compatibility with the Fortran implementation of the orbit integrator. Later implementations may offer more flexibility. The only current valid combination of components is:
+  currently, there are only two combinations of component types that are valid. This is to ensure compatibility with the Fortran implementation of the orbit integrator. Later implementations may offer more flexibility. The current valid combinations of components are:
 
   - one ``Plummer`` component
       - representing the black hole
       - the scale length ``a`` should be fixed to some arbitrarily small value
   - one ``TriaxialVisibleComponent`` component
       - representing the stars
-  - exactly one out of [``NFW``, ``NFW_m200_c``, ``Hernquist``, ``TriaxialCoredLogPotential``, ``GeneralisedNFW``]
+  - either no dark halo or exactly one out of [``NFW``, ``NFW_m200_c``, ``Hernquist``, ``TriaxialCoredLogPotential``, ``GeneralisedNFW``]
       - representing the dark halo
 
 .. _observed_data:
@@ -205,13 +206,36 @@ This section is used for settings relevant for the calculation of orbit librarie
 
     \text{total number of orbits} = 3 \; n_E \; n_{I2} \; n_{I3} \; \mathrm{(dithering)}^3
 
+  .. table:: Recommendations for orbit library sizes
+     :width: 95%
+     :widths: auto
+
+     =====  =====  =====  ===========  ================================================
+       nE    nI2    nI3    dithering    Example use
+     =====  =====  =====  ===========  ================================================
+       5      4      3         1        Test-orbit library.
+                                        A good orbit library for fast checking whether DYNAMITE runs, but it is too small to be used for scientific analyses
+      21     10      7         5        Good orbit library for CALIFA and ATLAS3D-like data quality.
+                                        Examples: CALIFA (`Zhu et al. 2018 <https://ui.adsabs.harvard.edu/abs/2018MNRAS.473.3000Z/abstract>`_),
+                                        SAMI (`Santucci et al. 2022 <https://ui.adsabs.harvard.edu/abs/2022ApJ...930..153S/abstract>`_),
+                                        ATLAS3D (`Thater et al. 2023b <https://arxiv.org/abs/2305.09344>`_), MANGA
+      still bigger orbit libraries      MUSE-like data: e.g., `Poci et al. 2021 <https://arxiv.org/pdf/2102.02449.pdf>`_,
+                                        `Ding et al. 2023 <https://arxiv.org/abs/2301.05532>`_,
+                                        `Thater et al. 2023 <https://arxiv.org/abs/2304.13310>`_
+     --------------------------------  ------------------------------------------------
+     =====  =====  =====  ===========  ================================================
+
 - ``orblib_settings``
     - ``nE``: integer, size of grid in integral-of-motion :math:`E`
     - ``nI2``: integer, size of grid in second integral-of-motion :math:`I_2` (similar to :math:`L_z`). Must be at least 4.
     - ``nI3``: integer, size of grid in third integral-of-motion :math:`I_3`
+    - ``dithering``: integer, size of mini-grid of orbits around each set of initial conditions
     - ``logrmin``: log10 of minimum orbit radius in arcsecs
     - ``logrmax``: log10 of maximum orbit radius in arcsecs
     - ``random_seed``: integer, used for stochastically blurring orbit library by the PSF. Any value :math:`\leq 0` gives a stochastic seed.
+    - ``quad_nr``: integer, sampling of grid recording the intrinsic moments in :math:`r`, default if missing: 10
+    - ``quad_nth``: integer, sampling of grid recording the intrinsic moments in :math:`\theta`, default if missing: 6
+    - ``quad_nph``: integer, sampling of grid recording the intrinsic moments in :math:`\phi`, default if missing:  6
 
 The following settings must also be set in the configuration files but have *typical* values which should generally be sufficient and should not be changed,
 
@@ -221,14 +245,6 @@ The following settings must also be set in the configuration files but have *typ
     - ``starting_orbit``: integer, typically 1, the index of which  orbit to start integrating orbits
     - ``number_orbits``: integer, the number of orbits to integrate, if -1 then integrate all orbits
     - ``accuracy``: typical ``1.0d-5``, the accuracy of the orbit integrator
-
-There is also an optional setting,
-
-- ``orblib_settings``
-    - ``use_new_mirroring``: boolean
-
-This controls whether or not to use the correction to orbit mirroring introduces in `Quenneville et al 2021 <https://arxiv.org/abs/2111.06904>`_ . This is optional: if ommited, the default is True.
-
 
 ``weight_solver_settings``
 ==========================
@@ -252,8 +268,8 @@ Settings relevant for solving for orbital weights.
 If any kinematics have of type ``GaussHermite``, the following additional settings are needed.
 
 - ``weight_solver_settings``
-    - ``number_GH``: integer, the highest order kinematics to be used when solving for orbital weights. Note that this can be different from the order of the input data you provide. If ``number_GH`` is lower than in the data, then higher order kinematics are ignored while weight solving. Alternatively, if ``number_GH`` is higher than in the data, then we (fictitiously) assume that the higher-order kinematics were observed to be zero, with a systematic error that must be specified in the ``GH_sys_err`` setting. The latter option can be considered as a form of regularisation, penalising solutions where higher-order kinematics (although unobserved) reach unrealistically high values.
-    - ``GH_sys_err``: a string of floats, of length ``number_GH``. These are systematic errors applied to ``V``, ``sigma``, ``h3``, ..., ``hN``. During weight solving, these systematic errors are added in quadrature to the random errors which you provide in the data file. If ``number_GH`` is larger than the kinematic order of the observed data, then the corresponding systematic errors can be interpreted as a typical value for higher order kinematics; models with higher-order kinematics which exceed this typical value will be penalised.
+    - ``number_GH``: integer, the highest order kinematics to be used when solving for orbital weights. Note that this can be different from the order of the input data you provide. If ``number_GH`` is lower than in the data, then higher order kinematics are ignored while weight solving. Alternatively, if ``number_GH`` is higher than in the data, then we (fictitiously) assume that the higher-order kinematics were observed to be zero, with a *nonzero* systematic error that must be specified in the ``GH_sys_err`` setting. The latter option can be considered as a form of regularisation, penalising solutions where higher-order kinematics (although unobserved) reach unrealistically high values.
+    - ``GH_sys_err``: a string of floats, must contain at least ``number_GH`` entries. These are systematic errors applied to ``V``, ``sigma``, ``h3``, ..., ``hN``. During weight solving, these systematic errors are added in quadrature to the random errors which you provide in the data file. If ``number_GH`` is larger than the kinematic order of the observed data, then the corresponding systematic errors must be > 0 and can be interpreted as a typical value for higher order kinematics; models with higher-order kinematics which exceed this typical value will be penalised.
 
 If any kinematic set has type ``BayesLOSVD``, then the ``weight_solver_settings`` must have type ``NNLS``, and no additional settings are required.
 
@@ -272,16 +288,21 @@ Settings relevant for parameter search.
         - ``GridWalk``: Start at the initial point. Start the iteration: (i) find the model with the minimum :math:`\chi^2`, (ii) for each free parameter, seed new models by independently take a step :math:`\pm 1` of size ``step`` (cartesian grid in one step size, so if 2 parameters are free, 8 new models will be created). Repeat until :math:`\chi^2` is improved by less than min_delta_chi2. This may result in a large number of models.
         - ``LegacyGridSearch``: Start at the initial point. Start the iteration: (i) find all models with :math:`|\chi^2 - \chi_\mathrm{min}^2|` within the threshold (specified with ``threshold_del_chi2_XXX``), (ii) for each model within the threshold, seed new models by independently take a step :math:`\pm 1` of size ``step`` (i.e. as done for ``GridWalk``).  If no new models are seeded at the end of an iteration, then divide all parameter stepsizes by two till their specified ``minstep`` are reached.
         - ``FullGrid``: Create a *full* grid, i.e. a Cartesian grid in all free parameters, with bounds ``lo/hi`` and stepsize ``step``. **Warning**: If several (>3) parameters are free, this will result in a large number of models.
+        - ``SpecificModels``: Create a set of specific models, which are specified in the parameters' ``value`` (single value) or ``par_generator_settings:specific_values`` (multiple values) attributes in the configuration file. This is useful for testing specific parameter combinations, or for running a set of models around a specific point in parameter space. In the configuration file, the ``parameter_space_settings:generator_settings:SpecificModels_mode`` determines whether multiple parameter lists are combined element-wise or whether the Cartesian product of all parameter lists is used. This parameter generator will create all models in a single iteration and then stop, ignoring the stopping criteria.
     - ``which_chi2``: string, specifies which :math:`\chi^2` value to consider when generating new parameters, must be one of the following:
         - ``kinchi2``: this includes contributions from only the kinematics. If ``GaussHermite`` kinematics are used then this is includes terms from all Hermite coefficients :math:`h_1, h2, h3, ..., h_N`. If ``BayesLOSVD`` kinematics are used, then this includes contributions from all LOSVD bins.
         - ``chi2``: this includes contributions from the observed surface density, de-projected 3D density, and kinematics (as specified above).
-    - ``generator_settings``: if ``generator_type = LegacyGridSearch``, then one of the following two settings must be set. These are the :math:`|\chi^2|` thresholds used for in ``LegacyGridSearch``,
-        - ``threshold_del_chi2_abs``: an absolute :math:`|\chi^2|` threshold
-        - ``threshold_del_chi2_as_frac_of_sqrt2nobs``: a threshold given as a fraction of :math:`\sqrt{2N_\mathrm{obs}}` where :math:`N_\mathrm{obs}` is the total number of kinematic observations, which is equal to the number of spatial apertures multiplied by (i) ``number_GH`` if ``GaussHermite`` kinematics are used, or (ii) the number of LOSVD bins if ``BayesLOSVD`` kinematics are used.
+        - ``kinmapchi2``: the :math:`\chi^2` directly calculated from the ``GaussHermite`` kinematic maps (not available for ``BayesLOSVD`` kinematics).
+    - ``generator_settings``:
+        - If ``generator_type = LegacyGridSearch``, then one of the following two settings must be set. These are the :math:`|\chi^2|` thresholds used for in ``LegacyGridSearch``,
+            - ``threshold_del_chi2_abs``: an absolute :math:`|\chi^2|` threshold
+            - ``threshold_del_chi2_as_frac_of_sqrt2nobs``: a threshold given as a fraction of :math:`\sqrt{2N_\mathrm{obs}}` where :math:`N_\mathrm{obs}` is the total number of kinematic observations, which is equal to the number of spatial apertures multiplied by (i) ``number_GH`` if ``GaussHermite`` kinematics are used, or (ii) the number of LOSVD bins if ``BayesLOSVD`` kinematics are used.
+        - If ``generator_type = SpecificModels``, then the following needs to be set,
+            - ``SpecificModels_mode``: determines how models are constructed. ``"list"`` selects parameter values element-wise. All parameters' ``specific_values`` lists must be of equal length (or empty if their respective ``value`` entry is to be used). ``"cartesian"`` constructs the Cartesian product of fixed parameter values. The parameters' ``specific_values`` lists don't need to be of equal length in that case (may result in a large number of models).
     - ``stopping_criteria``: all of the following must be specified. If any of the criteria are met, then the parameter generation will stop:
-        - One of ``min_delta_chi2_abs`` or ``min_delta_chi2_rel`` must be set: float, absolute or relative tolerance for ending the parameter search. If an iteration does not improve the minimum chi2 by this threshold, no new iteration will be performed.
+        - One of ``min_delta_chi2_abs`` or ``min_delta_chi2_rel`` must be set: float, absolute or relative tolerance for ending the parameter search. If an iteration does not improve the minimum chi2 by this threshold, no new iteration will be performed. In case new models shall be force-created incdependently of :math:`\chi^2`, negative values for these parameters are allowed.
         - ``n_max_mods``: int, maximum number of models desired
-        - ``n_max_iter``: int, maximum number of iterations desired
+        - ``n_max_iter``: int, maximum number of iterations to be run. The iteration a model was created in is listed under the ``which_iter`` column of the ``all_models`` table, and these are indexed from ``0,... n_max_iter-1``. The ``n_max_iter`` setting controls the total *cumulative* number of iterations to run i.e. if you specify ``n_max_iter=10`` and there are existing models which ``which_iter=9``, then no new iterations will be run. Note that the first two iterations are always run together i.e. whether you specify ``n_max_iter=1`` or ``n_max_iter=2``, iterations 0 and 1 will both be run.
 
 ``io_settings``
 =====================
@@ -301,13 +322,19 @@ Settings for multiprocessing. Models can be evaluated in parallel, with the numb
   multiprocessing_settings:
       ncpus: 4                              # integer or string 'all_available' (default: 'all_available')
       ncpus_weights: 4                      # int or 'all_available', optional (default: ncpus), not used by all iterators
-      orblibs_in_parallel: True             # calculate tube and box orbits in parallel (default: True)
+      orblibs_in_parallel: True             # calculate tube and box orbits in parallel (default: False)
       modeliterator: 'SplitModelIterator'   # optional (default: 'ModelInnerIterator')
 
-Due to very different CPU and memory consumption of orbit integration and weight solving, there are two different settings: while orbit integration will use ``ncpus``, weight solving will use ``ncpus_weights`` parallel processes. Note that ``ncpus_weights`` will default to ``ncpus`` if not specified. Currently, only the ``SplitModelIterator`` model iterator and recovering from an unsuccessful weight solving attempt (``reattempt_failures=True``) use the ``ncpus_weights`` setting.
+Due to very different CPU and memory consumption of orbit integration and weight solving, there are two different settings: while orbit integration will use ``ncpus``, weight solving will use ``ncpus_weights`` parallel processes, with ``ncpus`` ≥ ``ncpus_weights`` in general. Note that ``ncpus_weights`` will default to ``ncpus`` if not specified. Currently, only the ``SplitModelIterator`` model iterator and recovering from an unsuccessful weight solving attempt (``reattempt_failures=True``) use the ``ncpus_weights`` setting.
 
-If ``ncpus : 'all_available'`` or ``ncpus_weights : 'all_available'`` is set, then DYNAMITE automatically detects the number of available cpus for parallelisation.
+If ``orblibs_in_parallel`` is set to ``False``, DYNAMITE will first integrate the tube orbits and then the box orbits. If it is set to ``True``, the tube and box orbits will be integrated in parallel, which will use 2 parallel processes per model.
 
+If ``ncpus : 'all_available'`` or ``ncpus_weights : 'all_available'`` is set, then DYNAMITE automatically detects the number of available cpus :math:`N_\mathrm{CPU}` for parallelisation and will set ``ncpus`` = ``ncpus_weights`` = :math:`N_\mathrm{CPU}`.
+
+Important performance hint:
+
+- Most ``numpy`` and ``scipy`` implementations are compiled for shared-memory parallelism (e.g., involving blas/openblas). This can be verified by inspecting the ``MAX_THREADS`` values in the output of ``numpy.__config__.show()`` and ``scipy.__config__.show()``, respectively. The number of threads to be used by ``numpy`` and ``scipy`` can be limited by setting the environment variable ``OMP_NUM_THREADS`` to the desired value before executing DYNAMITE.
+- Recommendation: ``OMP_NUM_THREADS=n`` with ``ncpus * n`` ≤ :math:`N_\mathrm{CPU}` if ``orblibs_in_parallel`` is set to ``False`` and ``ncpus * n`` ≤ :math:`\frac{1}{2}\,N_\mathrm{CPU}` if ``orblibs_in_parallel`` is set to ``True``.
 
 ``legacy_settings``
 =====================

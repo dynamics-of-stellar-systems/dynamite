@@ -17,38 +17,63 @@ class Kinematics(data.Data):
     """
     values = []
     def __init__(self,
-                 weight=None,
                  type=None,
                  hist_width='default',
                  hist_center='default',
                  hist_bins='default',
+                 with_pops=False,
                  **kwargs
                  ):
         super().__init__(**kwargs)
+        self.logger = logging.getLogger(f'{__name__}.{__class__.__name__}')
         if hasattr(self, 'data'):
-            self.weight = weight
             self.type = type
             if hist_width=='default':
                 self.set_default_hist_width()
             else:
-                self.hist_width = hist_width
+                self.hist_width = float(hist_width)
             if hist_center=='default':
                 self.set_default_hist_center()
             else:
-                self.hist_center = hist_center
+                self.hist_center = float(hist_center)
             if hist_bins=='default':
                 self.set_default_hist_bins()
             else:
-                self.hist_bins = hist_bins
+                self.hist_bins = int(hist_bins)
+            has_pops, pop_cols = self.has_pops()
+            if has_pops and with_pops:
+                self.with_pops = True
+                self.pop_cols = pop_cols
+                self.logger.debug(f'Kinem {self.name} has population data.')
+            else:
+                self.with_pops = False
+                self.pop_cols = []
             self.__class__.values = list(self.__dict__.keys())
-            self.logger = logging.getLogger(f'{__name__}.{__class__.__name__}')
-            if self.weight==None or self.type==None or self.hist_width==None or \
+            if self.type==None or self.hist_width==None or \
                     self.hist_center==None or self.hist_bins==None:
-                text = 'Kinematics need (weight, type, hist_width, hist_center, '\
-                   f'hist_bins), but has ({self.weight}, {self.type}, ' \
+                text = 'Kinematics need (type, hist_width, hist_center, '\
+                   f'hist_bins), but has ({self.type}, ' \
                    f'{self.hist_width}, {self.hist_center}, {self.hist_bins})'
                 self.logger.error(text)
                 raise ValueError(text)
+            self.n_spatial_bins = len(self.data)
+
+    def has_pops(self):
+        """
+        Identifies population data in the kinematics data file.
+
+        If there is population data, it is removed from self.data. This
+        method needs to be implemented for all Kinematics subclasses.
+
+        Returns
+        -------
+        bool
+            True if population data is found, False otherwise.
+        list
+            List of population data columns
+
+        """
+        return False, []
 
     def update(self, **kwargs):
         """
@@ -89,10 +114,10 @@ class Kinematics(data.Data):
         return f'{self.__class__.__name__}({self.__dict__})'
 
     def get_data(self, **kwargs):
-        """Returns the kinemtics data.
+        """Returns the kinematics data.
 
-        This skeleton method just returns the self.data attribute and allows
-        for specific implementations by subclasses.
+        This skeleton method returns a deep copy of the self.data attribute
+        and allows for specific implementations by subclasses.
 
         Parameters
         ----------
@@ -164,7 +189,7 @@ class GaussHermite(Kinematics, data.Integrated):
         self.logger = logging.getLogger(f'{__name__}.{__class__.__name__}')
         if hasattr(self, 'data'):
             self.max_gh_order = self.get_highest_order_gh_coefficient()
-            self.n_apertures = len(self.data)
+            self.n_apertures = self.n_spatial_bins
             self._data_raw = None
             self._data_with_sys_err = None
 
@@ -178,7 +203,8 @@ class GaussHermite(Kinematics, data.Integrated):
         with their uncertainties, adapted to the desired number of GH
         coefficients and optionally including the systematic errors.
         The `number_GH` setting from the configuration file determines the
-        number of returned GH coefficients.
+        number of returned GH coefficients. The data in the returned table is
+        a deep copy of the observed data.
 
         If number_GH (configuration file) greater than max_GH_order (number of
         gh coefficients in the kinematics file), columns with zeros
@@ -192,11 +218,10 @@ class GaussHermite(Kinematics, data.Integrated):
         weight_solver_settings : dict
             `Configuration.settings.weight_solver_settings` object.
             Must include the key `number_GH` and - if apply_systematic_error
-            is set to `True`, the key `GH_sys_err`.
+            is set to `True` - the key `GH_sys_err`.
         apply_systematic_error : bool, optional
-            If set to `True`, apply the systematic uncertainties to the
-            dh3, dh4, ... values and calculates the h1, h2 uncertainties
-            from vdMarel + Franx 93.
+            If set to `True`, apply the systematic uncertainties to the dv,
+            dsigma, dh3, dh4, ... values.
         cache_data : bool, optional
             If set to `True`, the first call of this method will store the
             calculated data table in attribute self._data_raw
@@ -224,6 +249,18 @@ class GaussHermite(Kinematics, data.Integrated):
         else:  # Calculate data table with number_GH coefs
             gh_data = self.data.copy(copy_data=True)
             if number_gh > self.max_gh_order:
+                systematics = weight_solver_settings['GH_sys_err']
+                if type(systematics) is not str:
+                    txt = 'weight_solver_settings: GH_sys_err must be a string.'
+                    self.logger.error(txt)
+                    raise ValueError(txt)
+                systematics = [float(x) for x in systematics.split(' ')]
+                systematics = np.array(systematics)
+                if any(systematics[self.max_gh_order:number_gh] <= 0):
+                    txt = 'weight_solver_settings: GH_sys_err must be > 0 ' \
+                          ' for extra GH coefficients.'
+                    self.logger.error(txt)
+                    raise ValueError(txt)
                 cols_to_add = [f'{d}h{i+1}'
                                for i in range(self.max_gh_order, number_gh)
                                for d in ('', 'd')]
@@ -242,31 +279,46 @@ class GaussHermite(Kinematics, data.Integrated):
             if cache_data:
                 self._data_raw = gh_data.copy(copy_data=True)
         if apply_systematic_error:
-            # construct uncertainties
-            uncertainties = np.zeros((self.n_apertures, number_gh))
-            # uncertainties on h1,h2 from vdMarel + Franx 93
-            uncertainties[:, 0] = gh_data['dv'] / np.sqrt(2) / gh_data['sigma']
-            uncertainties[:, 1] = gh_data['dsigma']/np.sqrt(2)/gh_data['sigma']
-            # uncertainties h3, h4, etc... are taken from gh_data table
-            for i in range(3, number_gh + 1):
-                uncertainties[:, i - 1] = gh_data[f'dh{i}']
             # add the systematic uncertainties
             systematics = weight_solver_settings['GH_sys_err']
             if type(systematics) is str:
                 systematics = systematics.split(' ')
                 systematics = [float(x) for x in systematics]
-            systematics = np.array(systematics)
-            systematics = systematics[0:number_gh]
-            uncertainties = (uncertainties**2 + systematics**2)**0.5
-            gh_data['dv'] = uncertainties[:, 0]
-            gh_data['dsigma'] = uncertainties[:, 1]
+            systematics = np.array(systematics)[0:number_gh]
+            gh_data['dv'] = np.sqrt(gh_data['dv']**2 + systematics[0]**2)
+            gh_data['dsigma']=np.sqrt(gh_data['dsigma']**2 + systematics[1]**2)
             for i in range(3, number_gh + 1):
-                gh_data[f'dh{i}'] = uncertainties[:, i - 1]
-            self.logger.debug(f'Kinematics {self.name}: applied systematic '
-                              'errors and h1, h2 uncertainties.')
+                gh_data[f'dh{i}'] = \
+                    np.sqrt(gh_data[f'dh{i}']**2 + systematics[i - 1]**2)
+            self.logger.debug(f'Kinematics {self.name}: '
+                              'applied systematic errors.')
             if cache_data:
                 self._data_with_sys_err = gh_data.copy(copy_data=True)
         return gh_data
+
+    def has_pops(self):
+        """
+        Identifies population data in the kinematics data file.
+
+        If there is population data, it is removed from self.data. This
+        method needs to be implemented for all Kinematics subclasses.
+
+        Returns
+        -------
+        bool
+            True if population data is found, False otherwise.
+        list
+            List of population data columns
+
+        """
+        max_gh = self.get_highest_order_gh_coefficient()
+        gh_cols = ['v', 'dv', 'sigma', 'dsigma']
+        gh_cols += [f'{d}h{i}' for i in range(3, max_gh + 1) for d in ('','d')]
+        pop_cols = [c for c in self.data.colnames[1:] if c not in gh_cols]
+        self.data.remove_columns(pop_cols)
+        has_pops = len(pop_cols) > 0
+        pop_cols = self.data.colnames[:1] + pop_cols
+        return has_pops, pop_cols
 
     def get_highest_order_gh_coefficient(self):
         """Get max order GH coeeff from data table
@@ -326,6 +378,10 @@ class GaussHermite(Kinematics, data.Integrated):
                              names=names,
                              dtype=dtype)
         self.logger.debug(f'File {filename} read (old format)')
+        if np.isnan(data).any():
+            txt = f'Input file {filename} has nans'
+            self.logger.error(f'{txt} at: {np.argwhere(np.isnan(data))}.')
+            raise ValueError(txt)
         return data
 
     def convert_file_from_old_format(self,
@@ -483,17 +539,17 @@ class GaussHermite(Kinematics, data.Integrated):
         w_pow_i = np.stack([w**i for i in range(n_herm)])
         # coeffients has shape (n_herm, n_herm)
         # w_pow_i has shape (n_herm, n_regions, n_vbins)
-        result = np.einsum('ij,jkl->ikl', coeffients, w_pow_i, optimize=True)
+        result = np.einsum('ij,jkl->ikl', coeffients, w_pow_i, optimize=False)
         return result
 
     def evaluate_losvd(self, v, v_mu, v_sig, h):
-        """ evaluate LOSVDs
+        r""" evaluate LOSVDs
 
         Evaluate the quantity
 
         .. math::
 
-            \mathrm{LOSVD}(v) = \\frac{1}{v_\sigma} \mathcal{N}(w; 0, 1^2)
+            \mathrm{LOSVD}(v) = \frac{1}{v_\sigma} \mathcal{N}(w; 0, 1^2)
                 \Sigma_{m=0}^{M} h_m H_m(w)
 
         where normalised velocity :math:`w = (v-v_\mu)/v_\sigma`
@@ -526,11 +582,11 @@ class GaussHermite(Kinematics, data.Integrated):
                           nrm.pdf(w),
                           h,
                           hpolys,
-                          optimize=True)
+                          optimize=False)
         return losvd
 
     def evaluate_losvd_normalisation(self, h):
-        """Evaluate LOSVD normalisation
+        r"""Evaluate LOSVD normalisation
 
         Evaluate the normalising integral
 
@@ -586,7 +642,7 @@ class GaussHermite(Kinematics, data.Integrated):
         """Calcuate GH expansion coeffients given an LOSVD
 
         Expand LOSVD around a given v_mu and v_sig using eqn 7 of
-        vd Marel & Franx 93
+        vd Marel & Franx 93, ApJ 407,525
 
         Parameters
         ----------
@@ -620,7 +676,7 @@ class GaussHermite(Kinematics, data.Integrated):
                       nrm.pdf(w),
                       hpolys,
                       vel_hist.dx,
-                      optimize=True)
+                      optimize=False)
         h *= 2 * np.pi**0.5 # pre-factor in eqn 7
         return h
 
@@ -676,20 +732,20 @@ class GaussHermite(Kinematics, data.Integrated):
             observed_values[:, i - 1] = gh_data[f'h{i}']
         # construct uncertainties
         uncertainties = np.zeros_like(observed_values)
-        # uncertainties on h1,h2 from vdMarel + Franx 93
-        uncertainties[:, 0] = gh_data['dv']
-        uncertainties[:, 1] = gh_data['dsigma']
+        # uncertainties on h1,h2 from vdMarel + Franx 93, ApJ 407,525
+        uncertainties[:, 0] = gh_data['dv'] / np.sqrt(2) / gh_data['sigma']
+        uncertainties[:, 1] = gh_data['dsigma'] / np.sqrt(2) / gh_data['sigma']
         # uncertainties h3, h4, etc... are taken from data table
         for i in range(3, number_gh + 1):
             uncertainties[:, i - 1] = gh_data[f'dh{i}']
         return observed_values, uncertainties
 
     def set_default_hist_width(self, n_sig=3.):
-        """Sets default histogram width
+        r"""Sets default histogram width
 
         Set it to
 
-        :math:`2 * max(|v| + n_\mathrm{sig}*\sigma)`
+        :math:`2 * \max(|v| + n_\mathrm{sig}*\sigma)`
 
         i.e. double the largest velcoity present in the observed LOSVD
 
@@ -702,7 +758,7 @@ class GaussHermite(Kinematics, data.Integrated):
         v, sig = self.data['v'], self.data['sigma']
         max_abs_v_plus_3sig = np.max(np.abs(v) + n_sig*sig)
         hist_width = 2.*max_abs_v_plus_3sig
-        self.hist_width = hist_width
+        self.hist_width = float(hist_width)
 
     def set_default_hist_center(self):
         """Sets default histogram center to 0.
@@ -823,7 +879,9 @@ class Histogram(object):
         na = np.newaxis
         mean = np.sum(self.x[na,:,na] * self.y * self.dx[na,:,na], axis=1)
         norm = self.get_normalisation()
-        mean /= norm
+        # ignore invalid operations resulting in np.nan (such as 0/0 -> np.nan)
+        with np.errstate(invalid='ignore'):
+            mean /= norm
         return mean
 
     def get_sigma(self):
@@ -900,6 +958,30 @@ class BayesLOSVD(Kinematics, data.Integrated):
         if hasattr(self, 'data'):
             self.convert_losvd_columns_to_one_multidimensional_column()
             self.set_mean_v_and_sig_v_per_aperture()
+
+    def has_pops(self):
+        """
+        Identifies population data in the kinematics data file.
+
+        If there is population data, it is removed from self.data. This
+        method needs to be implemented for all Kinematics subclasses.
+
+        Returns
+        -------
+        bool
+            True if population data is found, False otherwise.
+        list
+            List of population data columns
+
+        """
+        kin_cols = ['binID_BayesLOSVD', 'bin_flux', 'binID_dynamite',
+                    'v', 'sigma', 'xbin', 'ybin']
+        pop_cols = [c for c in self.data.colnames if c not in kin_cols
+                    and not any(c.startswith(s) for s in ['losvd', 'dlosvd'])]
+        self.data.remove_columns(pop_cols)
+        has_pops = len(pop_cols) > 0
+        pop_cols = ['binID_dynamite'] + pop_cols
+        return has_pops, pop_cols
 
     def convert_losvd_columns_to_one_multidimensional_column(self):
         """Convert 1D to multi-dim columns
@@ -1000,6 +1082,11 @@ class BayesLOSVD(Kinematics, data.Integrated):
         for key,values in input_data.items():
             self.logger.debug(' - '+key)
             struct[key] = np.array(values)
+            if np.isnan(struct[key]).any():
+                txt = f'Input file {filename} has nans'
+                self.logger.error(f'{txt} at: '
+                                  f'{np.argwhere(np.isnan(struct[key]))}.')
+                raise ValueError(txt)
         if f.get("out") != None:
             self.logger.debug("# Loading Stan results:")
             output_data = f['out']
@@ -1009,7 +1096,13 @@ class BayesLOSVD(Kinematics, data.Integrated):
                 struct[int(idx)] = {}
                 for key,values in tmp.items():
                     self.logger.debug(' - ['+idx+'] '+key)
-                    struct[int(idx)][key] = np.array(values)
+                    v_array = np.array(values)
+                    struct[int(idx)][key] = v_array
+                    if np.isnan(v_array).any():
+                        txt = f'Input file {filename} has nans'
+                        self.logger.error(f'{txt} at: '
+                                          f'{np.argwhere(np.isnan(v_array))}.')
+                        raise ValueError(txt)
         self.logger.info("load_hdf5 is DONE")
         return struct
 
@@ -1043,26 +1136,25 @@ class BayesLOSVD(Kinematics, data.Integrated):
         nbins = len(completed_bins)
         losvd_mean = np.zeros((nbins,nv))
         losvd_sigma = np.zeros((nbins,nv))
+        # put the data in a table
+        data = table.Table()
+        data['binID_BayesLOSVD'] = completed_bins
+        data['bin_flux'] = np.zeros(nbins)
         # completed_bins may have gaps i.e. some bins may not be completed, so
         # to fill arrays use a counter `i` - do not use completed_bins as index
-        i = 0
-        for bin in completed_bins:
+        for i,i_bin in enumerate(completed_bins):
             # get median LOSVD
-            losvd_mean[i] = result[bin]['losvd'][2]
+            losvd_mean[i] = result[i_bin]['losvd'][2]
             # get 68% BCI
-            bci_68 = result[bin]['losvd'][3] - result[bin]['losvd'][1]
+            bci_68 = result[i_bin]['losvd'][3] - result[i_bin]['losvd'][1]
             losvd_sigma[i] = 0.5*bci_68
-            i += 1
+            # add bin fluxes to the table
+            data['bin_flux'][i] = result['bin_flux'][i_bin]
         # BAYES-LOSVD returns the velocity array (and losvds) in descening order
         # let's flip them to make it easier to work with later
         vcent = vcent[::-1]
         losvd_mean = losvd_mean[:,::-1]
         losvd_sigma = losvd_sigma[:,::-1]
-        # put them in a table
-        data = table.Table()
-        data['binID_BayesLOSVD'] = completed_bins
-        # add bin fluxes to the table
-        data['bin_flux'] = result['bin_flux']
         # BayesLOSVD bin indexing starts at 0 and some bins may be missing, but:
         # 1) orblib_f.f90 assumes bins start at 1
         # 2) LegacyOrbitLibrary.read_orbit_base assumes that no bins are missing
@@ -1073,8 +1165,9 @@ class BayesLOSVD(Kinematics, data.Integrated):
             data[f'dlosvd_{j}'] = losvd_sigma[:,j]
         # add meta-data
         meta = {'dv':dv, 'vcent':list(vcent), 'nbins':nbins, 'nvbins':nv}
-        data = table.Table(data, meta=meta)
+        data.meta = meta
         data.write(outfile, format='ascii.ecsv', overwrite=True)
+        self.logger.info(f'BayesLOSVD output written to {outfile}.')
         return
 
     def write_aperture_and_bin_files(self,
@@ -1349,7 +1442,7 @@ class BayesLOSVD(Kinematics, data.Integrated):
         rebined_orbit_vel_hist = np.einsum('ijk,lj->ilk',
                                            losvd_histograms.y,
                                            f,
-                                           optimize=True)
+                                           optimize=False)
         return rebined_orbit_vel_hist
 
     def transform_orblib_to_observables(self,
