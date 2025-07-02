@@ -793,7 +793,7 @@ class TriaxialVisibleComponent(VisibleComponent):
         """
         (p, q, u), valid = self.find_grid_of_valid_pqu()
         text = "No deprojection possible for the specificed values of (p,q,u)."
-        text += "Here are some suggestions: \n"
+        text += " Here are some suggestions:\n"
         # take avg of valid p's and q's where u is close to targer value
         target_u = 0.9
         idx = np.where(np.abs(u[valid]-target_u)<0.005)
