@@ -341,6 +341,76 @@ class Coloring:
                      flux_data_norm,
                      obs_data,
                      sample):
+        """Fit orbit bundle color maps to the observed data using Bayesian
+        inference.
+
+        Employs Probabilistic Programming with PyMC to fit the observed
+        quantity (e.g., age or metallicity) based on the normalized flux data
+        for the spatial bins. The model uses a truncated normal or lognormal
+        distribution for the prior of the observed quantity and a Student's t
+        distribution with fixed sigma (Half-Cauchy distributed with beta=5)
+        and nu (Exponential distributed with parameter 1/30) parameters for
+        the likelihood of the observed data.
+        This method uses the Markov chain Monte Carlo (MCMC) sampling
+        algorithm NUTS (No-U-Turn Sampler), initialized with the ADVI
+        (Automatic Differentiation Variational Inference) method.
+
+        Parameters
+        ----------
+        prior_dist : str
+            Distribution for the prior of the observed quantity (e.g., age or
+            metallicity). Currently implemented:
+            'normal': truncated normal distribution
+            'lognormal': truncated lognormal distribution
+            Other distributions will raise a NotImplementedError.
+        prior_par : dict
+            Parameters for the prior distribution.
+            For 'normal', it should contain 'mu', 'sigma', 'lower', and
+            'upper' keys, where 'mu' and 'sigma' are the mean and standard
+            deviation of the normal distribution, and 'lower' and 'upper' are
+            the truncation limits.
+            For 'lognormal', it should contain 'mu', 'sigma', 'lower', and
+            'upper' keys, where 'mu' and 'sigma' are the parameters of the
+            lognormal distribution, and 'lower' and 'upper' are the truncation
+            limits.
+            The 'mu' values should be a 1d numpy array of length equal to the
+            number of orbit bundles fitted to the observed data. The rest of
+            the parameters should be scalars.
+        flux_data_norm : np.array of shape (n_spatial_bins, n_bundle)
+            Normalized flux data for the spatial bins, where each column
+            corresponds to an orbit bundle and each row corresponds to a
+            spatial bin. This data is used to compute the expected value of
+            the observed quantity based on the fitted model.
+            The normalization is done such that the sum of fluxes in each
+            spatial bin is equal to 1.
+            This is typically the result of orbit color maps calculated from a
+            Voronoi binning process of the phase space.
+        obs_data : np.array of shape (n_spatial_bins,)
+            Observed data for the spatial bins, which is the quantity to be
+            fitted. This data is used as the observed values in the Bayesian
+            inference process. Typical examples are age or metallicity.
+        sample : dict
+            Parameters for the sampling process, including:
+            - 'n_draws': int, number of draws for the MCMC sampling.
+            - 'n_tune': int, number of tuning steps for the MCMC sampling.
+            - 'advi_init': int, number of initialization steps for ADVI.
+
+        Returns
+        -------
+        (model, trace) : tuple, where
+            model : pymc.Model
+                The PyMC model object containing the Bayesian model
+                specification.
+            trace : arviz.data.inference_data.InferenceData
+                The trace of the MCMC sampling, containing the posterior
+                distributions of the model parameters.
+
+        Raises
+        ------
+        NotImplementedError
+            If the distribution specified in `prior_dist` is not implemented.
+        """
+        self.logger.info('Fitting Bayesian model to the observed data.')
         with pm.Model() as model:
             if prior_dist == 'normal':  # truncated normal distribution
                 qty = pm.TruncatedNormal(name='qty',
@@ -362,7 +432,7 @@ class Coloring:
                 txt = f'Prior distribution {prior_dist} not implemented.'
                 self.logger.error(txt)
                 raise NotImplementedError(txt)
-            student_t_sigma = pm.HalfCauchy('student_t_sigma', 5)
+            student_t_sigma = pm.HalfCauchy('student_t_sigma', beta=5)
             student_t_nu = pm.Exponential('student_t_nu', 1/30)
             student_t_mu = pm.math.dot(flux_data_norm, qty)
             obs = pm.StudentT('obs',
