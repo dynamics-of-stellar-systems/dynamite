@@ -375,7 +375,7 @@ class Coloring:
                               step=None,
                               init='advi',
                               n_init=sample['advi_init'])
-            return model, trace
+        return model, trace
 
     def color_maps(self, model_data=None, flux_data_rel=None):
         if model_data is None:
