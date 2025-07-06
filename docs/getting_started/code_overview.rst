@@ -108,10 +108,17 @@ Note that also for this file the first line needs to be exactly like displayed a
 Comments on kinematics
 ----------------------
 
+Weight solver issues
+^^^^^^^^^^^^^^^^^^^^
+
 LegacyWeightSolver can't be used with BayesLOSVD - use weight-solver type NNLS.
+
 In some cases, the weight solver ``type: "NNLS"`` ``nnls_solver: "scipy"`` may fail for some models if the SciPy version is >= 1.12. In such cases, it is recommended to use ``type: "NNLS"`` ``nnls_solver: "cvxopt"`` or to reinstall DYNAMITE with ``scipy<1.12`` in ``requirements.txt``.
 
-It is possible to simultaneously fit multiple sets of kinematics in DYNAMITE, which is only supported for Gauss Hermite kinematics. In that case, all input files should be placed in this directory::
+Simultaneous fitting of multiple kinematic sets
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+It is possible to simultaneously fit multiple sets of kinematics in DYNAMITE, mixing kinematics of different types is supported as is mixing kinematics with differing histogram settings. In that case, all input files should be placed in the input directory::
 
   | main_directory
   | ├── input_files
@@ -125,7 +132,10 @@ It is possible to simultaneously fit multiple sets of kinematics in DYNAMITE, wh
   |
 
 The specific names of the files given here are just examples - you can specify the names you would like to use in the configuration file.
-The individual kinematics' tables need to have the same number of expansion coefficients. In case your kinematics have different numbers of Gauss Hermite expansion coefficients, we recommend to augment the respecive tables with zero values for the additional coefficients and set the respective coefficients' errors to a large number (e.g., 0.3 or 0.5).
+
+In case of Gauss Hermite kinematics, the individual kinematics' tables need to have the same number of expansion coefficients. In case your kinematics have different numbers of Gauss Hermite expansion coefficients, we recommend to augment the respecive tables with zero values for the additional coefficients and set the respective coefficients' errors to a large number (e.g., 0.3 or 0.5).
+
+When mixing kinematics it is important to keep in mind that kinematics containing more data may dominate the weight solving. BayesLOSVD kinematics or instance, typically contain more data than Gauss Hermite kinematics; so if mixed, the BayesLOSVD kinematics will dominate the weight solving. One way to avoid this is to adjust the errors of the Gauss Hermite moments in the input data.
 
 Configuration File
 ===================
