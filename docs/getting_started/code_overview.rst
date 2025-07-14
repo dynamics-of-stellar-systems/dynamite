@@ -135,7 +135,7 @@ The specific names of the files given here are just examples - you can specify t
 
 In case of Gauss Hermite kinematics, the individual kinematics' tables need to have the same number of expansion coefficients. In case your kinematics have different numbers of Gauss Hermite expansion coefficients, we recommend to augment the respecive tables with zero values for the additional coefficients and set the respective coefficients' errors to a large number (e.g., 0.3 or 0.5).
 
-When mixing kinematics it is important to keep in mind that kinematics containing more data may dominate the weight solving. BayesLOSVD kinematics or instance, typically contain more data than Gauss Hermite kinematics; so if mixed, the BayesLOSVD kinematics will dominate the weight solving. One way to avoid this is to adjust the errors of the Gauss Hermite moments in the input data.
+Keep in mind when mixing different kinematic data sets that their contribution to the orbit weights optimisation depends on the relative quantity and quality of the different data sets. For example, BayesLOSVD kinematics typically provides many more constraints than Gauss-Hermite kinematics, so that BayesLOSVD can dominate the weight solving and the Gauss-Hermite kinematics contribute little. An ad-hoc way to compensate for this is by adjusting the relative quality of the data sets, e.g., by reducing the errors on the Gauss-Hermite kinematics by a constant factor and so increase their relative contribution to the weight solving.
 
 Configuration File
 ===================
