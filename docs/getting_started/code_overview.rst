@@ -84,7 +84,7 @@ The Multi Gaussian Expansion (MGE) in ``mge.ecsv`` describes the galaxy's 2D sur
 It is also possible to provide two separate MGE's for the surface-brightness and surface mass-density (see the :ref:`observed_data` section of the Configuration page for details.
 
 Two types of kinematic are supported: tables of Gauss Hermite expansion coefficients, or histogrammed LOSVDs output by `BayesLOSVD <https://github.com/jfalconbarroso/BAYES-LOSVD>`_.
-These must be in the form of `Astropy ECSV files <https://docs.astropy.org/en/stable/api/astropy.io.ascii.Ecsv.html>`_ e.g., ``kinematics.ecsv``. The files ``aperture.dat`` and ``bins.dat`` contain information about the spatial binning of your kinematic data. Convenience functions are provided for creating converting some standard kinematic data files, and examples demonstrating these can be found in the tutorials.
+These must be in the form of `Astropy ECSV files <https://docs.astropy.org/en/stable/api/astropy.io.ascii.Ecsv.html>`_ e.g., ``kinematics.ecsv``. The files ``aperture.dat`` and ``bins.dat`` contain information about the spatial binning of your kinematic data. Convenience functions are provided for creating and converting some standard kinematic data files, and examples demonstrating these can be found in the tutorials.
 Note that the kinematics need to be centered at the center of the MGE.
 
 The file ``aperture.dat`` file contains the spatial extent in arcseconds, the angle (in degrees ) ``90 - position_angle``, and size of the grid in pixels::
@@ -108,10 +108,17 @@ Note that also for this file the first line needs to be exactly like displayed a
 Comments on kinematics
 ----------------------
 
+Weight solver issues
+^^^^^^^^^^^^^^^^^^^^
+
 LegacyWeightSolver can't be used with BayesLOSVD - use weight-solver type NNLS.
+
 In some cases, the weight solver ``type: "NNLS"`` ``nnls_solver: "scipy"`` may fail for some models if the SciPy version is >= 1.12. In such cases, it is recommended to use ``type: "NNLS"`` ``nnls_solver: "cvxopt"`` or to reinstall DYNAMITE with ``scipy<1.12`` in ``requirements.txt``.
 
-It is possible to simultaneously fit multiple sets of kinematics in DYNAMITE, which is only supported for Gauss Hermite kinematics. In that case, all input files should be placed in this directory::
+Simultaneous fitting of multiple kinematic sets
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+It is possible to simultaneously fit multiple sets of kinematics in DYNAMITE, mixing kinematics of different types is supported as is mixing kinematics with differing histogram settings. In that case, all input files should be placed in the input directory::
 
   | main_directory
   | ├── input_files
@@ -125,7 +132,10 @@ It is possible to simultaneously fit multiple sets of kinematics in DYNAMITE, wh
   |
 
 The specific names of the files given here are just examples - you can specify the names you would like to use in the configuration file.
-The individual kinematics' tables need to have the same number of expansion coefficients. In case your kinematics have different numbers of Gauss Hermite expansion coefficients, we recommend to augment the respecive tables with zero values for the additional coefficients and set the respective coefficients' errors to a large number (e.g., 0.3 or 0.5).
+
+In case of Gauss Hermite kinematics, the individual kinematics' tables need to have the same number of expansion coefficients. In case your kinematics have different numbers of Gauss Hermite expansion coefficients, we recommend to augment the respecive tables with zero values for the additional coefficients and set the respective coefficients' errors to a large number (e.g., 0.3 or 0.5).
+
+Keep in mind when mixing different kinematic data sets that their contribution to the orbit weights optimisation depends on the relative quantity and quality of the different data sets. For example, BayesLOSVD kinematics typically provides many more constraints than Gauss-Hermite kinematics, so that BayesLOSVD can dominate the weight solving and the Gauss-Hermite kinematics contribute little. An ad-hoc way to compensate for this is by adjusting the relative quality of the data sets, e.g., by reducing the errors on the Gauss-Hermite kinematics by a constant factor and so increase their relative contribution to the weight solving.
 
 Configuration File
 ===================

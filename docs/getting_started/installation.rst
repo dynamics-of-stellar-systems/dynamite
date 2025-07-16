@@ -374,7 +374,7 @@ Your terminal will likely express several warnings again, but these are not crit
 3. Installing DYNAMITE
 ----------------------
 
-If all these files are there, you can proceed with the installation, by going back to ``.../dynamite`` and running::
+If all these files are there, you can proceed with the installation, by going back to ``.../dynamite`` and running (note the dot at the end, it is part of the command)::
 
     python -m pip install .
 

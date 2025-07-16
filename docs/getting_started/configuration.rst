@@ -158,7 +158,6 @@ The ``TriaxialVisibleComponent`` represents the galaxy's stars, and therefore ha
     - ``kinematics``
         - ``name_of_the_kinematic_set``: a descriptive name, best without spaces as it will be part of the kinematic plot file name.
             - ``type``: type of kinematics - either ``GaussHermite`` or ``BayesLOSVD``
-            - ``weight``: float, weighting applied to this kinematic set in chi2 calculation; weights don't need to add up to 1.0.
             - ``datafile``: string, filename for the kinematics ECSV data file
             - ``aperturefile``: string, filename of the aperture file for this kinematic set
             - ``binfile``: string, filename of the bin file for this kinematic set
