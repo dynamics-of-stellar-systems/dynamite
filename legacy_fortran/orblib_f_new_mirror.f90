@@ -2233,7 +2233,7 @@ contains
                     if (h_bin(i, 1) /= 1) stop " 0d histogram must have 1 bin only."
                     write (unit=handle_pops) histogram(bg:ed, 1:h_bin(i, 1))
                 else  ! 1d histograms
-                    call histogram_write_compat_sparse(handle, histogram(bg:ed, 1:h_bin(i, 1)))
+                    call histogram_write_compat_sparse(handle, i, histogram(bg:ed, 1:h_bin(i, 1)))
                 end if
             else  ! 2d histograms
                 call binning_bin_h2d(i, histogram2d(bg:ed, 1:h_bin(i, 1), 1:h_bin(i, 2)), ed)
@@ -2248,14 +2248,14 @@ contains
     end subroutine histogram_write
 
     !++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-    subroutine histogram_write_compat_sparse(handle, t)
-        integer(kind=i4b), intent(in) :: handle
+    subroutine histogram_write_compat_sparse(handle, i_hist, t)
+        integer(kind=i4b), intent(in) :: handle, i_hist
         real(kind=dp), dimension(:, :), intent(in) :: t
         !----------------------------------------------------------------------
         integer(kind=i4b) :: ap, b, e, i, k, bout, eout
         do ap = 1, size(t, 1)
-            b = 2*hist_basic(1, 3, 1)
-            e = -2*hist_basic(1, 3, 1)
+            b = 2*hist_basic(i_hist, 3, 1)
+            e = -2*hist_basic(i_hist, 3, 1)
             do i = 1, size(t, 2)
                 if (t(ap, i) > 0.0_dp) then
                     b = min(b, i)
@@ -2264,7 +2264,7 @@ contains
             end do
 
             ! write the relevant information for all velocity histograms to file
-            k = hist_basic(1, 3, 1)/2.0_sp + 1.0_sp
+            k = hist_basic(i_hist, 3, 1)/2.0_sp + 1.0_sp
             bout = b - k
             eout = e - k
             write (unit=handle) bout, eout

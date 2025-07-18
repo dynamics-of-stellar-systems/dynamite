@@ -5,13 +5,14 @@ Change Log
 ****************
 
 - Improvement: Changed the default BayesLOSVD histogram width and number of velocity bins to be consistent with the data (no oversampling by default).
+- New feature: DYNAMITE models now support multiple kinematic data sets of different types and with different histogram settings
 - Improvement: the orbit_plot now allows custom orbit cuts via the ocut parameter (same behavior as in the Decomposition class)
 - Bugfix: fixed a crash of the SpecificModels parameter generator with certain specific value lists.
 - Improvement: more robust directory naming when failed models are present in the all_models table
 - Bugfix: don't crash with pops data when using ModelInnerIterator.
 - Bugfix: don't crash when continuing a run with just one valid model.
 - Improvement: added counter-rotating components to decomposition.
-- Bugfix: fix a bug that prevents Bayes LOSVD kinemtic maps from being created more than once
+- Bugfix: fix a bug that prevents Bayes LOSVD kinematic maps from being created more than once
 - New feature: a dark halo is no longer mandatory (models can consist of either zero or one dark halo component)
 - Improvement: Reduced disk space requirements and performance by splitting orbit library files while maintaining backward compatibility.
 - Bugfix: avoid DYNAMITE crashing because it gets stuck in a model directory due to a Fortran error
