@@ -70,9 +70,10 @@ class Decomposition:
         if model is None:
             best_model_idx = config.all_models.get_best_n_models_idx(n=1)[0]
             self.model = config.all_models.get_model_from_row(best_model_idx)
-        stars = \
-          config.system.get_component_from_class(
-                                  dyn.physical_system.TriaxialVisibleComponent)
+        if self.config.system.is_bar_disk_system():
+            stars = self.config.system.get_unique_bar_component()
+        else:
+            stars = self.config.system.get_unique_triaxial_visible_component()
         n_kin = len(stars.kinematic_data)
         if kin_set >= n_kin:
             text = f'kin_set must be < {n_kin}, but it is {kin_set}'
@@ -183,9 +184,10 @@ class Decomposition:
                 if k not in individual_colorbars:
                     individual_colorbars[k] = False
 
-        stars = \
-        self.config.system.get_component_from_class(
-                                dyn.physical_system.TriaxialVisibleComponent)
+        if self.config.system.is_bar_disk_system():
+            stars = self.config.system.get_unique_bar_component()
+        else:
+            stars = self.config.system.get_unique_triaxial_visible_component()
         dp_args = stars.kinematic_data[self.kin_set].dp_args
         xi = dp_args['x']
         yi = dp_args['y']
@@ -545,7 +547,7 @@ class Decomposition:
 class Analysis:
     """Class to hold results' analysis methods.
 
-    This class contains methods that help analyzing DYANMITE results and can
+    This class contains methods that help analyzing DYNAMITE results and can
     be called, e.g. by plotting routines.
 
     Parameters
@@ -847,11 +849,13 @@ class Analysis:
                    "'both'."
             self.logger.error(txt)
             raise ValueError(txt)
-        stars = self.config.system.get_component_from_class(
-                                dyn.physical_system.TriaxialVisibleComponent)
+        if self.config.system.is_bar_disk_system():
+            stars = self.config.system.get_unique_bar_component()
+        else:
+            stars = self.config.system.get_unique_triaxial_visible_component()
         kin_name = stars.kinematic_data[kin_set].name
-        self.logger.info('Getting projected masses and losvds for '
-                         f'model {model.directory}.')
+        self.logger.info('Getting projected masses and losvds for kinematics '
+                         f'{kin_name} and model {model.directory}.')
         orblib = model.get_orblib()
         if weights is None:
             _ = model.get_weights(orblib)
