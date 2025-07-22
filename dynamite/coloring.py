@@ -354,6 +354,8 @@ class Coloring:
         This method uses the Markov chain Monte Carlo (MCMC) sampling
         algorithm NUTS (No-U-Turn Sampler), initialized with the ADVI
         (Automatic Differentiation Variational Inference) method.
+        The code has been strongly inspired by a similar implementation
+        provided by Ling Zhu as used in e.g., Zhu et al. 2022, A&A, 664, A115.
 
         Parameters
         ----------

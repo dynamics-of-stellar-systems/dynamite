@@ -583,8 +583,8 @@ class Analysis:
         """
         Generates an astropy table that holds the weight-contribution of the
         orbit bundles defined in bundle_mapping to the model's projected mass
-        in each aperture. The spatial binning of the apertures is defined in
-        either a Kinematics or a Populations object.
+        in each aperture. The spatial binning pixels -> apertures is defined
+        in either a Kinematics or a Populations object.
 
         Parameters
         ----------
@@ -592,8 +592,8 @@ class Analysis:
             The default is the Analysis object's model.
         kin_set : int or None, optional
         pop_set : int or None, optional
-            kin_set and pop_set determine, which kinematics set to use for the
-            spatial binning.
+            kin_set and pop_set refer to the Kinematics or Populations object
+            that defines the spatial binning.
             If kin_set=None and pop_set=None, then the Analysis object's
             kin_set is used.
             If kin_set is an integer, then the kinematics set with that index
