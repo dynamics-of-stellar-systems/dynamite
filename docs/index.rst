@@ -84,6 +84,7 @@ Each page is an ipython notebook which you can either view in the browser, or do
    tutorial_notebooks/5_parameter_space.ipynb
    tutorial_notebooks/6_orbits_and_weights.ipynb
    tutorial_notebooks/7_orbital_distributions.ipynb
+   tutorial_notebooks/8_coloring.ipynb
 
 API Documentation
 =================
@@ -101,6 +102,7 @@ The API overview may be a useful starting point.
    api_docs/data
    api_docs/mges
    api_docs/kinematics
+   api_docs/populations
    api_docs/physical_system
    api_docs/parameter_space
    api_docs/model
@@ -109,6 +111,7 @@ The API overview may be a useful starting point.
    api_docs/model_iterator
    api_docs/plotting
    api_docs/analysis
+   api_docs/coloring
 
 More Information
 ================
