@@ -1,6 +1,7 @@
 
 import logging
 import os
+from turtle import distance
 import matplotlib.pyplot as plt
 import numpy as np
 
@@ -11,6 +12,8 @@ import cmasher
 
 from vorbin.voronoi_2d_binning import voronoi_2d_binning
 
+from dynamite import constants
+
 
 class Coloring:
     """Class to hold coloring-related routines
@@ -18,20 +21,36 @@ class Coloring:
     Parameters
     ----------
     config : a ``dyn.config_reader.Configuration`` object
+        the configuration object containing the model and system settings.
+    minr : float or str, optional
+        the minimum radius [kpc] considered in the binning. If 'auto', minr
+        is set to zero. The default is 'auto'.
+    maxr : float or str, optional
+        the maximum radius [kpc] considered in the binning. If 'auto', maxr
+        is set to the config file's ``orblib_settings: logrmax`` value,
+        converted to kpc. The default is 'auto'.
+    nr : int, optional
+        number of radial bins. The default is 50.
+    nl : int, optional
+        number of circularity bins. The default is 61.
 
     """
 
-    def __init__(self, config):
+    def __init__(self, config, minr='auto', maxr='auto', nr=50, nl=61):
         self.logger = logging.getLogger(f'{__name__}.{__class__.__name__}')
         self.config = config
+        if minr == 'auto':
+            self.minr = 0.0
+        if maxr == 'auto':
+            arc_kpc = constants.ARC_KPC(config.system.distMPc)
+            self.maxr = 10**config.settings.orblib_settings['logrmax']*arc_kpc
+        self.nr = nr
+        self.nl = nl
+        self.logger.info(f'Coloring initialized with minr={self.minr}, '
+                         f'maxr={self.maxr}, nr={self.nr}, nl={self.nl}.')
 
     def bin_phase_space(self,
                         model=None,
-                        minr='auto',
-                        maxr='auto',
-                        r_scale='linear',
-                        nr=50,
-                        nl=61,
                         vor_weight=0.01,
                         vor_ignore_zeros=False,
                         make_diagnostic_plots=False,
@@ -54,22 +73,6 @@ class Coloring:
             the model used for the binning. If ``None``, choose the minimum
             :math:`\\chi^2` model (the configuration setting ``which_chi2``
             determines the :math:`\\chi^2` type). The default is ``None``.
-        minr : float or str, optional
-            the minimum radius [kpc] considered in the binning. If 'auto',
-            this is set to the minimum radius of the orbit library.
-            The default is 'auto'.
-        maxr : float or str, optional
-            the maximum radius [kpc] considered in the binning. If 'auto',
-            this is set to the maximum radius of the orbit library.
-            The default is 'auto'.
-        r_scale : str, optional
-            switches between logarithmic (r_scale='log') and linear
-            (r_scale='linear') scaling and binning of the (minr,maxr)
-            r interval. The default is 'linear'.
-        nr : int, optional
-            number of radial bins. The default is 50.
-        nl : int, optional
-            number of circularity bins. The default is 61.
         vor_weight : float, optional
             the target total orbital weight in each Voronoi bin.
             The default is 0.01.
@@ -109,13 +112,13 @@ class Coloring:
             fraction of i_orbit assigned to i_bundle, multiplied by i_orbit's
             weight.
         phase_space_binning : dict
-            'in': np.array of shape (3, nr*nl), the binning input:
+            'in': np.array of shape (3, self.nr * self.nl), the binning input:
             bin r, bin lambda_z, bin total weight
             'out': np.array of shape (3, n_bundle), the Voronoi binning output:
             weighted Voronoi bin centroid coordinates r_bar, lambda_bar
             and Voronoi bin total weights
-            'map': np.array of shape (nr*nl,) the phase space mapping:
-            Voronoi bin numbers for each input bin
+            'map': np.array of shape (self.nr * self.nl,) the phase space
+            mapping: Voronoi bin numbers for each input bin
 
         """
         # save parameters relevant for caching
@@ -123,12 +126,17 @@ class Coloring:
         params.pop('self', None)  # remove self from the parameters
         params.pop('model', None)  # remove model from the parameters
         params['code_version'] = '0.1'  # version of this method
+        params['nr'] = self.nr
+        params['nl'] = self.nl
+        params['minr'] = self.minr
+        params['maxr'] = self.maxr
+        compare_keys = [k for k in params]
         params['f_name'] = f_name = None
         if model is None:
             best_model_idx = self.config.all_models.get_best_n_models_idx(1)[0]
             model = self.config.all_models.get_model_from_row(best_model_idx)
         f_metadata = model.directory + 'voronoi_orbit_bundles.yaml'
-        bundle_metadata = None
+        bundle_metadata = []
 
         if use_cache:
             try:
@@ -137,11 +145,10 @@ class Coloring:
                 self.logger.info('Voronoi binning metadata read from '
                                 f'{f_metadata}.')
             except FileNotFoundError:
-                bundle_metadata = []
                 self.logger.info('No Voronoi binning metadata found.')
             for dat in bundle_metadata:
-                if all(dat[k] == params[k] for k in params
-                       if k not in ['code_version', 'f_name']):
+                if set(dat.keys()) == set(params.keys()) and \
+                   all(dat[k] == params[k] for k in compare_keys):
                     f_name = dat['f_name']
                     self.logger.info('Reading Voronoi orbit bundle data from '
                         f'existing file {model.directory}{f_name}.')
@@ -153,33 +160,20 @@ class Coloring:
                 phase_space_binning = \
                     dict((iom, data[iom]) for iom in ('in', 'out', 'map'))
                 return vor_bundle_mapping, phase_space_binning  ############
+            else:
+                self.logger.info('Performing phase space Voronoi binning.')
 
         orblib = model.get_orblib()
         _ = model.get_weights(orblib)
         weights = model.weights
-        if minr == 'auto' or maxr == 'auto':
-            # use the orbit library's limits for the radius limits
-            if not hasattr(orblib, 'orb_properties'):
-                orblib.read_orbit_property_file()
-            orb_r = orblib.orb_properties['r']
-            if minr == 'auto':
-                minr = np.min(orb_r).value
-            if maxr == 'auto':
-                maxr = np.max(orb_r).value
-        log_minr, log_maxr = np.log10(minr), np.log10(maxr)
-        if r_scale not in ['log', 'linear']:
-            txt = f"r_scale must be 'log' or 'linear', not {r_scale}."
-            self.logger.error(txt)
-            raise ValueError(txt)
-        r_logscale = True if r_scale == 'log' else False
 
-        orblib.get_projection_tensor(minr=minr,
-                                     maxr=maxr,
-                                     nr=nr,
-                                     nl=nl,
+        orblib.get_projection_tensor(minr=self.minr,
+                                     maxr=self.maxr,
+                                     nr=self.nr,
+                                     nl=self.nl,
                                      force_lambda_z=True,
-                                     r_scale=r_scale)
-        # pick entry [2] = fraction of orbits in each r, l bin (ALL orbit types)
+                                     r_scale='linear')
+        # pick entry [2] = fraction of orbits in each r,l bin (ALL orbit types)
         # indices r, l, b = radius, lambda_z, original_orbit_bundle
         projection_tensor = orblib.projection_tensor[2]
 
@@ -188,16 +182,11 @@ class Coloring:
         orbit_distribution = projection_tensor.dot(weights)
 
         # build the input for vorbin
-        if r_logscale:
-            dr = (log_maxr - log_minr) / nr
-            input_bins_r = np.linspace(log_minr + dr / 2,
-                                       log_maxr - dr / 2,
-                                       num=nr)
-        else:
-            dr = (maxr - minr) / nr
-            input_bins_r = np.linspace(minr + dr / 2, maxr - dr / 2, num=nr)
-        dl = 2 / nl
-        input_bins_l = np.linspace(-1 + dl / 2, 1 - dl / 2, num=nl)
+        dr = (self.maxr - self.minr) / self.nr
+        input_bins_r = np.linspace(self.minr + dr / 2, self.maxr - dr / 2,
+                                   num=self.nr)
+        dl = 2 / self.nl
+        input_bins_l = np.linspace(-1 + dl / 2, 1 - dl / 2, num=self.nl)
         input_grid = np.meshgrid(input_bins_r,input_bins_l)
         vor_in = np.vstack((np.array([m.ravel() for m in input_grid]),
                             orbit_distribution.T.ravel()))
@@ -253,15 +242,12 @@ class Coloring:
                                  for nz in nonzero_weight_bins]
             else:
                 vor_map_dense = phase_space_binning['map']
-            vor_map_dense = np.array(vor_map_dense).reshape(nl, nr)
+            vor_map_dense = np.array(vor_map_dense).reshape(self.nl, self.nr)
             plt.figure()
             plt.imshow(orbit_distribution.T,
                        interpolation='spline16',
                        origin='lower',
-                       extent=(log_minr if r_logscale else minr,
-                               log_maxr if r_logscale else maxr,
-                               -1,
-                               1),
+                       extent=(self.minr, self.maxr, -1, 1),
                        aspect='auto',
                        cmap='Greys',
                        alpha=0.9)
@@ -270,7 +256,7 @@ class Coloring:
                            shading='nearest',
                            cmap='tab20',
                            alpha=0.3)
-            plt.xlabel(('$\\log_{10}$ ' if r_logscale else '') + '($r$/kpc)')
+            plt.xlabel('$r$ [kpc]')
             plt.ylabel('Circularity $\\lambda_z$')
             plt.colorbar(label='Voronoi bin id')
             plt.savefig(f'{self.config.settings.io_settings["plot_directory"]}'
@@ -281,7 +267,7 @@ class Coloring:
         # r and l indices of the projection tensor making r the fastest moving
         # index, like in phase_space_binning['map']==binning and multiply
         # element-wise with the orbit weights; orb_frac.shape=(nr*nl, n_orbits)
-        orb_frac = projection_tensor.todense().reshape((nr * nl, -1),
+        orb_frac = projection_tensor.todense().reshape((self.nr * self.nl, -1),
                                                        order='F') * weights
         if vor_ignore_zeros:  # eliminate bins with zero total weight
             orb_frac = orb_frac[nonzero_weight_bins]
@@ -295,18 +281,17 @@ class Coloring:
 
         # save the Voronoi binning results to the model directory
         # Voronoi binning metadata already exists? -> use that filename
-        if bundle_metadata is None:  # otherwise, it has been read already
+        if bundle_metadata == []:  # otherwise, it has been read already
             try:
                 with open(f_metadata, 'r') as f:
                     bundle_metadata = yaml.safe_load(f)
                 self.logger.info('Voronoi binning metadata read from '
                                 f'{f_metadata}.')
             except FileNotFoundError:
-                bundle_metadata = []
                 self.logger.info('No Voronoi binning metadata exists.')
         for dat in bundle_metadata:
-            if all(dat[k] == params[k] for k in params
-                   if k not in ['code_version', 'f_name']):
+            if set(dat.keys()) == set(params.keys()) and \
+               all(dat[k] == params[k] for k in compare_keys):
                 self.logger.info('Voronoi binning metadata exists, will '
                                  'overwrite bundle data.')
                 self.logger.debug(f'Existing metadata: {dat}.')

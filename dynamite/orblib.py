@@ -1492,7 +1492,8 @@ class LegacyOrbitLibrary(OrbitLibrary):
             minr = np.min(orb_properties['r']).value
         if maxr is None:
             maxr = np.max(orb_properties['r']).value
-        log10_r_rng = (np.log10(minr), np.log10(maxr))
+        log10_r_rng = (np.log10(minr), np.log10(maxr)) if r_scale == 'log' \
+                      else (np.nan, np.nan)  # avoid error if minr is zero
         lin_r_rng = (minr, maxr)
         lmd_rng = (-1, 1)
         tot_lmd_rng = (0, 1)

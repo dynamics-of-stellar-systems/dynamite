@@ -580,7 +580,7 @@ class Analysis:
                               bundle_mapping=None,
                               normalize=False,
                               flux_as='table',
-                              sb_maps=False,
+                              create_figure=False,
                               figtype='.png'):
         """
         Generates an astropy table that holds the weight-contribution of the
@@ -624,7 +624,7 @@ class Analysis:
             the model directory in ascii.ecsv format and return its full path
             ``f_name``, if 'both', write the table to disk and return a tuple
             ``(gh_table, f_name)``. The default is 'table'.
-        sb_maps : bool, optional
+        create_figure : bool, optional
             If True, the method will also plot surface brightness maps
             for the orbit bundles and all orbits. The default is False.
         figtype : str, optional
@@ -728,7 +728,7 @@ class Analysis:
             names = [f'flux_{i:03d}' for i in range(n_bundles)] + ['flux_all'],
             meta={('kin_set' if kin else 'pop_set'): kinpop_name})
         # Create surface brightness maps if requested
-        if sb_maps:
+        if create_figure:
             if kin:  # get mapping aperture -> pixel, grid.shape=(n_pixels,)
                 grid = stars.kinematic_data[kin_set].dp_args['idx_bin_to_pix']
                 map_plotter = stars.kinematic_data[kin_set].get_map_plotter()
@@ -754,8 +754,8 @@ class Analysis:
                 # divide aperture flux by number of pixels in aperture
                 # to get surface brightness in each pixel
                 flux = map_table[colname] / bin_mult
-                flux = flux / max(flux)
-                flux[flux==0] = np.nan  # deal with zero fluxes for log10
+                flux[flux > 0] = flux[flux > 0] / max(flux)
+                flux[flux == 0] = np.nan  # deal with zero fluxes for log10
                 flux = np.log10(flux, where=flux is not np.nan)
                 map_plotter(flux,
                             vmin=min(flux),
@@ -776,15 +776,15 @@ class Analysis:
             self.logger.info(f'Orbit bundle maps written to {f_name}.')
         # Write the flux table to disk or return it
         if flux_as == 'table':
-            return (map_table, fig) if sb_maps else map_table
+            return (map_table, fig) if create_figure else map_table
         f_name = f'{model.directory}orbit_bundle_flux_{kinpop_name}.ecsv'
         map_table.write(f_name, format='ascii.ecsv', overwrite=True)
         self.logger.info('Flux for orbit bundles binned for ' +
                          ('kinematics ' if kin else 'populations ') +
                          f'{kinpop_name} written to {f_name}.')
         if flux_as == 'file':
-            return (f_name, fig) if sb_maps else f_name
-        return (map_table, f_name, fig) if sb_maps else (map_table, f_name)
+            return (f_name, fig) if create_figure else f_name
+        return (map_table,f_name,fig) if create_figure else (map_table,f_name)
 
 
     def get_gh_model_kinematic_maps(self,
