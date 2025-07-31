@@ -1,7 +1,6 @@
 
 import logging
 import os
-from turtle import distance
 import matplotlib.pyplot as plt
 import numpy as np
 
@@ -433,6 +432,258 @@ class Coloring:
                               init='advi',
                               n_init=sample['advi_init'])
         return model, trace
+
+    def get_color_orbital_decomp(self, models, vor_bundle_mappings, colors):
+        """Calculate orbital decomposition of the coloring data
+
+        This method calculates the orbital decomposition of the coloring data
+        for a set of models, given the Voronoi bundle mappings and colors. For
+        each model, it computes the total orbit weight in each (r, lambda_z)
+        phase space bin and the color distribution in those bins. The method
+        assumes that all models have the same number of colors and that the
+        Voronoi orbital bundle mappings and colors are provided in the same
+        order as the models. It returns two arrays: one with the total orbit
+        weight in each (r, lambda_z) bin for each model, and another with the
+        color distribution in each (r, lambda_z) bin for each model. The
+        method raises a ValueError if the number of colors is not the same for
+        all models or if the number of models in the arguments do not
+        match. It also logs the number of models and colors being processed.
+
+        Parameters
+        ----------
+        models : list of ``dynamite.model.Model`` objects
+            List of models for which the orbital decomposition is calculated.
+        vor_bundle_mappings : list of np.arrays
+            List of Voronoi orbit bundle mappings for each model. Each mapping
+            is a 2D numpy array where the first dimension corresponds to the
+            Voronoi orbit bundles and the second dimension corresponds to the
+            original orbit bundles: its shape is (n_bundle, n_orbits).
+        colors : list of lists of np.arrays
+            Coloring data in a list. There is one entry per model. Those
+            entries are again lists; their length is n_colors. They consist
+            of 1D numpy arrays of shape (n_bundle,), each of which holds data
+            of one color in the Voronoi orbit bundles for that model. The
+            order of the colors must be the same for each model. Example for
+            2 models and 2 colors 'age' and 'metallicity':
+            ``colors = [[age_model1, met_model1], [age_model2, met_model2]]``
+
+        Returns
+        -------
+        orbit_weight_and_color_distribution :
+            np.array of shape (n_colors + 1, nr, nl, n_models)
+            Array containing both the total orbit weight and the color
+            distribution in each (r, lambda_z) phase space bin for each model.
+            The first slice along the first dimension contains the
+            orbit weight, and the subsequent slices contain the color
+            distributions. In (r, lambda_z) bins without any orbits, the
+            color_distribution will contain np.nan values.
+
+        Raises
+        ------
+        ValueError
+            If the number of colors is not the same for all models, or if the
+            number of models in the arguments do not match. The error message
+            will indicate the issue.
+        """
+        if len(set(map(len,colors))) != 1:
+            txt = 'All models need to have an equal number of colors.'
+            self.logger.error(txt)
+            raise ValueError(txt)
+        if len(set(map(len,[models, vor_bundle_mappings, colors]))) != 1:
+            txt = 'models, vor_bundle_mappings, and colors must be of equal ' \
+                  'length.'
+            self.logger.error(txt)
+            raise ValueError(txt)
+        n_colors = len(colors[0])
+        n_models = len(models)
+        self.logger.info(f'Calculating color orbital decomposition for '
+                         f'{n_models} models with {n_colors} colors each.')
+        # orbit_weight collects the total orbit weight in each (r, l) bin
+        orbit_weight = np.zeros((self.nr, self.nl, n_models))
+        # color_distribution will collect the colors of each phase space bin
+        # (bins without any orbits get np.nan):
+        color_distribution = np.full((n_colors, self.nr, self.nl, n_models),
+                                     np.nan)
+        for i_model, model in enumerate(models):  # for each model...
+            # PART 1: get the total orbit weights in the (r, l) phase space
+            orblib = model.get_orblib()
+            orblib.get_projection_tensor(minr=self.minr,
+                                         maxr=self.maxr,
+                                         r_scale='linear',
+                                         nr=self.nr,
+                                         nl=self.nl,
+                                         force_lambda_z=True)
+            _ = model.get_weights(orblib)
+            # Now, use projection_tensor[2] = fraction of orbits in each r, l
+            # bin (based on ALL orbit types); its shape = (nr, nl, n_orbits).
+            # Calculate total orbit weight in each (nr, nl) bin:
+            orbit_weight[..., i_model] = \
+                orblib.projection_tensor[2].dot(model.weights)
+            # PART 2: get all the colors in the phase space
+            # Identify (r, l) bins with nonzero total orbit weight:
+            valid_rl = [(r, l) for r in range(self.nr) for l in range(self.nl)
+                            if orbit_weight[r, l, i_model]]
+            # get the colors of each original orbit bundle
+            vor_bundle_mapping = vor_bundle_mappings[i_model]
+            _, n_orbits = vor_bundle_mapping.shape
+            orbit_color = np.zeros((n_colors, n_orbits))
+            for i_orbit in range(n_orbits):
+                # Need to catch sum(weights)=0 for weightewd average to work:
+                if np.any(vor_bundle_mapping[:,i_orbit]):
+                    for i_color, color in enumerate(colors[i_model]):
+                        # weighted average in case dithering!=0
+                        orbit_color[i_color, i_orbit] = \
+                            np.average(color,
+                                       weights=vor_bundle_mapping[:,i_orbit])
+            # Add weights of original orbit bundles that contribute to the
+            # phase space bins:
+            color_distribution_weights = \
+                orblib.projection_tensor[2] * model.weights  # element-wise
+            for i_color in range(n_colors):
+                for (i_r, i_l) in valid_rl:  # 'invalid' (nr, nl) stay np.nan
+                    color_distribution[i_color, i_r, i_l, i_model] = \
+                        np.average(orbit_color[i_color], weights=\
+                            color_distribution_weights[i_r, i_l].todense())
+            self.logger.info(f'Color distribution for model {i_model} done.')
+        return np.concatenate((orbit_weight[np.newaxis], color_distribution),
+                              axis=0)
+
+    def coloring_decomp_plot(self,
+                             orbit_data,
+                             plot_labels=None,
+                             rcut_kpc=3.5,
+                             lz_disk=0.8,
+                             lz_warm=0.5,
+                             figtype='.png',
+                             dpi=100):
+        """Coloring decomposition plot, averaging the data of multiple models
+
+        Create and save an orbital decomposition plot in the (r, lambda_z)
+        phase space, consisting of multiple panels: the first panel shows
+        the orbit probability density distribution, the subsequent panels
+        show the color distributions. Dashed lines indicating the orbit-based
+        division into four components: disk, warm, bulge, and hot inner
+        stellar halo. The plot averages the data of multiple models.
+
+        Parameters
+        ----------
+        orbit_data : np.array of shape (n_colors + 1, nr, nl, n_models)
+            Array containing both the total orbit weight and the color
+            distribution in each (r, lambda_z) phase space bin for each model.
+            The first slice along the first dimension contains the
+            orbit weight, and the subsequent slices contain the color
+            distributions. Can directly use the output of
+            ``get_color_orbital_decomp()``.
+        plot_labels : list of str or ``None``, optional
+            Labels for the individual plots. If ``None``, the default labels
+            will be used: 'Orbit PDF', 'Color 1', 'Color 2', etc. The default
+            is ``None``.
+        Cuts for stellar components:
+            - disk (lambda_z > lz_disk)
+            - bulge (lambda_z < lz_disk, r < rcut_kpc)
+            - warm (lz_warm < lambda_z < lz_disk, rcut_kpc < r)
+            - hot inner stellar halo (lambda_z < lz_warm, rcut_kpc < r)
+        rcut_kpc : float, optional
+            by default 3.5
+        lz_disk : float, optional
+            by default 0.8
+        lz_warm : float, optional
+            by default 0.5
+        figtype : str, optional
+            Determines the file format of the saved figure, by default '.png'.
+        dpi : int, optional
+            The resolution of saved figure, by default 100.
+
+        Returns
+        -------
+        matplotlib.figure.Figure
+            The created figure object.
+        """
+        # rcut_kpc = 3.5 # kpc cutting radius for bulge and hot inner stellar halo
+
+        arctkpc = constants.ARC_KPC(self.config.system.distMPc)
+        rcut_arc = rcut_kpc / arctkpc
+        minlz, maxlz = -1, 1
+        minr_arc = self.minr / arctkpc
+        maxr_arc = self.maxr / arctkpc
+        all_rl = [(r, l) for r in range(self.nr) for l in range(self.nl)]
+        n_plots = len(orbit_data)
+        fig = plt.figure(figsize=(16 / 3 * n_plots, 6))
+        if plot_labels is None or not isinstance(plot_labels, list) or \
+           len(plot_labels) != n_plots:
+            self.logger.warning('plot_labels should be a list of labels '
+                                'for each plot, using default labels.')
+            plot_labels = ['Orbit PDF'] + \
+                           [f'Color {i + 1}' for i in range(n_plots - 1)]
+        for i_plot, plot_data in enumerate(orbit_data):
+            label = plot_labels[i_plot]
+            # The first entry in orbit_data is the orbits' weight, convert
+            # to probability density distribution of the orbits in the (r, l)
+            # phase space:
+            if i_plot == 0:
+                weight = plot_data
+                n_models = weight.shape[-1]
+                self.logger.info('Creating coloring decomposition plot '
+                                 f'averaging data of {n_models} models.')
+                values = np.sum(weight, axis=2)
+                values = values / np.sum(values)
+            else:  # Average over all models
+                # (r, l) bins without orbits get a color value of np.nan
+                values = np.full((self.nr, self.nl), np.nan)
+                for i_rl in [i_rl for i_rl in all_rl if np.any(weight[i_rl])]:
+                    values[i_rl] = np.average(plot_data[i_rl],
+                                              axis=0,
+                                              weights=weight[i_rl])
+            ax = fig.add_subplot(1, n_plots, i_plot + 1)
+            vmin = 0 if i_plot == 0 else np.nanmin(values)  # orbit_pdf_min=0
+            vmax = np.nanmax(values)
+            cmap = 'gist_heat_r' if i_plot == 0 else 'cubehelix'
+            im = ax.imshow(values.T,
+                           cmap=cmap,
+                           interpolation='none',
+                           extent=(minr_arc, maxr_arc, minlz, maxlz),
+                           origin='lower',
+                           vmin=vmin,
+                           vmax=vmax,
+                           aspect='auto')
+            plt.plot((rcut_arc, rcut_arc), (-1, lz_disk), 'k--')
+            plt.plot((minr_arc, maxr_arc), (lz_disk, lz_disk), 'k--')
+            plt.plot((rcut_arc, maxr_arc), (lz_warm, lz_warm), 'k--')
+            # ax.set_yticks([-1, 0, 1])
+            # ax.set_xticks([0, 50, 100])
+            ax.set_xlabel(r'$r$ [arcsec]')
+            secax = ax.secondary_xaxis('top', functions=(lambda x: x*arctkpc,
+                                                         lambda x: x/arctkpc))
+            secax.set_xlabel(r'$r$ [kpc]')
+            if i_plot == 0:  # y-axis label and components only for first plot
+                ax.set_ylabel(r'Circularity $\lambda_z$')
+                ax.text(rcut_arc * 1.1,
+                        (lz_disk + 1) / 2,
+                        'Disk',
+                        verticalalignment='center')
+                ax.text(rcut_arc * 1.1,
+                        (lz_warm + lz_disk) / 2,
+                        'Warm',
+                        verticalalignment='center')
+                ax.text(rcut_arc * 1.1,
+                        lz_warm / 2,
+                        'Hot inner stellar halo',
+                        verticalalignment='center')
+                ax.text(rcut_arc * 0.1,
+                        -0.25,
+                        'Bulge',
+                        verticalalignment='center')
+            fig.colorbar(im,
+                         orientation='horizontal',
+                         location='top',
+                         pad=0.15,
+                         label=label)
+        # Save the figure
+        figname = self.config.settings.io_settings['plot_directory'] + \
+                  f'coloring_decomp_plot_{n_models:02d}' + figtype
+        fig.savefig(figname, dpi=dpi)
+        self.logger.info(f'Coloring decomposition plot saved to {figname}.')
+        return fig
 
     def color_maps(self, model_data=None, flux_data_rel=None):
         if model_data is None:
