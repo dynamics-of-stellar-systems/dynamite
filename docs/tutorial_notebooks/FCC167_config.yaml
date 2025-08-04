@@ -129,8 +129,8 @@ system_parameters:
 
 orblib_settings:
     nE: 6
-    logrmin: -0.101275
-    logrmax: 1.99123
+    logrmin: 0.0
+    logrmax: 2.15
     nI2: 5        # must be >= 4
     nI3: 4
     dithering: 1
