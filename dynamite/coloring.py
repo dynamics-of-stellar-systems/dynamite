@@ -17,6 +17,19 @@ from dynamite import constants
 class Coloring:
     """Class to hold coloring-related routines
 
+    This class provides methods for Voronoi binning of orbits in the
+    radius-circularity phase space, fitting Bayesian models to the
+    observed data, and calculating orbital decomposition of the coloring
+    data. It also includes methods for plotting the results of the Voronoi
+    binning and the orbital decomposition.
+
+    The methods and code in this DYNAMITE class are inspired and partly
+    adapted from Zhu et al., 2020, MNRAS, 496, 1579 and Zhu et al., 2022,
+    A&A, 664, A115. Many thanks to Ling Zhu for sharing her code, which was
+    instrumental for developing this class.
+    The Voronoi orbit binning makes use of the vorbin package by Michele
+    Cappellari (M. Cappellari, Y. Copin, 2003, MNRAS 342, 345).
+
     Parameters
     ----------
     config : a ``dyn.config_reader.Configuration`` object

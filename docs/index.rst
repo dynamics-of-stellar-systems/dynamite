@@ -18,6 +18,11 @@ If you use the ``dynamite.analysis.Decomposition`` class, please cite the papers
 `Zhu et al. 2018 <https://ui.adsabs.harvard.edu/abs/2018MNRAS.473.3000Z/abstract>`_ and
 `Santucci et al. 2022 <https://ui.adsabs.harvard.edu/abs/2022ApJ...930..153S/abstract>`_.
 
+If you use the ``dynamite.coloring.Coloring`` class, please cite the papers describing its methodology,
+`Zhu et al. 2020 <https://ui.adsabs.harvard.edu/abs/2020MNRAS.496.1579Z/abstract>`_,
+`Zhu et al. 2022 <https://ui.adsabs.harvard.edu/abs/2022A%26A...664A.115Z/abstract>`_, and
+`Cappellari and Copin 2003 <https://ui.adsabs.harvard.edu/abs/2003MNRAS.342..345C/abstract>`_.
+
 If you model a galaxy having a bar/disk (i.e., if your configuration file includes a ``bardisk`` component), please cite `Tahmasebzadeh et al. 2022 <https://ui.adsabs.harvard.edu/abs/2022ApJ...941..109T/abstract>`_.
 
 ===================
