@@ -858,6 +858,140 @@ class Coloring:
         self.logger.info(f'Coloring decomposition plot saved to {figname}.')
         return fig, f_50_age
 
+    def AMR_plot(self,
+                 age_posterior,
+                 met_posterior,
+                 weight,
+                 n_smooth=100,
+                 figtype='.png',
+                 dpi=100):
+
+        """Create an age vs metallicity plot with smoothing
+
+        Create and save a plot showing the age vs metallicity relation
+        (AMR) for a set of stellar bundles, averaged over multiple MCMC
+        chains and draws. The plot includes a scatter plot of the age and
+        metallicity values, with the size of the points determined by the
+        weight of each bundle. The plot is saved in the specified file format
+        and resolution.
+
+        Parameters
+        ----------
+        age_posterior : xarray or np.array of shape (n_chain, n_draw, n_bundle)
+            Posterior distribution of ages for the stellar bundles, where
+            `n_chain` is the number of MCMC chains, `n_draw` is the number of
+            draws per chain, and `n_bundle` is the number of stellar bundles.
+        met_posterior : xarray or np.array of shape (n_chain, n_draw, n_bundle)
+            Posterior distribution of metallicities for the stellar bundles,
+            with the same shape as `age_posterior`.
+        weight : np.array of shape (n_bundle,)
+            Weight of each stellar bundle, used to determine the size of the
+            points in the scatter plot.
+        n_smooth : int, optional
+            Number of points for each orbit bundle to smooth the posterior
+            distributions over. If `n_smooth` is greater than the number of
+            available points, it will be set to the number of available
+            points. The default is 100.
+        figtype : str, optional
+            Determines the file format of the saved figure, by default '.png'.
+        dpi : int, optional
+            The resolution of saved figure, by default 100.
+
+        Returns
+        -------
+        matplotlib.figure.Figure
+            The created figure object.
+
+        Raises
+        ------
+        ValueError
+            If the shapes of `age_posterior` and `met_posterior` do not match,
+            or if the length of `weight` does not match the number of bundles
+            in the posterior distributions.
+        """
+        self.logger.info('Creating an age vs metallicity plot with '
+                         f'smoothing factor {n_smooth}.')
+        if age_posterior.shape != met_posterior.shape:
+            txt = 'Age and metallicity posterior shapes do not match: ' \
+                  f'{age_posterior.shape} vs {met_posterior.shape}.'
+            self.logger.error(txt)
+            raise ValueError(txt)
+        if len(weight) != age_posterior.shape[2]:
+            txt = 'Weight array length does not match the number of bundles: ' \
+                  f'{len(weight)} vs {age_posterior.shape[2]}.'
+            self.logger.error(txt)
+            raise ValueError(txt)
+        # Smoothing
+        n_chain, n_draw, n_bundle = age_posterior.shape
+        idx_list = [(i, j) for i in range(n_chain) for j in range(n_draw)]
+        if n_smooth > len(idx_list):
+            n_smooth = len(idx_list)  # add log message, jump to return
+            smooth_list = np.array(idx_list)
+            age_smooth = np.array(age_posterior)
+            met_smooth = np.array(met_posterior)
+            self.logger.info(f'Smoothing requested for {n_smooth} points, '
+                             f'but only {len(idx_list)} available, '
+                             'using all available points.')
+        else:
+            rng = np.random.default_rng()
+            # Select random values without duplicates
+            smooth_idx = rng.choice(len(idx_list),size=n_smooth,replace=False)
+            smooth_list = np.array(idx_list)[smooth_idx]
+            age_smooth = np.array([age_posterior[c, d, b]
+                                for (c, d) in smooth_list
+                                for b in range(n_bundle)])
+            met_smooth = np.array([met_posterior[c, d, b]
+                                for (c, d) in smooth_list
+                                for b in range(n_bundle)])
+        weight_smooth = np.array([weight[b]
+                                  for (c, d) in smooth_list
+                                  for b in range(n_bundle)])
+
+        age_mean = age_posterior.mean(axis=(0,1))
+        met_mean = met_posterior.mean(axis=(0,1))
+        met_err = met_posterior.std(axis=(0,1))
+
+        met_start = met_mean + np.abs(np.random.normal(0,
+                                                       met_err,
+                                                       size = len(met_mean)))
+
+        fig = plt.figure(figsize=(6, 5))
+
+        min_t = min(np.nanmin(age_smooth), np.nanmin(age_mean))
+        max_t = max(np.nanmax(age_smooth), np.nanmax(age_mean))
+        min_z = max(np.nanmin(met_smooth),
+                    np.nanmin(met_mean),
+                    np.nanmin(met_start))
+        max_z = max(np.nanmax(met_smooth),
+                    np.nanmax(met_mean),
+                    np.nanmax(met_start))
+
+        # ax = fig.add_axes([0.15, 0.15, 0.45, 0.45])
+        plt.scatter(age_smooth, met_smooth, s=weight_smooth * 0.2)
+        plt.scatter(age_mean, met_mean, s=weight, c='r')
+        plt.plot(age_mean, met_start,'k.')
+        plt.xlabel('t [Gyr]')
+        plt.ylabel('$Z/Z_{sun}$')
+        plt.xlim(min_t, max_t)
+        plt.ylim(min_z, max_z)
+
+        # ax = fig.add_axes([0.15, 0.7, 0.45, 0.2])
+        # yh=plt.hist(age_smooth, bins=14, range=[min_t, max_t], weights=weight_smooth/10000, histtype='step')
+        # yh=plt.hist(age_mean, bins=14, range=[min_t, max_t], weights=weight/100, histtype='step', color='r')
+        # plt.xlim(min_t, max_t)
+
+        # ax = fig.add_axes([0.7, 0.15, 0.2, 0.45])
+        # yh = plt.hist(met_smooth, bins=10, range=[min_z, max_z], weights=weight_smooth/10000, histtype='step', orientation='horizontal')
+        # yh = plt.hist(met_mean, bins=10, range=[min_z, max_z], weights=weight/100, histtype='step', orientation='horizontal')
+        # plt.ylim(min_z, max_z)
+
+        # Save the figure
+        figname = self.config.settings.io_settings['plot_directory'] + \
+            f'AMR_plot' + figtype
+        fig.savefig(figname, dpi=dpi)
+        self.logger.info(f'AMR plot saved to {figname}.')
+        return fig
+
     def color_maps(self, model_data=None, flux_data_rel=None):
         if model_data is None:
             model_data = {}
