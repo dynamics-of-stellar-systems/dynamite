@@ -4,6 +4,7 @@
 Change Log
 ****************
 
+- Bugfix: Fixed crash in the density() method of the NFW_m200_c dark halo
 - New feature: DYNAMITE models now support multiple kinematic data sets of different types and with different histogram settings
 - Improvement: the orbit_plot now allows custom orbit cuts via the ocut parameter (same behavior as in the Decomposition class)
 - Bugfix: fixed a crash of the SpecificModels parameter generator with certain specific value lists.
