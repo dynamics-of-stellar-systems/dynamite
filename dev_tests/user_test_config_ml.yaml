@@ -120,7 +120,12 @@ system_components:
                 # datafile: "gauss_hermite_kins_with_pops.ecsv"  # both discr. & integrated
                 aperturefile: "aperture.dat" # integrated only
                 binfile: "bins.dat"          # integrated only
-                with_pops: False # If True, pop columns will create pop object
+                with_pops: False # If True, pop columns will create pop object, default: False
+            # propermotions:
+            #     type: ProperMotions
+            #     datafile: "proper_motions_dummy.ecsv"
+            #     aperturefile: "aperture_for_pm.dat"
+            #     binfile: "bins_for_pm.dat"
         # populations: # optional, only specified for components with kinematics
         #     pop1:
         #         datafile: "stellar_pops.ecsv"  # both discr. & integrated

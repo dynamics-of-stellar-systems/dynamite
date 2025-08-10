@@ -4,6 +4,7 @@
 Change Log
 ****************
 
+- Improvement: Changed the default BayesLOSVD histogram width and number of velocity bins to be consistent with the data (no oversampling by default).
 - New feature: DYNAMITE models now support multiple kinematic data sets of different types and with different histogram settings
 - Improvement: the orbit_plot now allows custom orbit cuts via the ocut parameter (same behavior as in the Decomposition class)
 - Bugfix: fixed a crash of the SpecificModels parameter generator with certain specific value lists.
