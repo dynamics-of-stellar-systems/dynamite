@@ -51,15 +51,17 @@ class Coloring:
     def __init__(self, config, minr='auto', maxr='auto', nr=50, nl=61):
         self.logger = logging.getLogger(f'{__name__}.{__class__.__name__}')
         self.config = config
+        arc_kpc = constants.ARC_KPC(config.system.distMPc)
         if minr == 'auto':
             self.minr = 0.0
         if maxr == 'auto':
-            arc_kpc = constants.ARC_KPC(config.system.distMPc)
             self.maxr = 10**config.settings.orblib_settings['logrmax']*arc_kpc
+        self.minr_arcsec = self.minr / arc_kpc
+        self.maxr_arcsec = self.maxr / arc_kpc
         self.nr = nr
         self.nl = nl
-        self.logger.info(f'Coloring initialized with minr={self.minr}, '
-                         f'maxr={self.maxr}, nr={self.nr}, nl={self.nl}.')
+        self.logger.info(f'Coloring initialized with minr={self.minr} kpc, '
+                         f'maxr={self.maxr} kpc, nr={self.nr}, nl={self.nl}.')
 
     def bin_phase_space(self,
                         model=None,
@@ -322,12 +324,12 @@ class Coloring:
             bundle_metadata.append(params)
             with open(f_metadata, 'w') as f:
                 yaml.dump(bundle_metadata, f)
-            self.logger.info('Voronoi binning metadata saved to '
+            self.logger.info('Voronoi binning metadata saved in '
                              f'{f_metadata}.')
         np.savez(model.directory + f_name,
                  vor_bundle_mapping=vor_bundle_mapping,
                  **phase_space_binning)
-        self.logger.info('Voronoi orbit bundle mapping saved to '
+        self.logger.info('Voronoi orbit bundle mapping saved in '
                          f'{model.directory + f_name}.')
 
         return vor_bundle_mapping, phase_space_binning
@@ -445,6 +447,110 @@ class Coloring:
                               init='advi',
                               n_init=sample['advi_init'])
         return model, trace
+
+    def orbit_bundle_plot(self,
+                          orbit_distribution=None,
+                          model=None,
+                          phase_space_mapping=None,
+                          figtype='.png',
+                          dpi=100):
+        """Create a plot of the orbit bundle distribution in the
+        radius-circularity phase space.
+
+        Parameters
+        ----------
+        orbit_distribution : np.array of shape (self.nr, self.nl), optional
+            Probability density of stellar orbits in the (r, lambda_z) bins.
+            If None, the orbit distribution is calculated from the model
+            parameter. The default is None.
+        model : a ``dynamite.model.Model`` object, optional
+            The model used for the binning if orbit_distribution is not
+            specified or None. This parameter is ignored if orbit_distribution
+            is given. If model is None, choose the minimum
+            :math:`\\chi^2` model (the configuration setting ``which_chi2``
+            determines the :math:`\\chi^2` type). The default is None.
+        phase_space_mapping : np.array of shape (self.nr * self.nl,)
+            The phase space mapping: Voronoi bin numbers for each input bin.
+            Can directly use the bin_phase_space() output
+            phase_space_binning['map'].
+        figtype : str, optional
+            Determines the file format of the saved figure, by default '.png'.
+        dpi : int, optional
+            The resolution of saved figure, by default 100.
+
+        Raises
+        ------
+        ValueError
+            If phase_space_binning is None.
+
+        Returns
+        -------
+        matplotlib.figure.Figure
+            The created figure object.
+        """
+        self.logger.info('Creating orbit bundle plot.')
+        if orbit_distribution is None:
+            self.logger.info('No orbit distribution provided, '
+                             'calculating from model parameter.')
+            if model is None:
+                best_model_idx = \
+                    self.config.all_models.get_best_n_models_idx(1)[0]
+                model = \
+                    self.config.all_models.get_model_from_row(best_model_idx)
+            orblib = model.get_orblib()
+            orblib.get_projection_tensor(minr=self.minr,
+                                         maxr=self.maxr,
+                                         r_scale='linear',
+                                         nr=self.nr,
+                                         nl=self.nl,
+                                         force_lambda_z=True)
+            _ = model.get_weights(orblib)
+            orbit_distribution = orblib.projection_tensor[2].dot(model.weights)
+        if phase_space_mapping is None:
+            txt = 'No phase space mapping provided, cannot create ' \
+                  'orbit bundle plot.'
+            self.logger.error(txt)
+            raise ValueError(txt)
+        vor_map_dense = np.array(phase_space_mapping).reshape(self.nl, self.nr)
+        fig,ax = plt.subplots(figsize=(7, 5))
+        plt.imshow(orbit_distribution.T,
+                interpolation='spline16',
+                origin='lower',
+                extent=(self.minr_arcsec, self.maxr_arcsec, -1, 1),
+                aspect='auto',
+                cmap='Greys',
+                alpha=0.9)
+        plt.colorbar(label='Orbit probability density')
+        plt.xlabel(r'$r$ [arcsec]')
+        plt.ylabel(r'Circularity $\lambda_z$')
+        arctkpc = constants.ARC_KPC(self.config.system.distMPc)
+        secax = ax.secondary_xaxis('top', functions=(lambda x: x*arctkpc,
+                                                     lambda x: x/arctkpc))
+        secax.set_xlabel(r'$r$ [kpc]')
+        dr = (self.maxr_arcsec - self.minr_arcsec) / self.nr
+        dl = 2 / self.nl
+        for i_l, lam in enumerate(np.linspace(-1, 1 - dl, num=self.nl)):
+            for i_r, r in enumerate(np.linspace(self.minr_arcsec,
+                                                self.maxr_arcsec - dr,
+                                                num=self.nr)):
+                if i_r < self.nr - 1 \
+                   and vor_map_dense[i_l, i_r] != vor_map_dense[i_l, i_r + 1]:
+                    plt.plot([r + dr, r + dr],
+                             [lam, lam + dl],
+                             color='tab:red',
+                             linewidth=0.5)
+                if i_l < self.nl - 1 \
+                   and vor_map_dense[i_l, i_r] != vor_map_dense[i_l + 1, i_r]:
+                    plt.plot([r, r + dr],
+                             [lam + dl, lam + dl],
+                             color='tab:red',
+                             linewidth=0.5)
+        # Save the figure
+        figname = self.config.settings.io_settings['plot_directory'] + \
+            'orbit_bundle_plot' + figtype
+        fig.savefig(figname, dpi=dpi)
+        self.logger.info(f'Orbit bundle plot saved in {figname}.')
+        return fig
 
     def get_color_orbital_decomp(self, models, vor_bundle_mappings, colors):
         """Calculate orbital decomposition of the coloring data
@@ -693,7 +799,7 @@ class Coloring:
         figname = self.config.settings.io_settings['plot_directory'] + \
                   f'coloring_decomp_plot_{n_models:02d}' + figtype
         fig.savefig(figname, dpi=dpi)
-        self.logger.info(f'Coloring decomposition plot saved to {figname}.')
+        self.logger.info(f'Coloring decomposition plot saved in {figname}.')
         return fig
 
     def circularity_age_plot(self,
@@ -855,7 +961,7 @@ class Coloring:
         figname = self.config.settings.io_settings['plot_directory'] + \
             f'circularity_age_plot_{n_models:02d}' + figtype
         fig.savefig(figname, dpi=dpi)
-        self.logger.info(f'Coloring decomposition plot saved to {figname}.')
+        self.logger.info(f'Coloring decomposition plot saved in {figname}.')
         return fig, f_50_age
 
     def AMR_plot(self,
@@ -989,7 +1095,7 @@ class Coloring:
         figname = self.config.settings.io_settings['plot_directory'] + \
             f'AMR_plot' + figtype
         fig.savefig(figname, dpi=dpi)
-        self.logger.info(f'AMR plot saved to {figname}.')
+        self.logger.info(f'AMR plot saved in {figname}.')
         return fig
 
     def color_maps(self, model_data=None, flux_data_rel=None):
