@@ -6,13 +6,9 @@ from scipy import special
 
 # some tricks to add the current path to sys.path (so the imports below work)
 
-import os.path
-import sys
 import logging
 
 from dynamite import mges as mge
-from dynamite import constants as const
-from dynamite import orblib as orb
 
 class System(object):
     """The physical system being modelled
@@ -1073,6 +1069,7 @@ class NFW_m200_c(DarkComponent):
         Menc = 4*np.pi*self.rc(c,f)**3*self.rhoc(c,f)* \
             (np.log(1 + r/self.rc(c,f)) - (r/self.rc(c,f))/(1 + r/self.rc(c,f)))
         return Menc
+
 
 class Hernquist(DarkComponent):
     """A Hernquist sphere

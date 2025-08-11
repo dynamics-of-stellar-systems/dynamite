@@ -15,7 +15,7 @@ from matplotlib.ticker import NullFormatter
 import matplotlib.pyplot as plt
 import astropy
 from plotbin import display_pixels
-import dynamite
+from dynamite import constants
 from dynamite import kinematics
 from dynamite import physical_system as physys
 from dynamite import analysis
@@ -996,9 +996,7 @@ class Plotter():
         #Input parameters: NFW dark matter concentration and fraction,
         #and stellar mass
 
-        grav_const_km = 6.67428e-11*1.98892e30/1e9
-        parsec_km = 1.4959787068e8*(648.000e3/np.pi)
-        rho_crit = (3.*((7.3000e-5)/parsec_km)**2)/(8.*np.pi*grav_const_km)
+        rho_crit = constants.RHO_CRIT
 
         rhoc = (200./3.)*rho_crit*cc**3/(np.log(1.+cc) - cc/(1.+cc))
         rc = (3./(800.*np.pi*rho_crit*cc**3)*dmfrac*mstars)**(1./3.)
@@ -1193,7 +1191,7 @@ class Plotter():
         arctpc = distance*np.pi/0.648
         sigobs_pc = mgesigma*arctpc
         r_pc = R*arctpc
-        parsec_km = 1.4959787068e8*(648.e3/np.pi)
+        parsec_km = constants.PARSEC_KM
         psi_off = mgePAtwist
 
         mass = np.zeros((nm,n,3))
