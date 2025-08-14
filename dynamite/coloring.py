@@ -384,7 +384,7 @@ class Coloring:
             the observed quantity based on the fitted model.
             The normalization is done such that the sum of fluxes in each
             spatial bin is equal to 1.
-            This is typically the result of orbit color maps calculated from a
+            This is typically the result of orbit bundle maps calculated from a
             Voronoi binning process of the phase space.
         obs_data : np.array of shape (n_spatial_bins,)
             Observed data for the spatial bins, which is the quantity to be
@@ -396,11 +396,6 @@ class Coloring:
             - 'n_tune': int, number of tuning steps for the MCMC sampling.
             - 'advi_init': int, number of initialization steps for ADVI.
 
-        Raises
-        ------
-        NotImplementedError
-            If the distribution specified in `prior_dist` is not implemented.
-
         Returns
         -------
         (model, trace) : tuple, where
@@ -410,6 +405,11 @@ class Coloring:
             trace : arviz.data.inference_data.InferenceData
                 The trace of the MCMC sampling, containing the posterior
                 distributions of the model parameters.
+
+        Raises
+        ------
+        NotImplementedError
+            If the distribution specified in `prior_dist` is not implemented.
         """
         self.logger.info('Fitting Bayesian model to the observed data.')
         with pm.Model() as model:
@@ -446,6 +446,9 @@ class Coloring:
                               step=None,
                               init='advi',
                               n_init=sample['advi_init'])
+        self.logger.info('Bayesian model fitting completed. Shape of '
+                         'posterior: (n_chain, n_draw, n_dim_0) = '
+                         f'{trace.posterior["qty"].shape}.')
         return model, trace
 
     def orbit_bundle_plot(self,
@@ -478,15 +481,15 @@ class Coloring:
         dpi : int, optional
             The resolution of saved figure, by default 100.
 
-        Raises
-        ------
-        ValueError
-            If phase_space_binning is None.
-
         Returns
         -------
         matplotlib.figure.Figure
             The created figure object.
+
+        Raises
+        ------
+        ValueError
+            If phase_space_binning is None.
         """
         self.logger.info('Creating orbit bundle plot.')
         if orbit_distribution is None:
@@ -586,13 +589,6 @@ class Coloring:
             2 models and 2 colors 'age' and 'metallicity':
             ``colors = [[age_model1, met_model1], [age_model2, met_model2]]``
 
-        Raises
-        ------
-        ValueError
-            If the number of colors is not the same for all models, or if the
-            number of models in the arguments do not match. The error message
-            will indicate the issue.
-
         Returns
         -------
         orbit_weight_and_color_distribution :
@@ -603,6 +599,13 @@ class Coloring:
             orbit weight, and the subsequent slices contain the color
             distributions. In (r, lambda_z) bins without any orbits, the
             color_distribution will contain np.nan values.
+
+        Raises
+        ------
+        ValueError
+            If the number of colors is not the same for all models, or if the
+            number of models in the arguments do not match. The error message
+            will indicate the issue.
         """
         if len(set(map(len,colors))) != 1:
             txt = 'All models need to have an equal number of colors.'
@@ -640,8 +643,9 @@ class Coloring:
                 orblib.projection_tensor[2].dot(model.weights)
             # PART 2: get all the colors in the phase space
             # Identify (r, l) bins with nonzero total orbit weight:
-            valid_rl = [(r, l) for r in range(self.nr) for l in range(self.nl)
-                            if orbit_weight[r, l, i_model]]
+            valid_rl = [(r, lam) for r in range(self.nr)
+                                 for lam in range(self.nl)
+                                 if orbit_weight[r, lam, i_model]]
             # get the colors of each original orbit bundle
             vor_bundle_mapping = vor_bundle_mappings[i_model]
             _, n_orbits = vor_bundle_mapping.shape
@@ -723,7 +727,7 @@ class Coloring:
         minlz, maxlz = -1, 1
         minr_arc = self.minr / arctkpc
         maxr_arc = self.maxr / arctkpc
-        all_rl = [(r, l) for r in range(self.nr) for l in range(self.nl)]
+        all_rl = [(r, lam) for r in range(self.nr) for lam in range(self.nl)]
         n_plots = len(orbit_data)
         fig = plt.figure(figsize=(16 / 3 * n_plots, 6))
         if plot_labels is None or not isinstance(plot_labels, list) or \
@@ -848,13 +852,6 @@ class Coloring:
         dpi : int, optional
             The resolution of saved figure, by default 100.
 
-        Raises
-        ------
-        ValueError
-            If the shape of `orbit_data` is not compatible with the expected
-            format, i.e., it should have at least two slices along the first
-            dimension (one for orbit weight and one for age).
-
         Returns
         -------
         (figure, f_50_age) : tuple, where
@@ -866,6 +863,13 @@ class Coloring:
                 between the two age bins that cross the threshold. Set to
                 np.nan if the cold orbit fraction does not cross the threshold
                 in the given age range.
+
+        Raises
+        ------
+        ValueError
+            If the shape of `orbit_data` is not compatible with the expected
+            format, i.e., it should have at least two slices along the first
+            dimension (one for orbit weight and one for age).
         """
         if len(orbit_data) < 2:
             txt = 'Orbit_data must have at least two slices: one for ' \
@@ -1093,69 +1097,191 @@ class Coloring:
 
         # Save the figure
         figname = self.config.settings.io_settings['plot_directory'] + \
-            f'AMR_plot' + figtype
+            'AMR_plot' + figtype
         fig.savefig(figname, dpi=dpi)
         self.logger.info(f'AMR plot saved in {figname}.')
         return fig
 
-    def color_maps(self, model_data=None, flux_data_rel=None):
-        if model_data is None:
-            model_data = {}
-        n_models = len(model_data)
+    def color_maps(self,
+                   colors,
+                   model_data,
+                   flux_norm,
+                   cbar_lims='data',
+                   figtype='.png',
+                   dpi=100):
+        """Plot color maps for observed and model data
 
-        # Plot the observed data in the first row
+        Create and save color maps for the observed and model data, along with
+        the residuals defined by residual = (model - data) / data_error.
+        The method generates a grid of subplots with the individual colors in
+        the columns and observed data, model data, and residuals in the three
+        rows, respectively. If the provided model data includes errors, the
+        observation and model errors will be plotted next to the data. The
+        color maps are generated using the `cmasher` library, and the color bar
+        limits can be derived from the data or model values, or automatically
+        set. The method raises a ValueError if the number of colors does not
+        match the number of model data columns, or if the provided `cbar_lims`
+        is not one of the expected values.
+
+        Parameters
+        ----------
+        colors : dict
+            Dictionary that defines the colors to be plotted. The keys are the
+            color descriptors and must match the column names in the observed
+            data (in any order). The values are the descriptions of those
+            colors and are used in the plot titles. Note, that unlike for the
+            observed data columns, the ORDER MATTERS for the model data:
+            model_data needs to provide the data in the same order as the
+            colors dictionary. Example: {'age': 'Age [Gyr]',
+            'met': 'Metallicity'}.
+        model_data : list of np.arrays of shape (n_bundle,)
+            List of model data arrays where each array corresponds to a color
+            in the `colors` dictionary. The length of the list determines
+            whether errors are to be plottetd: If the length matches the
+            number of colors in the `colors` dictionary, errors are not
+            plotted. If the length is twice the number of colors, errors are
+            plotted and error data is expected in every other column.
+            Each array in the list should be a 1D numpy array of shape
+            (n_bundle,), where `n_bundle` is the number of Voronoi orbit
+            bundles in the model. The order of the arrays must match the
+            order of the colors in the `colors` dictionary.
+            Example with errors plotted: [age, dage, met, dmet], without errors
+            plottetd: [age, met]. Each array has shape (n_bundle,).
+        flux_norm : np.array of shape (n_spatial_bins, n_bundle)
+            Normalized flux data for the spatial bins. Each column corresponds
+            to an orbit bundle and each row corresponds to a spatial bin. It is
+            normalized such that the sum of fluxes in each spatial bin is equal
+            to 1. This is typically the result of orbit bundle maps calculated
+            from a Voronoi binning process of the phase space.
+        cbar_lims : str, optional
+            Determines the limits for the color bar. Can be 'data', 'model',
+            or 'auto'. If 'data', the limits are based on the observed data.
+            If 'model', the limits are based on the model data. If 'auto',
+            the limits adapt for each color. The default is 'data'.
+        figtype : str, optional
+            Determines the file format of the saved figure, by default '.png'.
+        dpi : int, optional
+            The resolution of saved figure, by default 100.
+
+        Returns
+        -------
+        matplotlib.figure.Figure
+            The created figure object containing the color maps.
+
+        Raises
+        ------
+        ValueError
+            If the number of colors is not compatible with the number of model
+            data columns, or if the provided `cbar_lims` is not one of the
+            expected values. The error message will indicate the issue.
+        """
+        n_colors = len(colors)
+        txt = f' for {n_colors} colors: {list(colors.keys())}.'
+        if len(model_data) == n_colors:
+            self.logger.info('Color maps: plotting data ' + txt)
+            plot_errors = False
+        elif len(model_data) == 2 * n_colors:
+            self.logger.info('Color maps: plotting data and errors ' + txt)
+            plot_errors = True
+        else:
+            txt = 'Model data must be of same or twice the length of colors '
+            txt += '({n_colors} or {2 * n_colors}), not {len(model_data)}.'
+            self.logger.error(txt)
+            raise ValueError(txt)
+        # Generate column names for the colors in the observed data,
+        # e.g. 'age', 'dage', 'met', 'dmet'
+        if plot_errors:
+            plot_cols = [p + col for col in colors for p in ('', 'd')]
+        else:
+            plot_cols = [col for col in colors]
+        # Get the observed data
         stars = self.config.system.get_unique_triaxial_visible_component()
         pops = stars.population_data[0]
-        age, dage, met, dmet = [pops.get_data()[i]
-                                for i in ('age', 'dage', 'met', 'dmet')]
         map_plotter = pops.get_map_plotter()
-        n_cols = 4
-        n_rows = 1 + n_models
-        fig = plt.figure(figsize=(20, 2 * n_rows))
-        fig.subplots_adjust(wspace=0.5)
-        col_min = [min(a) for a in (age, dage, met, dmet)]
-        col_max = [max(a) for a in (age, dage, met, dmet)]
-        for i_plot, col in enumerate((age, dage, met, dmet)):
-            ax = plt.subplot(n_rows, n_cols, i_plot + 1)
-            map_plotter(col,
-                        vmin=col_min[i_plot % n_cols],
-                        vmax=col_max[i_plot % n_cols],
-                        # label=col.name,
-                        colorbar=True,
-                        cmap=cmasher.get_sub_cmap('twilight_shifted',
-                                                  0.05,
-                                                  0.6))
-            ax.set_title(f'{col.name}')
-            if i_plot + 1 > (n_rows - 1) * n_cols:  # last row
-                ax.set_xlabel('x [arcsec]')
-            if i_plot % n_cols == 0:  # first column
-                ax.set_ylabel('Observed\ny [arcsec]')
-
-        # Plot the model data in the remaining rows
-        for m_name, m_data in model_data.items():
-            for i_col, col in enumerate(m_data):  # even columns are data,
-                                                  # odd columns are errors
-                i_plot += 1
-                if col is None:
-                    continue
-                ax = plt.subplot(n_rows, n_cols, i_plot + 1)
-                if i_col % 2 == 0:  # data
-                    col_data_aperture = np.dot(flux_data_rel, col)
-                    vmin = col_min[i_plot % n_cols]
-                    vmax = col_max[i_plot % n_cols]
-                else:  # error
-                    col_data_aperture = np.dot(flux_data_rel, np.square(col))
+        pops_data = pops.get_data()
+        # Calculate color bar limits
+        if cbar_lims == 'data':
+            vmin = [np.min(pops_data[color]) for color in colors]
+            vmax = [np.max(pops_data[color]) for color in colors]
+        elif cbar_lims == 'model':
+            idx = range(0, 2 * n_colors, 2) if plot_errors else range(n_colors)
+            tmp = [np.dot(flux_norm, model_data[i_column]) for i_column in idx]
+            vmin = [np.min(tmp[i_column]) for i_column in idx]
+            vmax = [np.max(tmp[i_column]) for i_column in idx]
+        elif cbar_lims == 'auto':
+            vmin = vmax = [None] * n_colors
+        else:
+            txt = 'cbar_lims must be "data", "model", or "auto", not ' \
+                  f'{cbar_lims}.'
+            self.logger.error(txt)
+            raise ValueError(txt)
+        if plot_errors:  # adaptive limits for errors
+            vmin = [v for b in [(value, None) for value in vmin] for v in b]
+            vmax = [v for b in [(value, None) for value in vmax] for v in b]
+        # Plot layout
+        n_columns = 2 * n_colors if plot_errors else n_colors
+        n_rows = 3  # data, model, and residual
+        fig = plt.figure(figsize=(5 * n_columns, 2 * n_rows))
+        fig.subplots_adjust(wspace=0.3)
+        # Color bar and colormap settings
+        kw_maps = {'colorbar': True,
+                   'cmap': cmasher.get_sub_cmap('twilight_shifted', 0.05, 0.6)}
+        # Plot the observed data in the first row
+        for i_plot, plot_col in enumerate(plot_cols):
+            ax = plt.subplot(n_rows, n_columns, i_plot + 1)
+            map_plotter(pops_data[plot_col],
+                        vmin=vmin[i_plot],
+                        vmax=vmax[i_plot],
+                        **kw_maps)
+            if plot_errors:
+                if i_plot % 2 == 0:
+                    title = colors[plot_col]
+                else:
+                    title = colors[plot_cols[i_plot - 1]] + ' error'
+            else:
+                title = colors[plot_col]
+            ax.set_title(title)
+            if i_plot == 0:  # first column
+                ax.set_ylabel('Data\n\ny [arcsec]')
+        # Plot the model data (and errors if applicable) in the second row
+        for i_column in range(n_columns):
+            i_plot += 1
+            ax = plt.subplot(n_rows, n_columns, i_plot + 1)
+            if plot_errors:
+                if i_column % 2 == 0:  # data: even columns
+                    col_data_aperture = np.dot(flux_norm, model_data[i_column])
+                else:  # errors: odd columns
+                    col_data_aperture = \
+                        np.dot(flux_norm, np.square(model_data[i_column]))
                     col_data_aperture = np.sqrt(col_data_aperture)
-                    vmin = vmax = None  # no limits for errors
-                map_plotter(col_data_aperture,
-                            vmin=vmin,
-                            vmax=vmax,
-                            colorbar=True,
-                            cmap=cmasher.get_sub_cmap('twilight_shifted',
-                                                      0.05,
-                                                      0.6))
-                if i_plot + 1 > (n_rows - 1) * n_cols:  # last row
                     ax.set_xlabel('x [arcsec]')
-                if i_plot % n_cols == 0:  # first column
-                    ax.set_ylabel(f'{m_name}\ny [arcsec]')
+            else:
+                col_data_aperture = np.dot(flux_norm, model_data[i_column])
+            map_plotter(col_data_aperture,
+                        vmin=vmin[i_column],
+                        vmax=vmax[i_column],
+                        **kw_maps)
+            if i_column == 0:  # first column
+                ax.set_ylabel('Model\n\ny [arcsec]')
+        # Plot the residuals in the third row
+        for i_column in range(n_columns):
+            i_plot += 1
+            if (not plot_errors) or i_column % 2 == 0:  # data columns only
+                ax = plt.subplot(n_rows, n_columns, i_plot + 1)
+                # residual = (model - data) / data_error
+                col_data_aperture = (np.dot(flux_norm, model_data[i_column]) \
+                                     - pops_data[plot_cols[i_column]] \
+                                    ) / pops_data['d' + plot_cols[i_column]]
+                map_plotter(col_data_aperture,
+                            vmin=None,  # adaptive limits for residuals
+                            vmax=None,
+                            **kw_maps)
+                ax.set_xlabel('x [arcsec]')
+                if i_column == 0:  # first column
+                    ax.set_ylabel('Residuals\n\ny [arcsec]')
+        # Save the figure
+        figname = self.config.settings.io_settings['plot_directory'] + \
+            'color_maps' + figtype
+        fig.savefig(figname, dpi=dpi)
+        self.logger.info(f'Color maps saved in {figname}.')
         return fig
