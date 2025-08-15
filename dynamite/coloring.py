@@ -54,8 +54,12 @@ class Coloring:
         arc_kpc = constants.ARC_KPC(config.system.distMPc)
         if minr == 'auto':
             self.minr = 0.0
+        else:
+            self.minr = minr
         if maxr == 'auto':
             self.maxr = 10**config.settings.orblib_settings['logrmax']*arc_kpc
+        else:
+            self.maxr = maxr
         self.minr_arcsec = self.minr / arc_kpc
         self.maxr_arcsec = self.maxr / arc_kpc
         self.nr = nr
