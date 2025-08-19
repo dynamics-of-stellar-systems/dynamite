@@ -821,9 +821,6 @@ class NNLS(WeightSolver):
         """
         self.logger.info(f"Using WeightSolver: {__class__.__name__}/"
                          f"{self.nnls_solver}")
-        orblib.read_losvd_histograms()  # sets orblib.losvd_histograms,
-                                        # orblib.intrinsic_masses, and
-                                        # orblib.projected_masses
         if (not ignore_existing_weights) and self.weight_file_exists():
             results = ascii.read(self.weight_file, format='ecsv')
             self.logger.info("NNLS solution read from existing output "
@@ -833,6 +830,9 @@ class NNLS(WeightSolver):
             chi2_kin = results.meta['chi2_kin']
             chi2_kinmap = results.meta['chi2_kinmap']
         else:
+            orblib.read_losvd_histograms()  # sets orblib.losvd_histograms,
+                                            # orblib.intrinsic_masses, and
+                                            # orblib.projected_masses
             A, b = self.construct_nnls_matrix_and_rhs(orblib)
             if self.nnls_solver=='scipy':
                 try:
