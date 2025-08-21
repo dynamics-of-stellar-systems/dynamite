@@ -561,22 +561,21 @@ class Coloring:
         """Calculate orbital decomposition of the coloring data
 
         This method calculates the orbital decomposition of the coloring data
-        for a set of models, given the Voronoi bundle mappings and colors. For
-        each model, it computes the total orbit weight in each (r, lambda_z)
-        phase space bin and the color distribution in those bins. The method
-        assumes that all models have the same number of colors and that the
-        Voronoi orbital bundle mappings and colors are provided in the same
-        order as the models. It returns two arrays: one with the total orbit
-        weight in each (r, lambda_z) bin for each model, and another with the
-        color distribution in each (r, lambda_z) bin for each model. The
-        method raises a ValueError if the number of colors is not the same for
-        all models or if the number of models in the arguments do not
-        match. It also logs the number of models and colors being processed.
+        for a set of DYNAMITE models, given the Voronoi bundle mappings and
+        colors. For each model, it computes the total orbit weight in each
+        (r, lambda_z) phase space bin and the color distribution in those bins.
+        The method assumes that all DYNAMITE models have the same number of
+        colors and that the Voronoi orbital bundle mappings and colors are
+        provided in the same order as the models. It returns an array of shape
+        (n_colors + 1, nr, nl, n_models) with the total orbit weight and
+        n_colors color distributions in each of the nr * nl (r, lambda_z) bins
+        for each of the n_models DYNAMITE models.
 
         Parameters
         ----------
         models : list of ``dynamite.model.Model`` objects
-            List of models for which the orbital decomposition is calculated.
+            List of DYNAMITE models for which the orbital decomposition is
+            calculated.
         vor_bundle_mappings : list of np.arrays
             List of Voronoi orbit bundle mappings for each model. Each mapping
             is a 2D numpy array where the first dimension corresponds to the
