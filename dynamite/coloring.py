@@ -675,6 +675,7 @@ class Coloring:
     def coloring_decomp_plot(self,
                              orbit_data,
                              plot_labels=None,
+                             colorbar_scale='linear',
                              rcut_kpc=3.5,
                              lz_disk=0.8,
                              lz_warm=0.5,
@@ -699,9 +700,14 @@ class Coloring:
             distributions. Can directly use the output of
             ``get_color_orbital_decomp()``.
         plot_labels : list of str or ``None``, optional
-            Labels for the individual plots. If ``None``, the default labels
-            will be used: 'Orbit PDF', 'Color 1', 'Color 2', etc. The default
-            is ``None``.
+            Labels for the individual plots. Must have length of n_colors + 1.
+            If ``None``, the default labels will be used:
+            'Orbit PDF', 'Color 1', 'Color 2', etc. The default is ``None``.
+        colorbar_scale : str or list of str, optional
+            Scale of the colorbar, either 'linear' or 'log'. If a string, it
+            applies to all plots. If a list of strings of length n_colors + 1,
+            it sets the scale of each plot individually. The default is
+            'linear'.
         Cuts for stellar components:
             - disk (lambda_z > lz_disk)
             - bulge (lambda_z < lz_disk, r < rcut_kpc)
@@ -722,6 +728,12 @@ class Coloring:
         -------
         matplotlib.figure.Figure
             The created figure object.
+
+        Raises
+        ------
+        ValueError
+            If colorbar_scale is invalid. The error message will indicate the
+            issue.
         """
         arctkpc = constants.ARC_KPC(self.config.system.distMPc)
         rcut_arc = rcut_kpc / arctkpc
@@ -737,6 +749,18 @@ class Coloring:
                                 'for each plot, using default labels.')
             plot_labels = ['Orbit PDF'] + \
                            [f'Color {i + 1}' for i in range(n_plots - 1)]
+        if colorbar_scale == 'linear' or colorbar_scale == 'log':
+            self.logger.info(f'Using {colorbar_scale} colorbar scale.')
+            colorbar_scale = [colorbar_scale] * n_plots
+        elif isinstance(colorbar_scale, list) and \
+            len(colorbar_scale) == n_plots and \
+            all([s == 'linear' or s == 'log' for s in colorbar_scale]):
+            self.logger.info('Using individual colorbar scales for each plot.')
+        else:
+            txt = 'colorbar_scale needs to be either "linear" or "log", ' \
+                  f'or a list of those with length {n_plots}.'
+            self.logger.error(txt)
+            raise ValueError(txt)
         for i_plot, plot_data in enumerate(orbit_data):
             label = plot_labels[i_plot]
             # The first entry in orbit_data is the orbits' weight, convert
@@ -749,6 +773,7 @@ class Coloring:
                                  f'averaging data of {n_models} models.')
                 values = np.sum(weight, axis=2)
                 values = values / np.sum(values)
+                values[values == 0.] = np.nan  # avoid zero values for colorbar
             else:  # Average over all models
                 # (r, l) bins without orbits get a color value of np.nan
                 values = np.full((self.nr, self.nl), np.nan)
@@ -757,17 +782,29 @@ class Coloring:
                                               axis=0,
                                               weights=weight[i_rl])
             ax = fig.add_subplot(1, n_plots, i_plot + 1)
-            vmin = 0 if i_plot == 0 else np.nanmin(values)  # orbit_pdf_min=0
-            vmax = np.nanmax(values)
-            cmap = 'gist_heat_r' if i_plot == 0 else 'cubehelix'
+            if i_plot == 0:
+                if colorbar_scale[i_plot] == 'linear':
+                    vmin = 0  # orbit_pdf_min=0
+                else:
+                    vmin = np.nanmin(values)
+                cmap = cmasher.get_sub_cmap('gist_heat_r', 0.05, 1.)
+            else:
+                vmin = np.nanmin(values)
+                cmap = cmasher.get_sub_cmap('cubehelix', 0, 0.9)
             im = ax.imshow(values.T,
                            cmap=cmap,
-                           interpolation='none',
-                           extent=(minr_arc, maxr_arc, minlz, maxlz),
-                           origin='lower',
+                           norm=colorbar_scale[i_plot],
                            vmin=vmin,
-                           vmax=vmax,
-                           aspect='auto')
+                           vmax=np.nanmax(values),
+                           aspect='auto',
+                           interpolation='none',
+                           origin='lower',
+                           extent=(minr_arc, maxr_arc, minlz, maxlz))
+            fig.colorbar(im,
+                         orientation='horizontal',
+                         location='top',
+                         pad=0.15,
+                         label=label)
             plt.plot((rcut_arc, rcut_arc), (-1, lz_disk), 'k--')
             plt.plot((minr_arc, maxr_arc), (lz_disk, lz_disk), 'k--')
             plt.plot((rcut_arc, maxr_arc), (lz_warm, lz_warm), 'k--')
@@ -791,15 +828,10 @@ class Coloring:
                         lz_warm / 2,
                         'Hot inner stellar halo',
                         verticalalignment='center')
-                ax.text(rcut_arc * 0.1,
+                ax.text(rcut_arc * 0.2,
                         -0.25,
                         'Bulge',
                         verticalalignment='center')
-            fig.colorbar(im,
-                         orientation='horizontal',
-                         location='top',
-                         pad=0.15,
-                         label=label)
         # Save the figure
         figname = self.config.settings.io_settings['plot_directory'] + \
                   f'coloring_decomp_plot_{n_models:02d}' + figtype
