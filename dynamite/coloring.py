@@ -528,10 +528,15 @@ class Coloring:
         plt.colorbar(label='Orbit probability density')
         plt.xlabel(r'$r$ [arcsec]')
         plt.ylabel(r'Circularity $\lambda_z$')
-        arctkpc = constants.ARC_KPC(self.config.system.distMPc)
-        secax = ax.secondary_xaxis('top', functions=(lambda x: x*arctkpc,
-                                                     lambda x: x/arctkpc))
-        secax.set_xlabel(r'$r$ [kpc]')
+        if self.maxr >= 1:
+            r_unit = 'kpc'
+            factor = constants.ARC_KPC(self.config.system.distMPc)
+        else:
+            r_unit = 'pc'
+            factor = constants.ARC_KPC(self.config.system.distMPc) * 1e3
+        secax = ax.secondary_xaxis('top', functions=(lambda x: x * factor,
+                                                     lambda x: x / factor))
+        secax.set_xlabel(f'$r$ [{r_unit}]')
         dr = (self.maxr_arcsec - self.minr_arcsec) / self.nr
         dl = 2 / self.nl
         for i_l, lam in enumerate(np.linspace(-1, 1 - dl, num=self.nl)):
@@ -686,18 +691,19 @@ class Coloring:
         Create and save an orbital decomposition plot in the (r, lambda_z)
         phase space, consisting of multiple panels: the first panel shows
         the orbit probability density distribution, the subsequent panels
-        show the color distributions. Dashed lines indicating the orbit-based
+        show the color distributions. Dashed lines indicate the orbit-based
         division into four components: disk, warm, bulge, and hot inner
-        stellar halo. The plot averages the data of multiple models.
+        stellar halo (can be switched off). The plot averages the data of
+        multiple DYNAMITE models.
 
         Parameters
         ----------
         orbit_data : np.array of shape (n_colors + 1, nr, nl, n_models)
             Array containing both the total orbit weight and the color
-            distribution in each (r, lambda_z) phase space bin for each model.
-            The first slice along the first dimension contains the
-            orbit weight, and the subsequent slices contain the color
-            distributions. Can directly use the output of
+            distribution in each (r, lambda_z) phase space bin for each of the
+            n_models DYNAMITE models. The first slice along the first dimension
+            contains the orbit weight, and the subsequent slices contain the
+            color distributions. Can directly use the output of
             ``get_color_orbital_decomp()``.
         plot_labels : list of str or ``None``, optional
             Labels for the individual plots. Must have length of n_colors + 1.
@@ -713,11 +719,12 @@ class Coloring:
             - bulge (lambda_z < lz_disk, r < rcut_kpc)
             - warm (lz_warm < lambda_z < lz_disk, rcut_kpc < r)
             - hot inner stellar halo (lambda_z < lz_warm, rcut_kpc < r)
-        rcut_kpc : float, optional
+            If one of the cuts is ``None``, no lines will be drawn.
+        rcut_kpc : float or ``None``, optional
             by default 3.5
-        lz_disk : float, optional
+        lz_disk : float or ``None``, optional
             by default 0.8
-        lz_warm : float, optional
+        lz_warm : float or ``None``, optional
             by default 0.5
         figtype : str, optional
             Determines the file format of the saved figure, by default '.png'.
@@ -735,8 +742,19 @@ class Coloring:
             If colorbar_scale is invalid. The error message will indicate the
             issue.
         """
+        n_models = orbit_data.shape[-1]
+        self.logger.info('Creating coloring decomposition plot '
+                         f'averaging data of {n_models} models.')
         arctkpc = constants.ARC_KPC(self.config.system.distMPc)
-        rcut_arc = rcut_kpc / arctkpc
+        if rcut_kpc is None or lz_disk is None or lz_warm is None:
+            self.logger.info('One of the cuts for stellar components is None, '
+                             'no lines will be drawn in the plot.')
+            rcut_arc = None
+        else:
+            self.logger.info(f'Using rcut={rcut_kpc} kpc, '
+                             f'lz_disk={lz_disk}, lz_warm={lz_warm} for '
+                             'the component cuts in the plot.')
+            rcut_arc = rcut_kpc / arctkpc
         minlz, maxlz = -1, 1
         minr_arc = self.minr / arctkpc
         maxr_arc = self.maxr / arctkpc
@@ -745,10 +763,10 @@ class Coloring:
         fig = plt.figure(figsize=(16 / 3 * n_plots, 6))
         if plot_labels is None or not isinstance(plot_labels, list) or \
            len(plot_labels) != n_plots:
-            self.logger.warning('plot_labels should be a list of labels '
-                                'for each plot, using default labels.')
             plot_labels = ['Orbit PDF'] + \
                            [f'Color {i + 1}' for i in range(n_plots - 1)]
+            self.logger.warning('plot_labels should be a list of labels '
+                                f'for each plot, using default {plot_labels}.')
         if colorbar_scale == 'linear' or colorbar_scale == 'log':
             self.logger.info(f'Using {colorbar_scale} colorbar scale.')
             colorbar_scale = [colorbar_scale] * n_plots
@@ -768,9 +786,6 @@ class Coloring:
             # phase space:
             if i_plot == 0:
                 weight = plot_data
-                n_models = weight.shape[-1]
-                self.logger.info('Creating coloring decomposition plot '
-                                 f'averaging data of {n_models} models.')
                 values = np.sum(weight, axis=2)
                 values = values / np.sum(values)
                 values[values == 0.] = np.nan  # avoid zero values for colorbar
@@ -805,33 +820,41 @@ class Coloring:
                          location='top',
                          pad=0.15,
                          label=label)
-            plt.plot((rcut_arc, rcut_arc), (-1, lz_disk), 'k--')
-            plt.plot((minr_arc, maxr_arc), (lz_disk, lz_disk), 'k--')
-            plt.plot((rcut_arc, maxr_arc), (lz_warm, lz_warm), 'k--')
+            if rcut_arc is not None:
+                plt.plot((rcut_arc, rcut_arc), (-1, lz_disk), 'k--')
+                plt.plot((minr_arc, maxr_arc), (lz_disk, lz_disk), 'k--')
+                plt.plot((rcut_arc, maxr_arc), (lz_warm, lz_warm), 'k--')
             # ax.set_yticks([-1, 0, 1])
             # ax.set_xticks([0, 50, 100])
             ax.set_xlabel(r'$r$ [arcsec]')
-            secax = ax.secondary_xaxis('top', functions=(lambda x: x*arctkpc,
-                                                         lambda x: x/arctkpc))
-            secax.set_xlabel(r'$r$ [kpc]')
+            if self.maxr >= 1:
+                r_unit = 'kpc'
+                factor = arctkpc
+            else:
+                r_unit = 'pc'
+                factor = arctkpc * 1e3
+            secax = ax.secondary_xaxis('top', functions=(lambda x: x * factor,
+                                                         lambda x: x / factor))
+            secax.set_xlabel(f'$r$ [{r_unit}]')
             if i_plot == 0:  # y-axis label and components only for first plot
                 ax.set_ylabel(r'Circularity $\lambda_z$')
-                ax.text(rcut_arc * 1.1,
-                        (lz_disk + 1) / 2,
-                        'Disk',
-                        verticalalignment='center')
-                ax.text(rcut_arc * 1.1,
-                        (lz_warm + lz_disk) / 2,
-                        'Warm',
-                        verticalalignment='center')
-                ax.text(rcut_arc * 1.1,
-                        lz_warm / 2,
-                        'Hot inner stellar halo',
-                        verticalalignment='center')
-                ax.text(rcut_arc * 0.2,
-                        -0.25,
-                        'Bulge',
-                        verticalalignment='center')
+                if rcut_arc is not None:
+                    ax.text(rcut_arc * 1.1,
+                            (lz_disk + 1) / 2,
+                            'Disk',
+                            verticalalignment='center')
+                    ax.text(rcut_arc * 1.1,
+                            (lz_warm + lz_disk) / 2,
+                            'Warm',
+                            verticalalignment='center')
+                    ax.text(rcut_arc * 1.1,
+                            lz_warm / 2,
+                            'Hot inner stellar halo',
+                            verticalalignment='center')
+                    ax.text(rcut_arc * 0.2,
+                            -0.25,
+                            'Bulge',
+                            verticalalignment='center')
         # Save the figure
         figname = self.config.settings.io_settings['plot_directory'] + \
                   f'coloring_decomp_plot_{n_models:02d}' + figtype
