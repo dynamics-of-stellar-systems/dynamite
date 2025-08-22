@@ -4,8 +4,8 @@
 Change Log
 ****************
 
-- Improvement: the mass_plot() and orbit_distribution() plots automatically switch between pc and kpc.
-- Improvement: Rmax_arcs is now an optional mass_plot() parameter (default value taken from the config file).
+- Improvement: misc. improvements in plotter (auto select kpc vs. pc everywhere, added r in (k)pc to qpu_plot, better filename for mass_plot).
+- Improvement: Rmax_arcs is now an optional parameter for mass_plot and qpu_plot (default value taken from the config file).
 - Improvement: significant performance gain when reading existing model weights (eliminated unnecessary reading of orbit library).
 - Improvement: in the orbit distribution plot r can now be binned and plotted in linear scale (in addition to the default logarithmic scale).
 - Bugfix: fixed a bug that prevented sensible kinematic maps colorbar limits if flux is zero in one or more bins.

@@ -1108,7 +1108,12 @@ class Plotter():
 
 #############################################################################
 
-    def mass_plot(self, which_chi2=None, Rmax_arcs=None, figtype=None):
+    def mass_plot(self,
+                  which_chi2=None,
+                  Rmax_arcs=None,
+                  x_scale='linear',
+                  y_scale='linear',
+                  figtype=None):
         """
         Generates cumulative mass plot
 
@@ -1130,6 +1135,12 @@ class Plotter():
             Determines the upper range [arcsec] of the x-axis. If None, it is
             set to the config file's ``orblib_settings: logrmax`` value.
             The default value is None.
+        x_scale : str, optional
+            switches between logarithmic (x_scale='log') and linear
+            (x_scale='linear') scaling of the x axis. The default is 'linear'.
+        y_scale : str, optional
+            switches between logarithmic (y_scale='log') and linear
+            (y_scale='linear') scaling of the y axis. The default is 'linear'.
         figtype : STR, optional
             Determines the file extension to use when saving the figure.
             If None, the default setting is used ('.png').
@@ -1264,7 +1275,7 @@ class Plotter():
         xrange = np.array([0.1, Rmax_arcs])
         yrange = np.array([1.0e6,maxmass])
 
-        filename1 = self.plotdir + 'enclosedmassm_linear' + figtype
+        filename = self.plotdir + 'enclosed_mass' + figtype
         fig = plt.figure(figsize=(5,5))
         #ftit = fig.suptitle(object.upper() + '_enclosedmassm_linear', fontsize=10,fontweight='bold')
         ax = fig.add_subplot(1, 1, 1)
@@ -1277,11 +1288,17 @@ class Plotter():
         ax2 = ax.twiny()
         if Rmax_arcs * arctpc < 1000:
             ax2.set_xlim(xrange * arctpc)
-            ax2.set_xlabel(r'$r$ [pc]', fontsize=9)
+            ax2.set_xlabel(r'$r$ [pc]', fontsize=9, labelpad=8)
         else:
             ax2.set_xlim(xrange * arctpc / 1000.0)
-            ax2.set_xlabel(r'$r$ [kpc]', fontsize=9)
+            ax2.set_xlabel(r'$r$ [kpc]', fontsize=9, labelpad=8)
         ax2.tick_params(labelsize=8)
+
+        if x_scale == 'log':
+            ax.set_xscale('log')
+            ax2.set_xscale('log')
+        if y_scale == 'log':
+            ax.set_yscale('log')
 
         ax.plot(R,mm[:,0], '-', color='k', linewidth=2.0,
                 label='Total')
@@ -1301,9 +1318,9 @@ class Plotter():
 
         ax.legend(loc='upper left', fontsize=8)
         plt.tight_layout()
-        plt.savefig(filename1)
+        plt.savefig(filename)
 
-        self.logger.info(f'Plot {filename1} saved.')
+        self.logger.info(f'Plot {filename} saved.')
 
         return fig
 
@@ -1969,7 +1986,12 @@ class Plotter():
 
 #############################################################################
 
-    def qpu_plot(self, which_chi2=None, Rmax_arcs=None,figtype =None):
+    def qpu_plot(self,
+                 which_chi2=None,
+                 Rmax_arcs=None,
+                 x_scale='linear',
+                 y_scale='linear',
+                 figtype=None):
         """
         Generates triaxiality plot
 
@@ -1981,11 +2003,19 @@ class Plotter():
         Parameters
         ----------
         which_chi2 : STR, optional
-           Which chi2 is used for determining the best models. If None,
+            Which chi2 is used for determining the best models. If None,
             the setting from the configuration file will be used.
             The default is None.
-        Rmax_arcs : numerical value
-            Determines the upper range of the x-axis.
+        Rmax_arcs : numerical value, optional
+            Determines the upper range [arcsec] of the x-axis. If None, it is
+            set to the config file's ``orblib_settings: logrmax`` value.
+            The default value is None.
+        x_scale : str, optional
+            switches between logarithmic (r_scale='log') and linear
+            (r_scale='linear') scaling of the r axis. Defaults to 'linear'.
+        y_scale : str, optional
+            switches between logarithmic (r_scale='log') and linear
+            (r_scale='linear') scaling of the mass axis. Defaults to 'linear'.
         figtype : STR, optional
             Determines the file extension to use when saving the figure.
             If None, the default setting is used ('.png').
@@ -1994,8 +2024,6 @@ class Plotter():
         ------
         ValueError
             If which_chi2 is neither None nor a valid chi2 type.
-        ValueError
-            If Rmax_arcs is not set to a numerical value.
 
         Returns
         -------
@@ -2009,10 +2037,13 @@ class Plotter():
 
         which_chi2 = self.config.validate_chi2(which_chi2)
 
+        txt = 'Creating triaxiality plot with Rmax_arcs = '
         if Rmax_arcs is None:
-            text = f'Rmax_arcs must be a number, but it is {Rmax_arcs}'
-            self.logger.error(text)
-            raise ValueError(text)
+            Rmax_arcs = 10 ** self.settings.orblib_settings['logrmax']
+            txt += f'{Rmax_arcs} (from orblib_settings in the config file).'
+        else:
+            txt += f'{Rmax_arcs} (user provided).'
+        self.logger.info(txt)
 
         val0 = deepcopy(self.all_models.table)
         arg = np.argsort(np.array(val0[which_chi2]))
@@ -2032,7 +2063,7 @@ class Plotter():
           self.system.get_component_from_class(physys.TriaxialVisibleComponent)
 
         distance = self.all_models.system.distMPc
-        arctpc = distance*np.pi/0.648
+        arctpc = constants.ARC_KPC(distance) * 1000
         mgepar = stars.mge_pot.data
         mgeI = mgepar['I']
         mgesigma = mgepar['sigma']
@@ -2082,11 +2113,26 @@ class Plotter():
         filename1 = self.plotdir + 'triaxial_qpt' + figtype
         fig = plt.figure(figsize=(5,5))
         ax = fig.add_subplot(1,1,1)
-        ax.set_xlim(np.array([0,Rmax_arcs]))
-        ax.set_ylim(np.array([0.0,1.1]))
+        xrange = np.array([np.min(Rarc[cc]), Rmax_arcs])
+        ax.set_xlim(xrange)
+        if y_scale == 'linear':  # 'log': determine yrange dynamically
+            ax.set_ylim(np.array([0.0,1.1]))
         ax.set_xlabel(r'$r$ [arcsec]', fontsize=9)
         ax.set_ylabel(r'$p$ | $q$ | $T = (1-p^2)/(1-q^2)$', fontsize=9)
         ax.tick_params(labelsize=8)
+        ax2 = ax.twiny()
+        if Rmax_arcs * arctpc < 1000:
+            ax2.set_xlim(xrange * arctpc)
+            ax2.set_xlabel(r'$r$ [pc]', fontsize=9, labelpad=8)
+        else:
+            ax2.set_xlim(xrange * arctpc / 1000.0)
+            ax2.set_xlabel(r'$r$ [kpc]', fontsize=9, labelpad=8)
+        ax2.tick_params(labelsize=8)
+        if x_scale == 'log':
+            ax.set_xscale('log')
+            ax2.set_xscale('log')
+        if y_scale == 'log':
+            ax.set_yscale('log')
 
         ax.plot(Rpc[cc]/arctpc, p_m[cc], '-', color='blue',
                 linewidth=3.0, label=r'$p$')
@@ -2113,7 +2159,7 @@ class Plotter():
         plt.tight_layout()
         plt.savefig(filename1)
 
-        self.logger.info(f'Plot {filename1} saved in {self.plotdir}')
+        self.logger.info(f'Plot {filename1} saved.')
 
         return fig
 
