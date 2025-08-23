@@ -3,6 +3,7 @@ import logging
 import os
 import matplotlib.pyplot as plt
 import numpy as np
+import scipy
 
 import yaml
 import pymc as pm
@@ -1052,7 +1053,7 @@ class Coloring:
             with the same shape as `age_posterior`.
         weight : np.array of shape (n_bundle,)
             Weight of each stellar bundle, used to determine the size of the
-            points in the scatter plot.
+            symbols in the scatter plot.
         n_smooth : int, optional
             Number of points for each orbit bundle to smooth the posterior
             distributions over. If `n_smooth` is greater than the number of
@@ -1091,7 +1092,7 @@ class Coloring:
         n_chain, n_draw, n_bundle = age_posterior.shape
         idx_list = [(i, j) for i in range(n_chain) for j in range(n_draw)]
         if n_smooth > len(idx_list):
-            n_smooth = len(idx_list)  # add log message, jump to return
+            n_smooth = len(idx_list)
             smooth_list = np.array(idx_list)
             age_smooth = np.array(age_posterior)
             met_smooth = np.array(met_posterior)
@@ -1115,41 +1116,46 @@ class Coloring:
 
         age_mean = age_posterior.mean(axis=(0,1))
         met_mean = met_posterior.mean(axis=(0,1))
-        met_err = met_posterior.std(axis=(0,1))
-
-        met_start = met_mean + np.abs(np.random.normal(0,
-                                                       met_err,
-                                                       size = len(met_mean)))
 
         fig = plt.figure(figsize=(6, 5))
 
         min_t = min(np.nanmin(age_smooth), np.nanmin(age_mean))
         max_t = max(np.nanmax(age_smooth), np.nanmax(age_mean))
-        min_z = max(np.nanmin(met_smooth),
-                    np.nanmin(met_mean),
-                    np.nanmin(met_start))
-        max_z = max(np.nanmax(met_smooth),
-                    np.nanmax(met_mean),
-                    np.nanmax(met_start))
+        min_z = min(np.nanmin(met_smooth), np.nanmin(met_mean))
+        max_z = max(np.nanmax(met_smooth), np.nanmax(met_mean))
 
-        # ax = fig.add_axes([0.15, 0.15, 0.45, 0.45])
-        plt.scatter(age_smooth, met_smooth, s=weight_smooth * 0.2)
-        plt.scatter(age_mean, met_mean, s=weight, c='r')
-        plt.plot(age_mean, met_start,'k.')
+        # Density plot
+        k = scipy.stats.gaussian_kde([age_smooth, met_smooth])
+        n_bins = 50  # number of bins for the density plot
+        xi, yi = np.mgrid[min_t:max_t:n_bins * 1j, min_z:max_z:n_bins * 1j]
+        zi = k(np.vstack([xi.flatten(), yi.flatten()])).reshape(xi.shape)
+        plt.pcolormesh(xi, yi, zi, shading='gouraud', cmap='gist_heat_r')
+
+        # Optional: scatter plot of all smoothed points
+        # plt.scatter(age_smooth,
+        #             met_smooth,
+        #             s=weight_smooth / np.max(weight) * 200,
+        #             marker='o',
+        #             facecolor='black',
+        #             alpha=0.2)
+
+        # Scatter plot of orbital bundle mean values
+        weight = weight / np.max(weight) * 200
+        scatter_data = [age_mean, met_mean]
+        scatter_args = {'marker': 'D', 'facecolor': 'none', 'linewidth': 1}
+        plt.scatter(*scatter_data,
+                    **scatter_args,
+                    s=weight,
+                    edgecolor='whitesmoke')
+        plt.scatter(*scatter_data,
+                    **scatter_args,
+                    s=(np.sqrt(weight)-1)**2,
+                    edgecolor='red')
+
         plt.xlabel('t [Gyr]')
         plt.ylabel('$Z/Z_{sun}$')
         plt.xlim(min_t, max_t)
         plt.ylim(min_z, max_z)
-
-        # ax = fig.add_axes([0.15, 0.7, 0.45, 0.2])
-        # yh=plt.hist(age_smooth, bins=14, range=[min_t, max_t], weights=weight_smooth/10000, histtype='step')
-        # yh=plt.hist(age_mean, bins=14, range=[min_t, max_t], weights=weight/100, histtype='step', color='r')
-        # plt.xlim(min_t, max_t)
-
-        # ax = fig.add_axes([0.7, 0.15, 0.2, 0.45])
-        # yh = plt.hist(met_smooth, bins=10, range=[min_z, max_z], weights=weight_smooth/10000, histtype='step', orientation='horizontal')
-        # yh = plt.hist(met_mean, bins=10, range=[min_z, max_z], weights=weight/100, histtype='step', orientation='horizontal')
-        # plt.ylim(min_z, max_z)
 
         # Save the figure
         figname = self.config.settings.io_settings['plot_directory'] + \
