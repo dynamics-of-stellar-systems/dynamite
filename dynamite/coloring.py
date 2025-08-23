@@ -1025,35 +1025,51 @@ class Coloring:
         self.logger.info(f'Coloring decomposition plot saved in {figname}.')
         return fig, f_50_age
 
-    def AMR_plot(self,
-                 age_posterior,
-                 met_posterior,
-                 weight,
-                 n_smooth=100,
-                 figtype='.png',
-                 dpi=100):
+    def color_color_plot(self,
+                         x_posterior,
+                         y_posterior,
+                         weights=1,
+                         *,
+                         x_label='Color 1',
+                         y_label='Color 2',
+                         x_scale='linear',
+                         y_scale='linear',
+                         n_smooth=100,
+                         figtype='.png',
+                         dpi=100):
 
-        """Create an age vs metallicity plot with smoothing
+        """Create a color vs color plot with smoothing
 
-        Create and save a plot showing the age vs metallicity relation
-        (AMR) for a set of stellar bundles, averaged over multiple MCMC
-        chains and draws. The plot includes a scatter plot of the age and
-        metallicity values, with the size of the points determined by the
-        weight of each bundle. The plot is saved in the specified file format
-        and resolution.
+        Create and save a plot showing the relation of two colors (e.g. age vs
+        metallicity, AMR) for a set of stellar bundles, averaged over multiple
+        MCMC chains and draws. The plot includes the probability density
+        distribution in the color values and a scatter plot with diamonds
+        indicating the average color values of each orbit bundle and the
+        diamond sizes being proportional to the orbit bundles' weights. The
+        plot is saved in the specified file format and resolution.
 
         Parameters
         ----------
-        age_posterior : xarray or np.array of shape (n_chain, n_draw, n_bundle)
-            Posterior distribution of ages for the stellar bundles, where
-            `n_chain` is the number of MCMC chains, `n_draw` is the number of
-            draws per chain, and `n_bundle` is the number of stellar bundles.
-        met_posterior : xarray or np.array of shape (n_chain, n_draw, n_bundle)
-            Posterior distribution of metallicities for the stellar bundles,
-            with the same shape as `age_posterior`.
-        weight : np.array of shape (n_bundle,)
+        x_posterior : xarray or np.array of shape (n_chain, n_draw, n_bundle)
+            Posterior distribution of the color plotted on the x axis for the
+            orbit bundles, where `n_chain` is the number of MCMC chains,
+            `n_draw` is the number of draws per chain, and `n_bundle` is the
+            number of orbit bundles.
+        y_posterior : xarray or np.array of shape (n_chain, n_draw, n_bundle)
+            Posterior distribution of the color plotted on the y axis for the
+            orbit bundles, with the same shape as `x_posterior`.
+        weights : np.array of shape (n_bundle,) or 1, optional
             Weight of each stellar bundle, used to determine the size of the
-            symbols in the scatter plot.
+            symbols in the scatter plot. If 1, all symbols will have the same
+            size. The default is 1.
+        x_label : str, optional
+            Label for the x axis, by default 'Color 1'.
+        y_label : str, optional
+            Label for the y axis, by default 'Color 2'.
+        x_scale : str, optional
+            Scale of the x axis, either 'linear' or 'log', by default 'linear'.
+        y_scale : str, optional
+            Scale of the y axis, either 'linear' or 'log', by default 'linear
         n_smooth : int, optional
             Number of points for each orbit bundle to smooth the posterior
             distributions over. If `n_smooth` is greater than the number of
@@ -1072,30 +1088,43 @@ class Coloring:
         Raises
         ------
         ValueError
-            If the shapes of `age_posterior` and `met_posterior` do not match,
-            or if the length of `weight` does not match the number of bundles
-            in the posterior distributions.
+            If the shapes of `x_posterior` and `y_posterior` do not match,
+            if the length of `weight` does not match the number of bundles
+            in the posterior distributions, or if x_scale or y_scale are
+            invalid. The error message will indicate the issue.
         """
-        self.logger.info('Creating an age vs metallicity plot with '
+        self.logger.info(f'Creating "{x_label}" vs "{y_label}" plot with '
                          f'smoothing factor {n_smooth}.')
-        if age_posterior.shape != met_posterior.shape:
-            txt = 'Age and metallicity posterior shapes do not match: ' \
-                  f'{age_posterior.shape} vs {met_posterior.shape}.'
+        if x_posterior.shape != y_posterior.shape:
+            txt = 'x and y posterior shapes do not match: ' \
+                  f'{x_posterior.shape} vs {y_posterior.shape}.'
             self.logger.error(txt)
             raise ValueError(txt)
-        if len(weight) != age_posterior.shape[2]:
-            txt = 'Weight array length does not match the number of bundles: ' \
-                  f'{len(weight)} vs {age_posterior.shape[2]}.'
+        n_chain, n_draw, n_bundle = x_posterior.shape
+        if np.ndim(weights) == 0:
+            if weights == 1:
+                weights = np.ones(n_bundle)
+            else:
+                txt = f'If weights is a scalar, it must be 1, not {weights}.'
+                self.logger.error(txt)
+                raise ValueError(txt)
+        elif len(weights) != n_bundle:
+            txt = f'Weight array length {len(weights)} does not match ' \
+                  f'the number of orbit bundles {n_bundle}.'
+            self.logger.error(txt)
+            raise ValueError(txt)
+        if x_scale not in ['linear','log'] or y_scale not in ['linear','log']:
+            txt = 'x_scale and y_scale need to be either "linear" or "log", ' \
+                  f'but are "{x_scale}" and "{y_scale}".'
             self.logger.error(txt)
             raise ValueError(txt)
         # Smoothing
-        n_chain, n_draw, n_bundle = age_posterior.shape
         idx_list = [(i, j) for i in range(n_chain) for j in range(n_draw)]
         if n_smooth > len(idx_list):
             n_smooth = len(idx_list)
             smooth_list = np.array(idx_list)
-            age_smooth = np.array(age_posterior)
-            met_smooth = np.array(met_posterior)
+            x_smooth = np.array(x_posterior)
+            y_smooth = np.array(y_posterior)
             self.logger.info(f'Smoothing requested for {n_smooth} points, '
                              f'but only {len(idx_list)} available, '
                              'using all available points.')
@@ -1104,64 +1133,66 @@ class Coloring:
             # Select random values without duplicates
             smooth_idx = rng.choice(len(idx_list),size=n_smooth,replace=False)
             smooth_list = np.array(idx_list)[smooth_idx]
-            age_smooth = np.array([age_posterior[c, d, b]
+            x_smooth = np.array([x_posterior[c, d, b]
                                 for (c, d) in smooth_list
                                 for b in range(n_bundle)])
-            met_smooth = np.array([met_posterior[c, d, b]
+            y_smooth = np.array([y_posterior[c, d, b]
                                 for (c, d) in smooth_list
                                 for b in range(n_bundle)])
-        weight_smooth = np.array([weight[b]
-                                  for (c, d) in smooth_list
-                                  for b in range(n_bundle)])
-
-        age_mean = age_posterior.mean(axis=(0,1))
-        met_mean = met_posterior.mean(axis=(0,1))
+        # Calculate bundle mean values
+        x_mean = x_posterior.mean(axis=(0,1))
+        y_mean = y_posterior.mean(axis=(0,1))
 
         fig = plt.figure(figsize=(6, 5))
 
-        min_t = min(np.nanmin(age_smooth), np.nanmin(age_mean))
-        max_t = max(np.nanmax(age_smooth), np.nanmax(age_mean))
-        min_z = min(np.nanmin(met_smooth), np.nanmin(met_mean))
-        max_z = max(np.nanmax(met_smooth), np.nanmax(met_mean))
+        min_x = min(np.nanmin(x_smooth), np.nanmin(x_mean))
+        max_x = max(np.nanmax(x_smooth), np.nanmax(x_mean))
+        min_y = min(np.nanmin(y_smooth), np.nanmin(y_mean))
+        max_y = max(np.nanmax(y_smooth), np.nanmax(y_mean))
 
         # Density plot
-        k = scipy.stats.gaussian_kde([age_smooth, met_smooth])
+        k = scipy.stats.gaussian_kde([x_smooth, y_smooth])
         n_bins = 50  # number of bins for the density plot
-        xi, yi = np.mgrid[min_t:max_t:n_bins * 1j, min_z:max_z:n_bins * 1j]
+        xi, yi = np.mgrid[min_x:max_x:n_bins * 1j, min_y:max_y:n_bins * 1j]
         zi = k(np.vstack([xi.flatten(), yi.flatten()])).reshape(xi.shape)
         plt.pcolormesh(xi, yi, zi, shading='gouraud', cmap='gist_heat_r')
-
         # Optional: scatter plot of all smoothed points
+        # weight_smooth = np.array([weights[b]
+        #                           for (c, d) in smooth_list
+        #                           for b in range(n_bundle)])
         # plt.scatter(age_smooth,
         #             met_smooth,
         #             s=weight_smooth / np.max(weight) * 200,
         #             marker='o',
         #             facecolor='black',
         #             alpha=0.2)
-
         # Scatter plot of orbital bundle mean values
-        weight = weight / np.max(weight) * 200
-        scatter_data = [age_mean, met_mean]
+        weights = weights / np.max(weights) * 200
+        scatter_data = [x_mean, y_mean]
         scatter_args = {'marker': 'D', 'facecolor': 'none', 'linewidth': 1}
         plt.scatter(*scatter_data,
                     **scatter_args,
-                    s=weight,
+                    s=weights,
                     edgecolor='whitesmoke')
         plt.scatter(*scatter_data,
                     **scatter_args,
-                    s=(np.sqrt(weight)-1)**2,
+                    s=(np.sqrt(weights)-1)**2,
                     edgecolor='red')
-
-        plt.xlabel('t [Gyr]')
-        plt.ylabel('$Z/Z_{sun}$')
-        plt.xlim(min_t, max_t)
-        plt.ylim(min_z, max_z)
+        # Axes
+        if x_scale == 'log':
+            plt.xscale('log')
+        if y_scale == 'log':
+            plt.yscale('log')
+        plt.xlabel(x_label)
+        plt.ylabel(y_label)
+        plt.xlim(min_x, max_x)
+        plt.ylim(min_y, max_y)
 
         # Save the figure
         figname = self.config.settings.io_settings['plot_directory'] + \
-            'AMR_plot' + figtype
+            'color_color_plot' + figtype
         fig.savefig(figname, dpi=dpi)
-        self.logger.info(f'AMR plot saved in {figname}.')
+        self.logger.info(f'Color-color plot saved in {figname}.')
         return fig
 
     def color_maps(self,
