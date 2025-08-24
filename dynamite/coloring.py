@@ -863,43 +863,66 @@ class Coloring:
         self.logger.info(f'Coloring decomposition plot saved in {figname}.')
         return fig
 
-    def circularity_age_plot(self,
-                            orbit_data,
-                            n_age_bins=14,
-                            lz_disk=0.8,
-                            figtype='.png',
-                            dpi=100):
-        """Plot orbit probability distribution in (age, circularity) and disk
-        ratio vs age
+    def circularity_color_plot(self,
+                               weights,
+                               color_data,
+                               *,
+                               c_label='Color',
+                               c_scale='linear',
+                               p_scale='linear',
+                               n_color_bins=14,
+                               interpolation='none',
+                               disk_fraction=True,
+                               lz_disk=0.8,
+                               figtype='.png',
+                               dpi=100):
+        """Plots orbit probability distribution in the (color, circularity)
+        plane and the fraction of disk orbits as a function of the color
 
         Create and save a plot showing the orbit probability distribution in
-        the (age, circularity) phase space, averaged over multiple models.
-        The plot includes a color map of the logarithm of the probability
-        density distribution of orbits in the (age, circularity) space, with
-        circularity $\lambda_z$ on the y-axis and age on the x-axis. It also
-        includes a dashed line indicating the disk fraction threshold and a
-        vertical dashed line indicating the age at which the cold orbit
-        fraction crosses 50%. Additionally, it plots the cold orbit fraction
-        as a function of age in a separate panel above the main plot. The cold
+        the (color, circularity) plane, averaged over multiple DYNAMITE models.
+        If disk_fraction is True, the cold orbit fraction as a function of the
+        color is plotted in a separate panel above the main plot. The cold
         orbit fraction is defined as the fraction of orbits with circularity
-        $\lambda_z$ greater than a specified threshold (default is 0.8) within
-        each age bin. The plot is saved in the specified file format and
-        resolution.
+        $\lambda_z$ greater than a specified threshold lz_disk (default is 0.8)
+        within each color bin. A dashed line indicates the disk fraction
+        threshold and a vertical dashed line indicates the color value at which
+        the cold orbit fraction crosses 50%. The plot is saved in the specified
+        file format and resolution.
 
         Parameters
         ----------
-        orbit_data : np.array of shape (n, nr, nl, n_models) with n >= 2
-            Array containing both the total orbit weight and the age
-            distribution in each (r, lambda_z) phase space bin for each model.
-            The first slice along the first dimension contains the orbit
-            weight, the second slice needs to contain the age distribution,
-            and subsequent slices are ignored. Can directly use the output of
-            ``get_color_orbital_decomp()`` if age is the first color.
-        n_age_bins : int, optional
-            Number of age bins; determines the resolution in age of both the
-            orbit distribution and cold orbit fraction plots. The bins will be
-            evenly spaced between the minimum and maximum age values in the
-            orbit_data. The default is 14.
+        weights : np.array of shape (nr, nl, n_models)
+            Array with the total orbit weight in each (r, lambda_z) phase space
+            bin for each DYNAMITE model. Can directly use the first slice of
+            the output of ``get_color_orbital_decomp()``.
+        color_data : np.array of shape (nr, nl, n_models)
+            Array with the color distribution in each (r, lambda_z) phase
+            space bin for each DYNAMITE model. Can directly use a
+            slice of the output of ``get_color_orbital_decomp()``.
+        c_label : str, optional
+            Label for the color axis, by default 'Color'.
+        c_scale : str, optional
+            Scale of the color axis, either 'linear' or 'log', by default
+            'linear'.
+        p_scale : str, optional
+            Scale of the probability density colorbar, either 'linear' or
+            'log', by default 'linear'.
+        n_color_bins : int, optional
+            Number of color bins; determines the resolution along the color
+            axis of both the orbit distribution and cold orbit fraction plots.
+            The bins will be evenly and linearly spaced between the minimum and
+            maximum age values in the orbit_data. The default is 14.
+        interpolation : str, optional
+            Interpolation method for the imshow plot of the orbit distribution.
+            See
+            https://matplotlib.org/stable/api/_as_gen/matplotlib.pyplot.imshow.html
+            for available options. The default is 'none'.
+        disk_fraction : bool, optional
+            Whether to plot the cold orbit fraction as a function of color in
+            a separate panel above the main plot. If False, the plot will have
+            only one pane showing the orbit probability distribution.
+            The default is True.
         lz_disk : float, optional
             Circularity threshold for the disk fraction, above which orbits are
             considered as part of the disk. This is used to calculate the cold
@@ -911,15 +934,15 @@ class Coloring:
 
         Returns
         -------
-        (figure, f_50_age) : tuple, where
+        (figure, disk_50) : tuple, where
             figure : matplotlib.figure.Figure
                 The created figure object.
-            f_50_age : float or np.nan
-                The age in Gyr at which the cold orbit fraction crosses 50%
+            disk_50 : float or np.nan
+                The color value at which the cold orbit fraction crosses 50%
                 (disk fraction threshold). Calculated via linear interpolation
-                between the two age bins that cross the threshold. Set to
+                between the two color bins that cross the threshold. Set to
                 np.nan if the cold orbit fraction does not cross the threshold
-                in the given age range.
+                in the given color range or if disk_fraction is False.
 
         Raises
         ------
@@ -928,102 +951,122 @@ class Coloring:
             format, i.e., it should have at least two slices along the first
             dimension (one for orbit weight and one for age).
         """
-        if len(orbit_data) < 2:
-            txt = 'Orbit_data must have at least two slices: one for ' \
-                  f'orbit weight and one for age, not {len(orbit_data)}.'
+        if c_scale != 'linear' and c_scale != 'log':
+            txt = 'c_scale needs to be either "linear" or "log", ' \
+                  f'but is {c_scale}.'
             self.logger.error(txt)
             raise ValueError(txt)
-        weight = np.ravel(orbit_data[0])  # shape = (nr * nl * n_models)
-        age = np.ravel(orbit_data[1])  # shape = (nr * nl * n_models)
-        n_models = orbit_data.shape[-1]
-        self.logger.info('Creating circularity vs. age with disk fraction '
+        if p_scale != 'linear' and p_scale != 'log':
+            txt = 'p_scale needs to be either "linear" or "log", ' \
+                  f'but is {p_scale}.'
+            self.logger.error(txt)
+            raise ValueError(txt)
+        if weights.shape != color_data.shape:
+            txt = 'Weights and color_data must have the same shape, but ' \
+                  f'they are {weights.shape} and {color_data.shape}, resp.'
+            self.logger.error(txt)
+            raise ValueError(txt)
+        n_models = weights.shape[-1]
+        weights = np.ravel(weights)  # shape = (nr * nl * n_models)
+        color_data = np.ravel(color_data)  # shape = (nr * nl * n_models)
+        self.logger.info('Creating circularity vs. color '
                         f'plot averaging data of {n_models} models.')
         # Calculate circularity vs. age values
-        min_age, max_age = np.nanmin(age), np.nanmax(age)
-        n_models = orbit_data.shape[-1]
+        min_c, max_c = np.nanmin(color_data), np.nanmax(color_data)
         lambda_z = np.zeros((self.nr, self.nl, n_models))
         for i_l in range(self.nl):
             lambda_z[:, i_l, :] = -1 + 2 / (self.nl - 1) * i_l
         lambda_z = np.ravel(lambda_z)
-        values, age_edges, _ = \
-            np.histogram2d(age,
+        values, color_edges, _ = \
+            np.histogram2d(color_data,
                            lambda_z,
-                           weights=weight,
-                           bins=np.array([n_age_bins, self.nl]),
-                           range=[[min_age, max_age], [-1, 1]])
+                           weights=weights,
+                           bins=np.array([n_color_bins, self.nl]),
+                           range=[[min_c, max_c], [-1, 1]])
         values = values / np.sum(values)
-        plot_values = np.full_like(values, np.nan)
-        _ = np.log10(values, out=plot_values, where=values > 0)  # deal w/zeros
-        # Calculate cold orbit fraction
-        t_cold = np.linspace(np.mean(age_edges[0:2]),
-                             np.mean(age_edges[-2:]),
-                             n_age_bins)
-        f_cold = np.zeros_like(t_cold)
-        # Make sure to include the full last bin
-        age_edges[-1] += age_edges[-1] * np.finfo(np.float64).eps * 10
-        for i_t in range(n_age_bins):
-            f_cold[i_t] = np.sum(weight[(age >= age_edges[i_t]) \
-                                        & (age < age_edges[i_t + 1]) \
-                                        & (lambda_z > lz_disk)])
-            if f_cold[i_t] > 0:
-                f_cold[i_t] /= np.sum(weight[(age >= age_edges[i_t]) \
-                                            & (age < age_edges[i_t + 1])])
-        # Determine where f_disk crosses 50% (linear interpolation)
-        disk_level = 0.5
-        cross_idx = np.where(np.diff(np.sign(f_cold - disk_level)))[0]
-        if len(cross_idx) > 0:  # does it cross 50%?
-            idx = cross_idx[0]  # take first crossing
-            x1 = t_cold[idx]
-            x2 = t_cold[idx + 1]
-            y1 = f_cold[idx] - disk_level
-            y2 = f_cold[idx + 1] - disk_level
-            f_50_age = x1 - y1 * (x2 - x1) / (y2 - y1)
-        else:
-            f_50_age = np.nan  # no crossing, set to NaN
-            self.logger.warning('Cold orbit fraction does not cross 50% in the'
-                                ' given age range, setting f_50_age to NaN.')
-        self.logger.info(f'Cold orbit fraction crosses {disk_level:.2f} at '
-                         f'{f_50_age:.2f} Gyr.')
+        if disk_fraction:  # Calculate cold orbit (disk) fraction
+            c_cold = np.linspace(np.mean(color_edges[0:2]),
+                                 np.mean(color_edges[-2:]),
+                                 n_color_bins)
+            f_cold = np.zeros_like(c_cold)
+            # Make sure to include the full last bin
+            color_edges[-1] *= 1 + np.finfo(np.float64).eps * 10
+            for i in range(n_color_bins):
+                f_cold[i] = np.sum(weights[(color_data >= color_edges[i]) \
+                                           & (color_data < color_edges[i + 1])\
+                                           & (lambda_z > lz_disk)])
+                if f_cold[i] > 0:
+                    f_cold[i] /= \
+                        np.sum(weights[(color_data >= color_edges[i]) \
+                                       & (color_data < color_edges[i + 1])])
+            # Determine where f_disk crosses 50% (linear interpolation)
+            disk_level = 0.5
+            cross_idx = np.where(np.diff(np.sign(f_cold - disk_level)))[0]
+            if len(cross_idx) > 0:  # does it cross 50% at all?
+                idx = cross_idx[0]  # take first crossing
+                x1 = c_cold[idx]
+                x2 = c_cold[idx + 1]
+                y1 = f_cold[idx] - disk_level
+                y2 = f_cold[idx + 1] - disk_level
+                disk_50 = x1 - y1 * (x2 - x1) / (y2 - y1)
+            else:
+                disk_50 = np.nan  # no crossing, set to NaN
+                self.logger.warning('Cold orbit fraction does not cross 50% '
+                    'in the given color range, setting disk_50 to NaN.')
+            self.logger.info(f'Cold orbit fraction crosses {disk_level:.2f} '
+                            f'at {disk_50:.2f} Gyr.')
         # Plot circularity vs. age
-        fig = plt.figure(figsize=(10, 10))
-        ax = fig.add_axes([0.15, 0.15, 0.5, 0.4])
-        cax = ax.imshow(plot_values.T,
-                        cmap='Oranges',
-                        interpolation='none',
-                        extent=[min_age, max_age, -1, 1],
+        fig = plt.figure(figsize=(6, 6))
+        if disk_fraction:
+            ax = fig.add_axes([0.15, 0.1, 0.80, 0.6])
+            ax2 = fig.add_axes([0.15, 0.706, 0.6, 0.225])
+        else:
+            ax = fig.add_axes([0.15, 0.15, 0.8, 0.8])
+        vmin = np.nanmin(values)
+        vmax = np.nanmax(values)
+        if p_scale == 'log':
+            if vmin < 0:  # == 0 is ok, see below...
+                self.logger.warning('Colorbar logscale might not make sense '
+                                    'due to negative numbers.')
+            vmin = np.nanmin(values[values > 0])
+        cax = ax.imshow(values.T,
+                        # cmap='Oranges',
+                        cmap='gist_heat_r',
+                        norm=p_scale,
+                        interpolation=interpolation,
+                        extent=[min_c, max_c, -1, 1],
                         origin='lower',
-                        vmin=np.nanmin(plot_values),
-                        vmax=np.nanmax(plot_values),
+                        vmin=vmin,
+                        vmax=vmax,
                         aspect='auto')
-        plt.plot([min_age, max_age], [lz_disk, lz_disk], 'k--')
-        plt.plot([f_50_age, f_50_age], [-1, 1], 'k--')
-        plt.xlim(min_age, max_age)
-        # ax.set_xticks([0, 5, 10])
+        ax.set_xlim(min_c, max_c)
         ax.set_yticks([-lz_disk, -0.5, 0, 0.5, lz_disk])
-        ax.set_xlabel('Stellar age [Gyr]')
+        if c_scale == 'log':
+            ax.set_xscale('log')
+        ax.set_xlabel(c_label)
         ax.set_ylabel('Circularity $\lambda_z$')
-        # ax.yaxis.get_ticklocs(minor=True)
-        # ax.minorticks_on()
-        # ax.set_title('galaxy at Z = 0')
         fig.colorbar(cax,
                      orientation='vertical',
                      pad=0.1,
-                     label=r'$\log_{10}(\mathrm{p})$')
-        # Plot cold orbit fraction vs. age
-        ax = fig.add_axes([0.15, 0.556, 0.375, 0.15])
-        ax.set_xticks([])
-        ax.set_yticks([0, 0.5, 1.0])
-        plt.plot([f_50_age, f_50_age], [0, 1], 'k--')
-        plt.plot([min_age, max_age], [disk_level, disk_level], 'k--')
-        plt.plot(t_cold, f_cold, 'r-')
-        ax.set_ylabel(r'$f_{\mathrm{disk}}$')
-        plt.xlim(min_age, max_age)
+                     label=r'$r$')
+        if disk_fraction:  # Plot cold orbit fraction vs. age
+            ax.plot([min_c, max_c], [lz_disk, lz_disk], 'k--')
+            ax.plot([disk_50, disk_50], [-1, 1], 'k--')
+            if c_scale == 'log':
+                ax2.set_xscale('log')
+            ax2.set_xticks([])
+            ax2.set_yticks([0, 0.5, 1.0])
+            ax2.plot([disk_50, disk_50], [0, 1], 'k--')
+            ax2.plot([min_c, max_c], [disk_level, disk_level], 'k--')
+            ax2.plot(c_cold, f_cold, 'r-')
+            ax2.set_ylabel(r'$f_{\mathrm{disk}}$')
+            ax2.set_xlim(min_c, max_c)
         # Save the figure
         figname = self.config.settings.io_settings['plot_directory'] + \
-            f'circularity_age_plot_{n_models:02d}' + figtype
+            f'circularity_color_plot_{n_models:02d}' + figtype
         fig.savefig(figname, dpi=dpi)
-        self.logger.info(f'Coloring decomposition plot saved in {figname}.')
-        return fig, f_50_age
+        self.logger.info(f'Circularity color plot saved in {figname}.')
+        return fig, disk_50
 
     def color_color_plot(self,
                          x_posterior,
