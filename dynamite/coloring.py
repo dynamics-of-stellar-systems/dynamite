@@ -1314,10 +1314,10 @@ class Coloring:
         n_colors = len(colors)
         txt = f' for {n_colors} colors: {list(colors.keys())}.'
         if len(model_data) == n_colors:
-            self.logger.info('Color maps: plotting data ' + txt)
+            self.logger.info('Color maps: plotting data' + txt)
             plot_errors = False
         elif len(model_data) == 2 * n_colors:
-            self.logger.info('Color maps: plotting data and errors ' + txt)
+            self.logger.info('Color maps: plotting data and errors' + txt)
             plot_errors = True
         else:
             txt = 'Model data must be of same or twice the length of colors '
