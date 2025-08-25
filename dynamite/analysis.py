@@ -679,7 +679,10 @@ class Analysis:
             raise ValueError(txt)
         if model is None:
             model = self.model
-        stars = self.config.system.get_unique_triaxial_visible_component()
+        if self.config.system.is_bar_disk_system():
+            stars = self.config.system.get_unique_bar_component()
+        else:
+            stars = self.config.system.get_unique_triaxial_visible_component()
         if isinstance(kin_set, int) or (kin_set is None and pop_set is None):
             if kin_set is None:
                 kin_set = self.kin_set

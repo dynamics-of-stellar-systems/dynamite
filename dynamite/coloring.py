@@ -1331,7 +1331,10 @@ class Coloring:
         else:
             plot_cols = [col for col in colors]
         # Get the observed data
-        stars = self.config.system.get_unique_triaxial_visible_component()
+        if self.config.system.is_bar_disk_system():
+            stars = self.config.system.get_unique_bar_component()
+        else:
+            stars = self.config.system.get_unique_triaxial_visible_component()
         pops = stars.population_data[0]
         map_plotter = pops.get_map_plotter()
         pops_data = pops.get_data()
