@@ -8,6 +8,7 @@ import numpy as np
 from astropy import table
 from astropy.io import ascii
 
+from dynamite import constants
 from dynamite import weight_solvers as ws
 from dynamite import orblib as dyn_orblib
 
@@ -107,11 +108,15 @@ class AllModels(object):
     def update_model_table(self):
         """all_models table update: fix incomplete models, add kinmapchi2.
 
-        Dealing with incomplete models:
-        Models with all_done==False but an existing model_done_staging.ecsv
-        will be updated in the table and the staging file will be deleted.
-        Models with all_done==False and no existing orblib will be deleted
-        from the table and their model directory will be deleted, too.
+        Dealing with incomplete models (all_done==False):
+        If the model has an existing orblib (indicated by the presence of
+        datfil/tube_box_done), its orblib_done will be set to True. If no
+        orblib exists on disk, the model will be deleted from the table and
+        their model directory will be deleted, too.
+        If the model has an existing weights file (indicated by the presence of
+        the weight file), its weights_done will be set to True and
+        chi2, kinchi2, and kinmapchi2 will be read from that file.
+        The all_done flag will be updated accordingly.
         The configuration setting reattempt_failures determines how partially
         completed models with all_done==False but existing orblibs are treated:
         If reattempt_failures==True, their orblib_done will be set to True
@@ -119,8 +124,8 @@ class AllModels(object):
         based on the existing orblibs.
         If reattempt_failures==False, the model and its directory will be
         deleted.
-        Note that orbit libraries on disk will not be deleted as they
-        may be in use by other models.
+        Note that orbit libraries on disk will not be deleted if they
+        are in use by other models.
 
         Up to DYNAMITE 3.0 there was no kinmapchi2 column in the all_models
         table. If possible (data exists on disk), calculate and add the values,
@@ -134,34 +139,31 @@ class AllModels(object):
         """
         table_modified = False
         for i, row in enumerate(self.table):
-            if not row['all_done']:
-                table_modified = True
-                mod = self.get_model_from_row(i)
-                staging_filename = mod.directory+'model_done_staging.ecsv'
+            if row['all_done']:  # Do we need to check anything?
+                continue
+            mod = self.get_model_from_row(i)
+            if not row['orblib_done']:  # First, check for existing orblib
                 f_root = mod.directory_noml + 'datfil/'
-                check = os.path.isfile(f_root + 'orblib.dat.bz2') \
-                        and os.path.isfile(f_root + 'orblibbox.dat.bz2')
-                if not check:
-                    check = os.path.isfile(f_root + 'orblib_qgrid.dat.bz2') \
-                     and os.path.isfile(f_root + 'orblib_losvd_hist.dat.bz2') \
-                     and os.path.isfile(f_root + 'orblibbox_qgrid.dat.bz2') \
-                     and os.path.isfile(f_root + 'orblibbox_losvd_hist.dat.bz2')
-                if os.path.isfile(staging_filename):
-                    # the model has completed but was not entered in the table
-                    staging_file = ascii.read(staging_filename)
-                    self.table[i] = staging_file[0]
-                    self.logger.info(f'Staging file {staging_filename} '
-                                f'used to update {__class__.__name__}.table.')
-                    os.remove(staging_filename)
-                    self.logger.debug(
-                        f'Staging file {staging_filename} deleted.')
-                elif check:
-                    self.logger.debug(f'Row {i}: orblibs were computed '
-                                      'but not weights.')
-                    self.table[i]['orblib_done'] = True
-                else:
-                    self.logger.debug(f'Row {i}: neither orblibs nor '
-                                      'weights were completed.')
+                if os.path.isfile(f_root + 'tube_box_done'):
+                    table_modified = True
+                    row['orblib_done'] = True
+                    row['time_modified'] = str(np.datetime64('now', 'ms'))
+                    self.logger.info(f'Row {i}: orblib exists in {f_root}.')
+            if not row['weights_done']:  # Then, check for existing weights
+                w_file = mod.directory + constants.weight_file
+                if os.path.isfile(w_file):
+                    chi2s = ascii.read(w_file).meta
+                    table_modified = True
+                    row['chi2'] = chi2s['chi2_tot']
+                    row['kinchi2'] = chi2s['chi2_kin']
+                    row['kinmapchi2'] = chi2s['chi2_kinmap']
+                    row['weights_done'] = True
+                    row['time_modified'] = str(np.datetime64('now', 'ms'))
+                    self.logger.info(f'Row {i}: weights exist in {w_file}.')
+            row['all_done'] = row['weights_done']
+            if not (row['orblib_done'] or row['weights_done']):
+                self.logger.debug(f'Row {i}: neither orblibs nor weights were '
+                                  f'completed for model in {mod.directory}.')
         # collect failed models to delete (both their directory and table entry)
         to_delete = []
         # if we will reattempt weight solving, only delete models with no orblib

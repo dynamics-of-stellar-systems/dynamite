@@ -12,6 +12,7 @@ try:
 except ModuleNotFoundError:
     pass
 
+from dynamite import constants
 from dynamite import analysis
 from dynamite import physical_system as physys
 from dynamite import kinematics as dyn_kin
@@ -47,7 +48,7 @@ class WeightSolver(object):
         if 'CRcut' in self.settings.keys():
             CRcut = self.settings['CRcut']
         self.CRcut = CRcut
-        self.weight_file = f'{self.direc_with_ml}orbit_weights.ecsv'
+        self.weight_file = f'{self.direc_with_ml}{constants.weight_file}'
 
     def solve(self, orblib, ignore_existing_weights=False):
         """Template solve method

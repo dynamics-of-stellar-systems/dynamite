@@ -511,7 +511,8 @@ class LegacyOrbitLibrary(OrbitLibrary):
                 raise RuntimeError(text)
 
     def get_orbit_library(self):
-        """Execute the bash script to calculate orbit libraries
+        """Execute the bash script to calculate orbit libraries: first tube,
+        then box orbits
         """
         # move to model directory
         cur_dir = os.getcwd()
@@ -579,11 +580,15 @@ class LegacyOrbitLibrary(OrbitLibrary):
         cmd_string = 'cmd_tube_box_orbs'
         txt_file = open(cmd_string, "w")
         txt_file.write('#!/bin/bash\n')
-        txt_file.write('# first, check whether executables exist\n')
+        txt_file.write('# clear flags\n')
+        txt_file.write('rm -f datfil/tube_done datfil/box_done '
+                       'datfil/tube_box_done\n')
+        txt_file.write('# check whether executables exist\n')
         for f_name in orb_prgrm, 'triaxmass', 'triaxmassbin':
             txt_file.write(f'test -e {self.legacy_directory}/{f_name} || ' +
                            f'{{ echo "File {self.legacy_directory}/{f_name} ' +
                            'not found." && exit 127; }\n')
+        txt_file.write('# now run tube and box orbits in parallel\n')
         txt_file.write('(rm -f datfil/orblib.dat.tmp datfil/orblib_qgrid.dat '
                         'datfil/orblib_pops.dat datfil/orblib_losvd_hist.dat\n')
         txt_file.write(f'{self.legacy_directory}/{orb_prgrm} < infil/orblib.in '
@@ -600,27 +605,30 @@ class LegacyOrbitLibrary(OrbitLibrary):
             txt_file.write(f'{self.legacy_directory}/triaxmass '
                            '< infil/triaxmass.in >> datfil/triaxmass.log\n')
             txt_file.write(f'{self.legacy_directory}/triaxmassbin '
-                           '< infil/triaxmassbin.in >> datfil/triaxmassbin.log')
+                           '< infil/triaxmassbin.in >> datfil/triaxmassbin.log\n')
         for f in 'qgrid', 'pops', 'losvd_hist':
             f_name = 'datfil/orblib_' + f + '.dat'
-            txt_file.write(f'\ntest -e {f_name} '
+            txt_file.write(f'test -e {f_name} '
                            f'&& rm -f {f_name}.bz2 && bzip2 -k {f_name}\n')
-            txt_file.write(f'rm -f {f_name}')
-        txt_file.write(') &\n')
+            txt_file.write(f'rm -f {f_name}\n')
+        txt_file.write('touch datfil/tube_done) &\n')
         txt_file.write('orblib=$!\n')
         txt_file.write('(rm -f datfil/orblibbox.dat.tmp '
                         'datfil/orblibbox_qgrid.dat datfil/orblibbox_pops.dat '
                         'datfil/orblibbox_losvd_hist.dat\n')
         txt_file.write(f'{self.legacy_directory}/{orb_prgrm} '
-                       '< infil/orblibbox.in >> datfil/orblibbox.log')
+                       '< infil/orblibbox.in >> datfil/orblibbox.log\n')
         for f in 'qgrid', 'pops', 'losvd_hist':
             f_name = 'datfil/orblibbox_' + f + '.dat'
-            txt_file.write(f'\ntest -e {f_name} '
+            txt_file.write(f'test -e {f_name} '
                            f'&& rm -f {f_name}.bz2 && bzip2 -k {f_name}\n')
-            txt_file.write(f'rm -f {f_name}')
-        txt_file.write(') &\n')
+            txt_file.write(f'rm -f {f_name}\n')
+        txt_file.write('touch datfil/box_done) &\n')
         txt_file.write('orblibbox=$!\n')
+        txt_file.write('# wait for tube and box orbits to finish\n')
         txt_file.write('wait $orblib $orblibbox\n')
+        txt_file.write('# set flag\n')
+        txt_file.write('touch datfil/tube_box_done\n')
         txt_file.close()
         # returns the name of the executables
         return cmd_string
@@ -636,11 +644,14 @@ class LegacyOrbitLibrary(OrbitLibrary):
         cmdstr_tube = 'cmd_tube_orbs'
         txt_file = open(cmdstr_tube, "w")
         txt_file.write('#!/bin/bash\n')
-        txt_file.write('# first, check whether executables exist\n')
+        txt_file.write('# clear flags\n')
+        txt_file.write('rm -f datfil/tube_done datfil/tube_box_done\n')
+        txt_file.write('# check whether executables exist\n')
         for f_name in orb_prgrm, 'triaxmass', 'triaxmassbin':
             txt_file.write(f'test -e {self.legacy_directory}/{f_name} || ' +
                            f'{{ echo "File {self.legacy_directory}/{f_name} ' +
                            'not found." && exit 127; }\n')
+        txt_file.write('# now run tube orbits\n')
         txt_file.write('rm -f datfil/orblib.dat.tmp datfil/orblib_qgrid.dat '
                         'datfil/orblib_qgrid.dat.bz2 datfil/orblib_pops.dat '
                         'datfil/orblib_pops.dat.bz2 '
@@ -660,15 +671,19 @@ class LegacyOrbitLibrary(OrbitLibrary):
                            f'&& bzip2 -kc {f_name} > {f_name}.staging.bz2 '
                            f'&& mv {f_name}.staging.bz2 {f_name}.bz2\n')
             txt_file.write(f'rm -f {f_name}\n')
+        txt_file.write('touch datfil/tube_done\n')
         txt_file.close()
         # boxorbits
         cmdstr_box = 'cmd_box_orbs'
         txt_file = open(cmdstr_box, "w")
         txt_file.write('#!/bin/bash\n')
-        txt_file.write('# first, check whether executable exists\n')
+        txt_file.write('# clear flag\n')
+        txt_file.write('rm -f datfil/box_done\n')
+        txt_file.write('# check whether executable exists\n')
         txt_file.write(f'test -e {self.legacy_directory}/{orb_prgrm} || ' +
                        f'{{ echo "File {self.legacy_directory}/{orb_prgrm} ' +
                        'not found." && exit 127; }\n')
+        txt_file.write('# now run box orbits\n')
         txt_file.write('rm -f datfil/orblibbox.dat.tmp '
                         'datfil/orblibbox_qgrid.dat '
                         'datfil/orblibbox_qgrid.dat.bz2 '
@@ -685,6 +700,9 @@ class LegacyOrbitLibrary(OrbitLibrary):
                 f'&& bzip2 -kc {f_name} > {f_name}.staging.bz2 '
                 f'&& mv {f_name}.staging.bz2 {f_name}.bz2\n')
             txt_file.write(f'rm -f {f_name}\n')
+        txt_file.write('touch datfil/box_done\n')
+        txt_file.write('test -e datfil/tube_done && '
+                       'touch datfil/tube_box_done\n')
         txt_file.close()
         # returns the name of the executables
         return cmdstr_tube, cmdstr_box
