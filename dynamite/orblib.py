@@ -89,16 +89,8 @@ class LegacyOrbitLibrary(OrbitLibrary):
             - +8 log and status files
 
         """
-        # check if orbit library was calculated already (FIXME: improve this!)
-        f_root = self.mod_dir + 'datfil/'
-        check = os.path.isfile(f_root + 'orblib.dat.bz2') \
-                and os.path.isfile(f_root + 'orblibbox.dat.bz2')
-        if not check:
-            check = os.path.isfile(f_root + 'orblib_qgrid.dat.bz2') \
-                    and os.path.isfile(f_root + 'orblib_losvd_hist.dat.bz2') \
-                    and os.path.isfile(f_root + 'orblibbox_qgrid.dat.bz2') \
-                    and os.path.isfile(f_root + 'orblibbox_losvd_hist.dat.bz2')
-        if not check:  # need to calculate orblib
+        # check whether orbit library was calculated already
+        if not os.path.isfile(self.mod_dir + 'datfil/tube_box_done'):
             # prepare the fortran input files for orblib
             self.create_fortran_input_orblib(self.mod_dir+'infil/')
             if self.system.is_bar_disk_system():

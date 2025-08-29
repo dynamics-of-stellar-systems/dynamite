@@ -4,6 +4,8 @@
 Change Log
 ****************
 
+- Improvement: Use indicator files for existing orblibs instead of checking multiple files (preparation for coloring and proper motions).
+- Improvement: Replaced staging files by directly checking for orblibs and weight files on disk.
 - Improvement: Significant performance gain when reading existing model weights (eliminated unnecessary reading of orbit library)
 - New feature: DYNAMITE models now support multiple kinematic data sets of different types and with different histogram settings
 - Improvement: the orbit_plot now allows custom orbit cuts via the ocut parameter (same behavior as in the Decomposition class)
