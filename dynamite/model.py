@@ -109,14 +109,19 @@ class AllModels(object):
         """all_models table update: fix incomplete models, add kinmapchi2.
 
         Dealing with incomplete models (all_done==False):
+
         If the model has an existing orblib (indicated by the presence of
-        datfil/tube_box_done), its orblib_done will be set to True. If no
-        orblib exists on disk, the model will be deleted from the table and
-        their model directory will be deleted, too.
-        If the model has an existing weights file (indicated by the presence of
-        the weight file), its weights_done will be set to True and
-        chi2, kinchi2, and kinmapchi2 will be read from that file.
+        datfil/tube_box_done), its orblib_done will be set to True.
+
+        If the model weights have been calculated (indicated by the presence of
+        the weights file), weights_done will be set to True and the model table
+        will be updated with the chi2, kinchi2, and kinmapchi2 from that file.
         The all_done flag will be updated accordingly.
+
+        If no orblib exists on disk and the weights are not available either,
+        the model will be deleted from the table and the model directory will
+        be deleted, too.
+
         The configuration setting reattempt_failures determines how partially
         completed models with all_done==False but existing orblibs are treated:
         If reattempt_failures==True, their orblib_done will be set to True
@@ -124,6 +129,7 @@ class AllModels(object):
         based on the existing orblibs.
         If reattempt_failures==False, the model and its directory will be
         deleted.
+
         Note that orbit libraries on disk will not be deleted if they
         are in use by other models.
 
