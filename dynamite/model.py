@@ -168,6 +168,8 @@ class AllModels(object):
                     row['time_modified'] = str(np.datetime64('now', 'ms'))
                     self.logger.info(f'Row {i}: weights exist in {w_file}.')
             row['all_done'] = row['weights_done']
+            if row['all_done']:
+                table_modified = True
             if not (row['orblib_done'] or row['weights_done']):
                 self.logger.debug(f'Row {i}: neither orblibs nor weights were '
                                   f'completed for model in {mod.directory}.')

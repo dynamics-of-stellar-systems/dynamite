@@ -581,8 +581,9 @@ class LegacyOrbitLibrary(OrbitLibrary):
                            f'{{ echo "File {self.legacy_directory}/{f_name} ' +
                            'not found." && exit 127; }\n')
         txt_file.write('# now run tube and box orbits in parallel\n')
-        txt_file.write('(rm -f datfil/orblib.dat.tmp datfil/orblib_qgrid.dat '
-                        'datfil/orblib_pops.dat datfil/orblib_losvd_hist.dat\n')
+        txt_file.write('(rm -f datfil/orblib_qgrid.dat.tmp '
+                       'datfil/orblib_qgrid.dat '
+                       'datfil/orblib_pops.dat datfil/orblib_losvd_hist.dat\n')
         txt_file.write(f'{self.legacy_directory}/{orb_prgrm} < infil/orblib.in '
                         '>> datfil/orblib.log\n')
         txt_file.write('rm -f datfil/mass_qgrid.dat datfil/mass_radmass.dat '
@@ -605,9 +606,9 @@ class LegacyOrbitLibrary(OrbitLibrary):
             txt_file.write(f'rm -f {f_name}\n')
         txt_file.write('touch datfil/tube_done) &\n')
         txt_file.write('orblib=$!\n')
-        txt_file.write('(rm -f datfil/orblibbox.dat.tmp '
-                        'datfil/orblibbox_qgrid.dat datfil/orblibbox_pops.dat '
-                        'datfil/orblibbox_losvd_hist.dat\n')
+        txt_file.write('(rm -f datfil/orblibbox_qgrid.dat.tmp '
+                       'datfil/orblibbox_qgrid.dat datfil/orblibbox_pops.dat '
+                       'datfil/orblibbox_losvd_hist.dat\n')
         txt_file.write(f'{self.legacy_directory}/{orb_prgrm} '
                        '< infil/orblibbox.in >> datfil/orblibbox.log\n')
         for f in 'qgrid', 'pops', 'losvd_hist':
@@ -644,11 +645,12 @@ class LegacyOrbitLibrary(OrbitLibrary):
                            f'{{ echo "File {self.legacy_directory}/{f_name} ' +
                            'not found." && exit 127; }\n')
         txt_file.write('# now run tube orbits\n')
-        txt_file.write('rm -f datfil/orblib.dat.tmp datfil/orblib_qgrid.dat '
-                        'datfil/orblib_qgrid.dat.bz2 datfil/orblib_pops.dat '
-                        'datfil/orblib_pops.dat.bz2 '
-                        'datfil/orblib_losvd_hist.dat '
-                        'datfil/orblib_losvd_hist.dat.bz2\n')
+        txt_file.write('rm -f datfil/orblib_qgrid.dat.tmp '
+                       'datfil/orblib_qgrid.dat '
+                       'datfil/orblib_qgrid.dat.bz2 datfil/orblib_pops.dat '
+                       'datfil/orblib_pops.dat.bz2 '
+                       'datfil/orblib_losvd_hist.dat '
+                       'datfil/orblib_losvd_hist.dat.bz2\n')
         txt_file.write(f'{self.legacy_directory}/{orb_prgrm} < infil/orblib.in '
                        '>> datfil/orblib.log\n')
         txt_file.write('rm -f datfil/mass_qgrid.dat datfil/mass_radmass.dat '
@@ -676,7 +678,7 @@ class LegacyOrbitLibrary(OrbitLibrary):
                        f'{{ echo "File {self.legacy_directory}/{orb_prgrm} ' +
                        'not found." && exit 127; }\n')
         txt_file.write('# now run box orbits\n')
-        txt_file.write('rm -f datfil/orblibbox.dat.tmp '
+        txt_file.write('rm -f datfil/orblibbox_qgrid.dat.tmp '
                         'datfil/orblibbox_qgrid.dat '
                         'datfil/orblibbox_qgrid.dat.bz2 '
                         'datfil/orblibbox_pops.dat '
