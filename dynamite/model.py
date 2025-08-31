@@ -4,6 +4,7 @@ import glob
 import difflib
 import logging
 import shutil
+import pathlib
 import numpy as np
 from astropy import table
 from astropy.io import ascii
@@ -226,6 +227,74 @@ class AllModels(object):
             self.logger.info('all_models table updated and saved.')
         else:
             self.logger.info('No all_models table update required.')
+        path = self.config.settings.io_settings['model_directory']
+        orb_dirs = [path + d for d in self.table['directory']]  # model dirs
+        # Now, convert the model dirs to orblib dirs, eliminating duplicates
+        orb_dirs = set([d[:d[:-1].rindex('/') + 1] for d in orb_dirs])
+        for d in orb_dirs:
+            self.update_orblib_flags(d)
+
+    def update_orblib_flags(self, orblib_directory):
+        """Update the indicator files in the orblib directory
+
+        Depending on the data in the configuration file, the orblib calculation
+        may have produced different output files. This function checks for the
+        presence of the required files and sets or removes indicator files
+        accordingly.
+
+        This enables DYNAMITE to dynamically re-calculate the required orblibs
+        in case an existing set of models is reanalyzed with additional data in
+        the future, for example by adding proper motion data or populations
+        with their own apertures.
+
+        Parameters
+        ----------
+        orblib_directory : str
+            The orblib directory, i.e. the model directory without the ml part,
+            ending with a '/'.
+        """
+        d = orblib_directory + 'datfil/'
+        has_pops = False  # fill in after implementing populations/coloring
+        has_pms = False  # fill in after implementing proper motions
+        orblib_files_ok = True
+        # files that always need to be there...
+        check = os.path.isfile(d + 'orblib.dat.bz2') \
+                and os.path.isfile(d + 'orblibbox.dat.bz2')
+        if not check:
+            check = os.path.isfile(d + 'orblib_qgrid.dat.bz2') \
+                    and os.path.isfile(d + 'orblib_losvd_hist.dat.bz2') \
+                    and os.path.isfile(d + 'orblibbox_qgrid.dat.bz2') \
+                    and os.path.isfile(d + 'orblibbox_losvd_hist.dat.bz2')
+        orblib_files_ok = orblib_files_ok and check
+        # files that need to be there if populations with own apertures exist
+        if has_pops:
+            # orblib_files_ok = orblib_files_ok
+            pass
+        # files that need to be there if proper motion data exist
+        if has_pms:
+            # orblib_files_ok = orblib_files_ok
+            pass
+        # set the indicator files in the orblib directory
+        ind_files = [pathlib.Path(d + f_name + '_done')
+                     for f_name in ('tube', 'box', 'tube_box')]
+        if orblib_files_ok:
+            changes = False
+            for ind_file in ind_files:
+                if not ind_file.is_file():
+                    changes = True
+                    ind_file.touch()
+            if changes:
+                self.logger.info(f'Orblib done indicators created in {d}.')
+        else:
+            changes = False
+            for ind_file in ind_files:
+                if ind_file.is_file():
+                    changes = True
+                    ind_file.unlink()
+            if changes:
+                self.logger.info(f'Orblib done indicators removed in {d}.')
+        if not changes:
+            self.logger.debug(f'Orblib done indicators in {d} unchanged.')
 
     def retrofit_kinmapchi2(self):
         """Calculates kinmapchi2 for DYNAMITE legacy tables if possible.
