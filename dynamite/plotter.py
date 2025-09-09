@@ -1683,14 +1683,14 @@ class Plotter():
             self.logger.error(txt)
             raise ValueError(txt)
         ntot = nph * nth * nrr
-        data = moments.reshape((ntot,nmom), order='F')  # match legacy r,th,ph
+        data = moments.reshape((ntot,nmom))  # match legacy r,th,ph
 
         d = data[:,0]  # density
         x = data[:,1]  # x
         y = data[:,2]  # y
         z = data[:,3]  # z
-        RR = np.sqrt(x**2 + y**2)
-        r = np.sqrt(RR**2 + z**2)
+        RR = np.sqrt(x**2 + y**2)  # projected 2d radius
+        r = np.sqrt(RR**2 + z**2)  # intrinsic 3d radius
 
         v1car = data[:,4:7]           # <v_t> t=x,y,z [(km/s)]  # vx, vy, vz
         dum = data[:,[7,10,12,10,8,11,12,11,9]]  # vxvx,vxvy,vzvx,vxvy,vyvy,vyvz,vzvx,vyvz,vzvz
@@ -1718,7 +1718,6 @@ class Plotter():
         beta_r_profile = 1 - 0.5*(rad_profile[:,1] + rad_profile[:,2])/rad_profile[:,0]
         beta_r_global = 1 - 0.5*(rad_global[1] + rad_global[2])/rad_global[0]
         rr = np.sum(np.sum(np.reshape(r, (nrr,nth,nph)), axis=2), axis=1)/(nth*nph)
-
         return rr, beta_r_profile, beta_r_global, nrr
 
 #############################################################################
@@ -1814,24 +1813,23 @@ class Plotter():
                 all_betar = np.zeros((n, nrr))
                 all_betarg= np.zeros((n))        
                 rrn = np.zeros((n, nrr))
-            
+
             all_betar[i,:] = beta_r_profile
             rrn[i,:] = rr            
             all_betarg[i]=beta_r_global
 
 
         filename1 = self.plotdir + 'anisotropy_var' + figtype
-        fs=9 #fontsize
-
+        fs=9 #fontsize        
         RRn_m = np.zeros(nrr)
         RRn_e = np.zeros(nrr)
         orot_m2 = np.zeros(nrr)
         orot_e2 = np.zeros(nrr)
         for j in range(0, nrr):
-            RRn_m[j] = np.average(rrn[j,:])
-            RRn_e[j] = np.sqrt(np.var(rrn[j,:], ddof=1))
-            orot_m2[j] = np.average(all_betar[j,:])
-            orot_e2[j] = np.sqrt(np.var(all_betar[j,:], ddof=1))
+            RRn_m[j] = np.average(rrn[:,j])
+            RRn_e[j] = np.sqrt(np.var(rrn[:,j], ddof=1))
+            orot_m2[j] = np.average(all_betar[:,j])
+            orot_e2[j] = np.sqrt(np.var(all_betar[:,j], ddof=1))
 
         radialrange=np.array([np.min(rr),Rmax_arcs])
         yrange= np.array([min(-1,min(orot_m2-orot_e2)),1])
