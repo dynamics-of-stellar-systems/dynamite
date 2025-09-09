@@ -16,11 +16,11 @@ from dynamite import constants
 
 
 class Coloring:
-    """Class to hold coloring-related routines
+    """Class to hold coloring (population data) related routines
 
     This class provides methods for Voronoi binning of orbits in the
     radius-circularity phase space, fitting Bayesian models to the
-    observed data, and calculating orbital decomposition of the coloring
+    observed data, and calculating orbital decomposition of the population
     data. It also includes methods for plotting the results of the Voronoi
     binning and the orbital decomposition.
 
@@ -343,8 +343,8 @@ class Coloring:
                      flux_data_norm,
                      obs_data,
                      sample):
-        """Fit orbit bundle color maps to the observed data using Bayesian
-        inference.
+        """Fit orbit bundle population data maps to the observed data using
+        Bayesian inference.
 
         Employs Probabilistic Programming with PyMC to fit the observed
         quantity (e.g., age or metallicity) based on the normalized flux data
@@ -417,7 +417,7 @@ class Coloring:
         self.logger.info('Fitting Bayesian model to the observed data.')
         with pm.Model() as model:
             if prior_dist == 'normal':  # truncated normal distribution
-                qty = pm.TruncatedNormal(name='qty',
+                pop = pm.TruncatedNormal(name='pop',
                                          mu=prior_par['mu'],
                                          sigma=prior_par['sigma'],
                                          lower=prior_par['lower'],
@@ -427,7 +427,7 @@ class Coloring:
                 LogNormalDist = pm.LogNormal.dist(mu=prior_par['mu'],
                                                   sigma=prior_par['sigma'],
                                                   shape=prior_par['mu'].size)
-                qty = pm.Truncated(name='qty',
+                pop = pm.Truncated(name='pop',
                                    dist=LogNormalDist,
                                    lower=prior_par['lower'],
                                    upper=prior_par['upper'],
@@ -438,7 +438,7 @@ class Coloring:
                 raise NotImplementedError(txt)
             student_t_sigma = pm.HalfCauchy('student_t_sigma', beta=5)
             student_t_nu = pm.Exponential('student_t_nu', 1/30)
-            student_t_mu = pm.math.dot(flux_data_norm, qty)
+            student_t_mu = pm.math.dot(flux_data_norm, pop)
             obs = pm.StudentT('obs',
                               mu=student_t_mu,
                               sigma=student_t_sigma,
@@ -451,7 +451,7 @@ class Coloring:
                               n_init=sample['advi_init'])
         self.logger.info('Bayesian model fitting completed. Shape of '
                          'posterior: (n_chain, n_draw, n_dim_0) = '
-                         f'{trace.posterior["qty"].shape}.')
+                         f'{trace.posterior["pop"].shape}.')
         return model, trace
 
     def orbit_bundle_plot(self,
@@ -563,19 +563,20 @@ class Coloring:
         self.logger.info(f'Orbit bundle plot saved in {figname}.')
         return fig
 
-    def get_color_orbital_decomp(self, models, vor_bundle_mappings, colors):
-        """Calculate orbital decomposition of the coloring data
+    def get_pop_orbital_decomp(self, models, vor_bundle_mappings, pop_data):
+        """Calculate orbital decomposition of the population data
 
-        This method calculates the orbital decomposition of the coloring data
+        This method calculates the orbital decomposition of the population data
         for a set of DYNAMITE models, given the Voronoi bundle mappings and
-        colors. For each model, it computes the total orbit weight in each
-        (r, lambda_z) phase space bin and the color distribution in those bins.
-        The method assumes that all DYNAMITE models have the same number of
-        colors and that the Voronoi orbital bundle mappings and colors are
-        provided in the same order as the models. It returns an array of shape
-        (n_colors + 1, nr, nl, n_models) with the total orbit weight and
-        n_colors color distributions in each of the nr * nl (r, lambda_z) bins
-        for each of the n_models DYNAMITE models.
+        population datasets. For each model, it computes the total orbit weight
+        in each (r, lambda_z) phase space bin and the population datasets'
+        distribution in those bins. The method assumes that all DYNAMITE models
+        have the same number of population datasets and that the Voronoi
+        orbital bundle mappings and population datasets are provided in the
+        same order as the models. It returns an array of shape
+        (n_pop_data + 1, nr, nl, n_models) with the total orbit weight and
+        n_pop_data population data distributions in each of the nr * nl
+        (r, lambda_z) bins for each of the n_models DYNAMITE models.
 
         Parameters
         ----------
@@ -587,51 +588,54 @@ class Coloring:
             is a 2D numpy array where the first dimension corresponds to the
             Voronoi orbit bundles and the second dimension corresponds to the
             original orbit bundles: its shape is (n_bundle, n_orbits).
-        colors : list of lists of np.arrays
-            Coloring data in a list. There is one entry per model. Those
-            entries are again lists; their length is n_colors. They consist
+        pop_data : list of lists of np.arrays
+            Population data in a list. There is one entry per model. Those
+            entries are again lists; their length is n_pop_data. They consist
             of 1D numpy arrays of shape (n_bundle,), each of which holds data
-            of one color in the Voronoi orbit bundles for that model. The
-            order of the colors must be the same for each model. Example for
-            2 models and 2 colors 'age' and 'metallicity':
-            ``colors = [[age_model1, met_model1], [age_model2, met_model2]]``
+            of one population dataset in the Voronoi orbit bundles for that
+            model. The order of the population datasets must be the same for
+            each model. Example for 2 models and 2 population datasets 'age'
+            and 'metallicity':
+            ``pop_data = [[age_model1, met_model1], [age_model2, met_model2]]``
 
         Returns
         -------
-        orbit_weight_and_color_distribution :
-            np.array of shape (n_colors + 1, nr, nl, n_models)
-            Array containing both the total orbit weight and the color
-            distribution in each (r, lambda_z) phase space bin for each model.
-            The first slice along the first dimension contains the
-            orbit weight, and the subsequent slices contain the color
+        orbit_weight_and_pop_data_distribution :
+            np.array of shape (n_pop_data + 1, nr, nl, n_models)
+            Array containing both the total orbit weight and the population
+            data distribution in each (r, lambda_z) phase space bin for each
+            model. The first slice along the first dimension contains the
+            orbit weight, and the subsequent slices contain the population data
             distributions. In (r, lambda_z) bins without any orbits, the
-            color_distribution will contain np.nan values.
+            distribution will contain np.nan values.
 
         Raises
         ------
         ValueError
-            If the number of colors is not the same for all models, or if the
-            number of models in the arguments do not match. The error message
-            will indicate the issue.
+            If the number of population datasets is not the same for all
+            models, or if the number of models in the arguments do not match.
+            The error message will indicate the issue.
         """
-        if len(set(map(len,colors))) != 1:
-            txt = 'All models need to have an equal number of colors.'
+        if len(set(map(len, pop_data))) != 1:
+            txt = 'All models need to have an equal number of ' \
+                  'population datasets.'
             self.logger.error(txt)
             raise ValueError(txt)
-        if len(set(map(len,[models, vor_bundle_mappings, colors]))) != 1:
-            txt = 'models, vor_bundle_mappings, and colors must be of equal ' \
-                  'length.'
+        if len(set(map(len,[models, vor_bundle_mappings, pop_data]))) != 1:
+            txt = 'models, vor_bundle_mappings, and pop_data must be of ' \
+                  'equal length.'
             self.logger.error(txt)
             raise ValueError(txt)
-        n_colors = len(colors[0])
+        n_pop_data = len(pop_data[0])
         n_models = len(models)
-        self.logger.info(f'Calculating color orbital decomposition for '
-                         f'{n_models} models with {n_colors} colors each.')
+        self.logger.info(f'Calculating population data orbital decomposition '
+                         f'for {n_models} models with {n_pop_data} population '
+                         'datasets each.')
         # orbit_weight collects the total orbit weight in each (r, l) bin
         orbit_weight = np.zeros((self.nr, self.nl, n_models))
-        # color_distribution will collect the colors of each phase space bin
-        # (bins without any orbits get np.nan):
-        color_distribution = np.full((n_colors, self.nr, self.nl, n_models),
+        # pop_distribution will collect the population datasets of each phase
+        # space bin (bins without any orbits get np.nan):
+        pop_distribution = np.full((n_pop_data, self.nr, self.nl, n_models),
                                      np.nan)
         for i_model, model in enumerate(models):  # for each model...
             # PART 1: get the total orbit weights in the (r, l) phase space
@@ -648,73 +652,75 @@ class Coloring:
             # Calculate total orbit weight in each (nr, nl) bin:
             orbit_weight[..., i_model] = \
                 orblib.projection_tensor[2].dot(model.weights)
-            # PART 2: get all the colors in the phase space
+            # PART 2: get all the population datasets in the phase space
             # Identify (r, l) bins with nonzero total orbit weight:
             valid_rl = [(r, lam) for r in range(self.nr)
                                  for lam in range(self.nl)
                                  if orbit_weight[r, lam, i_model]]
-            # get the colors of each original orbit bundle
+            # get the population datasets of each original orbit bundle
             vor_bundle_mapping = vor_bundle_mappings[i_model]
             _, n_orbits = vor_bundle_mapping.shape
-            orbit_color = np.zeros((n_colors, n_orbits))
+            orbit_pop = np.zeros((n_pop_data, n_orbits))
             for i_orbit in range(n_orbits):
                 # Need to catch sum(weights)=0 for weightewd average to work:
                 if np.any(vor_bundle_mapping[:,i_orbit]):
-                    for i_color, color in enumerate(colors[i_model]):
+                    for i_pop_data, pop_dset in enumerate(pop_data[i_model]):
                         # weighted average in case dithering!=0
-                        orbit_color[i_color, i_orbit] = \
-                            np.average(color,
+                        orbit_pop[i_pop_data, i_orbit] = \
+                            np.average(pop_dset,
                                        weights=vor_bundle_mapping[:,i_orbit])
             # Add weights of original orbit bundles that contribute to the
             # phase space bins:
-            color_distribution_weights = \
+            pop_distribution_weights = \
                 orblib.projection_tensor[2] * model.weights  # element-wise
-            for i_color in range(n_colors):
+            for i_pop_data in range(n_pop_data):
                 for (i_r, i_l) in valid_rl:  # 'invalid' (nr, nl) stay np.nan
-                    color_distribution[i_color, i_r, i_l, i_model] = \
-                        np.average(orbit_color[i_color], weights=\
-                            color_distribution_weights[i_r, i_l].todense())
-            self.logger.info(f'Color distribution for model {i_model} done.')
-        return np.concatenate((orbit_weight[np.newaxis], color_distribution),
+                    pop_distribution[i_pop_data, i_r, i_l, i_model] = \
+                        np.average(orbit_pop[i_pop_data], weights=\
+                            pop_distribution_weights[i_r, i_l].todense())
+            self.logger.info('Population data distribution for model '
+                             f'{i_model} done.')
+        return np.concatenate((orbit_weight[np.newaxis], pop_distribution),
                               axis=0)
 
-    def coloring_decomp_plot(self,
-                             orbit_data,
-                             plot_labels=None,
-                             colorbar_scale='linear',
-                             rcut_kpc=3.5,
-                             lz_disk=0.8,
-                             lz_warm=0.5,
-                             figtype='.png',
-                             dpi=100):
-        """Coloring decomposition plot, averaging the data of multiple models
+    def pop_decomp_plot(self,
+                        orbit_data,
+                        plot_labels=None,
+                        colorbar_scale='linear',
+                        rcut_kpc=3.5,
+                        lz_disk=0.8,
+                        lz_warm=0.5,
+                        figtype='.png',
+                        dpi=100):
+        """Population decomposition plot, averaging the data of multiple models
 
         Create and save an orbital decomposition plot in the (r, lambda_z)
         phase space, consisting of multiple panels: the first panel shows
         the orbit probability density distribution, the subsequent panels
-        show the color distributions. Dashed lines indicate the orbit-based
-        division into four components: disk, warm, bulge, and hot inner
-        stellar halo (can be switched off). The plot averages the data of
+        show the population dataset distributions. Dashed lines indicate the
+        orbit-based division into four components: disk, warm, bulge, and hot
+        inner stellar halo (can be switched off). The plot averages the data of
         multiple DYNAMITE models.
 
         Parameters
         ----------
-        orbit_data : np.array of shape (n_colors + 1, nr, nl, n_models)
-            Array containing both the total orbit weight and the color
-            distribution in each (r, lambda_z) phase space bin for each of the
-            n_models DYNAMITE models. The first slice along the first dimension
-            contains the orbit weight, and the subsequent slices contain the
-            color distributions. Can directly use the output of
-            ``get_color_orbital_decomp()``.
+        orbit_data : np.array of shape (n_pop_data + 1, nr, nl, n_models)
+            Array containing both the total orbit weight and the population
+            data distribution in each (r, lambda_z) phase space bin for each of
+            the n_models DYNAMITE models. The first slice along the first
+            dimension contains the orbit weight, and the subsequent slices
+            contain the population data distributions. Can directly use the
+            output of ``get_pop_orbital_decomp()``.
         plot_labels : list of str or ``None``, optional
-            Labels for the individual plots. Must have length of n_colors + 1.
-            If ``None``, the default labels will be used:
-            'Orbit PDF', 'Color 1', 'Color 2', etc. The default is ``None``.
+            Labels for the individual plots. Must have length of
+            n_pop_data + 1. If ``None``, the default labels will be used:
+            'Orbit PDF', 'Pop dataset 1', 'Pop dataset 2', etc.
+            The default is ``None``.
         colorbar_scale : str or list of str, optional
             Scale of the colorbar, either 'linear' or 'log'. If a string, it
-            applies to all plots. If a list of strings of length n_colors + 1,
-            it sets the scale of each plot individually. The default is
-            'linear'.
+            applies to all plots. If a list of strings of length
+            n_pop_data + 1, it sets the scale of each plot individually.
+            The default is 'linear'.
         Cuts for stellar components:
             - disk (lambda_z > lz_disk)
             - bulge (lambda_z < lz_disk, r < rcut_kpc)
@@ -744,7 +750,7 @@ class Coloring:
             issue.
         """
         n_models = orbit_data.shape[-1]
-        self.logger.info('Creating coloring decomposition plot '
+        self.logger.info('Creating population data decomposition plot '
                          f'averaging data of {n_models} models.')
         arctkpc = constants.ARC_KPC(self.config.system.distMPc)
         if rcut_kpc is None or lz_disk is None or lz_warm is None:
@@ -765,7 +771,7 @@ class Coloring:
         if plot_labels is None or not isinstance(plot_labels, list) or \
            len(plot_labels) != n_plots:
             plot_labels = ['Orbit PDF'] + \
-                           [f'Color {i + 1}' for i in range(n_plots - 1)]
+                           [f'Pop dataset {i + 1}' for i in range(n_plots - 1)]
             self.logger.warning('plot_labels should be a list of labels '
                                 f'for each plot, using default {plot_labels}.')
         if colorbar_scale == 'linear' or colorbar_scale == 'log':
@@ -791,7 +797,7 @@ class Coloring:
                 values = values / np.sum(values)
                 values[values == 0.] = np.nan  # avoid zero values for colorbar
             else:  # Average over all models
-                # (r, l) bins without orbits get a color value of np.nan
+                # (r, l) bins without orbits get a value of np.nan
                 values = np.full((self.nr, self.nl), np.nan)
                 for i_rl in [i_rl for i_rl in all_rl if np.any(weight[i_rl])]:
                     values[i_rl] = np.average(plot_data[i_rl],
@@ -858,71 +864,75 @@ class Coloring:
                             verticalalignment='center')
         # Save the figure
         figname = self.config.settings.io_settings['plot_directory'] + \
-                  f'coloring_decomp_plot_{n_models:02d}' + figtype
+                  f'population_decomp_plot_{n_models:02d}' + figtype
         fig.savefig(figname, dpi=dpi)
-        self.logger.info(f'Coloring decomposition plot saved in {figname}.')
+        self.logger.info('Population data decomposition plot saved in '
+                         f'{figname}.')
         return fig
 
-    def circularity_color_plot(self,
+    def circularity_pop_plot(self,
                                weights,
-                               color_data,
+                               pop_data,
                                *,
-                               c_label='Color',
-                               c_scale='linear',
-                               p_scale='linear',
-                               n_color_bins=14,
+                               pop_label='Stellar age [Gyr]',
+                               pop_scale='linear',
+                               prob_scale='linear',
+                               n_pop_bins=14,
                                interpolation='none',
                                disk_fraction=True,
                                lz_disk=0.8,
                                figtype='.png',
                                dpi=100):
-        """Plots orbit probability distribution in the (color, circularity)
-        plane and the fraction of disk orbits as a function of the color
+        """Orbit probability distribution in the (population data, circularity)
+        plane and fraction of disk orbits as a function of the population data
 
         Create and save a plot showing the orbit probability distribution in
-        the (color, circularity) plane, averaged over multiple DYNAMITE models.
-        If disk_fraction is True, the cold orbit fraction as a function of the
-        color is plotted in a separate panel above the main plot. The cold
-        orbit fraction is defined as the fraction of orbits with circularity
-        $\lambda_z$ greater than a specified threshold lz_disk (default is 0.8)
-        within each color bin. A dashed line indicates the disk fraction
-        threshold and a vertical dashed line indicates the color value at which
-        the cold orbit fraction crosses 50%. The plot is saved in the specified
-        file format and resolution.
+        the (population data, circularity) plane, averaged over multiple
+        DYNAMITE models. If disk_fraction is True, the cold orbit fraction as a
+        function of the population data is plotted in a separate panel above
+        the main plot. The cold orbit fraction is defined as the fraction of
+        orbits with circularity $\lambda_z$ greater than a specified threshold
+        lz_disk (default is 0.8) within each population data bin. A dashed line
+        indicates the disk fraction threshold and a vertical dashed line
+        indicates the population data value at which the cold orbit fraction
+        crosses 50%. The plot is saved in the specified file format and
+        resolution.
 
         Parameters
         ----------
         weights : np.array of shape (nr, nl, n_models)
             Array with the total orbit weight in each (r, lambda_z) phase space
             bin for each DYNAMITE model. Can directly use the first slice of
-            the output of ``get_color_orbital_decomp()``.
-        color_data : np.array of shape (nr, nl, n_models)
-            Array with the color distribution in each (r, lambda_z) phase
-            space bin for each DYNAMITE model. Can directly use a
-            slice of the output of ``get_color_orbital_decomp()``.
-        c_label : str, optional
-            Label for the color axis, by default 'Color'.
-        c_scale : str, optional
-            Scale of the color axis, either 'linear' or 'log', by default
-            'linear'.
-        p_scale : str, optional
+            the output of ``get_pop_orbital_decomp()``.
+        pop_data : np.array of shape (nr, nl, n_models)
+            Array with the population data distribution in each (r, lambda_z)
+            phase space bin for each DYNAMITE model. Can directly use a
+            slice of the output of ``get_pop_orbital_decomp()``.
+        pop_label : str, optional
+            Label for the population data axis. The default 'Stellar age [Gyr]'
+            assumes that a circularity-age plot is the common case.
+        pop_scale : str, optional
+            Scale of the population data axis, either 'linear' or 'log', by
+            default 'linear'.
+        prob_scale : str, optional
             Scale of the probability density colorbar, either 'linear' or
             'log', by default 'linear'.
-        n_color_bins : int, optional
-            Number of color bins; determines the resolution along the color
-            axis of both the orbit distribution and cold orbit fraction plots.
-            The bins will be evenly and linearly spaced between the minimum and
-            maximum age values in the orbit_data. The default is 14.
+        n_pop_bins : int, optional
+            Number of population data bins; determines the resolution along the
+            population data axis of both the orbit distribution and cold orbit
+            fraction subplots. The bins will be evenly and linearly spaced
+            between the minimum and maximum population data values in pop_data.
+            The default is 14.
         interpolation : str, optional
             Interpolation method for the imshow plot of the orbit distribution.
             See
             https://matplotlib.org/stable/api/_as_gen/matplotlib.pyplot.imshow.html
             for available options. The default is 'none'.
         disk_fraction : bool, optional
-            Whether to plot the cold orbit fraction as a function of color in
-            a separate panel above the main plot. If False, the plot will have
-            only one pane showing the orbit probability distribution.
-            The default is True.
+            Whether to plot the cold orbit fraction as a function of the
+            population data in a separate panel above the main plot. If False,
+            the plot will have only one pane showing the orbit probability
+            distribution. The default is True.
         lz_disk : float, optional
             Circularity threshold for the disk fraction, above which orbits are
             considered as part of the disk. This is used to calculate the cold
@@ -938,67 +948,69 @@ class Coloring:
             figure : matplotlib.figure.Figure
                 The created figure object.
             disk_50 : float or np.nan
-                The color value at which the cold orbit fraction crosses 50%
-                (disk fraction threshold). Calculated via linear interpolation
-                between the two color bins that cross the threshold. Set to
-                np.nan if the cold orbit fraction does not cross the threshold
-                in the given color range or if disk_fraction is False.
+                The population data value at which the cold orbit fraction
+                crosses 50% (disk fraction threshold). Calculated via linear
+                interpolation between the two population data bins that cross
+                the threshold. Set to np.nan if the cold orbit fraction does
+                not cross the threshold in the given population data range or
+                if disk_fraction is False.
 
         Raises
         ------
         ValueError
-            If the shape of `orbit_data` is not compatible with the expected
-            format, i.e., it should have at least two slices along the first
-            dimension (one for orbit weight and one for age).
+            If pop_scale or prob_scale is invalid, or if the shapes of weights
+            and pop_data do not match. The error message will indicate the
+            issue.
         """
-        if c_scale != 'linear' and c_scale != 'log':
-            txt = 'c_scale needs to be either "linear" or "log", ' \
-                  f'but is {c_scale}.'
+        if pop_scale not in ('linear', 'log'):
+            txt = 'pop_scale needs to be either "linear" or "log", ' \
+                  f'but is {pop_scale}.'
             self.logger.error(txt)
             raise ValueError(txt)
-        if p_scale != 'linear' and p_scale != 'log':
-            txt = 'p_scale needs to be either "linear" or "log", ' \
-                  f'but is {p_scale}.'
+        if prob_scale not in ('linear', 'log'):
+            txt = 'prob_scale needs to be either "linear" or "log", ' \
+                  f'but is {prob_scale}.'
             self.logger.error(txt)
             raise ValueError(txt)
-        if weights.shape != color_data.shape:
-            txt = 'Weights and color_data must have the same shape, but ' \
-                  f'they are {weights.shape} and {color_data.shape}, resp.'
+        if weights.shape != pop_data.shape:
+            txt = 'Weights and pop_data must have the same shape, but ' \
+                  f'they are {weights.shape} and {pop_data.shape}, resp.'
             self.logger.error(txt)
             raise ValueError(txt)
         n_models = weights.shape[-1]
         weights = np.ravel(weights)  # shape = (nr * nl * n_models)
-        color_data = np.ravel(color_data)  # shape = (nr * nl * n_models)
-        self.logger.info('Creating circularity vs. color '
-                        f'plot averaging data of {n_models} models.')
+        pop_data = np.ravel(pop_data)  # shape = (nr * nl * n_models)
+        self.logger.info('Creating circularity vs. population data '
+                         f'({pop_label}) '
+                         f'plot averaging data of {n_models} models.')
         # Calculate circularity vs. age values
-        min_c, max_c = np.nanmin(color_data), np.nanmax(color_data)
+        min_c, max_c = np.nanmin(pop_data), np.nanmax(pop_data)
         lambda_z = np.zeros((self.nr, self.nl, n_models))
         for i_l in range(self.nl):
             lambda_z[:, i_l, :] = -1 + 2 / (self.nl - 1) * i_l
         lambda_z = np.ravel(lambda_z)
-        values, color_edges, _ = \
-            np.histogram2d(color_data,
+        values, pop_edges, _ = \
+            np.histogram2d(pop_data,
                            lambda_z,
                            weights=weights,
-                           bins=np.array([n_color_bins, self.nl]),
+                           bins=np.array([n_pop_bins, self.nl]),
                            range=[[min_c, max_c], [-1, 1]])
         values = values / np.sum(values)
         if disk_fraction:  # Calculate cold orbit (disk) fraction
-            c_cold = np.linspace(np.mean(color_edges[0:2]),
-                                 np.mean(color_edges[-2:]),
-                                 n_color_bins)
+            c_cold = np.linspace(np.mean(pop_edges[0:2]),
+                                 np.mean(pop_edges[-2:]),
+                                 n_pop_bins)
             f_cold = np.zeros_like(c_cold)
             # Make sure to include the full last bin
-            color_edges[-1] *= 1 + np.finfo(np.float64).eps * 10
-            for i in range(n_color_bins):
-                f_cold[i] = np.sum(weights[(color_data >= color_edges[i]) \
-                                           & (color_data < color_edges[i + 1])\
+            pop_edges[-1] *= 1 + np.finfo(np.float64).eps * 10
+            for i in range(n_pop_bins):
+                f_cold[i] = np.sum(weights[(pop_data >= pop_edges[i]) \
+                                           & (pop_data < pop_edges[i + 1])\
                                            & (lambda_z > lz_disk)])
                 if f_cold[i] > 0:
                     f_cold[i] /= \
-                        np.sum(weights[(color_data >= color_edges[i]) \
-                                       & (color_data < color_edges[i + 1])])
+                        np.sum(weights[(pop_data >= pop_edges[i]) \
+                                       & (pop_data < pop_edges[i + 1])])
             # Determine where f_disk crosses 50% (linear interpolation)
             disk_level = 0.5
             cross_idx = np.where(np.diff(np.sign(f_cold - disk_level)))[0]
@@ -1011,10 +1023,11 @@ class Coloring:
                 disk_50 = x1 - y1 * (x2 - x1) / (y2 - y1)
             else:
                 disk_50 = np.nan  # no crossing, set to NaN
-                self.logger.warning('Cold orbit fraction does not cross 50% '
-                    'in the given color range, setting disk_50 to NaN.')
+                self.logger.warning('Cold orbit fraction does not cross 50% in'
+                                    'in the given population data range, '
+                                    'setting disk_50 to NaN.')
             self.logger.info(f'Cold orbit fraction crosses {disk_level:.2f} '
-                            f'at {disk_50:.2f} Gyr.')
+                             f'at {disk_50:.2f} Gyr.')
         # Plot circularity vs. age
         fig = plt.figure(figsize=(6, 6))
         if disk_fraction:
@@ -1024,7 +1037,7 @@ class Coloring:
             ax = fig.add_axes([0.15, 0.15, 0.8, 0.8])
         vmin = np.nanmin(values)
         vmax = np.nanmax(values)
-        if p_scale == 'log':
+        if prob_scale == 'log':
             if vmin < 0:  # == 0 is ok, see below...
                 self.logger.warning('Colorbar logscale might not make sense '
                                     'due to negative numbers.')
@@ -1032,7 +1045,7 @@ class Coloring:
         cax = ax.imshow(values.T,
                         # cmap='Oranges',
                         cmap='gist_heat_r',
-                        norm=p_scale,
+                        norm=prob_scale,
                         interpolation=interpolation,
                         extent=[min_c, max_c, -1, 1],
                         origin='lower',
@@ -1041,9 +1054,9 @@ class Coloring:
                         aspect='auto')
         ax.set_xlim(min_c, max_c)
         ax.set_yticks([-lz_disk, -0.5, 0, 0.5, lz_disk])
-        if c_scale == 'log':
+        if pop_scale == 'log':
             ax.set_xscale('log')
-        ax.set_xlabel(c_label)
+        ax.set_xlabel(pop_label)
         ax.set_ylabel('Circularity $\lambda_z$')
         fig.colorbar(cax,
                      orientation='vertical',
@@ -1052,7 +1065,7 @@ class Coloring:
         if disk_fraction:  # Plot cold orbit fraction vs. age
             ax.plot([min_c, max_c], [lz_disk, lz_disk], 'k--')
             ax.plot([disk_50, disk_50], [-1, 1], 'k--')
-            if c_scale == 'log':
+            if pop_scale == 'log':
                 ax2.set_xscale('log')
             ax2.set_xticks([])
             ax2.set_yticks([0, 0.5, 1.0])
@@ -1063,52 +1076,55 @@ class Coloring:
             ax2.set_xlim(min_c, max_c)
         # Save the figure
         figname = self.config.settings.io_settings['plot_directory'] + \
-            f'circularity_color_plot_{n_models:02d}' + figtype
+            f'circularity_population_plot_{n_models:02d}' + figtype
         fig.savefig(figname, dpi=dpi)
-        self.logger.info(f'Circularity color plot saved in {figname}.')
+        self.logger.info(f'Circularity population data ({pop_label}) plot '
+                         f'saved in {figname}.')
         return fig, disk_50
 
-    def color_color_plot(self,
-                         x_posterior,
-                         y_posterior,
-                         weights=1,
-                         *,
-                         x_label='Color 1',
-                         y_label='Color 2',
-                         x_scale='linear',
-                         y_scale='linear',
-                         n_smooth=100,
-                         figtype='.png',
-                         dpi=100):
+    def pop_pop_plot(self,
+                     x_posterior,
+                     y_posterior,
+                     weights=1,
+                     *,
+                     x_label='Stellar age [Gyr]',
+                     y_label='$Z/Z_\\odot$',
+                     x_scale='linear',
+                     y_scale='linear',
+                     n_smooth=100,
+                     figtype='.png',
+                     dpi=100):
 
-        """Create a color vs color plot with smoothing
+        """Create a population data vs population data plot with smoothing
 
-        Create and save a plot showing the relation of two colors (e.g. age vs
-        metallicity, AMR) for a set of stellar bundles, averaged over multiple
-        MCMC chains and draws. The plot includes the probability density
-        distribution in the color values and a scatter plot with diamonds
-        indicating the average color values of each orbit bundle and the
-        diamond sizes being proportional to the orbit bundles' weights. The
-        plot is saved in the specified file format and resolution.
+        Create and save a plot showing the relation of two population datasets
+        (e.g. age vs metallicity, AMR) for a set of stellar bundles, averaged
+        over multiple MCMC chains and draws. The plot includes the probability
+        density distribution in the population data values and a scatter plot
+        with diamonds indicating the average population data values of each
+        orbit bundle. The diamond sizes are proportional to the orbit bundles'
+        weights. The plot is saved in the specified file format and resolution.
 
         Parameters
         ----------
         x_posterior : xarray or np.array of shape (n_chain, n_draw, n_bundle)
-            Posterior distribution of the color plotted on the x axis for the
-            orbit bundles, where `n_chain` is the number of MCMC chains,
-            `n_draw` is the number of draws per chain, and `n_bundle` is the
-            number of orbit bundles.
+            Posterior distribution of the population dataset plotted on the
+            x axis for the orbit bundles, where `n_chain` is the number of
+            MCMC chains, `n_draw` is the number of draws per chain, and
+            `n_bundle` is the number of orbit bundles.
         y_posterior : xarray or np.array of shape (n_chain, n_draw, n_bundle)
-            Posterior distribution of the color plotted on the y axis for the
-            orbit bundles, with the same shape as `x_posterior`.
+            Posterior distribution of the population dataset plotted on the
+            y axis for the orbit bundles, with the same shape as `x_posterior`.
         weights : np.array of shape (n_bundle,) or 1, optional
             Weight of each stellar bundle, used to determine the size of the
             symbols in the scatter plot. If 1, all symbols will have the same
             size. The default is 1.
         x_label : str, optional
-            Label for the x axis, by default 'Color 1'.
+            Label for the x axis. The default is 'Stellar age [Gyr]' and can be
+            used for an AMR (age vs metallicity) plot.
         y_label : str, optional
-            Label for the y axis, by default 'Color 2'.
+            Label for the y axis. The default is '$Z/Z_\\odot$' and can be used
+            for an AMR (age vs metallicity) plot.
         x_scale : str, optional
             Scale of the x axis, either 'linear' or 'log', by default 'linear'.
         y_scale : str, optional
@@ -1209,7 +1225,7 @@ class Coloring:
         #             marker='o',
         #             facecolor='black',
         #             alpha=0.2)
-        # Scatter plot of orbital bundle mean values
+        # Scatter plot of orbital bundle mean values (white+red edges)
         weights = weights / np.max(weights) * 200
         scatter_data = [x_mean, y_mean]
         scatter_args = {'marker': 'D', 'facecolor': 'none', 'linewidth': 1}
@@ -1233,56 +1249,55 @@ class Coloring:
 
         # Save the figure
         figname = self.config.settings.io_settings['plot_directory'] + \
-            'color_color_plot' + figtype
+            'pop_pop_plot' + figtype
         fig.savefig(figname, dpi=dpi)
-        self.logger.info(f'Color-color plot saved in {figname}.')
+        self.logger.info('Population data vs population data plot '
+                         f'("{x_label}" vs "{y_label}") saved in {figname}.')
         return fig
 
-    def color_maps(self,
-                   colors,
-                   model_data,
-                   flux_norm,
-                   cbar_lims='data',
-                   figtype='.png',
-                   dpi=100):
-        """Plot color maps for observed and model data
+    def pop_maps(self, pop_data,
+                 model_data,
+                 flux_norm,
+                 cbar_lims='data',
+                 figtype='.png',
+                 dpi=100):
+        """Plot population data maps for observed and model data
 
-        Create and save color maps for the observed and model data, along with
-        the residuals defined by residual = (model - data) / data_error.
-        The method generates a grid of subplots with the individual colors in
-        the columns and observed data, model data, and residuals in the three
-        rows, respectively. If the provided model data includes errors, the
-        observation and model errors will be plotted next to the data. The
-        color maps are generated using the `cmasher` library, and the color bar
-        limits can be derived from the data or model values, or automatically
-        set. The method raises a ValueError if the number of colors does not
-        match the number of model data columns, or if the provided `cbar_lims`
-        is not one of the expected values.
+        Create and save population data maps for the observed and model data,
+        along with the residuals defined by
+        ``residual = (model - data) / data_error``.
+        The method generates a grid of subplots with the individual population
+        datasets in the columns and observed data, model data, and residuals in
+        the three rows, respectively. If the provided model data includes
+        errors, the observation and model errors will be plotted next to the
+        data. The population data maps are generated using the `cmasher`
+        library, and the colorbar limits can be derived from the data or model
+        values, or automatically set.
 
         Parameters
         ----------
-        colors : dict
-            Dictionary that defines the colors to be plotted. The keys are the
-            color descriptors and must match the column names in the observed
-            data (in any order). The values are the descriptions of those
-            colors and are used in the plot titles. Note, that unlike for the
-            observed data columns, the ORDER MATTERS for the model data:
-            model_data needs to provide the data in the same order as the
-            colors dictionary. Example: {'age': 'Age [Gyr]',
-            'met': 'Metallicity'}.
+        pop_data : dict
+            Dictionary that defines the population datasets to be plotted. The
+            keys are the dataset descriptors and must match the column names
+            in the observed data (in any order). The values are the
+            descriptions of those datasets and are used in the plot titles.
+            Note, that unlike for the observed data columns, the ORDER MATTERS
+            for the model data: model_data needs to provide the data in the
+            same order as the pop_data dictionary.
+            Example: {'age': 'Stellar age [Gyr]', 'met': 'Metallicity'}.
         model_data : list of np.arrays of shape (n_bundle,)
-            List of model data arrays where each array corresponds to a color
-            in the `colors` dictionary. The length of the list determines
-            whether errors are to be plottetd: If the length matches the
-            number of colors in the `colors` dictionary, errors are not
-            plotted. If the length is twice the number of colors, errors are
-            plotted and error data is expected in every other column.
-            Each array in the list should be a 1D numpy array of shape
+            List of model data arrays where each array corresponds to a dataset
+            in the `pop_data` dictionary. The length of the list determines
+            whether errors are to be plotted: If the length matches the
+            number of datasets in the `pop_data` dictionary, errors are not
+            plotted. If the length is twice the number of population datasets,
+            errors are plotted and error data is expected in every other
+            column. Each array in the list should be a 1D numpy array of shape
             (n_bundle,), where `n_bundle` is the number of Voronoi orbit
             bundles in the model. The order of the arrays must match the
-            order of the colors in the `colors` dictionary.
+            order of the datasets in the `pop_data` dictionary.
             Example with errors plotted: [age, dage, met, dmet], without errors
-            plottetd: [age, met]. Each array has shape (n_bundle,).
+            plotted: [age, met]. Each array has shape (n_bundle,).
         flux_norm : np.array of shape (n_spatial_bins, n_bundle)
             Normalized flux data for the spatial bins. Each column corresponds
             to an orbit bundle and each row corresponds to a spatial bin. It is
@@ -1290,10 +1305,10 @@ class Coloring:
             to 1. This is typically the result of orbit bundle maps calculated
             from a Voronoi binning process of the phase space.
         cbar_lims : str, optional
-            Determines the limits for the color bar. Can be 'data', 'model',
+            Determines the limits for the colorbar. Can be 'data', 'model',
             or 'auto'. If 'data', the limits are based on the observed data.
-            If 'model', the limits are based on the model data. If 'auto',
-            the limits adapt for each color. The default is 'data'.
+            If 'model', the limits are based on the model data. If 'auto', the
+            limits adapt for each population dataset. The default is 'data'.
         figtype : str, optional
             Determines the file format of the saved figure, by default '.png'.
         dpi : int, optional
@@ -1302,34 +1317,36 @@ class Coloring:
         Returns
         -------
         matplotlib.figure.Figure
-            The created figure object containing the color maps.
+            The created figure object containing the population data maps.
 
         Raises
         ------
         ValueError
-            If the number of colors is not compatible with the number of model
-            data columns, or if the provided `cbar_lims` is not one of the
-            expected values. The error message will indicate the issue.
+            If the number of population datasets does not match the number of
+            model data columns, or if the provided `cbar_lims` is not one of
+            the expected values. The error message will indicate the issue.
         """
-        n_colors = len(colors)
-        txt = f' for {n_colors} colors: {list(colors.keys())}.'
-        if len(model_data) == n_colors:
-            self.logger.info('Color maps: plotting data' + txt)
+        n_pop_data = len(pop_data)
+        txt = f'for {n_pop_data} population datasets: {list(pop_data.keys())}.'
+        if len(model_data) == n_pop_data:
+            self.logger.info('Population data maps: plotting data ' + txt)
             plot_errors = False
-        elif len(model_data) == 2 * n_colors:
-            self.logger.info('Color maps: plotting data and errors' + txt)
+        elif len(model_data) == 2 * n_pop_data:
+            self.logger.info('Population data maps: plotting data and errors '
+                             f'{txt}')
             plot_errors = True
         else:
-            txt = 'Model data must be of same or twice the length of colors '
-            txt += '({n_colors} or {2 * n_colors}), not {len(model_data)}.'
+            txt = 'Model data must be of same or twice the length of ' \
+                  f'pop_data ({n_pop_data} or {2 * n_pop_data}), ' \
+                  f'not {len(model_data)}.'
             self.logger.error(txt)
             raise ValueError(txt)
-        # Generate column names for the colors in the observed data,
+        # Generate column names for the pop datasets in the observed data,
         # e.g. 'age', 'dage', 'met', 'dmet'
         if plot_errors:
-            plot_cols = [p + col for col in colors for p in ('', 'd')]
+            plot_cols = [p + col for col in pop_data for p in ('', 'd')]
         else:
-            plot_cols = [col for col in colors]
+            plot_cols = [col for col in pop_data]
         # Get the observed data
         if self.config.system.is_bar_disk_system():
             stars = self.config.system.get_unique_bar_component()
@@ -1337,18 +1354,19 @@ class Coloring:
             stars = self.config.system.get_unique_triaxial_visible_component()
         pops = stars.population_data[0]
         map_plotter = pops.get_map_plotter()
-        pops_data = pops.get_data()
-        # Calculate color bar limits
+        pop_data_obs = pops.get_data()  # observed population data
+        # Calculate colorbar limits
         if cbar_lims == 'data':
-            vmin = [np.min(pops_data[color]) for color in colors]
-            vmax = [np.max(pops_data[color]) for color in colors]
+            vmin = [np.min(pop_data_obs[dataset]) for dataset in pop_data]
+            vmax = [np.max(pop_data_obs[dataset]) for dataset in pop_data]
         elif cbar_lims == 'model':
-            idx = range(0, 2 * n_colors, 2) if plot_errors else range(n_colors)
+            idx = range(0, 2 * n_pop_data, 2) if plot_errors \
+                                              else range(n_pop_data)
             tmp = [np.dot(flux_norm, model_data[i_column]) for i_column in idx]
             vmin = [np.min(tmp[i_column]) for i_column in idx]
             vmax = [np.max(tmp[i_column]) for i_column in idx]
         elif cbar_lims == 'auto':
-            vmin = vmax = [None] * n_colors
+            vmin = vmax = [None] * n_pop_data
         else:
             txt = 'cbar_lims must be "data", "model", or "auto", not ' \
                   f'{cbar_lims}.'
@@ -1358,27 +1376,27 @@ class Coloring:
             vmin = [v for b in [(value, None) for value in vmin] for v in b]
             vmax = [v for b in [(value, None) for value in vmax] for v in b]
         # Plot layout
-        n_columns = 2 * n_colors if plot_errors else n_colors
+        n_columns = 2 * n_pop_data if plot_errors else n_pop_data
         n_rows = 3  # data, model, and residual
         fig = plt.figure(figsize=(5 * n_columns, 2 * n_rows))
         fig.subplots_adjust(wspace=0.3)
-        # Color bar and colormap settings
+        # Colorbar and colormap settings
         kw_maps = {'colorbar': True,
                    'cmap': cmasher.get_sub_cmap('twilight_shifted', 0.05, 0.6)}
         # Plot the observed data in the first row
         for i_plot, plot_col in enumerate(plot_cols):
             ax = plt.subplot(n_rows, n_columns, i_plot + 1)
-            map_plotter(pops_data[plot_col],
+            map_plotter(pop_data_obs[plot_col],
                         vmin=vmin[i_plot],
                         vmax=vmax[i_plot],
                         **kw_maps)
             if plot_errors:
                 if i_plot % 2 == 0:
-                    title = colors[plot_col]
+                    title = pop_data[plot_col]
                 else:
-                    title = colors[plot_cols[i_plot - 1]] + ' error'
+                    title = pop_data[plot_cols[i_plot - 1]] + ' error'
             else:
-                title = colors[plot_col]
+                title = pop_data[plot_col]
             ax.set_title(title)
             if i_plot == 0:  # first column
                 ax.set_ylabel('Data\n\ny [arcsec]')
@@ -1409,8 +1427,8 @@ class Coloring:
                 ax = plt.subplot(n_rows, n_columns, i_plot + 1)
                 # residual = (model - data) / data_error
                 col_data_aperture = (np.dot(flux_norm, model_data[i_column]) \
-                                     - pops_data[plot_cols[i_column]] \
-                                    ) / pops_data['d' + plot_cols[i_column]]
+                                     - pop_data_obs[plot_cols[i_column]] \
+                                    ) / pop_data_obs['d' + plot_cols[i_column]]
                 map_plotter(col_data_aperture,
                             vmin=None,  # adaptive limits for residuals
                             vmax=None,
@@ -1420,7 +1438,7 @@ class Coloring:
                     ax.set_ylabel('Residuals\n\ny [arcsec]')
         # Save the figure
         figname = self.config.settings.io_settings['plot_directory'] + \
-            'color_maps' + figtype
+            'population_maps' + figtype
         fig.savefig(figname, dpi=dpi)
-        self.logger.info(f'Color maps saved in {figname}.')
+        self.logger.info(f'Population data maps saved in {figname}.')
         return fig
