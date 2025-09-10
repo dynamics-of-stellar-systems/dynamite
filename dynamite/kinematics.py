@@ -793,8 +793,6 @@ class Histogram(object):
         histogram bin edges
     y : (n_orbits, n_bins+1, n_apertures)
         histogram values
-    normalise : bool, default=True
-        whether to normalise to pdf
 
     Attributes
     ----------
@@ -802,18 +800,14 @@ class Histogram(object):
         bin centers
     dx : array (n_bins,)
         bin widths
-    normalised : bool
-        whether or not has been normalised to pdf
 
     """
-    def __init__(self, xedg=None, y=None, normalise=False):
+    def __init__(self, xedg=None, y=None):
         self.logger = logging.getLogger(f'{__name__}.{__class__.__name__}')
         self.xedg = xedg
         self.x = (xedg[:-1] + xedg[1:])/2.
         self.dx = xedg[1:] - xedg[:-1]
         self.y = y
-        if normalise:
-            self.normalise()
 
     def get_normalisation(self):
         """Get the normalsition
@@ -829,24 +823,6 @@ class Histogram(object):
         na = np.newaxis
         norm = np.sum(self.y*self.dx[na,:,na], axis=1)
         return norm
-
-    def normalise(self):
-        """normalises the LOSVDs
-
-        Returns
-        -------
-        None
-            resets ``self.y`` to a normalised version
-
-        """
-        norm = self.get_normalisation()
-        na = np.newaxis
-        tmp = self.y/norm[:,na,:]
-        # where norm=0, tmp=nan. Fix this:
-        idx = np.where(norm==0.)
-        tmp[idx[0],:,idx[1]] = 0.
-        # replace self.y with normalised y
-        self.y = tmp
 
     def scale_x_values(self, scale_factor):
         """scale the velocity array

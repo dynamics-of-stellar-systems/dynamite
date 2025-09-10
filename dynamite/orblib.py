@@ -936,9 +936,7 @@ class LegacyOrbitLibrary(OrbitLibrary):
                     v = (vedg[1:] + vedg[:-1])/2.
                     v_cent = v[idx_center]
                     vedg -= v_cent
-                    vvv = dyn_kin.Histogram(xedg=vedg,
-                                            y=velhist,
-                                            normalise=False)
+                    vvv = dyn_kin.Histogram(xedg=vedg, y=velhist)
                     velhists += [vvv]
         else:
             velhists = []
@@ -967,9 +965,7 @@ class LegacyOrbitLibrary(OrbitLibrary):
             os.chdir(cur_dir)
             # append the populations data to the velhists
             for mass in mass0:
-                vvv = dyn_kin.Histogram(xedg=np.array([-0.5, 0.5]),
-                                        y=mass,
-                                        normalise=False)
+                vvv = dyn_kin.Histogram(xedg=np.array([-0.5, 0.5]), y=mass)
                 velhists += [vvv]
         return velhists, density_3D  #######################
 
@@ -1002,9 +998,7 @@ class LegacyOrbitLibrary(OrbitLibrary):
         new_losvd = np.zeros((2*n_orbs, n_vel_bins, n_spatial_bins))
         new_losvd[0::2] = losvd
         new_losvd[1::2, :] = reveresed_losvd
-        new_orblib = dyn_kin.Histogram(xedg=orblib.xedg,
-                                       y=new_losvd,
-                                       normalise=False)
+        new_orblib = dyn_kin.Histogram(xedg=orblib.xedg, y=new_losvd)
         return new_orblib
 
     def duplicate_flip_and_interlace_intmoms(self, intmom):
@@ -1053,9 +1047,7 @@ class LegacyOrbitLibrary(OrbitLibrary):
                               n_spatial_bins1))
         new_losvd[:n_orbs1] = orblib1.y
         new_losvd[n_orbs1:] = orblib2.y
-        new_orblib = dyn_kin.Histogram(xedg=orblib1.xedg,
-                                       y=new_losvd,
-                                       normalise=False)
+        new_orblib = dyn_kin.Histogram(xedg=orblib1.xedg, y=new_losvd)
         return new_orblib
 
     def read_losvd_histograms(self, pops=False):
