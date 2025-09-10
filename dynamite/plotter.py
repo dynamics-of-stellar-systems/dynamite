@@ -1735,7 +1735,7 @@ class Plotter():
         of the distance from the galaxy or cluster centre (in arcsec).
         beta_r is computed from the verlocity dispersion sigma in
         spherical coordinates (r, phi, theta), using the
-        tangential velocity dispersion (sigma_t=(sigma_phi+sigma_theta)*0.5)
+        tangential velocity dispersion (sigma_t^2=(sigma_phi^2+sigma_theta^2)*0.5)
         and radial velocity dispersion (sigma_r).
         The velocity dispersion components are computed from the first and
         second moments via sigma_ij = ⟨v_j v_k⟩ - ⟨v_j⟩⟨v_k⟩
