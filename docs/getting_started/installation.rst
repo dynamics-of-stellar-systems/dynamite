@@ -529,7 +529,7 @@ The PyTensor package is a requirement of PyMC, a package that DYNAMITE uses for 
     C-implementations and will default to Python. Performance may be severely degraded. To
     remove this warning, set PyTensor flags cxx to an empty string.
 
-If you do not plan to use the DYNAMITE Coloring module, you can safely ignore this warning because PyMC will not be used by DYANMITE then. If you use Coloring however, the performance degredation mentioned in the warning will be severe and we recommend fixing the issue.
+If you do not plan to use the DYNAMITE Coloring module, you can safely ignore this warning because PyMC will not be used by DYNAMITE then. If you use Coloring however, the performance degredation mentioned in the warning will be severe and we recommend fixing the issue.
 
 For some users the following worked:
 1. Use pip to uninstall PyMC and PyTensor
