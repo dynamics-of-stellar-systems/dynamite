@@ -560,8 +560,8 @@ class LegacyWeightSolver(WeightSolver):
         a = self.__read_file_element(fname, [1, 1], [1, 2])
         ngh = np.int64(a[1])  # number of 'observables'
         nobs = np.int64(a[1])
-        nvel = np.int64(a[0])
-        ncon = np.int64(a[0])
+        # nvel = np.int64(a[0])
+        # ncon = np.int64(a[0])
         rows = 3 + np.arange(nobs)  # rows 1- 9
         cols = 3 + np.zeros(nobs, dtype=int)  # skip over text
         fname = self.fname_nn_nnls
@@ -686,7 +686,7 @@ class NNLS(WeightSolver):
 
         """
         # construct vector of observed constraints (con), errors (econ) and
-        # matrix or orbit propertites (orbmat)
+        # matrix or orbit properties (orbmat)
         con = np.zeros(self.n_mass_constraints)
         econ = np.zeros(self.n_mass_constraints)
         orbmat = np.zeros((self.n_mass_constraints, orblib.n_orbs))
@@ -821,9 +821,6 @@ class NNLS(WeightSolver):
         """
         self.logger.info(f"Using WeightSolver: {__class__.__name__}/"
                          f"{self.nnls_solver}")
-        orblib.read_losvd_histograms()  # sets orblib.losvd_histograms,
-                                        # orblib.intrinsic_masses, and
-                                        # orblib.projected_masses
         if (not ignore_existing_weights) and self.weight_file_exists():
             results = ascii.read(self.weight_file, format='ecsv')
             self.logger.info("NNLS solution read from existing output "
@@ -833,6 +830,9 @@ class NNLS(WeightSolver):
             chi2_kin = results.meta['chi2_kin']
             chi2_kinmap = results.meta['chi2_kinmap']
         else:
+            orblib.read_losvd_histograms()  # sets orblib.losvd_histograms,
+                                            # orblib.intrinsic_masses, and
+                                            # orblib.projected_masses
             A, b = self.construct_nnls_matrix_and_rhs(orblib)
             if self.nnls_solver=='scipy':
                 try:

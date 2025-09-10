@@ -216,11 +216,14 @@ class System(object):
             a list of Component objects
 
         """
-        mge_cmp = [c for c in self.cmp_list if isinstance(c, TriaxialVisibleComponent) or isinstance(c, BarDiskComponent)]
+        mge_cmp = [c for c in self.cmp_list
+                   if isinstance(c, TriaxialVisibleComponent)
+                   or isinstance(c, BarDiskComponent)]
         return mge_cmp
 
     def get_unique_triaxial_visible_component(self):
-        """Return the unique non-bar MGE component (raises an error if there are zero or multiple such components)
+        """Return the unique non-bar MGE component (raises an error if there
+        are zero or multiple such components)
 
         Returns
         -------
@@ -242,14 +245,15 @@ class System(object):
         Returns
         -------
         list
-            a list of Component objects, keeping only the rotating MGE components
+            list of Component objects, keeping only the rotating MGE components
 
         """
         bar_cmp = [c for c in self.cmp_list if isinstance(c, BarDiskComponent)]
         return bar_cmp
 
     def get_unique_bar_component(self):
-        """Return the unique rotating bar component (raises an error if there are zero or multiple such components)
+        """Return the unique rotating bar component (raises an error if there
+        are zero or multiple such components)
 
         Returns
         -------
@@ -793,7 +797,7 @@ class TriaxialVisibleComponent(VisibleComponent):
         """
         (p, q, u), valid = self.find_grid_of_valid_pqu()
         text = "No deprojection possible for the specificed values of (p,q,u)."
-        text += "Here are some suggestions: \n"
+        text += " Here are some suggestions:\n"
         # take avg of valid p's and q's where u is close to targer value
         target_u = 0.9
         idx = np.where(np.abs(u[valid]-target_u)<0.005)
