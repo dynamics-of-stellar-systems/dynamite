@@ -1666,80 +1666,81 @@ class Plotter():
 
         orblib = model.get_orblib()
         _ = model.get_weights(orblib)
+        # get intrinsic moments of the model
         moment_constructor, bin_edges = \
             orblib.get_model_intrinsic_moment_constructor()
         moments = moment_constructor(model.weights)
 
-        nmom = moments.shape[3]
+        nrr, nth, nph, nmom = moments.shape
+        # nph: grid bin edges over spherical phi
+        # nth: grid bin edges over spherical theta
+        # nrr: grid bin edges over spherical r
+
         if nmom != 13:
             txt = 'The moments array must have 13 columns.'
             self.logger.error(txt)
             raise ValueError(txt)
-        nrr = moments.shape[0]  # grid bin edges over spherical r
-        nth = moments.shape[1]  # grid bin edges over spherical theta
-        nph = moments.shape[2]  # grid bin edges over spherical phi
-        ntot = nph * nth * nrr
-        data = moments.reshape((ntot,nmom), order='F')  # match legacy r,th,ph
+        ntot = nph * nth * nrr  # default is 360
+        data = moments.reshape((ntot,nmom))  # match legacy r,th,ph
 
         d = data[:,0]  # density
         x = data[:,1]  # x
         y = data[:,2]  # y
         z = data[:,3]  # z
-        RR = np.sqrt(x**2 + y**2)
-        r = np.sqrt(RR**2 + z**2)
+        RR = np.sqrt(x**2 + y**2)  # projected 2d radius
+        r = np.sqrt(RR**2 + z**2)  # intrinsic 3d radius
 
         v1car = data[:,4:7]           # <v_t> t=x,y,z [(km/s)]  # vx, vy, vz
-        dum = data[:,[7,10,12,10,8,11,12,11,9]]  # vx2,vxvy,vzvx,vxvy,vy2,vyvz,vzvx,vyvz,vz2
+        dum = data[:,[7,10,12,10,8,11,12,11,9]]  # vxvx,vxvy,vzvx,vxvy,vyvy,vyvz,vzvx,vyvz,vzvz
         v2car = np.reshape(dum[:,:], (ntot,3,3), order='F')  # < v_s * v_t > s, t = x, y, z[(km / s) ^ 2]
-        v2sph = self.car2sph_mu12(x, y, z, v1car, v2car)[1]  # (v_r, v_phi, v_theta)
-        orot = 1 - (0.5*(v2sph[:,1,1] + v2sph[:,2,2]))/(v2sph[:,0,0])
-        rr = np.sum(np.sum(np.reshape(r,(nrr,nth,nph),order='F'),
-                    axis=2), axis=1)/(nth*nph)
-        TM = np.sum(np.sum(np.reshape(d,(nrr,nth,nph),order='F'),
-                    axis=2), axis=1)
-        orotR = np.sum(np.sum(np.reshape(orot*d,(nrr,nth,nph),
-                    order='F'), axis=2), axis=1)/TM
+        # convert vel moments from cartesian to spherical coordinates:
+        v1sph, v2sph = self.car2sph_mu12(x, y, z, v1car, v2car)  # (v_r, v_phi, v_theta)
 
-        v1cyl, v2cyl = self.car2cyl_mu12(x, y, z, v1car, v2car)        # (v_R, v_phi, v_z)
-        vrr = v2cyl[:,0,0]
-        vpp = v2cyl[:,1,1]
-        vzz = v2cyl[:,2,2]
-        vp = v1cyl[:,1]
-        nbins = 14
-        Bint = 2**(np.arange(nbins+1, dtype=float)/2.5) - 1.0
-        Rad = np.zeros(nbins)
-        vrr_r = np.zeros(nbins)
-        vpp_r = np.zeros(nbins)
-        vzz_r = np.zeros(nbins)
-        vp_r = np.zeros(nbins)
-        d = data[:,0]  # density
-        ### Bin along RR
-        for i in range(nbins):
-            ss=np.ravel(np.where((RR > Bint[i]) & \
-                        (RR < Bint[i+1]) & (np.abs(z) < 5.0)))
-                        # restrict to the disk plane with |z| < 5 arcsec
-            nss=len(ss)
-            if nss > 0:
-                Rad[i] = np.average(RR[ss])
-                vrr_r[i] = np.sum(vrr[ss]*d[ss])/np.sum(d[ss])
-                vpp_r[i] = np.sum(vpp[ss]*d[ss])/np.sum(d[ss])
-                vzz_r[i] = np.sum(vzz[ss]*d[ss])/np.sum(d[ss])
-                vp_r[i] = np.sum(vp[ss]*d[ss])/np.sum(d[ss])
+        # calculate matrix for first order moments to get dispersion tensor
+        for_disp_tens = np.zeros((ntot,3,3))
+        for i in range(ntot):
+            for j in range(3):
+                for k in range(3):
+                    for_disp_tens[i,j,k] = v1sph[i,j]*v1sph[i,k]
 
-        return rr, orotR, Rad, vzz_r, vrr_r, vpp_r, vp_r
+         # get dispersion tensor, subtract first moment components
+        sigmas = np.reshape(v2sph - for_disp_tens, (nrr,nth,nph,3,3))
+
+        rad_profile = np.zeros((nrr, 3))
+        rad_global = np.zeros(3)
+        for i in range(3):
+            tensor = sigmas[:,:,:,i,i] * moments[:,:,:,0]
+            rad_profile[:,i] = np.sum(np.sum(tensor, axis=2), axis=1)
+            rad_global[i] = np.sum(np.sum(np.sum(tensor, axis=2), axis=1)[0:7],
+                                   axis=0)
+
+        beta_r_profile = \
+            1 - 0.5*(rad_profile[:,1] + rad_profile[:,2])/rad_profile[:,0]
+        beta_r_global = 1 - 0.5*(rad_global[1] + rad_global[2])/rad_global[0]
+        rr = np.sum(np.sum(np.reshape(r, (nrr,nth,nph)), axis=2),
+                    axis=1)/(nth*nph)
+        return rr, beta_r_profile, beta_r_global, nrr
 
 #############################################################################
 
-    def beta_plot(self, which_chi2=None, Rmax_arcs=None, figtype=None):
+    def beta_plot(self,
+                  which_chi2=None,
+                  Rmax_arcs=None,
+                  figtype=None,
+                  r_scale='linear'):
         """
-        Generates anisotropy plots
+        Generates anisotropy plot
 
-        The two plots show the intrinsic and projected anisotropy
-        (beta_r and beta_z, respectively) as a function of the
-        distance from the galactic centre (in arcsec).
+        The plot shows the intrinsic anisotropy beta_r as a function
+        of the distance from the galaxy or cluster centre (in arcsec).
+        beta_r is computed from the verlocity dispersion sigma in
+        spherical coordinates (r, phi, theta), using the
+        tangential velocity dispersion (sigma_t^2=(sigma_phi^2+sigma_theta^2)*0.5)
+        and radial velocity dispersion (sigma_r).
+        The velocity dispersion components are computed from the first and
+        second moments via sigma_ij = ⟨v_j v_k⟩ - ⟨v_j⟩⟨v_k⟩
 
         - beta_r = 1 - (sigma_t/sigma_r)^2
-        - beta_z = 1 - (sigma_z/sigma_R)^2
 
         Solid lines and shaded areas represent the mean and standard
         deviation of the anisotropy of models having parameters in a
@@ -1756,7 +1757,9 @@ class Plotter():
         figtype : STR, optional
             Determines the file extension to use when saving the figure.
             If None, the default setting is used ('.png').
-
+        r_scale : str, optional
+            switches between logarithmic (r_scale='log') and linear
+            (r_scale='linear') scaling of the x-axis. Defaults to 'linear'.
         Raises
         ------
         ValueError
@@ -1789,61 +1792,53 @@ class Plotter():
         val = val0[arg]
         chi2pmin = val[which_chi2][0]
         chlim = np.sqrt(self.config.get_2n_obs())
+        distance = self.all_models.system.distMPc
+        arctpc = distance*np.pi/0.648
 
         # select the models within 1 sigma confidence level, minimum 3
         n = len(np.ravel(np.where(val[which_chi2] <= chi2pmin + chlim*3)))
         if n < 3:
             n = 3
 
-        RRn = np.zeros((100,n))
-        orotn = np.zeros((100,n))
-        RRnz = np.zeros((100,n))
-        orotnz = np.zeros((100,n))
-        Vz2 = np.zeros((100,n))
-        VR2 = np.zeros((100,n))
-        Vp2= np.zeros((100,n))
-        Vp = np.zeros((100,n))
 
         for i in range(n):
+
             model_dir = self.modeldir + val['directory'][i]
             model = self.all_models.get_model_from_directory(model_dir)
-            rr, orotR, Rad, vzz_r, vrr_r, vpp_r, vp_r = \
-                self.anisotropy_single(model)
-            nrr = len(rr)
-            RRn[0:nrr,i] = rr
-            orotn[0:nrr,i] = orotR
 
-            nrad = len(Rad)
-            RRnz[0:nrad,i] = Rad
-            ratio = np.zeros(nrad)
-            ratio[np.where(Rad>0)] = \
-                vzz_r[np.where(Rad>0)]/vrr_r[np.where(Rad>0)]
-            orotnz[0:nrad,i] = 1. - ratio # vzz_r/vrr_r
-            Vz2[0:nrad,i] = vzz_r
-            VR2[0:nrad,i] = vrr_r
-            Vp2[0:nrad,i] = vpp_r
-            Vp[0:nrad,i] = vp_r
+
+            rr, beta_r_profile, beta_r_global, nrr  = \
+                self.anisotropy_single(model)
+
+            if i == 0:  # use first model to obtain nrr and create arrays
+                all_betar = np.zeros((n, nrr))
+                all_betarg= np.zeros((n))
+                rrn = np.zeros((n, nrr))
+
+            all_betar[i,:] = beta_r_profile
+            rrn[i,:] = rr
+            all_betarg[i]=beta_r_global
+
 
         filename1 = self.plotdir + 'anisotropy_var' + figtype
-        filename2 = self.plotdir + 'betaz_var' + figtype
-
+        fs=9 #fontsize
         RRn_m = np.zeros(nrr)
         RRn_e = np.zeros(nrr)
         orot_m2 = np.zeros(nrr)
         orot_e2 = np.zeros(nrr)
         for j in range(0, nrr):
-            RRn_m[j] = np.average(RRn[j,:])
-            RRn_e[j] = np.sqrt(np.var(RRn[j,:], ddof=1))
-            orot_m2[j] = np.average(orotn[j,:])
-            orot_e2[j] = np.sqrt(np.var(orotn[j,:], ddof=1))
+            RRn_m[j] = np.average(rrn[:,j])
+            RRn_e[j] = np.sqrt(np.var(rrn[:,j], ddof=1))
+            orot_m2[j] = np.average(all_betar[:,j])
+            orot_e2[j] = np.sqrt(np.var(all_betar[:,j], ddof=1))
 
         radialrange=np.array([np.min(rr),Rmax_arcs])
-        yrange=np.array([-1,1])
-
+        yrange= np.array([min(-1,min(orot_m2-orot_e2)),1])
+        # flexible yrange
+        yrange= np.array([min(orot_m2-orot_e2),max(orot_m2+orot_e2)])
         fig1 = plt.figure(figsize=(5,5))
         ax1 = fig1.add_subplot(1,1,1)
         ax1.set_xlim(radialrange)
-        yrange=np.array([min(-1,min(orot_m2-orot_e2)),1])
         ax1.set_ylim(yrange)
         if yrange[1]-yrange[0]<=4:
             Nticks = int((yrange[1]-yrange[0])/0.5)+1
@@ -1854,49 +1849,34 @@ class Plotter():
         ax1.plot(RRn_m,orot_m2, '-', color='black', linewidth=3.0)
         ax1.fill_between(RRn_m, orot_m2-orot_e2,
                         orot_m2+orot_e2,facecolor='gray',alpha=0.3)
-        ax1.set_xlabel(r'$r$ [arcsec]', fontsize=9)
+        ax1.set_xlabel(r'$r$ [arcsec]', fontsize=fs)
         ax1.set_ylabel(r'$\beta_{\rm r} = 1 - \sigma_{\rm t}^2/\sigma_{\rm r}^2$',
-                         fontsize=9)
-        ax1.tick_params(labelsize=8)
+                         fontsize=fs)
+        ax1.tick_params(labelsize=fs)
         ax1.plot(radialrange, [0,0], '--', color='black', linewidth=1.0)
+        ax2 = ax1.twiny()
+        # ax2.set_xlim([radialrange[0] * arctpc,radialrange[1] * arctpc] )
+        if Rmax_arcs * arctpc < 1000:
+            ax2.set_xlim(radialrange * arctpc)
+            ax2.set_xlabel(r'$r$ [pc]', fontsize=fs, labelpad=8)
+        else:
+            ax2.set_xlim(radialrange * arctpc / 1000.0)
+            ax2.set_xlabel(r'$r$ [kpc]', fontsize=fs, labelpad=8)
+
+
+        ax2.tick_params(labelsize=fs)
+
+        if r_scale == 'log':
+            ax1.set_xscale('log')
+            ax2.set_xscale('log')
+
+
         plt.tight_layout()
         plt.savefig(filename1)
 
         self.logger.info(f'Figure {filename1} saved in {self.plotdir}')
 
-        fig2 = plt.figure(figsize=(5,5))
-        ax = fig2.add_subplot(1,1,1)
-        ax.set_xlim([0,Rmax_arcs])
-        ax.set_ylim([0,1])
-        ax.set_xlabel(r'$R$ [arcsec]', fontsize=9)
-        ax.set_ylabel(r'$\beta_{\rm z} = 1 - \sigma_{\rm z}^2/\sigma_{\rm R}^2$',
-                         fontsize=9)
-        ax.tick_params(labelsize=8)
-        RRn_m = np.zeros(nrad)
-        RRn_e = np.zeros(nrad)
-        orot_m2 = np.zeros(nrad)
-        orot_e2 = np.zeros(nrad)
-        for j in range(0, nrad):
-            kk = np.where(orotn[j,:] > 0.0)
-            if len(kk[0])>0:
-                RRn_m[j] = np.average(RRn[j,kk])
-                RRn_e[j] = np.sqrt(np.var(RRn[j,kk], ddof=1))
-                orot_m2[j] = np.average(orotn[j,kk])
-                orot_e2[j] = np.sqrt(np.var(orotn[j,kk], ddof=1))
-            else:
-                orot_m2[j] = -1.
-        cc = orot_m2 > 0
-        Rmaxcc = (int(max(RRn_m[cc])/5) + 1)*5
-        ax.set_xlim([0,Rmaxcc])
-        ax.plot(RRn_m[cc], orot_m2[cc], '-', color='black', linewidth =3)
-        ax.fill_between(RRn_m[cc], orot_m2[cc]-orot_e2[cc],
-                        orot_m2[cc]+orot_e2[cc],facecolor='gray',alpha=0.3)
-        plt.tight_layout()
-        plt.savefig(filename2)
-
-        self.logger.info(f'Figure {filename2} saved in {self.plotdir}')
-
-        return fig1, fig2
+        return fig1
 
 
 #############################################################################
