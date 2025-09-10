@@ -520,6 +520,27 @@ Or, if you are using conda::
 
 A list of all required python packages can be found in ``dynamite/requirements.txt``.
 
+Warning about PyTensor
+^^^^^^^^^^^^^^^^^^^^^^
+
+The PyTensor package is a requirement of PyMC, a package that DYNAMITE uses for Bayesian inference. The warning may read something like::
+
+    WARNING (pytensor.configdefaults): g++ not detected!  PyTensor will be unable to compile
+    C-implementations and will default to Python. Performance may be severely degraded. To
+    remove this warning, set PyTensor flags cxx to an empty string.
+
+If you do not plan to use the DYNAMITE Coloring module, you can safely ignore this warning because PyMC will not be used by DYANMITE then. If you use Coloring however, the performance degredation mentioned in the warning will be severe and we recommend fixing the issue.
+
+For some users the following worked:
+1. Use pip to uninstall PyMC and PyTensor
+2. Install PyMC and PyTensor via conda, from conda-forge
+3. Re-install DYNAMITE
+
+Warning about ipywidgets
+^^^^^^^^^^^^^^^^^^^^^^^^
+
+Again, this is a warning about a dependency of PyMC and is only relevant if you plan to use the DYNAMITE Coloring module. As ipywidgets is only used to display interactive HTML widgets within Jupyter Notebooks they are dispensable for DYNAMITE's functionality. Hence, the warning can be ignored.
+
 Compile errors when building legacy Fortran code
 ------------------------------------------------
 
