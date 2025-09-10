@@ -1672,17 +1672,15 @@ class Plotter():
         moments = moment_constructor(model.weights)
 
         nrr, nth, nph, nmom = moments.shape
-        nmom = int(nmom)
-        nph = int(nph)  # grid bin edges over spherical phi
-        nth = int(nth)  # grid bin edges over spherical theta
-        nrr = int(nrr)  # grid bin edges over spherical r
-        ntot = nph*nth*nrr  # default is 360
+        # nph: grid bin edges over spherical phi
+        # nth: grid bin edges over spherical theta
+        # nrr: grid bin edges over spherical r
 
         if nmom != 13:
             txt = 'The moments array must have 13 columns.'
             self.logger.error(txt)
             raise ValueError(txt)
-        ntot = nph * nth * nrr
+        ntot = nph * nth * nrr  # default is 360
         data = moments.reshape((ntot,nmom))  # match legacy r,th,ph
 
         d = data[:,0]  # density
@@ -1704,7 +1702,7 @@ class Plotter():
             for j in range(3):
                 for k in range(3):
                     for_disp_tens[i,j,k] = v1sph[i,j]*v1sph[i,k]
-        
+
          # get dispersion tensor, subtract first moment components
         sigmas = np.reshape(v2sph - for_disp_tens, (nrr,nth,nph,3,3))
 
@@ -1713,31 +1711,34 @@ class Plotter():
         for i in range(3):
             tensor = sigmas[:,:,:,i,i] * moments[:,:,:,0]
             rad_profile[:,i] = np.sum(np.sum(tensor, axis=2), axis=1)
-            rad_global[i] = np.sum(np.sum(np.sum(tensor, axis=2), axis=1)[0:7], axis=0)
-        
-        beta_r_profile = 1 - 0.5*(rad_profile[:,1] + rad_profile[:,2])/rad_profile[:,0]
+            rad_global[i] = np.sum(np.sum(np.sum(tensor, axis=2), axis=1)[0:7],
+                                   axis=0)
+
+        beta_r_profile = \
+            1 - 0.5*(rad_profile[:,1] + rad_profile[:,2])/rad_profile[:,0]
         beta_r_global = 1 - 0.5*(rad_global[1] + rad_global[2])/rad_global[0]
-        rr = np.sum(np.sum(np.reshape(r, (nrr,nth,nph)), axis=2), axis=1)/(nth*nph)
+        rr = np.sum(np.sum(np.reshape(r, (nrr,nth,nph)), axis=2),
+                    axis=1)/(nth*nph)
         return rr, beta_r_profile, beta_r_global, nrr
 
 #############################################################################
 
-    def beta_plot(self, 
-                  which_chi2=None, 
-                  Rmax_arcs=None, 
-                  figtype=None, 
+    def beta_plot(self,
+                  which_chi2=None,
+                  Rmax_arcs=None,
+                  figtype=None,
                   r_scale='linear'):
         """
         Generates anisotropy plot
 
-        The plot shows the intrinsic anisotropy beta_r as a function 
+        The plot shows the intrinsic anisotropy beta_r as a function
         of the distance from the galaxy or cluster centre (in arcsec).
-        beta_r is computed from the verlocity dispersion sigma in 
+        beta_r is computed from the verlocity dispersion sigma in
         spherical coordinates (r, phi, theta), using the
-        tangential velocity dispersion (sigma_t=(sigma_phi+sigma_theta)*0.5) 
+        tangential velocity dispersion (sigma_t=(sigma_phi+sigma_theta)*0.5)
         and radial velocity dispersion (sigma_r).
-        The velocity dispersion components are computed from the first and 
-        second moments via sigma_ij = ⟨v_j v_k⟩ - ⟨v_j⟩⟨v_k⟩ 
+        The velocity dispersion components are computed from the first and
+        second moments via sigma_ij = ⟨v_j v_k⟩ - ⟨v_j⟩⟨v_k⟩
 
         - beta_r = 1 - (sigma_t/sigma_r)^2
 
@@ -1793,7 +1794,7 @@ class Plotter():
         chlim = np.sqrt(self.config.get_2n_obs())
         distance = self.all_models.system.distMPc
         arctpc = distance*np.pi/0.648
-        
+
         # select the models within 1 sigma confidence level, minimum 3
         n = len(np.ravel(np.where(val[which_chi2] <= chi2pmin + chlim*3)))
         if n < 3:
@@ -1801,26 +1802,26 @@ class Plotter():
 
 
         for i in range(n):
-            
+
             model_dir = self.modeldir + val['directory'][i]
             model = self.all_models.get_model_from_directory(model_dir)
-            
-            
+
+
             rr, beta_r_profile, beta_r_global, nrr  = \
                 self.anisotropy_single(model)
 
             if i == 0:  # use first model to obtain nrr and create arrays
                 all_betar = np.zeros((n, nrr))
-                all_betarg= np.zeros((n))        
+                all_betarg= np.zeros((n))
                 rrn = np.zeros((n, nrr))
 
             all_betar[i,:] = beta_r_profile
-            rrn[i,:] = rr            
+            rrn[i,:] = rr
             all_betarg[i]=beta_r_global
 
 
         filename1 = self.plotdir + 'anisotropy_var' + figtype
-        fs=9 #fontsize        
+        fs=9 #fontsize
         RRn_m = np.zeros(nrr)
         RRn_e = np.zeros(nrr)
         orot_m2 = np.zeros(nrr)
@@ -1868,7 +1869,7 @@ class Plotter():
         if r_scale == 'log':
             ax1.set_xscale('log')
             ax2.set_xscale('log')
-            
+
 
         plt.tight_layout()
         plt.savefig(filename1)
