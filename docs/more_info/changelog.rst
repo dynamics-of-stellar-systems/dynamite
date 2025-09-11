@@ -4,6 +4,7 @@
 Change Log
 ****************
 
+- New feature: "Coloring" adds support for fitting population data such as stellar age and metallicity, see new tutorial 8_coloring.ipynb.
 - Improvement: misc. improvements in plotter (auto select kpc vs. pc everywhere, added r in (k)pc to qpu_plot, better filename for mass_plot).
 - Improvement: Rmax_arcs is now an optional parameter for mass_plot and qpu_plot (default value taken from the config file).
 - Improvement: significant performance gain when reading existing model weights (eliminated unnecessary reading of orbit library).
