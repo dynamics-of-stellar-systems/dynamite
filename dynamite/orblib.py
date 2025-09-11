@@ -1225,7 +1225,7 @@ class LegacyOrbitLibrary(OrbitLibrary):
         ``ncol = dithering^3`` and ``nrow = nE * nI2 * nI3``.
         For each orbit, the time averaged values are stored:
         ``lx, ly ,lz, r = sum(sqrt( average(r^2) ))``,
-        ``Vrms^2 = average(vx^2 + vy^2 + vz^2 + 2vx*vy + 2vxvz + 2vxvy)``.
+        ``Vrms^2 = average(vx^2 + vy^2 + vz^2 + 2vx*vy + 2vxvz + 2vyvz)``.
         The files were originally stored by the fortran code ``orblib_f.f90``,
         ``integrator_find_orbtype``.
 
@@ -1283,7 +1283,7 @@ class LegacyOrbitLibrary(OrbitLibrary):
         orbclass=np.dstack((orbclass1,orbclass1,orbclass2))
         orbclass1a=np.copy(orbclass1)
         orbclass1a[0:3,:,:] *= -1
-        for i in range(int(0), norb):
+        for i in range(norb):
             orbclass[:,:,i*2]=orbclass1[:, :, i]
             orbclass[:,:,i*2 + 1]=orbclass1a[:, :, i]
         orb_properties = table.QTable()
@@ -1484,7 +1484,7 @@ class LegacyOrbitLibrary(OrbitLibrary):
             self.logger.error(txt)
             raise ValueError(txt)
         # otherwise, continue...
-        if hasattr(self, 'orb_properties') == False:
+        if not hasattr(self, 'orb_properties'):
             self.read_orbit_property_file()
         orb_properties = self.orb_properties
         self.classify_orbits(dL=dL, force_lambda_z=force_lambda_z)

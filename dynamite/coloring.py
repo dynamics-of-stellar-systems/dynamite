@@ -66,6 +66,62 @@ class Coloring:
         self.logger.info(f'Coloring initialized with minr={self.minr} kpc, '
                          f'maxr={self.maxr} kpc, nr={self.nr}, nl={self.nl}.')
 
+    def get_rl_distribution(self, model):
+        """Calculate the orbit distribution in the (r, lambda_z) bins
+
+        Parameters
+        ----------
+        model : a ``dynamite.model.Model`` object
+            the model used for the calculation.
+
+        Returns
+        -------
+        orbit_distribution, orbit_projection : tuple of np.arrays
+            orbit_distribution : np.array of shape (self.nr, self.nl)
+                Stellar orbits probability density in the (r, lambda_z) bins.
+            orbit_projection : scipy.sparse.csr_matrix of shape
+                (self.nr, self.nl, n_orbits)
+                Projection matrix mapping the orbits to the (r, lambda_z) bins.
+
+        """
+        orblib = model.get_orblib()
+        orblib.get_projection_tensor(minr=self.minr,
+                                     maxr=self.maxr,
+                                     r_scale='linear',
+                                     nr=self.nr,
+                                     nl=self.nl,
+                                     force_lambda_z=True)
+        # pick entry [2] = fraction of orbits in each r,l bin (ALL orbit types)
+        # indices r, l, b = radius, lambda_z, original_orbit_bundle
+        orbit_projection = np.copy(orblib.projection_tensor[2])
+        _ = model.get_weights(orblib)
+        orbit_distribution = orbit_projection.dot(model.weights)
+        minl, maxl = orblib.projection_tensor_rng['lmd_rng']  # (-1, 1)
+        lmd_bin_centers = np.linspace(minl + (maxl - minl) / self.nl / 2,
+                                      maxl - (maxl - minl) / self.nl / 2,
+                                      num=self.nl)
+        lmd_tot = np.average(lmd_bin_centers,
+                             weights=orbit_distribution.sum(axis=0))
+        if lmd_tot < 0:
+            self.logger.warning('The total circularity of the orbit '
+                                'distribution is negative. Beware of side '
+                                'effects! Hint: consider changing the '
+                                'position angle in the aperture file by ±180 '
+                                'degrees.')
+            # The following commented-out lines don't work as intended, need
+            # to flip the sign of lambda_z upon reading the orbit property
+            # files like in Plotter.orbit_plot() instead, not using the
+            # projection tensor.
+            # self.logger.warning('The total circularity of the orbit '
+            #                     'distribution is negative '
+            #                     f'(lambda_z={lmd_tot}), flipping the sign of '
+            #                     'lambda_z. Beware of side effects!')
+            # # flip the sign of lambda_z: flip orbit_projection along l axis
+            # orbit_projection = orbit_projection[:, ::-1, :]
+            # # orbit_distribution = orbit_projection.dot(model.weights)
+            # orbit_distribution = orbit_distribution[:, ::-1]
+        return orbit_distribution, orbit_projection
+
     def bin_phase_space(self,
                         model=None,
                         vor_weight=0.01,
@@ -179,24 +235,10 @@ class Coloring:
                 return vor_bundle_mapping, phase_space_binning  ############
             else:
                 self.logger.info('Performing phase space Voronoi binning.')
-
-        orblib = model.get_orblib()
-        _ = model.get_weights(orblib)
-        weights = model.weights
-
-        orblib.get_projection_tensor(minr=self.minr,
-                                     maxr=self.maxr,
-                                     nr=self.nr,
-                                     nl=self.nl,
-                                     force_lambda_z=True,
-                                     r_scale='linear')
-        # pick entry [2] = fraction of orbits in each r,l bin (ALL orbit types)
-        # indices r, l, b = radius, lambda_z, original_orbit_bundle
-        projection_tensor = orblib.projection_tensor[2]
-
         # get the orbit distribution in the r, lambda space
-        # = total weight in the r, l bins
-        orbit_distribution = projection_tensor.dot(weights)
+        # = total weight in the r, l bins and the orbit projection tensor
+        # = indicator if orbit belongs to r, l bin (shape (nr, nl, n_orbits))
+        orbit_distribution, orbit_projection = self.get_rl_distribution(model)
 
         # build the input for vorbin
         dr = (self.maxr - self.minr) / self.nr
@@ -248,7 +290,7 @@ class Coloring:
         phase_space_binning = {'in':vor_in,
                                'out':np.vstack((r_bar, l_bar, bin_weights)),
                                'map':binning}  # Vor bin numbers of r, l bins
-        n_orbits = projection_tensor.shape[-1]  # "original" orbit bundles
+        n_orbits = orbit_projection.shape[-1]  # "original" orbit bundles
         n_bundle = phase_space_binning['out'].shape[-1]  # Voronoi bundles
         self.logger.info(f'{n_orbits} original orbit bundles aggregated into '
                          f'{n_bundle} Voronoi bundles.')
@@ -284,8 +326,8 @@ class Coloring:
         # r and l indices of the projection tensor making r the fastest moving
         # index, like in phase_space_binning['map']==binning and multiply
         # element-wise with the orbit weights; orb_frac.shape=(nr*nl, n_orbits)
-        orb_frac = projection_tensor.todense().reshape((self.nr * self.nl, -1),
-                                                       order='F') * weights
+        orb_frac=orbit_projection.todense().reshape((self.nr * self.nl, -1),
+                                                    order='F') * model.weights
         if vor_ignore_zeros:  # eliminate bins with zero total weight
             orb_frac = orb_frac[nonzero_weight_bins]
         # each Voronoi bin number represents a Voronoi (orbit) bundle
@@ -503,15 +545,9 @@ class Coloring:
                     self.config.all_models.get_best_n_models_idx(1)[0]
                 model = \
                     self.config.all_models.get_model_from_row(best_model_idx)
-            orblib = model.get_orblib()
-            orblib.get_projection_tensor(minr=self.minr,
-                                         maxr=self.maxr,
-                                         r_scale='linear',
-                                         nr=self.nr,
-                                         nl=self.nl,
-                                         force_lambda_z=True)
-            _ = model.get_weights(orblib)
-            orbit_distribution = orblib.projection_tensor[2].dot(model.weights)
+            # get the orbit distribution in the r, lambda space
+            # = total weight in the r, l bins
+            orbit_distribution = self.get_rl_distribution(model)[0]
         if phase_space_mapping is None:
             txt = 'No phase space mapping provided, cannot create ' \
                   'orbit bundle plot.'
@@ -639,19 +675,8 @@ class Coloring:
                                      np.nan)
         for i_model, model in enumerate(models):  # for each model...
             # PART 1: get the total orbit weights in the (r, l) phase space
-            orblib = model.get_orblib()
-            orblib.get_projection_tensor(minr=self.minr,
-                                         maxr=self.maxr,
-                                         r_scale='linear',
-                                         nr=self.nr,
-                                         nl=self.nl,
-                                         force_lambda_z=True)
-            _ = model.get_weights(orblib)
-            # Now, use projection_tensor[2] = fraction of orbits in each r, l
-            # bin (based on ALL orbit types); its shape = (nr, nl, n_orbits).
-            # Calculate total orbit weight in each (nr, nl) bin:
-            orbit_weight[..., i_model] = \
-                orblib.projection_tensor[2].dot(model.weights)
+            orbit_weight[..., i_model], orbit_projection = \
+                self.get_rl_distribution(model)
             # PART 2: get all the population datasets in the phase space
             # Identify (r, l) bins with nonzero total orbit weight:
             valid_rl = [(r, lam) for r in range(self.nr)
@@ -672,7 +697,7 @@ class Coloring:
             # Add weights of original orbit bundles that contribute to the
             # phase space bins:
             pop_distribution_weights = \
-                orblib.projection_tensor[2] * model.weights  # element-wise
+                orbit_projection * model.weights  # element-wise
             for i_pop_data in range(n_pop_data):
                 for (i_r, i_l) in valid_rl:  # 'invalid' (nr, nl) stay np.nan
                     pop_distribution[i_pop_data, i_r, i_l, i_model] = \
