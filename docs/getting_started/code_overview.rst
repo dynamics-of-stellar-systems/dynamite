@@ -137,6 +137,23 @@ In case of Gauss Hermite kinematics, the individual kinematics' tables need to h
 
 Keep in mind when mixing different kinematic data sets that their contribution to the orbit weights optimisation depends on the relative quantity and quality of the different data sets. For example, BayesLOSVD kinematics typically provides many more constraints than Gauss-Hermite kinematics, so that BayesLOSVD can dominate the weight solving and the Gauss-Hermite kinematics contribute little. An ad-hoc way to compensate for this is by adjusting the relative quality of the data sets, e.g., by reducing the errors on the Gauss-Hermite kinematics by a constant factor and so increase their relative contribution to the weight solving.
 
+"Orbit Coloring": fitting population data - BETA FUNCTIONALITY-
+---------------------------------------------------------------
+
+Based on kinematics-based orbit superpositions, DYNAMITE can also fit population data, e.g. line-strength indices, colors, age, metallicity. This is done by tagging each orbit in the orbit library with a "color", which is then fitted to the population data after fitting the kinematic data.
+
+If the population data shares apertures and spatial binning with a kinematics set, it is recommended to add population data columns to the corresponding kinematics data file. If the population data apertures and/or spatial binning differ from the kinematics, the population data must be provided in a separate file, along with the population data's apertures and spatial binning::
+
+  | main_directory
+  | ├── input_files
+  | │   ├── ...
+  | │   ├── population.ecsv     # file of population data
+  | │   ├── pop_bins.dat        # info about binning of population data
+  | │   ├── pop_aperture.dat    # more info about binning of population data
+  |
+
+As with the kinematics, the exact filenames can be freely defined in the configuration file as described in the :ref:`observed_data` section of the Configuration page.
+
 Configuration File
 ===================
 

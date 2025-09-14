@@ -1,7 +1,7 @@
 .. _coloring:
 
 ********
-Coloring
+Coloring - BETA -
 ********
 
 Classes related to coloring.
