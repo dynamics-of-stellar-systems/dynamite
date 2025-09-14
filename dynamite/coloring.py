@@ -67,7 +67,7 @@ class Coloring:
                          f'maxr={self.maxr} kpc, nr={self.nr}, nl={self.nl}.')
 
     def get_rl_distribution(self, model):
-        """Calculate the orbit distribution in the (r, lambda_z) bins
+        """Calculate the orbit distribution in the :math:`(r, \lambda_z)` bins
 
         Parameters
         ----------
@@ -78,10 +78,12 @@ class Coloring:
         -------
         orbit_distribution, orbit_projection : tuple of np.arrays
             orbit_distribution : np.array of shape (self.nr, self.nl)
-                Stellar orbits probability density in the (r, lambda_z) bins.
+                Stellar orbits probability density in the
+                :math:`(r, \lambda_z)` bins.
             orbit_projection : scipy.sparse.csr_matrix of shape
                 (self.nr, self.nl, n_orbits)
-                Projection matrix mapping the orbits to the (r, lambda_z) bins.
+                Projection matrix mapping the orbits to the
+                :math:`(r, \lambda_z)` bins.
 
         """
         orblib = model.get_orblib()
@@ -508,8 +510,8 @@ class Coloring:
         Parameters
         ----------
         orbit_distribution : np.array of shape (self.nr, self.nl), optional
-            Probability density of stellar orbits in the (r, lambda_z) bins.
-            If None, the orbit distribution is calculated from the model
+            Probability density of stellar orbits in the :math:`(r, \lambda_z)`
+            bins. If None, the orbit distribution is calculated from the model
             parameter. The default is None.
         model : a ``dynamite.model.Model`` object, optional
             The model used for the binning if orbit_distribution is not
@@ -605,14 +607,14 @@ class Coloring:
         This method calculates the orbital decomposition of the population data
         for a set of DYNAMITE models, given the Voronoi bundle mappings and
         population datasets. For each model, it computes the total orbit weight
-        in each (r, lambda_z) phase space bin and the population datasets'
-        distribution in those bins. The method assumes that all DYNAMITE models
-        have the same number of population datasets and that the Voronoi
-        orbital bundle mappings and population datasets are provided in the
-        same order as the models. It returns an array of shape
+        in each :math:`(r, \lambda_z)` phase space bin and the population
+        datasets' distribution in those bins. The method assumes that all
+        DYNAMITE models have the same number of population datasets and that
+        the Voronoi orbital bundle mappings and population datasets are
+        provided in the same order as the models. It returns an array of shape
         (n_pop_data + 1, nr, nl, n_models) with the total orbit weight and
         n_pop_data population data distributions in each of the nr * nl
-        (r, lambda_z) bins for each of the n_models DYNAMITE models.
+        :math:`(r, \lambda_z)` bins for each of the n_models DYNAMITE models.
 
         Parameters
         ----------
@@ -639,11 +641,11 @@ class Coloring:
         orbit_weight_and_pop_data_distribution :
             np.array of shape (n_pop_data + 1, nr, nl, n_models)
             Array containing both the total orbit weight and the population
-            data distribution in each (r, lambda_z) phase space bin for each
-            model. The first slice along the first dimension contains the
-            orbit weight, and the subsequent slices contain the population data
-            distributions. In (r, lambda_z) bins without any orbits, the
-            distribution will contain np.nan values.
+            data distribution in each :math:`(r, \lambda_z)` phase space bin
+            for each model. The first slice along the first dimension contains
+            the orbit weight, and the subsequent slices contain the population
+            data distributions. In :math:`(r, \lambda_z)` bins without any
+            orbits, the distribution will contain np.nan values.
 
         Raises
         ------
@@ -719,23 +721,23 @@ class Coloring:
                         dpi=100):
         """Population decomposition plot, averaging the data of multiple models
 
-        Create and save an orbital decomposition plot in the (r, lambda_z)
-        phase space, consisting of multiple panels: the first panel shows
-        the orbit probability density distribution, the subsequent panels
-        show the population dataset distributions. Dashed lines indicate the
-        orbit-based division into four components: disk, warm, bulge, and hot
-        inner stellar halo (can be switched off). The plot averages the data of
-        multiple DYNAMITE models.
+        Create and save an orbital decomposition plot in the
+        :math:`(r, \lambda_z)` phase space, consisting of multiple panels: the
+        first panel shows the orbit probability density distribution, the
+        subsequent panels show the population dataset distributions. Dashed
+        lines indicate the orbit-based division into four components: disk,
+        warm, bulge, and hot inner stellar halo (can be switched off). The plot
+        averages the data of multiple DYNAMITE models.
 
         Parameters
         ----------
         orbit_data : np.array of shape (n_pop_data + 1, nr, nl, n_models)
             Array containing both the total orbit weight and the population
-            data distribution in each (r, lambda_z) phase space bin for each of
-            the n_models DYNAMITE models. The first slice along the first
-            dimension contains the orbit weight, and the subsequent slices
-            contain the population data distributions. Can directly use the
-            output of ``get_pop_orbital_decomp()``.
+            data distribution in each :math:`(r, \lambda_z)` phase space bin
+            for each of the n_models DYNAMITE models. The first slice along the
+            first dimension contains the orbit weight, and the subsequent
+            slices contain the population data distributions. Can directly use
+            the output of ``get_pop_orbital_decomp()``.
         plot_labels : list of str or ``None``, optional
             Labels for the individual plots. Must have length of
             n_pop_data + 1. If ``None``, the default labels will be used:
@@ -751,6 +753,7 @@ class Coloring:
             - bulge (lambda_z < lz_disk, r < rcut_kpc)
             - warm (lz_warm < lambda_z < lz_disk, rcut_kpc < r)
             - hot inner stellar halo (lambda_z < lz_warm, rcut_kpc < r)
+
             If one of the cuts is ``None``, no lines will be drawn.
         rcut_kpc : float or ``None``, optional
             by default 3.5
@@ -916,23 +919,23 @@ class Coloring:
         DYNAMITE models. If disk_fraction is True, the cold orbit fraction as a
         function of the population data is plotted in a separate panel above
         the main plot. The cold orbit fraction is defined as the fraction of
-        orbits with circularity $\lambda_z$ greater than a specified threshold
-        lz_disk (default is 0.8) within each population data bin. A dashed line
-        indicates the disk fraction threshold and a vertical dashed line
-        indicates the population data value at which the cold orbit fraction
-        crosses 50%. The plot is saved in the specified file format and
-        resolution.
+        orbits with circularity :math:`\lambda_z` greater than a specified
+        threshold `lz_disk` (default is 0.8) within each population data bin. A
+        dashed line indicates the disk fraction threshold and a vertical dashed
+        line indicates the population data value at which the cold orbit
+        fraction crosses 50%. The plot is saved in the specified file format
+        and resolution.
 
         Parameters
         ----------
         weights : np.array of shape (nr, nl, n_models)
-            Array with the total orbit weight in each (r, lambda_z) phase space
-            bin for each DYNAMITE model. Can directly use the first slice of
-            the output of ``get_pop_orbital_decomp()``.
-        pop_data : np.array of shape (nr, nl, n_models)
-            Array with the population data distribution in each (r, lambda_z)
-            phase space bin for each DYNAMITE model. Can directly use a
+            Array with the total orbit weight in each :math:`(r, \lambda_z)`
+            phase space bin for each DYNAMITE model. Can directly use the first
             slice of the output of ``get_pop_orbital_decomp()``.
+        pop_data : np.array of shape (nr, nl, n_models)
+            Array with the population data distribution in each
+            :math:`(r, \lambda_z)` phase space bin for each DYNAMITE model. Can
+            directly use a slice of the output of ``get_pop_orbital_decomp()``.
         pop_label : str, optional
             Label for the population data axis. The default 'Stellar age [Gyr]'
             assumes that a circularity-age plot is the common case.
@@ -1148,8 +1151,8 @@ class Coloring:
             Label for the x axis. The default is 'Stellar age [Gyr]' and can be
             used for an AMR (age vs metallicity) plot.
         y_label : str, optional
-            Label for the y axis. The default is '$Z/Z_\\odot$' and can be used
-            for an AMR (age vs metallicity) plot.
+            Label for the y axis. The default is ':math:`Z/Z_\odot`' and can
+            be used for an AMR (age vs metallicity) plot.
         x_scale : str, optional
             Scale of the x axis, either 'linear' or 'log', by default 'linear'.
         y_scale : str, optional

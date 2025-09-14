@@ -202,7 +202,7 @@ To explore how the :math:`\chi^2` changes as a function of the parameters or of 
   p.make_chi2_plot(which_chi2='kinchi2', n_excl=50, figtype='.pdf') # saves a .pdf figure of the 'kinchi2' chisquare, excluding the first 50 models (burn-in)
   p.make_chi2_vs_model_id_plot(which_chi2='kinchi2') # saves a .png figure (default) of the 'kinchi2' chisquare as a function of the model ID
 
-You can also plot the cumulative mass and the (intrinsic and projected) anisotropy profiles, out to a radius of 30 arcsec:
+You can also plot the cumulative mass and the intrinsic anisotropy profile, out to a radius of 30 arcsec:
 
 .. code-block:: python
 
