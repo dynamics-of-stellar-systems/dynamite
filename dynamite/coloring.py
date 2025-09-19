@@ -237,8 +237,8 @@ class Coloring:
                 return vor_bundle_mapping, phase_space_binning  ############
             else:
                 self.logger.info('Performing phase space Voronoi binning.')
-        # get the orbit distribution in the r, lambda space
-        # = total weight in the r, l bins and the orbit projection tensor
+        # orbit_distribution = total weight in the r, lambda_z bins
+        # orbit_projection tensor
         # = indicator if orbit belongs to r, l bin (shape (nr, nl, n_orbits))
         orbit_distribution, orbit_projection = self.get_rl_distribution(model)
 
@@ -265,7 +265,7 @@ class Coloring:
             index : int vector
                 integer vector of length N containing indices of the r, l bins
                 for which the combined orbital weight has to be returned.
-                The indices refer to elements of the vectors signal and noise..
+                The indices refer to elements of the vectors signal and noise.
             signal : float vector
                 vector of length M>N with the orbital weights in all r,l bins
             noise : float vector
@@ -275,7 +275,7 @@ class Coloring:
             Returns
             -------
             float
-                sum of all orbital weights in r,l bins given in index
+                sum of all orbital weights in r, l bins given in index
 
             """
             return np.sum(signal[index])
