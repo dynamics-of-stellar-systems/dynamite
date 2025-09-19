@@ -295,15 +295,12 @@ class GaussHermite(Kinematics, data.Integrated):
             if cache_data:
                 self._data_with_sys_err = gh_data.copy(copy_data=True)
         bad_err = [(int(bin) + 1, 'dv')
-                   for bin in np.nonzero(gh_data['dv'] <= 0)
-                   if len(bin) > 0]
+                   for bin in np.flatnonzero(gh_data['dv'] <= 0)]
         bad_err += [(int(bin) + 1, 'dsigma')
-                    for bin in np.nonzero(gh_data['dsigma'] <= 0)
-                    if len(bin) > 0]
+                    for bin in np.flatnonzero(gh_data['dsigma'] <= 0)]
         for i in range(3, number_gh + 1):
             bad_err += [(int(bin) + 1, f'dh{i}')
-                        for bin in np.nonzero(gh_data[f'dh{i}'] <= 0)
-                        if len(bin) > 0]
+                        for bin in np.flatnonzero(gh_data[f'dh{i}'] <= 0)]
         if len(bad_err) > 0:
             txt = 'Kinematics uncertainties cannot be zero or negative. ' \
                 'Consider editing the kinematics datafile(s) and/or ' \
