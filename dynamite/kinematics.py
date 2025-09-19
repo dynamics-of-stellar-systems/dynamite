@@ -294,20 +294,20 @@ class GaussHermite(Kinematics, data.Integrated):
                               'applied systematic errors.')
             if cache_data:
                 self._data_with_sys_err = gh_data.copy(copy_data=True)
-        zero_err = [(int(bin) + 1, 'dv')
-                    for bin in np.nonzero(gh_data['dv'] == 0)
-                    if len(bin) > 0]
-        zero_err += [(int(bin) + 1, 'dsigma')
-                    for bin in np.nonzero(gh_data['dsigma'] == 0)
+        bad_err = [(int(bin) + 1, 'dv')
+                   for bin in np.nonzero(gh_data['dv'] <= 0)
+                   if len(bin) > 0]
+        bad_err += [(int(bin) + 1, 'dsigma')
+                    for bin in np.nonzero(gh_data['dsigma'] <= 0)
                     if len(bin) > 0]
         for i in range(3, number_gh + 1):
-            zero_err += [(int(bin) + 1, f'dh{i}')
-                         for bin in np.nonzero(gh_data[f'dh{i}'] == 0)
-                         if len(bin) > 0]
-        if len(zero_err) > 0:
-            txt = 'Kinematics uncertainties cannot be zero, consider editing '
-            txt += 'the kinematics datafile(s) and/or GH_sys_err. Violating '
-            txt += f'vbin_id / data_id pair(s): {zero_err}.'
+            bad_err += [(int(bin) + 1, f'dh{i}')
+                        for bin in np.nonzero(gh_data[f'dh{i}'] <= 0)
+                        if len(bin) > 0]
+        if len(bad_err) > 0:
+            txt = 'Kinematics uncertainties cannot be zero or negative. ' \
+                'Consider editing the kinematics datafile(s) and/or ' \
+                f'GH_sys_err. Violating vbin_id / data_id pair(s): {bad_err}.'
             self.logger.error(txt)
             raise ValueError(txt)
         return gh_data
@@ -1020,10 +1020,10 @@ class BayesLOSVD(Kinematics, data.Integrated):
             self.data.remove_column(f'losvd_{j}')
             losvd_sigma[:,j] = self.data[f'dlosvd_{j}']
             self.data.remove_column(f'dlosvd_{j}')
-        zero_err = np.nonzero(losvd_sigma == 0)
-        if len(zero_err[0]) > 0:
-            txt = 'Kinematics uncertainties cannot be zero. Violating '
-            txt += f'binID / vbin pair(s): {list(zip(*zero_err))}.'
+        bad_err = np.nonzero(losvd_sigma <= 0)
+        if len(bad_err[0]) > 0:
+            txt = 'Kinematics uncertainties cannot be zero or negative. '
+            txt += f'Violating binID / vbin pair(s): {list(zip(*bad_err))}.'
             self.logger.error(txt)
             raise ValueError(txt)
         self.data['losvd'] = losvd_mean
