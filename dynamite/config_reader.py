@@ -933,6 +933,10 @@ class Configuration(object):
                                       'BayesLOSVD - use chi2 or kinchi2.'
                                 self.logger.error(txt)
                                 raise ValueError(txt)
+                        else:  # GaussHermite kinematics
+                            # get_data checks for errors >= 0 in chosen moments
+                            _ = kin_data.get_data(
+                                self.settings.weight_solver_settings)
                 else:
                     self.logger.error('VisibleComponent must have kinematics: '
                                       'either GaussHermite or BayesLOSVD')
