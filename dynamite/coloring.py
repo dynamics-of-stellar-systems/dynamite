@@ -11,6 +11,7 @@ import pymc as pm
 import cmasher
 
 from vorbin.voronoi_2d_binning import voronoi_2d_binning
+from powerbin import PowerBin
 
 from dynamite import constants
 
@@ -337,6 +338,236 @@ class Coloring:
         vor_bundle_mapping = np.zeros((n_bundle, n_orbits))
         for i in range(orb_frac.shape[0]):  # collect weighted orbit fractions
             vor_bundle_mapping[binning[i]] += orb_frac[i]
+        # vor_bundle_mapping[binning[:]] += orb_frac[:]
+
+        # save the Voronoi binning results to the model directory
+        # Voronoi binning metadata already exists? -> use that filename
+        if bundle_metadata == []:  # otherwise, it has been read already
+            try:
+                with open(f_metadata, 'r') as f:
+                    bundle_metadata = yaml.safe_load(f)
+                self.logger.info('Voronoi binning metadata read from '
+                                f'{f_metadata}.')
+            except FileNotFoundError:
+                self.logger.info('No Voronoi binning metadata exists.')
+        for dat in bundle_metadata:
+            if set(dat.keys()) == set(params.keys()) and \
+               all(dat[k] == params[k] for k in compare_keys):
+                self.logger.info('Voronoi binning metadata exists, will '
+                                 'overwrite bundle data.')
+                self.logger.debug(f'Existing metadata: {dat}.')
+                f_name = dat['f_name']
+                break
+        else:
+            # no existing metadata found, create anew
+            idx = len(bundle_metadata)
+            while True:
+                f_name = f'voronoi_orbit_bundles_{idx:03d}.npz'
+                if not os.path.isfile(model.directory + f_name):
+                    break
+                idx += 1
+            params['f_name'] = f_name
+            self.logger.debug(f'Creating metadata: {params}.')
+            bundle_metadata.append(params)
+            with open(f_metadata, 'w') as f:
+                yaml.dump(bundle_metadata, f)
+            self.logger.info('Voronoi binning metadata saved in '
+                             f'{f_metadata}.')
+        np.savez(model.directory + f_name,
+                 vor_bundle_mapping=vor_bundle_mapping,
+                 **phase_space_binning)
+        self.logger.info('Voronoi orbit bundle mapping saved in '
+                         f'{model.directory + f_name}.')
+
+        return vor_bundle_mapping, phase_space_binning
+
+    def bin_phase_space_powerbin(self,
+                                 model=None,
+                                 vor_weight=0.01,
+                                 make_diagnostic_plots=False,
+                                 verbose=0,
+                                 use_cache=False):
+        """
+        EXPERIMENTAL POWERBIN IMPLEMENTATION TO REPLACE DEPRECATED VORBIN
+        - NOT FOR PRODUCTIVE USE YET!!
+
+        Perform PowerBin binning of orbits in the radius-circularity phase
+        space. The goal is to group the "original" n_orbits orbit bundles into
+        fewer n_bundle "Voronoi" bundles with each of these Voronoi bundles
+        accounting for a weight of at least ``vor_weight``. The resulting
+        orbit bundle mapping is returned and written to the model directory.
+        This method uses the ``powerbin`` package by Michele Cappellari
+        (M. Cappellari, 2025, MNRAS, subm.) which supersedes the deprecated
+        ``vorbin`` package used earlier.
+
+        Parameters
+        ----------
+        model : a ``dynamite.model.Model`` object, optional
+            the model used for the binning. If ``None``, choose the minimum
+            :math:`\\chi^2` model (the configuration setting ``which_chi2``
+            determines the :math:`\\chi^2` type). The default is ``None``.
+        vor_weight : float, optional
+            the target total orbital weight in each Voronoi bin.
+            The default is 0.01.
+        make_diagnostic_plots : bool, optional
+            If ``True``, both vorbin and DYNAMITE will produce diagnostic
+            plots visualizing the binning result. The default is ``False``.
+        verbose : int, optional
+            Passed to powerbin. Controls the level of printed output. Supported
+            values in increasing verbosity are 0, 1, and 2. The most detailed
+            setting (3) currectly crashes. The default is 0.
+        use_cache : bool, optional
+            If ``True``, the method will use cached results if available.
+            If the Voronoi binning has already been performed, the results
+            will be loaded from the cache in the model directory instead of
+            recalculating them. The default is ``True``.
+
+        Returns
+        -------
+        (vor_bundle_mapping, phase_space_binning) : tuple, where
+        vor_bundle_mapping : np.array of shape (n_bundle, n_orbits)
+            Mapping between the "original" orbit bundles and the Voronoi
+            orbit bundles: vor_bundle_mapping(i_bundle, i_orbit) is the
+            fraction of i_orbit assigned to i_bundle, multiplied by i_orbit's
+            weight.
+        phase_space_binning : dict
+            'out': np.array of shape (3, n_bundle), the Voronoi binning output:
+            weighted Voronoi bin centroid coordinates r_bar, lambda_bar
+            and Voronoi bin total weights
+            'map': np.array of shape (self.nr * self.nl,) the phase space
+            mapping: Voronoi bin numbers for each input bin
+
+        """
+        # save parameters relevant for caching
+        params = dict(locals())
+        params.pop('self', None)  # remove self from the parameters
+        params.pop('model', None)  # remove model from the parameters
+        params['code_version'] = '0.2'  # version of this method
+        params['nr'] = self.nr
+        params['nl'] = self.nl
+        params['minr'] = self.minr
+        params['maxr'] = self.maxr
+        compare_keys = [k for k in params]
+        params['f_name'] = f_name = None
+        if model is None:
+            best_model_idx = self.config.all_models.get_best_n_models_idx(1)[0]
+            model = self.config.all_models.get_model_from_row(best_model_idx)
+        f_metadata = model.directory + 'voronoi_orbit_bundles.yaml'
+        bundle_metadata = []
+
+        if use_cache:
+            try:
+                with open(f_metadata, 'r') as f:
+                    bundle_metadata = yaml.safe_load(f)
+                self.logger.info('Voronoi binning metadata read from '
+                                f'{f_metadata}.')
+            except FileNotFoundError:
+                self.logger.info('No Voronoi binning metadata found.')
+            for dat in bundle_metadata:
+                if set(dat.keys()) == set(params.keys()) and \
+                   all(dat[k] == params[k] for k in compare_keys):
+                    f_name = dat['f_name']
+                    self.logger.info('Reading Voronoi orbit bundle data from '
+                        f'existing file {model.directory}{f_name}.')
+                    self.logger.debug(f'Existing metadata: {dat}.')
+                    break
+            if f_name is not None:  # existing Voronoi binning data found
+                data = np.load(model.directory + f_name)
+                vor_bundle_mapping = data['vor_bundle_mapping']
+                phase_space_binning = \
+                    dict((iom, data[iom]) for iom in ('in', 'out', 'map'))
+                return vor_bundle_mapping, phase_space_binning  ############
+            else:
+                self.logger.info('Performing phase space Voronoi binning.')
+        # orbit_distribution: shape (nr, nl), total weight in the (r, l) bins
+        # orbit_projection tensor: shape (nr, nl, n_orbits), indicator if
+        # orbit belongs to (r, l) bin
+        orbit_distribution, orbit_projection = self.get_rl_distribution(model)
+
+        # build the input for powerbin
+        dr = (self.maxr - self.minr) / self.nr
+        input_bins_r = np.linspace(self.minr + dr / 2, self.maxr - dr / 2,
+                                   num=self.nr)
+        dl = 2 / self.nl  # lambda_z is in the interval [-1, 1]
+        input_bins_l = np.linspace(-1 + dl / 2, 1 - dl / 2, num=self.nl)
+        # build an input_grid of two arrays of shape (nr, nl)
+        input_grid = np.meshgrid(input_bins_r, input_bins_l, indexing='ij')
+        rl = np.array([m.ravel() for m in input_grid]).T  # shape (nr*nl, 2)
+        rl_bin_weights = orbit_distribution.ravel()  # shape (nr*nl,)
+
+        def _sum_weights(indices, weights):
+            """
+            Compute the orbital weight of a set of pixels given by indices.
+
+            Parameters
+            ----------
+            indices : int np.array of shape (self.nr, self.nl)
+                Array of integer indices into the original r, l pixel
+                coordinates array.
+            weights : np.array of shape (self.nr, self.nl)
+                Stellar orbits probability density in the
+                :math:`(r, \lambda_z)` bins.
+
+            Returns
+            -------
+            float
+                sum of all orbital weights in r, l bins given in indices
+
+            """
+            return np.sum(weights[indices])
+
+        pow = PowerBin(xy=rl,
+                       fun_capacity=_sum_weights,
+                       target_capacity=vor_weight,
+                       verbose=verbose,
+                       regul=True,
+                       args=(rl_bin_weights,),
+                       maxiter=50)  # maxiter default is 50
+        # binning: make r the fastest moving index
+        binning = pow.bin_num.reshape(self.nr, self.nl).T
+        phase_space_binning = {'out':np.vstack((pow.xybin.T, pow.capacity)),
+                               'map':np.ravel(binning)}  # shape (nr*nl,)
+        n_orbits = orbit_projection.shape[-1]  # "original" orbit bundles
+        n_bundle = phase_space_binning['out'].shape[-1]  # Voronoi bundles
+        self.logger.info(f'{n_orbits} original orbit bundles aggregated into '
+                         f'{n_bundle} Voronoi bundles.')
+        if make_diagnostic_plots:
+            plt.figure()
+            plt.imshow(orbit_distribution.T,
+                       interpolation='spline16',
+                       origin='lower',
+                       extent=(self.minr, self.maxr, -1, 1),
+                       aspect='auto',
+                       cmap='Greys',
+                       alpha=0.9)
+            plt.pcolormesh(*np.meshgrid(input_bins_r,
+                                        input_bins_l,
+                                        indexing='xy'),
+                           binning,
+                           shading='nearest',
+                           cmap='turbo',
+                           alpha=0.3)
+            plt.xlabel('$r$ [kpc]')
+            plt.ylabel('Circularity $\\lambda_z$')
+            plt.colorbar(label='Voronoi bin id')
+            plt.savefig(f'{self.config.settings.io_settings["plot_directory"]}'
+                        'voronoi_orbit_bundles.png')
+
+        # map "original" orbit bundles to Voronoi bundles
+        # calculate weighted orbit fractions in the input bins: "flatten"
+        # r and l indices of the projection tensor making r the fastest moving
+        # index, like in phase_space_binning['map']==binning and multiply
+        # element-wise with the orbit weights; orb_frac.shape=(nr*nl, n_orbits)
+        orb_frac=orbit_projection.todense().reshape((self.nr * self.nl, -1),
+                                                    order='F') * model.weights
+        # if vor_ignore_zeros:  # eliminate bins with zero total weight
+        #     orb_frac = orb_frac[nonzero_weight_bins]
+        # each Voronoi bin number represents a Voronoi (orbit) bundle
+        # for each "original" (orbit) bundle, calculate its fractions that go
+        # into each Voronoi bundle
+        vor_bundle_mapping = np.zeros((n_bundle, n_orbits))
+        for i in range(orb_frac.shape[0]):  # collect weighted orbit fractions
+            vor_bundle_mapping[pow.bin_num[i]] += orb_frac[i]
         # vor_bundle_mapping[binning[:]] += orb_frac[:]
 
         # save the Voronoi binning results to the model directory
