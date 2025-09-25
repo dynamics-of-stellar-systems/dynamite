@@ -289,8 +289,7 @@ class Coloring:
                                quiet=not extra_diagnostic_output,
                                cvt=cvt,
                                wvt=wvt)
-        phase_space_binning = {'in':vor_in,
-                               'out':np.vstack((r_bar, l_bar, bin_weights)),
+        phase_space_binning = {'out':np.vstack((r_bar, l_bar, bin_weights)),
                                'map':binning}  # Vor bin numbers of r, l bins
         n_orbits = orbit_projection.shape[-1]  # "original" orbit bundles
         n_bundle = phase_space_binning['out'].shape[-1]  # Voronoi bundles
@@ -315,7 +314,7 @@ class Coloring:
             plt.pcolormesh(*input_grid,
                            vor_map_dense,
                            shading='nearest',
-                           cmap='tab20',
+                           cmap='turbo',
                            alpha=0.3)
             plt.xlabel('$r$ [kpc]')
             plt.ylabel('Circularity $\\lambda_z$')
