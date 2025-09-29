@@ -133,6 +133,7 @@ class Coloring:
                         extra_diagnostic_output=False,
                         cvt=False,
                         wvt=False,
+                        use_noise=False,
                         use_cache=True):
         """
         Perform Voronoi binning of orbits in the radius-circularity phase
@@ -154,9 +155,7 @@ class Coloring:
             The default is 0.01.
         vor_ignore_zeros : bool, optional
             If ``True``, then radius-circularity bins that have zero total
-            weight will be ignored in the binning process. NOTE: this
-            feature is still EXPERIMENTAL due to insufficient testing, may
-            still be buggy, and is therefore NOT RECOMMENDED.
+            weight will be ignored in the binning process.
             The default is ``False``.
         make_diagnostic_plots : bool, optional
             If ``True``, both vorbin and DYNAMITE will produce diagnostic
@@ -173,11 +172,22 @@ class Coloring:
             WVT (Weighted Voronoi Tessellation) algorithm (Diehl & Statler
             2006, MNRAS, 368, 497). For details, refer to the ``vorbin``
             documentation. The default is ``False``.
+        use_noise : bool, optional
+            If True, Poissonian noise will be assumed for the signal (=orbit
+            weights). The weights will be multiplied by 1e4, the
+            Poissonian noise = sqrt(weights), and vor_weight will be replaced
+            by np.sqrt(vor_weight*10000) for the purpose of Voronoi binning.
+            Also, adding Voronoi bin weights will follow equation (2) of
+            Cappellari & Copin, 2003, MNRAS 342, 345). If False, the aggregate
+            Voronoi bin weights will simply be the sum of the respective
+            :math:`(r, \lambda_z)` bin weights. The default is False.
         use_cache : bool, optional
-            If ``True``, the method will use cached results if available.
+            If ``True``, the method will read cached results if available.
             If the Voronoi binning has already been performed, the results
             will be loaded from the cache in the model directory instead of
-            recalculating them. The default is ``True``.
+            recalculating them. Note that irrespective of use_cache, the
+            binning results will always be written to the model directory.
+            The default is ``True``.
 
         Returns
         -------
@@ -188,13 +198,12 @@ class Coloring:
             fraction of i_orbit assigned to i_bundle, multiplied by i_orbit's
             weight.
         phase_space_binning : dict
-            'in': np.array of shape (3, self.nr * self.nl), the binning input:
-            bin r, bin lambda_z, bin total weight
             'out': np.array of shape (3, n_bundle), the Voronoi binning output:
             weighted Voronoi bin centroid coordinates r_bar, lambda_bar
             and Voronoi bin total weights
             'map': np.array of shape (self.nr * self.nl,) the phase space
-            mapping: Voronoi bin numbers for each input bin
+            mapping: Voronoi bin numbers for each input bin. Input bins without
+            Voronoi bin (zero weight and vor_ignore_zeros=True) are set np.nan.
 
         """
         # save parameters relevant for caching
@@ -249,9 +258,20 @@ class Coloring:
                                    num=self.nr)
         dl = 2 / self.nl
         input_bins_l = np.linspace(-1 + dl / 2, 1 - dl / 2, num=self.nl)
-        input_grid = np.meshgrid(input_bins_r,input_bins_l)
-        vor_in = np.vstack((np.array([m.ravel() for m in input_grid]),
-                            orbit_distribution.T.ravel()))
+        # scale lambda_z so the r and lambda_z ranges are similar
+        l_scale = (self.maxr - self.minr) / 2
+        input_bins_l *= l_scale
+        input_grid = np.meshgrid(input_bins_r, input_bins_l)
+        if use_noise:
+            signal = orbit_distribution.T.ravel() * 1e4
+            noise = np.sqrt(signal)
+            noise[noise==0] = 1
+            vor_in = np.vstack((np.array([m.ravel() for m in input_grid]),
+                                signal,
+                                noise))  # Poissonian noise
+        else:
+            vor_in = np.vstack((np.array([m.ravel() for m in input_grid]),
+                                orbit_distribution.T.ravel()))
         if vor_ignore_zeros:
             nonzero_weight_bins = vor_in[2,:] > 0
             vor_in = vor_in[:,nonzero_weight_bins]
@@ -281,28 +301,40 @@ class Coloring:
             """
             return np.sum(signal[index])
 
-        binning, _, _, r_bar, l_bar, bin_weights, _, _ = \
-            voronoi_2d_binning(*vor_in,
-                               noise=np.ones_like(vor_in[0]),
-                               target_sn=vor_weight,
-                               plot=make_diagnostic_plots,
-                               sn_func=_sum_weights,
-                               quiet=not extra_diagnostic_output,
-                               cvt=cvt,
-                               wvt=wvt)
+        if use_noise:
+            binning, _, _, r_bar, l_bar, bin_weights, _, _ = \
+                voronoi_2d_binning(*vor_in,
+                                   target_sn=np.sqrt(vor_weight * 1e4),
+                                   plot=make_diagnostic_plots,
+                                   quiet=not extra_diagnostic_output,
+                                   cvt=cvt,
+                                   wvt=wvt)
+            bin_weights = bin_weights ** 2 / 1e4
+        else:
+            binning, _, _, r_bar, l_bar, bin_weights, _, _ = \
+                voronoi_2d_binning(*vor_in,
+                                   noise=np.ones_like(vor_in[0]),
+                                   target_sn=vor_weight,
+                                   plot=make_diagnostic_plots,
+                                   sn_func=_sum_weights,
+                                   quiet=not extra_diagnostic_output,
+                                   cvt=cvt,
+                                   wvt=wvt)
+        l_bar /= l_scale  # de-scale lambda_z
+        # Vorbin #s of all r, lambda_z bins, nan for no bin -> vor_map_dense
+        if vor_ignore_zeros:
+            vor_bin_map = iter(binning)
+            vor_map_dense = [next(vor_bin_map) if nz else np.nan
+                             for nz in nonzero_weight_bins]
+        else:
+            vor_map_dense = binning
         phase_space_binning = {'out':np.vstack((r_bar, l_bar, bin_weights)),
-                               'map':binning}  # Vor bin numbers of r, l bins
+                               'map':vor_map_dense}
         n_orbits = orbit_projection.shape[-1]  # "original" orbit bundles
         n_bundle = phase_space_binning['out'].shape[-1]  # Voronoi bundles
         self.logger.info(f'{n_orbits} original orbit bundles aggregated into '
                          f'{n_bundle} Voronoi bundles.')
         if make_diagnostic_plots:
-            if vor_ignore_zeros:
-                vor_bin_map = iter(phase_space_binning['map'])
-                vor_map_dense = [next(vor_bin_map) if nz else np.nan
-                                 for nz in nonzero_weight_bins]
-            else:
-                vor_map_dense = phase_space_binning['map']
             vor_map_dense = np.array(vor_map_dense).reshape(self.nl, self.nr)
             plt.figure()
             plt.imshow(orbit_distribution.T,
@@ -312,7 +344,7 @@ class Coloring:
                        aspect='auto',
                        cmap='Greys',
                        alpha=0.9)
-            plt.pcolormesh(*input_grid,
+            plt.pcolormesh(*np.meshgrid(input_bins_r, input_bins_l / l_scale),
                            vor_map_dense,
                            shading='nearest',
                            cmap='turbo',
@@ -751,8 +783,10 @@ class Coloring:
             determines the :math:`\\chi^2` type). The default is None.
         phase_space_mapping : np.array of shape (self.nr * self.nl,)
             The phase space mapping: Voronoi bin numbers for each input bin.
-            Can directly use the bin_phase_space() output
-            phase_space_binning['map'].
+            np.nan indicates that no Voronoi bin is assigned (THIS IS STILL
+            BUGGY: does not work properly if bin_phase_space was run with
+            vor_ignore_zeros=True...). Can otherwise directly use the
+            bin_phase_space() output phase_space_binning['map'].
         figtype : str, optional
             Determines the file format of the saved figure, by default '.png'.
         dpi : int, optional
@@ -785,6 +819,9 @@ class Coloring:
                   'orbit bundle plot.'
             self.logger.error(txt)
             raise ValueError(txt)
+        if np.any(np.isnan(phase_space_mapping)):
+            self.logger.warning('Cannot properly plot Voronoi binning '
+                                'containing NaNs currently.')
         vor_map_dense = np.array(phase_space_mapping).reshape(self.nl, self.nr)
         fig,ax = plt.subplots(figsize=(7, 5))
         plt.imshow(orbit_distribution.T,
