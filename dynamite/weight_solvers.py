@@ -836,13 +836,13 @@ class NNLS(WeightSolver):
             A, b = self.construct_nnls_matrix_and_rhs(orblib)
             if self.nnls_solver=='scipy':
                 try:
-                    # set the nnls maxiter parameter
+                    # set the nnls maxiter parameter and solve
                     if 'maxiter_factor' in self.settings.keys():
                         maxiter_factor = self.settings['maxiter_factor']
                     else:
                         maxiter_factor = 3  # default = 3 * n_orbits
                     maxiter = maxiter_factor * A.shape[1]
-                    self.logger.warning(f'{maxiter_factor=}, {maxiter=}')
+                    self.logger.debug(f'{maxiter_factor = }, {maxiter = }')
                     solution = optimize.nnls(A, b, maxiter=maxiter)
                     weights = solution[0]
                 except Exception as e:
