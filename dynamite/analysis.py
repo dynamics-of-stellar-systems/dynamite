@@ -451,7 +451,7 @@ class Decomposition:
                 self.config.settings.orblib_settings['nI2'] * \
                 self.config.settings.orblib_settings['nI3']
         n_dither = self.config.settings.orblib_settings['dithering']
-        conversion_factor=self.config.all_models.system.distMPc*1.0e6*1.49598e8
+        conversion_factor=self.config.system.distMPc*1.0e6*1.49598e8
 
         ncol = n_dither ** 3
         orbclass1=self.orblib.read_orbit_property_file_base(file2, ncol, n_orb)
