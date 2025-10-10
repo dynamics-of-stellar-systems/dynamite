@@ -6,13 +6,9 @@ from scipy import special
 
 # some tricks to add the current path to sys.path (so the imports below work)
 
-import os.path
-import sys
 import logging
 
 from dynamite import mges as mge
-from dynamite import constants as const
-from dynamite import orblib as orb
 
 class System(object):
     """The physical system being modelled
@@ -99,7 +95,7 @@ class System(object):
                 self.logger.warning(text)
                 generator_settings['minstep'] = generator_settings['step']
         if len(self.parameters) > 1:
-            omega = self.parameters[1]
+            # omega = self.parameters[1]
             if self.parameters[1].name != 'omega':
                 text = 'System needs omega as its second parameter'
                 self.logger.error(text)
@@ -379,7 +375,7 @@ class Component(object):
                  population_data=[],
                  parameters=[]):
         self.logger = logging.getLogger(f'{__name__}.{__class__.__name__}')
-        if name == None:
+        if name is None:
             self.name = self.__class__.__name__
         else:
             self.name = name
@@ -689,19 +685,19 @@ class TriaxialVisibleComponent(VisibleComponent):
         # Check for p=0
         if np.isclose(p, 0.):
             theta = phi = psi = np.nan
-            self.logger.debug(f'DEPROJ FAIL: p=0')
+            self.logger.debug('DEPROJ FAIL: p=0')
         # Check for q=0
         if np.isclose(q, 0.):
             theta = phi = psi = np.nan
-            self.logger.debug(f'DEPROJ FAIL: q=0')
+            self.logger.debug('DEPROJ FAIL: q=0')
         # Check for u=0
         if np.isclose(u, 0.):
             theta = phi = psi = np.nan
-            self.logger.debug(f'DEPROJ FAIL: u=0')
+            self.logger.debug('DEPROJ FAIL: u=0')
         # Check for u>1
         if u>1:
             theta = phi = psi = np.nan
-            self.logger.debug(f'DEPROJ FAIL: u>1')
+            self.logger.debug('DEPROJ FAIL: u>1')
         if np.isclose(u,p):
             u=p
         # Check for possible triaxial deprojection (v. d. Bosch 2004,

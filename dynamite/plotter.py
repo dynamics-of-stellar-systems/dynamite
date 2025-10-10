@@ -1207,7 +1207,7 @@ class Plotter():
         mgeq = mgepar['q']
         mgePAtwist = mgepar['PA_twist']
 
-        distance = self.all_models.system.distMPc
+        distance = self.system.distMPc
         arctpc = constants.ARC_KPC(distance) * 1000
         sigobs_pc = mgesigma*arctpc
         r_pc = R*arctpc
@@ -1414,7 +1414,7 @@ class Plotter():
 
         xrange=[0.0,Rmax_arcs]
 
-        distance = self.all_models.system.distMPc
+        distance = self.system.distMPc
         conversion_factor = distance*1.0e6*1.49598e8
         nre = self.settings.orblib_settings['nE']
         nrth = self.settings.orblib_settings['nI2']
@@ -1821,7 +1821,7 @@ class Plotter():
         val = val0[arg]
         chi2pmin = val[which_chi2][0]
         chlim = np.sqrt(self.config.get_2n_obs())
-        distance = self.all_models.system.distMPc
+        distance = self.system.distMPc
         arctpc = distance*np.pi/0.648
 
         # select the models within 1 sigma confidence level, minimum 3
@@ -2042,7 +2042,7 @@ class Plotter():
         stars = \
           self.system.get_component_from_class(physys.TriaxialVisibleComponent)
 
-        distance = self.all_models.system.distMPc
+        distance = self.system.distMPc
         arctpc = constants.ARC_KPC(distance) * 1000
         mgepar = stars.mge_pot.data
         mgeI = mgepar['I']
