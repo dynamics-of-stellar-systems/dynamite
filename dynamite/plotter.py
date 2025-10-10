@@ -13,7 +13,6 @@ import matplotlib as mpl
 from matplotlib.ticker import MaxNLocator, FixedLocator,LogLocator
 from matplotlib.ticker import NullFormatter
 import matplotlib.pyplot as plt
-import astropy
 from plotbin import display_pixels
 from dynamite import constants
 from dynamite import kinematics
