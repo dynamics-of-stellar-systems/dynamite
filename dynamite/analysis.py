@@ -37,7 +37,7 @@ class Decomposition:
         The value of this parameter is the index of the data
         set (e.g. kin_set=0, kin_set=1). The default is 0.
     ocut : list of floats, optional
-        The cuts in lambda_z. The default is None, which translates to
+        The orbit cuts in lambda_z. The default is None, which translates to
         ocut=[0.8, 0.25, -0.25, -0.8], the selection in lambda_z
         following Santucci+22.
     decomp_table : bool, optional
@@ -70,9 +70,10 @@ class Decomposition:
         if model is None:
             best_model_idx = config.all_models.get_best_n_models_idx(n=1)[0]
             self.model = config.all_models.get_model_from_row(best_model_idx)
-        stars = \
-          config.system.get_component_from_class(
-                                  dyn.physical_system.TriaxialVisibleComponent)
+        if self.config.system.is_bar_disk_system():
+            stars = self.config.system.get_unique_bar_component()
+        else:
+            stars = self.config.system.get_unique_triaxial_visible_component()
         n_kin = len(stars.kinematic_data)
         if kin_set >= n_kin:
             text = f'kin_set must be < {n_kin}, but it is {kin_set}'
@@ -183,9 +184,10 @@ class Decomposition:
                 if k not in individual_colorbars:
                     individual_colorbars[k] = False
 
-        stars = \
-        self.config.system.get_component_from_class(
-                                dyn.physical_system.TriaxialVisibleComponent)
+        if self.config.system.is_bar_disk_system():
+            stars = self.config.system.get_unique_bar_component()
+        else:
+            stars = self.config.system.get_unique_triaxial_visible_component()
         dp_args = stars.kinematic_data[self.kin_set].dp_args
         xi = dp_args['x']
         yi = dp_args['y']
@@ -493,11 +495,11 @@ class Decomposition:
         # map components
         comp_map = np.zeros(n_orbs, dtype=int)
         # cold component (thin disk)
-        comp_map[np.ravel(np.where(lzm_sign >= ocut[0]))] += \
+        comp_map[np.ravel(np.where(lzm_sign > ocut[0]))] += \
             2**comps.index('thin_d')
         # warm component (thick disk)
         comp_map[np.ravel(np.where((lzm_sign > ocut[1])
-                                 & (lzm_sign < ocut[0])))] += \
+                                 & (lzm_sign <= ocut[0])))] += \
             2**comps.index('thick_d')
         # hot component (bulge)
         comp_map[np.ravel(np.where((lzm_sign > ocut[2])
@@ -545,7 +547,7 @@ class Decomposition:
 class Analysis:
     """Class to hold results' analysis methods.
 
-    This class contains methods that help analyzing DYANMITE results and can
+    This class contains methods that help analyzing DYNAMITE results and can
     be called, e.g. by plotting routines.
 
     Parameters
@@ -632,11 +634,13 @@ class Analysis:
                    "'both'."
             self.logger.error(txt)
             raise ValueError(txt)
-        stars = self.config.system.get_component_from_class(
-                                dyn.physical_system.TriaxialVisibleComponent)
+        if self.config.system.is_bar_disk_system():
+            stars = self.config.system.get_unique_bar_component()
+        else:
+            stars = self.config.system.get_unique_triaxial_visible_component()
         kin_name = stars.kinematic_data[kin_set].name
-        self.logger.info('Getting projected masses and losvds for '
-                         f'model {model.directory}.')
+        self.logger.info('Getting projected masses and losvds for kinematics '
+                         f'{kin_name} and model {model.directory}.')
         orblib = model.get_orblib()
         if weights is None:
             _ = model.get_weights(orblib)

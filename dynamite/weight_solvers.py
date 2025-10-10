@@ -12,6 +12,7 @@ try:
 except ModuleNotFoundError:
     pass
 
+from dynamite import constants
 from dynamite import analysis
 from dynamite import physical_system as physys
 from dynamite import kinematics as dyn_kin
@@ -46,7 +47,7 @@ class WeightSolver(object):
         if 'CRcut' in self.settings.keys():
             CRcut = self.settings['CRcut']
         self.CRcut = CRcut
-        self.weight_file = f'{self.direc_with_ml}orbit_weights.ecsv'
+        self.weight_file = f'{self.direc_with_ml}{constants.weight_file}'
 
     def solve(self, orblib, ignore_existing_weights=False):
         """Template solve method
@@ -822,9 +823,6 @@ class NNLS(WeightSolver):
         """
         self.logger.info(f"Using WeightSolver: {__class__.__name__}/"
                          f"{self.nnls_solver}")
-        orblib.read_losvd_histograms()  # sets orblib.losvd_histograms,
-                                        # orblib.intrinsic_masses, and
-                                        # orblib.projected_masses
         if (not ignore_existing_weights) and self.weight_file_exists():
             results = ascii.read(self.weight_file, format='ecsv')
             self.logger.info("NNLS solution read from existing output "
@@ -834,6 +832,9 @@ class NNLS(WeightSolver):
             chi2_kin = results.meta['chi2_kin']
             chi2_kinmap = results.meta['chi2_kinmap']
         else:
+            orblib.read_losvd_histograms()  # sets orblib.losvd_histograms,
+                                            # orblib.intrinsic_masses, and
+                                            # orblib.projected_masses
             A, b = self.construct_nnls_matrix_and_rhs(orblib)
             if self.nnls_solver=='scipy':
                 try:
