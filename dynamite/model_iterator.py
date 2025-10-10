@@ -79,8 +79,8 @@ class ModelIterator(object):
                 status['n_max_mods_reached'] = True
                 status['stop'] = True
             if status['stop'] is True:
-                self.logger.info(f'Stopping at iteration {total_iter}')
-                self.logger.info(status)
+                self.logger.info(f'Stopping after iteration {total_iter - 1} '
+                                 f'because {status}.')
                 break
             if total_iter > 0:
                 self.logger.info(f'{par_generator_type}: iteration '
@@ -161,7 +161,7 @@ class ModelIterator(object):
         self.logger.debug(f'Reattempting weight solving for model {row}, '
                           f'directory={mod.directory}.')
         orblib = mod.get_orblib()
-        weight_solver = mod.get_weights(orblib)
+        _ = mod.get_weights(orblib)
         time = str(np.datetime64('now', 'ms'))
         return mod.chi2, mod.kinchi2, mod.kinmapchi2, time
 
@@ -291,35 +291,7 @@ class ModelInnerIterator(object):
             self.all_models.save()  # save all_models table once models are run
             self.logger.info('Iteration done, '
                              f'{self.n_to_do} model(s) calculated.')
-            self.delete_staging_files(rows_to_do) # delete all staging files
         return self.par_generator.status
-
-    def delete_staging_files(self, rows):
-        """
-        Deletes staging files.
-
-        Parameters
-        ----------
-        rows : iterable of ints
-            The all_models table rows indicating models whose staging files
-            are to be deleted.
-
-        Returns
-        -------
-        n_files : int
-            Number of staging files deleted.
-
-        """
-        for row in rows:
-            f_name = self.all_models.get_model_from_row(row).directory + \
-                'model_done_staging.ecsv'
-            if os.path.isfile(f_name):
-                os.remove(f_name)
-            else:
-                self.logger.warning(f'Strange: {f_name} does not exist.')
-        n_files = len(rows)
-        self.logger.info(f'{n_files} staging file(s) deleted.')
-        return n_files
 
     def is_new_orblib(self, row_idx):
         """
@@ -445,7 +417,11 @@ class ModelInnerIterator(object):
             self.logger.error(msg)
             raise ValueError(msg)
         mod = self.all_models.get_model_from_row(row)
-        self.logger.info(f'... running model {i+1} out of {self.n_to_do}: '
+        txt = 'Getting '
+        txt += 'orblib' if get_orblib else ''
+        txt += ' and ' if get_orblib and get_weights else ''
+        txt += 'weights' if get_weights else ''
+        self.logger.info(f'{txt} for model {i+1} out of {self.n_to_do}: '
                          f'{mod.directory}.')
         orb_done = False
         wts_done = False
@@ -472,7 +448,7 @@ class ModelInnerIterator(object):
                 orblib = mod.get_orblib()
                 orb_done = True
                 if get_weights:
-                    weight_solver = mod.get_weights(orblib)
+                    _ = mod.get_weights(orblib)
                     if not np.isnan(mod.weights[0]):
                         wts_done = True
                 else:
@@ -489,17 +465,6 @@ class ModelInnerIterator(object):
                 self.logger.warning(w_txt)
         all_done = orb_done and wts_done
         time = str(np.datetime64('now', 'ms'))
-        # Build and write model_done_staging.ecsv
-        current_model_row = table.Table(self.all_models.table[row])
-        for name, value in zip(
-                ['orblib_done','weights_done','chi2',
-                 'kinchi2','kinmapchi2','all_done','time_modified'],
-                [orb_done, wts_done, mod.chi2,
-                 mod.kinchi2, mod.kinmapchi2, all_done, time]):
-            current_model_row[name][0] = value
-        file_name = mod.directory + 'model_done_staging.ecsv'
-        current_model_row.write(file_name, format='ascii.ecsv', overwrite=True)
-        self.logger.info(f'Model {i+1}: {file_name} written.')
         output = orb_done, wts_done, mod.chi2, \
                  mod.kinchi2, mod.kinmapchi2, all_done, time
         return output
