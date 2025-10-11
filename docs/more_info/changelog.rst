@@ -4,8 +4,11 @@
 Change Log
 ****************
 
-- Improvement: updated the recommended Python versions to 3.10 or later (Python 3.9 end of life Oct 2025) and required scipy to =1.11 or >=1.16 to warrant stable Python NNLS.
+- Improvement: updated the recommended Python versions to 3.10 or later (due to Python 3.9 end of life Oct 2025) and required scipy to =1.11 or >=1.16 to warrant stable Python NNLS.
 - Improvement: added weight_solver_settings parameter ``maxiter_factor`` to control the maxiter parameter of scipy nnls. Setting it beyond its default 3 can help when weight solving fails.
+- Improvement: Use indicator files for existing orblibs instead of checking multiple files (preparation for coloring and proper motions).
+- Improvement: Replaced staging files by directly checking for orblibs and weight files on disk.
+- Improvement: Significant performance gain when reading existing model weights (eliminated unnecessary reading of orbit library)
 - Bugfix: fix a bug in beta_plot and anistotropy_single, subtract first moments, plot only beta_r, enable log x-axis, plot pc/kpc scale on upper x-axis
 - New feature: DYNAMITE models now support multiple kinematic data sets of different types and with different histogram settings
 - Improvement: the orbit_plot now allows custom orbit cuts via the ocut parameter (same behavior as in the Decomposition class)

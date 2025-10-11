@@ -276,7 +276,7 @@ If any kinematic set has type ``BayesLOSVD``, then the ``weight_solver_settings`
 If DYNAMITE shall recover from an unsuccessful weight solving attempt, the following option can be used:
 
 - ``weight_solver_settings``
-    - ``reattempt_failures``: if True, DYNAMITE will use a model's existing orblibs from an earlier run to reattempt weight solving.
+    - ``reattempt_failures``: if True, DYNAMITE will use a model's existing orblib from an earlier run to reattempt weight solving. Please refer to the ``AllModels.update_model_table()`` :ref:`API documentation <model>` for more details on how DYNAMITE deals with incomplete or partially completed models upon restart.
 
 ``parameter_space_settings``
 ============================
