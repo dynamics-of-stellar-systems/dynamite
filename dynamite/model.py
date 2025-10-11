@@ -4,13 +4,14 @@ import glob
 import difflib
 import logging
 import shutil
+import pathlib
 import numpy as np
 from astropy import table
 from astropy.io import ascii
 
+import dynamite as dyn
 from dynamite import weight_solvers as ws
 from dynamite import orblib as dyn_orblib
-from dynamite import parameter_space as dyn_parspace
 
 class AllModels(object):
     """All models which have been run so far
@@ -33,7 +34,17 @@ class AllModels(object):
             self.logger.error(text)
             raise ValueError(text)
         self.config = config
-        self.system = config.system
+        if config.system.is_bar_disk_system():
+            stars = config.system.get_unique_bar_component()
+        else:
+            stars = config.system.get_unique_triaxial_visible_component()
+        self.has_losvd_kins = \
+            len([k for k in stars.kinematic_data
+                 if not isinstance(k, dyn.kinematics.ProperMotions)]) > 0
+        self.has_pops = len([p for p in stars.population_data
+                             if p.kin_aper is None]) > 0
+        self.has_pms = len([k for k in stars.kinematic_data
+                            if isinstance(k, dyn.kinematics.ProperMotions)])>0
         self.set_filename(config.settings.io_settings['all_models_file'])
         self.make_empty_table()
         if from_file and os.path.isfile(self.filename):
@@ -108,11 +119,20 @@ class AllModels(object):
     def update_model_table(self):
         """all_models table update: fix incomplete models, add kinmapchi2.
 
-        Dealing with incomplete models:
-        Models with all_done==False but an existing model_done_staging.ecsv
-        will be updated in the table and the staging file will be deleted.
-        Models with all_done==False and no existing orblib will be deleted
-        from the table and their model directory will be deleted, too.
+        Dealing with incomplete models (all_done==False):
+
+        If the model has an existing orblib (indicated by the presence of
+        datfil/tube_box_done), its orblib_done will be set to True.
+
+        If the model weights have been calculated (indicated by the presence of
+        the weights file), weights_done will be set to True and the model table
+        will be updated with the chi2, kinchi2, and kinmapchi2 from that file.
+        The all_done flag will be updated accordingly.
+
+        If no orblib exists on disk and the weights are not available either,
+        the model will be deleted from the table and the model directory will
+        be deleted, too.
+
         The configuration setting reattempt_failures determines how partially
         completed models with all_done==False but existing orblibs are treated:
         If reattempt_failures==True, their orblib_done will be set to True
@@ -120,8 +140,9 @@ class AllModels(object):
         based on the existing orblibs.
         If reattempt_failures==False, the model and its directory will be
         deleted.
-        Note that orbit libraries on disk will not be deleted as they
-        may be in use by other models.
+
+        Note that orbit libraries on disk will not be deleted if they
+        are in use by other models.
 
         Up to DYNAMITE 3.0 there was no kinmapchi2 column in the all_models
         table. If possible (data exists on disk), calculate and add the values,
@@ -135,32 +156,33 @@ class AllModels(object):
         """
         table_modified = False
         for i, row in enumerate(self.table):
-            if not row['all_done']:
-                table_modified = True
-                mod = self.get_model_from_row(i)
-                staging_filename = mod.directory+'model_done_staging.ecsv'
+            if row['all_done']:  # Do we need to check anything?
+                continue
+            mod = self.get_model_from_row(i)
+            if not row['orblib_done']:  # First, check for existing orblib
                 f_root = mod.directory_noml + 'datfil/'
-                check = os.path.isfile(f_root + 'orblib.dat.bz2') \
-                        and os.path.isfile(f_root + 'orblibbox.dat.bz2')
-                if not check:  # new files: use *qgrid.dat as orblib indicator
-                    check = os.path.isfile(f_root + 'orblib_qgrid.dat.bz2') \
-                     and os.path.isfile(f_root + 'orblibbox_qgrid.dat.bz2')
-                if os.path.isfile(staging_filename):
-                    # the model has completed but was not entered in the table
-                    staging_file = ascii.read(staging_filename)
-                    self.table[i] = staging_file[0]
-                    self.logger.info(f'Staging file {staging_filename} '
-                                f'used to update {__class__.__name__}.table.')
-                    os.remove(staging_filename)
-                    self.logger.debug(
-                        f'Staging file {staging_filename} deleted.')
-                elif check:
-                    self.logger.debug(f'Row {i}: orblibs were computed '
-                                      'but not weights.')
-                    self.table[i]['orblib_done'] = True
-                else:
-                    self.logger.debug(f'Row {i}: neither orblibs nor '
-                                      'weights were completed.')
+                if os.path.isfile(f_root + 'tube_box_done'):
+                    table_modified = True
+                    row['orblib_done'] = True
+                    row['time_modified'] = str(np.datetime64('now', 'ms'))
+                    self.logger.info(f'Row {i}: orblib exists in {f_root}.')
+            if not row['weights_done']:  # Then, check for existing weights
+                w_file = mod.directory + dyn.constants.weight_file
+                if os.path.isfile(w_file):
+                    chi2s = ascii.read(w_file).meta
+                    table_modified = True
+                    row['chi2'] = chi2s['chi2_tot']
+                    row['kinchi2'] = chi2s['chi2_kin']
+                    row['kinmapchi2'] = chi2s['chi2_kinmap']
+                    row['weights_done'] = True
+                    row['time_modified'] = str(np.datetime64('now', 'ms'))
+                    self.logger.info(f'Row {i}: weights exist in {w_file}.')
+            row['all_done'] = row['weights_done']
+            if row['all_done']:
+                table_modified = True
+            if not (row['orblib_done'] or row['weights_done']):
+                self.logger.debug(f'Row {i}: neither orblibs nor weights were '
+                                  f'completed for model in {mod.directory}.')
         # collect failed models to delete (both their directory and table entry)
         to_delete = []
         # if we will reattempt weight solving, only delete models with no orblib
@@ -217,6 +239,83 @@ class AllModels(object):
             self.logger.info('all_models table updated and saved.')
         else:
             self.logger.info('No all_models table update required.')
+        path = self.config.settings.io_settings['model_directory']
+        orb_dirs = [path + d for d in self.table['directory']]  # model dirs
+        # Now, convert the model dirs to orblib dirs, eliminating duplicates
+        orb_dirs = set([d[:d[:-1].rindex('/') + 1] for d in orb_dirs])
+        for d in orb_dirs:
+            self.update_orblib_flags(d)
+
+    def update_orblib_flags(self, orblib_directory):
+        """Update the indicator files in the orblib directory
+
+        Depending on the data in the configuration file, the orblib calculation
+        may have produced different output files. This function checks for the
+        presence of the required files and sets or removes indicator files
+        accordingly.
+
+        This enables DYNAMITE to dynamically re-calculate the required orblibs
+        in case an existing set of models is reanalyzed with additional data in
+        the future, for example by adding proper motion data or populations
+        with their own apertures.
+
+        Parameters
+        ----------
+        orblib_directory : str
+            The orblib directory, i.e. the model directory without the ml part,
+            ending with a '/'.
+        """
+        d = orblib_directory + 'datfil/'
+        orblib_files_ok = True
+        # files that always need to be there...
+        check = os.path.isfile(d + 'orblib.dat.bz2') \
+                and os.path.isfile(d + 'orblibbox.dat.bz2')
+        if not check:
+            check = os.path.isfile(d + 'orblib_qgrid.dat.bz2') \
+                    and os.path.isfile(d + 'orblibbox_qgrid.dat.bz2')
+        orblib_files_ok = orblib_files_ok and check
+        # check for 'regular' losvd kinematics
+        if self.has_losvd_kins:
+            check = os.path.isfile(d + 'orblib_losvd_hist.dat.bz2') \
+                    and os.path.isfile(d + 'orblibbox_losvd_hist.dat.bz2')
+            orblib_files_ok = orblib_files_ok and check
+        # additional files from orblib integration
+        extra_files = ['orblib.dat_orbclass.out', 'mass_radmass.dat',
+                       'mass_qgrid.dat', 'mass_aper.dat',
+                       'orblibbox.dat_orbclass.out']
+        check = all([os.path.isfile(d + f) for f in extra_files])
+        orblib_files_ok = orblib_files_ok and check
+        # files that need to be there if populations with own apertures exist
+        if self.has_pops:
+            check = os.path.isfile(d + 'orblib_pops.dat.bz2') \
+                    and os.path.isfile(d + 'orblibbox_pops.dat.bz2')
+            orblib_files_ok = orblib_files_ok and check
+        # files that need to be there if proper motion data exist
+        if self.has_pms:
+            check = os.path.isfile(d + 'orblib_pm_hist.dat.bz2') \
+                    and os.path.isfile(d + 'orblibbox_pm_hist.dat.bz2')
+            orblib_files_ok = orblib_files_ok and check
+        # set the indicator files in the orblib directory
+        ind_files = [pathlib.Path(d + f_name + '_done')
+                     for f_name in ('tube', 'box', 'tube_box')]
+        if orblib_files_ok:
+            changes = False
+            for ind_file in ind_files:
+                if not ind_file.is_file():
+                    changes = True
+                    ind_file.touch()
+            if changes:
+                self.logger.info(f'Orblib done indicators created in {d}.')
+        else:
+            changes = False
+            for ind_file in ind_files:
+                if ind_file.is_file():
+                    changes = True
+                    ind_file.unlink()
+            if changes:
+                self.logger.info(f'Orblib done indicators removed in {d}.')
+        if not changes:
+            self.logger.debug(f'Orblib done indicators in {d} unchanged.')
 
     def retrofit_kinmapchi2(self):
         """Calculates kinmapchi2 for DYNAMITE legacy tables if possible.
@@ -847,7 +946,7 @@ class Model(object):
             self.logger.error(text)
             raise ValueError(text)
         self.config = config
-        self.check_parset(parset)
+        self.check_parset(config.parspace, parset)
         self.parset = parset
         # directory of the input kinematics
         if directory is None:
@@ -1053,35 +1152,36 @@ class Model(object):
         self.weights = weights
         return weight_solver
 
-    def check_parset(self, parset):
+    def check_parset(self, parspace, parset):
         """
         Validate a parset
 
         Given parameter values in parset, the validate_parspace method of
-        the parameter space is executed. If a parameter exists in the parameter
-        space but not in parset, a warning will be issued and the parameter
+        the parameter space is executed. If a parameter exists in parspace
+        but not in parset, a warning will be issued and the parameter
         will remain unchanged. If parset tries to set the value of
-        a parameter not existing in the parameter space, an exception will be
-        raised. Validating relies on exceptions raised by validate_parspace.
+        a parameter not existing in parspace, an exception will be raised.
+        Validating relies on exceptions raised by validate_parspace.
 
         Parameters
         ----------
+        parspace : ``dyn.parameter_space.ParameterSpace``
+            A list of parameter objects.
         parset : row of an Astropy Table
-            Contains parameter values to be checked against the parameter
-            space.
+            Contains parameter values to be checked against the settings in
+            parspace.
 
         Raises
         ------
         ValueError
-            If at least one parameter in parset is unknown to the parameter
-            space.
+            If at least one parameter in parset is unknown to parspace.
 
         Returns
         -------
         None.
 
         """
-        parspace_copy = dyn_parspace.ParameterSpace(self.config.system)
+        parspace_copy = copy.deepcopy(parspace)
         parspace_par_names = [p.name for p in parspace_copy]
         unknown_pars = [p for p in parset.colnames
                           if p not in parspace_par_names]

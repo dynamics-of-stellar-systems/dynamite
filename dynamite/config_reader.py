@@ -936,6 +936,10 @@ class Configuration(object):
                                       'use chi2 or kinchi2.'
                                 self.logger.error(txt)
                                 raise ValueError(txt)
+                        else:  # GaussHermite kinematics
+                            # get_data checks for errors >= 0 in chosen moments
+                            _ = kin_data.get_data(
+                                self.settings.weight_solver_settings)
                 else:
                     txt = 'VisibleComponent must have kinematics: ' \
                           'GaussHermite, BayesLOSVD, and/or ProperMotions.'
@@ -973,7 +977,8 @@ class Configuration(object):
         chi2abs = self.__class__.thresh_chi2_abs
         chi2scaled = self.__class__.thresh_chi2_scaled
         gen_set=self.settings.parameter_space_settings.get('generator_settings')
-        if gen_set != None and (chi2abs in gen_set and chi2scaled in gen_set):
+        if gen_set is not None \
+           and (chi2abs in gen_set and chi2scaled in gen_set):
             self.logger.error(f'Only specify one of {chi2abs}, {chi2scaled}, '
                               'not both')
             raise ValueError(f'Only specify one of {chi2abs}, {chi2scaled}, '
@@ -1044,7 +1049,7 @@ class Configuration(object):
 
         """
         allowed_chi2 = ('chi2', 'kinchi2', 'kinmapchi2')
-        if which_chi2 == None:
+        if which_chi2 is None:
             which_chi2 = self.settings.parameter_space_settings['which_chi2']
         if which_chi2 not in allowed_chi2:
             text = 'parameter_space_settings: which_chi2 must be one of ' \
