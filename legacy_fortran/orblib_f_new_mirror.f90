@@ -1978,8 +1978,9 @@ contains
                 open (unit=30 + i, file=string, action="read", status="old"&
                   &, position="rewind")
                 read (unit=30 + i, fmt=*) string
-                if (string /= "#Counterrotaton_binning_version_1") &
-                    stop " Wrong version of file"
+                if (string /= "#Counterrotaton_binning_version_1" &
+                  &.and. string /= "#Counterrotation_binning_version_1") &
+                    &stop " Wrong version of file"
                 read (unit=30 + i, fmt=*) bin_size(i)
                 print *, "  * bins in this aperture:", bin_size(i)
             end if

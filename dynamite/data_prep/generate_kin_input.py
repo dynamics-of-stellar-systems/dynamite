@@ -204,7 +204,7 @@ def create_bins_file(dir,expr,grid):
     flattened = grid.T.flatten()
     num_of_lines = int(len(flattened)/10)
     bins_file = open(dir+'bins'+expr+'.dat', 'w')
-    bins_file.write('#Counterrotaton_binning_version_1\n')
+    bins_file.write('#Counterrotation_binning_version_1\n')
     bins_file.write('{0}\n'.format(int(s[0]*s[1])))
 
     for line in range(num_of_lines):

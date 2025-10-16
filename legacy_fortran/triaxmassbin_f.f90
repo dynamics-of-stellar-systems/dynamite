@@ -243,7 +243,8 @@ contains
         open (unit=30, file=string, action="read", status="old"&
              &, position="rewind")
         read (unit=30, fmt=*) string
-        if (string /= "#Counterrotaton_binning_version_1") &
+        if (string /= "#Counterrotaton_binning_version_1" &
+          &.and. string /= "#Counterrotation_binning_version_1") &
             stop " Wrong version of file"
         read (unit=30, fmt=*) bins
         print *, "  * pixels in this aperture:", bins

@@ -95,15 +95,15 @@ The file ``aperture.dat`` file contains the spatial extent in arcseconds, the an
         90.-position_angle
         npix_x  n_pix_y
 
-As ``aperture.dat`` is also read by legacy Fortran components of DYNAMITE, it is important that its first line is exactly as displayed above, otherwise DYNAMITE will crash.
+As ``aperture.dat`` is also read by legacy Fortran components of DYNAMITE, it is important that its first line (starting with `#`) is exactly as displayed above, otherwise DYNAMITE will crash.
 
 The file ``bins.dat`` encodes the spatial (e.g. Voronoi) binning: specifically, one header line with the total number of pixels in the grid, followed by the bin ID of each pixel in the grid::
 
-    #Counterrotaton_binning_version_1
+    #Counterrotation_binning_version_1
     no of pixels in grid
     ...
 
-Note that also for this file the first line needs to be exactly like displayed above (including the typo ``Counterrotaton``!) to avoid legacy Fortran errors.
+Note that also for this file the first line (starting with `#`) needs to be exactly like displayed above to avoid legacy Fortran errors. An exception to this is the typo ``Counterrotaton`` which will be accepted in ``bins.dat`` due to historical reasons.
 
 Comments on kinematics
 ----------------------
