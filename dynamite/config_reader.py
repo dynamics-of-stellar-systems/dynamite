@@ -356,7 +356,7 @@ class Configuration(object):
                     if 'disk_lum' in data_comp:
                         path = self.settings.io_settings['input_directory']
                         c.disk_lum = mge.MGE(input_directory=path,
-                                             datafile=data_comp['disk_pot'])
+                                             datafile=data_comp['disk_lum'])
 
                     # add component to system
                     c.validate()
