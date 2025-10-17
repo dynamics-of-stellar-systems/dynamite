@@ -314,8 +314,6 @@ class Configuration(object):
                     # read kinematics
 
                     if 'kinematics' in data_comp:
-                    # shall we include a check here (e.g., only
-                    # VisibleComponent has kinematics?)
                         logger.debug('Has kinematics '
                                     f'{list(data_comp["kinematics"].keys())}')
                         kin_id = 0
@@ -346,6 +344,9 @@ class Configuration(object):
                             kin_list.append(kinematics_set)
                             kin_id += 1
                         c.kinematic_data = kin_list
+                    else:
+                        logger.debug(f'{comp}... no kinematics to '
+                                     'be read from config file.')
 
                     # read populations
 
@@ -361,24 +362,47 @@ class Configuration(object):
                                                 input_directory=path,
                                                 **data_pop)
                             c.population_data.append(populations_set)
+                    else:
+                        logger.debug(f'{comp}... no populations data to '
+                                     'be read from config file.')
 
                     if 'mge_pot' in data_comp:
                         path = self.settings.io_settings['input_directory']
                         c.mge_pot = mge.MGE(input_directory=path,
                                         datafile=data_comp['mge_pot'])
+                        logger.debug(f'{comp}... mge_pot read from '
+                                     f'{data_comp["mge_pot"]}.')
+                    else:
+                        logger.debug(f'{comp}... no mge_pot to '
+                                     'be read from config file.')
                     if 'mge_lum' in data_comp:
                         path = self.settings.io_settings['input_directory']
                         c.mge_lum = mge.MGE(input_directory=path,
                                         datafile=data_comp['mge_lum'])
+                        logger.debug(f'{comp}... mge_lum read from '
+                                     f'{data_comp["mge_lum"]}.')
+                    else:
+                        logger.debug(f'{comp}... no mge_lum data to '
+                                     'be read from config file.')
 
                     if 'disk_pot' in data_comp:
                         path = self.settings.io_settings['input_directory']
                         c.disk_pot = mge.MGE(input_directory=path,
                                              datafile=data_comp['disk_pot'])
+                        logger.debug(f'{comp}... disk_pot read from '
+                                     f'{data_comp["disk_pot"]}.')
+                    else:
+                        logger.debug(f'{comp}... no disk_pot to '
+                                     'be read from config file.')
                     if 'disk_lum' in data_comp:
                         path = self.settings.io_settings['input_directory']
                         c.disk_lum = mge.MGE(input_directory=path,
                                              datafile=data_comp['disk_pot'])
+                        logger.debug(f'{comp}... disk_lum read from '
+                                     f'{data_comp["disk_lum"]}.')
+                    else:
+                        logger.debug(f'{comp}... no disk_lum to '
+                                     'be read from config file.')
 
                     # add component to system
                     c.validate()
