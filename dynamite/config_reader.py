@@ -224,6 +224,13 @@ class Configuration(object):
         logger.info('io_settings...')
         logger.debug(f'Read: {self.params["io_settings"]}')
 
+        if set(self.params['io_settings'].keys()) != \
+              set(['input_directory', 'output_directory', 'all_models_file']):
+            txt = 'io_settings must contain input_directory, ' \
+                  'output_directory, and all_models_file, not ' \
+                  f'{list(self.params["io_settings"].keys())}.'
+            self.logger.error(txt)
+            raise ValueError(txt)
         try:
             for io in ['input', 'output']:
                 d = self.params['io_settings'][io+'_directory']
@@ -268,8 +275,23 @@ class Configuration(object):
                     c = getattr(physys,data_comp['type'])(name = comp,
                             contributes_to_potential \
                             = data_comp['contributes_to_potential'])
+                    # check for extra config entries/typos before any more
+                    # information is read from config file
+                    keys_ok = ['parameters', 'type', 'include',
+                               'contributes_to_potential']
+                    if isinstance(c, physys.VisibleComponent):
+                        keys_ok.extend(['mge_pot', 'mge_lum',
+                                        'disk_pot', 'disk_lum',
+                                        'kinematics', 'populations'])
+                    if any(k not in keys_ok for k in data_comp):
+                        text = f'Component {c.name} has unknown config ' \
+                            'entries: ' \
+                            f'{[k for k in data_comp if k not in keys_ok]}. ' \
+                            f'Allowed entries: {keys_ok}. Check for typos.'
+                        self.logger.error(text)
+                        raise ValueError(text)
 
-                    # initialize the component's paramaters, kinematics,
+                    # initialize the component's parameters, kinematics,
                     # and populations
 
                     par_list, kin_list = [], []
@@ -393,6 +415,12 @@ class Configuration(object):
             elif key == 'system_attributes':
                 logger.info('system_attributes...')
                 logger.debug(f'system_attributes: {tuple(value.keys())}')
+                # check here so system attributes are not set arbitrarily
+                if any(k not in ['distMPc', 'name'] for k in value):
+                    text = 'system_attributes can only be distMPc and name, '\
+                           f'not {list(value.keys())}.'
+                    logger.error(text)
+                    raise ValueError(text)
                 for other, data in value.items():
                     setattr(self.system, other, data)
 
