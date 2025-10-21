@@ -226,6 +226,7 @@ class AllModels(object):
                         ' perhaps it has already been removed before.')
             os.chdir(cwd)
             self.table.remove_rows(to_delete)
+            table_modified = True
         # Up to DYNAMITE 3.0 there was no kinmapchi2 column -> retrofit.
         if isinstance(self.table['kinmapchi2'], table.column.MaskedColumn):
             table_modified = True
