@@ -145,8 +145,8 @@ class Integrated(Data):
         strhead = lines[0]
         minx = float(lines[1][0])
         miny = float(lines[1][1])
-        sx = float(lines[2][0])
-        sy = float(lines[2][1])
+        sx = float(lines[2][0])  # extent in x
+        sy = float(lines[2][1])  # extent in y
         maxx = sx + minx
         sy = sy + miny
         angle_deg = float(lines[3][0])

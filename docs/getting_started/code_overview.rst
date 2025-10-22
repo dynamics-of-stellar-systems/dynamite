@@ -90,10 +90,12 @@ Note that the kinematics need to be centered at the center of the MGE.
 The file ``aperture.dat`` file contains the spatial extent in arcseconds, the angle (in degrees ) ``90 - position_angle``, and size of the grid in pixels::
 
   #counter_rotation_boxed_aperturefile_version_2
-        min_x   min_y
-        max_x   max_y
-        90.-position_angle
-        npix_x  n_pix_y
+        min_x               min_y
+        extent_x            extent_y
+        90 - position_angle
+        npix_x              n_pix_y
+
+To clarify the quantities in this file: the rectangular aperture in arcseconds extends from ``min_x`` to ``max_x = min_x + extent_x`` and ``min_y`` to ``max_y = min_y + extent_y``, respectively. ``90 - position_angle`` is the angle in degrees measured counter clockwise from the galaxy major axis to the x-axis of the input data. Finally, ``npix_x`` and ``npix_y`` define the number of pixels along the x and y axes, respectively.
 
 As ``aperture.dat`` is also read by legacy Fortran components of DYNAMITE, it is important that its first line (starting with `#`) is exactly as displayed above, otherwise DYNAMITE will crash.
 
@@ -103,7 +105,7 @@ The file ``bins.dat`` encodes the spatial (e.g. Voronoi) binning: specifically, 
     no of pixels in grid
     ...
 
-Note that also for this file the first line (starting with `#`) needs to be exactly like displayed above to avoid legacy Fortran errors. An exception to this is the typo ``Counterrotaton`` which will be accepted in ``bins.dat`` due to historical reasons.
+Note that also for this file the first line (starting with `#`) needs to be exactly like displayed above to avoid legacy Fortran errors. An exception to this is the typo ``#Counterrotaton_binning_version_1`` which will be accepted in ``bins.dat`` due to historical reasons.
 
 Comments on kinematics
 ----------------------
