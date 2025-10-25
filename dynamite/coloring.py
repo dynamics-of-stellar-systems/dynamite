@@ -1158,18 +1158,18 @@ class Coloring:
         return fig
 
     def circularity_pop_plot(self,
-                               weights,
-                               pop_data,
-                               *,
-                               pop_label='Stellar age [Gyr]',
-                               pop_scale='linear',
-                               prob_scale='linear',
-                               n_pop_bins=14,
-                               interpolation='none',
-                               disk_fraction=True,
-                               lz_disk=0.8,
-                               figtype='.png',
-                               dpi=100):
+                             weights,
+                             pop_data,
+                             *,
+                             pop_label='Stellar age [Gyr]',
+                             pop_scale='linear',
+                             prob_scale='linear',
+                             n_pop_bins=14,
+                             interpolation='none',
+                             disk_fraction=True,
+                             lz_disk=0.8,
+                             figtype='.png',
+                             dpi=100):
         """Orbit probability distribution in the (population data, circularity)
         plane and fraction of disk orbits as a function of the population data
 
@@ -1348,7 +1348,7 @@ class Coloring:
         fig.colorbar(cax,
                      orientation='vertical',
                      pad=0.1,
-                     label=r'$r$')
+                     label=r'$p$')
         if disk_fraction:  # Plot cold orbit fraction vs. age
             ax.plot([min_c, max_c], [lz_disk, lz_disk], 'k--')
             ax.plot([disk_50, disk_50], [-1, 1], 'k--')
