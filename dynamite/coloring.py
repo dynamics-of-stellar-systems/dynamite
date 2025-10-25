@@ -107,22 +107,14 @@ class Coloring:
                              weights=orbit_distribution.sum(axis=0))
         if lmd_tot < 0:
             self.logger.warning('The total circularity of the orbit '
-                                'distribution is negative. Beware of side '
+                                'distribution is negative '
+                                f'(lambda_z={lmd_tot}), flipping the sign of '
+                                'lambda_z. Beware of side '
                                 'effects! Hint: consider changing the '
                                 'position angle in the aperture file by ±180 '
                                 'degrees.')
-            # The following commented-out lines don't work as intended, need
-            # to flip the sign of lambda_z upon reading the orbit property
-            # files like in Plotter.orbit_plot() instead, not using the
-            # projection tensor.
-            # self.logger.warning('The total circularity of the orbit '
-            #                     'distribution is negative '
-            #                     f'(lambda_z={lmd_tot}), flipping the sign of '
-            #                     'lambda_z. Beware of side effects!')
-            # # flip the sign of lambda_z: flip orbit_projection along l axis
-            # orbit_projection = orbit_projection[:, ::-1, :]
-            # # orbit_distribution = orbit_projection.dot(model.weights)
-            # orbit_distribution = orbit_distribution[:, ::-1]
+            orbit_distribution = orbit_distribution[:, ::-1]
+            orbit_projection = orbit_projection[:, ::-1, :]
         return orbit_distribution, orbit_projection
 
     def bin_phase_space(self,
