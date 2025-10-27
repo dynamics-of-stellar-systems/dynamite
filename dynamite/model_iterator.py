@@ -1,7 +1,6 @@
 import os
 import logging
 import numpy as np
-from astropy import table
 from pathos.multiprocessing import Pool
 import matplotlib.pyplot as plt
 
@@ -132,7 +131,7 @@ class ModelIterator(object):
                     and not t['all_done']]
         if len(rows_with_orbits_but_no_weights) > 0:
             to_do = config.all_models.table[rows_with_orbits_but_no_weights]
-            to_do = to_do['directory']
+            to_do = list(to_do['directory'])
             self.logger.info(f'Reattempting weight solving: models {to_do}.')
             n_proc = config.settings.multiprocessing_settings['ncpus_weights']
             with Pool(n_proc) as p:
@@ -187,8 +186,7 @@ class ModelInnerIterator(object):
                  do_dummy_run=False,
                  dummy_chi2_function=None):
         self.logger = logging.getLogger(f'{__name__}.{__class__.__name__}')
-        self.config = config
-        self.system = config.system
+        self.settings = config.settings
         self.all_models = config.all_models
         self.orblib_parameters = config.parspace.par_names[:]
         ml = 'ml'
@@ -199,13 +197,15 @@ class ModelInnerIterator(object):
                               "implementation")
             raise
         self.logger.debug(f'orblib_parameters: {self.orblib_parameters}')
+        # get ml's format for the model directory names
+        self.sformat_ml = config.system.get_par_by_name(ml).sformat
         self.par_generator = par_generator
         self.do_dummy_run = do_dummy_run
         if self.do_dummy_run:
             assert dummy_chi2_function is not None
             # TODO: assert dummy_chi2_function is a valid function of parset
         self.dummy_chi2_function = dummy_chi2_function
-        self.ncpus = config.settings.multiprocessing_settings['ncpus']
+        self.ncpus = self.settings.multiprocessing_settings['ncpus']
         self.n_to_do = 0
 
     def run_iteration(self, split_orblib_weights=False):
@@ -379,9 +379,8 @@ class ModelInnerIterator(object):
                 raise ValueError(text)
             self.all_models.table[row]['directory'] = orblib_dir
         # ml directories
-        sformat = self.system.parameters[0].sformat # this is ml's format
         for row in rows_orblib+rows_ml:
-            ml_dir = f"/ml{self.all_models.table['ml'][row]:{sformat}}/"
+            ml_dir = f"/ml{self.all_models.table['ml'][row]:{self.sformat_ml}}/"
             self.all_models.table[row]['directory'] += ml_dir
             self.logger.debug(f"New model directory "
                 f"{self.all_models.table[row]['directory']} assigned.")
@@ -519,7 +518,7 @@ class SplitModelIterator(ModelInnerIterator):
         super().__init__(**kwargs)
         self.logger = logging.getLogger(f'{__name__}.{__class__.__name__}')
         self.ncpus_weights = \
-            self.config.settings.multiprocessing_settings['ncpus_weights']
+            self.settings.multiprocessing_settings['ncpus_weights']
 
     def run_iteration(self):
         """Execute one iteration step

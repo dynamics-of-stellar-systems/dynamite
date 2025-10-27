@@ -4,6 +4,7 @@
 Change Log
 ****************
 
+- Improvement: Changed the default BayesLOSVD histogram width and number of velocity bins to be consistent with the data (no oversampling by default).
 - Improvement: Use indicator files for existing orblibs instead of checking multiple files (preparation for coloring and proper motions).
 - Improvement: Replaced staging files by directly checking for orblibs and weight files on disk.
 - Improvement: Significant performance gain when reading existing model weights (eliminated unnecessary reading of orbit library)

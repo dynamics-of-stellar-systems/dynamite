@@ -495,7 +495,7 @@ class Configuration(object):
 
         self.parspace = parspace.ParameterSpace(self.system)
         logger.info('Instantiated parameter space')
-        logger.debug(f'Parameter space: {self.parspace}')
+        logger.debug(f'Parameter space: {[p for p in self.parspace]}')
 
         self.all_models = model.AllModels(config=self)
         logger.info('Instantiated AllModels object')
@@ -924,22 +924,25 @@ class Configuration(object):
                     for kin_data in c.kinematic_data:
                         check_gh = (kin_data.type == 'GaussHermite')
                         check_bl = (kin_data.type == 'BayesLOSVD')
-                        if (not check_gh) and (not check_bl):
+                        check_pm = (kin_data.type == 'ProperMotions')
+                        if not (check_gh or check_bl or check_pm):
                             txt = 'VisibleComponent kinematics type must be ' \
-                                  'GaussHermite or BayesLOSVD'
+                                  'GaussHermite, BayesLOSVD, or ProperMotions.'
                             self.logger.error(txt)
                             raise ValueError(txt)
-                        if check_bl:
+                        if check_bl or check_pm:
                             # check weight solver type
                             if ws_type == 'LegacyWeightSolver':
                                 txt = "LegacyWeightSolver can't be used with "\
-                                      "BayesLOSVD - use weight-solver type NNLS"
+                                      "BayesLOSVD nor ProperMotions - " \
+                                      "use weight-solver type NNLS"
                                 self.logger.error(txt)
                                 raise ValueError(txt)
                             # check for compatible chi2 variant
                             if which_chi2 == 'kinmapchi2':
                                 txt = 'kinmapchi2 cannot be used with ' \
-                                      'BayesLOSVD - use chi2 or kinchi2.'
+                                      'BayesLOSVD nor ProperMotions - ' \
+                                      'use chi2 or kinchi2.'
                                 self.logger.error(txt)
                                 raise ValueError(txt)
                         else:  # GaussHermite kinematics
@@ -947,10 +950,10 @@ class Configuration(object):
                             _ = kin_data.get_data(
                                 self.settings.weight_solver_settings)
                 else:
-                    self.logger.error('VisibleComponent must have kinematics: '
-                                      'either GaussHermite or BayesLOSVD')
-                    raise ValueError('VisibleComponent must have kinematics: '
-                                     'either GaussHermite or BayesLOSVD')
+                    txt = 'VisibleComponent must have kinematics: ' \
+                          'GaussHermite, BayesLOSVD, and/or ProperMotions.'
+                    self.logger.error(txt)
+                    raise ValueError(txt)
                 if c.symmetry != 'triax':
                     self.logger.error('Legacy mode: VisibleComponent must be '
                                       'triaxial')
@@ -983,7 +986,8 @@ class Configuration(object):
         chi2abs = self.__class__.thresh_chi2_abs
         chi2scaled = self.__class__.thresh_chi2_scaled
         gen_set=self.settings.parameter_space_settings.get('generator_settings')
-        if gen_set != None and (chi2abs in gen_set and chi2scaled in gen_set):
+        if gen_set is not None \
+           and (chi2abs in gen_set and chi2scaled in gen_set):
             self.logger.error(f'Only specify one of {chi2abs}, {chi2scaled}, '
                               'not both')
             raise ValueError(f'Only specify one of {chi2abs}, {chi2scaled}, '
@@ -1054,7 +1058,7 @@ class Configuration(object):
 
         """
         allowed_chi2 = ('chi2', 'kinchi2', 'kinmapchi2')
-        if which_chi2 == None:
+        if which_chi2 is None:
             which_chi2 = self.settings.parameter_space_settings['which_chi2']
         if which_chi2 not in allowed_chi2:
             text = 'parameter_space_settings: which_chi2 must be one of ' \
