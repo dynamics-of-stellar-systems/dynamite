@@ -9,9 +9,8 @@ import numpy as np
 from astropy import table
 from astropy.io import ascii
 
-from dynamite import constants
+import dynamite as dyn
 from dynamite import weight_solvers as ws
-from dynamite import orblib as dyn_orblib
 
 class AllModels(object):
     """All models which have been run so far
@@ -127,10 +126,10 @@ class AllModels(object):
     def update_model_table(self):
         """all_models table update: fix incomplete models, add kinmapchi2.
 
-        Dealing with incomplete models (all_done==False):
-
-        If the model has an existing orblib (indicated by the presence of
+        If a model has an existing orblib (indicated by the presence of
         datfil/tube_box_done), its orblib_done will be set to True.
+
+        Dealing with incomplete models (all_done==False):
 
         If the model weights have been calculated (indicated by the presence of
         the weights file), weights_done will be set to True and the model table
@@ -169,12 +168,12 @@ class AllModels(object):
         """
         table_modified = False
         for i, row in enumerate(self.table):
-            is_complete = row['all_done']  # refers to orblib + weights
-            if self.system.has_chi2_ext:  # has chi2_ext been added?
-                is_complete = \
-                    is_complete and not np.isnan(row['chi2_ext_added'])
-            if is_complete:  # Do we need to check anything?
-                continue
+#            is_complete = row['all_done']  # refers to orblib + weights
+#            if self.system.has_chi2_ext:  # has chi2_ext been added?
+#                is_complete = \
+#                    is_complete and not np.isnan(row['chi2_ext_added'])
+#            if is_complete:  # Do we need to check anything?
+#                continue
             mod = self.get_model_from_row(i)
             if not row['orblib_done']:  # First, check for existing orblib
                 f_root = mod.directory_noml + 'datfil/'
@@ -183,32 +182,35 @@ class AllModels(object):
                     row['orblib_done'] = True
                     row['time_modified'] = str(np.datetime64('now', 'ms'))
                     self.logger.info(f'Row {i}: orblib exists in {f_root}.')
-            if not row['weights_done']:  # Then, check for existing weights
-                w_file = mod.directory + constants.weight_file
+            # Then, check for existing weights
+            if (not row['all_done']) and (not row['weights_done']):
+                w_file = mod.directory + dyn.constants.weight_file
                 if os.path.isfile(w_file):
                     chi2s = ascii.read(w_file).meta
                     table_modified = True
                     row['chi2'] = chi2s['chi2_tot']
                     row['kinchi2'] = chi2s['chi2_kin']
                     row['kinmapchi2'] = chi2s['chi2_kinmap']
-                    self.logger.info(f'Row {i}: weights exist in {w_file}.')
-                    if self.system.has_chi2_ext:
-                        # Now we know that chi2_ext hasn't been added yet
-                        # (see is_complete above) - calculate and add it.
-                        ext_chi2_comp = \
-                            self.system.get_unique_ext_chi2_component()
-                        parset = self.get_parset_from_row(i)
-                        chi2_ext = ext_chi2_comp.get_chi2(dict(parset))
-                        row['chi2'] = row['chi2'] + chi2_ext
-                        row['kinchi2'] = row['kinchi2'] + chi2_ext
-                        row['kinmapchi2'] = row['kinmapchi2'] + chi2_ext
-                        row['chi2_ext_added'] = chi2_ext
-                        self.logger.debug(f'Row {i}: chi2_ext added.')
-                    row['weights_done'] = True
+                    row['weights_done'] = row['all_done'] = True
                     row['time_modified'] = str(np.datetime64('now', 'ms'))
-            row['all_done'] = row['weights_done']
-            if row['all_done']:
+                    self.logger.info(f'Row {i}: weights exist in {w_file}.')
+            # Calcualte chi2_ext if applicable
+            if self.system.has_chi2_ext and np.isnan(row['chi2_ext_added']) \
+               and row['weights_done']:
+                ext_chi2_comp = self.system.get_unique_ext_chi2_component()
+                parset = self.get_parset_from_row(i)
+                chi2_ext = ext_chi2_comp.get_chi2(dict(parset))
                 table_modified = True
+                row['chi2'] = row['chi2'] + chi2_ext
+                row['kinchi2'] = row['kinchi2'] + chi2_ext
+                row['kinmapchi2'] = row['kinmapchi2'] + chi2_ext
+                row['chi2_ext_added'] = chi2_ext
+                self.logger.debug(f'Row {i}: chi2_ext added.')
+            if not row['all_done'] and row['weights_done']:
+                table_modified = True
+                row['all_done'] = True
+                row['time_modified'] = str(np.datetime64('now', 'ms'))
+                self.logger.info(f'Row {i}: all_done set to True.')
             if not (row['orblib_done'] or row['weights_done']):
                 self.logger.debug(f'Row {i}: neither orblibs nor weights were '
                                   f'completed for model in {mod.directory}.')
@@ -265,6 +267,7 @@ class AllModels(object):
                         ' perhaps it has already been removed before.')
             os.chdir(cwd)
             self.table.remove_rows(to_delete)
+            table_modified = True
         # Up to DYNAMITE 3.0 there was no kinmapchi2 column -> retrofit.
         if isinstance(self.table['kinmapchi2'], table.column.MaskedColumn):
             table_modified = True
@@ -275,12 +278,6 @@ class AllModels(object):
             self.logger.info('all_models table updated and saved.')
         else:
             self.logger.info('No all_models table update required.')
-        path = self.config.settings.io_settings['model_directory']
-        orb_dirs = [path + d for d in self.table['directory']]  # model dirs
-        # Now, convert the model dirs to orblib dirs, eliminating duplicates
-        orb_dirs = set([d[:d[:-1].rindex('/') + 1] for d in orb_dirs])
-        for d in orb_dirs:
-            self.update_orblib_flags(d)
 
     def update_orblib_flags(self, orblib_directory):
         """Update the indicator files in the orblib directory
@@ -1170,7 +1167,7 @@ class Model(object):
         a ``dyn.orblib.OrbitLibrary`` object
 
         """
-        orblib = dyn_orblib.LegacyOrbitLibrary(
+        orblib = dyn.orblib.LegacyOrbitLibrary(
                 config=self.config,
                 mod_dir=self.directory_noml,
                 parset=self.parset)
