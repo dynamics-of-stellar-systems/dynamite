@@ -500,6 +500,15 @@ class Configuration(object):
         self.all_models = model.AllModels(config=self)
         logger.info('Instantiated AllModels object')
         logger.debug(f'AllModels:\n{self.all_models.table}')
+        # Update the indicator files in the orblib directories. This is
+        # necessary here because the indicators depend on the exising data
+        # like kinematics, populations, proper motions.
+        path = self.settings.io_settings['model_directory']
+        directories = [path + d for d in self.all_models.table['directory']]
+        # Now, convert the model dirs to orblib dirs, eliminating duplicates
+        directories = set([d[:d[:-1].rindex('/') + 1] for d in directories])
+        for d in directories:
+            self.all_models.update_orblib_flags(d)
         self.all_models.update_model_table()
 
         # self.backup_config_file(reset=False)
