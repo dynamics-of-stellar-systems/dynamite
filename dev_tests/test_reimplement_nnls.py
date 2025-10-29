@@ -27,7 +27,9 @@ def run_user_test():
     # read configuration
     # this file uses the old 'LegcayWeight' weight solver
     fname = 'reimplement_nnls_config1.yaml'
-    c1 = dyn.config_reader.Configuration(fname, reset_logging=True)
+    c1 = dyn.config_reader.Configuration(fname,
+                                         reset_logging=True,
+                                         reset_existing_output=True)
     remove_existing_output(c1, remove_orblibs=True)
 
     # run the models
