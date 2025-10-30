@@ -1977,10 +1977,13 @@ contains
                 print *, "  * Opening: ", string
                 open (unit=30 + i, file=string, action="read", status="old"&
                   &, position="rewind")
-                read (unit=30 + i, fmt=*) string
-                if (string /= "#Counterrotaton_binning_version_1") &
-                    stop " Wrong version of file"
-                read (unit=30 + i, fmt=*) bin_size(i)
+                ! skip possible comment lines (first non-whitespace char is #)
+                do
+                    read (unit=30 + i, fmt='(A)') string
+                    if ( index (adjustl(string), "#") == 1 ) cycle
+                    read (string, *) bin_size(i)
+                    exit
+                end do
                 print *, "  * bins in this aperture:", bin_size(i)
             end if
         end do

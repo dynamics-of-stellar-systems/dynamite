@@ -242,10 +242,13 @@ contains
         print *, "  * Opening: ", string
         open (unit=30, file=string, action="read", status="old"&
              &, position="rewind")
-        read (unit=30, fmt=*) string
-        if (string /= "#Counterrotaton_binning_version_1") &
-            stop " Wrong version of file"
-        read (unit=30, fmt=*) bins
+        ! skip possible comment lines (first non-whitespace char is #)
+        do
+            read (unit=30, fmt='(A)') string
+            if ( index (adjustl(string), "#") == 1 ) cycle
+            read (string, *) bins
+            exit
+        end do
         print *, "  * pixels in this aperture:", bins
 
         if (bins /= size(grid)) &
