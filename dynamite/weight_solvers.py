@@ -848,8 +848,9 @@ class NNLS(WeightSolver):
                     weights = solution[0]
                 except Exception as e:
                     txt = f'Orblib {orblib.mod_dir}, ml={orblib.parset["ml"]}'\
-                        f': SciPy solver error occured: {e} All weights ' \
-                        'and chi2 set to nan. Consider trying cvxopt.'
+                        f': SciPy solver error occured: {e} All weights and ' \
+                        'chi2 set to nan. Consider a larger maxiter_factor ' \
+                        f'(currently, maxiter_factor={maxiter_factor}).'
                     self.logger.warning(txt)
                     weights = np.full(A.shape[1], np.nan)
             elif self.nnls_solver=='cvxopt':
