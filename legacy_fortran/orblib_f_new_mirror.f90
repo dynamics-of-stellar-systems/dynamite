@@ -247,7 +247,7 @@ contains
 
     !++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
     subroutine integrator_setup_bar()
-        use initial_parameters, only: iniparam_bar, orbit_dithering, Omega
+        use initial_parameters, only: iniparam_bar, orbit_dithering
         !use triaxpotent, only : tp_setup
         use interpolpot, only: ip_setup_bar
         !----------------------------------------------------------------------
@@ -450,7 +450,7 @@ contains
         real(kind=dp), intent(out), dimension(integrator_points, 3) :: pos
         real(kind=dp), intent(out), dimension(integrator_points, 3) :: vel
         !----------------------------------------------------------------------
-        integer(kind=i4b) :: IOUT, IDID, ITOL, i, l
+        integer(kind=i4b) :: IOUT, IDID, ITOL
         integer(kind=i4b), parameter :: N = 6, NRDENS = 6, LWORK = 11*N + 8*NRDENS + 21
         integer(kind=i4b), parameter :: LIWORK = NRDENS + 21
         real(kind=dp) :: X, Xend, RTOL, ATOL
@@ -1220,11 +1220,10 @@ contains
 
         integer(kind=i4b)                          :: pf
         ! input vectors (n,2)
-        integer(kind=i4b)                          :: i, j, sizex, k, o
+        integer(kind=i4b)                          :: i, j, sizex
         real(kind=dp), dimension(:), allocatable :: weightfl
         integer(kind=i4b), dimension(:), allocatable :: weightint
         ! random sigma's
-        real(kind=dp) :: offset, total
 
         print *, "  * Making vectors filled of sigmas for psf convolution."
         sizex = integrator_points*projection_symmetry
@@ -2141,13 +2140,10 @@ contains
 
     !++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
     subroutine qgrid_setup()
-        use initial_parameters, only: nEner, nI2, nI3, rLogMin, rLogMax, sigobs_km &
-                                      , conversion_factor &
+        use initial_parameters, only: rLogMin, rLogMax, sigobs_km &
                                       , quad_nr, quad_nth, quad_nph
-        use integrator, only: integrator_dithering
         !----------------------------------------------------------------------
         integer(kind=i4b) :: i
-        real(kind=dp)  :: inR, psfsize
         print *, "  ** Octant grid module setup"
 
         print *, "  ** Grid dimension:"
@@ -2342,7 +2338,6 @@ contains
     subroutine qgrid_write(hdl)
         integer(kind=i4b), intent(in):: hdl
         real(kind=dp) :: norm
-        integer(kind=i4b) :: i
         !----------------------------------------------------------------------
 
         print *, "  * Writing intrisic moment octant"
@@ -2705,7 +2700,7 @@ contains
         real(kind=dp), dimension(integrator_points*projection_symmetry, 2):: proj, vec_gauss
         real(kind=dp), dimension(integrator_points*projection_symmetry):: losvel
         integer(kind=i4b), dimension(integrator_points*projection_symmetry):: velb, poly
-        integer(kind=i4b)                                          :: ap, i, pf
+        integer(kind=i4b)                                          :: ap, i
 
         integer(kind=i4b) :: type
         real(kind=dp) :: t1, t2

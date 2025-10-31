@@ -27,8 +27,8 @@ contains
         real(kind=dp)             :: y0, y1, angle, qi, sigma, surf_km, isotwist
         real(kind=dp)             :: psfwidth, psfweight
 
-        real(kind=dp)             :: f0, f1, k, c, p, psigma, sb, qb, surcor
-        real(kind=dp)             :: alpha, dens
+        real(kind=dp)             :: f0, f1, p, sb, qb, surcor
+        real(kind=dp)             :: alpha
 
         y0 = binmass_intergrand_global(1)
         y1 = binmass_intergrand_global(2)

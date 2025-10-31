@@ -465,7 +465,7 @@ contains
         real(kind=dp), intent(in) ::  x, y, z
         real(kind=dp), intent(out):: vx, vy, vz
         !------------------------------------
-        real(kind=dp) :: d2, tx, ty, tz, t, t1, t2, t3
+        real(kind=dp) :: d2, tx, ty, tz, t
         integer(kind=i4b) :: i
 
         vx = 0.0_dp
