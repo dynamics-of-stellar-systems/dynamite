@@ -2687,24 +2687,14 @@ contains
         use psf, only: psf_setup
         use output, only: output_setup
         !----------------------------------------------------------------------
-        character(len=80) :: string
         print *, "  ** Start Setup"
-        print *, "  * Give setup version info: [U for unspecified]"
-        read *, string
-        if (string == "#counterrotation_setupfile_version_1" .or. string == "U") then
-            print *, "  * Setupfile is Version 1"
-            call integrator_setup()
-            call projection_setup()
-            call qgrid_setup()
-            call psf_setup()
-            call aperture_setup()
-            call histogram_setup()
-            call output_setup()
-        else
-            print *, "This version is not understood by this program"
-            STOP "program terminated in high_level:setup"
-        end if
-
+        call integrator_setup()
+        call projection_setup()
+        call qgrid_setup()
+        call psf_setup()
+        call aperture_setup()
+        call histogram_setup()
+        call output_setup()
         print *, "  ** Setup Finished"
 
     end subroutine setup
@@ -2719,24 +2709,14 @@ contains
         use psf, only: psf_setup
         use output, only: output_setup
         !----------------------------------------------------------------------
-        character(len=80) :: string
         print *, "  ** Start Setup"
-        print *, "  * Give setup version info: [U for unspecified]"
-        read *, string
-        if (string == "#counterrotation_setupfile_version_1" .or. string == "U") then
-            print *, "  * Setupfile is Version 1"
-            call integrator_setup_bar()
-            call projection_setup()
-            call qgrid_setup()
-            call psf_setup()
-            call aperture_setup()
-            call histogram_setup()
-            call output_setup()
-        else
-            print *, "This version is not understood by this program"
-            STOP "program terminated in high_level:setup"
-        end if
-
+        call integrator_setup_bar()
+        call projection_setup()
+        call qgrid_setup()
+        call psf_setup()
+        call aperture_setup()
+        call histogram_setup()
+        call output_setup()
         print *, "  ** Setup Finished"
 
     end subroutine setup_bar
