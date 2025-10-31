@@ -142,7 +142,7 @@ class Integrated(Data):
         # read aperture file
         aperture_fname = self.input_directory + self.aperturefile
         lines = [line.rstrip('\n').split() for line in open(aperture_fname)
-                                           if line[0] != '#']
+                                           if line.lstrip(' ')[0] != '#']
         minx = float(lines[0][0])
         miny = float(lines[0][1])
         sx = float(lines[1][0])
@@ -163,7 +163,7 @@ class Integrated(Data):
         # read bin file
         bin_fname = self.input_directory + self.binfile
         lines_bins = [line.rstrip('\n').split() for line in open(bin_fname)
-                                                if line[0] != '#']
+                                                if line.lstrip(' ')[0] != '#']
         i = 0
         i_var = []
         grid = []

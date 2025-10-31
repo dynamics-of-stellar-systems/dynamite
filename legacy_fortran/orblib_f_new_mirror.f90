@@ -1323,198 +1323,6 @@ end module aperture
 !######################################################################
 !######################################################################
 
-module aperture_polygon
-    ! module with the functions for the polygon apertures.
-    use numeric_kinds
-    implicit none
-    private
-
-    ! aperture data
-    real(kind=dp), Dimension(:, :), private, allocatable :: polygon
-    integer(kind=i4b), Dimension(:, :), private, allocatable :: polygon_struct
-
-    ! Input routine
-    public :: aperture_poly_readfile
-
-    ! Functions for find points in polygons
-    public :: aperture_poly_find
-
-    public :: aper_poly_stop
-
-    private :: aperture_single_polygon
-
-    public :: aperture_poly_field
-contains
-
-    !++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-    subroutine aper_poly_stop()
-        !------------------------------------------------------------------
-        if (allocated(polygon)) then
-            deallocate (polygon)
-            deallocate (polygon_struct)
-        end if
-
-    end subroutine aper_poly_stop
-
-    !++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-    subroutine aperture_poly_readfile(handle, aper_n)
-        use initial_parameters, only: conversion_factor
-        use aperture, only: aperture_type, aperture_size, aperture_start
-        integer(kind=i4b), intent(in) :: handle
-        integer(kind=i4b), intent(in) :: aper_n
-        !------------------------------------------------------------------
-        integer(kind=i4b), save :: pol_n = 1, pol_s_n = 1
-        integer(kind=i4b) :: i, k, count
-        !temporary array's
-        real(kind=dp), Dimension(:, :), allocatable :: tr
-        integer(kind=i4b), Dimension(:, :), allocatable :: ti
-
-        print *, "  * Reading Polygonal aperture file."
-
-        ! set aperture type
-        aperture_type(aper_n) = 1
-
-        ! Read in # polygons
-        read (unit=handle, fmt=*) i
-        aperture_size(aper_n) = i
-        aperture_start(aper_n) = pol_s_n
-        print *, "  * File contains ", aperture_size(aper_n), " polygons"
-
-        if (allocated(polygon_struct)) then
-            ! funky reallocate. this is the way to do it in ifc.
-            allocate (ti(size(polygon_struct, 1), size(polygon, 2)))
-            ti(:, :) = polygon_struct(:, :)
-            deallocate (polygon_struct)
-            allocate (polygon_struct(pol_s_n + i, 2))
-            polygon_struct(1:size(ti, 1), 1:size(ti, 2)) = ti(1:size(ti, 1)&
-                 &, 1:size(ti, 2))
-            deallocate (ti)
-        else
-            allocate (polygon_struct(pol_s_n + i, 2))
-        end if
-
-        polygon_struct(1, 1) = 1
-        do k = pol_s_n, i + pol_s_n - 1
-            read (unit=handle, fmt=*) polygon_struct(k, 2)
-        end do
-
-        count = 0
-        do k = pol_s_n, i + pol_s_n - 1
-
-            polygon_struct(k, 1) = (pol_n + count)
-            count = count + polygon_struct(k, 2)
-        end do
-
-        pol_s_n = i + pol_s_n
-        polygon_struct(pol_s_n, 1) = count
-        if (allocated(polygon)) then
-            ! funky reallocate. this is the way to do it in ifc.
-            allocate (tr(size(polygon, 1), size(polygon, 2)))
-            tr(:, :) = polygon(:, :)
-            deallocate (polygon)
-            allocate (polygon(pol_n + count, 2))
-            polygon(1:size(tr, 1), 1:size(tr, 2)) = tr(1:size(tr, 1)&
-                 &, 1:size(tr, 2))
-            deallocate (tr)
-        else
-            allocate (polygon(pol_n + count, 2))
-        end if
-        print *, "  * Total amount of vertexes :", count
-
-        read (unit=handle, fmt=*) (polygon(i, 1), polygon(i, 2), i=pol_n, count + pol_n - 1)
-        ! convert arcsec to km
-        polygon(pol_n:count + pol_n - 1, :) = polygon(pol_n:count + pol_n - 1, :)* &
-             & conversion_factor
-        pol_n = pol_n + count + 1
-        print *, "  * Finished reading file"
-        print *, "  "
-        print *, "  * Aperture file ", aper_n, " contained :"
-        print *, "  *   #pol       #ver      1.x "
-        do i = aperture_start(aper_n), aperture_start(aper_n) + aperture_size(aper_n) - 1
-            print *, "    ", i, "  ", polygon_struct(i, 2), "  ", &
-                 &polygon(polygon_struct(i, 1), 1), polygon_struct(i, 1)
-        end do
-
-    end subroutine aperture_poly_readfile
-
-    !++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-    subroutine aperture_poly_find(vec, ap, res)
-        use aperture, only: aperture_size, aperture_type, aperture_start
-        real(kind=dp), dimension(:, :), intent(in) :: vec
-        integer(kind=i4b), intent(in) :: ap
-        integer(kind=i4b), intent(out), dimension(size(vec, 1)) :: res
-        !----------------------------------------------------------------------
-        integer(kind=i4b) :: i, k
-        logical :: found
-
-        !DEBUG
-        if (aperture_type(ap) /= 1) stop "FIXME: BUG in aperture_find_m"
-
-        res(:) = 0
-        do k = 1, size(vec, 1)
-            do i = 0, aperture_size(ap)
-                call aperture_single_polygon(i + aperture_start(ap), vec(k, 1), &
-                                             vec(k, 2), found)
-                if (found) then
-                    res(k) = i + 1
-                    exit
-                end if
-            end do
-        end do
-
-    end subroutine aperture_poly_find
-
-    !++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-    subroutine aperture_single_polygon(k, x, y, found)
-        integer(kind=i4b), intent(in)  :: k
-        real(kind=dp), intent(in)  :: x, y
-        logical, intent(out) :: found
-        !----------------------------------------------------------------------
-        integer(kind=i4b)             :: i, j
-
-        found = .false.
-        j = polygon_struct(k, 1) + polygon_struct(k, 2) - 1
-        do i = polygon_struct(k, 1), polygon_struct(k, 1) + polygon_struct(k, 2) - 1
-            if ((polygon(i, 2) <= y .and. y < polygon(j, 2)) .or. (polygon(j, 2) <= y &
-                 & .and. y < polygon(i, 2))) then
-                if (x < ((polygon(j, 1) - polygon(i, 1))*(y - polygon(i, 2))/ &
-                     & (polygon(j, 2) - polygon(i, 2))) + polygon(i, 1)) found = .not. found
-            end if
-            j = i
-        end do
-
-    end subroutine aperture_single_polygon
-
-    !++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-    subroutine aperture_poly_field(ap, x, y)
-        use aperture, only: aperture_size, aperture_start
-        integer(kind=i4b), intent(in) :: ap
-        real(kind=dp), intent(out), dimension(:) :: x, y
-        !----------------------------------------------------------------------
-        integer(kind=i4b) :: i
-        real(kind=dp) :: d, e
-        x(:) = 0.0_dp
-        y(:) = 0.0_dp
-        ! This do is an example of bad datastructure design.
-        do i = polygon_struct(aperture_start(ap), 1), &
-             & polygon_struct(aperture_start(ap) + aperture_size(ap) - 1, 1) + &
-             & polygon_struct(aperture_start(ap) + aperture_size(ap) - 1, 2) - 1
-            d = polygon(i, 1)
-            e = polygon(i, 2)
-            x(1) = min(d, x(1))
-            y(1) = min(e, y(1))
-            x(2) = max(d, x(2))
-            y(2) = max(e, x(2))
-        end do
-
-    end subroutine aperture_poly_field
-
-end module aperture_polygon
-
-!######################################################################
-!######################################################################
-!######################################################################
-
 module aperture_boxed
     !contains the aperture functions for the square pixel boxed apertures
     use numeric_kinds
@@ -1552,10 +1360,12 @@ contains
     subroutine aperture_boxed_readfile(handle, aper_n)
         use initial_parameters, only: conversion_factor
         use aperture, only: aperture_type, aperture_size, aperture_start
+        use file_tools, only: next_content_line
         integer(kind=i4b), intent(in) :: handle, aper_n
         !----------------------------------------------------------------------
         integer(kind=i4b), save       :: amount = 0
-        integer(kind=i4b)            :: biny
+        integer(kind=i4b)             :: biny
+        character(len=80)             :: string
         !temporary array's
         real(kind=dp), Dimension(:, :), allocatable     :: tr
         integer(kind=i4b), Dimension(:, :), allocatable :: ti
@@ -1599,14 +1409,18 @@ contains
 
         print *, "  *  Reading box info"
         print *, "  *  Order: begin(x,y)"
-        read (unit=handle, fmt=*) ap_box_begin(amount, 1:2)
+        string = next_content_line(handle)
+        read (string, fmt=*) ap_box_begin(amount, 1:2)
         print *, "      size(x,y) "
-        read (unit=handle, fmt=*) ap_box_size(amount, 1:2)
+        string = next_content_line(handle)
+        read (string, fmt=*) ap_box_size(amount, 1:2)
         print *, "      rotation"
-        read (unit=handle, fmt=*) ap_box_rot(amount)
+        string = next_content_line(handle)
+        read (string, fmt=*) ap_box_rot(amount)
         ap_box_rot(amount) = ap_box_rot(amount)*(pi_d/180.0_dp)
         print *, "      bin(x,y)"
-        read (unit=handle, fmt=*) ap_box_bx(amount), biny
+        string = next_content_line(handle)
+        read (string, fmt=*) ap_box_bx(amount), biny
 
         ! convert arcsec into km
         ap_box_begin(amount, :) = ap_box_begin(amount, :)*conversion_factor
@@ -1738,7 +1552,6 @@ contains
 
     !++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
     subroutine aperture_setup()
-        use aperture_polygon, only: aperture_poly_readfile
         use aperture_boxed, only: aperture_boxed_readfile
         use psf, only: psf_n
         !----------------------------------------------------------------------
@@ -1763,23 +1576,9 @@ contains
 
             open (unit=handle, file=file, action="read", status="old"&
                  &, position="rewind")
-            print *, "  * Checking type."
-            read (unit=handle, fmt=*) string
-
-            select case (string)
-            case ("#counterrotation_polygon_aperturefile_version_1")
-                call aperture_poly_readfile(handle, i)
-            case ("#counter_rotation_boxed_aperturefile_version_2")
-                call aperture_boxed_readfile(handle, i)
-            case default
-                print *, "  * Sorry, can only handle:"
-                print *, "     #counterrotation_polygon_aperturefile_version_1"
-                print *, "     #counter_rotation_boxed_aperturefile_version_2"
-                print *, "    This file is of type:"
-                print *, "  ", string
-                stop " program ended because of wrong input."
-            end select
-
+            string = "#counter_rotation_boxed_aperturefile_version_2"
+            print *, "  * Assuming type ", string
+            call aperture_boxed_readfile(handle, i)
             close (unit=handle)
             print *, "  * To which psf does this aperture belong?"
             read *, aperture_psf(i)
@@ -1805,11 +1604,9 @@ contains
     !++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
     subroutine aperture_stop()
         use aperture, only: aper_stop
-        use aperture_polygon, only: aper_poly_stop
         use aperture_boxed, only: aper_boxed_stop
         !----------------------------------------------------------------------
         call aper_stop()
-        call aper_poly_stop()
         call aper_boxed_stop()
 
     end subroutine aperture_stop
@@ -1818,14 +1615,11 @@ contains
     subroutine aperture_find(ap, v_m, poly)
         use aperture, only: aperture_type
         use aperture_boxed, only: aperture_boxed_find
-        use aperture_polygon, only: aperture_poly_find
         integer(kind=i4b), intent(in) :: ap
         real(kind=dp), dimension(:, :), intent(in) :: v_m
         integer(kind=i4b), dimension(size(v_m, 1)), intent(out) :: poly
         !----------------------------------------------------------------------
         select case (aperture_type(ap))
-        case (1)
-            call aperture_poly_find(v_m, ap, poly)
         case (2)
             call aperture_boxed_find(ap, v_m, poly)
         case default
@@ -1839,7 +1633,6 @@ contains
     subroutine aperture_field(pf, minx, maxx, miny, maxy)
         use aperture, only: aperture_n, aperture_type, aperture_psf
         use aperture_boxed, only: aperture_boxed_field
-        use aperture_polygon, only: aperture_poly_field
         use psf, only: psf_n
         integer(kind=i4b), intent(in) :: pf
         real(kind=dp), intent(out) :: maxx, minx, miny, maxy
@@ -1856,8 +1649,6 @@ contains
             do i = 1, aperture_n
                 pfn = aperture_psf(i)
                 select case (aperture_type(i))
-                case (1)
-                    call aperture_poly_field(i, x, y)
                 case (2)
                     call aperture_boxed_field(i, x, y)
                 case default

@@ -702,7 +702,7 @@ contains
 
     !++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
     ! Return the next non-comment line, i.e. line where the first
-    ! non-whitespace character is not '#'.
+    ! non-blank space character is not '#'.
     !++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
     character(len=80) function next_content_line(unit)
         integer, intent(in) :: unit
