@@ -1288,8 +1288,6 @@ module aperture
     integer(kind=i4b), public                          :: aperture_n
     ! Number of apertures with 0d histograms (mass only)
     integer(kind=i4b), public                          :: ap_hist0d_n
-    ! type of aperture (1=poly,2=box)
-    integer(kind=i4b), public, allocatable, dimension(:) :: aperture_type
     ! histogram dimension for each aperture (0=0D, 1=1D, 2=2D)
     integer(kind=i4b), public, allocatable, dimension(:) :: ap_hist_dim
 
@@ -1307,8 +1305,7 @@ contains
     subroutine aper_stop()
         !--------------------------------------------------------------
         print *, "  * Stopping aperture module"
-        if (allocated(aperture_type)) then
-            deallocate (aperture_type)
+        if (allocated(aperture_size)) then
             deallocate (aperture_size)
             deallocate (aperture_start)
             deallocate (ap_hist_dim)
@@ -1359,7 +1356,7 @@ contains
     !++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
     subroutine aperture_boxed_readfile(handle, aper_n)
         use initial_parameters, only: conversion_factor
-        use aperture, only: aperture_type, aperture_size, aperture_start
+        use aperture, only: aperture_size, aperture_start
         use file_tools, only: next_content_line
         integer(kind=i4b), intent(in) :: handle, aper_n
         !----------------------------------------------------------------------
@@ -1404,8 +1401,6 @@ contains
             allocate (ap_box_size(1, 2), ap_box_begin(1, 2), ap_box_bx(1))
             allocate (ap_box_idx(1), ap_box_idy(1), ap_box_rot(1))
         end if
-        ! set aperture type
-        aperture_type(aper_n) = 2
 
         print *, "  *  Reading box info"
         print *, "  *  Order: begin(x,y)"
@@ -1448,7 +1443,7 @@ contains
         ! vec is a n*m*2 matrix with vectors.
         ! res is an n*m matrix with has the resulting pixel of each vector
         ! ap is the aperture number.
-        use aperture, only: aperture_start, aperture_type
+        use aperture, only: aperture_start
         !use initial_parameters, only : psi_view
         use projection, only: psi_proj
         integer(kind=i4b), intent(in)                          :: ap
@@ -1458,9 +1453,6 @@ contains
         integer(kind=i4b) :: n, j, bx
         real(kind=dp) :: r1, r2, b1, b2, idx, idy, sx, sy, x, y, t, q
         !real (kind=dp), dimension(size(vec,1)) :: t, q, x, y
-
-        !DEBUG
-        if (aperture_type(ap) /= 2) stop "FIXME: BUG in aperture_boxed_find"
 
         ! The number of this aperture in the memory
         n = aperture_start(ap)
@@ -1542,9 +1534,6 @@ module aperture_routines
 
     public :: aperture_stop
 
-    ! Finds aperture numbers corresponding to the VECtors.
-    public :: aperture_find
-
     ! Finds the boundaries (on the sky) of an aperture.
     public :: aperture_field
 
@@ -1563,7 +1552,6 @@ contains
 
         allocate (aperture_size(aperture_n))
         allocate (aperture_start(aperture_n))
-        allocate (aperture_type(aperture_n))
         allocate (aperture_psf(aperture_n))
         allocate (ap_hist_dim(aperture_n))
         print *, "  * using ", aperture_n, " aperture(s)"
@@ -1612,26 +1600,8 @@ contains
     end subroutine aperture_stop
 
     !++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-    subroutine aperture_find(ap, v_m, poly)
-        use aperture, only: aperture_type
-        use aperture_boxed, only: aperture_boxed_find
-        integer(kind=i4b), intent(in) :: ap
-        real(kind=dp), dimension(:, :), intent(in) :: v_m
-        integer(kind=i4b), dimension(size(v_m, 1)), intent(out) :: poly
-        !----------------------------------------------------------------------
-        select case (aperture_type(ap))
-        case (2)
-            call aperture_boxed_find(ap, v_m, poly)
-        case default
-            print *, " aperture type :", ap, " found"
-            stop " Wrong aperture type in aperture_find"
-        end select
-
-    end subroutine aperture_find
-
-    !++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
     subroutine aperture_field(pf, minx, maxx, miny, maxy)
-        use aperture, only: aperture_n, aperture_type, aperture_psf
+        use aperture, only: aperture_n, aperture_psf
         use aperture_boxed, only: aperture_boxed_field
         use psf, only: psf_n
         integer(kind=i4b), intent(in) :: pf
@@ -1648,13 +1618,7 @@ contains
             f_y(:, :) = 0.0_dp
             do i = 1, aperture_n
                 pfn = aperture_psf(i)
-                select case (aperture_type(i))
-                case (2)
-                    call aperture_boxed_field(i, x, y)
-                case default
-                    print *, " aperture type :", i, " found"
-                    stop " Wrong aperture type in aperture_field"
-                end select
+                call aperture_boxed_field(i, x, y)
                 f_x(pfn, 1) = min(f_x(pfn, 1), x(1))
                 f_x(pfn, 2) = max(f_x(pfn, 2), x(2))
                 f_y(pfn, 1) = min(f_y(pfn, 1), y(1))
@@ -2732,7 +2696,7 @@ contains
         use quadrantgrid, only: qgrid_reset, qgrid_store
         use psf, only: psf_n, psf_gaussian
         use aperture, only: aperture_n, aperture_psf
-        use aperture_routines, only: aperture_find
+        use aperture_boxed, only: aperture_boxed_find
 
         !----------------------------------------------------------------------
         logical :: done, first, alldone
@@ -2773,7 +2737,7 @@ contains
                         call psf_gaussian(i, proj, vec_gauss)
                         do ap = 1, aperture_n
                             if (i == aperture_psf(ap)) then
-                                call aperture_find(ap, vec_gauss, poly)
+                                call aperture_boxed_find(ap, vec_gauss, poly)
                                 call histogram_store(ap, poly, velb, size(proj, 1))
                             end if
                         end do
