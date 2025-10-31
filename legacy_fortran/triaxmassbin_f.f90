@@ -228,6 +228,8 @@ contains
     end subroutine aperture_boxed_readfile
 
     subroutine read_binningfile(grid)
+        use file_tools, only: next_content_line
+        !----------------------------------------------------------------------
         real(kind=dp), dimension(:), intent(in) :: grid
         integer(kind=i4b) :: i, bins, minst, maxst
         character(len=256) :: string
@@ -242,13 +244,8 @@ contains
         print *, "  * Opening: ", string
         open (unit=30, file=string, action="read", status="old"&
              &, position="rewind")
-        ! skip possible comment lines (first non-whitespace char is #)
-        do
-            read (unit=30, fmt='(A)') string
-            if ( index (adjustl(string), "#") == 1 ) cycle
-            read (string, *) bins
-            exit
-        end do
+        string = next_content_line(30)  ! skip comment lines
+        read (string, *) bins
         print *, "  * pixels in this aperture:", bins
 
         if (bins /= size(grid)) &

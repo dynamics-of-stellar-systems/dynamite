@@ -39,7 +39,6 @@
 ! adapted from code originally by Behzad Tahmasebzadeh, July 2023
 !++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-
 module random_gauss_generator
     use numeric_kinds
     implicit none
@@ -1946,6 +1945,7 @@ contains
     !++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
     subroutine binning_setup()
         use aperture, only: aperture_n
+        use file_tools, only: next_content_line
         !----------------------------------------------------------------------
         integer(kind=i4b) :: i
         character(len=80) :: string
@@ -1977,13 +1977,8 @@ contains
                 print *, "  * Opening: ", string
                 open (unit=30 + i, file=string, action="read", status="old"&
                   &, position="rewind")
-                ! skip possible comment lines (first non-whitespace char is #)
-                do
-                    read (unit=30 + i, fmt='(A)') string
-                    if ( index (adjustl(string), "#") == 1 ) cycle
-                    read (string, *) bin_size(i)
-                    exit
-                end do
+                string = next_content_line(30 + i)  ! skip comment lines
+                read (string, *) bin_size(i)
                 print *, "  * bins in this aperture:", bin_size(i)
             end if
         end do

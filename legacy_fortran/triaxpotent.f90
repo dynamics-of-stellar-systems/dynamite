@@ -67,11 +67,11 @@ module triaxpotent
     real(kind=dp), private, dimension(:), allocatable :: A1, A2, A3, F, V0
 
     ! deprojected information about the gaussians
-    real (kind=dp),public ,dimension(:),allocatable :: qintr, pintr, sigintr_km       
-    real (kind=dp),public ,dimension(:),allocatable :: qintr_d, pintr_d, sigintr_km_d 
-    real (kind=dp),public ,dimension(:),allocatable :: qintr_b, pintr_b, sigintr_km_b 
+    real (kind=dp),public ,dimension(:),allocatable :: qintr, pintr, sigintr_km
+    real (kind=dp),public ,dimension(:),allocatable :: qintr_d, pintr_d, sigintr_km_d
+    real (kind=dp),public ,dimension(:),allocatable :: qintr_b, pintr_b, sigintr_km_b
     real (kind=dp),public ,dimension(:),allocatable :: dens
-    real (kind=dp),public ,dimension(:),allocatable :: triaxpar, triaxpar_d, triaxpar_b 
+    real (kind=dp),public ,dimension(:),allocatable :: triaxpar, triaxpar_d, triaxpar_b
 
     ! global helper variables for the integration
     real(kind=dp), private:: gx, gy, gz
@@ -250,23 +250,23 @@ contains
         real(kind=dp) :: E, k, p, q, trmass, secth, cotph
         real(kind=dp) :: ix, iy, iz, ax, ay, az
         real(kind=dp ),dimension(:),allocatable:: delp, nom1minq2, nomp2minq2, denom
-        real(kind=dp ),dimension(:),allocatable:: delpt, nom1minq2t, nomp2minq2t, denomt		
+        real(kind=dp ),dimension(:),allocatable:: delpt, nom1minq2t, nomp2minq2t, denomt
 
         print *, " Setting up triaxial potential routines for disk+bulge"
 
         allocate ( qintr_d       (ngaus_disk) , pintr_d     (ngaus_disk),&
                    sigintr_km_d  (ngaus_disk), triaxpar_d   (ngaus_disk) )
-                   
+
         allocate ( delp          (ngaus_bulge), nom1minq2  (ngaus_bulge),&
-                   nomp2minq2    (ngaus_bulge), denom      (ngaus_bulge),& 
+                   nomp2minq2    (ngaus_bulge), denom      (ngaus_bulge),&
                    sigintr_km_b  (ngaus_bulge), pintr_b    (ngaus_bulge),&
                    qintr_b       (ngaus_bulge), triaxpar_b   (ngaus_bulge) )
-                     
+
         allocate ( delpt          (ngauss_mge), nom1minq2t  (ngauss_mge),&
                    nomp2minq2t    (ngauss_mge), denomt      (ngauss_mge),&
-                   triaxpar      (ngauss_mge), pintr       (ngauss_mge),& 
+                   triaxpar      (ngauss_mge), pintr       (ngauss_mge),&
                    sigintr_km     (ngauss_mge), qintr       (ngauss_mge),&
-                   dens           (ngauss_mge), V0          (ngauss_mge) )  
+                   dens           (ngauss_mge), V0          (ngauss_mge) )
 
         ! do the analytic triaxial deprojection under the MGE hypotesis
         ! (see e.g. Cappellari 2002)
@@ -279,62 +279,62 @@ contains
         pintr_d(:) = 0.9999999999_dp
         triaxpar_d(:) = 0.000_dp
         sigintr_km_d(:) = sigobs_km_d(:)
-    
+
         if ( any(qintr_d(:) < 0.0_dp) ) &
         stop " q^2 is below 0 (in disk)."
-    
+
         qintr_d(:) = sqrt(qintr_d(:))
-        
+
         if ( any ( qintr_d(:) > pintr_d(:) )) stop "q>p in disk"
-            
+
         !======== for bulge
         delp(:) = 1.0_dp - qobs_b(:)**2
-        
+
         nom1minq2(:) = delp(:)*( 2.0_dp*cos(2.0_dp*psi_obs_b(:)) + &
              sin(2.0_dp*psi_obs_b(:))*(secth*cotph - cos(theta_view)*tan(phi_view)))
-        
+
         nomp2minq2(:) = delp(:)*( 2.0_dp*cos(2.0_dp*psi_obs_b(:)) + &
              sin(2.0_dp*psi_obs_b(:))*(cos(theta_view)*cotph - secth*tan(phi_view)))
-        
+
         denom(:)  = 2.0_dp*sin(theta_view)**2*( delp(:)*cos(psi_obs_b(:))*&
              (cos(psi_obs_b(:)) + secth*cotph*sin(psi_obs_b(:))) - 1.0_dp )
-        
-        ! These are temporary values of the squared intrinsic axial 
+
+        ! These are temporary values of the squared intrinsic axial
         ! ratios p^2 and q^2
         qintr_b(:) = (1.0_dp   - nom1minq2(:)/denom(:))
-        pintr_b(:) = (qintr_b(:) + nomp2minq2(:)/denom(:))   
-        
-        ! Quick check to see if we are not going to take the sqrt of 
+        pintr_b(:) = (qintr_b(:) + nomp2minq2(:)/denom(:))
+
+        ! Quick check to see if we are not going to take the sqrt of
         ! a negative number.
         if ( any(qintr_b(:) < 0.0_dp) .or. any (pintr_b(:) < 0.0_dp)) &
              stop "p^2 or q^2 is below 0 (In bulge)."
-        
-        ! intrinsic axial ratios p and q 
+
+        ! intrinsic axial ratios p and q
         qintr_b(:) = sqrt(qintr_b(:))
         pintr_b(:) = sqrt(pintr_b(:))
-        
-        if ( any ( qintr_b(:) > pintr_b(:) )) stop "q>p in bulge"  
-        if ( any ( pintr_b(:) > 1.0_dp   )) stop "p>1 in bulge"               
-        
-        ! intrinsic sigma (Cappellari 2002 eq 9.) 
+
+        if ( any ( qintr_b(:) > pintr_b(:) )) stop "q>p in bulge"
+        if ( any ( pintr_b(:) > 1.0_dp   )) stop "p>1 in bulge"
+
+        ! intrinsic sigma (Cappellari 2002 eq 9.)
         sigintr_km_b(:) = sigobs_km_b(:)*sqrt( qobs_b(:)/sqrt((pintr_b(:)*&
              cos(theta_view))**2+ (qintr_b(:)*sin(theta_view))**2*((pintr_b(:)*&
-             cos(phi_view))**2 + sin(phi_view)**2) ) )               
-        
-        
+             cos(phi_view))**2 + sin(phi_view)**2) ) )
+
+
         ! triaxiality parameter T = (1-p^2)/(1-q^2)
         triaxpar_b(:)=(1.0_dp-pintr_b(:)**2)/(1.0_dp-qintr_b(:)**2)
         if ( any(triaxpar_b(:) < 0.0_dp) .or.  any(triaxpar_b(:) > 1.0_dp) ) &
-             stop "No triaxial deprojection possible for bulge" 
-        
-        ! combile all the gaussians together (disk + bulge)   
+             stop "No triaxial deprojection possible for bulge"
+
+        ! combile all the gaussians together (disk + bulge)
         !===========
-        qintr       = [qintr_d , qintr_b]                              
-        pintr       = [pintr_d , pintr_b]                              
-        sigintr_km  = [sigintr_km_d , sigintr_km_b]                    
+        qintr       = [qintr_d , qintr_b]
+        pintr       = [pintr_d , pintr_b]
+        sigintr_km  = [sigintr_km_d , sigintr_km_b]
         triaxpar    = [triaxpar_d,triaxpar_b]
-        
-        
+
+
         print *, "middle axis ratio P"
         print *, pintr(:)
         print *, "minor  axis ratio q"
@@ -690,3 +690,31 @@ contains
     end subroutine accin
 
 end module triaxpotent
+
+!######################################################################
+! File tools: Thomas I. Maindl, October 2025
+!#######################################################################
+
+module file_tools
+    implicit none
+
+contains
+
+    !++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+    ! Return the next non-comment line, i.e. line where the first
+    ! non-whitespace character is not '#'.
+    !++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+    character(len=80) function next_content_line(unit)
+        integer, intent(in) :: unit
+        integer :: iostat
+
+        do
+            read(unit=unit, fmt='(A)', iostat=iostat) next_content_line
+            if (iostat /= 0) stop "End of file or error!"
+            if ( index(adjustl(next_content_line), "#") == 1 ) cycle
+            exit
+        end do
+
+    end function next_content_line
+
+end module file_tools
