@@ -4,6 +4,7 @@
 Change Log
 ****************
 
+- Bugfix: Fixed crash in the density() method of the NFW_m200_c dark halo
 - Improvement: Use indicator files for existing orblibs instead of checking multiple files (preparation for coloring and proper motions).
 - Improvement: Replaced staging files by directly checking for orblibs and weight files on disk.
 - Improvement: Significant performance gain when reading existing model weights (eliminated unnecessary reading of orbit library)
