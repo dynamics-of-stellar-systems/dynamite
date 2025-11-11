@@ -140,18 +140,17 @@ class Integrated(Data):
 
         """
         # read aperture file
-        aperture_fname = self.input_directory+self.aperturefile
-        lines = [line.rstrip('\n').split() for line in open(aperture_fname)]
-        strhead = lines[0]
-        minx = float(lines[1][0])
-        miny = float(lines[1][1])
-        sx = float(lines[2][0])  # extent in x
-        sy = float(lines[2][1])  # extent in y
-        maxx = sx + minx
+        aperture_fname = self.input_directory + self.aperturefile
+        lines = [line.rstrip('\n').split() for line in open(aperture_fname)
+                                           if line.lstrip(' ')[0] != '#']
+        minx = float(lines[0][0])
+        miny = float(lines[0][1])
+        sx = float(lines[1][0])  # extent in x
+        sy = float(lines[1][1])  # extent in y
         sy = sy + miny
-        angle_deg = float(lines[3][0])
-        nx = int(lines[4][0])
-        ny = int(lines[4][1])
+        angle_deg = float(lines[2][0])
+        nx = int(lines[3][0])
+        ny = int(lines[3][1])
         dx = sx / nx
         xr = np.arange(nx, dtype=float) * dx + minx + 0.5 * dx
         yc = np.arange(ny, dtype=float) * dx + miny + 0.5 * dx
@@ -159,26 +158,22 @@ class Integrated(Data):
         xt = xi.T.flatten()
         yi = np.outer((xr * 0 + 1), yc)
         yt = yi.T.flatten()
-        radeg = 57.2958
         xi = xt
         yi = yt
         # read bin file
-        bin_fname = self.input_directory+self.binfile
-        lines_bins = [line.rstrip('\n').split() for line in open(bin_fname)]
+        bin_fname = self.input_directory + self.binfile
+        lines_bins = [line.rstrip('\n').split() for line in open(bin_fname)
+                                                if line.lstrip(' ')[0] != '#']
         i = 0
-        str_head = []
         i_var = []
         grid = []
         while i < len(lines_bins):
             for x in lines_bins[i]:
                 if i == 0:
-                    str_head.append(str(x))
-                if i == 1:
                     i_var.append(int(x))
-                if i > 1:
+                if i > 0:
                     grid.append(int(x))
             i += 1
-        str_head = str(str_head[0])
         i_var = int(i_var[0])
         grid = np.ravel(np.array(grid))
         if not (nx * ny == i_var == len(grid)):
