@@ -260,6 +260,7 @@ Settings relevant for solving for orbital weights.
         - ``type = NNLS`` then ``nnls_solver`` can be one of the strings,
             - ``scipy`` to use the `scipy NNLS function <https://docs.scipy.org/doc/scipy/reference/generated/scipy.optimize.nnls.html>`_
             - ``cvxopt`` to use an implementation using the `CVXOPT <https://cvxopt.org/>`_ package
+    - ``maxiter_factor``: integer, only used if ``type = NNLS`` and ``nnls_solver = scipy``. This is a factor multiplied by the number of orbits to give the maximum number of iterations for the scipy NNLS solver. The default value is 3, which is also the default for scipy's NNLS implementation.
     - ``lum_intr_rel_err``: float, typical 0.01, the systematic error (fraction) applied to the intrinsic luminosity constraint
     - ``sb_proj_rel_err``: float, typical 0.01, the systematic error (fraction) applied to the projected surface brightness constraint
     - ``CRcut``: Boolean, default False, whether to use the ``CRcut`` solution for the counter-rotating orbit problem. See `Zhu et al. 2018 <https://ui.adsabs.harvard.edu/abs/2018MNRAS.473.3000Z/abstract>`_ for more details.
