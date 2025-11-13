@@ -394,8 +394,7 @@ class Decomposition:
             self.logger.debug(f'{comp}: {np.count_nonzero(orb_sel)} orbits, '
                               f'{flux.shape=}, {losvd.shape=}.')
             losvd_hist = dyn.kinematics.Histogram(self.losvd_histograms.xedg,
-                                                  y=losvd,
-                                                  normalise=False)
+                                                  y=losvd)
             if v_sigma_option == 'moments':
                 v_mean = np.squeeze(losvd_hist.get_mean())
                 v_sigma = np.squeeze(losvd_hist.get_sigma())
@@ -877,8 +876,7 @@ class Analysis:
         # calculate v_mean and v_sigma values from the losvd histograms
         model_losvd_hist = \
             dyn.kinematics.Histogram(xedg=orblib.losvd_histograms[kin_set].xedg,
-                                     y=model_losvd,
-                                     normalise=False)
+                                     y=model_losvd)
         if v_sigma_option == 'moments':
             v_mean = np.squeeze(model_losvd_hist.get_mean()) # from distr.
             v_sigma = np.squeeze(model_losvd_hist.get_sigma()) # from distr.
