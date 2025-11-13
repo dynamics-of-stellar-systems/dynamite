@@ -63,10 +63,12 @@ def run_orbit_losvd_test(make_comparison_losvd=False):
 
     # read configuration
     fname = 'user_test_config.yaml'
-    c = dyn.config_reader.Configuration(fname,reset_logging=False)
+    c = dyn.config_reader.Configuration(fname,
+                                        reset_logging=False,
+                                        reset_existing_output=True)
 
-    c.remove_existing_orblibs()
-    c.remove_existing_all_models_file()
+    # c.remove_existing_orblibs()
+    # c.remove_existing_all_models_file()
     # c.backup_config_file(reset=True)
 
     plotdir = c.settings.io_settings['plot_directory']
