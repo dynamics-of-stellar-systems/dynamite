@@ -152,7 +152,7 @@ system_components:
                 type: GaussHermite # specifies which object class to create
                 hist_width: '1578.6020507812'
                 hist_center: '0.0000'
-                hist_bins: '476'
+                hist_bins: '477'
                 datafile: "kinematics.ecsv"  # both discr. & integrated
                 aperturefile: "aperture.dat" # integrated only
                 binfile: "bins.dat"          # integrated only
@@ -205,6 +205,7 @@ weight_solver_settings:
     # nnls_solver: 1
     type: "NNLS"
     nnls_solver: 'scipy'
+    maxiter_factor: 3  # nnls_solver 'scipy' only; default: 3
     CRcut: True
     regularisation: 0
     number_GH: 4

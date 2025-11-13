@@ -7,6 +7,8 @@ Change Log
 - Improvement: Updated documentation (clarifications and fixes).
 - Improvement: The (confusing) annotations in the aperture and bins files are now optional. Comment lines (#) in those files can now be used to add any information.
 - Improvement: Unknown entries in the configuration file will now raise an error rather than be ignored.
+- Improvement: Updated the recommended Python version to 3.10 or later (Python 3.9 end of life was Oct 31, 2025) and required scipy versions 1.11 or >=1.16 to warrant stable Python NNLS.
+- Improvement: Added weight_solver_settings parameter ``maxiter_factor`` to control the maxiter parameter of scipy nnls. Setting it beyond its default 3 can help when weight solving fails.
 - Improvement: Use indicator files for existing orblibs instead of checking multiple files (preparation for coloring and proper motions).
 - Improvement: Replaced staging files by directly checking for orblibs and weight files on disk.
 - Improvement: Significant performance gain when reading existing model weights (eliminated unnecessary reading of orbit library)

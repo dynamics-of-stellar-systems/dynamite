@@ -134,6 +134,7 @@ orblib_settings:
 weight_solver_settings:
     type: "NNLS"
     nnls_solver: "scipy"
+    maxiter_factor: 3  # nnls_solver 'scipy' only; default: 3
     regularisation: 0
     number_GH: 4
     GH_sys_err: '0.0 0.0 0.0 0.0 0.3 0.3 0.6 0.6'
