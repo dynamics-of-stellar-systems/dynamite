@@ -1,7 +1,6 @@
 import os
 import logging
 import numpy as np
-from astropy import table
 from pathos.multiprocessing import Pool
 import matplotlib.pyplot as plt
 

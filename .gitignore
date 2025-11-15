@@ -55,6 +55,7 @@ docs/tutorial_notebooks/NGC6278_output/*
 docs/tutorial_notebooks/NGC4550_output/*
 !docs/tutorial_notebooks/NGC4550_input/dynamite_input/mge.ecsv
 docs/tutorial_notebooks/NGC4550_input/dynamite_input/*
+docs/tutorial_notebooks/FCC167_output
 plotbin4dyn/.DS_Store
 plotbin4dyn/__pycache__/*
 build/*
@@ -65,3 +66,6 @@ ran1_nr
 rantest
 rantest.f90-e
 *.log
+dev_tests/.ipynb_checkpoints
+dev_tests/FCC167/output
+dev_tests/propermotions
