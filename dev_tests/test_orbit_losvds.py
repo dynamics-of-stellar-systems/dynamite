@@ -96,8 +96,7 @@ def run_orbit_losvd_test(make_comparison_losvd=False):
         # read orbits and plot them
         tmp = np.load(fname)
         comparison_losvd = dyn.kinematics.Histogram(xedg=tmp['xedg'],
-                                                    y=tmp['y'],
-                                                    normalise=False)
+                                                    y=tmp['y'])
         orb_idx = 15
         aperture_idx_list = [0, 2, 20, 30]
         ax = plot_losvds(comparison_losvd,
