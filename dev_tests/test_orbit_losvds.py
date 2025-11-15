@@ -63,7 +63,9 @@ def run_orbit_losvd_test(make_comparison_losvd=False):
 
     # read configuration
     fname = 'user_test_config.yaml'
-    c = dyn.config_reader.Configuration(fname,reset_logging=False)
+    c = dyn.config_reader.Configuration(fname,
+                                        reset_logging=False,
+                                        reset_existing_output=True)
 
     c.remove_existing_orblibs()
     c.remove_existing_all_models_file()
@@ -94,8 +96,7 @@ def run_orbit_losvd_test(make_comparison_losvd=False):
         # read orbits and plot them
         tmp = np.load(fname)
         comparison_losvd = dyn.kinematics.Histogram(xedg=tmp['xedg'],
-                                                    y=tmp['y'],
-                                                    normalise=False)
+                                                    y=tmp['y'])
         orb_idx = 15
         aperture_idx_list = [0, 2, 20, 30]
         ax = plot_losvds(comparison_losvd,
