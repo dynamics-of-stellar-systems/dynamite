@@ -8,7 +8,10 @@ pafit>=2.0.8
 pathos>=0.2.7
 plotbin>=3.1.7
 PyYAML>=5.4.1
-scipy>=1.11,<1.12
+# scipy nnls: re-written in Python in v1.12, much slower than before and
+# tends to fail; re-written in Cython in v1.15, still slower than before;
+# re-written in C in v1.16, fast again. Avoid versions 1.12 to 1.15.
+scipy>=1.11,!=1.12.*,!=1.13.*,!=1.14.*,!=1.15.*
 six
 sparse>=0.14.0
 vorbin>=3.1.4

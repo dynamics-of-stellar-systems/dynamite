@@ -120,7 +120,7 @@ Python
 
 The user is communicating with the Fortran source code via Python.
 The basic requirement for DYNAMITE is therefore a reasonably current version of Python
-(Python 3.9 or later as Python 3.8 has reached its end of life as of October 7, 2024).
+(Python 3.10 or later due to the October 31, 2025 end of life of Python 3.9).
 
 
 
@@ -551,7 +551,6 @@ The 'G / P' column refers to the weight solver:
    :header-rows: 1
 
    OS and release,  Fortran release,    Python rel.,    G / P,  Date tested,    Remarks
-   macOS 14.4.1,    gfortran 12.2.0,    3.9.19,         G,      2024-04-23
    macOS 14.6.1,    gfortran 12.4.0,    3.11.10,        G,      2024-11-30
    macOS 14.4.1,    gfortran 12.2.0,    3.12.3,         G,      2024-04-23
    AlmaLinux 8.5,   gfortran 8.5.0,     3.10.14,        G,      2024-04-23,     VSC5 w/o modules loaded
