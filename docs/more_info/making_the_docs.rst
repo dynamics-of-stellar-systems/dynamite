@@ -9,11 +9,11 @@ yourself, you will need to first install these. If you're using conda, for examp
 
   conda install -c conda-forge pandoc nbsphinx sphinx autodocsumm
 
-If you are using pip::
+If you are using pip (depending on your Python installation, IPython and ipykernel may not be necessary)::
 
   python -m pip install -U sphinx nbsphinx numpydoc IPython autodocsumm ipykernel
 
-Then to make the documentation, in the ``docs`` directory you should run the command::
+To make the documentation, change to the ``docs`` directory and run the command::
 
   make html
 

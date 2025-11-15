@@ -1257,7 +1257,7 @@ class BayesLOSVD(Kinematics, data.Integrated):
         iy -= 1
         grid = np.zeros((nx, ny), dtype=int)
         grid[ix, iy] = binID_dyn
-        comment_line = '#Counterrotaton_binning_version_1\n'
+        comment_line = '#Counterrotation_binning_version_1\n'
         grid_size = nx*ny
         first_line = '{0}\n'.format(grid_size)
         flattened_grid = grid.T.flatten()

@@ -188,7 +188,9 @@ def create_aperture_file(dir,expr,minx,maxx,miny,maxy,angle_deg,nx,ny):
     # The angle saved here is measured counter clock-wise
     # from the galaxy major axis to the X-axis of the input data
     aperture_file = open(dir+'aperture'+expr+'.dat', 'w')
+    # The following line is a comment and optional.
     aperture_file.write('#counter_rotation_boxed_aperturefile_version_2 \n')
+    # Now, write the actual data...
     aperture_file.write('\t{0:<.6f}\t{1:<.6f} \n'.format(minx, miny))
     aperture_file.write('\t{0:<.6f}\t{1:<.6f} \n'.format(maxx-minx, maxy-miny))
     aperture_file.write('\t{0:<.6f} \n'.format(angle_deg))
@@ -204,7 +206,9 @@ def create_bins_file(dir,expr,grid):
     flattened = grid.T.flatten()
     num_of_lines = int(len(flattened)/10)
     bins_file = open(dir+'bins'+expr+'.dat', 'w')
-    bins_file.write('#Counterrotaton_binning_version_1\n')
+    # The following line is a comment and optional.
+    bins_file.write('#Counterrotation_binning_version_1\n')
+    # Now, write the actual data...
     bins_file.write('{0}\n'.format(int(s[0]*s[1])))
 
     for line in range(num_of_lines):
