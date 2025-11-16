@@ -11,7 +11,6 @@
 system_attributes:
     distMPc: 28.6
     name: "IC0719"
-    position_angle: 37. # -53.+90.
 
 system_components:
 
@@ -139,6 +138,7 @@ orblib_settings:
 weight_solver_settings:
     type: "NNLS"
     nnls_solver: 'scipy'
+    maxiter_factor: 3  # nnls_solver 'scipy' only; default: 3
     lum_intr_rel_err: 0.01
     sb_proj_rel_err: 0.02
 

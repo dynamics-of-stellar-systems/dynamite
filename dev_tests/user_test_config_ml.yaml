@@ -174,6 +174,7 @@ weight_solver_settings:
     # nnls_solver: 1
     type: "NNLS"
     nnls_solver: 'scipy'
+    maxiter_factor: 3  # nnls_solver 'scipy' only; default: 3
     CRcut: True
     regularisation: 0
     number_GH: 4

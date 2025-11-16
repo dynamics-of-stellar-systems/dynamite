@@ -859,12 +859,20 @@ class NNLS(WeightSolver):
             A, b = self.construct_nnls_matrix_and_rhs(orblib)
             if self.nnls_solver=='scipy':
                 try:
-                    solution = optimize.nnls(A, b)
+                    # set the nnls maxiter parameter and solve
+                    if 'maxiter_factor' in self.settings.keys():
+                        maxiter_factor = self.settings['maxiter_factor']
+                    else:
+                        maxiter_factor = 3  # default = 3 * n_orbits
+                    maxiter = maxiter_factor * A.shape[1]
+                    self.logger.debug(f'{maxiter_factor = }, {maxiter = }')
+                    solution = optimize.nnls(A, b, maxiter=maxiter)
                     weights = solution[0]
                 except Exception as e:
                     txt = f'Orblib {orblib.mod_dir}, ml={orblib.parset["ml"]}'\
-                        f': SciPy solver error occured: {e} All weights ' \
-                        'and chi2 set to nan. Consider trying cvxopt.'
+                        f': SciPy solver error occured: {e} All weights and ' \
+                        'chi2 set to nan. Consider a larger maxiter_factor ' \
+                        f'(currently, maxiter_factor={maxiter_factor}).'
                     self.logger.warning(txt)
                     weights = np.full(A.shape[1], np.nan)
             elif self.nnls_solver=='cvxopt':

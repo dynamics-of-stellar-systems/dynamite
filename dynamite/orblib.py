@@ -925,10 +925,7 @@ class LegacyOrbitLibrary(OrbitLibrary):
             # these aren't stored in orblib.dat so must read from kinematics objects
             self.logger.debug(f'{self.mod_dir}{tmpfname}: '
                               'checking number of velocity bins...')
-            hist_bins_1d = np.array([i for i in hist_bins if type(i) is int])
-            hist_bins_2d = np.array([i for i in hist_bins if type(i) is not int])
-            if np.any(np.concatenate((hist_bins_1d,
-                                      hist_bins_2d.flatten())) % 2 == 0):
+            if np.any(np.array(hist_bins).flatten() % 2 == 0):
                 error_msg = f'{self.mod_dir}{tmpfname}: all kinematics ' \
                             'need odd number of velocity bins.'
                 self.logger.error(error_msg)
@@ -1037,9 +1034,7 @@ class LegacyOrbitLibrary(OrbitLibrary):
                         v = (vedg[1:] + vedg[:-1])/2.
                         v_cent = v[idx_center]
                         vedg -= v_cent
-                        vvv = dyn_kin.Histogram(xedg=vedg,
-                                                y=velhist,
-                                                normalise=False)
+                        vvv = dyn_kin.Histogram(xedg=vedg, y=velhist)
                         velhists += [vvv]
                     elif hist_dim[kin_idx] == 2:
                         width = np.array(hist_widths[kin_idx])
@@ -1053,9 +1048,7 @@ class LegacyOrbitLibrary(OrbitLibrary):
                                             stop=width[1] / 2,
                                             num=bins[1] + 1,
                                             endpoint=True))
-                        vvv = dyn_kin.Histogram2D(xedg=vedg,
-                                                  y=velhist,
-                                                  normalise=False)
+                        vvv = dyn_kin.Histogram2D(xedg=vedg, y=velhist)
                         velhists += [vvv]
                     else:
                         error_msg = 'Invalid histogram dimension.'
@@ -1088,9 +1081,7 @@ class LegacyOrbitLibrary(OrbitLibrary):
             os.chdir(cur_dir)
             # append the populations data to the velhists
             for mass in mass0:
-                vvv = dyn_kin.Histogram(xedg=np.array([-0.5, 0.5]),
-                                        y=mass,
-                                        normalise=False)
+                vvv = dyn_kin.Histogram(xedg=np.array([-0.5, 0.5]), y=mass)
                 velhists += [vvv]
         return velhists, density_3D  #######################
 
@@ -1136,13 +1127,9 @@ class LegacyOrbitLibrary(OrbitLibrary):
         new_vel_d[0::2] = vel_d
         new_vel_d[1::2, :] = reversed_vel_d
         if vel_d.ndim == 3:  # 1D histograms
-            new_orblib = dyn_kin.Histogram(xedg=orblib.xedg,
-                                           y=new_vel_d,
-                                           normalise=False)
+            new_orblib = dyn_kin.Histogram(xedg=orblib.xedg, y=new_vel_d)
         else:  # 2D histograms
-            new_orblib = dyn_kin.Histogram2D(xedg=orblib.xedg,
-                                             y=new_vel_d,
-                                             normalise=False)
+            new_orblib = dyn_kin.Histogram2D(xedg=orblib.xedg, y=new_vel_d)
         return new_orblib
 
     def duplicate_flip_and_interlace_intmoms(self, intmom):
@@ -1212,13 +1199,9 @@ class LegacyOrbitLibrary(OrbitLibrary):
         new_vel_d[:n_orbs1] = orblib1.y
         new_vel_d[n_orbs1:] = orblib2.y
         if orblib1.y.ndim == 3:
-            new_orblib = dyn_kin.Histogram(xedg=orblib1.xedg,
-                                           y=new_vel_d,
-                                           normalise=False)
+            new_orblib = dyn_kin.Histogram(xedg=orblib1.xedg, y=new_vel_d)
         else:
-            new_orblib = dyn_kin.Histogram2D(xedg=orblib1.xedg,
-                                             y=new_vel_d,
-                                             normalise=False)
+            new_orblib = dyn_kin.Histogram2D(xedg=orblib1.xedg, y=new_vel_d)
         return new_orblib
 
     def read_vel_histograms(self, pops=False):

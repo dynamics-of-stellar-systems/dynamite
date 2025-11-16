@@ -8,6 +8,7 @@ import logging
 import importlib
 import yaml
 import datetime
+import numpy as np
 
 import dynamite as dyn
 from dynamite import constants as const
@@ -356,7 +357,7 @@ class Configuration(object):
                     if 'disk_lum' in data_comp:
                         path = self.settings.io_settings['input_directory']
                         c.disk_lum = mge.MGE(input_directory=path,
-                                             datafile=data_comp['disk_pot'])
+                                             datafile=data_comp['disk_lum'])
 
                     # add component to system
                     c.validate()
@@ -1031,6 +1032,19 @@ class Configuration(object):
                     max_bins += 1
                 for k in stars.kinematic_data:
                     k.hist_bins = max_bins
+        else:  # enforce odd number of histogram bins
+            if self.system.is_bar_disk_system():
+                stars = self.system.get_unique_bar_component()
+            else:
+                stars = self.system.get_unique_triaxial_visible_component()
+            hist_bins = np.array([k.hist_bins for k in stars.kinematic_data])
+            if np.any(hist_bins.flatten() % 2 == 0):
+                all_hist_bins = {k.name: k.hist_bins
+                                 for k in stars.kinematic_data}
+                txt = 'Value of hist_bins must be odd for all kinematic ' \
+                      f'data, but they are {all_hist_bins}.'
+                self.logger.error(txt)
+                raise ValueError(txt)
 
     def validate_chi2(self, which_chi2=None):
         """
