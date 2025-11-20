@@ -957,8 +957,6 @@ class Histogram2D(object):
         2d histogram bin edges
     y : array (n_orbits, n_bins[0], n_bins[1], n_apertures)
         histogram values
-    normalise : bool, default=True
-        whether to normalise to pdf
 
     Attributes
     ----------
@@ -966,18 +964,14 @@ class Histogram2D(object):
         bin centers
     dx : tuple (array(n_bins[0], ), array(n_bins[1], ))
         bin widths
-    normalised : bool
-        whether or not has been normalised to pdf
 
     """
-    def __init__(self, xedg=None, y=None, normalise=False):
+    def __init__(self, xedg=None, y=None):
         self.logger = logging.getLogger(f'{__name__}.{__class__.__name__}')
         self.xedg = tuple(xedg)
         self.x = tuple( (x[:-1] + x[1:]) / 2 for x in xedg )
         self.dx = tuple( x[1:] - x[:-1] for x in xedg )
         self.y = y
-        if normalise:
-            self.normalise()
 
     def get_normalisation(self):
         """Get the normalisation
@@ -996,24 +990,6 @@ class Histogram2D(object):
         norm = np.sum(self.y * self.dx[0][na,:,na,na] * self.dx[1][na,na,:,na],
                       axis=(1,2))
         return norm
-
-    def normalise(self):
-        """normalises the LOSVDs
-
-        Returns
-        -------
-        None
-            resets ``self.y`` to a normalised version
-
-        """
-        norm = self.get_normalisation()
-        na = np.newaxis
-        tmp = self.y/norm[:,na,na,:]
-        # where norm=0, tmp=nan. Fix this:
-        idx = np.where(norm==0.)
-        tmp[idx[0],:,:,idx[1]] = 0.
-        # replace self.y with normalised y
-        self.y = tmp
 
     def scale_x_values(self, scale_factor):
         """scale the velocity array
@@ -1704,7 +1680,8 @@ class ProperMotions(Kinematics, data.Integrated):
         # 2d histogram metadata is always determined by the data
         for attr in ['hist_width', 'hist_center', 'hist_bins']:
             if attr in kwargs:
-                txt = f'Cannot use attribute {attr} for {__class__.__name__}!'
+                txt = f'Cannot use {__class__.__name__} attribute {attr}, '\
+                      '2d histogram metadata is always determined by the data!'
                 self.logger.error(txt)
                 raise ValueError(txt)
         if 'with_pops' in kwargs:
@@ -1748,10 +1725,18 @@ class ProperMotions(Kinematics, data.Integrated):
             Minimum allowed value of width/sigma_global. Default is 5.
 
         """
+        bad_err = np.nonzero((self.data['PM_2dhist_sigma'] <= 0) &
+                             (self.data['PM_2dhist'] > 0))
+        if len(bad_err[0]) > 0:
+            txt = 'Proper motion uncertainties cannot be zero or negative '
+            txt += 'where there is data. Violating binID / vxbin / vybin '
+            txt += f'tuples: {list(zip(*bad_err))}. '
+            txt += 'Please provide nonzero errors.'
+            self.logger.error(txt)
+            raise ValueError(txt)
         h2d = self.as_histogram2d()
         h2d_global = Histogram2D(xedg=h2d.xedg,
-                                 y=np.sum(h2d.y, axis=3)[:,:,:,np.newaxis],
-                                 normalise=False)
+                                 y=np.sum(h2d.y, axis=3)[:,:,:,np.newaxis])
         # mean = h2d_global.get_mean()
         sigma = h2d_global.get_sigma()
         dv = (h2d_global.dx[0][0], h2d_global.dx[1][0])
