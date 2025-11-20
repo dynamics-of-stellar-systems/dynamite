@@ -87,14 +87,22 @@ class LegacyOrbitLibrary(OrbitLibrary):
         Creates the following output files in ``output/models/*/datfil/``:
             - begin.dat                     (ics for tube orbits)
             - beginbox.dat                  (ics for box orbits)
-            - orblib.dat.bz2                (zipped tube orbit library)
+            - orblib_qgrid.dat.bz2          (zipped tube orbit library)
+            - orblib_losvd_hist.dat.bz2(*)  (zipped losvd 1d histograms)
+            - orblib_pops.dat.bz2(*)        (zipped populations 0d hists)
+            - orblib_pm_hist.dat.bz2(*)     (zipped proper motions 2d histograms)
             - orblib.dat_orbclass.out       (orbit classification for tube orbs)
-            - orblibbox.dat.bz2             (zipped box orbit library)
+            - orblibbox_qgrid.dat.bz2(*)    (zipped box orbit library)
+            - orblibbox_losvd_hist.dat.bz2(*) (zipped losvd 1d histograms)
+            - orblibbox_pops.dat.bz2(*)     (zipped populations 0d hists)
+            - orblibbox_pm_hist.dat.bz2(*)  (zipped proper motions 2d histograms)
             - orblibbox.dat_orbclass.out    (orbit classification for box orbs)
             - mass_aper.dat                 (MGE masses in apertures)
             - mass_qgrid.dat                (MGE masses in 3D grid)
             - mass_radmass.dat              (MGE masses in radial bins)
             - +8 log and status files
+        (*) only created if there are kinematic datasets with losvd 1d
+            histograms, populations datasets, or proper motion datasets, resp.
 
         """
         # check whether orbit library was calculated already
@@ -602,7 +610,8 @@ class LegacyOrbitLibrary(OrbitLibrary):
         txt_file.write('# now run tube and box orbits in parallel\n')
         txt_file.write('(rm -f datfil/orblib_qgrid.dat.tmp '
                        'datfil/orblib_qgrid.dat '
-                       'datfil/orblib_pops.dat datfil/orblib_losvd_hist.dat\n')
+                       'datfil/orblib_pops.dat datfil/orblib_losvd_hist.dat '
+                       'datfil/orblib_pm_hist.dat\n')
         txt_file.write(f'{self.legacy_directory}/{orb_prgrm} < infil/orblib.in '
                         '>> datfil/orblib.log\n')
         txt_file.write('rm -f datfil/mass_qgrid.dat datfil/mass_radmass.dat '
@@ -627,8 +636,8 @@ class LegacyOrbitLibrary(OrbitLibrary):
         txt_file.write('orblib=$!\n')
         txt_file.write('(rm -f datfil/orblibbox_qgrid.dat.tmp '
                        'datfil/orblibbox_qgrid.dat datfil/orblibbox_pops.dat '
-                       'datfil/orblibbox_pm_hist.dat '
-                       'datfil/orblibbox_losvd_hist.dat\n')
+                       'datfil/orblibbox_losvd_hist.dat '
+                       'datfil/orblibbox_pm_hist.dat\n')
         txt_file.write(f'{self.legacy_directory}/{orb_prgrm} '
                        '< infil/orblibbox.in >> datfil/orblibbox.log\n')
         for f in 'qgrid', 'pm_hist', 'pops', 'losvd_hist':
