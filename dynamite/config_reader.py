@@ -1037,8 +1037,12 @@ class Configuration(object):
                 stars = self.system.get_unique_bar_component()
             else:
                 stars = self.system.get_unique_triaxial_visible_component()
-            hist_bins = np.array([k.hist_bins for k in stars.kinematic_data])
-            if np.any(hist_bins.flatten() % 2 == 0):
+            hist_bins = [[k.hist_bins] for k in stars.kinematic_data
+                                       if isinstance(k.hist_bins, int)]
+            hist_bins += [list(k.hist_bins) for k in stars.kinematic_data
+                                       if not isinstance(k.hist_bins, int)]
+            hist_bins = np.array([i for h in hist_bins for i in h])
+            if np.any(hist_bins % 2 == 0):
                 all_hist_bins = {k.name: k.hist_bins
                                  for k in stars.kinematic_data}
                 txt = 'Value of hist_bins must be odd for all kinematic ' \

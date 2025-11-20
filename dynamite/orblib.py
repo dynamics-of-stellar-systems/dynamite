@@ -893,7 +893,7 @@ class LegacyOrbitLibrary(OrbitLibrary):
             # UNUSED hist_centers = [k.hist_center for k in stars.kinematic_data]
             hist_bins = [k.hist_bins for k in stars.kinematic_data]
             # kinematics k have 1d losvd histograms if type(k.hist_bins)=int and
-            # 2d proper motion hists otherwise (k.hist_bins is a list then)
+            # 2d proper motion hists otherwise (k.hist_bins is a 1d array then)
             hist_dim = [1 if type(k.hist_bins) is int else 2
                         for k in stars.kinematic_data]
             if not legacy_file:  # open losvd_hist and pm_hist files if needed
@@ -925,7 +925,11 @@ class LegacyOrbitLibrary(OrbitLibrary):
             # these aren't stored in orblib.dat so must read from kinematics objects
             self.logger.debug(f'{self.mod_dir}{tmpfname}: '
                               'checking number of velocity bins...')
-            if np.any(np.array(hist_bins).flatten() % 2 == 0):
+            hist_bins_flat = [[h] for h in hist_bins if isinstance(h, int)]
+            hist_bins_flat += [list(h) for h in hist_bins
+                                       if not isinstance(h, int)]
+            hist_bins_flat = np.array([i for h in hist_bins_flat for i in h])
+            if np.any(hist_bins_flat % 2 == 0):
                 error_msg = f'{self.mod_dir}{tmpfname}: all kinematics ' \
                             'need odd number of velocity bins.'
                 self.logger.error(error_msg)
