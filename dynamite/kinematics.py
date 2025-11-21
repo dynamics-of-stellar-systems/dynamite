@@ -4,6 +4,7 @@ from scipy.optimize import curve_fit
 from astropy import table
 import logging
 import os
+import copy
 import h5py
 
 from dynamite import data
@@ -1693,26 +1694,41 @@ class ProperMotions(Kinematics, data.Integrated):
         super().__init__(proper_motions=True, **kwargs)
         if hasattr(self, 'data'):
             self.sanity_ceck()
-            if np.isclose(np.sum(self.data['PM_2dhist']), 1.0):
+            hist_scale = np.sum(self.data['PM_2dhist'])
+            if np.isclose(hist_scale, 1.0):
                 self.data['hist_scale'] = 1.0
             else:
-                self.logger.info(f'{self.name}: PM_2dhist does not sum to 1.')
-                nstarbin_off = \
+                self.logger.info(f'{self.name}: PM_2dhist read from input ' \
+                                 'does not sum to 1.')
+                nstarbin_match = \
                     np.isclose(self.data['nstarbin'],
                                np.sum(self.data['PM_2dhist'], axis=(1,2)))
-                if not np.all(nstarbin_off):
-                    self.logger.warning(f'{self.name}: PM_2dhist does not sum '
-                        f'to nstarbin in spatial bins: '
-                        f'{self.data["nstarbin"][~nstarbin_off]}.')
+                if not np.all(nstarbin_match):
+                    self.logger.info(f'{self.name}: PM_2dhist read from ' \
+                        'input does not sum to nstarbin in ' \
+                        f'{len(self.data["nstarbin"][~nstarbin_match])} '\
+                        'spatial bins.')
                 # Scale the 2d histograms the same way as LegacyFortran does:
                 # the PM_2dhist and PM_2dhist_sigma are normalised to 1.0
                 # when summed over all spatial and velocity bins.
-                hist_scale = np.sum(self.data['PM_2dhist'])
                 self.data['hist_scale'] = hist_scale
-                self.logger.info(f'{self.name}: Scaling PM_2dhist by '
+                self.logger.info(f'{self.name}: Scaling PM_2dhist and ' \
+                    'PM_2dhist_sigma by '
                     f'{hist_scale} to make it a proper distribution.')
                 self.data['PM_2dhist'] /= hist_scale
                 self.data['PM_2dhist_sigma'] /= hist_scale
+
+    def get_data(self):
+        """Returns the proper motions data.
+
+        Returns a deep copy of the self.data attribute.
+
+        Returns
+        -------
+        dict : the proper motions data
+
+        """
+        return copy.deepcopy(self.data)
 
     def sanity_ceck(self, max_dv_factor=0.25, min_width_factor=5):
         """Check the data for sanity
@@ -1720,9 +1736,9 @@ class ProperMotions(Kinematics, data.Integrated):
         Parameters
         ----------
         max_dv_factor : float, optional
-            Maximum allowed value of dv/sigma_global. Default is 0.25.
+            Maximum recommended value of dv/sigma_global. Default is 0.25.
         min_width_factor : float, optional
-            Minimum allowed value of width/sigma_global. Default is 5.
+            Minimum recommended value of width/sigma_global. Default is 5.
 
         """
         bad_err = np.nonzero((self.data['PM_2dhist_sigma'] <= 0) &
