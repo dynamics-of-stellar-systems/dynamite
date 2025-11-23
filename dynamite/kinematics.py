@@ -1,5 +1,6 @@
 import numpy as np
 from scipy import special, stats
+from scipy.interpolate import RegularGridInterpolator
 from scipy.optimize import curve_fit
 from astropy import table
 import logging
@@ -1669,7 +1670,8 @@ class ProperMotions(Kinematics, data.Integrated):
     'ybin' : y coordinates of the spatial bin centers, shape=(n_apertures,)
 
     Upon reading the data, the ``self.data`` attribute will hold the data in
-    a dictionary with the keys as above.
+    a dictionary with the keys as above. Additionally, the ``self.data``
+    key 'hist_scale' will be added.
 
     ``PM_2dhist`` and ``PM_2dhist_sigma`` are normalised to 1.0 when summed
     over all spatial and velocity bins. ``self.data['hist_scale']`` is set to
@@ -1863,17 +1865,50 @@ class ProperMotions(Kinematics, data.Integrated):
                                    (self.n_spatial_bins, -1))
         return observed_values, uncertainties
 
+    def rebin_orblib_to_observations(self, vel_hist):
+        """Rebin orblib to velocity spacing of observations
+
+        Due to ml scaling, the velocity ranges of model proper motion velocity
+        distributions may be different from those in the input data. This
+        method rescales model velocity distributions so their velocity bins
+        match the input data.
+
+        Parameters
+        ----------
+        vel_hist : ``dyn.kinematics.Histogram2D``
+            the orblib proper motion velocity distribution
+
+        Returns
+        -------
+        array of shape (n_orbits, n_bins[0], n_bins[1], n_apertures)
+            the orblib proper motion velocity distribution re-binned
+            to the data velocity spacing
+
+        """
+        r_n_orb, r_n_ap = (range(n) for n in vel_hist.y.shape[::3])
+        new_bins = np.stack(np.meshgrid(r_n_orb,
+                                        *self.as_histogram2d().x,
+                                        r_n_ap,
+                                        indexing='ij'),
+                            axis=-1)
+        interp = RegularGridInterpolator((r_n_orb, *vel_hist.x, r_n_ap),
+                                         vel_hist.y,
+                                         method='linear',
+                                         bounds_error=False,
+                                         fill_value=0)
+        return interp(new_bins)
+
     def transform_orblib_to_observables(self,
                                         vel_histograms,
-                                        weight_solver_settings):
+                                        weight_solver_settings=None):
         """Transform orbit library to observed kinematics parameterisation
 
         Parameters
         ----------
         vel_histograms : ``dyn.kinematics.Histogram2D``
             the 2d velocity distribution of an orbit library
-        weight_solver_settings : dict
-            weight solver settings
+        weight_solver_settings : dict, optional
+            weight solver settings, default is None, unused
 
         Returns
         -------
@@ -1881,6 +1916,13 @@ class ProperMotions(Kinematics, data.Integrated):
             the vel_histograms data transformed for use by the weight solvers
 
         """
+        if np.allclose(np.array(self.as_histogram2d().x),
+                       np.array(vel_histograms.x)):
+            self.logger.debug('No rebinning necessary.')
+            rebinned_vd = vel_histograms.y
+        else:
+            self.logger.debug('Rebinning orbit library 2d histograms.')
+            rebinned_vd = self.rebin_orblib_to_observations(vel_histograms)
         # vel_histograms.y.shape is (n_orbits, n_vxbins, n_vybins, n_apertures)
         # weight solver expects (n_orbits, n_apertures, n_vxbins, n_vybins)
-        return np.moveaxis(vel_histograms.y, 3, 1)
+        return np.moveaxis(rebinned_vd, 3, 1)
