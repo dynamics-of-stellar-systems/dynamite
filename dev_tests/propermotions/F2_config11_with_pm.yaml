@@ -89,15 +89,14 @@ system_components:
         include: True
         contributes_to_potential: True
         kinematics:
-            # f2:
-            #     weight: 1.0
-            #     type: GaussHermite
-            #     hist_width: 'default'
-            #     hist_center: 'default'
-            #     hist_bins: 'default'
-            #     datafile: "gauss_hermite_kins.ecsv"
-            #     aperturefile: "aperture.dat"
-            #     binfile: "bins.dat"
+            f2:
+                type: GaussHermite
+                hist_width: 'default'
+                hist_center: 'default'
+                hist_bins: 'default'
+                datafile: "gauss_hermite_kins.ecsv"
+                aperturefile: "aperture.dat"
+                binfile: "bins.dat"
             propermotions:
                 type: ProperMotions
                 datafile: "PM_kinfile_dv100.npz"

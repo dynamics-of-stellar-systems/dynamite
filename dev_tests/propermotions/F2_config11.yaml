@@ -90,7 +90,6 @@ system_components:
         contributes_to_potential: True
         kinematics:
             f2:
-                weight: 1.0
                 type: GaussHermite
                 hist_width: 'default'
                 hist_center: 'default'
