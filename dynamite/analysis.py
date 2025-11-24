@@ -137,8 +137,8 @@ class Decomposition:
             If 'all', all components will be in the decomposition plot.
             Specific components can be selected by passing a dictionary, e.g.,
             comps_plot = {'thin_d': True, 'thick_d': True, 'disk': True,
-                          'cr_thin_d': False, 'cr_thick_d': False,
-                          'cr_disk: False', 'bulge': False, 'all': False} will
+            'cr_thin_d': False, 'cr_thick_d': False,
+            'cr_disk: False', 'bulge': False, 'all': False} will
             only create the plots for 'thin_d', 'thick_d', and 'disk'. `False`
             entries can be omitted in the dictionary. The default is 'all'.
         individual_colorbars : bool or dict, optional

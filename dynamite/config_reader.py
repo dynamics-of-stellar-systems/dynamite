@@ -225,6 +225,13 @@ class Configuration(object):
         logger.info('io_settings...')
         logger.debug(f'Read: {self.params["io_settings"]}')
 
+        if set(self.params['io_settings'].keys()) != \
+              set(['input_directory', 'output_directory', 'all_models_file']):
+            txt = 'io_settings must contain input_directory, ' \
+                  'output_directory, and all_models_file, not ' \
+                  f'{list(self.params["io_settings"].keys())}.'
+            self.logger.error(txt)
+            raise ValueError(txt)
         try:
             for io in ['input', 'output']:
                 d = self.params['io_settings'][io+'_directory']
@@ -269,8 +276,23 @@ class Configuration(object):
                     c = getattr(physys,data_comp['type'])(name = comp,
                             contributes_to_potential \
                             = data_comp['contributes_to_potential'])
+                    # check for extra config entries/typos before any more
+                    # information is read from config file
+                    keys_ok = ['parameters', 'type', 'include',
+                               'contributes_to_potential']
+                    if isinstance(c, physys.VisibleComponent):
+                        keys_ok.extend(['mge_pot', 'mge_lum',
+                                        'disk_pot', 'disk_lum',
+                                        'kinematics', 'populations'])
+                    if any(k not in keys_ok for k in data_comp):
+                        text = f'Component {c.name} has unknown config ' \
+                            'entries: ' \
+                            f'{[k for k in data_comp if k not in keys_ok]}. ' \
+                            f'Allowed entries: {keys_ok}. Check for typos.'
+                        self.logger.error(text)
+                        raise ValueError(text)
 
-                    # initialize the component's paramaters, kinematics,
+                    # initialize the component's parameters, kinematics,
                     # and populations
 
                     par_list, kin_list = [], []
@@ -293,8 +315,6 @@ class Configuration(object):
                     # read kinematics
 
                     if 'kinematics' in data_comp:
-                    # shall we include a check here (e.g., only
-                    # VisibleComponent has kinematics?)
                         logger.debug('Has kinematics '
                                     f'{list(data_comp["kinematics"].keys())}')
                         kin_id = 0
@@ -325,6 +345,9 @@ class Configuration(object):
                             kin_list.append(kinematics_set)
                             kin_id += 1
                         c.kinematic_data = kin_list
+                    else:
+                        logger.debug(f'{comp}... no kinematics to '
+                                     'be read from config file.')
 
                     # read populations
 
@@ -340,24 +363,47 @@ class Configuration(object):
                                                 input_directory=path,
                                                 **data_pop)
                             c.population_data.append(populations_set)
+                    else:
+                        logger.debug(f'{comp}... no populations data to '
+                                     'be read from config file.')
 
                     if 'mge_pot' in data_comp:
                         path = self.settings.io_settings['input_directory']
                         c.mge_pot = mge.MGE(input_directory=path,
                                         datafile=data_comp['mge_pot'])
+                        logger.debug(f'{comp}... mge_pot read from '
+                                     f'{data_comp["mge_pot"]}.')
+                    else:
+                        logger.debug(f'{comp}... no mge_pot to '
+                                     'be read from config file.')
                     if 'mge_lum' in data_comp:
                         path = self.settings.io_settings['input_directory']
                         c.mge_lum = mge.MGE(input_directory=path,
                                         datafile=data_comp['mge_lum'])
+                        logger.debug(f'{comp}... mge_lum read from '
+                                     f'{data_comp["mge_lum"]}.')
+                    else:
+                        logger.debug(f'{comp}... no mge_lum data to '
+                                     'be read from config file.')
 
                     if 'disk_pot' in data_comp:
                         path = self.settings.io_settings['input_directory']
                         c.disk_pot = mge.MGE(input_directory=path,
                                              datafile=data_comp['disk_pot'])
+                        logger.debug(f'{comp}... disk_pot read from '
+                                     f'{data_comp["disk_pot"]}.')
+                    else:
+                        logger.debug(f'{comp}... no disk_pot to '
+                                     'be read from config file.')
                     if 'disk_lum' in data_comp:
                         path = self.settings.io_settings['input_directory']
                         c.disk_lum = mge.MGE(input_directory=path,
                                              datafile=data_comp['disk_lum'])
+                        logger.debug(f'{comp}... disk_lum read from '
+                                     f'{data_comp["disk_lum"]}.')
+                    else:
+                        logger.debug(f'{comp}... no disk_lum to '
+                                     'be read from config file.')
 
                     # add component to system
                     c.validate()
@@ -394,6 +440,12 @@ class Configuration(object):
             elif key == 'system_attributes':
                 logger.info('system_attributes...')
                 logger.debug(f'system_attributes: {tuple(value.keys())}')
+                # check here so system attributes are not set arbitrarily
+                if any(k not in ['distMPc', 'name'] for k in value):
+                    text = 'system_attributes can only be distMPc and name, '\
+                           f'not {list(value.keys())}.'
+                    logger.error(text)
+                    raise ValueError(text)
                 for other, data in value.items():
                     setattr(self.system, other, data)
 

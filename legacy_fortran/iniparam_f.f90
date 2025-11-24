@@ -92,8 +92,7 @@ contains
 
         character(len=256) :: infil
         real(kind=dp), dimension(:), allocatable :: surf_pc, sigobs_arcsec
-        real(kind=dp) :: distance, upsilon, softl_arcsec, dm_fraction, concentration
-        real(kind=dp) :: darkmass, dum, dumdum
+        real(kind=dp) :: distance, upsilon, softl_arcsec
         integer(kind=i4b) :: j
 
         print *, "Gravitational Constant in km^3/(s^2 Msun)", grav_const_km
@@ -201,8 +200,7 @@ contains
         real (kind=dp), dimension(:), allocatable :: surf_pc, sigobs_arcsec        ! (BT)
         real (kind=dp), dimension(:), allocatable :: surf_pc_d, sigobs_arcsec_d    ! (BT)
         real (kind=dp), dimension(:), allocatable :: surf_pc_b, sigobs_arcsec_b    ! (BT)
-        real(kind=dp) :: distance, upsilon, softl_arcsec, dm_fraction, concentration
-        real(kind=dp) :: darkmass, dum, dumdum
+        real(kind=dp) :: distance, upsilon, softl_arcsec
         integer(kind=i4b) :: j
 
         print *, "Gravitational Constant in km^3/(s^2 Msun)", grav_const_km
