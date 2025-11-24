@@ -85,7 +85,7 @@ class System(object):
             raise ValueError(text)
         #if len(self.parameters) != 1 and self.parameters[0].name != 'ml':
         if self.parameters[0].name != 'ml':
-            text = 'System needs ml as its first parameter'
+            text = 'System needs ml as its first parameter.'
             self.logger.error(text)
             raise ValueError(text)
         ml = self.parameters[0]
@@ -101,9 +101,14 @@ class System(object):
         if len(self.parameters) > 1:
             omega = self.parameters[1]
             if self.parameters[1].name != 'omega':
-                text = 'System needs omega as its second parameter'
+                text = 'System needs omega as its second parameter.'
                 self.logger.error(text)
                 raise ValueError(text)
+        if len(self.parameters) > 2:
+            text = 'System can only have ml and omega parameters, not ' \
+                   f'{[p.name for p in self.parameters]} - check for typos.'
+            self.logger.error(text)
+            raise ValueError(text)
 
     def validate_parset(self, par):
         """
