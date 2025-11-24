@@ -87,23 +87,25 @@ Two types of kinematic are supported: tables of Gauss Hermite expansion coeffici
 These must be in the form of `Astropy ECSV files <https://docs.astropy.org/en/stable/api/astropy.io.ascii.Ecsv.html>`_ e.g., ``kinematics.ecsv``. The files ``aperture.dat`` and ``bins.dat`` contain information about the spatial binning of your kinematic data. Convenience functions are provided for creating and converting some standard kinematic data files, and examples demonstrating these can be found in the tutorials.
 Note that the kinematics need to be centered at the center of the MGE.
 
-The file ``aperture.dat`` file contains the spatial extent in arcseconds, the angle (in degrees ) ``90 - position_angle``, and size of the grid in pixels::
+The file ``aperture.dat`` file contains the spatial extent in arcseconds, the angle (in degrees) ``90 - position_angle``, and size of the grid in pixels::
 
   #counter_rotation_boxed_aperturefile_version_2
-        min_x   min_y
-        max_x   max_y
-        90.-position_angle
-        npix_x  n_pix_y
+        min_x               min_y
+        extent_x            extent_y
+        90 - position_angle
+        npix_x              n_pix_y
 
-As ``aperture.dat`` is also read by legacy Fortran components of DYNAMITE, it is important that its first line is exactly as displayed above, otherwise DYNAMITE will crash.
+To clarify the quantities in this file: the rectangular aperture in arcseconds extends from ``min_x`` to ``max_x = min_x + extent_x`` and ``min_y`` to ``max_y = min_y + extent_y``, respectively. ``90 - position_angle`` is the angle in degrees measured counter clockwise from the galaxy major axis to the x-axis of the input data. Finally, ``npix_x`` and ``npix_y`` define the number of pixels along the x and y axes, respectively.
+
+Any line starting with ``#`` (leading blank space characters are allowed) is optional. Such lines are not limited to the first line, treated as comments and are ignored by DYNAMITE.
 
 The file ``bins.dat`` encodes the spatial (e.g. Voronoi) binning: specifically, one header line with the total number of pixels in the grid, followed by the bin ID of each pixel in the grid::
 
-    #Counterrotaton_binning_version_1
+    #Counterrotation_binning_version_1
     no of pixels in grid
     ...
 
-Note that also for this file the first line needs to be exactly like displayed above (including the typo ``Counterrotaton``!) to avoid legacy Fortran errors.
+The bins file has a special format due to historical reasons. Therefore, only the top line can contain an optional comment. Again, the comment line - if existing - will be ignored by DYNAMITE and needs to start with ``#`` which can be preceded by leading blank space characters.
 
 Comments on kinematics
 ----------------------

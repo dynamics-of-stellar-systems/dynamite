@@ -256,8 +256,8 @@ class LegacyOrbitLibrary(OrbitLibrary):
                 f = open(path +'orblibbox.in', 'w')
             else:
                 f = open(path +'orblib.in', 'w')
-            f.write(f"{self.settings['random_seed']}\n")
-            f.write('#counterrotation_setupfile_version_1\n')
+            label = '[random seed for orbit integration]'
+            f.write(f"{self.settings['random_seed']}{tab}{label}\n")
             f.write('infil/parameters_pot.in\n')
             if box:
                 f.write('datfil/beginbox.dat\n')

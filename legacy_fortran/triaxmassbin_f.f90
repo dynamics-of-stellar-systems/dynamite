@@ -27,8 +27,8 @@ contains
         real(kind=dp)             :: y0, y1, angle, qi, sigma, surf_km, isotwist
         real(kind=dp)             :: psfwidth, psfweight
 
-        real(kind=dp)             :: f0, f1, k, c, p, psigma, sb, qb, surcor
-        real(kind=dp)             :: alpha, dens
+        real(kind=dp)             :: f0, f1, p, sb, qb, surcor
+        real(kind=dp)             :: alpha
 
         y0 = binmass_intergrand_global(1)
         y1 = binmass_intergrand_global(2)
@@ -176,6 +176,7 @@ contains
 
     subroutine aperture_boxed_readfile(mnx, mny, xsize, ysize, xbins, ybins, angle)
         use initial_parameters, only: conversion_factor
+        use file_tools, only: next_content_line
         character(len=80) :: file, string
         integer(kind=i4b) :: handle
         !----------------------------------------------------------------------
@@ -187,28 +188,23 @@ contains
 
         open (unit=handle, file=file, action="read", status="old"&
              &, position="rewind")
-        print *, "  * Checking type."
-        read (unit=handle, fmt=*) string
-
-        select case (string)
-        case ("#counterrotation_polygon_aperturefile_version_1")
-            stop "Aperture type not supported"
-        case ("#counter_rotation_boxed_aperturefile_version_2")
-            ! empty
-        case default
-            stop " Unkown aperture type"
-        end select
+        string = "#counter_rotation_boxed_aperturefile_version_2"
+        print *, "  * Assuming type ", string
 
         print *, "  *  Reading box info"
         print *, "  *  Order: begin(x,y)"
-        read (unit=handle, fmt=*) mnx, mny
+        string = next_content_line(handle)
+        read (string, fmt=*) mnx, mny
         print *, "      size(x,y) "
-        read (unit=handle, fmt=*) xsize, ysize
+        string = next_content_line(handle)
+        read (string, fmt=*) xsize, ysize
         print *, "      rotation"
-        read (unit=handle, fmt=*) angle
+        string = next_content_line(handle)
+        read (string, fmt=*) angle
         angle = angle*(pi_d/180.0_dp)
         print *, "      bin(x,y)"
-        read (unit=handle, fmt=*) xbins, ybins
+        string = next_content_line(handle)
+        read (string, fmt=*) xbins, ybins
 
         ! convert arcsec into km
         mnx = mnx*conversion_factor
@@ -228,6 +224,8 @@ contains
     end subroutine aperture_boxed_readfile
 
     subroutine read_binningfile(grid)
+        use file_tools, only: next_content_line
+        !----------------------------------------------------------------------
         real(kind=dp), dimension(:), intent(in) :: grid
         integer(kind=i4b) :: i, bins, minst, maxst
         character(len=256) :: string
@@ -242,10 +240,8 @@ contains
         print *, "  * Opening: ", string
         open (unit=30, file=string, action="read", status="old"&
              &, position="rewind")
-        read (unit=30, fmt=*) string
-        if (string /= "#Counterrotaton_binning_version_1") &
-            stop " Wrong version of file"
-        read (unit=30, fmt=*) bins
+        string = next_content_line(30)  ! skip comment lines
+        read (string, *) bins
         print *, "  * pixels in this aperture:", bins
 
         if (bins /= size(grid)) &
