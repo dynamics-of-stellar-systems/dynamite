@@ -4,6 +4,7 @@
 Change Log
 ****************
 
+- Improvement: The unused but mandatory component attribute ``contributes_to_potential`` has been removed and DEPRECATED.
 - Improvement: Updated documentation (clarifications and fixes).
 - Improvement: The (confusing) annotations in the aperture and bins files are now optional. Comment lines (#) in those files can now be used to add any information.
 - Improvement: Unknown entries in the configuration file will now raise an error rather than be ignored.

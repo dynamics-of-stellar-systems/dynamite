@@ -89,7 +89,6 @@ The system consists of a number of physical components - e.g. the stars, black h
 
 - ``component name``: a descriptive name, but preferably short as this will be used to refer to the component in the code (e.g. ``bh`` for black hole)
     - ``type``: a string corresponding to one of the options in in `component types`_
-    - ``contributes_to_potential``: Boolean (not currently used)
     - ``include``: Boolean, whether to include this component or not. If False, equivalent to omitting this component entirely
     - ``parameters``. The required parameters for each component are listed in `component types`_. Each  parameter must have values specified for
         - ``fixed``: Boolean, whether the parameter is to be kept fixed
