@@ -537,7 +537,7 @@ class Configuration(object):
             raise ValueError(text)
         logger.info('System assembled')
         self.validate()
-        logger.debug(f'System: {self.system}')
+        # logger.debug(f'System: {self.system}')  # logged as part of parspace
         logger.debug(f'Settings: {self.settings}')
         logger.info('Configuration validated')
 
@@ -1003,6 +1003,11 @@ class Configuration(object):
                                       'either GaussHermite or BayesLOSVD')
                     raise ValueError('VisibleComponent must have kinematics: '
                                      'either GaussHermite or BayesLOSVD')
+                if c.population_data and len(c.population_data) > 1:
+                    txt = 'VisibleComponent can either have 0 or 1 set(s) ' \
+                          f'of population data, not {len(c.population_data)}.'
+                    self.logger.error(txt)
+                    raise ValueError(txt)
                 if c.symmetry != 'triax':
                     self.logger.error('Legacy mode: VisibleComponent must be '
                                       'triaxial')
@@ -1035,7 +1040,8 @@ class Configuration(object):
         chi2abs = self.__class__.thresh_chi2_abs
         chi2scaled = self.__class__.thresh_chi2_scaled
         gen_set=self.settings.parameter_space_settings.get('generator_settings')
-        if gen_set != None and (chi2abs in gen_set and chi2scaled in gen_set):
+        if gen_set is not None \
+           and (chi2abs in gen_set and chi2scaled in gen_set):
             self.logger.error(f'Only specify one of {chi2abs}, {chi2scaled}, '
                               'not both')
             raise ValueError(f'Only specify one of {chi2abs}, {chi2scaled}, '
@@ -1119,7 +1125,7 @@ class Configuration(object):
 
         """
         allowed_chi2 = ('chi2', 'kinchi2', 'kinmapchi2')
-        if which_chi2 == None:
+        if which_chi2 is None:
             which_chi2 = self.settings.parameter_space_settings['which_chi2']
         if which_chi2 not in allowed_chi2:
             text = 'parameter_space_settings: which_chi2 must be one of ' \

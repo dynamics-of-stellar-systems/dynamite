@@ -134,10 +134,10 @@ class Decomposition:
             If 'all', all components will be in the decomposition plot.
             Specific components can be selected by passing a dictionary, e.g.,
             comps_plot = {'thin_d': True, 'thick_d': True, 'disk': True,
-            'cr_thin_d': False, 'cr_thick_d': False,
-            'cr_disk: False', 'bulge': False, 'all': False} will
-            only create the plots for 'thin_d', 'thick_d', and 'disk'. `False`
-            entries can be omitted in the dictionary. The default is 'all'.
+            'cr_thin_d': False, 'cr_thick_d': False, 'cr_disk: False',
+            'bulge': False, 'all': False} will only create the plots for
+            'thin_d', 'thick_d', and 'disk'. `False` entries can be omitted
+            in the dictionary. The default is 'all'.
         individual_colorbars : bool or dict, optional
             If True, then the sb (surface brightness), vel (velocity), and
             sig (velocity dispersion) colorbars adapt to their respective
@@ -571,6 +571,224 @@ class Analysis:
         self.model = model
         self.kin_set = kin_set
 
+    def get_orbit_bundle_maps(self,
+                              model=None,
+                              kin_set=None,
+                              pop_set=None,
+                              weights=None,
+                              bundle_mapping=None,
+                              normalize=False,
+                              flux_as='table',
+                              create_figure=False,
+                              figtype='.png'):
+        """
+        Generates an astropy table that holds the weight-contribution of the
+        orbit bundles defined in bundle_mapping to the model's projected mass
+        in each aperture. The spatial binning pixels -> apertures is defined
+        in either a Kinematics or a Populations object.
+
+        Parameters
+        ----------
+        model : a ``dyn.model.Model`` object, optional
+            The default is the Analysis object's model.
+        kin_set : int or None, optional
+        pop_set : int or None, optional
+            kin_set and pop_set refer to the Kinematics or Populations object
+            that defines the spatial binning.
+            If kin_set=None and pop_set=None, then the Analysis object's
+            kin_set is used.
+            If kin_set is an integer, then the kinematics set with that index
+            is used for the spatial binning, regardless of pop_set.
+            If kin_set=None and pop_set!=0, then the spatial
+            binning defined in the pop_set is used.
+            The default is kin_set=None, pop_set=None.
+        weights : ``numpy.array`` like, shape=(n_orbits,), optional
+            Orbital weights to use. The default is ``None`` and will
+            determine the weights via ``model.get_weights(orblib)``.
+        bundle_mapping : ``numpy.array`` like, shape=(n_bundles, n_orbits),
+            mandatory
+            The mapping of orbits to orbit bundles. The values in the array
+            indicate what weight a specific orbit contributes to a specific
+            bundle. Note that an orbit may contribute to more than one bundle
+            because - depending on the ``dithering`` configuration setting -
+            each orbit may in fact represent a family of similar orbits (not
+            to be mistaken for the bundles in the sense of this method).
+        normalize : bool, optional
+            If True, the fluxes in the returned table are normalized to the
+            total flux in each aperture, i.e., the sum of all bundles' fluxes
+            in each aperture is 1. If False, the fluxes are the raw
+            contributions of the orbit bundles' weights. The default is False.
+        flux_as : str, optional
+            If 'table', return ``map_table``, if 'file', write the table to
+            the model directory in ascii.ecsv format and return its full path
+            ``f_name``, if 'both', write the table to disk and return a tuple
+            ``(gh_table, f_name)``. The default is 'table'.
+        create_figure : bool, optional
+            If True, the method will also plot surface brightness maps
+            for the orbit bundles and all orbits. The default is False.
+        figtype : str, optional
+            Determines the file format and extension to use when saving the
+            sb maps. The default is '.png'.
+
+        Raises
+        ------
+        ValueError
+            if flux_as is invalid.
+
+        Returns
+        -------
+        map_table : if flux_as='table', sb_maps=False
+        (map_table, figure) : if flux_as='table', sb_maps=True
+        f_name : if flux_as='file', sb_maps=False
+        (f_name, figure) : if flux_as='file', sb_maps=True
+        (map_table, f_name) : if flux_as='both', sb_maps=False
+        (map_table, f_name, figure) : if flux_as='both', sb_maps=True
+
+                         map_table f_name figure
+        flux_as='table'     X
+        flux_as='file'              X
+        flux_as='both'      X       X
+        sb_maps=True                        X
+
+        where
+
+        map_table : astropy table
+            The astropy table holding the model's weighted contribution of the
+            orbit bundles defined in bundle_mapping to the model's projected
+            mass in each aperture. The table columns are flux_000, ...,
+            flux_n_b, flux_all, where flux_xxx is the weighted contribution of
+            orbit bundle xxx, flux_all the weighted contribution of all orbit
+            bundles, and n_b is the number of orbit bundles. If normalized is
+            True, the fluxes are normalized to the total flux in each aperture,
+            i.e., the sum of all bundles' fluxes in each aperture is 1.
+        f_name : str
+            The file name (full path) of the astropy table holding the data
+            in map_table.
+        figure : matplotlib figure
+            The matplotlib figure holding the orbit bundle maps.
+
+        """
+        if bundle_mapping is None:
+            txt = 'No bundle_mapping provided, cannot calculate flux.'
+            self.logger.error(txt)
+            raise ValueError(txt)
+        if flux_as not in ['table', 'file', 'both']:
+            txt = f"{flux_as=} but must be either 'table', 'file', or 'both'."
+            self.logger.error(txt)
+            raise ValueError(txt)
+        if model is None:
+            model = self.model
+        if self.config.system.is_bar_disk_system():
+            stars = self.config.system.get_unique_bar_component()
+        else:
+            stars = self.config.system.get_unique_triaxial_visible_component()
+        if isinstance(kin_set, int) or (kin_set is None and pop_set is None):
+            if kin_set is None:
+                kin_set = self.kin_set
+            self.logger.debug(f'Using kinematics set {kin_set} for spatial '
+                              'binning.')
+            kin = True
+            kinpop_name = stars.kinematic_data[kin_set].name
+        elif kin_set is None and isinstance(pop_set, int):
+            self.logger.debug(f'Using populations set {pop_set} for spatial '
+                              'binning.')
+            kin = False
+            kinpop_name = stars.population_data[pop_set].name
+        else:
+            text = f'Invalid {kin_set=}, {pop_set=}. ' \
+                   'Choose (kin_set, pop_set) = ' \
+                   '(None, None), (None, <int>), or (<int>, None).'
+            self.logger.error(text)
+            raise ValueError(text)
+        self.logger.info('Getting model projected masses.')
+        orblib = model.get_orblib()
+        if weights is None:
+            _ = model.get_weights(orblib)
+            weights = model.weights
+        # Get projected masses if necessary
+        # and calculate flux. flux.shape = (n_bundles, n_aperture)
+        if kin:
+            if not hasattr(orblib, 'projected_masses'):
+                orblib.read_losvd_histograms()  # default is pops=False
+            flux = np.matmul(bundle_mapping, orblib.projected_masses[kin_set])
+        else:
+            # If kin is False, we need to read the projected masses binned for
+            # the populations.
+            orblib.read_losvd_histograms(pops=True)
+            flux = np.matmul(bundle_mapping,
+                             orblib.pops_projected_masses[pop_set])
+        flux_all = np.sum(flux, axis=0)
+        if normalize:
+            # Normalize fluxes to total flux in each aperture,
+            # deal with zero flux apertures
+            flux = np.divide(flux,
+                             flux_all[np.newaxis, :],
+                             where=flux_all[np.newaxis, :] != 0)
+        n_bundles = bundle_mapping.shape[0]  # number of orbit bundles
+        map_table = astropy.table.Table(
+            np.hstack((flux.T, flux_all[:,np.newaxis])),
+            names = [f'flux_{i:03d}' for i in range(n_bundles)] + ['flux_all'],
+            meta={('kin_set' if kin else 'pop_set'): kinpop_name})
+        # Create surface brightness maps if requested
+        if create_figure:
+            if kin:  # get mapping aperture -> pixel, grid.shape=(n_pixels,)
+                grid = stars.kinematic_data[kin_set].dp_args['idx_bin_to_pix']
+                map_plotter = stars.kinematic_data[kin_set].get_map_plotter()
+            else:
+                grid = stars.population_data[pop_set].dp_args['idx_bin_to_pix']
+                map_plotter = stars.population_data[pop_set].get_map_plotter()
+            # count multiplicity of each aperture in aperture->pixel mapping
+            # bin_mult.shape=(n_aperture,)
+            s = np.ravel(np.where((grid >= 0)))
+            bin_mult, _ = np.histogram(grid[s], bins=len(map_table))
+            fig_cols = 5
+            fig_rows = (n_bundles + 1) // fig_cols
+            if (n_bundles + 1) % 5 > 0:
+                fig_rows += 1
+            fig = plt.figure(figsize=(30, 30 / fig_cols * fig_rows * 0.6))
+            fig.subplots_adjust(wspace=0.5,
+                                left=1/30,
+                                bottom=0.05,
+                                top=0.99,
+                                right=29/30)
+            for i, colname in enumerate(map_table.colnames):
+                ax = plt.subplot(fig_rows, fig_cols, i + 1)
+                # divide aperture flux by number of pixels in aperture
+                # to get surface brightness in each pixel
+                flux = map_table[colname] / bin_mult
+                flux[flux > 0] = flux[flux > 0] / max(flux)
+                flux[flux == 0] = np.nan  # deal with zero fluxes for log10
+                flux = np.log10(flux, where=flux is not np.nan)
+                map_plotter(flux,
+                            vmin=min(flux),
+                            vmax=max(flux),
+                            label='surface brightness (log)',
+                            colorbar=True,
+                            cmap=cmr.get_sub_cmap('twilight_shifted',
+                                                  0.05,
+                                                  0.6))
+                ax.set_title(f'{colname}')
+                ax.set_xlabel('x [arcsec]')
+                ax.set_ylabel('y [arcsec]')
+            f_name = f'bundle_sb_maps_{"kin" if kin else "pop"}_{kinpop_name}'
+            f_name = self.config.settings.io_settings['plot_directory'] \
+                     + f_name \
+                     + figtype
+            fig.savefig(f_name)
+            self.logger.info(f'Orbit bundle maps written to {f_name}.')
+        # Write the flux table to disk or return it
+        if flux_as == 'table':
+            return (map_table, fig) if create_figure else map_table
+        f_name = f'{model.directory}orbit_bundle_flux_{kinpop_name}.ecsv'
+        map_table.write(f_name, format='ascii.ecsv', overwrite=True)
+        self.logger.info('Flux for orbit bundles binned for ' +
+                         ('kinematics ' if kin else 'populations ') +
+                         f'{kinpop_name} written to {f_name}.')
+        if flux_as == 'file':
+            return (f_name, fig) if create_figure else f_name
+        return (map_table,f_name,fig) if create_figure else (map_table,f_name)
+
+
     def get_gh_model_kinematic_maps(self,
                                     model=None,
                                     kin_set=None,
@@ -578,7 +796,7 @@ class Analysis:
                                     kinematics_as='table',
                                     weights=None):
         """
-        Generates an astropy table in the model directory that holds the
+        Generates an astropy table that holds the
         model's data for creating Gauss-Hermite kinematic maps:
         flux, v, sigma, h3 ... h<number_GH>.
         v and sigma are either directly calculated from the model's losvd
@@ -597,9 +815,9 @@ class Analysis:
             directly from the model's losvd histograms. The default is 'fit'.
         kinematics_as : str, optional
             If 'table', return ``gh_table``, the model's kinematics as an
-            astropy table, if 'file', write the table to disk in ascii.ecsv
-            format and return its full path ``f_name``, if 'both', write the
-            table to disk and return a tuple ``(gh_table, f_name)``.
+            astropy table, if 'file', write the table to the model directory in
+            ascii.ecsv format and return its full path ``f_name``, if 'both',
+            write the table to disk and return a tuple ``(gh_table, f_name)``.
             The default is 'table'.
         weights : ``numpy.array`` like, optional
             Orbital weights to use. The default is ``None`` and will
@@ -644,8 +862,10 @@ class Analysis:
         if weights is None:
             _ = model.get_weights(orblib)
             weights = model.weights
-        # get losvd_histograms and projected masses:
-        orblib.read_losvd_histograms()
+        # get losvd_histograms and projected masses if necessary:
+        if not (hasattr(orblib, 'losvd_histograms')
+                and hasattr(orblib, 'projected_masses')):
+            orblib.read_losvd_histograms()
         # get all orbits' losvds; orbits_losvd.shape = n_orb,n_vbin,n_aperture
         orbits_losvd = orblib.losvd_histograms[kin_set].y[:,:,]
         # weighted sum of orbits_losvd; model_losvd.shape = 1,n_vbin,n_aperture

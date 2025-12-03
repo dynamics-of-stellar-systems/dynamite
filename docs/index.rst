@@ -18,6 +18,11 @@ If you use the ``dynamite.analysis.Decomposition`` class, please cite the papers
 `Zhu et al. 2018 <https://ui.adsabs.harvard.edu/abs/2018MNRAS.473.3000Z/abstract>`_ and
 `Santucci et al. 2022 <https://ui.adsabs.harvard.edu/abs/2022ApJ...930..153S/abstract>`_.
 
+If you use the ``dynamite.coloring.Coloring`` class, please cite the papers describing its methodology,
+`Zhu et al. 2020 <https://ui.adsabs.harvard.edu/abs/2020MNRAS.496.1579Z/abstract>`_,
+`Zhu et al. 2022 <https://ui.adsabs.harvard.edu/abs/2022A%26A...664A.115Z/abstract>`_, and
+`Cappellari and Copin 2003 <https://ui.adsabs.harvard.edu/abs/2003MNRAS.342..345C/abstract>`_.
+
 If you model a galaxy having a bar/disk (i.e., if your configuration file includes a ``bardisk`` component), please cite `Tahmasebzadeh et al. 2022 <https://ui.adsabs.harvard.edu/abs/2022ApJ...941..109T/abstract>`_.
 
 ===================
@@ -84,6 +89,7 @@ Each page is an ipython notebook which you can either view in the browser, or do
    tutorial_notebooks/5_parameter_space.ipynb
    tutorial_notebooks/6_orbits_and_weights.ipynb
    tutorial_notebooks/7_orbital_distributions.ipynb
+   tutorial_notebooks/8_coloring.ipynb
 
 API Documentation
 =================
@@ -101,6 +107,7 @@ The API overview may be a useful starting point.
    api_docs/data
    api_docs/mges
    api_docs/kinematics
+   api_docs/populations
    api_docs/physical_system
    api_docs/parameter_space
    api_docs/model
@@ -109,6 +116,7 @@ The API overview may be a useful starting point.
    api_docs/model_iterator
    api_docs/plotting
    api_docs/analysis
+   api_docs/coloring
 
 More Information
 ================

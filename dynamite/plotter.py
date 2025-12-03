@@ -14,6 +14,7 @@ from matplotlib.ticker import MaxNLocator, FixedLocator,LogLocator
 from matplotlib.ticker import NullFormatter
 import matplotlib.pyplot as plt
 from plotbin import display_pixels
+from dynamite import constants
 from dynamite import kinematics
 from dynamite import physical_system as physys
 from dynamite import analysis
@@ -846,10 +847,16 @@ class Plotter():
 
         # plot settings
 
-        minf = min(np.array(list(map(np.log10, flux[grid[s]] / max(flux)))))
-        maxf = max(np.array(list(map(np.log10, flux[grid[s]] / max(flux)))))
-        minfm = min(np.array(list(map(np.log10, fluxm[grid[s]] / max(fluxm)))))
-        maxfm = max(np.array(list(map(np.log10, fluxm[grid[s]] / max(fluxm)))))
+        # calculate log10 values, keep flux and fluxm for plotting residuals
+        flux_plot = flux / max(flux)
+        flux_plot[flux_plot==0] = np.nan  # deal with zero fluxes for log10
+        flux_plot = np.log10(flux_plot, where=flux_plot is not np.nan)
+        fluxm_plot = fluxm / max(fluxm)
+        fluxm_plot[fluxm_plot==0] = np.nan  # deal with zero fluxes for log10
+        fluxm_plot = np.log10(fluxm_plot, where=fluxm_plot is not np.nan)
+
+        minf, maxf = min(flux_plot), max(flux_plot)
+        minfm, maxfm = min(fluxm_plot), max(fluxm_plot)
         minsb = min(minf,minfm)
         maxsb = max(maxf,maxfm)
 
@@ -890,8 +897,7 @@ class Plotter():
 
         # PLOT THE REAL DATA
         ax1 = plt.subplot(3, n_col, (1 - 1) * n_col + 1)
-        c = np.array(list(map(np.log10, flux[grid[s]] / max(flux))))
-        display_pixels.display_pixels(x, y, c,
+        display_pixels.display_pixels(x, y, flux_plot[grid[s]],
                                       vmin=minsb, vmax=maxsb,
                                       **kw_display_pixels1)
         ax1.set_title('surface brightness (log)',fontsize=20, pad=20)
@@ -914,8 +920,7 @@ class Plotter():
 
         # PLOT THE MODEL DATA
         plt.subplot(3, n_col, (2 - 1) * n_col + 1)
-        c = np.array(list(map(np.log10, fluxm[grid[s]] / max(fluxm))))
-        display_pixels.display_pixels(x, y, c,
+        display_pixels.display_pixels(x, y, fluxm_plot[grid[s]],
                                       vmin=minsb, vmax=maxsb,
                                       **kw_display_pixels1)
         plt.subplot(3, n_col, (2 - 1) * n_col + 2)
@@ -1102,7 +1107,12 @@ class Plotter():
 
 #############################################################################
 
-    def mass_plot(self, which_chi2=None, Rmax_arcs=None, figtype=None):
+    def mass_plot(self,
+                  which_chi2=None,
+                  Rmax_arcs=None,
+                  x_scale='linear',
+                  y_scale='linear',
+                  figtype=None):
         """
         Generates cumulative mass plot
 
@@ -1120,8 +1130,16 @@ class Plotter():
             Which chi2 is used for determining the best models. If None,
             the setting from the configuration file will be used.
             The default is None.
-        Rmax_arcs : numerical value
-            Determines the upper range of the x-axis. Default value is None.
+        Rmax_arcs : numerical value, optional
+            Determines the upper range [arcsec] of the x-axis. If None, it is
+            set to the config file's ``orblib_settings: logrmax`` value.
+            The default value is None.
+        x_scale : str, optional
+            switches between logarithmic (x_scale='log') and linear
+            (x_scale='linear') scaling of the x axis. The default is 'linear'.
+        y_scale : str, optional
+            switches between logarithmic (y_scale='log') and linear
+            (y_scale='linear') scaling of the y axis. The default is 'linear'.
         figtype : STR, optional
             Determines the file extension to use when saving the figure.
             If None, the default setting is used ('.png').
@@ -1130,8 +1148,6 @@ class Plotter():
         ------
         ValueError
             If which_chi2 is neither None nor a valid chi2 type.
-        ValueError
-            If Rmax_arcs is not set to a numerical value.
 
         Returns
         -------
@@ -1145,10 +1161,13 @@ class Plotter():
 
         which_chi2 = self.config.validate_chi2(which_chi2)
 
+        txt = 'Creating mass plot with Rmax_arcs = '
         if Rmax_arcs is None:
-            text = f'Rmax_arcs must be a number, but it is {Rmax_arcs}'
-            self.logger.error(text)
-            raise ValueError(text)
+            Rmax_arcs = 10 ** self.settings.orblib_settings['logrmax']
+            txt += f'{Rmax_arcs} (from orblib_settings in the config file).'
+        else:
+            txt += f'{Rmax_arcs} (user provided).'
+        self.logger.info(txt)
 
         stars = \
             self.system.get_component_from_class(physys.TriaxialVisibleComponent)
@@ -1174,7 +1193,7 @@ class Plotter():
         if n < 3:
             n = 3
 
-        print('Selecting ',n,' models')
+        self.logger.debug(f'Selecting {n} models')
 
         ## Calulate mass profiles
         nm = 200
@@ -1188,10 +1207,9 @@ class Plotter():
         mgePAtwist = mgepar['PA_twist']
 
         distance = self.system.distMPc
-        arctpc = distance*np.pi/0.648
+        arctpc = constants.ARC_KPC(distance) * 1000
         sigobs_pc = mgesigma*arctpc
         r_pc = R*arctpc
-        parsec_km = 1.4959787068e8*(648.e3/np.pi)
         psi_off = mgePAtwist
 
         mass = np.zeros((nm,n,3))
@@ -1228,8 +1246,10 @@ class Plotter():
                 #rhoc, rc = self.NFW_getpar(mstars=Mstarstot, cc=dmconc,
                 #                           dmfrac=dmR)[:2]
                 #mdm = self.NFW_enclosemass(rho=rhoc, Rs=rc, R=r_pc*parsec_km)
-                mdm = self.NFW_enclosemass(mstars=Mstarstot, cc=dmconc,
-                                        dmfrac=dmR, R=r_pc*parsec_km)
+                mdm = self.NFW_enclosemass(mstars=Mstarstot,
+                                           cc=dmconc,
+                                           dmfrac=dmR,
+                                           R=r_pc * constants.PARSEC_KM)
             else:
                 mdm = 0.
 
@@ -1254,7 +1274,7 @@ class Plotter():
         xrange = np.array([0.1, Rmax_arcs])
         yrange = np.array([1.0e6,maxmass])
 
-        filename1 = self.plotdir + 'enclosedmassm_linear' + figtype
+        filename = self.plotdir + 'enclosed_mass' + figtype
         fig = plt.figure(figsize=(5,5))
         #ftit = fig.suptitle(object.upper() + '_enclosedmassm_linear', fontsize=10,fontweight='bold')
         ax = fig.add_subplot(1, 1, 1)
@@ -1265,9 +1285,19 @@ class Plotter():
         ax.tick_params(labelsize=8)
 
         ax2 = ax.twiny()
-        ax2.set_xlim(xrange * arctpc / 1000.0)
-        ax2.set_xlabel(r'$r$ [kpc]', fontsize=9)
+        if Rmax_arcs * arctpc < 1000:
+            ax2.set_xlim(xrange * arctpc)
+            ax2.set_xlabel(r'$r$ [pc]', fontsize=9, labelpad=8)
+        else:
+            ax2.set_xlim(xrange * arctpc / 1000.0)
+            ax2.set_xlabel(r'$r$ [kpc]', fontsize=9, labelpad=8)
         ax2.tick_params(labelsize=8)
+
+        if x_scale == 'log':
+            ax.set_xscale('log')
+            ax2.set_xscale('log')
+        if y_scale == 'log':
+            ax.set_yscale('log')
 
         ax.plot(R,mm[:,0], '-', color='k', linewidth=2.0,
                 label='Total')
@@ -1287,9 +1317,9 @@ class Plotter():
 
         ax.legend(loc='upper left', fontsize=8)
         plt.tight_layout()
-        plt.savefig(filename1)
+        plt.savefig(filename)
 
-        self.logger.info(f'Plot {filename1} saved in {self.plotdir}')
+        self.logger.info(f'Plot {filename} saved.')
 
         return fig
 
@@ -1935,7 +1965,12 @@ class Plotter():
 
 #############################################################################
 
-    def qpu_plot(self, which_chi2=None, Rmax_arcs=None,figtype =None):
+    def qpu_plot(self,
+                 which_chi2=None,
+                 Rmax_arcs=None,
+                 x_scale='linear',
+                 y_scale='linear',
+                 figtype=None):
         """
         Generates triaxiality plot
 
@@ -1947,11 +1982,19 @@ class Plotter():
         Parameters
         ----------
         which_chi2 : STR, optional
-           Which chi2 is used for determining the best models. If None,
+            Which chi2 is used for determining the best models. If None,
             the setting from the configuration file will be used.
             The default is None.
-        Rmax_arcs : numerical value
-            Determines the upper range of the x-axis.
+        Rmax_arcs : numerical value, optional
+            Determines the upper range [arcsec] of the x-axis. If None, it is
+            set to the config file's ``orblib_settings: logrmax`` value.
+            The default value is None.
+        x_scale : str, optional
+            switches between logarithmic (r_scale='log') and linear
+            (r_scale='linear') scaling of the r axis. Defaults to 'linear'.
+        y_scale : str, optional
+            switches between logarithmic (r_scale='log') and linear
+            (r_scale='linear') scaling of the mass axis. Defaults to 'linear'.
         figtype : STR, optional
             Determines the file extension to use when saving the figure.
             If None, the default setting is used ('.png').
@@ -1960,8 +2003,6 @@ class Plotter():
         ------
         ValueError
             If which_chi2 is neither None nor a valid chi2 type.
-        ValueError
-            If Rmax_arcs is not set to a numerical value.
 
         Returns
         -------
@@ -1975,10 +2016,13 @@ class Plotter():
 
         which_chi2 = self.config.validate_chi2(which_chi2)
 
+        txt = 'Creating triaxiality plot with Rmax_arcs = '
         if Rmax_arcs is None:
-            text = f'Rmax_arcs must be a number, but it is {Rmax_arcs}'
-            self.logger.error(text)
-            raise ValueError(text)
+            Rmax_arcs = 10 ** self.settings.orblib_settings['logrmax']
+            txt += f'{Rmax_arcs} (from orblib_settings in the config file).'
+        else:
+            txt += f'{Rmax_arcs} (user provided).'
+        self.logger.info(txt)
 
         val0 = deepcopy(self.all_models.table)
         arg = np.argsort(np.array(val0[which_chi2]))
@@ -1998,7 +2042,7 @@ class Plotter():
           self.system.get_component_from_class(physys.TriaxialVisibleComponent)
 
         distance = self.system.distMPc
-        arctpc = distance*np.pi/0.648
+        arctpc = constants.ARC_KPC(distance) * 1000
         mgepar = stars.mge_pot.data
         mgeI = mgepar['I']
         mgesigma = mgepar['sigma']
@@ -2048,11 +2092,26 @@ class Plotter():
         filename1 = self.plotdir + 'triaxial_qpt' + figtype
         fig = plt.figure(figsize=(5,5))
         ax = fig.add_subplot(1,1,1)
-        ax.set_xlim(np.array([0,Rmax_arcs]))
-        ax.set_ylim(np.array([0.0,1.1]))
+        xrange = np.array([np.min(Rarc[cc]), Rmax_arcs])
+        ax.set_xlim(xrange)
+        if y_scale == 'linear':  # 'log': determine yrange dynamically
+            ax.set_ylim(np.array([0.0,1.1]))
         ax.set_xlabel(r'$r$ [arcsec]', fontsize=9)
         ax.set_ylabel(r'$p$ | $q$ | $T = (1-p^2)/(1-q^2)$', fontsize=9)
         ax.tick_params(labelsize=8)
+        ax2 = ax.twiny()
+        if Rmax_arcs * arctpc < 1000:
+            ax2.set_xlim(xrange * arctpc)
+            ax2.set_xlabel(r'$r$ [pc]', fontsize=9, labelpad=8)
+        else:
+            ax2.set_xlim(xrange * arctpc / 1000.0)
+            ax2.set_xlabel(r'$r$ [kpc]', fontsize=9, labelpad=8)
+        ax2.tick_params(labelsize=8)
+        if x_scale == 'log':
+            ax.set_xscale('log')
+            ax2.set_xscale('log')
+        if y_scale == 'log':
+            ax.set_yscale('log')
 
         ax.plot(Rpc[cc]/arctpc, p_m[cc], '-', color='blue',
                 linewidth=3.0, label=r'$p$')
@@ -2079,7 +2138,7 @@ class Plotter():
         plt.tight_layout()
         plt.savefig(filename1)
 
-        self.logger.info(f'Plot {filename1} saved in {self.plotdir}')
+        self.logger.info(f'Plot {filename1} saved.')
 
         return fig
 
@@ -2100,6 +2159,7 @@ class Plotter():
                            model=None,
                            minr=None,
                            maxr=None,
+                           r_scale='log',
                            nr=50,
                            nl=61,
                            equal_weighted_orbits=False,
@@ -2136,6 +2196,10 @@ class Plotter():
         maxr : float, optional
             the maximum radius [kpc] to show in the plot. If ``None``, this is
             set to the minimum radius of the orbit library
+        r_scale : str, optional
+            switches between logarithmic (r_scale='log') and linear
+            (r_scale='linear') scaling and binning of the (minr,maxr)
+            r interval. The default is 'log'.
         nr : int, optional
             number of radial bins, by default 50
         nl : int, optional
@@ -2183,11 +2247,22 @@ class Plotter():
             model_id = self.all_models.get_best_n_models_idx(n=1)[0]
             model = self.all_models.get_model_from_row(model_id)
             self.logger.debug(f'Using model {model_id} in {model.directory}.')
+        if r_scale not in ['log', 'linear']:
+            txt = f"r_scale must be 'log' or 'linear', not {r_scale}."
+            self.logger.error(txt)
+            raise ValueError(txt)
+        r_logscale = True if r_scale == 'log' else False
         if orientation not in ['horizontal', 'vertical']:
             raise NotImplementedError(f"Unknown orientation {orientation}, "
                                       f"must be 'horizontal' or 'vertical'.")
         orblib = model.get_orblib()
-        orblib.get_projection_tensor(minr=minr, maxr=maxr, nr=nr, nl=nl, force_lambda_z=force_lambda_z, dL=dL)
+        orblib.get_projection_tensor(minr=minr,
+                                     maxr=maxr,
+                                     r_scale=r_scale,
+                                     nr=nr,
+                                     nl=nl,
+                                     force_lambda_z=force_lambda_z,
+                                     dL=dL)
         if equal_weighted_orbits:
             n_bundles = orblib.projection_tensor.shape[-1]
             weights = np.ones(n_bundles)/n_bundles
@@ -2238,11 +2313,23 @@ class Plotter():
                     'interpolation':'none',
                     'vmax':vmax}
         ranges = orblib.projection_tensor_rng
-        log10_r_rng = ranges['log10_r_rng']
+        if r_logscale:
+            if ranges['log10_r_rng'][-1] < 0:  # all radii < 1 kpc
+                r_rng = tuple(r + 3 for r in ranges['log10_r_rng'])
+                r_label = '$\\log_{10} (r/\\mathrm{pc})$'
+            else:
+                r_rng = ranges['log10_r_rng']
+                r_label = '$\\log_{10} (r/\\mathrm{kpc})$'
+        else:
+            if ranges['lin_r_rng'][-1] < 1: # all radii < 1 kpc
+                r_rng = tuple(r * 1e3 for r in ranges['lin_r_rng'])
+                r_label = '$r\\ [\\mathrm{pc}]$'
+            else:
+                r_rng = ranges['lin_r_rng']
+                r_label = '$r\\ [\\mathrm{kpc}]$'
         lmd_rng = ranges['lmd_rng']
         tot_lmd_rng = ranges['tot_lmd_rng']
         # make plot
-        r_label = r'$\log_{10} (r/\mathrm{kpc})$'
         fig_size = 15 * n_plots/len(orb_classes)
         self.logger.info(f'{fig_size=}.')
         if orientation == 'horizontal':
@@ -2257,9 +2344,9 @@ class Plotter():
                 if orb_class['plot']:
                     plot_data = np.flipud(mod_orb_dists[orb_class_idx])
                     if orb_class['name'] == 'box':
-                        extent = tot_lmd_rng+log10_r_rng
+                        extent = tot_lmd_rng + r_rng
                     else:
-                        extent = lmd_rng+log10_r_rng
+                        extent = lmd_rng + r_rng
                     cax = ax[plot_idx].imshow(plot_data,
                                               extent=extent,
                                               **kwimshow)
@@ -2280,9 +2367,9 @@ class Plotter():
                 if orb_class['plot']:
                     plot_data = np.flipud(mod_orb_dists[orb_class_idx].T)
                     if orb_class['name'] == 'box':
-                        extent = log10_r_rng+tot_lmd_rng
+                        extent = r_rng + tot_lmd_rng
                     else:
-                        extent = log10_r_rng+lmd_rng
+                        extent = r_rng + lmd_rng
                     cax = ax[plot_idx].imshow(plot_data,
                                               extent=extent,
                                               **kwimshow)
@@ -2297,7 +2384,7 @@ class Plotter():
         # format and save
         figname = self.plotdir + 'orbit_distribution' + figtype
         fig.savefig(figname)
-        self.logger.info(f'Plot {figname} saved in {self.plotdir}')
+        self.logger.info(f'Plot {figname} saved.')
         if getdata:
             return mod_orb_dists, fig
         else:

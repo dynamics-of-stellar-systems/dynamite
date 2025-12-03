@@ -6,13 +6,9 @@ from scipy import special
 
 # some tricks to add the current path to sys.path (so the imports below work)
 
-import os.path
-import sys
 import logging
 
 from dynamite import mges as mge
-from dynamite import constants as const
-from dynamite import orblib as orb
 
 class System(object):
     """The physical system being modelled
@@ -99,7 +95,7 @@ class System(object):
                 self.logger.warning(text)
                 generator_settings['minstep'] = generator_settings['step']
         if len(self.parameters) > 1:
-            omega = self.parameters[1]
+            # omega = self.parameters[1]
             if self.parameters[1].name != 'omega':
                 text = 'System needs omega as its second parameter.'
                 self.logger.error(text)
@@ -221,11 +217,14 @@ class System(object):
             a list of Component objects
 
         """
-        mge_cmp = [c for c in self.cmp_list if isinstance(c, TriaxialVisibleComponent) or isinstance(c, BarDiskComponent)]
+        mge_cmp = [c for c in self.cmp_list
+                   if isinstance(c, TriaxialVisibleComponent)
+                   or isinstance(c, BarDiskComponent)]
         return mge_cmp
 
     def get_unique_triaxial_visible_component(self):
-        """Return the unique non-bar MGE component (raises an error if there are zero or multiple such components)
+        """Return the unique non-bar MGE component (raises an error if there
+        are zero or multiple such components)
 
         Returns
         -------
@@ -247,14 +246,15 @@ class System(object):
         Returns
         -------
         list
-            a list of Component objects, keeping only the rotating MGE components
+            list of Component objects, keeping only the rotating MGE components
 
         """
         bar_cmp = [c for c in self.cmp_list if isinstance(c, BarDiskComponent)]
         return bar_cmp
 
     def get_unique_bar_component(self):
-        """Return the unique rotating bar component (raises an error if there are zero or multiple such components)
+        """Return the unique rotating bar component (raises an error if there
+        are zero or multiple such components)
 
         Returns
         -------
@@ -380,7 +380,7 @@ class Component(object):
                  population_data=[],
                  parameters=[]):
         self.logger = logging.getLogger(f'{__name__}.{__class__.__name__}')
-        if name == None:
+        if name is None:
             self.name = self.__class__.__name__
         else:
             self.name = name
@@ -690,19 +690,19 @@ class TriaxialVisibleComponent(VisibleComponent):
         # Check for p=0
         if np.isclose(p, 0.):
             theta = phi = psi = np.nan
-            self.logger.debug(f'DEPROJ FAIL: p=0')
+            self.logger.debug('DEPROJ FAIL: p=0')
         # Check for q=0
         if np.isclose(q, 0.):
             theta = phi = psi = np.nan
-            self.logger.debug(f'DEPROJ FAIL: q=0')
+            self.logger.debug('DEPROJ FAIL: q=0')
         # Check for u=0
         if np.isclose(u, 0.):
             theta = phi = psi = np.nan
-            self.logger.debug(f'DEPROJ FAIL: u=0')
+            self.logger.debug('DEPROJ FAIL: u=0')
         # Check for u>1
         if u>1:
             theta = phi = psi = np.nan
-            self.logger.debug(f'DEPROJ FAIL: u>1')
+            self.logger.debug('DEPROJ FAIL: u>1')
         if np.isclose(u,p):
             u=p
         # Check for possible triaxial deprojection (v. d. Bosch 2004,
@@ -798,7 +798,7 @@ class TriaxialVisibleComponent(VisibleComponent):
         """
         (p, q, u), valid = self.find_grid_of_valid_pqu()
         text = "No deprojection possible for the specificed values of (p,q,u)."
-        text += "Here are some suggestions: \n"
+        text += " Here are some suggestions:\n"
         # take avg of valid p's and q's where u is close to targer value
         target_u = 0.9
         idx = np.where(np.abs(u[valid]-target_u)<0.005)

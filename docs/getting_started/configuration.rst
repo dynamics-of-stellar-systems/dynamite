@@ -155,17 +155,23 @@ The ``TriaxialVisibleComponent`` represents the galaxy's stars, and therefore ha
 - ``TriaxialVisibleComponent``
     - ``mge_lum``: string, filename for the MGE of the projected luminosity density, with intensity units of :math:`L_\odot \mathrm{pc}^{-2}`.
     - ``mge_pot``: string, filename for the MGE of the projected mass density, with intensity units of :math:`M_\odot \mathrm{pc}^{-2}`. If you assume that stellar-mass follows stellar-light, then the files ``mge_lum`` and ``mge_pot`` will be identical.
-    - ``kinematics``
+    - ``kinematics``:
         - ``name_of_the_kinematic_set``: a descriptive name, best without spaces as it will be part of the kinematic plot file name.
             - ``type``: type of kinematics - either ``GaussHermite`` or ``BayesLOSVD``
             - ``datafile``: string, filename for the kinematics ECSV data file
             - ``aperturefile``: string, filename of the aperture file for this kinematic set
             - ``binfile``: string, filename of the bin file for this kinematic set
-            - ``hist_width``: *optional*, float or 'default', the width (i.e. min. to max. value) of the velocity histogram for storing orbits. The default option is a width slightly wider than that of the observed kinematics.
+            - ``hist_width``: *optional*, float or 'default', the width (i.e. min. to max. value) of the velocity histogram for storing orbits. The default values are :math:`2\max(|v|+3\sigma_v)` for ``GaussHermite`` and :math:`4\max(|\min(v)|,|\max(v)|)` for ``BayesLOSVD``, respectively.
             - ``hist_center``: *optional*, float or 'default', the center of the velocity histogram for storing orbits. The default option is 0.
             - ``hist_bins``: *optional*, int or 'default', the number of bins in the velocity histogram for storing orbits. The default option gives about 10 times better velocity sampling than the data.
-        - ``name_of_next_kinematic_set`` (if any...)
+            - ``with_pops``: *optional*, Boolean. Only relevant if population data exists in this kinematic set's ``datafile``. If True, the population data is used; if False, the population data is ignored. The default is False.
+        - ``name_of_next_kinematic_set``: (if any...)
             - ...
+    - ``populations``: (optional, BETA FUNCTIONALITY)
+        - ``name_of_the_population``: a descriptive name, best without spaces. Note that currently only one population dataset can be specified.
+            - ``datafile``: string, filename for the population ECSV data file
+            - ``aperturefile``: string, filename of the aperture file for this population set
+            - ``binfile``: string, filename of the bin file for this population set
 
 For more information on the input file formats, please refer to the :ref:`input_files` section of the Overview page.
 
