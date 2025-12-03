@@ -5,10 +5,21 @@ Change Log
 ****************
 
 - Bugfix: Fixed crash in the density() method of the NFW_m200_c dark halo
+- New feature: "Coloring" adds support for fitting population data such as stellar age and metallicity, see new tutorial 8_coloring.ipynb.
+- Improvement: Updated documentation (clarifications and fixes).
+- Improvement: The (confusing) annotations in the aperture and bins files are now optional. Comment lines (#) in those files can now be used to add any information.
+- Improvement: Unknown entries in the configuration file will now raise an error rather than be ignored.
+- Improvement: Updated the recommended Python version to 3.10 or later (Python 3.9 end of life was Oct 31, 2025) and required scipy versions 1.11 or >=1.16 to warrant stable Python NNLS.
+- Improvement: Added weight_solver_settings parameter ``maxiter_factor`` to control the maxiter parameter of scipy nnls. Setting it beyond its default 3 can help when weight solving fails.
 - Improvement: Use indicator files for existing orblibs instead of checking multiple files (preparation for coloring and proper motions).
 - Improvement: Replaced staging files by directly checking for orblibs and weight files on disk.
 - Improvement: Significant performance gain when reading existing model weights (eliminated unnecessary reading of orbit library)
 - Bugfix: fix a bug in beta_plot and anistotropy_single, subtract first moments, plot only beta_r, enable log x-axis, plot pc/kpc scale on upper x-axis
+- Improvement: misc. improvements in plotter (auto select kpc vs. pc everywhere, added r in (k)pc to qpu_plot, better filename for mass_plot).
+- Improvement: Rmax_arcs is now an optional parameter for mass_plot and qpu_plot (default value taken from the config file).
+- Improvement: significant performance gain when reading existing model weights (eliminated unnecessary reading of orbit library).
+- Improvement: in the orbit distribution plot r can now be binned and plotted in linear scale (in addition to the default logarithmic scale).
+- Bugfix: fixed a bug that prevented sensible kinematic maps colorbar limits if flux is zero in one or more bins.
 - New feature: DYNAMITE models now support multiple kinematic data sets of different types and with different histogram settings
 - Improvement: the orbit_plot now allows custom orbit cuts via the ocut parameter (same behavior as in the Decomposition class)
 - Bugfix: fixed a crash of the SpecificModels parameter generator with certain specific value lists.
@@ -21,7 +32,7 @@ Change Log
 - Improvement: Reduced disk space requirements and performance by splitting orbit library files while maintaining backward compatibility.
 - Bugfix: avoid DYNAMITE crashing because it gets stuck in a model directory due to a Fortran error
 - Improvement: better error messages to improve debugging with multiprocessing
-- Improvement: minor improvements of tutorials 2 and 3
+- Improvement: minor improvements of tutorials 1, 2, and 3
 
 Version: 4.3
 ================

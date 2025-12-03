@@ -224,6 +224,13 @@ class Configuration(object):
         logger.info('io_settings...')
         logger.debug(f'Read: {self.params["io_settings"]}')
 
+        if set(self.params['io_settings'].keys()) != \
+              set(['input_directory', 'output_directory', 'all_models_file']):
+            txt = 'io_settings must contain input_directory, ' \
+                  'output_directory, and all_models_file, not ' \
+                  f'{list(self.params["io_settings"].keys())}.'
+            self.logger.error(txt)
+            raise ValueError(txt)
         try:
             for io in ['input', 'output']:
                 d = self.params['io_settings'][io+'_directory']
@@ -268,8 +275,23 @@ class Configuration(object):
                     c = getattr(physys,data_comp['type'])(name = comp,
                             contributes_to_potential \
                             = data_comp['contributes_to_potential'])
+                    # check for extra config entries/typos before any more
+                    # information is read from config file
+                    keys_ok = ['parameters', 'type', 'include',
+                               'contributes_to_potential']
+                    if isinstance(c, physys.VisibleComponent):
+                        keys_ok.extend(['mge_pot', 'mge_lum',
+                                        'disk_pot', 'disk_lum',
+                                        'kinematics', 'populations'])
+                    if any(k not in keys_ok for k in data_comp):
+                        text = f'Component {c.name} has unknown config ' \
+                            'entries: ' \
+                            f'{[k for k in data_comp if k not in keys_ok]}. ' \
+                            f'Allowed entries: {keys_ok}. Check for typos.'
+                        self.logger.error(text)
+                        raise ValueError(text)
 
-                    # initialize the component's paramaters, kinematics,
+                    # initialize the component's parameters, kinematics,
                     # and populations
 
                     par_list, kin_list = [], []
@@ -292,8 +314,6 @@ class Configuration(object):
                     # read kinematics
 
                     if 'kinematics' in data_comp:
-                    # shall we include a check here (e.g., only
-                    # VisibleComponent has kinematics?)
                         logger.debug('Has kinematics '
                                     f'{list(data_comp["kinematics"].keys())}')
                         kin_id = 0
@@ -324,6 +344,9 @@ class Configuration(object):
                             kin_list.append(kinematics_set)
                             kin_id += 1
                         c.kinematic_data = kin_list
+                    else:
+                        logger.debug(f'{comp}... no kinematics to '
+                                     'be read from config file.')
 
                     # read populations
 
@@ -339,24 +362,47 @@ class Configuration(object):
                                                 input_directory=path,
                                                 **data_pop)
                             c.population_data.append(populations_set)
+                    else:
+                        logger.debug(f'{comp}... no populations data to '
+                                     'be read from config file.')
 
                     if 'mge_pot' in data_comp:
                         path = self.settings.io_settings['input_directory']
                         c.mge_pot = mge.MGE(input_directory=path,
                                         datafile=data_comp['mge_pot'])
+                        logger.debug(f'{comp}... mge_pot read from '
+                                     f'{data_comp["mge_pot"]}.')
+                    else:
+                        logger.debug(f'{comp}... no mge_pot to '
+                                     'be read from config file.')
                     if 'mge_lum' in data_comp:
                         path = self.settings.io_settings['input_directory']
                         c.mge_lum = mge.MGE(input_directory=path,
                                         datafile=data_comp['mge_lum'])
+                        logger.debug(f'{comp}... mge_lum read from '
+                                     f'{data_comp["mge_lum"]}.')
+                    else:
+                        logger.debug(f'{comp}... no mge_lum data to '
+                                     'be read from config file.')
 
                     if 'disk_pot' in data_comp:
                         path = self.settings.io_settings['input_directory']
                         c.disk_pot = mge.MGE(input_directory=path,
                                              datafile=data_comp['disk_pot'])
+                        logger.debug(f'{comp}... disk_pot read from '
+                                     f'{data_comp["disk_pot"]}.')
+                    else:
+                        logger.debug(f'{comp}... no disk_pot to '
+                                     'be read from config file.')
                     if 'disk_lum' in data_comp:
                         path = self.settings.io_settings['input_directory']
                         c.disk_lum = mge.MGE(input_directory=path,
-                                             datafile=data_comp['disk_pot'])
+                                             datafile=data_comp['disk_lum'])
+                        logger.debug(f'{comp}... disk_lum read from '
+                                     f'{data_comp["disk_lum"]}.')
+                    else:
+                        logger.debug(f'{comp}... no disk_lum to '
+                                     'be read from config file.')
 
                     # add component to system
                     c.validate()
@@ -393,6 +439,12 @@ class Configuration(object):
             elif key == 'system_attributes':
                 logger.info('system_attributes...')
                 logger.debug(f'system_attributes: {tuple(value.keys())}')
+                # check here so system attributes are not set arbitrarily
+                if any(k not in ['distMPc', 'name'] for k in value):
+                    text = 'system_attributes can only be distMPc and name, '\
+                           f'not {list(value.keys())}.'
+                    logger.error(text)
+                    raise ValueError(text)
                 for other, data in value.items():
                     setattr(self.system, other, data)
 
@@ -485,7 +537,7 @@ class Configuration(object):
             raise ValueError(text)
         logger.info('System assembled')
         self.validate()
-        logger.debug(f'System: {self.system}')
+        # logger.debug(f'System: {self.system}')  # logged as part of parspace
         logger.debug(f'Settings: {self.settings}')
         logger.info('Configuration validated')
 
@@ -500,6 +552,15 @@ class Configuration(object):
         self.all_models = model.AllModels(config=self)
         logger.info('Instantiated AllModels object')
         logger.debug(f'AllModels:\n{self.all_models.table}')
+        # Update the indicator files in the orblib directories. This is
+        # necessary here because the indicators depend on the exising data
+        # like kinematics, populations, proper motions.
+        path = self.settings.io_settings['model_directory']
+        directories = [path + d for d in self.all_models.table['directory']]
+        # Now, convert the model dirs to orblib dirs, eliminating duplicates
+        directories = set([d[:d[:-1].rindex('/') + 1] for d in directories])
+        for d in directories:
+            self.all_models.update_orblib_flags(d)
         self.all_models.update_model_table()
 
         # self.backup_config_file(reset=False)
@@ -942,6 +1003,11 @@ class Configuration(object):
                                       'either GaussHermite or BayesLOSVD')
                     raise ValueError('VisibleComponent must have kinematics: '
                                      'either GaussHermite or BayesLOSVD')
+                if c.population_data and len(c.population_data) > 1:
+                    txt = 'VisibleComponent can either have 0 or 1 set(s) ' \
+                          f'of population data, not {len(c.population_data)}.'
+                    self.logger.error(txt)
+                    raise ValueError(txt)
                 if c.symmetry != 'triax':
                     self.logger.error('Legacy mode: VisibleComponent must be '
                                       'triaxial')
@@ -974,7 +1040,8 @@ class Configuration(object):
         chi2abs = self.__class__.thresh_chi2_abs
         chi2scaled = self.__class__.thresh_chi2_scaled
         gen_set=self.settings.parameter_space_settings.get('generator_settings')
-        if gen_set != None and (chi2abs in gen_set and chi2scaled in gen_set):
+        if gen_set is not None \
+           and (chi2abs in gen_set and chi2scaled in gen_set):
             self.logger.error(f'Only specify one of {chi2abs}, {chi2scaled}, '
                               'not both')
             raise ValueError(f'Only specify one of {chi2abs}, {chi2scaled}, '
@@ -1018,6 +1085,19 @@ class Configuration(object):
                     max_bins += 1
                 for k in stars.kinematic_data:
                     k.hist_bins = max_bins
+        else:  # enforce odd number of histogram bins
+            if self.system.is_bar_disk_system():
+                stars = self.system.get_unique_bar_component()
+            else:
+                stars = self.system.get_unique_triaxial_visible_component()
+            hist_bins = [k.hist_bins % 2 for k in stars.kinematic_data]
+            if any([h == 0 for h in hist_bins]):
+                all_hist_bins = {k.name: k.hist_bins
+                                 for k in stars.kinematic_data}
+                txt = 'Value of hist_bins must be odd for all kinematic ' \
+                      f'data, but they are {all_hist_bins}.'
+                self.logger.error(txt)
+                raise ValueError(txt)
 
     def validate_chi2(self, which_chi2=None):
         """
@@ -1045,7 +1125,7 @@ class Configuration(object):
 
         """
         allowed_chi2 = ('chi2', 'kinchi2', 'kinmapchi2')
-        if which_chi2 == None:
+        if which_chi2 is None:
             which_chi2 = self.settings.parameter_space_settings['which_chi2']
         if which_chi2 not in allowed_chi2:
             text = 'parameter_space_settings: which_chi2 must be one of ' \

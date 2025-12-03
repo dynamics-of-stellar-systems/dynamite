@@ -561,8 +561,8 @@ class LegacyWeightSolver(WeightSolver):
         a = self.__read_file_element(fname, [1, 1], [1, 2])
         ngh = np.int64(a[1])  # number of 'observables'
         nobs = np.int64(a[1])
-        nvel = np.int64(a[0])
-        ncon = np.int64(a[0])
+        # nvel = np.int64(a[0])
+        # ncon = np.int64(a[0])
         rows = 3 + np.arange(nobs)  # rows 1- 9
         cols = 3 + np.zeros(nobs, dtype=int)  # skip over text
         fname = self.fname_nn_nnls
@@ -687,7 +687,7 @@ class NNLS(WeightSolver):
 
         """
         # construct vector of observed constraints (con), errors (econ) and
-        # matrix or orbit propertites (orbmat)
+        # matrix or orbit properties (orbmat)
         con = np.zeros(self.n_mass_constraints)
         econ = np.zeros(self.n_mass_constraints)
         orbmat = np.zeros((self.n_mass_constraints, orblib.n_orbs))
@@ -837,12 +837,20 @@ class NNLS(WeightSolver):
             A, b = self.construct_nnls_matrix_and_rhs(orblib)
             if self.nnls_solver=='scipy':
                 try:
-                    solution = optimize.nnls(A, b)
+                    # set the nnls maxiter parameter and solve
+                    if 'maxiter_factor' in self.settings.keys():
+                        maxiter_factor = self.settings['maxiter_factor']
+                    else:
+                        maxiter_factor = 3  # default = 3 * n_orbits
+                    maxiter = maxiter_factor * A.shape[1]
+                    self.logger.debug(f'{maxiter_factor = }, {maxiter = }')
+                    solution = optimize.nnls(A, b, maxiter=maxiter)
                     weights = solution[0]
                 except Exception as e:
                     txt = f'Orblib {orblib.mod_dir}, ml={orblib.parset["ml"]}'\
-                        f': SciPy solver error occured: {e} All weights ' \
-                        'and chi2 set to nan. Consider trying cvxopt.'
+                        f': SciPy solver error occured: {e} All weights and ' \
+                        'chi2 set to nan. Consider a larger maxiter_factor ' \
+                        f'(currently, maxiter_factor={maxiter_factor}).'
                     self.logger.warning(txt)
                     weights = np.full(A.shape[1], np.nan)
             elif self.nnls_solver=='cvxopt':

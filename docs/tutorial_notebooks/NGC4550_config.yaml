@@ -11,7 +11,6 @@
 system_attributes:
     distMPc: 15.5
     name: "NGC4550"
-    position_angle: 0.0
 
 system_components:
 
@@ -110,6 +109,7 @@ orblib_settings:
 weight_solver_settings:
     type: "NNLS"      # must use "NNLS" with BayesLOSVD
     nnls_solver: 'scipy'
+    maxiter_factor: 3  # nnls_solver 'scipy' only; default: 3
     lum_intr_rel_err: 0.01
     sb_proj_rel_err: 0.02
 

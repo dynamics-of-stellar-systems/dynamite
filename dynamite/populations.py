@@ -11,10 +11,15 @@ class Populations(data.Integrated):
 
     Parameters
     ----------
-    kin_aper : int or None
+    kin_aper : int or None, optional
         If an integer, the index of the kinematic data set (starting with 0)
-        which shares its apertures with the population data set.
-        If None (the default), the population data set has its own apertures.
+        which shares its apertures with the population data set. If None, the
+        population data set has its own apertures. The default is None.
+    pop_cols : list of str or None, optional
+        If the population data set shares its apertures with a kinematic data
+        set, this is a list of the population columns to keep in the data.
+        If the population data set has its own apertures, it is None.
+        The default is None.
     """
     values = []
     def __init__(self,

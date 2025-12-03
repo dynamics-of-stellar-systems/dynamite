@@ -120,7 +120,7 @@ Python
 
 The user is communicating with the Fortran source code via Python.
 The basic requirement for DYNAMITE is therefore a reasonably current version of Python
-(Python 3.9 or later as Python 3.8 has reached its end of life as of October 7, 2024).
+(Python 3.10 or later due to the October 31, 2025 end of life of Python 3.9).
 
 
 
@@ -520,6 +520,27 @@ Or, if you are using conda::
 
 A list of all required python packages can be found in ``dynamite/requirements.txt``.
 
+Warning about PyTensor
+^^^^^^^^^^^^^^^^^^^^^^
+
+The PyTensor package is a requirement of PyMC, a package that DYNAMITE uses for Bayesian inference. The warning may read something like::
+
+    WARNING (pytensor.configdefaults): g++ not detected!  PyTensor will be unable to compile
+    C-implementations and will default to Python. Performance may be severely degraded. To
+    remove this warning, set PyTensor flags cxx to an empty string.
+
+If you do not plan to use the DYNAMITE Coloring module, you can safely ignore this warning because PyMC will not be used by DYNAMITE then. If you use Coloring however, the performance degredation mentioned in the warning will be severe and we recommend fixing the issue.
+
+For some users the following worked:
+1. Use pip to uninstall PyMC and PyTensor
+2. Install PyMC and PyTensor via conda, from conda-forge
+3. Re-install DYNAMITE
+
+Warning about ipywidgets
+^^^^^^^^^^^^^^^^^^^^^^^^
+
+Again, this is a warning about a dependency of PyMC and is only relevant if you plan to use the DYNAMITE Coloring module. As ipywidgets is only used to display interactive HTML widgets within Jupyter Notebooks they are dispensable for DYNAMITE's functionality. Hence, the warning can be ignored.
+
 Compile errors when building legacy Fortran code
 ------------------------------------------------
 
@@ -551,7 +572,6 @@ The 'G / P' column refers to the weight solver:
    :header-rows: 1
 
    OS and release,  Fortran release,    Python rel.,    G / P,  Date tested,    Remarks
-   macOS 14.4.1,    gfortran 12.2.0,    3.9.19,         G,      2024-04-23
    macOS 14.6.1,    gfortran 12.4.0,    3.11.10,        G,      2024-11-30
    macOS 14.4.1,    gfortran 12.2.0,    3.12.3,         G,      2024-04-23
    AlmaLinux 8.5,   gfortran 8.5.0,     3.10.14,        G,      2024-04-23,     VSC5 w/o modules loaded
