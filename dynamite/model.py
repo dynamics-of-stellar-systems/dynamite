@@ -1065,31 +1065,37 @@ class Model(object):
         else:
             try:
                 f_i = model_yaml_files.index(self.directory +
-                                             self.config.config_file_name)
+                    os.path.basename(self.config.config_file_name))
             except ValueError:
                 self.logger.warning('More than one .yaml file found in '
                                     f'{self.directory}. No file name matches '
                                     'the config file, no check possible.')
                 return True  # ####################
         model_config_file_name = model_yaml_files[f_i]
-        with open(self.config.config_file_name) as c_f:
-            config_file = c_f.readlines()
-        with open(model_config_file_name) as c_f:
-            model_config_file = c_f.readlines()
-        c_diff = difflib.unified_diff(config_file,
-                                      model_config_file,
-                                      fromfile=self.config.config_file_name,
-                                      tofile=model_config_file_name,
-                                      n=0)
-        c_diff = list(c_diff)
-        if len(c_diff) > 0:
-            self.logger.warning('ACTION REQUIRED, PLEASE CHECK: '
-                                'The current config file '
-                                f'{self.config.config_file_name} differs from '
-                                f'the config file {model_config_file_name} '
-                                'backup in the model directory. Diff output:\n'
-                                f'{"".join(c_diff)}.')
-            return False  # ####################
+        if model_config_file_name!=self.directory+'voronoi_orbit_bundles.yaml':
+            # ignore orbit bundle yaml files...
+            with open(self.config.config_file_name) as c_f:
+                config_file = c_f.readlines()
+            with open(model_config_file_name) as c_f:
+                model_config_file = c_f.readlines()
+            c_diff = difflib.unified_diff(config_file,
+                                        model_config_file,
+                                        fromfile=self.config.config_file_name,
+                                        tofile=model_config_file_name,
+                                        n=0)
+            c_diff = list(c_diff)
+            if len(c_diff) > 0:
+                self.logger.warning('ACTION REQUIRED, PLEASE CHECK: '
+                                    'The current config file '
+                                    f'{self.config.config_file_name} differs '
+                                    'from the config file '
+                                    f'{model_config_file_name} backup in the '
+                                    'model directory. Diff output:\n'
+                                    f'{"".join(c_diff)}.')
+                return False  # ####################
+        else:
+            self.logger.debug('Orbit bundle file but no config file backup '
+                              f'found in {self.directory}.')
         return True
 
     def get_model_directory(self):

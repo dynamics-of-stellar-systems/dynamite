@@ -5,6 +5,7 @@ Change Log
 ****************
 
 - New feature: support for adding externally calculated chi2 values for components not interacting with DYNAMITE components
+- New feature: "Coloring" adds support for fitting population data such as stellar age and metallicity, see new tutorial 8_coloring.ipynb.
 - Improvement: Updated documentation (clarifications and fixes).
 - Improvement: The (confusing) annotations in the aperture and bins files are now optional. Comment lines (#) in those files can now be used to add any information.
 - Improvement: Unknown entries in the configuration file will now raise an error rather than be ignored.
@@ -14,6 +15,11 @@ Change Log
 - Improvement: Replaced staging files by directly checking for orblibs and weight files on disk.
 - Improvement: Significant performance gain when reading existing model weights (eliminated unnecessary reading of orbit library)
 - Bugfix: fix a bug in beta_plot and anistotropy_single, subtract first moments, plot only beta_r, enable log x-axis, plot pc/kpc scale on upper x-axis
+- Improvement: misc. improvements in plotter (auto select kpc vs. pc everywhere, added r in (k)pc to qpu_plot, better filename for mass_plot).
+- Improvement: Rmax_arcs is now an optional parameter for mass_plot and qpu_plot (default value taken from the config file).
+- Improvement: significant performance gain when reading existing model weights (eliminated unnecessary reading of orbit library).
+- Improvement: in the orbit distribution plot r can now be binned and plotted in linear scale (in addition to the default logarithmic scale).
+- Bugfix: fixed a bug that prevented sensible kinematic maps colorbar limits if flux is zero in one or more bins.
 - New feature: DYNAMITE models now support multiple kinematic data sets of different types and with different histogram settings
 - Improvement: the orbit_plot now allows custom orbit cuts via the ocut parameter (same behavior as in the Decomposition class)
 - Bugfix: fixed a crash of the SpecificModels parameter generator with certain specific value lists.
