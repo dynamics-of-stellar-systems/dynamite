@@ -1007,6 +1007,11 @@ class Configuration(object):
                           'GaussHermite, BayesLOSVD, and/or ProperMotions.'
                     self.logger.error(txt)
                     raise ValueError(txt)
+                if c.population_data and len(c.population_data) > 1:
+                    txt = 'VisibleComponent can either have 0 or 1 set(s) ' \
+                          f'of population data, not {len(c.population_data)}.'
+                    self.logger.error(txt)
+                    raise ValueError(txt)
                 if c.symmetry != 'triax':
                     self.logger.error('Legacy mode: VisibleComponent must be '
                                       'triaxial')

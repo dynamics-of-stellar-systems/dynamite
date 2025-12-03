@@ -31,6 +31,7 @@ def run_user_test(fname=None, make_comp=False):
     # fname = 'user_test_config_ml.yaml'
     # fname = 'FCC047_2kin/FCC047_config.yaml'
     # fname = 'user_test_config_specificmodels.yaml'
+    # fname = 'FCC167/FCC167.yaml'
     print(f'Using configuration file: {fname}')
     c = dyn.config_reader.Configuration(fname,
                                         reset_logging=True,

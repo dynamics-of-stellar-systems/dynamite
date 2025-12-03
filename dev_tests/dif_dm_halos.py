@@ -32,9 +32,11 @@ def run_user_test(make_comp=False):
         if file_dir:
             os.chdir(file_dir)
     fname = 'dif_dm_halos_config.yaml'
-    c = dyn.config_reader.Configuration(fname, reset_logging=True)
+    c = dyn.config_reader.Configuration(fname,
+                                        reset_logging=True,
+                                        reset_existing_output=True)
     # delete previous output if available
-    c.remove_all_existing_output(wipe_all=True, create_tree=True)
+    # c.remove_all_existing_output(wipe_all=True, create_tree=True)
 
     # "run" the models
     t = time.perf_counter()
