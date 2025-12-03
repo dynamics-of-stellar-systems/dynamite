@@ -561,8 +561,8 @@ class LegacyWeightSolver(WeightSolver):
         a = self.__read_file_element(fname, [1, 1], [1, 2])
         ngh = np.int64(a[1])  # number of 'observables'
         nobs = np.int64(a[1])
-        nvel = np.int64(a[0])
-        ncon = np.int64(a[0])
+        # nvel = np.int64(a[0])
+        # ncon = np.int64(a[0])
         rows = 3 + np.arange(nobs)  # rows 1- 9
         cols = 3 + np.zeros(nobs, dtype=int)  # skip over text
         fname = self.fname_nn_nnls
@@ -687,7 +687,7 @@ class NNLS(WeightSolver):
 
         """
         # construct vector of observed constraints (con), errors (econ) and
-        # matrix or orbit propertites (orbmat)
+        # matrix or orbit properties (orbmat)
         con = np.zeros(self.n_mass_constraints)
         econ = np.zeros(self.n_mass_constraints)
         orbmat = np.zeros((self.n_mass_constraints, orblib.n_orbs))
