@@ -2389,3 +2389,89 @@ class Plotter():
             return mod_orb_dists, fig
         else:
             return fig
+
+    def rmax_zmax_plot(self,
+                       model=None,
+                       max_r=None,
+                       max_z=None,
+                       col_scale='log',
+                       components='all',
+                       figtype='.png'):
+        if model is None:
+            model_id = self.all_models.get_best_n_models_idx(n=1)[0]
+            model = self.all_models.get_model_from_row(model_id)
+        self.logger.info('Creating Rmax-zmax plot for model in '
+                         f'{model.directory}.')
+        if col_scale not in ['log', 'linear']:
+            txt = "Colorbar scale col_scale must be 'log' or 'linear', " \
+                  f"not {col_scale}."
+            self.logger.error(txt)
+            raise ValueError(txt)
+        col_logscale = True if col_scale == 'log' else False
+        orblib = model.get_orblib()
+        _ = model.get_weights(orblib)
+        intmoms, int_grid = orblib.read_orbit_intrinsic_moments()
+        density, x, y, z = np.moveaxis(intmoms[..., 0:4], -1, 0)
+        weights = model.weights[:, *([np.newaxis] * 3)]
+        r_max = np.sqrt(np.max(x**2 + y**2 + z**2,
+                               axis=(1,2,3),
+                               initial=0,
+                               where=(density > 0) & (weights > 0)))
+        z_max = np.max(z,
+                       axis=(1,2,3),
+                       initial=0,
+                       where=(density > 0) & (weights > 0))
+        r_max_max = np.max(r_max) * 1.05
+        z_max_max = np.max(z_max) * 1.05
+        print(r_max_max, z_max_max)
+
+        labelsize = fontsize = 9
+        fig = plt.figure(figsize=(7,5))
+        ax = fig.add_subplot(1, 1, 1)
+        if max_r is not None:
+            r_max_max = max_r
+        if max_z is not None:
+            z_max_max = max_z
+        ax.set_xlim(right=r_max_max)
+        ax.set_ylim(top=z_max_max)
+        ax.set_xlabel(r'$R_\mathrm{max}$ [arcsec]', fontsize=fontsize)
+        ax.set_ylabel(r'$z_\mathrm{max}$ [arcsec]', fontsize=fontsize)
+        ax.tick_params(labelsize=labelsize)
+        arctpc = constants.ARC_KPC(self.system.distMPc) * 1000
+        ax2 = ax.twiny()
+        if r_max_max * arctpc < 1000:
+            ax2.set_xlim(right=r_max_max * arctpc)
+            u = 'pc'
+        else:
+            ax2.set_xlim(right=r_max_max * arctpc / 1000.0)
+            u = 'kpc'
+        ax2.set_xlabel(r'$R_\mathrm{max}$ [' + u + ']',
+                       fontsize=fontsize,
+                       labelpad=8)
+        ax2.tick_params(labelsize=labelsize)
+        ax3 = ax.twinx()
+        if z_max_max * arctpc < 1000:
+            ax3.set_ylim(top=z_max_max * arctpc)
+            u = 'pc'
+        else:
+            ax3.set_ylim(top=z_max_max * arctpc / 1000.0)
+            u = 'kpc'
+        ax3.set_ylabel(r'$z_\mathrm{max}$ [' + u + ']',
+                       fontsize=fontsize,
+                       labelpad=8)
+        ax3.tick_params(labelsize=labelsize)
+        cax = ax.scatter(r_max[model.weights>0],
+                         z_max[model.weights>0],
+                         s=4,
+                         c=model.weights[model.weights>0],
+                         cmap='viridis_r', norm='log')
+        cb = fig.colorbar(cax, ax=ax3, pad=0.15)
+        cb.ax.tick_params(labelsize=labelsize)
+        cb.set_label('orbit weight', fontsize=fontsize, labelpad=8)
+        plt.tight_layout()
+
+        # format and save
+        figname = self.plotdir + 'Rmax_vs_zmax' + figtype
+        fig.savefig(figname)
+        self.logger.info(f'Plot {figname} saved.')
+        return fig
