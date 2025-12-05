@@ -32,10 +32,6 @@ class Decomposition:
         chisquare (so far) is used; the setting in the configuration
         file's parameter settings is used to determine which chisquare
         to consider. The default is None.
-    kin_set : int, optional
-        Determines which kinematic set to use.
-        The value of this parameter is the index of the data
-        set (e.g. kin_set=0, kin_set=1). The default is 0.
     ocut : list of floats, optional
         The orbit cuts in lambda_z. The default is None, which translates to
         ocut=[0.8, 0.25, -0.25, -0.8], the selection in lambda_z
@@ -63,7 +59,6 @@ class Decomposition:
     def __init__(self,
                  config=None,
                  model=None,
-                 kin_set=0,
                  ocut=None,
                  names=None,
                  decomp_table=False,
@@ -78,18 +73,8 @@ class Decomposition:
         if model is None:
             best_model_idx = config.all_models.get_best_n_models_idx(n=1)[0]
             self.model = config.all_models.get_model_from_row(best_model_idx)
-        if self.config.system.is_bar_disk_system():
-            stars = self.config.system.get_unique_bar_component()
-        else:
-            stars = self.config.system.get_unique_triaxial_visible_component()
-        n_kin = len(stars.kinematic_data)
-        if kin_set >= n_kin:
-            text = f'kin_set must be < {n_kin}, but it is {kin_set}'
-            self.logger.error(text)
-            raise ValueError(text)
-        self.kin_set = kin_set
-        self.logger.info(f'Performing decomposition for kin_set no {kin_set}: '
-                         f'{stars.kinematic_data[kin_set].name}')
+        self.logger.info('Performing decomposition for model in '
+                         f'{self.model.directory}.')
         if names is None or names == 'bulgedisk':
             self.comps  = ['thin_d', 'thick_d', 'disk',
                            'cr_thin_d', 'cr_thick_d', 'cr_disk',
@@ -104,14 +89,8 @@ class Decomposition:
             raise ValueError(txt)
         # Important: the 'all' component needs to be the last one in the list!
 
-        # Get losvd_histograms and projected_masses
+        # Get orblib and orbit weights and store them in self.model.weights
         self.orblib = self.model.get_orblib()
-        self.orblib.read_losvd_histograms()
-        self.losvd_histograms = self.orblib.losvd_histograms[self.kin_set]
-        self.proj_mass = self.orblib.projected_masses[self.kin_set]
-        self.logger.debug(f'{self.losvd_histograms.y.shape=}, '
-                          f'{self.proj_mass.shape=}.')
-        # Get orbit weights and store them in self.model.weights
         _ = self.model.get_weights(self.orblib)
         # Do the decomposition
         if ocut is not None:
@@ -133,6 +112,7 @@ class Decomposition:
     def plot_decomp(self,
                     xlim,
                     ylim,
+                    kin_set,
                     v_sigma_option='fit',
                     comps_plot='all',
                     individual_colorbars=False,
@@ -146,6 +126,10 @@ class Decomposition:
             restricts plot x-coordinates to abs(x) <= xlim.
         ylim : float
             restricts plot y-coordinates to abs(y) <= ylim.
+        kin_set : int, optional
+            Determines which kinematic set to use.
+            The value of this parameter is the index of the data
+            set (e.g. kin_set=0, kin_set=1). The default is 0.
         v_sigma_option : str, optional
             If 'fit', v_mean and v_sigma are calculated based on fitting
             Gaussians, if 'moments', v_mean and v_sigma are calculated
@@ -186,6 +170,18 @@ class Decomposition:
 
         """
         mpl.rcParams['savefig.dpi'] = dpi
+        if self.config.system.is_bar_disk_system():
+            stars = self.config.system.get_unique_bar_component()
+        else:
+            stars = self.config.system.get_unique_triaxial_visible_component()
+        n_kin = len(stars.kinematic_data)
+        if kin_set >= n_kin:
+            text = f'kin_set must be < {n_kin}, but it is {kin_set}'
+            self.logger.error(text)
+            raise ValueError(text)
+        self.kin_set = kin_set
+        self.logger.info(f'Creating decomposition plots for kin_set number '
+                         f'{kin_set}: {stars.kinematic_data[kin_set].name}')
         comp_kinem_moments = self.comps_aphist(v_sigma_option)
         self.logger.info('Component data done. '
                          f'Plotting decomposition for {v_sigma_option=}.')
@@ -212,10 +208,6 @@ class Decomposition:
                 if k not in individual_colorbars:
                     individual_colorbars[k] = False
 
-        if self.config.system.is_bar_disk_system():
-            stars = self.config.system.get_unique_bar_component()
-        else:
-            stars = self.config.system.get_unique_triaxial_visible_component()
         dp_args = stars.kinematic_data[self.kin_set].dp_args
         xi = dp_args['x']
         yi = dp_args['y']
@@ -406,22 +398,28 @@ class Decomposition:
             raise ValueError(text)
         self.logger.info('Calculating flux, v, and sigma for components '
                          f'{self.decomp.meta["comps"]}, {v_sigma_option=}.')
+        # Get losvd_histograms and projected_masses
+        self.orblib.read_losvd_histograms()
+        losvd_histograms = self.orblib.losvd_histograms[self.kin_set]
+        proj_mass = self.orblib.projected_masses[self.kin_set]
+        self.logger.debug(f'{losvd_histograms.y.shape=}, {proj_mass.shape=}.')
         comp_flux_v_sigma = astropy.table.Table(
-                            {'ap_id':range(self.losvd_histograms.y.shape[-1])},
+                            {'ap_id':range(losvd_histograms.y.shape[-1])},
                             dtype=[int],
                             meta={'v_sigma_option':v_sigma_option})
         for comp in self.decomp.meta['comps']:
             self.logger.info(f'Component {comp}...')
             # calculate flux and losvd histograms for component
-            orb_sel = np.array([f'|{comp}|' in s for s in self.decomp['component']],
+            orb_sel = np.array([f'|{comp}|' in s
+                                for s in self.decomp['component']],
                                dtype=bool)
-            flux=np.dot(self.proj_mass[orb_sel].T, self.model.weights[orb_sel])
-            losvd = np.dot(self.losvd_histograms.y[orb_sel,:,:].T,
+            flux = np.dot(proj_mass[orb_sel].T, self.model.weights[orb_sel])
+            losvd = np.dot(losvd_histograms.y[orb_sel,:,:].T,
                            self.model.weights[orb_sel]).T
             losvd = losvd[np.newaxis]
             self.logger.debug(f'{comp}: {np.count_nonzero(orb_sel)} orbits, '
                               f'{flux.shape=}, {losvd.shape=}.')
-            losvd_hist = dyn.kinematics.Histogram(self.losvd_histograms.xedg,
+            losvd_hist = dyn.kinematics.Histogram(losvd_histograms.xedg,
                                                   y=losvd)
             if v_sigma_option == 'moments':
                 v_mean = np.squeeze(losvd_hist.get_mean())

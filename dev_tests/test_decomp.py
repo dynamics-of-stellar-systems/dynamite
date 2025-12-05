@@ -15,7 +15,6 @@ c = dyn.config_reader.Configuration(fname,
 dyn.model_iterator.ModelIterator(c) # generate models
 
 decomp = dyn.analysis.Decomposition(config=c,
-                                    kin_set=0,
                                     # names=None,
                                     # names='bulgedisk',
                                     # names='hotcold',
@@ -28,6 +27,7 @@ for v_sigma_option in ('moments', 'fit'):
     #and plot the kinematics
     decomp.plot_decomp(xlim=15,
                        ylim=15,
+                       kin_set=0,
                        v_sigma_option=v_sigma_option,
                        comps_plot={'thin_d': True, 'thick_d': True,
                                    'disk': True, 'cr_thin_d': True,
