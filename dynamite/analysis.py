@@ -26,7 +26,7 @@ class Decomposition:
     Parameters
     ----------
     config : a ``dyn.config_reader.Configuration`` object, mandatory
-    model : a ``dyn.model.Model`` object, optional
+    model : a ``dyn.model.Model`` object or None, optional
         Determines which model is used.
         If model = None, the model corresponding to the minimum
         chisquare (so far) is used; the setting in the configuration
@@ -40,6 +40,13 @@ class Decomposition:
         The orbit cuts in lambda_z. The default is None, which translates to
         ocut=[0.8, 0.25, -0.25, -0.8], the selection in lambda_z
         following Santucci+22.
+    names : str or None, optional
+        Nomenclature of the component names. If 'bulgedisk' or None, then the
+        components are ['thin_d', 'thick_d', 'disk',
+        'cr_thin_d', 'cr_thick_d', 'cr_disk', 'bulge', 'all']; if 'hotcold',
+        then the components are ['cold', 'warm', 'cold+warm',
+        'cr_cold', 'cr_warm', 'cr_cold+warm', 'hot', 'all'].
+        The default is None.
     decomp_table : bool, optional
         If True, write a table mapping each orbit to its respective
         component(s). The default is False.
@@ -58,6 +65,7 @@ class Decomposition:
                  model=None,
                  kin_set=0,
                  ocut=None,
+                 names=None,
                  decomp_table=False,
                  comps_weights=False):
         self.logger = logging.getLogger(f'{__name__}.{__class__.__name__}')
@@ -82,6 +90,20 @@ class Decomposition:
         self.kin_set = kin_set
         self.logger.info(f'Performing decomposition for kin_set no {kin_set}: '
                          f'{stars.kinematic_data[kin_set].name}')
+        if names is None or names == 'bulgedisk':
+            self.comps  = ['thin_d', 'thick_d', 'disk',
+                           'cr_thin_d', 'cr_thick_d', 'cr_disk',
+                           'bulge', 'all']
+        elif names == 'hotcold':
+            self.comps = ['cold', 'warm', 'cold+warm',
+                          'cr_cold', 'cr_warm', 'cr_cold+warm', 'hot', 'all']
+        else:
+            txt = f"Unknown component names option: {names}. Use None, " \
+                  "'bulgedisk', or 'hotcold'."
+            self.logger.error(txt)
+            raise ValueError(txt)
+        # Important: the 'all' component needs to be the last one in the list!
+
         # Get losvd_histograms and projected_masses
         self.orblib = self.model.get_orblib()
         self.orblib.read_losvd_histograms()
@@ -92,14 +114,12 @@ class Decomposition:
         # Get orbit weights and store them in self.model.weights
         _ = self.model.get_weights(self.orblib)
         # Do the decomposition
-        self.comps=['thin_d', 'thick_d', 'disk',
-                    'cr_thin_d', 'cr_thick_d', 'cr_disk', 'bulge', 'all']
-        # Important: the 'all' component needs to be the last one in the list!
         if ocut is not None:
             self.ocut = ocut
         else:
             self.ocut = [  0.8,     0.25,   -0.25,        -0.8        ]
         #             thin_d  thick_d   bulge    cr_thick_d   cr_thin_d
+        #             cold    warm      hot      cr_warm      cr_cold
         self.decomp = self.decompose_orbits()
         self.logger.info('Orbits read and velocity histogram created.')
         if decomp_table:
@@ -137,7 +157,10 @@ class Decomposition:
             'cr_thin_d': False, 'cr_thick_d': False, 'cr_disk: False',
             'bulge': False, 'all': False} will only create the plots for
             'thin_d', 'thick_d', and 'disk'. `False` entries can be omitted
-            in the dictionary. The default is 'all'.
+            in the dictionary.
+            NOTE: The component nomenclature must match the `names` argument
+            used when instantiating the Decomposition object.
+            The default is 'all'.
         individual_colorbars : bool or dict, optional
             If True, then the sb (surface brightness), vel (velocity), and
             sig (velocity dispersion) colorbars adapt to their respective
@@ -174,6 +197,11 @@ class Decomposition:
         for comp in comps:
             if comp not in comps_plot:
                 comps_plot[comp] = False
+        for comp in comps_plot:
+            if comp not in comps:
+                text = f'Component {comp} in comps_plot not in {comps = }.'
+                self.logger.error(text)
+                raise ValueError(text)
         self.logger.info(f'Plotting data for components {comps_plot}.')
 
         if type(individual_colorbars) is bool:
@@ -494,31 +522,24 @@ class Decomposition:
         # map components
         comp_map = np.zeros(n_orbs, dtype=int)
         # cold component (thin disk)
-        comp_map[np.ravel(np.where(lzm_sign > ocut[0]))] += \
-            2**comps.index('thin_d')
+        comp_map[np.ravel(np.where(lzm_sign > ocut[0]))] += 2 ** 0
         # warm component (thick disk)
         comp_map[np.ravel(np.where((lzm_sign > ocut[1])
-                                 & (lzm_sign <= ocut[0])))] += \
-            2**comps.index('thick_d')
+                                 & (lzm_sign <= ocut[0])))] += 2 ** 1
         # hot component (bulge)
         comp_map[np.ravel(np.where((lzm_sign > ocut[2])
-                                 & (lzm_sign <= ocut[1])))] += \
-            2**comps.index('bulge') # was lzm_sign<ocut[1]
+                                 & (lzm_sign <= ocut[1])))] += 2 ** 6
         # disk component (disk)
-        comp_map[np.ravel(np.where(lzm_sign > ocut[1]))] += \
-            2**comps.index('disk')
+        comp_map[np.ravel(np.where(lzm_sign > ocut[1]))] += 2 ** 2
         # counter-rotating cold component (cr thin disk)
-        comp_map[np.ravel(np.where(lzm_sign <= ocut[3]))] += \
-            2**comps.index('cr_thin_d')
+        comp_map[np.ravel(np.where(lzm_sign <= ocut[3]))] += 2 ** 3
         # counter-rotating warm component (cr thick disk)
         comp_map[np.ravel(np.where((lzm_sign > ocut[3])
-                                 & (lzm_sign <= ocut[2])))] += \
-            2**comps.index('cr_thick_d')
+                                 & (lzm_sign <= ocut[2])))] += 2 ** 4
         # counter-rotating disk (cr disk)
-        comp_map[np.ravel(np.where((lzm_sign <= ocut[2])))] += \
-            2**comps.index('cr_disk')
+        comp_map[np.ravel(np.where((lzm_sign <= ocut[2])))] += 2 ** 5
         # whole component (all)
-        comp_map += 2**comps.index('all')
+        comp_map += 2 ** 7
         for i in np.ravel(np.where(comp_map > 0)):
             for k, comp in enumerate(comps):
                 if comp_map[i] & (1 << k):
