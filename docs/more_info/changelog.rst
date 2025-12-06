@@ -4,6 +4,7 @@
 Change Log
 ****************
 
+- New feature: Added R_max vs z_max diagrams to the Plotter class (method: rmax_zmax_plot).
 - New feature: "Coloring" adds support for fitting population data such as stellar age and metallicity, see new tutorial 8_coloring.ipynb.
 - Improvement: Updated documentation (clarifications and fixes).
 - Improvement: The (confusing) annotations in the aperture and bins files are now optional. Comment lines (#) in those files can now be used to add any information.
