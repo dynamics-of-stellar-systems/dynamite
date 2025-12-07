@@ -36,16 +36,20 @@ class Decomposition:
         The orbit cuts in lambda_z. The default is None, which translates to
         ocut=[0.8, 0.25, -0.25, -0.8], the selection in lambda_z
         following Santucci+22.
-    names : str or None, optional
-        Nomenclature of the component names. If 'bulgedisk' or None, then the
-        components are ['thin_d', 'thick_d', 'disk',
-        'cr_thin_d', 'cr_thick_d', 'cr_disk', 'bulge', 'all']; if 'hotcold',
-        then the components are ['cold', 'warm', 'cold+warm',
-        'cr_cold', 'cr_warm', 'cr_cold+warm', 'hot', 'all'].
-        The default is None.
-    decomp_table : bool, optional
-        If True, write a table mapping each orbit to its respective
-        component(s). The default is False.
+    names : str, optional
+        Nomenclature of the component names. If 'bulgedisk', the components are
+        ['thin_d', 'thick_d', 'disk', 'cr_thin_d', 'cr_thick_d', 'cr_disk',
+        'bulge', 'all'].
+        If 'hotcold', the components are
+        ['cold', 'warm', 'cold+warm', 'cr_cold', 'cr_warm', 'cr_cold+warm',
+        'hot', 'all'].
+        The default is 'bulgedisk'.
+    cache : bool, optional
+        If True, the orbit decomposition is read from decomp_table.ecsv instead
+        of recomputing the decomposition if the file exists in the model
+        directory and the ocut matches. Also, a new decomp_table.ecsv file will
+        be written every time a new decomposition is computed. If False, the
+        decomposition is always recomputed. The default is True.
     comps_weights : bool, optional
         If True, write a table of aggregated weights in each component.
         The default is False.
@@ -60,8 +64,8 @@ class Decomposition:
                  config=None,
                  model=None,
                  ocut=None,
-                 names=None,
-                 decomp_table=False,
+                 names='bulgedisk',
+                 cache=True,
                  comps_weights=False):
         self.logger = logging.getLogger(f'{__name__}.{__class__.__name__}')
         if config is None:
@@ -73,22 +77,21 @@ class Decomposition:
         if model is None:
             best_model_idx = config.all_models.get_best_n_models_idx(n=1)[0]
             self.model = config.all_models.get_model_from_row(best_model_idx)
-        self.logger.info('Performing decomposition for model in '
-                         f'{self.model.directory}.')
-        if names is None or names == 'bulgedisk':
-            self.comps  = ['thin_d', 'thick_d', 'disk',
-                           'cr_thin_d', 'cr_thick_d', 'cr_disk',
-                           'bulge', 'all']
-        elif names == 'hotcold':
-            self.comps = ['cold', 'warm', 'cold+warm',
-                          'cr_cold', 'cr_warm', 'cr_cold+warm', 'hot', 'all']
-        else:
-            txt = f"Unknown component names option: {names}. Use None, " \
-                  "'bulgedisk', or 'hotcold'."
+        comp_names = {'bulgedisk': ['thin_d', 'thick_d', 'disk',
+                                    'cr_thin_d', 'cr_thick_d', 'cr_disk',
+                                    'bulge', 'all'],
+                      'hotcold': ['cold', 'warm', 'cold+warm',
+                                  'cr_cold', 'cr_warm', 'cr_cold+warm',
+                                  'hot', 'all']}
+        self.comps = comp_names.get(names, None)
+        if self.comps is None or names not in comp_names.keys():
+            txt = f'Unknown component names option: {names}. Use one of ' \
+                  f'{comp_names.keys()}.'
             self.logger.error(txt)
             raise ValueError(txt)
         # Important: the 'all' component needs to be the last one in the list!
-
+        self.logger.info('Performing decomposition '
+                         f'for model in {self.model.directory}.')
         # Get orblib and orbit weights and store them in self.model.weights
         self.orblib = self.model.get_orblib()
         _ = self.model.get_weights(self.orblib)
@@ -99,13 +102,46 @@ class Decomposition:
             self.ocut = [  0.8,     0.25,   -0.25,        -0.8        ]
         #             thin_d  thick_d   bulge    cr_thick_d   cr_thin_d
         #             cold    warm      hot      cr_warm      cr_cold
-        self.decomp = self.decompose_orbits()
-        self.logger.info('Orbits read and velocity histogram created.')
-        if decomp_table:
-            file_name = self.model.directory + 'decomp_table.ecsv'
-            self.decomp.write(file_name, format='ascii.ecsv', overwrite=True)
-            self.logger.info('Orbit decomposition information written to '
-                             f'{file_name}.')
+        file_name = self.model.directory + 'decomp_table.ecsv'
+        if cache and os.path.isfile(file_name):
+            decomp = astropy.table.Table.read(file_name, format='ascii.ecsv')
+            ocut_file = decomp.meta.get('ocut', None)
+            if ocut_file == self.ocut:
+                self.logger.info('Reading decomposition into components '
+                                 f'{self.comps} from cache file {file_name}.')
+                c_file = decomp.meta.get('comps', None)
+                if c_file is None:
+                    self.logger.warning(f'Cache file {file_name} has no '
+                                        'component list in meta data. '
+                                        'Recomputing decomposition.')
+                    decomp = None
+                elif c_file != self.comps:
+                    self.logger.info('Converting component names in file to '
+                                     'nomenclature defined in names parameter.')
+                    comp_list = decomp['component']
+                    for i, comp in enumerate(self.comps):
+                        comp_list = [s.replace(f'|{c_file[i]}|', f'|{comp}|')
+                                     for s in comp_list]
+                    decomp['component'] = comp_list
+                    decomp.meta['comps'] = self.comps
+            else:
+                self.logger.warning('Decomposition cache file found, but ocut '
+                                    f'values differ: {ocut_file} (file) != '
+                                    f'{self.ocut} (input). '
+                                    'Recomputing decomposition.')
+                decomp = None
+        else:
+            decomp = None
+        if decomp is None:
+            self.decomp = self.decompose_orbits()
+            if cache:
+                self.decomp.write(file_name,
+                                  format='ascii.ecsv',
+                                  overwrite=True)
+                self.logger.info('Orbit decomposition information written to '
+                                 f'{file_name}.')
+        else:
+            self.decomp = decomp
         if comps_weights:
             self.comps_weights()
 
@@ -516,7 +552,7 @@ class Decomposition:
         decomp = astropy.table.Table({'id':range(n_orbs),
                                       'component':['']*n_orbs},
                                      dtype=[int, 'U256'],
-                                     meta={'comps':comps})
+                                     meta={'comps':comps, 'ocut':ocut})
         # map components
         comp_map = np.zeros(n_orbs, dtype=int)
         # cold component (thin disk)

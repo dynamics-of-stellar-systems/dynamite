@@ -15,10 +15,9 @@ c = dyn.config_reader.Configuration(fname,
 dyn.model_iterator.ModelIterator(c) # generate models
 
 decomp = dyn.analysis.Decomposition(config=c,
-                                    # names=None,
-                                    # names='bulgedisk',
+                                    names='bulgedisk',
                                     # names='hotcold',
-                                    decomp_table=True,
+                                    cache=True,
                                     comps_weights=True) # do the decomposition
 
 for v_sigma_option in ('moments', 'fit'):
