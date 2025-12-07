@@ -2397,6 +2397,7 @@ class Plotter():
                        max_z=None,
                        col_scale='log',
                        components='all',
+                       names='bulgedisk',
                        figtype='.png'):
         """Generate a Rmax-zmax plot for a given model
 
@@ -2428,6 +2429,15 @@ class Plotter():
             table. Alternatively, a list of component names can be provided to
             include only those components. Valid component names depend on
             the decomposition used. The default is 'all'.
+        names : str, optional
+            This parameter is ONLY relevant if components='each'. It selects
+            the nomenclature of the component names: 'bulgedisk' selects
+            ['thin_d', 'thick_d', 'disk', 'cr_thin_d', 'cr_thick_d', 'cr_disk',
+            'bulge', 'all'],
+            'hotcold' selects
+            ['cold', 'warm', 'cold+warm', 'cr_cold', 'cr_warm', 'cr_cold+warm',
+            'hot', 'all'].
+            The default is 'bulgedisk'.
         figtype : str, optional
             File type extension to save the plot. The default is ``'.png'``.
         Returns
@@ -2467,6 +2477,8 @@ class Plotter():
                        where=(density > 0) & (weights > 0))
 
         if components != 'all':
+            # Activate these lines after updating Decomposition to accept
+            # different component name sets
             # if components != 'each' and any(c in ['cold', 'warm', 'cold+warm',
             #                                       'cr_cold', 'cr_warm',
             #                                       'cr_cold+warm', 'hot']
@@ -2475,16 +2487,9 @@ class Plotter():
             # else:
             #     names = 'bulgedisk'
             # decomp = analysis.Decomposition(self.config, names=names).decomp
-            # FIXME: what if decomp table exists on disk but with wrong names?
-            decomp_file = model.directory + 'decomp_table.ecsv'
-            if os.path.isfile(decomp_file):
-                self.logger.info(f'Reading decomposition table from '
-                                 f'{decomp_file}.')
-                decomp = astropy.io.ascii.read(decomp_file)
-            else:
-                self.logger.info(f'No decomposition table {decomp_file} found '
-                                 'on disk, computing new decomposition.')
-                decomp = analysis.Decomposition(self.config).decomp
+            # Deactivate the following line after updating Decomposition to
+            # accept different component name sets
+            decomp = analysis.Decomposition(self.config).decomp
             comps = decomp.meta['comps']
             if components == 'each':
                 components = comps
