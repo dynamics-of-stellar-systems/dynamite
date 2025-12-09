@@ -13,6 +13,7 @@ import matplotlib as mpl
 from matplotlib.ticker import MaxNLocator, FixedLocator,LogLocator
 from matplotlib.ticker import NullFormatter
 import matplotlib.pyplot as plt
+import astropy
 from plotbin import display_pixels
 from dynamite import constants
 from dynamite import kinematics
@@ -2387,3 +2388,188 @@ class Plotter():
             return mod_orb_dists, fig
         else:
             return fig
+
+    def rmax_zmax_plot(self,
+                       model=None,
+                       max_r=None,
+                       max_z=None,
+                       col_scale='log',
+                       components='all',
+                       names='bulgedisk',
+                       figtype='.png'):
+        """Generate a Rmax-zmax plot for a given model
+
+        Generates a Rmax-zmax plot for a given model, showing the
+        distribution of orbit weights in the Rmax-zmax plane. Optionally,
+        the plot can be restricted to specific orbital components, based on
+        a decomposition table stored on disk or computed on the fly.
+
+        Parameters
+        ----------
+        model : dynamite.model.Model object, optional
+            Determines which model is used for the plot. If ``None``, the
+            minimum chi^2 model is used (the setting in the configuration
+            file's parameter settings is used to determine which chi^2 is used).
+            The default is None.
+        max_r : float, optional
+            The maximum radius [arcsec] to show in the plot. If ``None``, it is
+            set to the maximum radius of the orbit library. The default is None.
+        max_z : float, optional
+            The maximum height [arcsec] to show in the plot. If ``None``, it is
+            set to the maximum height of the orbit library. The default is None.
+        col_scale : str, optional
+            The scale of the colorbar. Options are 'log' or 'linear'.
+            The default is 'log'.
+        components : str or list-like, optional
+            Specifies which orbital components to include in the plot.
+            If 'all', all orbits are included in the plot without any breakdown
+            by component. If 'each', separate plots are created for each
+            component found in the decomposition table and the components'
+            nomenclature is given by the names parameter. Alternatively, a list
+            of component names can be provided. In that case, individual
+            component plots are generated and the component nomenclature is
+            determined automatically. The default is 'all'.
+        names : str, optional
+            This parameter is ONLY relevant if components='each'. It selects
+            the nomenclature of the component names: 'bulgedisk' selects
+            ['thin_d', 'thick_d', 'disk', 'cr_thin_d', 'cr_thick_d', 'cr_disk',
+            'bulge', 'all'],
+            'hotcold' selects
+            ['cold', 'warm', 'cold+warm', 'cr_cold', 'cr_warm', 'cr_cold+warm',
+            'hot', 'all'].
+            The default is 'bulgedisk'.
+        figtype : str, optional
+            File type extension to save the plot. The default is ``'.png'``.
+        Returns
+        -------
+        matplotlib.figure.Figure
+            The created plot.
+
+        Raises
+        ------
+        ValueError
+            If col_scale is neither 'log' nor 'linear'.
+        ValueError
+            If components contains invalid component names.
+        """
+        if model is None:
+            model_id = self.all_models.get_best_n_models_idx(n=1)[0]
+            model = self.all_models.get_model_from_row(model_id)
+        self.logger.info('Creating Rmax-zmax plot for model in '
+                         f'{model.directory}.')
+        if col_scale not in ['log', 'linear']:
+            txt = "Colorbar scale col_scale must be 'log' or 'linear', " \
+                  f"not {col_scale}."
+            self.logger.error(txt)
+            raise ValueError(txt)
+        orblib = model.get_orblib()
+        _ = model.get_weights(orblib)
+        intmoms, int_grid = orblib.read_orbit_intrinsic_moments()
+        density, x, y, z = np.moveaxis(intmoms[..., 0:4], -1, 0)
+        weights = model.weights[:, *([np.newaxis] * 3)]
+        r_max = np.sqrt(np.max(x**2 + y**2 + z**2,
+                               axis=(1,2,3),
+                               initial=0,
+                               where=(density > 0) & (weights > 0)))
+        z_max = np.max(z,
+                       axis=(1,2,3),
+                       initial=0,
+                       where=(density > 0) & (weights > 0))
+
+        if components != 'all':
+            if components != 'each':
+                if any(c in ['cold', 'warm', 'cold+warm',
+                             'cr_cold', 'cr_warm', 'cr_cold+warm', 'hot']
+                            for c in components):
+                    names = 'hotcold'
+                else:
+                    names = 'bulgedisk'
+            decomp = analysis.Decomposition(self.config, names=names).decomp
+            comps = decomp.meta['comps']
+            if components == 'each':
+                components = comps
+            else:
+                if any(c not in comps for c in components):
+                    txt = f'Invalid components {components}, must be in ' \
+                          f'{comps}.'
+                    self.logger.error(txt)
+                    raise ValueError(txt)
+            self.logger.info(f'Plotting components: {components}.')
+            comp_map = [any(c in d for c in components)
+                        for d in decomp['component']]
+            r_max_max=np.max(r_max[comp_map])*1.05 if max_r is None else max_r
+            z_max_max=np.max(z_max[comp_map])*1.05 if max_z is None else max_z
+            if col_scale == 'log':
+                vmin = np.min(model.weights[comp_map & (model.weights > 0)])
+            else:
+                vmin = 0
+            vmax = np.max(model.weights[comp_map & (model.weights > 0)])
+        else:
+            self.logger.info('Plotting all components (aggregated).')
+            r_max_max = np.max(r_max) * 1.05 if max_r is None else max_r
+            z_max_max = np.max(z_max) * 1.05 if max_z is None else max_z
+            if col_scale == 'log':
+                vmin = np.min(model.weights[model.weights > 0])
+            else:
+                vmin = 0
+            vmax = np.max(model.weights[model.weights > 0])
+        n_figures = 1 if components == 'all' else len(components)
+        labelsize = fontsize = 9
+        fig = plt.figure(figsize=(7, 5 * n_figures))
+        arctpc = constants.ARC_KPC(self.system.distMPc) * 1000
+        if r_max_max * arctpc < 1000:
+            xlim = r_max_max * arctpc
+            xunit = 'pc'
+        else:
+            xlim = r_max_max * arctpc / 1000.0
+            xunit = 'kpc'
+        if z_max_max * arctpc < 1000:
+            zlim = z_max_max * arctpc
+            zunit = 'pc'
+        else:
+            zlim = z_max_max * arctpc / 1000.0
+            zunit = 'kpc'
+        for i_fig in range(n_figures):
+            ax = fig.add_subplot(n_figures, 1, i_fig + 1)
+            txt = components[i_fig].replace('_disk', ' disk').replace('_d', ' disk').replace('_', ' ')
+            title = 'Components: all' if components == 'all' \
+                                      else f'Component: {txt}'
+            ax.title.set_text(title)
+            ax.set_xlim(right=r_max_max)
+            ax.set_ylim(top=z_max_max)
+            ax.set_xlabel(r'$R_\mathrm{max}$ [arcsec]', fontsize=fontsize)
+            ax.set_ylabel(r'$z_\mathrm{max}$ [arcsec]', fontsize=fontsize)
+            ax.tick_params(labelsize=labelsize)
+            ax2 = ax.twiny()
+            ax2.set_xlim(right=xlim)
+            ax2.set_xlabel(r'$R_\mathrm{max}$ [' + xunit + ']',
+                           fontsize=fontsize,
+                           labelpad=8)
+            ax2.tick_params(labelsize=labelsize)
+            ax3 = ax.twinx()
+            ax3.set_ylim(top=zlim)
+            ax3.set_ylabel(r'$z_\mathrm{max}$ [' + zunit + ']',
+                           fontsize=fontsize,
+                           labelpad=8)
+            ax3.tick_params(labelsize=labelsize)
+            if components == 'all':
+                comp_map = True
+            else:
+                comp_map = [(f'|{components[i_fig]}|' in i)
+                            for i in decomp['component']]
+            cax = ax.scatter(r_max[(model.weights > 0) & comp_map],
+                             z_max[(model.weights > 0) & comp_map],
+                             s=4,
+                             c=model.weights[(model.weights > 0) & comp_map],
+                             vmin=vmin,
+                             vmax=vmax,
+                             cmap='viridis_r', norm=col_scale)
+            cb = fig.colorbar(cax, ax=ax3, pad=0.15)
+            cb.ax.tick_params(labelsize=labelsize)
+            cb.set_label('orbit weight', fontsize=fontsize, labelpad=8)
+        plt.tight_layout()
+        # format and save
+        figname = self.plotdir + 'Rmax_vs_zmax' + figtype
+        fig.savefig(figname)
+        self.logger.info(f'Plot {figname} saved.')
+        return fig
