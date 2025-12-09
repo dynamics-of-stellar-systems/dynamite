@@ -1000,9 +1000,7 @@ class Plotter():
         #Input parameters: NFW dark matter concentration and fraction,
         #and stellar mass
 
-        grav_const_km = 6.67428e-11*1.98892e30/1e9
-        parsec_km = 1.4959787068e8*(648.000e3/np.pi)
-        rho_crit = (3.*((7.3000e-5)/parsec_km)**2)/(8.*np.pi*grav_const_km)
+        rho_crit = constants.RHO_CRIT
 
         rhoc = (200./3.)*rho_crit*cc**3/(np.log(1.+cc) - cc/(1.+cc))
         rc = (3./(800.*np.pi*rho_crit*cc**3)*dmfrac*mstars)**(1./3.)
