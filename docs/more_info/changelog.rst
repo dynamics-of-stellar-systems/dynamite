@@ -4,6 +4,8 @@
 Change Log
 ****************
 
+- Improvement: Decomposition is more efficient (results are cached, kin_set moved to plot_decomp, velocity histograms are only read when needed).
+- Improvement: The nomenclature of decomposition components can now be either ['thin_d', 'thick_d', 'disk', 'cr_thin_d', 'cr_thick_d', 'cr_disk', 'bulge', 'all'] or ['cold', 'warm', 'cold+warm', 'cr_cold', 'cr_warm', 'cr_cold+warm', 'hot', 'all'].
 - New feature: "Coloring" adds support for fitting population data such as stellar age and metallicity, see new tutorial 8_coloring.ipynb.
 - Improvement: Updated documentation (clarifications and fixes).
 - Improvement: The (confusing) annotations in the aperture and bins files are now optional. Comment lines (#) in those files can now be used to add any information.

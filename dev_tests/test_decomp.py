@@ -10,13 +10,14 @@ fname = 'user_test_config_ml.yaml'
 c = dyn.config_reader.Configuration(fname,
                                     reset_logging=True,
                                     user_logfile='test_decomp',
-                                    reset_existing_output=True)
+                                    reset_existing_output=False)
 
 dyn.model_iterator.ModelIterator(c) # generate models
 
 decomp = dyn.analysis.Decomposition(config=c,
-                                    kin_set=0,
-                                    decomp_table=True,
+                                    names='bulgedisk',
+                                    # names='hotcold',
+                                    cache=True,
                                     comps_weights=True) # do the decomposition
 
 for v_sigma_option in ('moments', 'fit'):
@@ -25,9 +26,14 @@ for v_sigma_option in ('moments', 'fit'):
     #and plot the kinematics
     decomp.plot_decomp(xlim=15,
                        ylim=15,
+                       kin_set=0,
                        v_sigma_option=v_sigma_option,
                        comps_plot={'thin_d': True, 'thick_d': True,
                                    'disk': True, 'cr_thin_d': True,
                                    'cr_thick_d': True, 'cr_disk': True,
                                    'bulge': True, 'all': True},
+                    #    comps_plot={'cold': True, 'warm': True,
+                    #                'cold+warm': True, 'cr_cold': True,
+                    #                'cr_warm': True, 'cr_cold+warm': True,
+                    #                'hot': True, 'all': True},
                        individual_colorbars=True)
