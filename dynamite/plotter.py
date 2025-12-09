@@ -2424,11 +2424,13 @@ class Plotter():
             The default is 'log'.
         components : str or list-like, optional
             Specifies which orbital components to include in the plot.
-            If 'all', all orbits are included in the plot. If 'each', separate
-            plots are created for each component found in the decomposition
-            table. Alternatively, a list of component names can be provided to
-            include only those components. Valid component names depend on
-            the decomposition used. The default is 'all'.
+            If 'all', all orbits are included in the plot without any breakdown
+            by component. If 'each', separate plots are created for each
+            component found in the decomposition table and the components'
+            nomenclature is given by the names parameter. Alternatively, a list
+            of component names can be provided. In that case, individual
+            component plots are generated and the component nomenclature is
+            determined automatically. The default is 'all'.
         names : str, optional
             This parameter is ONLY relevant if components='each'. It selects
             the nomenclature of the component names: 'bulgedisk' selects
@@ -2477,19 +2479,14 @@ class Plotter():
                        where=(density > 0) & (weights > 0))
 
         if components != 'all':
-            # Activate these lines after updating Decomposition to accept
-            # different component name sets
-            # if components != 'each' and any(c in ['cold', 'warm', 'cold+warm',
-            #                                       'cr_cold', 'cr_warm',
-            #                                       'cr_cold+warm', 'hot']
-            #                                 for c in components):
-            #     names = 'hotcold'
-            # else:
-            #     names = 'bulgedisk'
-            # decomp = analysis.Decomposition(self.config, names=names).decomp
-            # Deactivate the following line after updating Decomposition to
-            # accept different component name sets
-            decomp = analysis.Decomposition(self.config).decomp
+            if components != 'each':
+                if any(c in ['cold', 'warm', 'cold+warm',
+                             'cr_cold', 'cr_warm', 'cr_cold+warm', 'hot']
+                            for c in components):
+                    names = 'hotcold'
+                else:
+                    names = 'bulgedisk'
+            decomp = analysis.Decomposition(self.config, names=names).decomp
             comps = decomp.meta['comps']
             if components == 'each':
                 components = comps
