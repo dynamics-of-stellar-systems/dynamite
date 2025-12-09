@@ -26,23 +26,30 @@ class Decomposition:
     Parameters
     ----------
     config : a ``dyn.config_reader.Configuration`` object, mandatory
-    model : a ``dyn.model.Model`` object, optional
+    model : a ``dyn.model.Model`` object or None, optional
         Determines which model is used.
         If model = None, the model corresponding to the minimum
         chisquare (so far) is used; the setting in the configuration
         file's parameter settings is used to determine which chisquare
         to consider. The default is None.
-    kin_set : int, optional
-        Determines which kinematic set to use.
-        The value of this parameter is the index of the data
-        set (e.g. kin_set=0, kin_set=1). The default is 0.
     ocut : list of floats, optional
         The orbit cuts in lambda_z. The default is None, which translates to
         ocut=[0.8, 0.25, -0.25, -0.8], the selection in lambda_z
         following Santucci+22.
-    decomp_table : bool, optional
-        If True, write a table mapping each orbit to its respective
-        component(s). The default is False.
+    names : str, optional
+        Nomenclature of the component names. If 'bulgedisk', the components are
+        ['thin_d', 'thick_d', 'disk', 'cr_thin_d', 'cr_thick_d', 'cr_disk',
+        'bulge', 'all'].
+        If 'hotcold', the components are
+        ['cold', 'warm', 'cold+warm', 'cr_cold', 'cr_warm', 'cr_cold+warm',
+        'hot', 'all'].
+        The default is 'bulgedisk'.
+    cache : bool, optional
+        If True, the orbit decomposition is read from decomp_table.ecsv instead
+        of recomputing the decomposition if the file exists in the model
+        directory and the ocut matches. Also, a new decomp_table.ecsv file will
+        be written every time a new decomposition is computed. If False, the
+        decomposition is always recomputed. The default is True.
     comps_weights : bool, optional
         If True, write a table of aggregated weights in each component.
         The default is False.
@@ -56,9 +63,9 @@ class Decomposition:
     def __init__(self,
                  config=None,
                  model=None,
-                 kin_set=0,
                  ocut=None,
-                 decomp_table=False,
+                 names='bulgedisk',
+                 cache=True,
                  comps_weights=False):
         self.logger = logging.getLogger(f'{__name__}.{__class__.__name__}')
         if config is None:
@@ -70,49 +77,78 @@ class Decomposition:
         if model is None:
             best_model_idx = config.all_models.get_best_n_models_idx(n=1)[0]
             self.model = config.all_models.get_model_from_row(best_model_idx)
-        if self.config.system.is_bar_disk_system():
-            stars = self.config.system.get_unique_bar_component()
-        else:
-            stars = self.config.system.get_unique_triaxial_visible_component()
-        n_kin = len(stars.kinematic_data)
-        if kin_set >= n_kin:
-            text = f'kin_set must be < {n_kin}, but it is {kin_set}'
-            self.logger.error(text)
-            raise ValueError(text)
-        self.kin_set = kin_set
-        self.logger.info(f'Performing decomposition for kin_set no {kin_set}: '
-                         f'{stars.kinematic_data[kin_set].name}')
-        # Get losvd_histograms and projected_masses
+        comp_names = {'bulgedisk': ['thin_d', 'thick_d', 'disk',
+                                    'cr_thin_d', 'cr_thick_d', 'cr_disk',
+                                    'bulge', 'all'],
+                      'hotcold': ['cold', 'warm', 'cold+warm',
+                                  'cr_cold', 'cr_warm', 'cr_cold+warm',
+                                  'hot', 'all']}
+        self.comps = comp_names.get(names, None)
+        if self.comps is None or names not in comp_names.keys():
+            txt = f'Unknown component names option: {names}. Use one of ' \
+                  f'{comp_names.keys()}.'
+            self.logger.error(txt)
+            raise ValueError(txt)
+        # Important: the 'all' component needs to be the last one in the list!
+        self.logger.info('Performing decomposition '
+                         f'for model in {self.model.directory}.')
+        # Get orblib and orbit weights and store them in self.model.weights
         self.orblib = self.model.get_orblib()
-        self.orblib.read_losvd_histograms()
-        self.losvd_histograms = self.orblib.losvd_histograms[self.kin_set]
-        self.proj_mass = self.orblib.projected_masses[self.kin_set]
-        self.logger.debug(f'{self.losvd_histograms.y.shape=}, '
-                          f'{self.proj_mass.shape=}.')
-        # Get orbit weights and store them in self.model.weights
         _ = self.model.get_weights(self.orblib)
         # Do the decomposition
-        self.comps=['thin_d', 'thick_d', 'disk',
-                    'cr_thin_d', 'cr_thick_d', 'cr_disk', 'bulge', 'all']
-        # Important: the 'all' component needs to be the last one in the list!
         if ocut is not None:
             self.ocut = ocut
         else:
             self.ocut = [  0.8,     0.25,   -0.25,        -0.8        ]
         #             thin_d  thick_d   bulge    cr_thick_d   cr_thin_d
-        self.decomp = self.decompose_orbits()
-        self.logger.info('Orbits read and velocity histogram created.')
-        if decomp_table:
-            file_name = self.model.directory + 'decomp_table.ecsv'
-            self.decomp.write(file_name, format='ascii.ecsv', overwrite=True)
-            self.logger.info('Orbit decomposition information written to '
-                             f'{file_name}.')
+        #             cold    warm      hot      cr_warm      cr_cold
+        file_name = self.model.directory + 'decomp_table.ecsv'
+        if cache and os.path.isfile(file_name):
+            decomp = astropy.table.Table.read(file_name, format='ascii.ecsv')
+            ocut_file = decomp.meta.get('ocut', None)
+            if ocut_file == self.ocut:
+                self.logger.info('Reading decomposition into components '
+                                 f'{self.comps} from cache file {file_name}.')
+                c_file = decomp.meta.get('comps', None)
+                if c_file is None:
+                    self.logger.warning(f'Cache file {file_name} has no '
+                                        'component list in meta data. '
+                                        'Recomputing decomposition.')
+                    decomp = None
+                elif c_file != self.comps:
+                    self.logger.info('Converting component names in file to '
+                                     'nomenclature defined in names parameter.')
+                    comp_list = decomp['component']
+                    for i, comp in enumerate(self.comps):
+                        comp_list = [s.replace(f'|{c_file[i]}|', f'|{comp}|')
+                                     for s in comp_list]
+                    decomp['component'] = comp_list
+                    decomp.meta['comps'] = self.comps
+            else:
+                self.logger.warning('Decomposition cache file found, but ocut '
+                                    f'values differ: {ocut_file} (file) != '
+                                    f'{self.ocut} (input). '
+                                    'Recomputing decomposition.')
+                decomp = None
+        else:
+            decomp = None
+        if decomp is None:
+            self.decomp = self.decompose_orbits()
+            if cache:
+                self.decomp.write(file_name,
+                                  format='ascii.ecsv',
+                                  overwrite=True)
+                self.logger.info('Orbit decomposition information written to '
+                                 f'{file_name}.')
+        else:
+            self.decomp = decomp
         if comps_weights:
             self.comps_weights()
 
     def plot_decomp(self,
                     xlim,
                     ylim,
+                    kin_set,
                     v_sigma_option='fit',
                     comps_plot='all',
                     individual_colorbars=False,
@@ -126,6 +162,10 @@ class Decomposition:
             restricts plot x-coordinates to abs(x) <= xlim.
         ylim : float
             restricts plot y-coordinates to abs(y) <= ylim.
+        kin_set : int, optional
+            Determines which kinematic set to use.
+            The value of this parameter is the index of the data
+            set (e.g. kin_set=0, kin_set=1). The default is 0.
         v_sigma_option : str, optional
             If 'fit', v_mean and v_sigma are calculated based on fitting
             Gaussians, if 'moments', v_mean and v_sigma are calculated
@@ -137,7 +177,10 @@ class Decomposition:
             'cr_thin_d': False, 'cr_thick_d': False, 'cr_disk: False',
             'bulge': False, 'all': False} will only create the plots for
             'thin_d', 'thick_d', and 'disk'. `False` entries can be omitted
-            in the dictionary. The default is 'all'.
+            in the dictionary.
+            NOTE: The component nomenclature must match the `names` argument
+            used when instantiating the Decomposition object.
+            The default is 'all'.
         individual_colorbars : bool or dict, optional
             If True, then the sb (surface brightness), vel (velocity), and
             sig (velocity dispersion) colorbars adapt to their respective
@@ -163,6 +206,18 @@ class Decomposition:
 
         """
         mpl.rcParams['savefig.dpi'] = dpi
+        if self.config.system.is_bar_disk_system():
+            stars = self.config.system.get_unique_bar_component()
+        else:
+            stars = self.config.system.get_unique_triaxial_visible_component()
+        n_kin = len(stars.kinematic_data)
+        if kin_set >= n_kin:
+            text = f'kin_set must be < {n_kin}, but it is {kin_set}'
+            self.logger.error(text)
+            raise ValueError(text)
+        self.kin_set = kin_set
+        self.logger.info(f'Creating decomposition plots for kin_set number '
+                         f'{kin_set}: {stars.kinematic_data[kin_set].name}')
         comp_kinem_moments = self.comps_aphist(v_sigma_option)
         self.logger.info('Component data done. '
                          f'Plotting decomposition for {v_sigma_option=}.')
@@ -174,6 +229,11 @@ class Decomposition:
         for comp in comps:
             if comp not in comps_plot:
                 comps_plot[comp] = False
+        for comp in comps_plot:
+            if comp not in comps:
+                text = f'Component {comp} in comps_plot not in {comps = }.'
+                self.logger.error(text)
+                raise ValueError(text)
         self.logger.info(f'Plotting data for components {comps_plot}.')
 
         if type(individual_colorbars) is bool:
@@ -184,10 +244,6 @@ class Decomposition:
                 if k not in individual_colorbars:
                     individual_colorbars[k] = False
 
-        if self.config.system.is_bar_disk_system():
-            stars = self.config.system.get_unique_bar_component()
-        else:
-            stars = self.config.system.get_unique_triaxial_visible_component()
         dp_args = stars.kinematic_data[self.kin_set].dp_args
         xi = dp_args['x']
         yi = dp_args['y']
@@ -378,22 +434,28 @@ class Decomposition:
             raise ValueError(text)
         self.logger.info('Calculating flux, v, and sigma for components '
                          f'{self.decomp.meta["comps"]}, {v_sigma_option=}.')
+        # Get losvd_histograms and projected_masses
+        self.orblib.read_losvd_histograms()
+        losvd_histograms = self.orblib.losvd_histograms[self.kin_set]
+        proj_mass = self.orblib.projected_masses[self.kin_set]
+        self.logger.debug(f'{losvd_histograms.y.shape=}, {proj_mass.shape=}.')
         comp_flux_v_sigma = astropy.table.Table(
-                            {'ap_id':range(self.losvd_histograms.y.shape[-1])},
+                            {'ap_id':range(losvd_histograms.y.shape[-1])},
                             dtype=[int],
                             meta={'v_sigma_option':v_sigma_option})
         for comp in self.decomp.meta['comps']:
             self.logger.info(f'Component {comp}...')
             # calculate flux and losvd histograms for component
-            orb_sel = np.array([f'|{comp}|' in s for s in self.decomp['component']],
+            orb_sel = np.array([f'|{comp}|' in s
+                                for s in self.decomp['component']],
                                dtype=bool)
-            flux=np.dot(self.proj_mass[orb_sel].T, self.model.weights[orb_sel])
-            losvd = np.dot(self.losvd_histograms.y[orb_sel,:,:].T,
+            flux = np.dot(proj_mass[orb_sel].T, self.model.weights[orb_sel])
+            losvd = np.dot(losvd_histograms.y[orb_sel,:,:].T,
                            self.model.weights[orb_sel]).T
             losvd = losvd[np.newaxis]
             self.logger.debug(f'{comp}: {np.count_nonzero(orb_sel)} orbits, '
                               f'{flux.shape=}, {losvd.shape=}.')
-            losvd_hist = dyn.kinematics.Histogram(self.losvd_histograms.xedg,
+            losvd_hist = dyn.kinematics.Histogram(losvd_histograms.xedg,
                                                   y=losvd)
             if v_sigma_option == 'moments':
                 v_mean = np.squeeze(losvd_hist.get_mean())
@@ -490,35 +552,28 @@ class Decomposition:
         decomp = astropy.table.Table({'id':range(n_orbs),
                                       'component':['']*n_orbs},
                                      dtype=[int, 'U256'],
-                                     meta={'comps':comps})
+                                     meta={'comps':comps, 'ocut':ocut})
         # map components
         comp_map = np.zeros(n_orbs, dtype=int)
         # cold component (thin disk)
-        comp_map[np.ravel(np.where(lzm_sign > ocut[0]))] += \
-            2**comps.index('thin_d')
+        comp_map[np.ravel(np.where(lzm_sign > ocut[0]))] += 2 ** 0
         # warm component (thick disk)
         comp_map[np.ravel(np.where((lzm_sign > ocut[1])
-                                 & (lzm_sign <= ocut[0])))] += \
-            2**comps.index('thick_d')
+                                 & (lzm_sign <= ocut[0])))] += 2 ** 1
         # hot component (bulge)
         comp_map[np.ravel(np.where((lzm_sign > ocut[2])
-                                 & (lzm_sign <= ocut[1])))] += \
-            2**comps.index('bulge') # was lzm_sign<ocut[1]
+                                 & (lzm_sign <= ocut[1])))] += 2 ** 6
         # disk component (disk)
-        comp_map[np.ravel(np.where(lzm_sign > ocut[1]))] += \
-            2**comps.index('disk')
+        comp_map[np.ravel(np.where(lzm_sign > ocut[1]))] += 2 ** 2
         # counter-rotating cold component (cr thin disk)
-        comp_map[np.ravel(np.where(lzm_sign <= ocut[3]))] += \
-            2**comps.index('cr_thin_d')
+        comp_map[np.ravel(np.where(lzm_sign <= ocut[3]))] += 2 ** 3
         # counter-rotating warm component (cr thick disk)
         comp_map[np.ravel(np.where((lzm_sign > ocut[3])
-                                 & (lzm_sign <= ocut[2])))] += \
-            2**comps.index('cr_thick_d')
+                                 & (lzm_sign <= ocut[2])))] += 2 ** 4
         # counter-rotating disk (cr disk)
-        comp_map[np.ravel(np.where((lzm_sign <= ocut[2])))] += \
-            2**comps.index('cr_disk')
+        comp_map[np.ravel(np.where((lzm_sign <= ocut[2])))] += 2 ** 5
         # whole component (all)
-        comp_map += 2**comps.index('all')
+        comp_map += 2 ** 7
         for i in np.ravel(np.where(comp_map > 0)):
             for k, comp in enumerate(comps):
                 if comp_map[i] & (1 << k):
