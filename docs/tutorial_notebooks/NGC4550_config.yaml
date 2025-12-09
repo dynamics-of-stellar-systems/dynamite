@@ -27,7 +27,6 @@ system_components:
                 value: 1.e-3
                 LaTeX: "$a_\\mathrm{BH}$"
         include: True
-        contributes_to_potential: True
 
     dm_halo:
         type: NFW
@@ -47,7 +46,6 @@ system_components:
                     step: 0.5
                     minstep: 0.01
         include: True
-        contributes_to_potential: True
 
     stars:
         type: TriaxialVisibleComponent
@@ -73,7 +71,6 @@ system_components:
                 aperturefile: "aperture.dat"
                 binfile: "bins.dat"
         include: True
-        contributes_to_potential: True
 
 system_parameters: # physical system standalone parameters
     ml:
