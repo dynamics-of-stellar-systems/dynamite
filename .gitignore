@@ -67,5 +67,5 @@ rantest
 rantest.f90-e
 *.log
 dev_tests/.ipynb_checkpoints
+dev_tests/propermotions/F2_output11
 dev_tests/FCC167/output
-dev_tests/propermotions

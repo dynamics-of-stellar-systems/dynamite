@@ -9,9 +9,8 @@ import numpy as np
 from astropy import table
 from astropy.io import ascii
 
-from dynamite import constants
+import dynamite as dyn
 from dynamite import weight_solvers as ws
-from dynamite import orblib as dyn_orblib
 
 class AllModels(object):
     """All models which have been run so far
@@ -38,9 +37,13 @@ class AllModels(object):
             stars = config.system.get_unique_bar_component()
         else:
             stars = config.system.get_unique_triaxial_visible_component()
+        self.has_losvd_kins = \
+            len([k for k in stars.kinematic_data
+                 if not isinstance(k, dyn.kinematics.ProperMotions)]) > 0
         self.has_pops = len([p for p in stars.population_data
                              if p.kin_aper is None]) > 0
-        self.has_pms = False  # fill in after implementing proper motions
+        self.has_pms = len([k for k in stars.kinematic_data
+                            if isinstance(k, dyn.kinematics.ProperMotions)])>0
         self.set_filename(config.settings.io_settings['all_models_file'])
         self.make_empty_table()
         if from_file and os.path.isfile(self.filename):
@@ -162,7 +165,7 @@ class AllModels(object):
                     self.logger.info(f'Row {i}: orblib exists in {f_root}.')
             # Then, check for existing weights
             if (not row['all_done']) and (not row['weights_done']):
-                w_file = mod.directory + constants.weight_file
+                w_file = mod.directory + dyn.constants.weight_file
                 if os.path.isfile(w_file):
                     chi2s = ascii.read(w_file).meta
                     table_modified = True
@@ -264,9 +267,18 @@ class AllModels(object):
                 and os.path.isfile(d + 'orblibbox.dat.bz2')
         if not check:
             check = os.path.isfile(d + 'orblib_qgrid.dat.bz2') \
-                    and os.path.isfile(d + 'orblib_losvd_hist.dat.bz2') \
-                    and os.path.isfile(d + 'orblibbox_qgrid.dat.bz2') \
+                    and os.path.isfile(d + 'orblibbox_qgrid.dat.bz2')
+        orblib_files_ok = orblib_files_ok and check
+        # check for 'regular' losvd kinematics
+        if self.has_losvd_kins:
+            check = os.path.isfile(d + 'orblib_losvd_hist.dat.bz2') \
                     and os.path.isfile(d + 'orblibbox_losvd_hist.dat.bz2')
+            orblib_files_ok = orblib_files_ok and check
+        # additional files from orblib integration
+        extra_files = ['orblib.dat_orbclass.out', 'mass_radmass.dat',
+                       'mass_qgrid.dat', 'mass_aper.dat',
+                       'orblibbox.dat_orbclass.out']
+        check = all([os.path.isfile(d + f) for f in extra_files])
         orblib_files_ok = orblib_files_ok and check
         # files that need to be there if populations with own apertures exist
         if self.has_pops:
@@ -275,8 +287,9 @@ class AllModels(object):
             orblib_files_ok = orblib_files_ok and check
         # files that need to be there if proper motion data exist
         if self.has_pms:
-            # orblib_files_ok = orblib_files_ok
-            pass
+            check = os.path.isfile(d + 'orblib_pm_hist.dat.bz2') \
+                    and os.path.isfile(d + 'orblibbox_pm_hist.dat.bz2')
+            orblib_files_ok = orblib_files_ok and check
         # set the indicator files in the orblib directory
         ind_files = [pathlib.Path(d + f_name + '_done')
                      for f_name in ('tube', 'box', 'tube_box')]
@@ -1095,7 +1108,7 @@ class Model(object):
         a ``dyn.orblib.OrbitLibrary`` object
 
         """
-        orblib = dyn_orblib.LegacyOrbitLibrary(
+        orblib = dyn.orblib.LegacyOrbitLibrary(
                 config=self.config,
                 mod_dir=self.directory_noml,
                 parset=self.parset)
