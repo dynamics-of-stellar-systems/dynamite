@@ -24,4 +24,4 @@ to make the HTML version, or::
 for the PDF.
 
 In case Sphinx reports an error related to ``pandoc`` (containing ``Pandoc wasn't found.``), the ``pandoc`` executable is missing in its Python package.
-Please install ``pandoc`` using your package manager and try again (on Mac ``brew install pandoc`` or ``sudo port install pandoc``).
+Please install ``pandoc`` using `<https://pandoc.org/installing.html>`_ or your package manager and try again (on Mac ``brew install pandoc`` or ``sudo port install pandoc``).

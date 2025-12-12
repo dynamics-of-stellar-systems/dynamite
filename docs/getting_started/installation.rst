@@ -405,6 +405,8 @@ Several Python packages are installed in this way (if they are not already), inc
 
 (please refer to the file ``requirements.txt`` in the setup directory for a complete list, including the required respective versions).
 
+PLEASE NOTE: even though DYNAMITE does not currently use ``numba`` directly, it is still in ``requirements.txt`` because it is a dependency of ``sparse`` and can cause conflicts: starting with version 0.63, ``numba``'s support for Intel Macs has been deprecated (see `here <https://numba.readthedocs.io/en/stable/release/0.63.0-notes.html>`_). It can still be installed from source, but requires a special LLVM build that can be a challenge (see `here <https://numba.readthedocs.io/en/stable/user/installing.html#installing-from-source>`_). Therefore, we decided to add the requirement ``numba<0.63`` to avoid potential issues on Intel Macs. If you feel adventurous, this can be lifted.
+
 DYNAMITE should now be installed and ready to be run! You can now try the examples proposed in :ref:`test-run`.
 
 
