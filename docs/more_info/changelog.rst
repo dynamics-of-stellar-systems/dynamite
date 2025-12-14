@@ -5,6 +5,7 @@ Change Log
 ****************
 
 - Improvement: The unused but mandatory component attribute ``contributes_to_potential`` has been removed and DEPRECATED.
+- Bugfix: Fixed a possible crash in orbit integration (in triaxmassbin) with multiple kinematics.
 - New feature: Added R_max vs z_max diagrams to the Plotter class (method: rmax_zmax_plot).
 - Improvement: Decomposition is more efficient (results are cached, kin_set moved to plot_decomp, velocity histograms are only read when needed).
 - Improvement: The nomenclature of decomposition components can now be either ['thin_d', 'thick_d', 'disk', 'cr_thin_d', 'cr_thick_d', 'cr_disk', 'bulge', 'all'] or ['cold', 'warm', 'cold+warm', 'cr_cold', 'cr_warm', 'cr_cold+warm', 'hot', 'all'].
