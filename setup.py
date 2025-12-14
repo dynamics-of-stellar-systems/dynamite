@@ -44,13 +44,13 @@ setuptools.setup(
     packages=setuptools.find_packages(),
     classifiers=[
         "Programming Language :: Python :: 3",
-        "Programming Language :: Python :: 3.8",
+        "Programming Language :: Python :: 3.10",
     ],
     project_urls={
         "Source": "https://github.com/dynamics-of-stellar-systems/dynamite/",
         "Documentation": "https://dynamics.univie.ac.at/dynamite_docs/index.html",
     },
-    python_requires=">=3.8",
+    python_requires=">=3.10",
     # use the already parsed requirements from requirements.txt
     install_requires=required,
     package_data={
