@@ -2468,7 +2468,8 @@ class Plotter():
         _ = model.get_weights(orblib)
         intmoms, int_grid = orblib.read_orbit_intrinsic_moments()
         density, x, y, z = np.moveaxis(intmoms[..., 0:4], -1, 0)
-        weights = model.weights[:, *([np.newaxis] * 3)]
+        # weights = model.weights[:, *([np.newaxis] * 3)]  # Python>=3.11 only
+        weights = model.weights[:, np.newaxis, np.newaxis, np.newaxis]
         r_max = np.sqrt(np.max(x**2 + y**2 + z**2,
                                axis=(1,2,3),
                                initial=0,
