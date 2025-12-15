@@ -32,7 +32,6 @@ system_components:
                 LaTeX: "$a_{BH}$"
         type: "Plummer" # class name
         include: True
-        contributes_to_potential: True
 
     dh: # dark_halo
         parameters:
@@ -58,7 +57,6 @@ system_components:
                 LaTeX: "$log(M_{200}/M_{star})$"
         type: NFW
         include: True
-        contributes_to_potential: True
 
     stars:
         parameters:
@@ -93,7 +91,6 @@ system_components:
         mge_pot: "mge.ecsv"
         mge_lum: "mge.ecsv"
         include: True
-        contributes_to_potential: True
         kinematics:
             MUSE_CaT:
                 weight: 1.0
