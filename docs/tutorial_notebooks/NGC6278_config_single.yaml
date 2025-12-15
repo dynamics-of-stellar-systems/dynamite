@@ -32,7 +32,6 @@ system_components:
                 LaTeX: "$a_\\mathrm{BH}$"
         type: "Plummer"
         include: True
-        contributes_to_potential: True
 
     dh:
         parameters:
@@ -57,7 +56,6 @@ system_components:
                 LaTeX: "$\\log(M_{200}/M_*)$"
         type: NFW
         include: True
-        contributes_to_potential: True
 
     stars:
         parameters:
@@ -92,7 +90,6 @@ system_components:
         mge_pot: "mge.ecsv"
         mge_lum: "mge.ecsv"
         include: True
-        contributes_to_potential: True
         kinematics:
             califa:
                 type: GaussHermite
