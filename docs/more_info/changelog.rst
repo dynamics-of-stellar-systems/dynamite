@@ -5,6 +5,7 @@ Change Log
 ****************
 
 - New feature: support for adding externally calculated chi2 values for components not interacting with DYNAMITE components
+- Improvement: The unused but mandatory component attribute ``contributes_to_potential`` has been removed and DEPRECATED.
 - Bugfix: Fixed a possible crash in orbit integration (in triaxmassbin) with multiple kinematics.
 - New feature: Added R_max vs z_max diagrams to the Plotter class (method: rmax_zmax_plot).
 - Improvement: Decomposition is more efficient (results are cached, kin_set moved to plot_decomp, velocity histograms are only read when needed).

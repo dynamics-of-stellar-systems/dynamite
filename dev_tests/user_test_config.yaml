@@ -34,7 +34,6 @@ system_components:
                 LaTeX: "$a_\\mathrm{BH}$"
         type: "Plummer" # class name
         include: True
-        contributes_to_potential: True
 
     dh: # dark_halo
         parameters:
@@ -60,7 +59,6 @@ system_components:
                 LaTeX: "$\\log(M_{200}/M_\\mathrm{stars})$"
         type: NFW
         include: True
-        contributes_to_potential: True
 
     stars:
         parameters:
@@ -95,7 +93,6 @@ system_components:
         mge_pot: "mge_lum.ecsv"
         mge_lum: "mge_pot.ecsv"
         include: True
-        contributes_to_potential: True
         kinematics: # optional, only specified for components with kinematics
             set1:
                 type: GaussHermite # specifies which object class to create

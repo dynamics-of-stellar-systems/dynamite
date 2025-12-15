@@ -21,7 +21,6 @@ class System(object):
         self.logger = logging.getLogger(f'{__name__}.{__class__.__name__}')
         self.n_cmp = 0
         self.cmp_list = []
-        self.n_pot = 0
         self.n_kin = 0
         self.n_pop = 0
         self.parameters = None
@@ -45,7 +44,6 @@ class System(object):
         """
         self.cmp_list += [cmp]
         self.n_cmp += 1
-        self.n_pot += cmp.contributes_to_potential
         self.n_kin += len(cmp.kinematic_data)
         self.n_pop += len(cmp.population_data)
 
@@ -386,8 +384,6 @@ class Component(object):
         a short but descriptive name of the component
     visible : Bool
         whether this is visible <--> whether it has an associated MGE
-    contributes_to_potential : Bool
-        whether this contributes_to_potential **not currently used**
     symmetry : string
         one of 'spherical', 'axisymm', or 'triax' **not currently used**
     kinematic_data : list
@@ -402,7 +398,6 @@ class Component(object):
     def __init__(self,
                  name = None,
                  visible=None,
-                 contributes_to_potential=None,
                  symmetry=None,
                  kinematic_data=[],
                  population_data=[],
@@ -413,9 +408,6 @@ class Component(object):
         else:
             self.name = name
         self.visible = visible
-        self.contributes_to_potential = contributes_to_potential
-        self.logger.info(f'{self.name}: DYNAMITE will currently ignore the '
-                         'mandatory attribute contributes_to_potential.')
         self.symmetry = symmetry
         self.kinematic_data = kinematic_data
         self.population_data = population_data
@@ -446,10 +438,6 @@ class Component(object):
         errstr = f'Component {self.__class__.__name__} needs attribute '
         if self.visible is None:
             text = errstr + 'visible'
-            self.logger.error(text)
-            raise ValueError(text)
-        if self.contributes_to_potential is None:
-            text = errstr + 'contributes_to_potential'
             self.logger.error(text)
             raise ValueError(text)
         if not self.parameters:

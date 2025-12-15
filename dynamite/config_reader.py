@@ -266,26 +266,14 @@ class Configuration(object):
                     logger.debug(f"{comp}... instantiating "
                                  f"{data_comp['type']} object.")
                     if data_comp['type'] == 'Chi2Ext':  # Chi2Ext component
-                        # data_comp['contributes_to_potential'] = False
-                        logger.info(f'{comp}: contributes_to_potential will '
-                                    'be set to False')
                         c = getattr(physys,data_comp['type'])(name = comp,
                                 ext_module=data_comp['ext_module'],
                                 ext_class=data_comp['ext_class'],
                                 ext_class_args=data_comp['ext_class_args'],
-                                ext_chi2=data_comp['ext_chi2'],
-                                contributes_to_potential=False)
+                                ext_chi2=data_comp['ext_chi2'])
                     else:  # all 'regular' components
-                        if 'contributes_to_potential' not in data_comp:
-                            text = f'Component {comp} needs ' + \
-                                    'contributes_to_potential attribute'
-                            logger.error(text)
-                            raise ValueError(text)
-    #                    c = globals()[data_comp['type']](contributes_to_potential
-    #                        = data_comp['contributes_to_potential'])
-                        c = getattr(physys,data_comp['type'])(name = comp,
-                                contributes_to_potential \
-                                = data_comp['contributes_to_potential'])
+    #                    c = globals()[data_comp['type']]()
+                        c = getattr(physys,data_comp['type'])(name = comp)
                     # check for extra config entries/typos before any more
                     # information is read from config file
                     keys_ok = ['parameters', 'type', 'include',
@@ -304,6 +292,12 @@ class Configuration(object):
                             f'Allowed entries: {keys_ok}. Check for typos.'
                         self.logger.error(text)
                         raise ValueError(text)
+                    if 'contributes_to_potential' in data_comp:
+                        text = f'Component {comp}: the attribute ' + \
+                                'contributes_to_potential is DEPRECATED ' + \
+                                'and will be ignored. In a future ' + \
+                                'DYNAMITE release this will cause an error.'
+                        logger.warning(text)
 
                     # initialize the component's parameters, kinematics,
                     # and populations
@@ -337,7 +331,7 @@ class Configuration(object):
                                 logger.warning(f'Kinematics {kin}: the '
                                     '\'weight\' attribute is DEPRECATED and '
                                     'will be ignored. In a future DYNAMITE '
-                                    'realease this will report an error.')
+                                    'release this will cause an error.')
                                 del data_kin['weight']
                             kinematics_set = getattr(kinem,data_kin['type'])\
                                                 (name=kin,
