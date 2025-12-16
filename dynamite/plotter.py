@@ -1832,9 +1832,8 @@ class Plotter():
 
 
         for i in range(n):
-
-            model_dir = self.modeldir + val['directory'][i]
-            model = self.all_models.get_model_from_directory(model_dir)
+            parset = val[i][self.config.parspace.par_names]
+            model = self.all_models.get_model_from_parset(parset)
 
 
             rr, beta_r_profile, beta_r_global, nrr  = \
