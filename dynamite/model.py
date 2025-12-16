@@ -652,7 +652,7 @@ class AllModels(object):
         n : int, optional
             How many models to get. If negative, all models except the
             n best models will be returned. The default is 10.
-        which_chi2 : str, optional
+        which_chi2 : str or None, optional
             Which chi2 is used for determining the best models. If None, the
             setting from the configuration file will be used.
             The default is None.
