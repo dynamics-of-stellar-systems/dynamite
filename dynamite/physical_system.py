@@ -297,6 +297,34 @@ class System(object):
         dark_non_plum_cmp = [c for c in dark_cmp if not isinstance(c, Plummer)]
         return dark_non_plum_cmp
 
+    def get_unique_ext_chi2_component(self):
+        """Return the unique Chi2Ext component
+
+        Raises
+        ------
+        ValueError
+            If there are multiple Chi2Ext components
+
+        Returns
+        -------
+            a ``dyn.physical_system.Chi2Ext`` object
+
+        """
+        chi2_ext_cmp = [c for c in self.cmp_list if isinstance(c, Chi2Ext)]
+        if len(chi2_ext_cmp) > 1:
+            self.logger.error('Found more than one Chi2Ext component')
+            raise ValueError('Found more than one Chi2Ext component')
+        if len(chi2_ext_cmp) == 0:
+            return None
+        else:
+            return chi2_ext_cmp[0]
+
+    @property
+    def has_chi2_ext(self):
+        """True if the system has an external chi2 component, else False
+        """
+        return False if self.get_unique_ext_chi2_component() is None else True
+
     def get_all_kinematic_data(self):
         """get_all_kinematic_data
 
@@ -811,6 +839,7 @@ class TriaxialVisibleComponent(VisibleComponent):
             text += f'\t\t value : {val:.2f}\n'
         return text
 
+
 class BarDiskComponent(TriaxialVisibleComponent):
     """Rotating triaxial component with a MGE projected density (i.e. a bar)
 
@@ -827,6 +856,7 @@ class BarDiskComponent(TriaxialVisibleComponent):
         self.logger = logging.getLogger(f'{__name__}.{__class__.__name__}')
         self.qobs = np.nan
         self.par = ['q', 'p', 'u', 'qdisk']
+
 
 class BarDiskComponentAngles(BarDiskComponent):
     """Rotating triaxial component with a MGE projected density (i.e. a bar),
@@ -849,6 +879,7 @@ class BarDiskComponentAngles(BarDiskComponent):
     def validate_parset(self, par):
         # Skip validation as we already know the angles
         return True
+
 
 class DarkComponent(Component):
     """Any dark component of the sytem, with no observed MGE or kinemtics
@@ -1193,5 +1224,77 @@ class GeneralisedNFW(DarkComponent):
         rhoc, rc, gamma = pars
         xi = r/(r + rc)
         Menc = 4*np.pi*rc**3*rhoc*xi**(3-gamma)/(3-gamma)*special.hyp2f1(3-gamma,1,4-gamma,xi)
+
+
+class Chi2Ext(Component):
+    """External component independent of DYNAMITE orbit and weight calculations
+
+    This component interfaces to an external class that implements a chi2
+    calculation independent of DYNAMITE orbit integration and weight solving.
+    That chi2 value is added to all three chi2 values right after weight
+    solving and is used by the parameter generator.
+
+    Parameters
+    ----------
+    ext_module : str
+        the name of the module implementing the external :math:`\chi^2`
+        calculation. The associated .py file should be in the Python path.
+    ext_class : str
+        the class name in the external module implementing the external
+        :math:`\chi^2` calculation. It will be instantiated once, at the time
+        the config file is read.
+    ext_class_args : dict
+        the class parameters, can be empty (``{}``)
+    ext_chi2 : str
+        the name of the ``ext_class`` method returning :math:`\chi^2`
+        as a single ``float``. In DYNAMITE, it will be called right after
+        weight solving, passing the entire current parset.
+    """
+    def __init__(self,
+                 ext_module=None,
+                 ext_class=None,
+                 ext_class_args=None,
+                 ext_chi2=None,
+                 **kwds):
+        super().__init__(**kwds)
+        self.logger = logging.getLogger(f'{__name__}.{__class__.__name__}')
+        if ext_module is None or ext_class is None or ext_class_args is None \
+           or ext_chi2 is None:
+            txt = 'ext_module, ext_class, ext_class_args, ext_chi2 ' \
+                  'cannot be None.'
+            self.logger.error(txt)
+            raise ValueError(txt)
+        self.contributes_to_potential = False
+        self.visible = False
+        self.logger.debug(f'Importing {ext_module=}')
+        import importlib  # only used once and only if Chi2Ext component exists
+        the_ext_module = importlib.import_module(ext_module)
+        args = tuple(f'{a}={ext_class_args[a]}' for a in ext_class_args)
+        self.logger.debug('Instantiating '
+                          f'{ext_module}.{ext_class}({args}).')
+        ext_object = getattr(the_ext_module, ext_class)(**ext_class_args)
+        self.ext_chi2 = getattr(ext_object, ext_chi2)
+
+    def validate(self):  # allow any parameter names
+        pars = [self.get_parname(p.name) for p in self.parameters]
+        super().validate(par=pars)
+
+    def get_chi2(self, parset):
+        """
+        Returns the chi2 value for the parameter set.
+
+        Parameters
+        ----------
+        parset : dict
+            based on an astropy table row, containing all current parameters
+
+        Returns
+        -------
+        float
+            The chi2 value
+
+        """
+        self.logger.debug(f'Calling external chi2 method with {parset=}.')
+        return self.ext_chi2(parset)
 
 # end

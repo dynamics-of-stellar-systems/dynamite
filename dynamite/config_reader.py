@@ -263,10 +263,17 @@ class Configuration(object):
 
                     # instantiate the component
 
-                    logger.debug(f"{comp}... instantiating {data_comp['type']} "
-                              "object")
-#                    c = globals()[data_comp['type']]()
-                    c = getattr(physys,data_comp['type'])(name = comp)
+                    logger.debug(f"{comp}... instantiating "
+                                 f"{data_comp['type']} object.")
+                    if data_comp['type'] == 'Chi2Ext':  # Chi2Ext component
+                        c = getattr(physys,data_comp['type'])(name = comp,
+                                ext_module=data_comp['ext_module'],
+                                ext_class=data_comp['ext_class'],
+                                ext_class_args=data_comp['ext_class_args'],
+                                ext_chi2=data_comp['ext_chi2'])
+                    else:  # all 'regular' components
+    #                    c = globals()[data_comp['type']]()
+                        c = getattr(physys,data_comp['type'])(name = comp)
                     # check for extra config entries/typos before any more
                     # information is read from config file
                     keys_ok = ['parameters', 'type', 'include',
@@ -275,6 +282,9 @@ class Configuration(object):
                         keys_ok.extend(['mge_pot', 'mge_lum',
                                         'disk_pot', 'disk_lum',
                                         'kinematics', 'populations'])
+                    elif isinstance(c, physys.Chi2Ext):
+                        keys_ok.extend(['ext_module', 'ext_class',
+                                       'ext_class_args', 'ext_chi2'])
                     if any(k not in keys_ok for k in data_comp):
                         text = f'Component {c.name} has unknown config ' \
                             'entries: ' \
@@ -363,6 +373,8 @@ class Configuration(object):
                     else:
                         logger.debug(f'{comp}... no populations data to '
                                      'be read from config file.')
+
+                    # read other data
 
                     if 'mge_pot' in data_comp:
                         path = self.settings.io_settings['input_directory']
@@ -502,16 +514,16 @@ class Configuration(object):
                     pass
                 if 'ncpus' not in value:
                     value['ncpus'] = 'all_available'
-                if value['ncpus']=='all_available':
+                if value['ncpus'] == 'all_available':
                     value['ncpus'] = self.get_n_cpus()
                 logger.info(f"... using {value['ncpus']} CPUs "
                              "for orbit integration.")
-                if 'ncpus_weights' not in value:
-                    value['ncpus_weights'] = value['ncpus']
-                elif value['ncpus_weights'] == 'all_available':
-                    value['ncpus_weights'] = self.get_n_cpus()
-                logger.info(f"... using {value['ncpus_weights']} CPUs "
-                            "for weight solving.")
+                for ncpus in ('ncpus_weights', 'ncpus_ext'):
+                    if ncpus not in value:
+                        value[ncpus] = value['ncpus']
+                    elif value[ncpus] == 'all_available':
+                        value[ncpus] = self.get_n_cpus()
+                    logger.info(f'... using {value[ncpus]} CPUs for {ncpus}.')
                 if 'modeliterator' not in value:
                     value['modeliterator'] = 'ModelInnerIterator'
                 logger.debug(f"... using iterator {value['modeliterator']}.")
@@ -957,13 +969,15 @@ class Configuration(object):
             self.logger.error('System must have zero or one DM Halo object')
             raise ValueError('System must have zero or one DM Halo object')
 
-        if not 1 < len(self.system.cmp_list) < 4:
-            self.logger.error('System needs to comprise exactly one Plummer, '
-                              'one VisibleComponent, and zero or one DM Halo '
-                              'object(s)')
-            raise ValueError('System needs to comprise exactly one Plummer, '
-                             'one VisibleComponent, and zero or one DM Halo '
-                             'object(s)')
+        if self.system.get_unique_ext_chi2_component() is None:
+            check = (2, 3)
+        else:
+            check = (3, 4)
+        if len(self.system.cmp_list) not in check:
+            txt = 'System needs to comprise exactly one Plummer, ' \
+                  'one VisibleComponent, and zero or one DM Halo object(s)'
+            self.logger.error(txt)
+            raise ValueError(txt)
 
         ws_type = self.settings.weight_solver_settings['type']
 
