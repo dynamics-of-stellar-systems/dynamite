@@ -102,6 +102,8 @@ The system consists of a number of physical components - e.g. the stars, black h
         - ``logarithmic``: Boolean, whether logarithmic steps should be used for parameter search. If true, then (``value``, ``lo``, ``hi``) must all have log units.
         - ``LaTeX``: LaTeX string for this parameter to be used for plots.
 
+**Note:** the following (component type ``Chi2Ext`` and associated functionality) hasn't been tested with actual data yet and is still in a **BETA** state. Hence, the details of its implementation and API may change in future releases.
+
 There is a special component type ``Chi2Ext`` that allows external modules to calculate a :math:`\chi^2` value for DYNAMITE models. These external :math:`\chi^2` values are calculated after DYNAMITE's internal :math:`\chi^2` calculations then appended to DYNAMITE's all_models, then can be used to inform the parameter search for later model iterations. The ``Chi2Ext`` component has different settings from the ones built in DYNAMITE:
 
 - ``component name``: a descriptive name, but preferably short as this will be used to refer to the component in the code (e.g. ``gas``)
@@ -153,7 +155,7 @@ The following types of component are available, listed with their parameters:
     - ``c``: concentration parameter [:math:`R_{200}` / NFW-scale-length]
     - ``Mvir``: virial mass :math:`M_{200}` [:math:`M_\odot`]
     - ``gam``: AKA gamma, the inner logarithmic density slope, must be :math:`\leq 1`
-- ``Chi2Ext``
+- ``Chi2Ext`` (**BETA**), for external :math:`\chi^2` calculations
     - Choose any parameter names as you see fit (e.g., ``par1``, ``par2``,...)
 
 .. note::
