@@ -76,7 +76,8 @@ class Decomposition:
         self.config = config
         if model is None:
             best_model_idx = config.all_models.get_best_n_models_idx(n=1)[0]
-            self.model = config.all_models.get_model_from_row(best_model_idx)
+            model = config.all_models.get_model_from_row(best_model_idx)
+        self.model = model
         comp_names = {'bulgedisk': ['thin_d', 'thick_d', 'disk',
                                     'cr_thin_d', 'cr_thick_d', 'cr_disk',
                                     'bulge', 'all'],
@@ -146,9 +147,9 @@ class Decomposition:
             self.comps_weights()
 
     def plot_decomp(self,
-                    xlim,
-                    ylim,
-                    kin_set,
+                    xlim=None,
+                    ylim=None,
+                    kin_set=0,
                     v_sigma_option='fit',
                     comps_plot='all',
                     individual_colorbars=False,
@@ -158,10 +159,12 @@ class Decomposition:
 
         Parameters
         ----------
-        xlim : float
-            restricts plot x-coordinates to abs(x) <= xlim.
-        ylim : float
-            restricts plot y-coordinates to abs(y) <= ylim.
+        xlim : float or None, optional
+            Restricts plot x-coordinates to abs(x) <= xlim. If None, no
+            restriction is applied. The default is None.
+        ylim : float or None, optional
+            Restricts plot y-coordinates to abs(y) <= ylim. If None, no
+            restriction is applied. The default is None.
         kin_set : int, optional
             Determines which kinematic set to use.
             The value of this parameter is the index of the data
@@ -255,6 +258,10 @@ class Decomposition:
         self.logger.debug(f'Pixel grid dimension is {dx=}, {len(xi)=}, '
                           f'{len(yi)=}, {grid.shape}, {angle_deg=}.')
 
+        if xlim is None:
+            xlim = np.max(np.abs(xi))
+        if ylim is None:
+            ylim = np.max(np.abs(yi))
         s = np.ravel(np.where((grid >= 0) & (np.abs(xi) <= xlim)
                               & (np.abs(yi) <= ylim)))
         s_wide = np.ravel(np.where(grid >= 0))
