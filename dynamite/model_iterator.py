@@ -147,7 +147,7 @@ class ModelIterator(object):
                 rows_with_orbits_but_no_weights.remove(row)
         if len(rows_with_orbits_but_no_weights) > 0:
             to_do = all_models.table[rows_with_orbits_but_no_weights]
-            to_do = to_do['directory']
+            to_do = list(to_do['directory'])
             self.logger.info(f'Reattempting weight solving: models {to_do}.')
             n_proc = config.settings.multiprocessing_settings['ncpus_weights']
             with Pool(n_proc) as p:
