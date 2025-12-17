@@ -30,7 +30,7 @@ class Chi2Ext:
         # DYNAMITE run when reading the config file
         #...
 
-    def chi2(self, parset):
+    def chi2(self, parset, config):
         """Method calculating chi2 which is added to all DYNAMITE chi2 values
 
         The method name is give in the DYNAMITE config file (ext_chi2).
@@ -43,6 +43,8 @@ class Chi2Ext:
             parameters of the external component (e.g., gas without influence
             on the potential) are named in the DYNAMITE config file in the
             chi2_ext parameters section and have the suffix "-chi2_ext".
+        config : a ``dyn.config.DynamiteConfig`` object
+            the current DYNAMITE configuration
 
         Returns
         -------
@@ -51,7 +53,9 @@ class Chi2Ext:
             "chi2", "kinchi2", and "kinmapchi2" values after DYNAMITE weight
             solving completes.
         """
-        self.logger.debug(f'This is chi2() and I got {parset=}.')
+        self.logger.debug(f'This is chi2() and I got {parset=} and the '
+                          f'configuration for system '
+                          f'{config.params["system_attributes"]["name"]}.')
         # ...
         # Code that calculates the external, additive chi2
         chi2 = 42.

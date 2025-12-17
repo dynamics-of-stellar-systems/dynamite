@@ -199,7 +199,7 @@ class AllModels(object):
                and row['weights_done']:
                 ext_chi2_comp = self.system.get_unique_ext_chi2_component()
                 parset = self.get_parset_from_row(i)
-                chi2_ext = ext_chi2_comp.get_chi2(dict(parset))
+                chi2_ext = ext_chi2_comp.get_chi2(dict(parset), self.config)
                 table_modified = True
                 row['chi2'] = row['chi2'] + chi2_ext
                 row['kinchi2'] = row['kinchi2'] + chi2_ext
