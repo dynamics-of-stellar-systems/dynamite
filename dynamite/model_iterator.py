@@ -230,7 +230,7 @@ class ModelIterator(object):
         _ = mod.get_weights(orblib)
         ext_chi2_comp=self.config.system.get_unique_ext_chi2_component()
         parset = self.config.all_models.get_parset_from_row(row)
-        chi2_ext = ext_chi2_comp.get_chi2(dict(parset))
+        chi2_ext = ext_chi2_comp.get_chi2(dict(parset), self.config)
         mod.chi2 += chi2_ext
         mod.kinchi2 += chi2_ext
         mod.kinmapchi2 += chi2_ext
@@ -562,7 +562,8 @@ class ModelInnerIterator(object):
                     wts_done = True  # hopefully...
                     ext_chi2_comp=self.system.get_unique_ext_chi2_component()
                     parset = self.all_models.get_parset_from_row(row)
-                    chi2_ext = ext_chi2_comp.get_chi2(dict(parset))
+                    chi2_ext = ext_chi2_comp.get_chi2(dict(parset),
+                                                      self.config)
                     w_solver = ws.WeightSolver(self.config, mod)
                     mod_chi2_dict = ascii.read(w_solver.weight_file).meta
                     mod.chi2 = mod_chi2_dict['chi2_tot'] + chi2_ext

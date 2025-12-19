@@ -1279,7 +1279,7 @@ class Chi2Ext(Component):
         pars = [self.get_parname(p.name) for p in self.parameters]
         super().validate(par=pars)
 
-    def get_chi2(self, parset):
+    def get_chi2(self, parset, config):
         """
         Returns the chi2 value for the parameter set.
 
@@ -1287,6 +1287,8 @@ class Chi2Ext(Component):
         ----------
         parset : dict
             based on an astropy table row, containing all current parameters
+        config : a ``dyn.config.DynamiteConfig`` object
+            the current DYNAMITE configuration
 
         Returns
         -------
@@ -1295,6 +1297,6 @@ class Chi2Ext(Component):
 
         """
         self.logger.debug(f'Calling external chi2 method with {parset=}.')
-        return self.ext_chi2(parset)
+        return self.ext_chi2(parset, config)
 
 # end
