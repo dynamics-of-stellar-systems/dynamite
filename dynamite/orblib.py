@@ -1146,7 +1146,7 @@ class LegacyOrbitLibrary(OrbitLibrary):
                                   n_vel_bins2,
                                   n_spatial_bins))
         new_vel_d[0::2] = vel_d
-        new_vel_d[1::2, :] = reversed_vel_d
+        new_vel_d[1::2] = reversed_vel_d
         if vel_d.ndim == 3:  # 1D histograms
             new_orblib = dyn_kin.Histogram(xedg=orblib.xedg, y=new_vel_d)
         else:  # 2D histograms

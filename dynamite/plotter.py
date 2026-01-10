@@ -2680,7 +2680,8 @@ class Plotter():
                     draw_vel_ellips=False,
                     moments=[0,0,0,0,0],
                     sigmas=[1],
-                    empty_bins=False):
+                    empty_bins=False,
+                    figtype='.png'):
         """Plots a 2d histogram
 
         Creates a figure with a 2d histogram for a specific orbit and spatial
@@ -2723,6 +2724,8 @@ class Plotter():
         empty_bins : boolean, optional
             If True, it will identify the bins with zero counts and mark them
             in the figure with a magenta x. The default is False.
+        figtype : str, optional
+            File type extension to save the plot. The default is ``'.png'``.
 
         Returns
         -------
@@ -2813,5 +2816,8 @@ class Plotter():
                 # aux_b = 0.5*(y_edges[idx_zero[1][k]]+y_edges[idx_zero[1][k]+1])
 
                 axs.plot(aux_a,aux_b,'xm',alpha=0.5)
+        # format and save
+        figname = self.plotdir + 'hist2d' + figtype
+        fig.savefig(figname)
+        self.logger.info(f'Plot {figname} saved.')
         return fig
-        #fig.savefig('hist2d.png')
