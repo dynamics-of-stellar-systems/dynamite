@@ -1,5 +1,0 @@
-#counter_rotation_boxed_aperturefile_version_2 
-	-761.500000	-30.500000   # mnx   mny in arcs, coordinates of minx miny  
-	1532.000000	90.000000    # xsize ysize  in arcs
-	0.000000                 # angle #position angle between the major axis of the galaxy to the data cube, if the data cube is pointing north, then this angle is the same as the position angle  ???
-	1532	90               # number of pixels in x,  number of pixels in y (1 pix is 1 arcsec)

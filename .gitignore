@@ -68,4 +68,8 @@ rantest.f90-e
 *.log
 dev_tests/.ipynb_checkpoints
 dev_tests/propermotions/F2_output11
+dev_tests/propermotions/dynamite_input/aperture.dat
+dev_tests/propermotions/dynamite_input/bins.dat
+dev_tests/propermotions/dynamite_input/gauss_hermite_kins.ecsv
+dev_tests/propermotions/dynamite_input/mge.ecsv
 dev_tests/FCC167/output
