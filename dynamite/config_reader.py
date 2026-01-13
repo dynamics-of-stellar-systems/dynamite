@@ -7,7 +7,8 @@ import math
 import logging
 import importlib
 import yaml
-import datetime
+
+from datetime import datetime, timezone
 
 import dynamite as dyn
 from dynamite import constants as const
@@ -1183,7 +1184,7 @@ class DynamiteLogging(object):
                                            logfile_formatter = None):
         if logfile is False: # as opposed to None...
             logfile = 'dynamite' +\
-                      datetime.datetime.utcnow().strftime('%Y%m%d-%H%M%S%f')
+                      datetime.now(timezone.utc).strftime('%Y%m%d-%H%M%S%f')
         if type(logfile) is str:
             logfile += '.log'
         logging.shutdown()
