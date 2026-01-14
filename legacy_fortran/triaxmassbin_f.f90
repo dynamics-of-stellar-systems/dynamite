@@ -178,7 +178,7 @@ contains
         use initial_parameters, only: conversion_factor
         use file_tools, only: next_content_line
         character(len=80) :: file, string
-        integer(kind=i4b) :: handle
+        integer(kind=i4b) :: handle = 11
         !----------------------------------------------------------------------
         real(kind=dp), intent(out) :: mnx, mny, xsize, ysize, angle
         integer(kind=i4b), intent(out) :: xbins, ybins

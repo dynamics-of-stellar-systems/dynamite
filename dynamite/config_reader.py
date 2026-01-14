@@ -7,7 +7,8 @@ import math
 import logging
 import importlib
 import yaml
-import datetime
+
+from datetime import datetime, timezone
 
 import dynamite as dyn
 from dynamite import constants as const
@@ -137,26 +138,26 @@ class Configuration(object):
 
     Does some rudimentary checks for consistency.
     Builds the output directory tree if it does not exist already
-    (does not delete existing data).
+    (does not delete existing data unless reset_existing_output is True).
 
     Parameters
     ----------
     filename : string
         needs to refer to an existing file including path
-    reset_logging : bool
-        if False: use the calling application's logging settings
-        if True: set logging to Dynamite defaults
-    user_logfile : str or None or False
-        Name of the logfile (``.log`` will be appended).
+    reset_logging : bool, optional
+        If False: use the calling application's logging settings.
+        If True: set logging to Dynamite defaults. The default is False.
+    user_logfile : str or None or False, optional
+        Name of the logfile without extension (``.log`` will be appended).
         Special values: ``user_logfile=None`` will not create a logfile.
         ``user_logfile=False`` will create a UTC-timestamped logfile
         ``dynamiteYYMMDD-HHMMSSuuuuuu.log``.
         Will be ignored if ``reset_logging=False``.
         The default is ``user_logfile='dynamite'``.
-
-    reset_existing_output : bool
-        if False: do not touch existing data in the output directory tree
-        if True: rebuild the output directory tree and delete existing data
+    reset_existing_output : bool, optional
+        If False: do not touch existing data in the output directory tree.
+        If True: rebuild the output directory tree and delete existing data.
+        The default is False.
 
     Raises
     ------
@@ -263,18 +264,17 @@ class Configuration(object):
 
                     # instantiate the component
 
-                    logger.debug(f"{comp}... instantiating {data_comp['type']} "
-                              "object")
-                    if 'contributes_to_potential' not in data_comp:
-                        text = f'Component {comp} needs ' + \
-                                'contributes_to_potential attribute'
-                        logger.error(text)
-                        raise ValueError(text)
-#                    c = globals()[data_comp['type']](contributes_to_potential
-#                        = data_comp['contributes_to_potential'])
-                    c = getattr(physys,data_comp['type'])(name = comp,
-                            contributes_to_potential \
-                            = data_comp['contributes_to_potential'])
+                    logger.debug(f"{comp}... instantiating "
+                                 f"{data_comp['type']} object.")
+                    if data_comp['type'] == 'Chi2Ext':  # Chi2Ext component
+                        c = getattr(physys,data_comp['type'])(name = comp,
+                                ext_module=data_comp['ext_module'],
+                                ext_class=data_comp['ext_class'],
+                                ext_class_args=data_comp['ext_class_args'],
+                                ext_chi2=data_comp['ext_chi2'])
+                    else:  # all 'regular' components
+    #                    c = globals()[data_comp['type']]()
+                        c = getattr(physys,data_comp['type'])(name = comp)
                     # check for extra config entries/typos before any more
                     # information is read from config file
                     keys_ok = ['parameters', 'type', 'include',
@@ -283,6 +283,9 @@ class Configuration(object):
                         keys_ok.extend(['mge_pot', 'mge_lum',
                                         'disk_pot', 'disk_lum',
                                         'kinematics', 'populations'])
+                    elif isinstance(c, physys.Chi2Ext):
+                        keys_ok.extend(['ext_module', 'ext_class',
+                                       'ext_class_args', 'ext_chi2'])
                     if any(k not in keys_ok for k in data_comp):
                         text = f'Component {c.name} has unknown config ' \
                             'entries: ' \
@@ -290,6 +293,12 @@ class Configuration(object):
                             f'Allowed entries: {keys_ok}. Check for typos.'
                         self.logger.error(text)
                         raise ValueError(text)
+                    if 'contributes_to_potential' in data_comp:
+                        text = f'Component {comp}: the attribute ' + \
+                                'contributes_to_potential is DEPRECATED ' + \
+                                'and will be ignored. In a future ' + \
+                                'DYNAMITE release this will cause an error.'
+                        logger.warning(text)
 
                     # initialize the component's parameters, kinematics,
                     # and populations
@@ -323,7 +332,7 @@ class Configuration(object):
                                 logger.warning(f'Kinematics {kin}: the '
                                     '\'weight\' attribute is DEPRECATED and '
                                     'will be ignored. In a future DYNAMITE '
-                                    'realease this will report an error.')
+                                    'release this will cause an error.')
                                 del data_kin['weight']
                             kinematics_set = getattr(kinem,data_kin['type'])\
                                                 (name=kin,
@@ -365,6 +374,8 @@ class Configuration(object):
                     else:
                         logger.debug(f'{comp}... no populations data to '
                                      'be read from config file.')
+
+                    # read other data
 
                     if 'mge_pot' in data_comp:
                         path = self.settings.io_settings['input_directory']
@@ -504,16 +515,16 @@ class Configuration(object):
                     pass
                 if 'ncpus' not in value:
                     value['ncpus'] = 'all_available'
-                if value['ncpus']=='all_available':
+                if value['ncpus'] == 'all_available':
                     value['ncpus'] = self.get_n_cpus()
                 logger.info(f"... using {value['ncpus']} CPUs "
                              "for orbit integration.")
-                if 'ncpus_weights' not in value:
-                    value['ncpus_weights'] = value['ncpus']
-                elif value['ncpus_weights'] == 'all_available':
-                    value['ncpus_weights'] = self.get_n_cpus()
-                logger.info(f"... using {value['ncpus_weights']} CPUs "
-                            "for weight solving.")
+                for ncpus in ('ncpus_weights', 'ncpus_ext'):
+                    if ncpus not in value:
+                        value[ncpus] = value['ncpus']
+                    elif value[ncpus] == 'all_available':
+                        value[ncpus] = self.get_n_cpus()
+                    logger.info(f'... using {value[ncpus]} CPUs for {ncpus}.')
                 if 'modeliterator' not in value:
                     value['modeliterator'] = 'ModelInnerIterator'
                 logger.debug(f"... using iterator {value['modeliterator']}.")
@@ -959,13 +970,15 @@ class Configuration(object):
             self.logger.error('System must have zero or one DM Halo object')
             raise ValueError('System must have zero or one DM Halo object')
 
-        if not 1 < len(self.system.cmp_list) < 4:
-            self.logger.error('System needs to comprise exactly one Plummer, '
-                              'one VisibleComponent, and zero or one DM Halo '
-                              'object(s)')
-            raise ValueError('System needs to comprise exactly one Plummer, '
-                             'one VisibleComponent, and zero or one DM Halo '
-                             'object(s)')
+        if self.system.get_unique_ext_chi2_component() is None:
+            check = (2, 3)
+        else:
+            check = (3, 4)
+        if len(self.system.cmp_list) not in check:
+            txt = 'System needs to comprise exactly one Plummer, ' \
+                  'one VisibleComponent, and zero or one DM Halo object(s)'
+            self.logger.error(txt)
+            raise ValueError(txt)
 
         ws_type = self.settings.weight_solver_settings['type']
 
@@ -1171,7 +1184,7 @@ class DynamiteLogging(object):
                                            logfile_formatter = None):
         if logfile is False: # as opposed to None...
             logfile = 'dynamite' +\
-                      datetime.datetime.utcnow().strftime('%Y%m%d-%H%M%S%f')
+                      datetime.now(timezone.utc).strftime('%Y%m%d-%H%M%S%f')
         if type(logfile) is str:
             logfile += '.log'
         logging.shutdown()

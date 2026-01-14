@@ -696,6 +696,7 @@ end module triaxpotent
 !#######################################################################
 
 module file_tools
+    use numeric_kinds
     implicit none
 
 contains
@@ -705,8 +706,8 @@ contains
     ! non-blank space character is not '#'.
     !++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
     character(len=80) function next_content_line(unit)
-        integer, intent(in) :: unit
-        integer :: iostat
+        integer(kind=i4b), intent(in) :: unit
+        integer(kind=i4b) :: iostat
 
         do
             read(unit=unit, fmt='(A)', iostat=iostat) next_content_line

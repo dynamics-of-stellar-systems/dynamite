@@ -1021,14 +1021,15 @@ class Plotter():
         phi = incl[1]
         psi = incl[2]
 
-        pintr, qintr = self.triax_tpp2pqu(theta=theta, phi=phi, psi=psi,
-                                          qobs=qobs_pot, psi_off=psi_off,
-                                          res=1)[:2]
+        pintr, qintr, uintr = self.triax_tpp2pqu(theta=theta, phi=phi, psi=psi,
+                                                qobs=qobs_pot, psi_off=psi_off,
+                                                res=1)
         p_pot = np.copy(pintr)
         q_pot = np.copy(qintr)
         sig_pot_pc = np.copy(sigobs_pot_pc)
-        dens_pot_pc = surf_pot_pc*qobs_pot/(np.sqrt(2.*np.pi)*
-                        sig_pot_pc*q_pot*p_pot)
+        sig_intr_pc = sig_pot_pc / uintr
+        dens_pot_pc = surf_pot_pc * (2 * np.pi * sig_pot_pc**2*qobs_pot)/\
+                ((sig_intr_pc*np.sqrt(2*np.pi))**3*q_pot*p_pot)
 
         nr = len(r_pc)
         res=np.zeros(nr)
@@ -1037,7 +1038,7 @@ class Plotter():
         for i in range(nr):
             Ri=r_pc[i]
 
-            Fxyparm=np.vstack((dens_pot_pc, sig_pot_pc,q_pot.T,
+            Fxyparm=np.vstack((dens_pot_pc, sig_intr_pc, q_pot.T,
                                p_pot.T, np.zeros(ng) + Ri))
             mi2=scipy.integrate.dblquad(self.intg2_trimge_intrmass,
                                         0.0, np.pi/2.0,
@@ -1829,9 +1830,8 @@ class Plotter():
 
 
         for i in range(n):
-
-            model_dir = self.modeldir + val['directory'][i]
-            model = self.all_models.get_model_from_directory(model_dir)
+            parset = val[i][self.config.parspace.par_names]
+            model = self.all_models.get_model_from_parset(parset)
 
 
             rr, beta_r_profile, beta_r_global, nrr  = \
@@ -2466,7 +2466,8 @@ class Plotter():
         _ = model.get_weights(orblib)
         intmoms, int_grid = orblib.read_orbit_intrinsic_moments()
         density, x, y, z = np.moveaxis(intmoms[..., 0:4], -1, 0)
-        weights = model.weights[:, *([np.newaxis] * 3)]
+        # weights = model.weights[:, *([np.newaxis] * 3)]  # Python>=3.11 only
+        weights = model.weights[:, np.newaxis, np.newaxis, np.newaxis]
         r_max = np.sqrt(np.max(x**2 + y**2 + z**2,
                                axis=(1,2,3),
                                initial=0,

@@ -32,7 +32,6 @@ system_components:
                 LaTeX: "$a_\\mathrm{BH}$"
         type: "Plummer" # class name
         include: True
-        contributes_to_potential: True
 
     dh: # dark_halo
         parameters:
@@ -68,7 +67,6 @@ system_components:
                 LaTeX: "$\\gamma$"
         type: GeneralisedNFW
         include: True
-        contributes_to_potential: True
 
     stars:
         parameters:
@@ -103,7 +101,6 @@ system_components:
         mge_pot: "mge.ecsv"
         mge_lum: "mge.ecsv"
         include: True
-        contributes_to_potential: True
         kinematics: # optional, only specified for components with kinematics
             original:
                 weight: 1.0 # weight of kinematics data specified by name
