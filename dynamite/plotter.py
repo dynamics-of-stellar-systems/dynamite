@@ -1040,7 +1040,7 @@ class Plotter():
         for i in range(nr):
             Ri=r_pc[i]
 
-            Fxyparm=np.vstack((dens_pot_pc, sig_pot_pc,q_pot.T,
+            Fxyparm=np.vstack((dens_pot_pc, sig_intr_pc, q_pot.T,
                                p_pot.T, np.zeros(ng) + Ri))
             mi2=scipy.integrate.dblquad(self.intg2_trimge_intrmass,
                                         0.0, np.pi/2.0,
