@@ -10,7 +10,7 @@ fname = 'user_test_config_ml.yaml'
 c = dyn.config_reader.Configuration(fname,
                                     reset_logging=True,
                                     user_logfile='test_decomp',
-                                    reset_existing_output=False)
+                                    reset_existing_output=True)
 
 dyn.model_iterator.ModelIterator(c) # generate models
 

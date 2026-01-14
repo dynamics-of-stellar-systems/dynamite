@@ -1024,14 +1024,15 @@ class Plotter():
         phi = incl[1]
         psi = incl[2]
 
-        pintr, qintr = self.triax_tpp2pqu(theta=theta, phi=phi, psi=psi,
-                                          qobs=qobs_pot, psi_off=psi_off,
-                                          res=1)[:2]
+        pintr, qintr, uintr = self.triax_tpp2pqu(theta=theta, phi=phi, psi=psi,
+                                                qobs=qobs_pot, psi_off=psi_off,
+                                                res=1)
         p_pot = np.copy(pintr)
         q_pot = np.copy(qintr)
         sig_pot_pc = np.copy(sigobs_pot_pc)
-        dens_pot_pc = surf_pot_pc*qobs_pot/(np.sqrt(2.*np.pi)*
-                        sig_pot_pc*q_pot*p_pot)
+        sig_intr_pc = sig_pot_pc / uintr
+        dens_pot_pc = surf_pot_pc * (2 * np.pi * sig_pot_pc**2*qobs_pot)/\
+                ((sig_intr_pc*np.sqrt(2*np.pi))**3*q_pot*p_pot)
 
         nr = len(r_pc)
         res=np.zeros(nr)
@@ -1040,7 +1041,7 @@ class Plotter():
         for i in range(nr):
             Ri=r_pc[i]
 
-            Fxyparm=np.vstack((dens_pot_pc, sig_pot_pc,q_pot.T,
+            Fxyparm=np.vstack((dens_pot_pc, sig_intr_pc, q_pot.T,
                                p_pot.T, np.zeros(ng) + Ri))
             mi2=scipy.integrate.dblquad(self.intg2_trimge_intrmass,
                                         0.0, np.pi/2.0,
