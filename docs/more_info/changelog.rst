@@ -4,6 +4,8 @@
 Change Log
 ****************
 
+- Bugfix: Fixed crash in the density() method of the NFW_m200_c dark halo
+
 Version: 5.0
 ================
 

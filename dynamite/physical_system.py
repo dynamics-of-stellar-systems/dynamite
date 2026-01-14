@@ -1063,35 +1063,41 @@ class NFW_m200_c(DarkComponent):
 
 
     # c is concentration, f is dark mass fraction
-    ## fixme: should derive rhocrit from (c,f) (?)
+    ## FIXME: should derive rhocrit from (c,f) (?)
     rhocrit = 1
-    def rhoc(c,f):
-        return 200/3 * rhocrit * c**3 / (log(1 + c) - c/(1+c))
-    def rc(c,f):
-        return (3*M200(c,f)/(800*pi*rhocrit*c**3))**(1/3)
-    def M200(c,f):
-        return 800*pi/3*rhocrit*(rc*c)**3
+    def rhoc(self, c, f):
+        return 200/3 * self.rhocrit * c**3 / (np.log(1 + c) - c/(1+c))
 
-    def potential(x, y, z, pars):
+    def rc(self, c, f):
+        return (3*self.M200(c,f)/(800*np.pi*self.rhocrit*c**3))**(1/3)
+
+    def M200(self, c, f):
+        return 800*np.pi/3*self.rhocrit*(self.rc*c)**3
+
+    def potential(self, x, y, z, pars):
         c, f = pars
         d2 = x**2 + y**2 + z**2
-        prefactor = 4*pi*G*rhoc(c,f)*(rc(c,f)**3)/sqrt(d2)
-        if sqrt(d2)/rc >= 1:
-            return prefactor * log(1 + sqrt(d2)/rc)
+        # FIXME: G in which units? From constants.py?
+        prefactor = 4*np.pi*G*self.rhoc(c,f)*(self.rc(c,f)**3)/np.sqrt(d2)
+        if np.sqrt(d2)/self.rc >= 1:
+            return prefactor * np.log(1 + np.sqrt(d2)/self.rc)
         else:
-            return prefactor * 2 * atanh(sqrt(d2)/(2*rc(c,f) + sqrt(d2)))
+            return prefactor * 2 * \
+                np.atanh(np.sqrt(d2)/(2*self.rc(c,f) + np.sqrt(d2)))
 
-    def density(x, y, z, pars):
+    def density(self, x, y, z, pars):
         c, f = pars
         r = np.sqrt(x**2 + y**2 + z**2)
-        rho = rc(c,f)**3*rhoc(c,f)/(r*(r+rc(c,f))**2)
+        rho = self.rc(c,f)**3*self.rhoc(c,f)/(r*(r+self.rc(c,f))**2)
         return rho
 
-    def mass_enclosed(x, y, z, pars):
+    def mass_enclosed(self, x, y, z, pars):
         c, f = pars
         r = np.sqrt(x**2 + y**2 + z**2)
-        Menc = 4*np.pi*rc(c,f)**3*rhoc(c,f)*(np.log(1 + r/rc(c,f)) - (r/rc(c,f))/(1 + r/rc(c,f)))
+        Menc = 4*np.pi*self.rc(c,f)**3*self.rhoc(c,f)* \
+            (np.log(1 + r/self.rc(c,f)) - (r/self.rc(c,f))/(1 + r/self.rc(c,f)))
         return Menc
+
 
 class Hernquist(DarkComponent):
     """A Hernquist sphere
