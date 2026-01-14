@@ -11,7 +11,6 @@
 system_attributes:
     distMPc: 39.96
     name: "NGC6278"
-    position_angle: 97.69
 
 system_components:
 
@@ -33,7 +32,6 @@ system_components:
                 LaTeX: "$a_\\mathrm{BH}$"
         type: "Plummer"
         include: True
-        contributes_to_potential: True
 
     dh:
         parameters:
@@ -58,7 +56,6 @@ system_components:
                 LaTeX: "$\\log(M_{200}/M_*)$"
         type: NFW
         include: True
-        contributes_to_potential: True
 
     stars:
         parameters:
@@ -93,7 +90,6 @@ system_components:
         mge_pot: "mge.ecsv"
         mge_lum: "mge.ecsv"
         include: True
-        contributes_to_potential: True
         kinematics:
             califa:
                 type: GaussHermite
@@ -135,6 +131,7 @@ orblib_settings:
 weight_solver_settings:
     type: "NNLS"
     nnls_solver: "scipy"
+    maxiter_factor: 3  # nnls_solver 'scipy' only; default: 3
     regularisation: 0
     number_GH: 4
     GH_sys_err: '0.0 0.0 0.0 0.0 0.3 0.3 0.6 0.6'

@@ -294,6 +294,19 @@ class GaussHermite(Kinematics, data.Integrated):
                               'applied systematic errors.')
             if cache_data:
                 self._data_with_sys_err = gh_data.copy(copy_data=True)
+        bad_err = [(int(bin) + 1, 'dv')
+                   for bin in np.flatnonzero(gh_data['dv'] <= 0)]
+        bad_err += [(int(bin) + 1, 'dsigma')
+                    for bin in np.flatnonzero(gh_data['dsigma'] <= 0)]
+        for i in range(3, number_gh + 1):
+            bad_err += [(int(bin) + 1, f'dh{i}')
+                        for bin in np.flatnonzero(gh_data[f'dh{i}'] <= 0)]
+        if len(bad_err) > 0:
+            txt = 'Kinematics uncertainties cannot be zero or negative. ' \
+                'Consider editing the kinematics datafile(s) and/or ' \
+                f'GH_sys_err. Violating vbin_id / data_id pair(s): {bad_err}.'
+            self.logger.error(txt)
+            raise ValueError(txt)
         return gh_data
 
     def has_pops(self):
@@ -793,8 +806,6 @@ class Histogram(object):
         histogram bin edges
     y : (n_orbits, n_bins+1, n_apertures)
         histogram values
-    normalise : bool, default=True
-        whether to normalise to pdf
 
     Attributes
     ----------
@@ -802,18 +813,14 @@ class Histogram(object):
         bin centers
     dx : array (n_bins,)
         bin widths
-    normalised : bool
-        whether or not has been normalised to pdf
 
     """
-    def __init__(self, xedg=None, y=None, normalise=False):
+    def __init__(self, xedg=None, y=None):
         self.logger = logging.getLogger(f'{__name__}.{__class__.__name__}')
         self.xedg = xedg
         self.x = (xedg[:-1] + xedg[1:])/2.
         self.dx = xedg[1:] - xedg[:-1]
         self.y = y
-        if normalise:
-            self.normalise()
 
     def get_normalisation(self):
         """Get the normalsition
@@ -829,24 +836,6 @@ class Histogram(object):
         na = np.newaxis
         norm = np.sum(self.y*self.dx[na,:,na], axis=1)
         return norm
-
-    def normalise(self):
-        """normalises the LOSVDs
-
-        Returns
-        -------
-        None
-            resets ``self.y`` to a normalised version
-
-        """
-        norm = self.get_normalisation()
-        na = np.newaxis
-        tmp = self.y/norm[:,na,:]
-        # where norm=0, tmp=nan. Fix this:
-        idx = np.where(norm==0.)
-        tmp[idx[0],:,idx[1]] = 0.
-        # replace self.y with normalised y
-        self.y = tmp
 
     def scale_x_values(self, scale_factor):
         """scale the velocity array
@@ -1004,6 +993,12 @@ class BayesLOSVD(Kinematics, data.Integrated):
             self.data.remove_column(f'losvd_{j}')
             losvd_sigma[:,j] = self.data[f'dlosvd_{j}']
             self.data.remove_column(f'dlosvd_{j}')
+        bad_err = np.nonzero(losvd_sigma <= 0)
+        if len(bad_err[0]) > 0:
+            txt = 'Kinematics uncertainties cannot be zero or negative. '
+            txt += f'Violating binID / vbin pair(s): {list(zip(*bad_err))}.'
+            self.logger.error(txt)
+            raise ValueError(txt)
         self.data['losvd'] = losvd_mean
         self.data['dlosvd'] = losvd_sigma
 
@@ -1262,7 +1257,7 @@ class BayesLOSVD(Kinematics, data.Integrated):
         iy -= 1
         grid = np.zeros((nx, ny), dtype=int)
         grid[ix, iy] = binID_dyn
-        comment_line = '#Counterrotaton_binning_version_1\n'
+        comment_line = '#Counterrotation_binning_version_1\n'
         grid_size = nx*ny
         first_line = '{0}\n'.format(grid_size)
         flattened_grid = grid.T.flatten()

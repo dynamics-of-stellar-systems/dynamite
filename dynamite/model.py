@@ -4,12 +4,13 @@ import glob
 import difflib
 import logging
 import shutil
+import pathlib
 import numpy as np
 from astropy import table
 from astropy.io import ascii
 
+import dynamite as dyn
 from dynamite import weight_solvers as ws
-from dynamite import orblib as dyn_orblib
 
 class AllModels(object):
     """All models which have been run so far
@@ -33,8 +34,20 @@ class AllModels(object):
             raise ValueError(text)
         self.config = config
         self.system = config.system
+        if config.system.is_bar_disk_system():
+            stars = config.system.get_unique_bar_component()
+        else:
+            stars = config.system.get_unique_triaxial_visible_component()
+        self.has_pops = len([p for p in stars.population_data
+                             if p.kin_aper is None]) > 0
+        self.has_pms = False  # fill in after implementing proper motions
         self.set_filename(config.settings.io_settings['all_models_file'])
         self.make_empty_table()
+        self.dynamite_parameters = config.parspace.par_names[:]
+        if self.system.has_chi2_ext:
+            ext_chi2_component = self.system.get_unique_ext_chi2_component()
+            for par in [p.name for p in ext_chi2_component.parameters]:
+                self.dynamite_parameters.remove(par)
         if from_file and os.path.isfile(self.filename):
             self.logger.info('Previous models have been found: '
                              f'Reading {self.filename} into '
@@ -75,8 +88,14 @@ class AllModels(object):
         names = self.config.parspace.par_names.copy()
         dtype = [float for n in names]
         # add the columns from legacy version
-        names += ['chi2', 'kinchi2', 'kinmapchi2', 'time_modified']
-        dtype += [float, float, float, 'U256']
+        if self.system.has_chi2_ext:
+            names += ['chi2', 'kinchi2', 'kinmapchi2', 'chi2_ext_added']
+            dtype += [float, float, float, float]
+        else:
+            names += ['chi2', 'kinchi2', 'kinmapchi2']
+            dtype += [float, float, float]
+        names += ['time_modified']
+        dtype += ['U256']
         # add extra columns
         names += ['orblib_done', 'weights_done', 'all_done']
         dtype += [bool, bool, bool]
@@ -107,11 +126,20 @@ class AllModels(object):
     def update_model_table(self):
         """all_models table update: fix incomplete models, add kinmapchi2.
 
-        Dealing with incomplete models:
-        Models with all_done==False but an existing model_done_staging.ecsv
-        will be updated in the table and the staging file will be deleted.
-        Models with all_done==False and no existing orblib will be deleted
-        from the table and their model directory will be deleted, too.
+        If a model has an existing orblib (indicated by the presence of
+        datfil/tube_box_done), its orblib_done will be set to True.
+
+        Dealing with incomplete models (all_done==False):
+
+        If the model weights have been calculated (indicated by the presence of
+        the weights file), weights_done will be set to True and the model table
+        will be updated with the chi2, kinchi2, and kinmapchi2 from that file.
+        The all_done flag will be updated accordingly.
+
+        If no orblib exists on disk and the weights are not available either,
+        the model will be deleted from the table and the model directory will
+        be deleted, too.
+
         The configuration setting reattempt_failures determines how partially
         completed models with all_done==False but existing orblibs are treated:
         If reattempt_failures==True, their orblib_done will be set to True
@@ -119,8 +147,14 @@ class AllModels(object):
         based on the existing orblibs.
         If reattempt_failures==False, the model and its directory will be
         deleted.
-        Note that orbit libraries on disk will not be deleted as they
-        may be in use by other models.
+
+        Note that orbit libraries on disk will not be deleted if they
+        are in use by other models.
+
+        If external chi2 calculation exists, then models with nan values for
+        chi2_ext_added will be treated the same as models with
+        weights_done==False (deleted if reattempt_failures==False,
+        re-calculated if reattempt_failures==True).
 
         Up to DYNAMITE 3.0 there was no kinmapchi2 column in the all_models
         table. If possible (data exists on disk), calculate and add the values,
@@ -134,34 +168,52 @@ class AllModels(object):
         """
         table_modified = False
         for i, row in enumerate(self.table):
-            if not row['all_done']:
-                table_modified = True
-                mod = self.get_model_from_row(i)
-                staging_filename = mod.directory+'model_done_staging.ecsv'
+#            is_complete = row['all_done']  # refers to orblib + weights
+#            if self.system.has_chi2_ext:  # has chi2_ext been added?
+#                is_complete = \
+#                    is_complete and not np.isnan(row['chi2_ext_added'])
+#            if is_complete:  # Do we need to check anything?
+#                continue
+            mod = self.get_model_from_row(i)
+            if not row['orblib_done']:  # First, check for existing orblib
                 f_root = mod.directory_noml + 'datfil/'
-                check = os.path.isfile(f_root + 'orblib.dat.bz2') \
-                        and os.path.isfile(f_root + 'orblibbox.dat.bz2')
-                if not check:
-                    check = os.path.isfile(f_root + 'orblib_qgrid.dat.bz2') \
-                     and os.path.isfile(f_root + 'orblib_losvd_hist.dat.bz2') \
-                     and os.path.isfile(f_root + 'orblibbox_qgrid.dat.bz2') \
-                     and os.path.isfile(f_root + 'orblibbox_losvd_hist.dat.bz2')
-                if os.path.isfile(staging_filename):
-                    # the model has completed but was not entered in the table
-                    staging_file = ascii.read(staging_filename)
-                    self.table[i] = staging_file[0]
-                    self.logger.info(f'Staging file {staging_filename} '
-                                f'used to update {__class__.__name__}.table.')
-                    os.remove(staging_filename)
-                    self.logger.debug(
-                        f'Staging file {staging_filename} deleted.')
-                elif check:
-                    self.logger.debug(f'Row {i}: orblibs were computed '
-                                      'but not weights.')
-                    self.table[i]['orblib_done'] = True
-                else:
-                    self.logger.debug(f'Row {i}: neither orblibs nor '
-                                      'weights were completed.')
+                if os.path.isfile(f_root + 'tube_box_done'):
+                    table_modified = True
+                    row['orblib_done'] = True
+                    row['time_modified'] = str(np.datetime64('now', 'ms'))
+                    self.logger.info(f'Row {i}: orblib exists in {f_root}.')
+            # Then, check for existing weights
+            if (not row['all_done']) and (not row['weights_done']):
+                w_file = mod.directory + dyn.constants.weight_file
+                if os.path.isfile(w_file):
+                    chi2s = ascii.read(w_file).meta
+                    table_modified = True
+                    row['chi2'] = chi2s['chi2_tot']
+                    row['kinchi2'] = chi2s['chi2_kin']
+                    row['kinmapchi2'] = chi2s['chi2_kinmap']
+                    row['weights_done'] = row['all_done'] = True
+                    row['time_modified'] = str(np.datetime64('now', 'ms'))
+                    self.logger.info(f'Row {i}: weights exist in {w_file}.')
+            # Calcualte chi2_ext if applicable
+            if self.system.has_chi2_ext and np.isnan(row['chi2_ext_added']) \
+               and row['weights_done']:
+                ext_chi2_comp = self.system.get_unique_ext_chi2_component()
+                parset = self.get_parset_from_row(i)
+                chi2_ext = ext_chi2_comp.get_chi2(dict(parset))
+                table_modified = True
+                row['chi2'] = row['chi2'] + chi2_ext
+                row['kinchi2'] = row['kinchi2'] + chi2_ext
+                row['kinmapchi2'] = row['kinmapchi2'] + chi2_ext
+                row['chi2_ext_added'] = chi2_ext
+                self.logger.debug(f'Row {i}: chi2_ext added.')
+            if not row['all_done'] and row['weights_done']:
+                table_modified = True
+                row['all_done'] = True
+                row['time_modified'] = str(np.datetime64('now', 'ms'))
+                self.logger.info(f'Row {i}: all_done set to True.')
+            if not (row['orblib_done'] or row['weights_done']):
+                self.logger.debug(f'Row {i}: neither orblibs nor weights were '
+                                  f'completed for model in {mod.directory}.')
         # collect failed models to delete (both their directory and table entry)
         to_delete = []
         # if we will reattempt weight solving, only delete models with no orblib
@@ -172,12 +224,19 @@ class AllModels(object):
                     self.logger.info('No orblibs calculated for model in '
                                      f'{row["directory"]} - removing row {i}.')
         # otherwise delete any model which is not `all_done`
+        # or - if an Chi2Ext component exists - has chi2_ext == nan
         else:
             for i, row in enumerate(self.table):
                 if not row['all_done']:
                     to_delete.append(i)
                     self.logger.info('No finished model found in '
                                      f'{row["directory"]} - removing row {i}.')
+            if self.system.has_chi2_ext:  # check for nan in chi2_ext
+                for i, row in enumerate(self.table):
+                    if np.isnan(row['chi2_ext_added']):
+                        to_delete.append(i)
+                        self.logger.info(f'No chi2_ext value in row {i} ('
+                                         f'{row["directory"]}) - deleting row.')
         # do the deletion
         # note: only models without orblibs are deleted, so we delete the
         # entire orblibs' directories
@@ -208,6 +267,7 @@ class AllModels(object):
                         ' perhaps it has already been removed before.')
             os.chdir(cwd)
             self.table.remove_rows(to_delete)
+            table_modified = True
         # Up to DYNAMITE 3.0 there was no kinmapchi2 column -> retrofit.
         if isinstance(self.table['kinmapchi2'], table.column.MaskedColumn):
             table_modified = True
@@ -219,8 +279,72 @@ class AllModels(object):
         else:
             self.logger.info('No all_models table update required.')
 
+    def update_orblib_flags(self, orblib_directory):
+        """Update the indicator files in the orblib directory
+
+        Depending on the data in the configuration file, the orblib calculation
+        may have produced different output files. This function checks for the
+        presence of the required files and sets or removes indicator files
+        accordingly.
+
+        This enables DYNAMITE to dynamically re-calculate the required orblibs
+        in case an existing set of models is reanalyzed with additional data in
+        the future, for example by adding proper motion data or populations
+        with their own apertures.
+
+        Parameters
+        ----------
+        orblib_directory : str
+            The orblib directory, i.e. the model directory without the ml part,
+            ending with a '/'.
+        """
+        d = orblib_directory + 'datfil/'
+        orblib_files_ok = True
+        # files that always need to be there...
+        check = os.path.isfile(d + 'orblib.dat.bz2') \
+                and os.path.isfile(d + 'orblibbox.dat.bz2')
+        if not check:
+            check = os.path.isfile(d + 'orblib_qgrid.dat.bz2') \
+                    and os.path.isfile(d + 'orblib_losvd_hist.dat.bz2') \
+                    and os.path.isfile(d + 'orblibbox_qgrid.dat.bz2') \
+                    and os.path.isfile(d + 'orblibbox_losvd_hist.dat.bz2')
+        orblib_files_ok = orblib_files_ok and check
+        # files that need to be there if populations with own apertures exist
+        if self.has_pops:
+            check = os.path.isfile(d + 'orblib_pops.dat.bz2') \
+                    and os.path.isfile(d + 'orblibbox_pops.dat.bz2')
+            orblib_files_ok = orblib_files_ok and check
+        # files that need to be there if proper motion data exist
+        if self.has_pms:
+            # orblib_files_ok = orblib_files_ok
+            pass
+        # set the indicator files in the orblib directory
+        ind_files = [pathlib.Path(d + f_name + '_done')
+                     for f_name in ('tube', 'box', 'tube_box')]
+        if orblib_files_ok:
+            changes = False
+            for ind_file in ind_files:
+                if not ind_file.is_file():
+                    changes = True
+                    ind_file.touch()
+            if changes:
+                self.logger.info(f'Orblib done indicators created in {d}.')
+        else:
+            changes = False
+            for ind_file in ind_files:
+                if ind_file.is_file():
+                    changes = True
+                    ind_file.unlink()
+            if changes:
+                self.logger.info(f'Orblib done indicators removed in {d}.')
+        if not changes:
+            self.logger.debug(f'Orblib done indicators in {d} unchanged.')
+
     def retrofit_kinmapchi2(self):
         """Calculates kinmapchi2 for DYNAMITE legacy tables if possible.
+
+        Note that existing Chi2Ext components are currently not supported, all
+        kinmapchi2 will be set to nan then.
 
         Returns
         -------
@@ -230,25 +354,29 @@ class AllModels(object):
         which_chi2 = 'kinmapchi2'
         self.logger.info('Legacy all_models table read, updating '
                          f'{which_chi2} column...')
-        # self.table[which_chi2] = np.nan
-        for row_id, row in enumerate(self.table):
-            if row['orblib_done'] and row['weights_done']:
-                # both orblib_done==True and weights_done==True indicates
-                # that data for kinmapchi2 is on the disk -> calculate
-                # kinmapchi2
-                mod = self.get_model_from_row(row_id)
-                ws_type = self.config.settings.weight_solver_settings['type']
-                weight_solver = getattr(ws, ws_type)(
-                                        config=self.config,
-                                        directory_with_ml=mod.directory)
-                orblib = mod.get_orblib()
-                _, _, _, row[which_chi2] = weight_solver.solve(orblib)
-                self.logger.info(f'Model {row_id}: {which_chi2} = '
-                                 f'{row[which_chi2]}')
-            else:
-                row[which_chi2] = np.nan
-                self.logger.warning(f'Model {row_id}: cannot update '
-                                    f'{which_chi2} - data deleted?')
+        if not self.system.has_chi2_ext:
+            for row_id, row in enumerate(self.table):
+                if row['orblib_done'] and row['weights_done']:
+                    # both orblib_done==True and weights_done==True indicates
+                    # that data for kinmapchi2 is on the disk -> calculate
+                    # kinmapchi2
+                    mod = self.get_model_from_row(row_id)
+                    ws_type=self.config.settings.weight_solver_settings['type']
+                    weight_solver = getattr(ws, ws_type)(
+                                            config=self.config,
+                                            directory_with_ml=mod.directory)
+                    orblib = mod.get_orblib()
+                    _, _, _, row[which_chi2] = weight_solver.solve(orblib)
+                    self.logger.info(f'Model {row_id}: {which_chi2} = '
+                                    f'{row[which_chi2]}')
+                else:
+                    row[which_chi2] = np.nan
+                    self.logger.warning(f'Model {row_id}: cannot update '
+                                        f'{which_chi2} - data deleted?')
+        else:
+            self.table[which_chi2] = np.nan
+            self.logger.warning(f'Cannot update {which_chi2} - Chi2Ext '
+                                'component currently not supported.')
 
     def read_legacy_chi2_file(self, legacy_filename):
         """
@@ -381,6 +509,9 @@ class AllModels(object):
 
     def get_model_from_directory(self, directory):
         """Get the ``Model`` from a model directory
+
+        If the system has an external chi2 (Chi2Ext) component, then the first
+        model with matching directory is returned.
 
         Parameters
         ----------
@@ -814,6 +945,33 @@ class AllModels(object):
                          f'{len(model_rows_del)} identified models from disk.')
         return True
 
+    def get_chi2_ext_duplicates(self, rows):
+        """Check for models that only differ in external chi2 parameters
+
+        Parameters
+        ----------
+        rows : list of ints
+            List of row indices in the all_models table to validate against
+            existing models.
+
+        Returns
+        -------
+        list of ints
+            Those row indices in the all_models table that share orblib and ml
+            parameters with an earlier model and hence only differ in their
+            respective external chi2 parameters.
+        """
+        dupl = []
+        if self.system.has_chi2_ext:
+            all_data = self.table[self.dynamite_parameters]
+            for row_idx in rows:
+                row_data = all_data[row_idx]
+                previous_data = all_data[:row_idx]
+                if any(np.allclose(tuple(row_data), tuple(r))
+                       for r in previous_data):
+                    dupl.append(row_idx)
+        return dupl
+
 
 class Model(object):
     """A DYNAMITE model.
@@ -907,31 +1065,37 @@ class Model(object):
         else:
             try:
                 f_i = model_yaml_files.index(self.directory +
-                                             self.config.config_file_name)
+                    os.path.basename(self.config.config_file_name))
             except ValueError:
                 self.logger.warning('More than one .yaml file found in '
                                     f'{self.directory}. No file name matches '
                                     'the config file, no check possible.')
                 return True  # ####################
         model_config_file_name = model_yaml_files[f_i]
-        with open(self.config.config_file_name) as c_f:
-            config_file = c_f.readlines()
-        with open(model_config_file_name) as c_f:
-            model_config_file = c_f.readlines()
-        c_diff = difflib.unified_diff(config_file,
-                                      model_config_file,
-                                      fromfile=self.config.config_file_name,
-                                      tofile=model_config_file_name,
-                                      n=0)
-        c_diff = list(c_diff)
-        if len(c_diff) > 0:
-            self.logger.warning('ACTION REQUIRED, PLEASE CHECK: '
-                                'The current config file '
-                                f'{self.config.config_file_name} differs from '
-                                f'the config file {model_config_file_name} '
-                                'backup in the model directory. Diff output:\n'
-                                f'{"".join(c_diff)}.')
-            return False  # ####################
+        if model_config_file_name!=self.directory+'voronoi_orbit_bundles.yaml':
+            # ignore orbit bundle yaml files...
+            with open(self.config.config_file_name) as c_f:
+                config_file = c_f.readlines()
+            with open(model_config_file_name) as c_f:
+                model_config_file = c_f.readlines()
+            c_diff = difflib.unified_diff(config_file,
+                                        model_config_file,
+                                        fromfile=self.config.config_file_name,
+                                        tofile=model_config_file_name,
+                                        n=0)
+            c_diff = list(c_diff)
+            if len(c_diff) > 0:
+                self.logger.warning('ACTION REQUIRED, PLEASE CHECK: '
+                                    'The current config file '
+                                    f'{self.config.config_file_name} differs '
+                                    'from the config file '
+                                    f'{model_config_file_name} backup in the '
+                                    'model directory. Diff output:\n'
+                                    f'{"".join(c_diff)}.')
+                return False  # ####################
+        else:
+            self.logger.debug('Orbit bundle file but no config file backup '
+                              f'found in {self.directory}.')
         return True
 
     def get_model_directory(self):
@@ -1009,7 +1173,7 @@ class Model(object):
         a ``dyn.orblib.OrbitLibrary`` object
 
         """
-        orblib = dyn_orblib.LegacyOrbitLibrary(
+        orblib = dyn.orblib.LegacyOrbitLibrary(
                 config=self.config,
                 mod_dir=self.directory_noml,
                 parset=self.parset)
@@ -1040,15 +1204,13 @@ class Model(object):
         if ws_type=='LegacyWeightSolver':
             weight_solver = ws.LegacyWeightSolver(
                     config=self.config,
-                    directory_with_ml=self.directory)
+                    model=self)
         elif ws_type=='NNLS':
-            weight_solver = ws.NNLS(
-                    config=self.config,
-                    directory_with_ml=self.directory)
+            weight_solver = ws.NNLS(config=self.config, model=self)
         else:
             raise ValueError(f'Unknown WeightSolver type {ws_type}.')
         weights, chi2_tot, chi2_kin, chi2_kinmap = weight_solver.solve(orblib)
-        self.chi2 = chi2_tot # instrinsic/projected mass + GH coeeficients 1-Ngh
+        self.chi2 = chi2_tot # intrinsic/projected mass + GH coeeficients 1-Ngh
         self.kinchi2 = chi2_kin # GH coeeficients 1-Ngh
         self.kinmapchi2 = chi2_kinmap
         self.weights = weights

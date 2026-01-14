@@ -6,13 +6,9 @@ from scipy import special
 
 # some tricks to add the current path to sys.path (so the imports below work)
 
-import os.path
-import sys
 import logging
 
 from dynamite import mges as mge
-from dynamite import constants as const
-from dynamite import orblib as orb
 
 class System(object):
     """The physical system being modelled
@@ -25,7 +21,6 @@ class System(object):
         self.logger = logging.getLogger(f'{__name__}.{__class__.__name__}')
         self.n_cmp = 0
         self.cmp_list = []
-        self.n_pot = 0
         self.n_kin = 0
         self.n_pop = 0
         self.parameters = None
@@ -49,7 +44,6 @@ class System(object):
         """
         self.cmp_list += [cmp]
         self.n_cmp += 1
-        self.n_pot += cmp.contributes_to_potential
         self.n_kin += len(cmp.kinematic_data)
         self.n_pop += len(cmp.population_data)
 
@@ -85,7 +79,7 @@ class System(object):
             raise ValueError(text)
         #if len(self.parameters) != 1 and self.parameters[0].name != 'ml':
         if self.parameters[0].name != 'ml':
-            text = 'System needs ml as its first parameter'
+            text = 'System needs ml as its first parameter.'
             self.logger.error(text)
             raise ValueError(text)
         ml = self.parameters[0]
@@ -99,11 +93,16 @@ class System(object):
                 self.logger.warning(text)
                 generator_settings['minstep'] = generator_settings['step']
         if len(self.parameters) > 1:
-            omega = self.parameters[1]
+            # omega = self.parameters[1]
             if self.parameters[1].name != 'omega':
-                text = 'System needs omega as its second parameter'
+                text = 'System needs omega as its second parameter.'
                 self.logger.error(text)
                 raise ValueError(text)
+        if len(self.parameters) > 2:
+            text = 'System can only have ml and omega parameters, not ' \
+                   f'{[p.name for p in self.parameters]} - check for typos.'
+            self.logger.error(text)
+            raise ValueError(text)
 
     def validate_parset(self, par):
         """
@@ -216,11 +215,14 @@ class System(object):
             a list of Component objects
 
         """
-        mge_cmp = [c for c in self.cmp_list if isinstance(c, TriaxialVisibleComponent) or isinstance(c, BarDiskComponent)]
+        mge_cmp = [c for c in self.cmp_list
+                   if isinstance(c, TriaxialVisibleComponent)
+                   or isinstance(c, BarDiskComponent)]
         return mge_cmp
 
     def get_unique_triaxial_visible_component(self):
-        """Return the unique non-bar MGE component (raises an error if there are zero or multiple such components)
+        """Return the unique non-bar MGE component (raises an error if there
+        are zero or multiple such components)
 
         Returns
         -------
@@ -242,14 +244,15 @@ class System(object):
         Returns
         -------
         list
-            a list of Component objects, keeping only the rotating MGE components
+            list of Component objects, keeping only the rotating MGE components
 
         """
         bar_cmp = [c for c in self.cmp_list if isinstance(c, BarDiskComponent)]
         return bar_cmp
 
     def get_unique_bar_component(self):
-        """Return the unique rotating bar component (raises an error if there are zero or multiple such components)
+        """Return the unique rotating bar component (raises an error if there
+        are zero or multiple such components)
 
         Returns
         -------
@@ -293,6 +296,34 @@ class System(object):
         dark_cmp = self.get_all_dark_components()
         dark_non_plum_cmp = [c for c in dark_cmp if not isinstance(c, Plummer)]
         return dark_non_plum_cmp
+
+    def get_unique_ext_chi2_component(self):
+        """Return the unique Chi2Ext component
+
+        Raises
+        ------
+        ValueError
+            If there are multiple Chi2Ext components
+
+        Returns
+        -------
+            a ``dyn.physical_system.Chi2Ext`` object
+
+        """
+        chi2_ext_cmp = [c for c in self.cmp_list if isinstance(c, Chi2Ext)]
+        if len(chi2_ext_cmp) > 1:
+            self.logger.error('Found more than one Chi2Ext component')
+            raise ValueError('Found more than one Chi2Ext component')
+        if len(chi2_ext_cmp) == 0:
+            return None
+        else:
+            return chi2_ext_cmp[0]
+
+    @property
+    def has_chi2_ext(self):
+        """True if the system has an external chi2 component, else False
+        """
+        return False if self.get_unique_ext_chi2_component() is None else True
 
     def get_all_kinematic_data(self):
         """get_all_kinematic_data
@@ -353,8 +384,6 @@ class Component(object):
         a short but descriptive name of the component
     visible : Bool
         whether this is visible <--> whether it has an associated MGE
-    contributes_to_potential : Bool
-        whether this contributes_to_potential **not currently used**
     symmetry : string
         one of 'spherical', 'axisymm', or 'triax' **not currently used**
     kinematic_data : list
@@ -369,20 +398,16 @@ class Component(object):
     def __init__(self,
                  name = None,
                  visible=None,
-                 contributes_to_potential=None,
                  symmetry=None,
                  kinematic_data=[],
                  population_data=[],
                  parameters=[]):
         self.logger = logging.getLogger(f'{__name__}.{__class__.__name__}')
-        if name == None:
+        if name is None:
             self.name = self.__class__.__name__
         else:
             self.name = name
         self.visible = visible
-        self.contributes_to_potential = contributes_to_potential
-        self.logger.info(f'{self.name}: DYNAMITE will currently ignore the '
-                         'mandatory attribute contributes_to_potential.')
         self.symmetry = symmetry
         self.kinematic_data = kinematic_data
         self.population_data = population_data
@@ -413,10 +438,6 @@ class Component(object):
         errstr = f'Component {self.__class__.__name__} needs attribute '
         if self.visible is None:
             text = errstr + 'visible'
-            self.logger.error(text)
-            raise ValueError(text)
-        if self.contributes_to_potential is None:
-            text = errstr + 'contributes_to_potential'
             self.logger.error(text)
             raise ValueError(text)
         if not self.parameters:
@@ -685,19 +706,19 @@ class TriaxialVisibleComponent(VisibleComponent):
         # Check for p=0
         if np.isclose(p, 0.):
             theta = phi = psi = np.nan
-            self.logger.debug(f'DEPROJ FAIL: p=0')
+            self.logger.debug('DEPROJ FAIL: p=0')
         # Check for q=0
         if np.isclose(q, 0.):
             theta = phi = psi = np.nan
-            self.logger.debug(f'DEPROJ FAIL: q=0')
+            self.logger.debug('DEPROJ FAIL: q=0')
         # Check for u=0
         if np.isclose(u, 0.):
             theta = phi = psi = np.nan
-            self.logger.debug(f'DEPROJ FAIL: u=0')
+            self.logger.debug('DEPROJ FAIL: u=0')
         # Check for u>1
         if u>1:
             theta = phi = psi = np.nan
-            self.logger.debug(f'DEPROJ FAIL: u>1')
+            self.logger.debug('DEPROJ FAIL: u>1')
         if np.isclose(u,p):
             u=p
         # Check for possible triaxial deprojection (v. d. Bosch 2004,
@@ -793,7 +814,7 @@ class TriaxialVisibleComponent(VisibleComponent):
         """
         (p, q, u), valid = self.find_grid_of_valid_pqu()
         text = "No deprojection possible for the specificed values of (p,q,u)."
-        text += "Here are some suggestions: \n"
+        text += " Here are some suggestions:\n"
         # take avg of valid p's and q's where u is close to targer value
         target_u = 0.9
         idx = np.where(np.abs(u[valid]-target_u)<0.005)
@@ -818,6 +839,7 @@ class TriaxialVisibleComponent(VisibleComponent):
             text += f'\t\t value : {val:.2f}\n'
         return text
 
+
 class BarDiskComponent(TriaxialVisibleComponent):
     """Rotating triaxial component with a MGE projected density (i.e. a bar)
 
@@ -834,6 +856,7 @@ class BarDiskComponent(TriaxialVisibleComponent):
         self.logger = logging.getLogger(f'{__name__}.{__class__.__name__}')
         self.qobs = np.nan
         self.par = ['q', 'p', 'u', 'qdisk']
+
 
 class BarDiskComponentAngles(BarDiskComponent):
     """Rotating triaxial component with a MGE projected density (i.e. a bar),
@@ -856,6 +879,7 @@ class BarDiskComponentAngles(BarDiskComponent):
     def validate_parset(self, par):
         # Skip validation as we already know the angles
         return True
+
 
 class DarkComponent(Component):
     """Any dark component of the sytem, with no observed MGE or kinemtics
@@ -1200,5 +1224,77 @@ class GeneralisedNFW(DarkComponent):
         rhoc, rc, gamma = pars
         xi = r/(r + rc)
         Menc = 4*np.pi*rc**3*rhoc*xi**(3-gamma)/(3-gamma)*special.hyp2f1(3-gamma,1,4-gamma,xi)
+
+
+class Chi2Ext(Component):
+    """External component independent of DYNAMITE orbit and weight calculations
+
+    This component interfaces to an external class that implements a chi2
+    calculation independent of DYNAMITE orbit integration and weight solving.
+    That chi2 value is added to all three chi2 values right after weight
+    solving and is used by the parameter generator.
+
+    Parameters
+    ----------
+    ext_module : str
+        the name of the module implementing the external :math:`\chi^2`
+        calculation. The associated .py file should be in the Python path.
+    ext_class : str
+        the class name in the external module implementing the external
+        :math:`\chi^2` calculation. It will be instantiated once, at the time
+        the config file is read.
+    ext_class_args : dict
+        the class parameters, can be empty (``{}``)
+    ext_chi2 : str
+        the name of the ``ext_class`` method returning :math:`\chi^2`
+        as a single ``float``. In DYNAMITE, it will be called right after
+        weight solving, passing the entire current parset.
+    """
+    def __init__(self,
+                 ext_module=None,
+                 ext_class=None,
+                 ext_class_args=None,
+                 ext_chi2=None,
+                 **kwds):
+        super().__init__(**kwds)
+        self.logger = logging.getLogger(f'{__name__}.{__class__.__name__}')
+        if ext_module is None or ext_class is None or ext_class_args is None \
+           or ext_chi2 is None:
+            txt = 'ext_module, ext_class, ext_class_args, ext_chi2 ' \
+                  'cannot be None.'
+            self.logger.error(txt)
+            raise ValueError(txt)
+        self.contributes_to_potential = False
+        self.visible = False
+        self.logger.debug(f'Importing {ext_module=}')
+        import importlib  # only used once and only if Chi2Ext component exists
+        the_ext_module = importlib.import_module(ext_module)
+        args = tuple(f'{a}={ext_class_args[a]}' for a in ext_class_args)
+        self.logger.debug('Instantiating '
+                          f'{ext_module}.{ext_class}({args}).')
+        ext_object = getattr(the_ext_module, ext_class)(**ext_class_args)
+        self.ext_chi2 = getattr(ext_object, ext_chi2)
+
+    def validate(self):  # allow any parameter names
+        pars = [self.get_parname(p.name) for p in self.parameters]
+        super().validate(par=pars)
+
+    def get_chi2(self, parset):
+        """
+        Returns the chi2 value for the parameter set.
+
+        Parameters
+        ----------
+        parset : dict
+            based on an astropy table row, containing all current parameters
+
+        Returns
+        -------
+        float
+            The chi2 value
+
+        """
+        self.logger.debug(f'Calling external chi2 method with {parset=}.')
+        return self.ext_chi2(parset)
 
 # end

@@ -89,16 +89,8 @@ class LegacyOrbitLibrary(OrbitLibrary):
             - +8 log and status files
 
         """
-        # check if orbit library was calculated already (FIXME: improve this!)
-        f_root = self.mod_dir + 'datfil/'
-        check = os.path.isfile(f_root + 'orblib.dat.bz2') \
-                and os.path.isfile(f_root + 'orblibbox.dat.bz2')
-        if not check:
-            check = os.path.isfile(f_root + 'orblib_qgrid.dat.bz2') \
-                    and os.path.isfile(f_root + 'orblib_losvd_hist.dat.bz2') \
-                    and os.path.isfile(f_root + 'orblibbox_qgrid.dat.bz2') \
-                    and os.path.isfile(f_root + 'orblibbox_losvd_hist.dat.bz2')
-        if not check:  # need to calculate orblib
+        # check whether orbit library was calculated already
+        if not os.path.isfile(self.mod_dir + 'datfil/tube_box_done'):
             # prepare the fortran input files for orblib
             self.create_fortran_input_orblib(self.mod_dir+'infil/')
             if self.system.is_bar_disk_system():
@@ -264,8 +256,8 @@ class LegacyOrbitLibrary(OrbitLibrary):
                 f = open(path +'orblibbox.in', 'w')
             else:
                 f = open(path +'orblib.in', 'w')
-            f.write(f"{self.settings['random_seed']}\n")
-            f.write('#counterrotation_setupfile_version_1\n')
+            label = '[random seed for orbit integration]'
+            f.write(f"{self.settings['random_seed']}{tab}{label}\n")
             f.write('infil/parameters_pot.in\n')
             if box:
                 f.write('datfil/beginbox.dat\n')
@@ -511,7 +503,8 @@ class LegacyOrbitLibrary(OrbitLibrary):
                 raise RuntimeError(text)
 
     def get_orbit_library(self):
-        """Execute the bash script to calculate orbit libraries
+        """Execute the bash script to calculate orbit libraries: first tube,
+        then box orbits
         """
         # move to model directory
         cur_dir = os.getcwd()
@@ -579,13 +572,18 @@ class LegacyOrbitLibrary(OrbitLibrary):
         cmd_string = 'cmd_tube_box_orbs'
         txt_file = open(cmd_string, "w")
         txt_file.write('#!/bin/bash\n')
-        txt_file.write('# first, check whether executables exist\n')
+        txt_file.write('# clear flags\n')
+        txt_file.write('rm -f datfil/tube_done datfil/box_done '
+                       'datfil/tube_box_done\n')
+        txt_file.write('# check whether executables exist\n')
         for f_name in orb_prgrm, 'triaxmass', 'triaxmassbin':
             txt_file.write(f'test -e {self.legacy_directory}/{f_name} || ' +
                            f'{{ echo "File {self.legacy_directory}/{f_name} ' +
                            'not found." && exit 127; }\n')
-        txt_file.write('(rm -f datfil/orblib.dat.tmp datfil/orblib_qgrid.dat '
-                        'datfil/orblib_pops.dat datfil/orblib_losvd_hist.dat\n')
+        txt_file.write('# now run tube and box orbits in parallel\n')
+        txt_file.write('(rm -f datfil/orblib_qgrid.dat.tmp '
+                       'datfil/orblib_qgrid.dat '
+                       'datfil/orblib_pops.dat datfil/orblib_losvd_hist.dat\n')
         txt_file.write(f'{self.legacy_directory}/{orb_prgrm} < infil/orblib.in '
                         '>> datfil/orblib.log\n')
         txt_file.write('rm -f datfil/mass_qgrid.dat datfil/mass_radmass.dat '
@@ -600,27 +598,30 @@ class LegacyOrbitLibrary(OrbitLibrary):
             txt_file.write(f'{self.legacy_directory}/triaxmass '
                            '< infil/triaxmass.in >> datfil/triaxmass.log\n')
             txt_file.write(f'{self.legacy_directory}/triaxmassbin '
-                           '< infil/triaxmassbin.in >> datfil/triaxmassbin.log')
+                           '< infil/triaxmassbin.in >> datfil/triaxmassbin.log\n')
         for f in 'qgrid', 'pops', 'losvd_hist':
             f_name = 'datfil/orblib_' + f + '.dat'
-            txt_file.write(f'\ntest -e {f_name} '
+            txt_file.write(f'test -e {f_name} '
                            f'&& rm -f {f_name}.bz2 && bzip2 -k {f_name}\n')
-            txt_file.write(f'rm -f {f_name}')
-        txt_file.write(') &\n')
+            txt_file.write(f'rm -f {f_name}\n')
+        txt_file.write('touch datfil/tube_done) &\n')
         txt_file.write('orblib=$!\n')
-        txt_file.write('(rm -f datfil/orblibbox.dat.tmp '
-                        'datfil/orblibbox_qgrid.dat datfil/orblibbox_pops.dat '
-                        'datfil/orblibbox_losvd_hist.dat\n')
+        txt_file.write('(rm -f datfil/orblibbox_qgrid.dat.tmp '
+                       'datfil/orblibbox_qgrid.dat datfil/orblibbox_pops.dat '
+                       'datfil/orblibbox_losvd_hist.dat\n')
         txt_file.write(f'{self.legacy_directory}/{orb_prgrm} '
-                       '< infil/orblibbox.in >> datfil/orblibbox.log')
+                       '< infil/orblibbox.in >> datfil/orblibbox.log\n')
         for f in 'qgrid', 'pops', 'losvd_hist':
             f_name = 'datfil/orblibbox_' + f + '.dat'
-            txt_file.write(f'\ntest -e {f_name} '
+            txt_file.write(f'test -e {f_name} '
                            f'&& rm -f {f_name}.bz2 && bzip2 -k {f_name}\n')
-            txt_file.write(f'rm -f {f_name}')
-        txt_file.write(') &\n')
+            txt_file.write(f'rm -f {f_name}\n')
+        txt_file.write('touch datfil/box_done) &\n')
         txt_file.write('orblibbox=$!\n')
+        txt_file.write('# wait for tube and box orbits to finish\n')
         txt_file.write('wait $orblib $orblibbox\n')
+        txt_file.write('# set flag\n')
+        txt_file.write('touch datfil/tube_box_done\n')
         txt_file.close()
         # returns the name of the executables
         return cmd_string
@@ -636,16 +637,20 @@ class LegacyOrbitLibrary(OrbitLibrary):
         cmdstr_tube = 'cmd_tube_orbs'
         txt_file = open(cmdstr_tube, "w")
         txt_file.write('#!/bin/bash\n')
-        txt_file.write('# first, check whether executables exist\n')
+        txt_file.write('# clear flags\n')
+        txt_file.write('rm -f datfil/tube_done datfil/tube_box_done\n')
+        txt_file.write('# check whether executables exist\n')
         for f_name in orb_prgrm, 'triaxmass', 'triaxmassbin':
             txt_file.write(f'test -e {self.legacy_directory}/{f_name} || ' +
                            f'{{ echo "File {self.legacy_directory}/{f_name} ' +
                            'not found." && exit 127; }\n')
-        txt_file.write('rm -f datfil/orblib.dat.tmp datfil/orblib_qgrid.dat '
-                        'datfil/orblib_qgrid.dat.bz2 datfil/orblib_pops.dat '
-                        'datfil/orblib_pops.dat.bz2 '
-                        'datfil/orblib_losvd_hist.dat '
-                        'datfil/orblib_losvd_hist.dat.bz2\n')
+        txt_file.write('# now run tube orbits\n')
+        txt_file.write('rm -f datfil/orblib_qgrid.dat.tmp '
+                       'datfil/orblib_qgrid.dat '
+                       'datfil/orblib_qgrid.dat.bz2 datfil/orblib_pops.dat '
+                       'datfil/orblib_pops.dat.bz2 '
+                       'datfil/orblib_losvd_hist.dat '
+                       'datfil/orblib_losvd_hist.dat.bz2\n')
         txt_file.write(f'{self.legacy_directory}/{orb_prgrm} < infil/orblib.in '
                        '>> datfil/orblib.log\n')
         txt_file.write('rm -f datfil/mass_qgrid.dat datfil/mass_radmass.dat '
@@ -660,16 +665,20 @@ class LegacyOrbitLibrary(OrbitLibrary):
                            f'&& bzip2 -kc {f_name} > {f_name}.staging.bz2 '
                            f'&& mv {f_name}.staging.bz2 {f_name}.bz2\n')
             txt_file.write(f'rm -f {f_name}\n')
+        txt_file.write('touch datfil/tube_done\n')
         txt_file.close()
         # boxorbits
         cmdstr_box = 'cmd_box_orbs'
         txt_file = open(cmdstr_box, "w")
         txt_file.write('#!/bin/bash\n')
-        txt_file.write('# first, check whether executable exists\n')
+        txt_file.write('# clear flag\n')
+        txt_file.write('rm -f datfil/box_done\n')
+        txt_file.write('# check whether executable exists\n')
         txt_file.write(f'test -e {self.legacy_directory}/{orb_prgrm} || ' +
                        f'{{ echo "File {self.legacy_directory}/{orb_prgrm} ' +
                        'not found." && exit 127; }\n')
-        txt_file.write('rm -f datfil/orblibbox.dat.tmp '
+        txt_file.write('# now run box orbits\n')
+        txt_file.write('rm -f datfil/orblibbox_qgrid.dat.tmp '
                         'datfil/orblibbox_qgrid.dat '
                         'datfil/orblibbox_qgrid.dat.bz2 '
                         'datfil/orblibbox_pops.dat '
@@ -685,6 +694,9 @@ class LegacyOrbitLibrary(OrbitLibrary):
                 f'&& bzip2 -kc {f_name} > {f_name}.staging.bz2 '
                 f'&& mv {f_name}.staging.bz2 {f_name}.bz2\n')
             txt_file.write(f'rm -f {f_name}\n')
+        txt_file.write('touch datfil/box_done\n')
+        txt_file.write('test -e datfil/tube_done && '
+                       'touch datfil/tube_box_done\n')
         txt_file.close()
         # returns the name of the executables
         return cmdstr_tube, cmdstr_box
@@ -789,6 +801,7 @@ class LegacyOrbitLibrary(OrbitLibrary):
             err_msg = 'Pops=True not compatible with return_intrinsic_moments' \
                       f'=True, will set pops to False: {self.mod_dir}.'
             self.logger.warning(err_msg)
+            pops = False
 
         if not pops:  # need orbit properties in 'non-populations' mode only
             os.chdir(self.mod_dir)
@@ -850,6 +863,10 @@ class LegacyOrbitLibrary(OrbitLibrary):
         # next, we check whether we need to read the losvd_hist file: either
         # pops==False or pops==True and some pops and kins share apertures
         pops_unique = [p for p in stars.population_data if p.kin_aper is None]
+        if pops and len(pops_unique) < len(stars.population_data):
+            kin_aper_for_pops = \
+                [i.kin_aper for i in stars.population_data
+                            if i.kin_aper is not None]
         if not pops or len(pops_unique) < len(stars.population_data):
             if not legacy_file:  # open the losvd_hist file if needed
                 os.chdir(self.mod_dir)
@@ -927,6 +944,10 @@ class LegacyOrbitLibrary(OrbitLibrary):
             else:
                 velhists = []
                 for i, velhist in enumerate(velhist0):
+                    if pops and i not in kin_aper_for_pops:
+                        # if pops and this kinematic set is not used by pops
+                        continue
+                    # if pops is False or this kinematic set is used by pops
                     width0 = hist_widths[i]
                     bins0 = hist_bins[i]
                     idx_center = (bins0-1)/2 # integer since hist_bins is odd
@@ -936,11 +957,9 @@ class LegacyOrbitLibrary(OrbitLibrary):
                     v = (vedg[1:] + vedg[:-1])/2.
                     v_cent = v[idx_center]
                     vedg -= v_cent
-                    vvv = dyn_kin.Histogram(xedg=vedg,
-                                            y=velhist,
-                                            normalise=False)
+                    vvv = dyn_kin.Histogram(xedg=vedg, y=velhist)
                     velhists += [vvv]
-        else:
+        else:  # if pops and len(pops_unique) == len(stars.population_data)
             velhists = []
 
         if pops and len(pops_unique) > 0:  # read remaining population data
@@ -967,9 +986,7 @@ class LegacyOrbitLibrary(OrbitLibrary):
             os.chdir(cur_dir)
             # append the populations data to the velhists
             for mass in mass0:
-                vvv = dyn_kin.Histogram(xedg=np.array([-0.5, 0.5]),
-                                        y=mass,
-                                        normalise=False)
+                vvv = dyn_kin.Histogram(xedg=np.array([-0.5, 0.5]), y=mass)
                 velhists += [vvv]
         return velhists, density_3D  #######################
 
@@ -1002,9 +1019,7 @@ class LegacyOrbitLibrary(OrbitLibrary):
         new_losvd = np.zeros((2*n_orbs, n_vel_bins, n_spatial_bins))
         new_losvd[0::2] = losvd
         new_losvd[1::2, :] = reveresed_losvd
-        new_orblib = dyn_kin.Histogram(xedg=orblib.xedg,
-                                       y=new_losvd,
-                                       normalise=False)
+        new_orblib = dyn_kin.Histogram(xedg=orblib.xedg, y=new_losvd)
         return new_orblib
 
     def duplicate_flip_and_interlace_intmoms(self, intmom):
@@ -1053,9 +1068,7 @@ class LegacyOrbitLibrary(OrbitLibrary):
                               n_spatial_bins1))
         new_losvd[:n_orbs1] = orblib1.y
         new_losvd[n_orbs1:] = orblib2.y
-        new_orblib = dyn_kin.Histogram(xedg=orblib1.xedg,
-                                       y=new_losvd,
-                                       normalise=False)
+        new_orblib = dyn_kin.Histogram(xedg=orblib1.xedg, y=new_losvd)
         return new_orblib
 
     def read_losvd_histograms(self, pops=False):
@@ -1076,7 +1089,7 @@ class LegacyOrbitLibrary(OrbitLibrary):
             -   ``self.projected_masses``: aperture/proj. masses of orbit lib
             -   ``self.n_orbs``: number of orbits in the orbit library
         If pops is True, sets the attribute:
-            -   ``self.pops_projected _masses``: aperture/proj. masses of
+            -   ``self.pops_projected_masses``: aperture/proj. masses of
                 populations data
 
         """
@@ -1098,31 +1111,15 @@ class LegacyOrbitLibrary(OrbitLibrary):
                               'integrity, and consistent config files. '
                               f'Model: {self.mod_dir}.')
             raise
-        if n_pops > 0:      # build tube_pops from re-used kin and
-            tube_pops = []  # genuine pops apertures
-            for pop_idx, population in enumerate(stars.population_data):
-                if population.kin_aper is None:
-                    tube_pops.append(tube_orblib.pop(n_kins))
-                else:
-                    tube_pops.append(tube_orblib[population.kin_aper])
-            if len(tube_orblib) != n_kins:
-                err_msg = f'Number of tube orbits does not match: {self.mod_dir}.'
-                self.logger.error(err_msg)
-                raise ValueError(err_msg)
 
         if not self.system.is_bar_disk_system():
             # tube orbits are mirrored/flipped and used twice
             tmp = []
+            for t in tube_orblib:
+                tmp.append(self.duplicate_flip_and_interlace_orblib(t))
+            tube_orblib = tmp
             if n_pops == 0:
-                for tube_orblib0 in tube_orblib:
-                    tmp += \
-                        [self.duplicate_flip_and_interlace_orblib(tube_orblib0)]
-                tube_orblib = tmp
                 tube_density_3D = np.repeat(tube_density_3D, 2, axis=0)
-            else:
-                for t in tube_pops:
-                    tmp.append(self.duplicate_flip_and_interlace_orblib(t))
-                tube_pops = tmp
 
         # read box orbits
         try:
@@ -1134,28 +1131,11 @@ class LegacyOrbitLibrary(OrbitLibrary):
                               'integrity, and consistent config files. '
                               f'Model: {self.mod_dir}.')
             raise
-        if n_pops > 0:
-            box_pops = []
-            for pop_idx, population in enumerate(stars.population_data):
-                if population.kin_aper is None:
-                    box_pops.append(box_orblib.pop(n_kins))
-                else:
-                    box_pops.append(box_orblib[population.kin_aper])
-            if len(box_orblib) != n_kins:
-                err_msg = f'Number of box orbits does not match: {self.mod_dir}.'
-                self.logger.error(err_msg)
-                raise ValueError(err_msg)
 
         # combine orblibs
-        if n_pops == 0:
-            orblib = []
-            for (t0, b0) in zip(tube_orblib, box_orblib):
-                orblib0 = self.combine_orblibs(t0, b0)
-                orblib += [orblib0]
-        else:
-            pops = []
-            for (t0, b0) in zip(tube_pops, box_pops):
-                pops += [self.combine_orblibs(t0, b0)]
+        orblib = []
+        for (t0, b0) in zip(tube_orblib, box_orblib):
+            orblib.append(self.combine_orblibs(t0, b0))
         # combine density_3D arrays
         if n_pops == 0:
             density_3D = np.vstack((tube_density_3D, box_density_3D))
@@ -1163,13 +1143,11 @@ class LegacyOrbitLibrary(OrbitLibrary):
                 orblib[i].scale_x_values(self.velocity_scaling_factor)
             self.losvd_histograms = orblib
             self.intrinsic_masses = density_3D
-            self.n_orbs = \
-                self.losvd_histograms[0].y.shape[0] if n_kins > 0 else 0
-            proj_mass = [np.sum(self.losvd_histograms[i].y,1)
-                         for i in range(n_kins)]
+            self.n_orbs = orblib[0].y.shape[0] if n_kins > 0 else 0
+            proj_mass = [np.sum(orblib[i].y,1) for i in range(n_kins)]
             self.projected_masses = proj_mass
         else:
-            proj_mass = [np.sum(pops[i].y,1) for i in range(n_pops)]
+            proj_mass = [np.sum(orblib[i].y,1) for i in range(n_pops)]
             self.pops_projected_masses = proj_mass
 
     def read_orbit_intrinsic_moments(self, cache=True):
@@ -1251,7 +1229,7 @@ class LegacyOrbitLibrary(OrbitLibrary):
         ``ncol = dithering^3`` and ``nrow = nE * nI2 * nI3``.
         For each orbit, the time averaged values are stored:
         ``lx, ly ,lz, r = sum(sqrt( average(r^2) ))``,
-        ``Vrms^2 = average(vx^2 + vy^2 + vz^2 + 2vx*vy + 2vxvz + 2vxvy)``.
+        ``Vrms^2 = average(vx^2 + vy^2 + vz^2 + 2vx*vy + 2vxvz + 2vyvz)``.
         The files were originally stored by the fortran code ``orblib_f.f90``,
         ``integrator_find_orbtype``.
 
@@ -1309,7 +1287,7 @@ class LegacyOrbitLibrary(OrbitLibrary):
         orbclass=np.dstack((orbclass1,orbclass1,orbclass2))
         orbclass1a=np.copy(orbclass1)
         orbclass1a[0:3,:,:] *= -1
-        for i in range(int(0), norb):
+        for i in range(norb):
             orbclass[:,:,i*2]=orbclass1[:, :, i]
             orbclass[:,:,i*2 + 1]=orbclass1a[:, :, i]
         orb_properties = table.QTable()
@@ -1372,7 +1350,7 @@ class LegacyOrbitLibrary(OrbitLibrary):
 
         - ``|Lx|,|Ly|,|Lz|<dL`` --> box
         - not a box & ``|Lx|>|Ly|`` & ``|Lx|>|Lz|`` --> x-axis tube "-ish"
-        - not a box & ``|Ly|>|Lz|`` & ``|Ly|>|Lz|`` --> y-axis tube "-ish"
+        - not a box & ``|Ly|>|Lx|`` & ``|Ly|>|Lz|`` --> y-axis tube "-ish"
         - not a box & ``|Lz|>|Lx|`` & ``|Lz|>|Ly|`` --> z-axis tube "-ish"
 
         The method logs the fraction of all orbits in each classification, and
@@ -1459,7 +1437,7 @@ class LegacyOrbitLibrary(OrbitLibrary):
         n_ytish = np.sum(bool_ytish)
         n_ztish = np.sum(bool_ztish)
         n_other = np.sum(bool_other)
-        n_sum = n_box + n_xtish + n_ytish + n_ztish + n_other
+        # n_sum = n_box + n_xtish + n_ytish + n_ztish + n_other
         n_xt_exact = np.sum(bool_xtube)
         n_yt_exact = np.sum(bool_ytube)
         n_zt_exact = np.sum(bool_ztube)
@@ -1489,16 +1467,28 @@ class LegacyOrbitLibrary(OrbitLibrary):
         }
         self.orb_classification = orb_classification
 
-    def get_projection_tensor(self, minr=None, maxr=None, nr=50, nl=61, force_lambda_z=False, dL=1e17):
+    def get_projection_tensor(self,
+                              minr=None,
+                              maxr=None,
+                              r_scale='log',
+                              nr=50,
+                              nl=61,
+                              force_lambda_z=False,
+                              dL=1e17):
         projection_tensor_pars = {'minr':minr,
                                   'maxr':maxr,
+                                  'r_scale':r_scale,
                                   'nr':nr,
                                   'nl':nl,
                                   'dL':dL,
                                   'force_lambda_z':force_lambda_z}
         self.projection_tensor_pars = projection_tensor_pars
+        if r_scale not in ['log', 'linear']:
+            txt = f"r_scale must be 'log' or 'linear', not {r_scale}."
+            self.logger.error(txt)
+            raise ValueError(txt)
         # otherwise, continue...
-        if hasattr(self, 'orb_properties') == False:
+        if not hasattr(self, 'orb_properties'):
             self.read_orbit_property_file()
         orb_properties = self.orb_properties
         self.classify_orbits(dL=dL, force_lambda_z=force_lambda_z)
@@ -1506,20 +1496,30 @@ class LegacyOrbitLibrary(OrbitLibrary):
             minr = np.min(orb_properties['r']).value
         if maxr is None:
             maxr = np.max(orb_properties['r']).value
-        log10_r_rng = (np.log10(minr), np.log10(maxr))
+        log10_r_rng = (np.log10(minr), np.log10(maxr)) if r_scale == 'log' \
+                      else (np.nan, np.nan)  # avoid error if minr is zero
+        lin_r_rng = (minr, maxr)
         lmd_rng = (-1, 1)
         tot_lmd_rng = (0, 1)
         # store ranges for use in plots
         self.projection_tensor_rng = {
             'log10_r_rng':log10_r_rng,
+            'lin_r_rng':lin_r_rng,
             'lmd_rng':lmd_rng,
             'tot_lmd_rng':tot_lmd_rng,
         }
         # store ranges for use in plots
-        log10_r_edg = np.linspace(*log10_r_rng, nr+1)
+        # log10_r_edg = np.linspace(*log10_r_rng, nr+1)
+        # lin_r_edg = np.linspace(*lin_r_rng, nr+1)
+        r_edg = np.linspace(*log10_r_rng, nr+1) if r_scale == 'log' \
+                else np.linspace(*lin_r_rng, nr+1)
         lmd_edg = np.linspace(*lmd_rng, nl+1)
         tot_lmd_edg = np.linspace(*tot_lmd_rng, nl+1)
-        r_idx = np.digitize(np.log10(orb_properties['r'].value), bins=log10_r_edg)
+        if r_scale == 'log':
+            r_idx = np.digitize(np.log10(orb_properties['r'].value),
+                                bins=r_edg)
+        else:
+            r_idx = np.digitize(orb_properties['r'].value, bins=r_edg)
         lmd_x_idx = np.digitize(orb_properties['lmd_x'].value, bins=lmd_edg)
         lmd_y_idx = np.digitize(orb_properties['lmd_y'].value, bins=lmd_edg)
         lmd_z_idx = np.digitize(orb_properties['lmd_z'].value, bins=lmd_edg)

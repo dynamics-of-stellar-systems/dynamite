@@ -84,34 +84,43 @@ The Multi Gaussian Expansion (MGE) in ``mge.ecsv`` describes the galaxy's 2D sur
 It is also possible to provide two separate MGE's for the surface-brightness and surface mass-density (see the :ref:`observed_data` section of the Configuration page for details.
 
 Two types of kinematic are supported: tables of Gauss Hermite expansion coefficients, or histogrammed LOSVDs output by `BayesLOSVD <https://github.com/jfalconbarroso/BAYES-LOSVD>`_.
-These must be in the form of `Astropy ECSV files <https://docs.astropy.org/en/stable/api/astropy.io.ascii.Ecsv.html>`_ e.g., ``kinematics.ecsv``. The files ``aperture.dat`` and ``bins.dat`` contain information about the spatial binning of your kinematic data. Convenience functions are provided for creating converting some standard kinematic data files, and examples demonstrating these can be found in the tutorials.
+These must be in the form of `Astropy ECSV files <https://docs.astropy.org/en/stable/api/astropy.io.ascii.Ecsv.html>`_ e.g., ``kinematics.ecsv``. The files ``aperture.dat`` and ``bins.dat`` contain information about the spatial binning of your kinematic data. Convenience functions are provided for creating and converting some standard kinematic data files, and examples demonstrating these can be found in the tutorials.
 Note that the kinematics need to be centered at the center of the MGE.
 
-The file ``aperture.dat`` file contains the spatial extent in arcseconds, the angle (in degrees ) ``90 - position_angle``, and size of the grid in pixels::
+The file ``aperture.dat`` file contains the spatial extent in arcseconds, the angle (in degrees) ``90 - position_angle``, and size of the grid in pixels::
 
   #counter_rotation_boxed_aperturefile_version_2
-        min_x   min_y
-        max_x   max_y
-        90.-position_angle
-        npix_x  n_pix_y
+        min_x               min_y
+        extent_x            extent_y
+        90 - position_angle
+        npix_x              n_pix_y
 
-As ``aperture.dat`` is also read by legacy Fortran components of DYNAMITE, it is important that its first line is exactly as displayed above, otherwise DYNAMITE will crash.
+To clarify the quantities in this file: the rectangular aperture in arcseconds extends from ``min_x`` to ``max_x = min_x + extent_x`` and ``min_y`` to ``max_y = min_y + extent_y``, respectively. ``90 - position_angle`` is the angle in degrees measured counter clockwise from the galaxy major axis to the x-axis of the input data. Finally, ``npix_x`` and ``npix_y`` define the number of pixels along the x and y axes, respectively.
+
+Any line starting with ``#`` (leading blank space characters are allowed) is optional. Such lines are not limited to the first line, treated as comments and are ignored by DYNAMITE.
 
 The file ``bins.dat`` encodes the spatial (e.g. Voronoi) binning: specifically, one header line with the total number of pixels in the grid, followed by the bin ID of each pixel in the grid::
 
-    #Counterrotaton_binning_version_1
+    #Counterrotation_binning_version_1
     no of pixels in grid
     ...
 
-Note that also for this file the first line needs to be exactly like displayed above (including the typo ``Counterrotaton``!) to avoid legacy Fortran errors.
+The bins file has a special format due to historical reasons. Therefore, only the top line can contain an optional comment. Again, the comment line - if existing - will be ignored by DYNAMITE and needs to start with ``#`` which can be preceded by leading blank space characters.
 
 Comments on kinematics
 ----------------------
 
+Weight solver issues
+^^^^^^^^^^^^^^^^^^^^
+
 LegacyWeightSolver can't be used with BayesLOSVD - use weight-solver type NNLS.
+
 In some cases, the weight solver ``type: "NNLS"`` ``nnls_solver: "scipy"`` may fail for some models if the SciPy version is >= 1.12. In such cases, it is recommended to use ``type: "NNLS"`` ``nnls_solver: "cvxopt"`` or to reinstall DYNAMITE with ``scipy<1.12`` in ``requirements.txt``.
 
-It is possible to simultaneously fit multiple sets of kinematics in DYNAMITE, which is only supported for Gauss Hermite kinematics. In that case, all input files should be placed in this directory::
+Simultaneous fitting of multiple kinematic sets
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+It is possible to simultaneously fit multiple sets of kinematics in DYNAMITE, mixing kinematics of different types is supported as is mixing kinematics with differing histogram settings. In that case, all input files should be placed in the input directory::
 
   | main_directory
   | ├── input_files
@@ -125,7 +134,27 @@ It is possible to simultaneously fit multiple sets of kinematics in DYNAMITE, wh
   |
 
 The specific names of the files given here are just examples - you can specify the names you would like to use in the configuration file.
-The individual kinematics' tables need to have the same number of expansion coefficients. In case your kinematics have different numbers of Gauss Hermite expansion coefficients, we recommend to augment the respecive tables with zero values for the additional coefficients and set the respective coefficients' errors to a large number (e.g., 0.3 or 0.5).
+
+In case of Gauss Hermite kinematics, the individual kinematics' tables need to have the same number of expansion coefficients. In case your kinematics have different numbers of Gauss Hermite expansion coefficients, we recommend to augment the respecive tables with zero values for the additional coefficients and set the respective coefficients' errors to a large number (e.g., 0.3 or 0.5).
+
+Keep in mind when mixing different kinematic data sets that their contribution to the orbit weights optimisation depends on the relative quantity and quality of the different data sets. For example, BayesLOSVD kinematics typically provides many more constraints than Gauss-Hermite kinematics, so that BayesLOSVD can dominate the weight solving and the Gauss-Hermite kinematics contribute little. An ad-hoc way to compensate for this is by adjusting the relative quality of the data sets, e.g., by reducing the errors on the Gauss-Hermite kinematics by a constant factor and so increase their relative contribution to the weight solving.
+
+"Orbit Coloring": fitting population data - BETA FUNCTIONALITY-
+---------------------------------------------------------------
+
+Based on kinematics-based orbit superpositions, DYNAMITE can also fit population data, e.g. line-strength indices, colors, age, metallicity. This is done by tagging each orbit in the orbit library with a "color", which is then fitted to the population data after fitting the kinematic data.
+
+If the population data shares apertures and spatial binning with a kinematics set, it is recommended to add population data columns to the corresponding kinematics data file. If the population data apertures and/or spatial binning differ from the kinematics, the population data must be provided in a separate file, along with the population data's apertures and spatial binning::
+
+  | main_directory
+  | ├── input_files
+  | │   ├── ...
+  | │   ├── population.ecsv     # file of population data
+  | │   ├── pop_bins.dat        # info about binning of population data
+  | │   ├── pop_aperture.dat    # more info about binning of population data
+  |
+
+As with the kinematics, the exact filenames can be freely defined in the configuration file as described in the :ref:`observed_data` section of the Configuration page.
 
 Configuration File
 ===================
@@ -192,7 +221,7 @@ To explore how the :math:`\chi^2` changes as a function of the parameters or of 
   p.make_chi2_plot(which_chi2='kinchi2', n_excl=50, figtype='.pdf') # saves a .pdf figure of the 'kinchi2' chisquare, excluding the first 50 models (burn-in)
   p.make_chi2_vs_model_id_plot(which_chi2='kinchi2') # saves a .png figure (default) of the 'kinchi2' chisquare as a function of the model ID
 
-You can also plot the cumulative mass and the (intrinsic and projected) anisotropy profiles, out to a radius of 30 arcsec:
+You can also plot the cumulative mass and the intrinsic anisotropy profile, out to a radius of 30 arcsec:
 
 .. code-block:: python
 

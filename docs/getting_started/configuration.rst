@@ -89,7 +89,6 @@ The system consists of a number of physical components - e.g. the stars, black h
 
 - ``component name``: a descriptive name, but preferably short as this will be used to refer to the component in the code (e.g. ``bh`` for black hole)
     - ``type``: a string corresponding to one of the options in in `component types`_
-    - ``contributes_to_potential``: Boolean (not currently used)
     - ``include``: Boolean, whether to include this component or not. If False, equivalent to omitting this component entirely
     - ``parameters``. The required parameters for each component are listed in `component types`_. Each  parameter must have values specified for
         - ``fixed``: Boolean, whether the parameter is to be kept fixed
@@ -102,6 +101,29 @@ The system consists of a number of physical components - e.g. the stars, black h
             - ``specific_values``: only for ``SpecificModels`` parameter generator, a list of fixed values for this parameter. If specified, then ``lo``, ``hi``, ``step``, ``minstep``, ``fixed``, and ``value`` are ignored.
         - ``logarithmic``: Boolean, whether logarithmic steps should be used for parameter search. If true, then (``value``, ``lo``, ``hi``) must all have log units.
         - ``LaTeX``: LaTeX string for this parameter to be used for plots.
+
+**Note:** the following (component type ``Chi2Ext`` and associated functionality) hasn't been tested with actual data yet and is still in a **BETA** state. Hence, the details of its implementation and API may change in future releases.
+
+There is a special component type ``Chi2Ext`` that allows external modules to calculate a :math:`\chi^2` value for DYNAMITE models. These external :math:`\chi^2` values are calculated after DYNAMITE's internal :math:`\chi^2` calculations then appended to DYNAMITE's all_models, then can be used to inform the parameter search for later model iterations. The ``Chi2Ext`` component has different settings from the ones built in DYNAMITE:
+
+- ``component name``: a descriptive name, but preferably short as this will be used to refer to the component in the code (e.g. ``gas``)
+    - ``type``: ``Chi2Ext``
+    - ``contributes_to_potential``: optional, will always be set to False (not currently used)
+    - ``include``: Boolean, whether to include this component or not. If False, equivalent to omitting this component entirely
+    - ``parameters``: Choose any parameter names as you see fit (e.g., par1, par2,...). Each parameter must have values specified for
+        - ``fixed``: Boolean, whether the parameter is to be kept fixed
+        - ``value``: an initial value for the parameter
+        - ``par_generator_settings``: settings controlling parameter search (can be omitted if ``fixed=True``). Note that if these settings are given, then ``value`` must be consistent with ``lo`` and ``hi``.
+            - ``lo``: minimum value
+            - ``hi``: maximum value
+            - ``step``: initial step size for parameter search
+            - ``minstep``: minimum allowed stepsize for this parameter
+        - ``logarithmic``: Boolean, whether logarithmic steps should be used for parameter search. If true, then (``value``, ``lo``, ``hi``) must all have log units.
+        - ``LaTeX``: LaTeX string for this parameter to be used for plots.
+    - ``ext_module``: a string which is the name of the module implementing the external :math:`\chi^2` calculation. The associated .py file should be in the Python path.
+    - ``ext_class``: a string denoting the class name in the external module implementing the external :math:`\chi^2` calculation. It will be instantiated once, at the time the config file is read.
+    - ``ext_class_args``: a dict holding the class parameters, can be empty (``{}``). Example: if ``ext_class_args: {arg1:47, arg2:"val2"}`` and ``ext_class: Chi2``, it will be instantiated via ``Chi2(arg1=47, arg2="val2")``.
+    - ``ext_chi2``: a string which is the name of the ``ext_class`` method returning :math:`\chi^2` as a single ``float``. In DYNAMITE, it will be called after weight solving, passing the entire current parameter set as a dict, e.g. ``{a-bh:<val1>, m-bh:<val2>, ... ,p-stars:<valx>, q-stars:<valy>, ..., par1-gas:<valg1>, par2-gas:<valg2>}``.
 
 ``component types``
 ^^^^^^^^^^^^^^^^^^^^
@@ -133,9 +155,11 @@ The following types of component are available, listed with their parameters:
     - ``c``: concentration parameter [:math:`R_{200}` / NFW-scale-length]
     - ``Mvir``: virial mass :math:`M_{200}` [:math:`M_\odot`]
     - ``gam``: AKA gamma, the inner logarithmic density slope, must be :math:`\leq 1`
+- ``Chi2Ext`` (**BETA**), for external :math:`\chi^2` calculations
+    - Choose any parameter names as you see fit (e.g., ``par1``, ``par2``,...)
 
 .. note::
-  currently, there are only two combinations of component types that are valid. This is to ensure compatibility with the Fortran implementation of the orbit integrator. Later implementations may offer more flexibility. The current valid combinations of components are:
+  currently, there are limited combinations of component types that are valid. This is to ensure compatibility with the Fortran implementation of the orbit integrator. Later implementations may offer more flexibility. The current valid combinations of components are:
 
   - one ``Plummer`` component
       - representing the black hole
@@ -144,6 +168,8 @@ The following types of component are available, listed with their parameters:
       - representing the stars
   - either no dark halo or exactly one out of [``NFW``, ``NFW_m200_c``, ``Hernquist``, ``TriaxialCoredLogPotential``, ``GeneralisedNFW``]
       - representing the dark halo
+  - either no or one ``Chi2Ext`` component
+      - calculating the external additive :math:`\chi^2`
 
 .. _observed_data:
 
@@ -155,18 +181,23 @@ The ``TriaxialVisibleComponent`` represents the galaxy's stars, and therefore ha
 - ``TriaxialVisibleComponent``
     - ``mge_lum``: string, filename for the MGE of the projected luminosity density, with intensity units of :math:`L_\odot \mathrm{pc}^{-2}`.
     - ``mge_pot``: string, filename for the MGE of the projected mass density, with intensity units of :math:`M_\odot \mathrm{pc}^{-2}`. If you assume that stellar-mass follows stellar-light, then the files ``mge_lum`` and ``mge_pot`` will be identical.
-    - ``kinematics``
+    - ``kinematics``:
         - ``name_of_the_kinematic_set``: a descriptive name, best without spaces as it will be part of the kinematic plot file name.
             - ``type``: type of kinematics - either ``GaussHermite`` or ``BayesLOSVD``
-            - ``weight``: float, weighting applied to this kinematic set in chi2 calculation; weights don't need to add up to 1.0.
             - ``datafile``: string, filename for the kinematics ECSV data file
             - ``aperturefile``: string, filename of the aperture file for this kinematic set
             - ``binfile``: string, filename of the bin file for this kinematic set
-            - ``hist_width``: *optional*, float or 'default', the width (i.e. min. to max. value) of the velocity histogram for storing orbits. The default option is a width slightly wider than that of the observed kinematics.
+            - ``hist_width``: *optional*, float or 'default', the width (i.e. min. to max. value) of the velocity histogram for storing orbits. The default values are :math:`2\max(|v|+3\sigma_v)` for ``GaussHermite`` and :math:`4\max(|\min(v)|,|\max(v)|)` for ``BayesLOSVD``, respectively.
             - ``hist_center``: *optional*, float or 'default', the center of the velocity histogram for storing orbits. The default option is 0.
             - ``hist_bins``: *optional*, int or 'default', the number of bins in the velocity histogram for storing orbits. The default option gives about 10 times better velocity sampling than the data.
-        - ``name_of_next_kinematic_set`` (if any...)
+            - ``with_pops``: *optional*, Boolean. Only relevant if population data exists in this kinematic set's ``datafile``. If True, the population data is used; if False, the population data is ignored. The default is False.
+        - ``name_of_next_kinematic_set``: (if any...)
             - ...
+    - ``populations``: (optional, BETA FUNCTIONALITY)
+        - ``name_of_the_population``: a descriptive name, best without spaces. Note that currently only one population dataset can be specified.
+            - ``datafile``: string, filename for the population ECSV data file
+            - ``aperturefile``: string, filename of the aperture file for this population set
+            - ``binfile``: string, filename of the bin file for this population set
 
 For more information on the input file formats, please refer to the :ref:`input_files` section of the Overview page.
 
@@ -261,6 +292,7 @@ Settings relevant for solving for orbital weights.
         - ``type = NNLS`` then ``nnls_solver`` can be one of the strings,
             - ``scipy`` to use the `scipy NNLS function <https://docs.scipy.org/doc/scipy/reference/generated/scipy.optimize.nnls.html>`_
             - ``cvxopt`` to use an implementation using the `CVXOPT <https://cvxopt.org/>`_ package
+    - ``maxiter_factor``: integer, only used if ``type = NNLS`` and ``nnls_solver = scipy``. This is a factor multiplied by the number of orbits to give the maximum number of iterations for the scipy NNLS solver. The default value is 3, which is also the default for scipy's NNLS implementation.
     - ``lum_intr_rel_err``: float, typical 0.01, the systematic error (fraction) applied to the intrinsic luminosity constraint
     - ``sb_proj_rel_err``: float, typical 0.01, the systematic error (fraction) applied to the projected surface brightness constraint
     - ``CRcut``: Boolean, default False, whether to use the ``CRcut`` solution for the counter-rotating orbit problem. See `Zhu et al. 2018 <https://ui.adsabs.harvard.edu/abs/2018MNRAS.473.3000Z/abstract>`_ for more details.
@@ -276,7 +308,7 @@ If any kinematic set has type ``BayesLOSVD``, then the ``weight_solver_settings`
 If DYNAMITE shall recover from an unsuccessful weight solving attempt, the following option can be used:
 
 - ``weight_solver_settings``
-    - ``reattempt_failures``: if True, DYNAMITE will use a model's existing orblibs from an earlier run to reattempt weight solving.
+    - ``reattempt_failures``: if True, DYNAMITE will use a model's existing orblib from an earlier run to reattempt weight solving. Please refer to the ``AllModels.update_model_table()`` :ref:`API documentation <model>` for more details on how DYNAMITE deals with incomplete or partially completed models upon restart.
 
 ``parameter_space_settings``
 ============================

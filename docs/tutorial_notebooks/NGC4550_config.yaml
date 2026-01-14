@@ -11,7 +11,6 @@
 system_attributes:
     distMPc: 15.5
     name: "NGC4550"
-    position_angle: 0.0
 
 system_components:
 
@@ -28,7 +27,6 @@ system_components:
                 value: 1.e-3
                 LaTeX: "$a_\\mathrm{BH}$"
         include: True
-        contributes_to_potential: True
 
     dm_halo:
         type: NFW
@@ -48,7 +46,6 @@ system_components:
                     step: 0.5
                     minstep: 0.01
         include: True
-        contributes_to_potential: True
 
     stars:
         type: TriaxialVisibleComponent
@@ -74,7 +71,6 @@ system_components:
                 aperturefile: "aperture.dat"
                 binfile: "bins.dat"
         include: True
-        contributes_to_potential: True
 
 system_parameters: # physical system standalone parameters
     ml:
@@ -110,6 +106,7 @@ orblib_settings:
 weight_solver_settings:
     type: "NNLS"      # must use "NNLS" with BayesLOSVD
     nnls_solver: 'scipy'
+    maxiter_factor: 3  # nnls_solver 'scipy' only; default: 3
     lum_intr_rel_err: 0.01
     sb_proj_rel_err: 0.02
 

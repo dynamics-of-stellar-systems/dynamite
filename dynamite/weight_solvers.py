@@ -12,6 +12,7 @@ try:
 except ModuleNotFoundError:
     pass
 
+from dynamite import constants
 from dynamite import analysis
 from dynamite import physical_system as physys
 from dynamite import kinematics as dyn_kin
@@ -26,8 +27,7 @@ class WeightSolver(object):
     Parameters
     ----------
     config : a ``dyn.config_reader.Configuration`` object
-    directory_with_ml : string
-        model directory with the ml extension
+    model : a ``dyn.model.Model`` object
     CRcut : Bool, default False
         whether to use the `CRcut` solution for the counter-rotating orbit
         problem. See Zhu et al. 2018 for more. If `CRcut` is given in the
@@ -36,18 +36,18 @@ class WeightSolver(object):
 
     """
 
-    def __init__(self, config, directory_with_ml, CRcut=False):
+    def __init__(self, config, model, CRcut=False):
         self.logger = logging.getLogger(f'{__name__}.{__class__.__name__}')
         self.config = config
         self.system = config.system
         self.settings = config.settings.weight_solver_settings
-        self.direc_with_ml = directory_with_ml
-        self.direc_no_ml \
-            = directory_with_ml[:directory_with_ml[:-1].rindex('/')+1]
+        self.model = model
+        self.direc_with_ml = model.directory
+        self.direc_no_ml = model.directory_noml
         if 'CRcut' in self.settings.keys():
             CRcut = self.settings['CRcut']
         self.CRcut = CRcut
-        self.weight_file = f'{self.direc_with_ml}orbit_weights.ecsv'
+        self.weight_file = f'{self.direc_with_ml}{constants.weight_file}'
 
     def solve(self, orblib, ignore_existing_weights=False):
         """Template solve method
@@ -114,13 +114,14 @@ class WeightSolver(object):
                              "kinmapchi2. Value set to nan.")
             return float('nan')  # #######################################
         number_gh = self.settings['number_GH']
-        mod=self.config.all_models.get_model_from_directory(self.direc_with_ml)
         chi2_kinmap = 0.
         for kin_set, kin_data in enumerate(stars.kinematic_data):
             n_gh = min(number_gh, kin_data.max_gh_order)
             coefs = ['v', 'sigma'] + [f'h{i}' for i in range(3, n_gh + 1)]
             # get the model's projected masses=flux (unused) and kinematic data
-            a=analysis.Analysis(config=self.config, model=mod, kin_set=kin_set)
+            a=analysis.Analysis(config=self.config,
+                                model=self.model,
+                                kin_set=kin_set)
             model_gh_coef = a.get_gh_model_kinematic_maps(v_sigma_option='fit',
                                                           weights=weights)
             # get the observed projected masses (unused) and kinematic data
@@ -224,9 +225,9 @@ class LegacyWeightSolver(WeightSolver):
         # When varying ml the LOSVD is scaled - no new orbits are calculated.
         # Therefore we need to know the ml that was used for the orbit library.
         # The scaling factor is sqrt(model_ml/original_orblib_ml).
-        mod=self.config.all_models.get_model_from_directory(self.direc_with_ml)
         ml_scaling_factor = \
-            self.config.all_models.get_model_velocity_scaling_factor(model=mod)
+            self.config.all_models.get_model_velocity_scaling_factor(
+                model=self.model)
         #-------------------
         #write nn.in
         #-------------------
@@ -366,6 +367,7 @@ class LegacyWeightSolver(WeightSolver):
             weights, chi2_tot, chi2_kin = \
                 self.get_weights_and_chi2_from_orbmat_file()
             chi2_kinmap = self.chi2_kinmap(weights)
+            # save the output
             results = table.Table()
             results['weights'] = weights
             results.meta = {'chi2_tot': chi2_tot,
@@ -560,8 +562,8 @@ class LegacyWeightSolver(WeightSolver):
         a = self.__read_file_element(fname, [1, 1], [1, 2])
         ngh = np.int64(a[1])  # number of 'observables'
         nobs = np.int64(a[1])
-        nvel = np.int64(a[0])
-        ncon = np.int64(a[0])
+        # nvel = np.int64(a[0])
+        # ncon = np.int64(a[0])
         rows = 3 + np.arange(nobs)  # rows 1- 9
         cols = 3 + np.zeros(nobs, dtype=int)  # skip over text
         fname = self.fname_nn_nnls
@@ -686,7 +688,7 @@ class NNLS(WeightSolver):
 
         """
         # construct vector of observed constraints (con), errors (econ) and
-        # matrix or orbit propertites (orbmat)
+        # matrix or orbit properties (orbmat)
         con = np.zeros(self.n_mass_constraints)
         econ = np.zeros(self.n_mass_constraints)
         orbmat = np.zeros((self.n_mass_constraints, orblib.n_orbs))
@@ -821,9 +823,6 @@ class NNLS(WeightSolver):
         """
         self.logger.info(f"Using WeightSolver: {__class__.__name__}/"
                          f"{self.nnls_solver}")
-        orblib.read_losvd_histograms()  # sets orblib.losvd_histograms,
-                                        # orblib.intrinsic_masses, and
-                                        # orblib.projected_masses
         if (not ignore_existing_weights) and self.weight_file_exists():
             results = ascii.read(self.weight_file, format='ecsv')
             self.logger.info("NNLS solution read from existing output "
@@ -833,15 +832,26 @@ class NNLS(WeightSolver):
             chi2_kin = results.meta['chi2_kin']
             chi2_kinmap = results.meta['chi2_kinmap']
         else:
+            orblib.read_losvd_histograms()  # sets orblib.losvd_histograms,
+                                            # orblib.intrinsic_masses, and
+                                            # orblib.projected_masses
             A, b = self.construct_nnls_matrix_and_rhs(orblib)
             if self.nnls_solver=='scipy':
                 try:
-                    solution = optimize.nnls(A, b)
+                    # set the nnls maxiter parameter and solve
+                    if 'maxiter_factor' in self.settings.keys():
+                        maxiter_factor = self.settings['maxiter_factor']
+                    else:
+                        maxiter_factor = 3  # default = 3 * n_orbits
+                    maxiter = maxiter_factor * A.shape[1]
+                    self.logger.debug(f'{maxiter_factor = }, {maxiter = }')
+                    solution = optimize.nnls(A, b, maxiter=maxiter)
                     weights = solution[0]
                 except Exception as e:
                     txt = f'Orblib {orblib.mod_dir}, ml={orblib.parset["ml"]}'\
-                        f': SciPy solver error occured: {e} All weights ' \
-                        'and chi2 set to nan. Consider trying cvxopt.'
+                        f': SciPy solver error occured: {e} All weights and ' \
+                        'chi2 set to nan. Consider a larger maxiter_factor ' \
+                        f'(currently, maxiter_factor={maxiter_factor}).'
                     self.logger.warning(txt)
                     weights = np.full(A.shape[1], np.nan)
             elif self.nnls_solver=='cvxopt':

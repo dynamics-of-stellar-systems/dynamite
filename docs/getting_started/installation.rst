@@ -51,7 +51,7 @@ Supplementary to this section, please also see the list of tested platforms as w
 Fortran compiler
 ----------------
 
-The current version of DYNAMITE is based on routines which were written in Fortran. It is therefore necessary to have a pre-installed Fortran compiler. The best-suited Fortran compiler differs with different operation systems.
+The current version of DYNAMITE uses binary routines which are based on source code written in Fortran. It is therefore necessary to have a pre-installed Fortran compiler. The best-suited Fortran compiler differs with different operating systems.
 
 If you are using Linux, you will need ``ifort`` or ``gfortran`` (gcc/GNU Fortran).
 
@@ -118,9 +118,7 @@ returns its location, something like ``/opt/local/bin/gfortran``.
 Python
 ------
 
-The user is communicating with the Fortran source code via Python.
-The basic requirement for DYNAMITE is therefore a reasonably current version of Python
-(Python 3.9 or later as Python 3.8 has reached its end of life as of October 7, 2024).
+As the DYNAMITE API is written in Python, the user interacts with DYNAMITE via Python scripts which handle the entire communication with the Fortran-based executables. The basic requirement for DYNAMITE is therefore a reasonably current version of Python. Supported Python versions include those that get at least security fixes (status 'security' in the official timeline at `<https://devguide.python.org/versions/>`_). Older versions may work, but are not guaranteed to.
 
 
 
@@ -374,7 +372,7 @@ Your terminal will likely express several warnings again, but these are not crit
 3. Installing DYNAMITE
 ----------------------
 
-If all these files are there, you can proceed with the installation, by going back to ``.../dynamite`` and running::
+If all these files are there, you can proceed with the installation, by going back to ``.../dynamite`` and running (note the dot at the end, it is part of the command)::
 
     python -m pip install .
 
@@ -404,6 +402,8 @@ Several Python packages are installed in this way (if they are not already), inc
       * matplotlib
 
 (please refer to the file ``requirements.txt`` in the setup directory for a complete list, including the required respective versions).
+
+PLEASE NOTE: even though DYNAMITE does not currently use ``numba`` directly, it is still in ``requirements.txt`` because it is a dependency of ``sparse`` and can cause conflicts: starting with version 0.63, ``numba``'s support for Intel Macs has been deprecated (see `here <https://numba.readthedocs.io/en/stable/release/0.63.0-notes.html>`_). It can still be installed from source, but requires a special LLVM build that can be a challenge (see `here <https://numba.readthedocs.io/en/stable/user/installing.html#installing-from-source>`_). Therefore, we decided to add the requirement ``numba<0.63`` to avoid potential issues on Intel Macs. If you feel adventurous, this can be lifted.
 
 DYNAMITE should now be installed and ready to be run! You can now try the examples proposed in :ref:`test-run`.
 
@@ -520,6 +520,27 @@ Or, if you are using conda::
 
 A list of all required python packages can be found in ``dynamite/requirements.txt``.
 
+Warning about PyTensor
+^^^^^^^^^^^^^^^^^^^^^^
+
+The PyTensor package is a requirement of PyMC, a package that DYNAMITE uses for Bayesian inference. The warning may read something like::
+
+    WARNING (pytensor.configdefaults): g++ not detected!  PyTensor will be unable to compile
+    C-implementations and will default to Python. Performance may be severely degraded. To
+    remove this warning, set PyTensor flags cxx to an empty string.
+
+If you do not plan to use the DYNAMITE Coloring module, you can safely ignore this warning because PyMC will not be used by DYNAMITE then. If you use Coloring however, the performance degredation mentioned in the warning will be severe and we recommend fixing the issue.
+
+For some users the following worked:
+1. Use pip to uninstall PyMC and PyTensor
+2. Install PyMC and PyTensor via conda, from conda-forge
+3. Re-install DYNAMITE
+
+Warning about ipywidgets
+^^^^^^^^^^^^^^^^^^^^^^^^
+
+Again, this is a warning about a dependency of PyMC and is only relevant if you plan to use the DYNAMITE Coloring module. As ipywidgets is only used to display interactive HTML widgets within Jupyter Notebooks they are dispensable for DYNAMITE's functionality. Hence, the warning can be ignored.
+
 Compile errors when building legacy Fortran code
 ------------------------------------------------
 
@@ -551,7 +572,6 @@ The 'G / P' column refers to the weight solver:
    :header-rows: 1
 
    OS and release,  Fortran release,    Python rel.,    G / P,  Date tested,    Remarks
-   macOS 14.4.1,    gfortran 12.2.0,    3.9.19,         G,      2024-04-23
    macOS 14.6.1,    gfortran 12.4.0,    3.11.10,        G,      2024-11-30
    macOS 14.4.1,    gfortran 12.2.0,    3.12.3,         G,      2024-04-23
    AlmaLinux 8.5,   gfortran 8.5.0,     3.10.14,        G,      2024-04-23,     VSC5 w/o modules loaded
