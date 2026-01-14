@@ -4,6 +4,8 @@
 Change Log
 ****************
 
+- Improvement: Avoid confusing warnings when creating decomposition plots.
+
 Version: 5.0
 ================
 

@@ -373,9 +373,11 @@ class Decomposition:
             ax = plt.subplot(LL, 3, 3*i_plot+1)
             if i_plot == 0:
                 ax.set_title('surface brightness (log)',fontsize=20,pad=20)
+            t_comp = np.full_like(t[c_idx][s], np.nan)
+            np.log10(t[c_idx][s], where=(t[c_idx][s]>0), out=t_comp)
             display_pixels(xi_t,
                            yi_t,
-                           np.log10(t[c_idx][s])-max_flux[comp],
+                           t_comp - max_flux[comp],
                            vmin=min_flux[comp]-max_flux[comp],
                            vmax=0,
                            **kw_display1)
