@@ -5,6 +5,10 @@ Change Log
 ****************
 
 - Improvement: Avoid confusing warnings when creating decomposition plots.
+
+Version: 5.0
+================
+
 - Bugfix: Avoid crash when Decomposition class is instantiated with model argument other than None.
 - New feature: Support adding externally calculated chi2 values for components not interacting with DYNAMITE components (still in beta).
 - Improvement: The unused but mandatory component attribute ``contributes_to_potential`` has been removed and DEPRECATED.

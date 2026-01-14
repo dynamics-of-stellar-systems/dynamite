@@ -51,7 +51,7 @@ Supplementary to this section, please also see the list of tested platforms as w
 Fortran compiler
 ----------------
 
-The current version of DYNAMITE is based on routines which were written in Fortran. It is therefore necessary to have a pre-installed Fortran compiler. The best-suited Fortran compiler differs with different operation systems.
+The current version of DYNAMITE uses binary routines which are based on source code written in Fortran. It is therefore necessary to have a pre-installed Fortran compiler. The best-suited Fortran compiler differs with different operating systems.
 
 If you are using Linux, you will need ``ifort`` or ``gfortran`` (gcc/GNU Fortran).
 
@@ -118,9 +118,7 @@ returns its location, something like ``/opt/local/bin/gfortran``.
 Python
 ------
 
-The user is communicating with the Fortran source code via Python.
-The basic requirement for DYNAMITE is therefore a reasonably current version of Python
-(Python 3.10 or later due to the October 31, 2025 end of life of Python 3.9).
+As the DYNAMITE API is written in Python, the user interacts with DYNAMITE via Python scripts which handle the entire communication with the Fortran-based executables. The basic requirement for DYNAMITE is therefore a reasonably current version of Python. Supported Python versions include those that get at least security fixes (status 'security' in the official timeline at `<https://devguide.python.org/versions/>`_). Older versions may work, but are not guaranteed to.
 
 
 

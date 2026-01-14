@@ -14,21 +14,17 @@ Our members are organised into a development team (who are currently involved in
 Development team
 ================
 
-The development team are those currently involved in coding for DYNAMITE:
+The current development team at the University of Vienna:
 
-* Alice Zocchi (``alice.zocchi@univie.ac.at``), postdoc at Uni Wien. Research interests: internal dynamics of star clusters, formation and evolution of globular clusters, black holes in stellar systems.
+* Prashin Jethwa (``prashin.jethwa@univie.ac.at``), co-ordinating and coding for DYNAMITE. Research interests: galaxy structure and dynamics, dark matter, satellite and dwarf galaxies, probabilistic programming.
 
-* Prashin Jethwa (``prashin.jethwa@univie.ac.at``), postdoc at Uni Wien, co-ordinating and coding for DYNAMITE. Research interests: galaxy structure and dynamics, dark matter, satellite and dwarf galaxies, probabilistic programming.
+* Sabine Thater (``sabine.thater@univie.ac.at``), working on the development of DYNAMITE. In her research, she applies the axisymmetric and the triaxial Schwarzschild code to centres of galaxies.
 
-* Sabine Thater (``sabine.thater@univie.ac.at``), postdoc at Uni Wien working on the development of DYNAMITE. In her research, she applies the axisymmetric and the triaxial Schwarzschild code to centres of galaxies.
+* Alina Boecker (``alina.boecker@univie.ac.at``), co-ordinating and coding for DYNAMITE. Research interests: stellar populations of galaxies, integrated spectra, accretion histories, cosmological simulations.
 
-* Alina Boecker (``alina.boecker@univie.ac.at``), postdoc at Uni Wien, co-ordinating and coding for DYNAMITE. Research interests: stellar populations of galaxies, integrated spectra, accretion histories, cosmological simulations.
+* Anja Feldmeier-Krause (``anja.krause@univie.ac.at``), research interests include the formation and evolution of galaxy nuclei, in particular at the centre of the Milky Way, but also in other galaxies.
 
-* Anja Feldmeier-Krause (``anja.krause@univie.ac.at``), postdoc at Uni Wien. Research interests include the formation and evolution of galaxy nuclei, in particular at the centre of the Milky Way, but also in other galaxies.
-
-* Iris Breda (``iris.breda@univie.ac.at``), postdoc at Uni Wien. Research interests: formation and evolution of secular evolving galaxies such as disks and co-evolution of their stellar components.
-
-* Francisco Aros (``faros@iu.edu``), postdoc at Indiana University Bloomington, working on stellar dynamics of globular clusters and connecting simulations, dynamical models and observations in clusters with single and multiple populations.
+* Francisco Aros (``francisco.aros@univie.ac.at``), working on stellar dynamics of globular clusters and connecting simulations, dynamical models and observations in clusters with single and multiple populations.
 
 * Thomas Maindl (``thomas.maindl@univie.ac.at``, ``thomas.maindl@sdb.ltd``), scientific computing expert. Active contributor and adviser on DYNAMITE software architecture, class structure, coding, and building the code.
 
@@ -39,10 +35,10 @@ The development team are those currently involved in coding for DYNAMITE:
 Collaboration team
 ==================
 
-
 These members are/were involved in projects related to DYNAMITE, both scientific and computational.
 
 * Christine Ackerl
+* Iris Breda
 * Mark den Brok
 * Yuchen Ding
 * Katja Fahrion
@@ -61,6 +57,7 @@ These members are/were involved in projects related to DYNAMITE, both scientific
 * Giulia Santucci
 * Gauri Sharma
 * Léah Skusa
+* Peter Smith
 * Behzad Tahmasebzadeh
 * Eugene Vasiliev
 * Tadeja Versic
@@ -68,3 +65,4 @@ These members are/were involved in projects related to DYNAMITE, both scientific
 * Laura Watkins
 * Meng Yang
 * Ling Zhu
+* Alice Zocchi
