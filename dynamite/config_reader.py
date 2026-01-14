@@ -7,7 +7,8 @@ import math
 import logging
 import importlib
 import yaml
-import datetime
+
+from datetime import datetime, timezone
 
 import dynamite as dyn
 from dynamite import constants as const
@@ -137,26 +138,26 @@ class Configuration(object):
 
     Does some rudimentary checks for consistency.
     Builds the output directory tree if it does not exist already
-    (does not delete existing data).
+    (does not delete existing data unless reset_existing_output is True).
 
     Parameters
     ----------
     filename : string
         needs to refer to an existing file including path
-    reset_logging : bool
-        if False: use the calling application's logging settings
-        if True: set logging to Dynamite defaults
-    user_logfile : str or None or False
-        Name of the logfile (``.log`` will be appended).
+    reset_logging : bool, optional
+        If False: use the calling application's logging settings.
+        If True: set logging to Dynamite defaults. The default is False.
+    user_logfile : str or None or False, optional
+        Name of the logfile without extension (``.log`` will be appended).
         Special values: ``user_logfile=None`` will not create a logfile.
         ``user_logfile=False`` will create a UTC-timestamped logfile
         ``dynamiteYYMMDD-HHMMSSuuuuuu.log``.
         Will be ignored if ``reset_logging=False``.
         The default is ``user_logfile='dynamite'``.
-
-    reset_existing_output : bool
-        if False: do not touch existing data in the output directory tree
-        if True: rebuild the output directory tree and delete existing data
+    reset_existing_output : bool, optional
+        If False: do not touch existing data in the output directory tree.
+        If True: rebuild the output directory tree and delete existing data.
+        The default is False.
 
     Raises
     ------
@@ -1183,7 +1184,7 @@ class DynamiteLogging(object):
                                            logfile_formatter = None):
         if logfile is False: # as opposed to None...
             logfile = 'dynamite' +\
-                      datetime.datetime.utcnow().strftime('%Y%m%d-%H%M%S%f')
+                      datetime.now(timezone.utc).strftime('%Y%m%d-%H%M%S%f')
         if type(logfile) is str:
             logfile += '.log'
         logging.shutdown()
