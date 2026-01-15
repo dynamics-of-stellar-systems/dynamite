@@ -4,6 +4,8 @@
 Change Log
 ****************
 
+- Improvement: Added more troubleshooting to Making the Documentation docs.
+
 Version: 5.0
 ================
 
