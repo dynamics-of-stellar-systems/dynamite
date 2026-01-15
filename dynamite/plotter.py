@@ -2609,11 +2609,10 @@ class Plotter():
 
         return lambda_01, lambda_02
 
-
     def get_ellipse_cov(self, cov, mean=[0,0], sigmas=1):
         """
         Gets the (x,y) positions for the ellipse defined by the covariance
-        matrix 'cov' centered in 'mean' and size 'sigmas'.
+        matrix 'cov' centered at 'mean' and size 'sigmas'.
 
         Parameters
         ----------
@@ -2650,7 +2649,7 @@ class Plotter():
         """Draws an ellipse
 
         Draws an ellipse in the axis 'ax', defined by the covariance matrix
-        'cov' and centered in 'mean'
+        'cov' and centered at 'mean'
 
         Parameters
         ----------
@@ -2678,7 +2677,7 @@ class Plotter():
                     orb_idx=0,
                     sp_bin_idx=0,
                     show_1d=False,
-                    draw_vel_ellips=False,
+                    draw_vel_ellipse=False,
                     moments=[0,0,0,0,0],
                     sigmas=[1],
                     empty_bins=False,
@@ -2706,10 +2705,10 @@ class Plotter():
         show_1d : boolean, optional
             If True, plot the marginalized 1d histograms in the x and y
             directions in addition to the 2d histogram. The default is False.
-        draw_vel_ellips : boolean, optional
+        draw_vel_ellipse : boolean, optional
             If True, draw the velocity ellipsoid given the velocity moments
             provided by
-                moments = [mean_vx,mean_vy,sigma_x,sigma_y,cov_xy]
+                moments = [mean_vx, mean_vy, sigma_x, sigma_y, cov_xy]
             Calls the draw_ellipse_cov method to draw as many ellipses as the
             length of the 'sigmas' parameter. The default is False.
         moments : list of floats, optional
@@ -2772,7 +2771,7 @@ class Plotter():
 
             fig.subplots_adjust(wspace=0.0,hspace=0.0)
 
-            if draw_vel_ellips:
+            if draw_vel_ellipse:
                 aux_vx  = moments[0]
                 aux_vy  = moments[1]
                 aux_cov = np.array([[moments[2],moments[4]],[moments[4],moments[3]]])
@@ -2795,7 +2794,7 @@ class Plotter():
             axs.set_xlabel(r'$v_x$')
             axs.set_ylabel(r'$v_y$')
 
-            if draw_vel_ellips:
+            if draw_vel_ellipse:
                 aux_vx  = moments[0]
                 aux_vy  = moments[1]
                 aux_cov = np.array([[moments[2],moments[4]],[moments[4],moments[3]]])
