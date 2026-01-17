@@ -2681,6 +2681,7 @@ class Plotter():
                     moments=[0,0,0,0,0],
                     sigmas=[1],
                     empty_bins=False,
+                    stats=False,
                     figtype='.png'):
         """Plots a 2d histogram
 
@@ -2713,7 +2714,7 @@ class Plotter():
             length of the 'sigmas' parameter. The default is False.
         moments : list of floats, optional
             List of moments necessary to draw the velocity ellipsoid. Format:
-                moments = [mean_vx,mean_vy,sigma_x,sigma_y,covariance_xy]
+                moments = [mean_vx, mean_vy, sigma_x, sigma_y, covariance_xy]
             The default is [0,0,0,0,0].
             FIXME: fix to be able to estimate from the histogram.
         sigmas : list of float compatible values, optional
@@ -2724,6 +2725,10 @@ class Plotter():
         empty_bins : boolean, optional
             If True, it will identify the bins with zero counts and mark them
             in the figure with a magenta x. The default is False.
+        stats : boolean, optional
+            If True, it will compute and show the mean and sigma of the
+            distribution in both x and y directions inside the 1d histograms.
+            Has only an effect if show_1d=True. The default is False.
         figtype : str, optional
             File type extension to save the plot. The default is ``'.png'``.
 
@@ -2750,6 +2755,19 @@ class Plotter():
 
             axs_1dx.stairs(np.sum(data,axis=0),hist2d.xedg[0],color='k')
             axs_1dy.stairs(np.sum(data,axis=1),hist2d.xedg[1],orientation='horizontal',color='k')
+            if stats:
+                pm_mean = hist2d.get_mean()
+                pm_sigma = hist2d.get_sigma()
+                v_mean = tuple(round(p[orb_idx, sp_bin_idx]) for p in pm_mean)
+                v_sigma = tuple(round(p[orb_idx, sp_bin_idx]) for p in pm_sigma)
+                for ax_idx, ax in enumerate([axs_1dx, axs_1dy]):
+                    ax.text(0.99,
+                            0.99,
+                            f'${v_mean[ax_idx]}\\pm{v_sigma[ax_idx]}$',
+                            fontsize='small',
+                            va='top',
+                            ha='right',
+                            transform=ax.transAxes)
 
             aux_xlim = [min([hist2d.x[0][0],hist2d.x[1][0]]),max([hist2d.x[0][-1],hist2d.x[1][-1]])]
             aux_ylim = aux_xlim
