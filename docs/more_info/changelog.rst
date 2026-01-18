@@ -4,6 +4,8 @@
 Change Log
 ****************
 
+- Improvement: Changed the default BayesLOSVD histogram width and number of velocity bins to be consistent with the data (no oversampling by default).
+
 Version: 5.0
 ================
 
