@@ -465,8 +465,8 @@ class Decomposition:
             losvd_hist = dyn.kinematics.Histogram(losvd_histograms.xedg,
                                                   y=losvd)
             if v_sigma_option == 'moments':
-                v_mean = np.squeeze(losvd_hist.get_mean())
-                v_sigma = np.squeeze(losvd_hist.get_sigma())
+                v_mean, v_sigma = (np.squeeze(x) for x in
+                                   losvd_hist.get_sigma(get_mean=True))
             elif v_sigma_option == 'fit':
                 v_mean, v_sigma = losvd_hist.get_mean_sigma_gaussfit()
                 v_mean = np.squeeze(v_mean)
@@ -940,8 +940,8 @@ class Analysis:
             dyn.kinematics.Histogram(xedg=orblib.vel_histograms[kin_set].xedg,
                                      y=model_losvd)
         if v_sigma_option == 'moments':
-            v_mean = np.squeeze(model_losvd_hist.get_mean()) # from distr.
-            v_sigma = np.squeeze(model_losvd_hist.get_sigma()) # from distr.
+            v_mean, v_sigma = (np.squeeze(x) for x in
+                               model_losvd_hist.get_sigma(get_mean=True))
             v_sig_text = 'losvd moments'
         elif v_sigma_option == 'fit':
             v_mean, v_sigma = model_losvd_hist.get_mean_sigma_gaussfit()

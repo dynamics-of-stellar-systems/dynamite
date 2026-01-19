@@ -888,13 +888,25 @@ class Histogram(object):
             mean /= norm
         return mean
 
-    def get_sigma(self):
+    def get_sigma(self, get_mean=False):
         """Get the velocity dispersions
+
+        Parameters
+        ----------
+        get_mean : bool, optional
+            If True, return both the mean velocities and their dispersions.
+            This option has been included to avoid calculating the mean twice
+            when both means and dispersions are required. The default is False.
 
         Returns
         -------
-        array shape (n_orbits, n_apertures)
+        If get_mean=False:
+        array of shape (n_orbits, n_apertures)
             velocity dispersion of losvd
+
+        If get_mean=True:
+        tuple (mean, sigma) where mean and sigma are arrays of shape
+        (n_orbits, n_apertures)
 
         """
         na = np.newaxis
@@ -905,7 +917,10 @@ class Histogram(object):
         norm = self.get_normalisation()
         var /= norm
         sigma = var**0.5
-        return sigma
+        if get_mean:
+            return mean, sigma
+        else:
+            return sigma
 
     def get_mean_sigma_gaussfit(self):
         """Get the mean velocity and velocity dispersion from fitted Gaussians
@@ -918,8 +933,7 @@ class Histogram(object):
             velocity dispersion of losvd
 
         """
-        v_mean = self.get_mean() # starting values for fit
-        v_sigma = self.get_sigma() # starting values for fit
+        v_mean, v_sigma = self.get_sigma(get_mean=True) # fit starting values
         def gauss(x, a, mean, sigma):
             return a*np.exp(-(x-mean)**2/(2.*sigma**2))
         for orbit in range(self.y.shape[0]):
@@ -1032,13 +1046,25 @@ class Histogram2D(object):
             mean = tuple(m / norm for m in mean)
         return mean
 
-    def get_sigma(self):
+    def get_sigma(self, get_mean=False):
         """Get the velocity dispersions
+
+        Parameters
+        ----------
+        get_mean : bool, optional
+            If True, return both the mean velocities and their dispersions.
+            This option has been included to avoid calculating the mean twice
+            when both means and dispersions are required. The default is False.
 
         Returns
         -------
+        If get_mean=False:
         tuple of arrays, shape ((n_orbits, n_apertures),(n_orbits, n_apertures))
             velocity dispersion components
+
+        If get_mean=True:
+        tuple of tuples ((mean_x, mean_y), (sigma_x, sigma_y)) where the mean
+        and sigma components are each arrays of shape (n_orbits, n_apertures)
 
         """
         na = np.newaxis
@@ -1047,11 +1073,36 @@ class Histogram2D(object):
         var = (np.sum(v_minus_mu[0]**2. * np.sum(self.y*self.dx[1][na,na,:,na], axis=2) * self.dx[0][na,:,na], axis=1),
                np.sum(v_minus_mu[1]**2. * np.sum(self.y*self.dx[0][na,:,na,na], axis=1) * self.dx[1][na,:,na], axis=1))
         norm = self.get_normalisation()
-        # var /= norm
         var = tuple(v / norm for v in var)
-        # sigma = var**0.5
         sigma = tuple(v**0.5 for v in var)
-        return sigma
+        if get_mean:
+            return mean, sigma
+        else:
+            return sigma
+
+    def get_cov(self, i_orbit, i_ap):
+        """Get an orbits's and aperture's velocity distribution's covariance
+        matrix
+
+        Parameters
+        ----------
+        i_orbit : integer
+            The orbit index
+        i_ap : integer
+            The index of the aperture (spatial bin)
+
+        Returns
+        -------
+        array shape (2, 2)
+            The covariance matrix, holding the vx and vy variances in its
+            [0, 0] and [1, 1] cells and the covariance in its off-diagonal
+            elements.
+        """
+        vx_vy = [np.ravel(v) for v in np.meshgrid(*self.x, indexing='ij')]
+        cov = np.cov(*vx_vy,
+                     aweights=np.ravel(self.y[i_orbit, ..., i_ap]),
+                     bias=True)
+        return cov
 
     def get_mean_sigma_gaussfit(self):
         """Get the mean velocity and velocity dispersion from fitted Gaussians
@@ -1758,13 +1809,12 @@ class ProperMotions(Kinematics, data.Integrated):
         # mean = h2d_global.get_mean()
         sigma = h2d_global.get_sigma()
         dv = (h2d_global.dx[0][0], h2d_global.dx[1][0])
-        width = self.hist_width
         for xy, idx in zip(['vx', 'vy'], [0, 1]):
             dv_factor = dv[idx] / sigma[idx][0,0]
-            width_factor = width[idx] / sigma[idx][0,0]
+            width_factor = self.hist_width[idx] / sigma[idx][0,0]
             self.logger.info(f'{self.name}: {xy}_sigma={sigma[idx][0,0]}, '
                 f'd{xy}={dv[idx]}={dv_factor}*{xy}_sigma, '
-                f'{xy}_width={width[idx]}={width_factor}*{xy}_sigma')
+                f'{xy}_width={self.hist_width[idx]}={width_factor}*{xy}_sigma')
             if dv_factor > max_dv_factor:
                 self.logger.warning(f'{self.name}: d{xy} larger than '
                     'maximum recommended value of '

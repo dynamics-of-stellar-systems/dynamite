@@ -2756,8 +2756,7 @@ class Plotter():
             axs_1dx.stairs(np.sum(data,axis=0),hist2d.xedg[0],color='k')
             axs_1dy.stairs(np.sum(data,axis=1),hist2d.xedg[1],orientation='horizontal',color='k')
             if stats:
-                pm_mean = hist2d.get_mean()
-                pm_sigma = hist2d.get_sigma()
+                pm_mean, pm_sigma = hist2d.get_sigma(get_mean=True)
                 v_mean = tuple(round(p[orb_idx, sp_bin_idx]) for p in pm_mean)
                 v_sigma = tuple(round(p[orb_idx, sp_bin_idx]) for p in pm_sigma)
                 for ax_idx, ax in enumerate([axs_1dx, axs_1dy]):
