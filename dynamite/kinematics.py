@@ -1966,8 +1966,8 @@ class ProperMotions(Kinematics, data.Integrated):
             the vel_histograms data transformed for use by the weight solvers
 
         """
-        if np.allclose(np.array(self.as_histogram2d().x),
-                       np.array(vel_histograms.x)):
+        if np.allclose(self.as_histogram2d().x[0], vel_histograms.x[0]) and \
+           np.allclose(self.as_histogram2d().x[1], vel_histograms.x[1]):
             self.logger.debug('No rebinning necessary.')
             rebinned_vd = vel_histograms.y
         else:
