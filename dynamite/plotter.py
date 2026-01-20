@@ -2678,7 +2678,7 @@ class Plotter():
                     sp_bin_idx=0,
                     show_1d=False,
                     draw_vel_ellipse=False,
-                    moments=[0,0,0,0,0],
+                    moments='auto',
                     sigmas=[1],
                     empty_bins=False,
                     stats=False,
@@ -2710,17 +2710,18 @@ class Plotter():
             If True, draw the velocity ellipsoid given the velocity moments
             provided by
                 moments = [mean_vx, mean_vy, sigma_x, sigma_y, cov_xy]
+            or calculated from the histogram data.
             Calls the draw_ellipse_cov method to draw as many ellipses as the
             length of the 'sigmas' parameter. The default is False.
-        moments : list of floats, optional
+        moments : list of floats or 'auto', optional
             List of moments necessary to draw the velocity ellipsoid. Format:
                 moments = [mean_vx, mean_vy, sigma_x, sigma_y, covariance_xy]
-            The default is [0,0,0,0,0].
-            FIXME: fix to be able to estimate from the histogram.
+            If 'auto', then the moments are calculated from the histogram data.
+            The default is 'auto'.
         sigmas : list of float compatible values, optional
             Which sigmas to draw as an ellipse.
             Example: sigmas = [1,2,3] will draw 3 ellipses corresponding to
-            1,2 and 3 sigmas following the covariance matrix.
+            1, 2 and 3 sigmas following the covariance matrix.
             The default is [1].
         empty_bins : boolean, optional
             If True, it will identify the bins with zero counts and mark them
@@ -2751,8 +2752,6 @@ class Plotter():
             axs_1dx = fig.add_subplot(gsc[0,:3])
             axs_1dy = fig.add_subplot(gsc[1:,3])
 
-            axs.imshow(data,origin='lower',aspect='auto',extent=extent,cmap='Greys')
-
             axs_1dx.stairs(np.sum(data,axis=0),hist2d.xedg[0],color='k')
             axs_1dy.stairs(np.sum(data,axis=1),hist2d.xedg[1],orientation='horizontal',color='k')
             if stats:
@@ -2767,7 +2766,6 @@ class Plotter():
                             va='top',
                             ha='right',
                             transform=ax.transAxes)
-
             aux_xlim = [min([hist2d.x[0][0],hist2d.x[1][0]]),max([hist2d.x[0][-1],hist2d.x[1][-1]])]
             aux_ylim = aux_xlim
 
@@ -2783,46 +2781,37 @@ class Plotter():
             axs_1dy.xaxis.set_major_formatter(FormatStrFormatter(''))
             axs_1dy.yaxis.set_major_formatter(FormatStrFormatter(''))
 
-            axs.set_xlabel(r'$v_x$')
-            axs.set_ylabel(r'$v_y$')
-
             fig.subplots_adjust(wspace=0.0,hspace=0.0)
+        else:
+            axs = fig.add_subplot(111)
 
-            if draw_vel_ellipse:
-                aux_vx  = moments[0]
-                aux_vy  = moments[1]
-                aux_cov = np.array([[moments[2],moments[4]],[moments[4],moments[3]]])
+        axs.imshow(data,origin='lower',aspect='auto',extent=extent,cmap='Greys')
+        axs.set_xlabel(r'$v_x$')
+        axs.set_ylabel(r'$v_y$')
 
-                axs.axvline(x=aux_vx,ls=':',c='b',lw=1)
-                axs.axhline(y=aux_vy,ls=':',c='b',lw=1)
+        if draw_vel_ellipse:
+            if moments == 'auto':
+                mean = hist2d.get_mean()
+                cov = hist2d.get_cov(orb_idx, sp_bin_idx)
+                mean_vx, mean_vy = (m[orb_idx, sp_bin_idx] for m in mean)
+                sigma_vx, sigma_vy = np.diagonal(cov)
+                cov_xy = cov[0,1]
+                moments = [mean_vx, mean_vy, sigma_vx, sigma_vy, cov_xy]
+            aux_vx  = moments[0]
+            aux_vy  = moments[1]
+            aux_cov = np.array([[moments[2],moments[4]],[moments[4],moments[3]]])
 
+            axs.axvline(x=aux_vx,ls=':',c='b',lw=1)
+            axs.axhline(y=aux_vy,ls=':',c='b',lw=1)
+            if show_1d:
                 axs_1dx.axvline(x=aux_vx,ls=':',c='b',lw=1)
                 axs_1dy.axhline(y=aux_vy,ls=':',c='b',lw=1)
 
+            #axs.errorbar(aux_vx,aux_vy,xerr=aux_cov[0,0]**0.5,yerr=aux_cov[1,1]**0.5,fmt='or',lw=0.5)
 
-                #axs.errorbar(aux_vx,aux_vy,xerr=aux_cov[0,0]**0.5,yerr=aux_cov[1,1]**0.5,fmt='or',lw=0.5)
+            for k in range(len(sigmas)):
+                self.draw_ellipse_cov(axs,aux_cov,[aux_vx,aux_vy],sigmas[k],line='-',alpha=1/sigmas[k])
 
-                for k in range(len(sigmas)):
-                    self.draw_ellipse_cov(axs,aux_cov,[aux_vx,aux_vy],sigmas[k],line='-',alpha=1/sigmas[k])
-        else:
-            axs = fig.add_subplot(111)
-            axs.imshow(data,origin='lower',aspect='equal',extent=extent,cmap='Greys')
-
-            axs.set_xlabel(r'$v_x$')
-            axs.set_ylabel(r'$v_y$')
-
-            if draw_vel_ellipse:
-                aux_vx  = moments[0]
-                aux_vy  = moments[1]
-                aux_cov = np.array([[moments[2],moments[4]],[moments[4],moments[3]]])
-
-                axs.axvline(x=aux_vx,ls=':',c='b',lw=1)
-                axs.axhline(y=aux_vy,ls=':',c='b',lw=1)
-                #axs.errorbar(aux_vx,aux_vy,xerr=aux_cov[0,0]**0.5,yerr=aux_cov[1,1]**0.5,fmt='or',lw=0.5)
-
-                for k in range(len(sigmas)):
-                    self.draw_ellipse_cov(axs,aux_cov,[aux_vx,aux_vy],sigmas[k],line='-',alpha=1/sigmas[k])
-        #####
         #empty bins
         if empty_bins:
             idx_zero = np.where(data.T==0)  # shape=(n_bins_x, n_bins_y)
