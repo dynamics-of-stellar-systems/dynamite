@@ -1935,18 +1935,47 @@ class ProperMotions(Kinematics, data.Integrated):
             to the data velocity spacing
 
         """
-        r_n_orb, r_n_ap = (range(n) for n in vel_hist.y.shape[::3])
-        new_bins = np.stack(np.meshgrid(r_n_orb,
-                                        *self.as_histogram2d().x,
-                                        r_n_ap,
-                                        indexing='ij'),
-                            axis=-1)
-        interp = RegularGridInterpolator((r_n_orb, *vel_hist.x, r_n_ap),
-                                         vel_hist.y,
-                                         method='linear',
-                                         bounds_error=False,
-                                         fill_value=0)
-        return interp(new_bins)
+        h2d = self.as_histogram2d()
+        xedg = h2d.xedg
+        rebinned_y = np.zeros_like(vel_hist.y)
+        bins_x, bins_y = (range(len(x)) for x in h2d.x)
+        for i_x, i_y in [(i, j) for i in bins_x for j in bins_y
+                         if np.sum(vel_hist.y[:, i, j, :]) > 0]:
+            xmin, ymin = vel_hist.xedg[0][i_x], vel_hist.xedg[1][i_y]
+            xmax, ymax = vel_hist.xedg[0][i_x + 1], vel_hist.xedg[1][i_y + 1]
+            overlapping_bins = \
+                [(i, j) for i in bins_x for j in bins_y
+                 if xedg[0][i + 1] > xmin and xedg[0][i] <= xmax and
+                    xedg[1][j + 1] > ymin and xedg[1][j] <= ymax]
+            if len(overlapping_bins) == 0:
+                continue  ####################
+            bin_area = (xmax - xmin) * (ymax - ymin)
+            for i_x_rebin, i_y_rebin in overlapping_bins:
+                dx = min(xmax, xedg[0][i_x_rebin + 1]) \
+                        - max(xmin, xedg[0][i_x_rebin])
+                dy = min(ymax, xedg[1][i_y_rebin + 1]) \
+                        - max(ymin, xedg[1][i_y_rebin])
+                if dx < 0 or dy < 0:
+                    txt = f'Rebinning error: {dx=}, {dy=} must be >= 0.'
+                    self.logger.error(txt)
+                    raise ValueError(txt)
+                overlap = dx * dy / bin_area
+                rebinned_y[:, i_x_rebin, i_y_rebin, :] += \
+                    overlap * vel_hist.y[:, i_x, i_y, :]
+        return rebinned_y
+
+        # r_n_orb, r_n_ap = (range(n) for n in vel_hist.y.shape[::3])
+        # new_bins = np.stack(np.meshgrid(r_n_orb,
+        #                                 *self.as_histogram2d().x,
+        #                                 r_n_ap,
+        #                                 indexing='ij'),
+        #                     axis=-1)
+        # interp = RegularGridInterpolator((r_n_orb, *vel_hist.x, r_n_ap),
+        #                                  vel_hist.y,
+        #                                  method='linear',
+        #                                  bounds_error=False,
+        #                                  fill_value=0)
+        # return interp(new_bins)
 
     def transform_orblib_to_observables(self,
                                         vel_histograms,
