@@ -837,7 +837,8 @@ class Plotter():
         grid = dp_args['idx_bin_to_pix']
         angle_deg = dp_args['angle']
         self.logger.debug(f"Pixel grid dimension is {dx=}, "
-                          f"{len(x)=}, {len(y)=}.")
+                          f"{len(x)=}, {len(y)=}, "
+                          f"{min(x)=}, {max(x)=}, {min(y)=}, {max(y)=}.")
         self.logger.debug(f'PA: {angle_deg}')
 
         # Only select the pixels that have a bin associated with them.
@@ -870,8 +871,16 @@ class Plotter():
         right_margin = 27 * 0.03
         col_width = (27 - left_margin - right_margin) / 5
         fig_width = left_margin + col_width * n_col + right_margin
+        aspect_r = (max(y) - min(y)) / (max(x) - min(x))
+        if aspect_r < 0.25:  # only for 'edge-on-like' cases...
+            fig_height = 12 * aspect_r
+            fig_height += 40 / 72 + 6 * 10 / 72  # title + ax. ticks and labels
+            min_height = 3 * 120 / 72 + 40 / 72  # 3*text + title
+            fig_height = max(fig_height, min_height)
+        else:
+            fig_height = 12
         text_x = 0.015 * 27 / fig_width
-        fig = plt.figure(figsize=(fig_width, 12))
+        fig = plt.figure(figsize=(fig_width, fig_height))
         kwtext = dict(size=20, ha='center', va='center', rotation=90.)
         fig.text(text_x, 0.83, 'data', **kwtext)
         fig.text(text_x, 0.53, 'model', **kwtext)
