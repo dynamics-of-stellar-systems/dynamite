@@ -4,6 +4,7 @@
 Change Log
 ****************
 
+- Improvement: Added the optional `fig_height` keyword argument to plotting Gauss Hermite kinematic maps, adjusting the plot height (and aspect ratio).
 - Improvement: Added more troubleshooting to Making the Documentation docs.
 
 Version: 5.0
