@@ -1794,13 +1794,11 @@ class ProperMotions(Kinematics, data.Integrated):
             Minimum recommended value of width/sigma_global. Default is 5.
 
         """
-        bad_err = np.nonzero((self.data['PM_2dhist_sigma'] <= 0) &
-                             (self.data['PM_2dhist'] > 0))
+        bad_err = np.nonzero(self.data['PM_2dhist_sigma'] <= 0)
         if len(bad_err[0]) > 0:
-            txt = 'Proper motion uncertainties cannot be zero or negative '
-            txt += 'where there is data. Violating binID / vxbin / vybin '
-            txt += f'tuples: {list(zip(*bad_err))}. '
-            txt += 'Please provide nonzero errors.'
+            txt = 'Proper motion uncertainties cannot be zero or negative. '
+            txt += 'Violating binID / vxbin / vybin tuples: '
+            txt += f'{list(zip(*bad_err))}. Please provide nonzero errors.'
             self.logger.error(txt)
             raise ValueError(txt)
         h2d = self.as_histogram2d()
