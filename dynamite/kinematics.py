@@ -1762,8 +1762,9 @@ class ProperMotions(Kinematics, data.Integrated):
                         f'{len(self.data["nstarbin"][~nstarbin_match])} '\
                         'spatial bins.')
                 # Scale the 2d histograms the same way as LegacyFortran does:
-                # the PM_2dhist and PM_2dhist_sigma are normalised to 1.0
-                # when summed over all spatial and velocity bins.
+                # the PM_2dhist and PM_2dhist_sigma are normalised such that
+                # PM_2dhist summed over all spatial and velocity bins is
+                # equal to 1.0.
                 self.data['hist_scale'] = hist_scale
                 self.logger.info(f'{self.name}: Scaling PM_2dhist and ' \
                     'PM_2dhist_sigma by '
