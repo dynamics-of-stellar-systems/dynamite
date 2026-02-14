@@ -1247,8 +1247,9 @@ class BayesLOSVD(Kinematics, data.Integrated):
 
         Parameters
         ----------
-        outfile : string
-            Name of output file
+        outfile : string, optional
+            Name of output file. If None, overwrite the data file.
+            The default is None.
 
         """
         if outfile is None:
