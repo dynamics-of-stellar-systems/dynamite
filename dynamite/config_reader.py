@@ -428,9 +428,6 @@ class Configuration(object):
                         raise ValueError(text)
                     self.system.add_component(c)
 
-                # once all components added, put all kinematic_data in a list
-                self.system.get_all_kinematic_data()
-
             # add system parameters
 
             elif key == 'system_parameters':

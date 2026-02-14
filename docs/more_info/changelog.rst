@@ -4,6 +4,7 @@
 Change Log
 ****************
 
+- Bugfix: Fixed a bug that caused ``System.get_all_kinematic_data()`` to return only the first component's kinematic data.
 - Improvement: Added more troubleshooting to Making the Documentation docs.
 
 Version: 5.0
