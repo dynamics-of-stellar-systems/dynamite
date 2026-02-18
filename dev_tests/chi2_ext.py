@@ -49,9 +49,12 @@ class Chi2Ext:
             solving completes.
         """
         parset = dict(config.all_models.get_parset_from_row(row_id=model_id))
+        ml_vscale = config.all_models.get_model_velocity_scaling_factor(
+            model_id=model_id)
         self.logger.debug(f'This is chi2() and I got {parset=} from model '
                           f'{model_id} and the configuration for system '
-                          f'{config.params["system_attributes"]["name"]}.')
+                          f'{config.params["system_attributes"]["name"]}. '
+                          f'The velocity scaling factor is {ml_vscale}.')
         # ...
         # Code that calculates the external, additive chi2
         chi2 = 42.
