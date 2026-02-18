@@ -194,12 +194,12 @@ class AllModels(object):
                     row['weights_done'] = row['all_done'] = True
                     row['time_modified'] = str(np.datetime64('now', 'ms'))
                     self.logger.info(f'Row {i}: weights exist in {w_file}.')
-            # Calcualte chi2_ext if applicable
+            # Calculate chi2_ext if applicable
             if self.system.has_chi2_ext and np.isnan(row['chi2_ext_added']) \
                and row['weights_done']:
                 ext_chi2_comp = self.system.get_unique_ext_chi2_component()
-                parset = self.get_parset_from_row(i)
-                chi2_ext = ext_chi2_comp.get_chi2(dict(parset), self.config)
+                chi2_ext = ext_chi2_comp.get_chi2(model_id=i,
+                                                  config=self.config)
                 table_modified = True
                 row['chi2'] = row['chi2'] + chi2_ext
                 row['kinchi2'] = row['kinchi2'] + chi2_ext
@@ -480,7 +480,7 @@ class AllModels(object):
             a list of ``dyn.parspace.Parameter`` objects
 
         """
-        parset = self.table[row_id][self.config.parspace.par_names]
+        parset = self.table[self.config.parspace.par_names][row_id]
         return parset
 
     def get_model_from_parset(self, parset):
