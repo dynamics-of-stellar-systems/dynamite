@@ -385,6 +385,11 @@ class Plotter():
             Gauss Hermite and defines the velocity dispersion colorbar limits.
             The limits are then [s_min_max[0],s_min_max[1]]. Not relevant for
             other values of cbar_lims nor for BayesLOSVD kinematics.
+        fig_height : float or None, optional
+            Gauss Hermite kinematics only: Sets the plot height in inches (the
+            width is always set automatically). If None, the plot height is
+            set to 12 inches if the aspect ratio y/x >= 0.25 and automatically
+            less otherwise. The default is None.
 
         Raises
         ------
@@ -732,7 +737,8 @@ class Plotter():
                                        v_sigma_option='fit',
                                        cbar_lims='data',
                                        v_max=None,
-                                       s_min_max=None):
+                                       s_min_max=None,
+                                       fig_height=None):
         v_sigma_options = ['moments', 'fit']
         if v_sigma_option not in v_sigma_options:
             text = 'v_sigma_option must be in {v_sigma_options}, ' \
@@ -871,14 +877,15 @@ class Plotter():
         right_margin = 27 * 0.03
         col_width = (27 - left_margin - right_margin) / 5
         fig_width = left_margin + col_width * n_col + right_margin
-        aspect_r = (max(y) - min(y)) / (max(x) - min(x))
-        if aspect_r < 0.25:  # only for 'edge-on-like' cases...
-            fig_height = 12 * aspect_r
-            fig_height += 40 / 72 + 6 * 10 / 72  # title + ax. ticks and labels
-            min_height = 3 * 120 / 72 + 40 / 72  # 3*text + title
-            fig_height = max(fig_height, min_height)
-        else:
-            fig_height = 12
+        if fig_height is None:
+            aspect_r = (max(y) - min(y)) / (max(x) - min(x))
+            if aspect_r < 0.25:  # only for 'edge-on-like' cases...
+                fig_height = 12 * aspect_r
+                fig_height += 40 / 72 + 6 * 10 / 72  # title+ax. ticks & labels
+                min_height = 3 * 120 / 72 + 40 / 72  # 3*text + title
+                fig_height = max(fig_height, min_height)
+            else:
+                fig_height = 12
         text_x = 0.015 * 27 / fig_width
         fig = plt.figure(figsize=(fig_width, fig_height))
         kwtext = dict(size=20, ha='center', va='center', rotation=90.)
