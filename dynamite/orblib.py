@@ -960,8 +960,7 @@ class LegacyOrbitLibrary(OrbitLibrary):
             # kin_idx_per_ap[i] = N <--> aperture i is from kinematic set N
             kin_idx_per_ap = [np.zeros(n_apertures[i], dtype=int) + i
                               for i in range(n_kins)]
-            kin_idx_per_ap = np.concatenate(kin_idx_per_ap)
-            kin_idx_per_ap = np.array(kin_idx_per_ap, dtype=int)
+            kin_idx_per_ap = np.concatenate(kin_idx_per_ap)  # is of type int
             # below we loop i_ap from 1-n_total_apertures but will need the
             # index of i_ap for the relevant kinematic set:
             # we use `idx_ap_reset` to do this
@@ -1055,8 +1054,7 @@ class LegacyOrbitLibrary(OrbitLibrary):
                         v = (vedg[1:] + vedg[:-1])/2.
                         v_cent = v[idx_center]
                         vedg -= v_cent
-                        vvv = dyn_kin.Histogram(xedg=vedg, y=velhist)
-                        velhists += [vvv]
+                        velhists += [dyn_kin.Histogram(xedg=vedg, y=velhist)]
                     elif hist_dim[kin_idx] == 2:
                         width = np.array(hist_widths[kin_idx])
                         bins = np.array(hist_bins[kin_idx], dtype=int)
@@ -1069,8 +1067,7 @@ class LegacyOrbitLibrary(OrbitLibrary):
                                             stop=width[1] / 2,
                                             num=bins[1] + 1,
                                             endpoint=True))
-                        vvv = dyn_kin.Histogram2D(xedg=vedg, y=velhist)
-                        velhists += [vvv]
+                        velhists += dyn_kin.Histogram2D(xedg=vedg, y=velhist)
                     else:
                         error_msg = 'Invalid histogram dimension.'
                         self.logger.error(error_msg)    # should never happen
@@ -1250,7 +1247,6 @@ class LegacyOrbitLibrary(OrbitLibrary):
                 populations data
 
         """
-        n_kins = len(self.stars.kinematic_data)
         n_pops = len(self.stars.population_data) if pops else 0
 
         # TODO: check if this ordering is compatible with weights read in by
@@ -1286,26 +1282,22 @@ class LegacyOrbitLibrary(OrbitLibrary):
             raise
 
         # combine orblibs
-        orblib = []
-        for (t0, b0) in zip(tube_orblib, box_orblib):
-            orblib.append(self.combine_orblibs(t0, b0))
+        self.vel_histograms = [self.combine_orblibs(t, b)
+                               for t, b in zip(tube_orblib, box_orblib)]
         # combine density_3D arrays
         if n_pops == 0:
             density_3D = np.vstack((tube_density_3D, box_density_3D))
-            for i in range(n_kins):
-                orblib[i].scale_x_values(self.velocity_scaling_factor)
-            self.vel_histograms = orblib
+            for hist in self.vel_histograms:
+                hist.scale_x_values(self.velocity_scaling_factor)
             self.intrinsic_masses = density_3D
-            self.n_orbs = orblib[0].y.shape[0] if n_kins > 0 else 0
+            self.n_orbs = self.vel_histograms[0].y.shape[0]
             proj_mass = []
-            for kin in range(n_kins):
-                if self.vel_histograms[kin].y.ndim == 3:  # 1D histograms
-                    proj_mass.append(np.sum(self.vel_histograms[kin].y, 1))
-                else:  # 2D histograms
-                    proj_mass.append(np.sum(self.vel_histograms[kin].y, (1,2)))
+            for hist in self.vel_histograms:
+                axes = 1 if hist.y.ndim == 3 else (1, 2)  # 1D or 2D histograms
+                proj_mass.append(np.sum(hist.y, axis=axes))
             self.projected_masses = proj_mass
         else:  # note: pops cannot share apertures with 2d histogram kins
-            proj_mass = [np.sum(orblib[i].y,1) for i in range(n_pops)]
+            proj_mass = [np.sum(hist.y, axis=1) for hist in self.vel_histograms]
             self.pops_projected_masses = proj_mass
 
     def read_orbit_intrinsic_moments(self, cache=True):
