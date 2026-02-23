@@ -1067,7 +1067,7 @@ class LegacyOrbitLibrary(OrbitLibrary):
                                             stop=width[1] / 2,
                                             num=bins[1] + 1,
                                             endpoint=True))
-                        velhists += dyn_kin.Histogram2D(xedg=vedg, y=velhist)
+                        velhists += [dyn_kin.Histogram2D(xedg=vedg, y=velhist)]
                     else:
                         error_msg = 'Invalid histogram dimension.'
                         self.logger.error(error_msg)    # should never happen
