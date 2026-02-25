@@ -909,30 +909,36 @@ class Histogram(object):
             return a*np.exp(-(x-mean)**2/(2.*sigma**2))
         for orbit in range(self.y.shape[0]):
             for aperture in range(self.y.shape[-1]):
-                err_msg=f'{orbit=}, {aperture=}: mean or sigma is nan.'
+                err_msg=f'{orbit=}, {aperture=}: ' \
+                        f'{v_mean[orbit,aperture]=}, ' \
+                        f'{v_sigma[orbit,aperture]=}.'
                 if not (np.isnan(v_mean[orbit,aperture]) or
                         np.isnan(v_sigma[orbit,aperture])): # nan?
-                    p_initial = [1/(v_sigma[orbit,aperture]*np.sqrt(2*np.pi)),
-                                 v_mean[orbit,aperture],
-                                 v_sigma[orbit,aperture]]
-                    try:
-                        p_opt, _ = curve_fit(gauss,
-                                             self.x,
-                                             self.y[orbit,:,aperture],
-                                             p0=p_initial,
-                                             method='trf')
-                    except:
-                        self.logger.warning(f'{err_msg} Gaussfit failed. '
-                            'Check data. Histogram moments '
-                            f'suggested mean={v_mean[orbit,aperture]}, '
-                            f'sigma={v_sigma[orbit,aperture]}.')
-                        v_mean[orbit,aperture] = np.nan # overwrite v_mean
-                        v_sigma[orbit,aperture] = np.nan # overwrite v_sigma
+                    if v_sigma[orbit,aperture] > 0: # positive sigma?
+                        p_initial = \
+                            [1 / (v_sigma[orbit,aperture] * np.sqrt(2*np.pi)),
+                             v_mean[orbit,aperture],
+                             v_sigma[orbit,aperture]]
+                        try:
+                            p_opt, _ = curve_fit(gauss,
+                                                self.x,
+                                                self.y[orbit,:,aperture],
+                                                p0=p_initial,
+                                                method='trf')
+                        except:
+                            self.logger.warning(f'{err_msg} Gaussfit failed. '
+                                                'Will use mean and sigma from '
+                                                'histogram moments.')
+                            # v_mean[orbit,aperture] = np.nan # update v_mean
+                            # v_sigma[orbit,aperture] = np.nan # update v_sigma
+                        else:
+                            v_mean[orbit,aperture] = p_opt[1] # update v_mean
+                            v_sigma[orbit,aperture] = p_opt[2] # update v_sigma
                     else:
-                        v_mean[orbit,aperture] = p_opt[1] # overwrite v_mean
-                        v_sigma[orbit,aperture] = p_opt[2] # overwrite v_sigma
+                        self.logger.info(f'{err_msg} Will use mean and sigma '
+                           'from histogram moments due to non-positive sigma.')
                 else:
-                    self.logger.info(f'{err_msg}')
+                    self.logger.debug(f'{err_msg}')
         return v_mean, v_sigma
 
 class BayesLOSVD(Kinematics, data.Integrated):
