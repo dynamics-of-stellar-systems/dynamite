@@ -12,7 +12,7 @@ See [the documentation](https://dynamics.univie.ac.at/dynamite_docs/getting_star
 2. Compile the Fortran programs
    - ``make all`` in the directory ``legacy_fortran/``
 3. Install DYNAMITE Python package
-   - ``python setup.py install`` in the root directory
+   - ``python -m pip install .`` in the root directory (note the dot at the end of the line)
 
 ## Usage
 
@@ -20,15 +20,7 @@ See [the documentation](https://dynamics.univie.ac.at/dynamite_docs/getting_star
 import dynamite as dyn
 
 c = dyn.config_reader.Configuration('my_config.yaml') # read configuration
-parset = c.parspace.get_parset() # extract a parameter set from configuration
-model = dyn.model.Model(
-  system=c.system,
-  settings=c.settings,
-  parspace=c.parspace,
-  parset=parset)          # make a Schwarzschild model
-model.setup_directories() # make directory tree
-model.get_orblib()        # make an orbit library
-model.get_weights()       # find orbital weights
+_ = dyn.model_iterator.ModelIterator(c) # populate the all_models.ecsv table
 ```
 
 ## License

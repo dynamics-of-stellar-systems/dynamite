@@ -35,7 +35,7 @@ legacy_fortran.extend([f'../{e}' for e in additional_ex if os.path.isfile(e)])
 setuptools.setup(
     name="dynamite",
     version=version,
-    author="Prashin Jethwa, Sabine Thater, Thomas Maindl, Alice Zocchi, Edward Lilley",
+    author="DYNAMITE Core Team (Vienna)",
     author_email="prashin.jethwa@univie.ac.at",
     description="dynamics, age and metallicity indicators tracing evolution",
     long_description=long_description,
@@ -44,13 +44,13 @@ setuptools.setup(
     packages=setuptools.find_packages(),
     classifiers=[
         "Programming Language :: Python :: 3",
-        "Programming Language :: Python :: 3.8",
+        "Programming Language :: Python :: 3.10",
     ],
     project_urls={
         "Source": "https://github.com/dynamics-of-stellar-systems/dynamite/",
         "Documentation": "https://dynamics.univie.ac.at/dynamite_docs/index.html",
     },
-    python_requires=">=3.8",
+    python_requires=">=3.10",
     # use the already parsed requirements from requirements.txt
     install_requires=required,
     package_data={

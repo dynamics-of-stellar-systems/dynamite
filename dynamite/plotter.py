@@ -385,6 +385,10 @@ class Plotter():
             Gauss Hermite and defines the velocity dispersion colorbar limits.
             The limits are then [s_min_max[0],s_min_max[1]]. Not relevant for
             other values of cbar_lims nor for BayesLOSVD kinematics.
+        fig_height : float or None, optional
+            Gauss Hermite kinematics only: Sets the plot height in inches (the
+            width is always set automatically). If None, the plot height is
+            12 inches. The default is None.
 
         Raises
         ------
@@ -731,7 +735,8 @@ class Plotter():
                                        v_sigma_option='fit',
                                        cbar_lims='data',
                                        v_max=None,
-                                       s_min_max=None):
+                                       s_min_max=None,
+                                       fig_height=None):
         v_sigma_options = ['moments', 'fit']
         if v_sigma_option not in v_sigma_options:
             text = 'v_sigma_option must be in {v_sigma_options}, ' \
@@ -870,7 +875,9 @@ class Plotter():
         col_width = (27 - left_margin - right_margin) / 5
         fig_width = left_margin + col_width * n_col + right_margin
         text_x = 0.015 * 27 / fig_width
-        fig = plt.figure(figsize=(fig_width, 12))
+        if fig_height is None:
+            fig_height = 12
+        fig = plt.figure(figsize=(fig_width, fig_height))
         kwtext = dict(size=20, ha='center', va='center', rotation=90.)
         fig.text(text_x, 0.83, 'data', **kwtext)
         fig.text(text_x, 0.53, 'model', **kwtext)
@@ -1023,14 +1030,15 @@ class Plotter():
         phi = incl[1]
         psi = incl[2]
 
-        pintr, qintr = self.triax_tpp2pqu(theta=theta, phi=phi, psi=psi,
-                                          qobs=qobs_pot, psi_off=psi_off,
-                                          res=1)[:2]
+        pintr, qintr, uintr = self.triax_tpp2pqu(theta=theta, phi=phi, psi=psi,
+                                                qobs=qobs_pot, psi_off=psi_off,
+                                                res=1)
         p_pot = np.copy(pintr)
         q_pot = np.copy(qintr)
         sig_pot_pc = np.copy(sigobs_pot_pc)
-        dens_pot_pc = surf_pot_pc*qobs_pot/(np.sqrt(2.*np.pi)*
-                        sig_pot_pc*q_pot*p_pot)
+        sig_intr_pc = sig_pot_pc / uintr
+        dens_pot_pc = surf_pot_pc * (2 * np.pi * sig_pot_pc**2*qobs_pot)/\
+                ((sig_intr_pc*np.sqrt(2*np.pi))**3*q_pot*p_pot)
 
         nr = len(r_pc)
         res=np.zeros(nr)
@@ -1039,7 +1047,7 @@ class Plotter():
         for i in range(nr):
             Ri=r_pc[i]
 
-            Fxyparm=np.vstack((dens_pot_pc, sig_pot_pc,q_pot.T,
+            Fxyparm=np.vstack((dens_pot_pc, sig_intr_pc, q_pot.T,
                                p_pot.T, np.zeros(ng) + Ri))
             mi2=scipy.integrate.dblquad(self.intg2_trimge_intrmass,
                                         0.0, np.pi/2.0,

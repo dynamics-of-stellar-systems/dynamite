@@ -4,7 +4,16 @@
 Change Log
 ****************
 
-- New feature: support for adding externally calculated chi2 values for components not interacting with DYNAMITE components (still in beta)
+- Improvement: Avoid confusing warnings when creating decomposition plots.
+- Improvement: Added the optional `fig_height` keyword argument to plotting Gauss Hermite kinematic maps, adjusting the plot height (and aspect ratio).
+- Bugfix: Fixed a bug that caused ``System.get_all_kinematic_data()`` to return only the first component's kinematic data.
+- Improvement: Added more troubleshooting to Making the Documentation docs.
+
+Version: 5.0
+================
+
+- Bugfix: Avoid crash when Decomposition class is instantiated with model argument other than None.
+- New feature: Support adding externally calculated chi2 values for components not interacting with DYNAMITE components (still in beta).
 - Improvement: The unused but mandatory component attribute ``contributes_to_potential`` has been removed and DEPRECATED.
 - Bugfix: Fixed a possible crash in orbit integration (in triaxmassbin) with multiple kinematics.
 - New feature: Added R_max vs z_max diagrams to the Plotter class (method: rmax_zmax_plot).

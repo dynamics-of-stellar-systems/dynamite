@@ -338,7 +338,7 @@ class System(object):
         all_kinematics = []
         for component in self.cmp_list:
             all_kinematics += component.kinematic_data
-            return all_kinematics
+        return all_kinematics
 
     def is_bar_disk_system(self):
         """is_bar_disk_system

@@ -1,8 +1,21 @@
 # Compiled source #
 ###################
+
+# Exclude anywhere #
 .DS_Store
-.venv
-dynamite/__pycache__
+.venv/
+__pycache__/
+.ipynb_checkpoints/
+.vscode/
+.spyproject/
+*.log
+
+# Exclude on top-level #
+/build/
+/dist/
+/dynamite.egg-info/
+
+# GALAHAD Fortran library files #
 legacy_fortran/galahad-2.3/bin/sys/*
 legacy_fortran/galahad-2.3/makefiles/*
 legacy_fortran/galahad-2.3/modules/*
@@ -13,12 +26,12 @@ legacy_fortran/galahad-2.3/versions/*
 !legacy_fortran/galahad-2.3/modules/.gitkeep
 !legacy_fortran/galahad-2.3/objects/.gitkeep
 !legacy_fortran/galahad-2.3/versions/.gitkeep
+
+# Legacy Fortran files #
 legacy_fortran/*.mod
 legacy_fortran/*.o
-legacy_fortran/modelgen
 legacy_fortran/orbitstart
 legacy_fortran/orbitstart_bar
-legacy_fortran/orblib
 legacy_fortran/orblib_bar
 legacy_fortran/orblib_new_mirror
 legacy_fortran/triaxmass
@@ -28,44 +41,23 @@ legacy_fortran/triaxmassbin_bar
 legacy_fortran/triaxnnls_CRcut
 legacy_fortran/triaxnnls_noCRcut
 legacy_fortran/triaxnnls_bar
-legacy_fortran/.DS_Store
-.spyproject
-dev_tests/.DS_Store
-dev_tests/output_*.txt
-dev_tests/__pycache__
+
+# Dynamite dev_tests #
 dev_tests/NGC6278_output/*
 dev_tests/bartest_output
-dev_tests/FCC047_2kin
-dev_tests/GAMA30890
-dev_tests/test_validate_pqu_output
 dev_tests/test_all
-dev_tests/bayes_losvd/IC0719_input/*
-dev_tests/bayes_losvd/IC0719_output/*
-dev_tests/bayes_losvd/.ipynb_checkpoints/*
+dev_tests/bayes_losvd/IC0719_input/
+dev_tests/bayes_losvd/IC0719_output/
 dev_tests/Data_prep/Dyn_input/ATLAS3D/*
 dev_tests/Data_prep/Dyn_input/CALIFA/*
+
+# Documentation build files #
 docs/_build/
-docs/.DS_Store
-docs/tutorial_notebooks/.DS_Store
-docs/tutorial_notebooks/.ipynb_checkpoints/*
 !docs/tutorial_notebooks/NGC6278_input/dynamite_input/mge.ecsv
 docs/tutorial_notebooks/NGC6278_input/dynamite_input/*
-docs/tutorial_notebooks/NGC4570_input/dynamite_input/*
-docs/tutorial_notebooks/NGC6278_output/*
-docs/tutorial_notebooks/NGC4550_output/*
+docs/tutorial_notebooks/NGC4570_input/dynamite_input/
+docs/tutorial_notebooks/NGC6278_output/
+docs/tutorial_notebooks/NGC4550_output/
 !docs/tutorial_notebooks/NGC4550_input/dynamite_input/mge.ecsv
 docs/tutorial_notebooks/NGC4550_input/dynamite_input/*
-docs/tutorial_notebooks/FCC167_output
-plotbin4dyn/.DS_Store
-plotbin4dyn/__pycache__/*
-build/*
-dist/*
-dynamite.egg-info/*
-list_of_created_files.txt
-ran1_nr
-rantest
-rantest.f90-e
-*.log
-dev_tests/.ipynb_checkpoints
-dev_tests/FCC167/output
-dev_tests/propermotions
+docs/tutorial_notebooks/FCC167_output/
