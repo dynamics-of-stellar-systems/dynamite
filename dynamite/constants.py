@@ -1,6 +1,6 @@
 import numpy as np
 
-H0 = 73 # km/s/Mpc, used in Fortran
+H0 = 73. # km/s/Mpc, used in Fortran
 
 GRAV_CONST_KM = 6.67428e-11*1.98892e30/1e9
 PARSEC_KM = 1.4959787068e8*(648.000e3/np.pi)

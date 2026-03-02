@@ -585,33 +585,6 @@ class VisibleComponent(Component):
 
         return 2 * np.pi * np.sum(mgeI * mgeq * sigobs_pc ** 2) * parset['ml']
 
-# UNUSED code start
-    # def intrin_spher(self, distance, parset):
-    #     totalmass = self.get_M_stars_tot(distance, parset)
-    #     mge = self.mge_pot
-    #     ngauss_mge = len(mge.data)
-
-    #     quad_nr = 10 # size of (r, th, ph) grid, hardcoded in Fortran
-    #     quad_nth = 6
-    #     quad_nph = 6
-
-    #     quad_grid = np.zeros([quad_nph, quad_nth, quad_nr])
-    #     quad_lr = np.zeros(quad_nr + 1)
-    #     quad_lth = np.zeros(quad_nth + 1)
-    #     quad_lph = np.zeros(quad_nph + 1)
-
-    # def intrin_radii(self, distance, parset, orblib_settings):
-    #     totalmass = self.get_M_stars_tot(distance, parset)
-    #     mge = self.mge_pot
-    #     ngauss_mge = len(mge.data)
-    #     qobs = mge.data['q']
-    #     rlogmin = orblib_settings['logrmin']
-    #     rlogmax = orblib_settings['logrmax']
-    #     orbit_dithering = orblib_settings['dithering']
-    #     nener = orblib_settings['nE']
-    #     pintr, qintr, sigintr_km, dens = self.triax_deproj()
-# UNUSED code end
-
     def validate(self, **kwds):
         super().validate(**kwds)
         if not (isinstance(self.mge_pot, mge.MGE) and \
@@ -841,7 +814,7 @@ class TriaxialVisibleComponent(VisibleComponent):
         return text
 
     @staticmethod
-    def triax_tpp2pqu(theta,phi,psi,qobs_pot,psi_off):
+    def triax_tpp2pqu(theta, phi, psi, qobs_pot, psi_off):
         """
         transform viewing angles to axis ratios
         """
