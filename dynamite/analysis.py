@@ -157,6 +157,9 @@ class Decomposition:
                     dpi=100):
         """ Generate decomposition plots.
 
+        The plots are written to the plots directory, the underlying data as
+        .ecsv astropy tables into the model directory.
+
         Parameters
         ----------
         xlim : float or None, optional
