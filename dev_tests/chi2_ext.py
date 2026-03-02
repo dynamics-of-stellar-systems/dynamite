@@ -30,19 +30,16 @@ class Chi2Ext:
         # DYNAMITE run when reading the config file
         #...
 
-    def chi2(self, parset):
+    def chi2(self, model_id, config):
         """Method calculating chi2 which is added to all DYNAMITE chi2 values
 
         The method name is give in the DYNAMITE config file (ext_chi2).
 
         Parameters
         ----------
-        parset : dict
-            A dictionary {component_parameter : value,...} holding all
-            DYNAMITE physical system parameters of the current model. The
-            parameters of the external component (e.g., gas without influence
-            on the potential) are named in the DYNAMITE config file in the
-            chi2_ext parameters section and have the suffix "-chi2_ext".
+        model_id : int
+            Model ID in the all_models table.
+        config : a ``dyn.config_reader.Configuration`` object
 
         Returns
         -------
@@ -51,7 +48,16 @@ class Chi2Ext:
             "chi2", "kinchi2", and "kinmapchi2" values after DYNAMITE weight
             solving completes.
         """
-        self.logger.debug(f'This is chi2() and I got {parset=}.')
+        system = config.system
+        system_components = [c.name for c in system.cmp_list]
+        parset = dict(config.all_models.get_parset_from_row(row_id=model_id))
+        ml_vscale = config.all_models.get_model_velocity_scaling_factor(
+            model_id=model_id)
+        self.logger.debug(f'This is chi2() and I got {parset=} from model '
+                          f'{model_id} and the configuration for system '
+                          f'{config.params["system_attributes"]["name"]} with '
+                          f'components {system_components}. '
+                          f'The velocity scaling factor is {ml_vscale}.')
         # ...
         # Code that calculates the external, additive chi2
         chi2 = 42.

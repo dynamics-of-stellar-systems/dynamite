@@ -2,12 +2,11 @@
 # e.g. the stellar light, dark matter, black hole, globular clusters
 
 import numpy as np
-from scipy import special
-
-# some tricks to add the current path to sys.path (so the imports below work)
+from scipy import special, integrate
 
 import logging
 
+import dynamite as dyn
 from dynamite import mges as mge
 
 class System(object):
@@ -339,7 +338,7 @@ class System(object):
         all_kinematics = []
         for component in self.cmp_list:
             all_kinematics += component.kinematic_data
-            return all_kinematics
+        return all_kinematics
 
     def is_bar_disk_system(self):
         """is_bar_disk_system
@@ -586,31 +585,6 @@ class VisibleComponent(Component):
 
         return 2 * np.pi * np.sum(mgeI * mgeq * sigobs_pc ** 2) * parset['ml']
 
-    def intrin_spher(self, distance, parset):
-        totalmass = self.get_M_stars_tot(distance, parset)
-        mge = self.mge_pot
-        ngauss_mge = len(mge.data)
-
-        quad_nr = 10 # size of (r, th, ph) grid, hardcoded in Fortran
-        quad_nth = 6
-        quad_nph = 6
-
-        quad_grid = np.zeros([quad_nph, quad_nth, quad_nr])
-        quad_lr = np.zeros(quad_nr + 1)
-        quad_lth = np.zeros(quad_nth + 1)
-        quad_lph = np.zeros(quad_nph + 1)
-
-    def intrin_radii(self, distance, parset, orblib_settings):
-        totalmass = self.get_M_stars_tot(distance, parset)
-        mge = self.mge_pot
-        ngauss_mge = len(mge.data)
-        qobs = mge.data['q']
-        rlogmin = orblib_settings['logrmin']
-        rlogmax = orblib_settings['logrmax']
-        orbit_dithering = orblib_settings['dithering']
-        nener = orblib_settings['nE']
-        pintr, qintr, sigintr_km, dens = self.triax_deproj()
-
     def validate(self, **kwds):
         super().validate(**kwds)
         if not (isinstance(self.mge_pot, mge.MGE) and \
@@ -839,6 +813,192 @@ class TriaxialVisibleComponent(VisibleComponent):
             text += f'\t\t value : {val:.2f}\n'
         return text
 
+    @staticmethod
+    def triax_tpp2pqu(theta, phi, psi, qobs_pot, psi_off):
+        """
+        transform viewing angles to axis ratios
+        """
+        theta_view = np.deg2rad(theta)
+        phi_view   = np.deg2rad(phi)
+        psi_obs    = np.deg2rad(psi + psi_off)
+
+        costh = np.cos(theta_view)
+        tanph = np.tan(phi_view)
+        if np.abs(costh) < 1.0e-6:
+            print(
+                "triax_tpp2pqu: |cos(theta)| too small -> invalid geometry.")
+            return np.nan, np.nan, np.nan
+
+        if np.abs(tanph) < 1.0e-6:
+            print(
+                "triax_tpp2pqu: |tan(phi)| too small -> invalid geometry.")
+            return np.nan, np.nan, np.nan
+
+        secth = 1.0 / costh
+        cotph = 1.0 / tanph
+
+        delp = 1.0 - qobs_pot**2
+
+        nom1minq2 = delp * (
+            2.0 * np.cos(2.0 * psi_obs) + np.sin(2.0 * psi_obs) *
+            (secth * cotph - np.cos(theta_view) * np.tan(phi_view)))
+        nomp2minq2 = delp * (
+            2.0 * np.cos(2.0 * psi_obs) + np.sin(2.0 * psi_obs) *
+            (np.cos(theta_view) * cotph - secth * np.tan(phi_view)))
+        denom = 2.0 * np.sin(theta_view)**2 * (
+            delp * np.cos(psi_obs) *
+            (np.cos(psi_obs) + secth * cotph * np.sin(psi_obs)) - 1.0)
+
+        if np.max(np.abs(denom)) < 1.0e-6:
+            print("triax_tpp2pqu: denominator ~ 0 -> invalid geometry.")
+            return np.nan, np.nan, np.nan
+
+        # These are temporary values of the squared intrinsic axial
+        # ratios p^2 and q^2
+        qintr_sq = (1.0 - nom1minq2 / denom)
+        pintr_sq = (qintr_sq + nomp2minq2 / denom)
+
+        # Quick check to see if we are not going to take the sqrt of
+        # a negative number.
+        if (np.min(qintr_sq) < 1.0e-6) or (np.min(pintr_sq) <= 1.0e-6):
+            print(
+                "triax_tpp2pqu: negative or too small intrinsic axis ratio squared "
+                f"(min(q^2)={np.min(qintr_sq)}, min(p^2)={np.min(pintr_sq)})."
+            )
+            return np.nan, np.nan, np.nan
+
+        # intrinsic axial ratios p and q
+        qintr = np.sqrt(qintr_sq)
+        pintr = np.sqrt(pintr_sq)
+
+        # triaxiality parameter T = (1-p^2)/(1-q^2)
+        triaxpar = (1.0 - pintr**2) / (1.0 - qintr**2)
+        if (np.max(triaxpar) > 1.0) or (np.min(triaxpar) < 0.0):
+            print(
+                "triax_tpp2pqu: triaxiality parameter T out of [0, 1], "
+                f"min(T)={np.min(triaxpar)}, max(T)={np.max(triaxpar)}.")
+            return np.nan, np.nan, np.nan
+
+        if np.max(qintr - pintr) > 0:
+            print(
+                "triax_tpp2pqu: intrinsic axis ordering violated (q > p). "
+                f"max(q-p)={np.max(qintr - pintr)}.")
+            return np.nan, np.nan, np.nan
+
+        if np.min(qintr) <= 0.0:
+            print(
+                "triax_tpp2pqu: intrinsic minor axis ratio q <= 0, min(q)={np.min(qintr)}."
+            )
+            return np.nan, np.nan, np.nan
+
+        pintr2 = pintr
+        qintr2 = qintr
+        uintr2 = 1. / (np.sqrt(qobs_pot / np.sqrt(
+            (pintr * np.cos(theta_view))**2 + (qintr * np.sin(theta_view))**2 *
+            ((pintr * np.cos(phi_view))**2 + np.sin(phi_view)**2))))
+
+        return pintr2, qintr2, uintr2
+
+    @staticmethod
+    def acceleration(x, y, z,
+                     viewing_angle,
+                     ml,
+                     surf_pot_pc,
+                     sigobs_pot_pc,
+                     qobs_pot,
+                     psi_off=None,
+                     epsrel=1e-4):
+        """
+        Gravitational acceleration of a triaxial MGE.
+
+        Parameters
+        ----------
+        x, y, z : float or array-like
+            Cartesian coordinates [pc].
+        viewing_angle : tuple
+            (theta, phi, psi) in degrees.
+        surf_pot_pc, sigobs_pot_pc, qobs_pot : array-like
+            Projected MGE quantities.
+        ml : float
+            Mass-to-light ratio.
+        epsrel : float
+            Relative accuracy for integration.
+
+        Returns
+        -------
+        ax, ay, az : ndarray
+            Acceleration components [(km/s)**2/pc].
+        """
+
+        # gravitational constant
+        # G = 4.3009172706e-3   # [pc*(km/s)**2 / Msun]
+        G = dyn.constants.GRAV_CONST_KM / dyn.constants.PARSEC_KM
+
+        theta = viewing_angle[0]
+        phi   = viewing_angle[1]
+        psi   = viewing_angle[2]
+
+        if psi_off is None:
+            psi_off = np.zeros_like(qobs_pot)
+
+        # deprojection: viewing angles -> intrinsic axis ratios
+        pintr, qintr, uintr = TriaxialVisibleComponent.triax_tpp2pqu(
+            theta,phi,psi,qobs_pot,psi_off)
+
+        p_pot = pintr
+        q_pot = qintr
+        sig_pot_pc = sigobs_pot_pc
+        sigintr_pc = sig_pot_pc / uintr
+
+        V0 = (surf_pot_pc * (2.0 * np.pi * sig_pot_pc**2 * qobs_pot)
+              * np.sqrt(2.0 / np.pi) / sigintr_pc**3 * G * ml)
+
+        x = np.atleast_1d(np.asarray(x, dtype=float))
+        y = np.atleast_1d(np.asarray(y, dtype=float))
+        z = np.atleast_1d(np.asarray(z, dtype=float))
+
+        ax = np.zeros_like(x)
+        ay = np.zeros_like(x)
+        az = np.zeros_like(x)
+
+        # --- integrands ---
+        def _acc_x_integrand(t, x_, y_, z_):
+            dt = 1.0 - (1.0 - p_pot**2) * t**2
+            et = 1.0 - (1.0 - q_pot**2) * t**2
+            m2 = x_**2 + y_**2 / dt + z_**2 / et
+            ker = (-np.exp(-t**2 * m2 / (2.0 * sigintr_pc**2))
+                / np.sqrt(dt * et) * t**2 * x_)
+            return np.sum(V0 * ker)
+
+        def _acc_y_integrand(t, x_, y_, z_):
+            dt = 1.0 - (1.0 - p_pot**2) * t**2
+            et = 1.0 - (1.0 - q_pot**2) * t**2
+            m2 = x_**2 + y_**2 / dt + z_**2 / et
+            ker = (-np.exp(-t**2 * m2 / (2.0 * sigintr_pc**2))
+                / np.sqrt(dt**3 * et)* t**2 * y_)
+            return np.sum(V0 * ker)
+
+        def _acc_z_integrand(t, x_, y_, z_):
+            dt = 1.0 - (1.0 - p_pot**2) * t**2
+            et = 1.0 - (1.0 - q_pot**2) * t**2
+            m2 = x_**2 + y_**2 / dt + z_**2 / et
+            ker = (-np.exp(-t**2 * m2 / (2.0 * sigintr_pc**2))
+                / np.sqrt(dt * et**3)* t**2 * z_)
+            return np.sum(V0 * ker)
+
+        # main loop
+        for i in range(len(x)):
+            ax[i], _ = integrate.quad(_acc_x_integrand, 0.0, 1.0,
+                                      args=(x[i], y[i], z[i]),epsrel=epsrel,)
+
+            ay[i], _ = integrate.quad(_acc_y_integrand, 0.0, 1.0,
+                                      args=(x[i], y[i], z[i]),epsrel=epsrel,)
+
+            az[i], _ = integrate.quad(_acc_z_integrand, 0.0, 1.0,
+                                      args=(x[i], y[i], z[i]),epsrel=epsrel,)
+
+        return ax, ay, az
+
 
 class BarDiskComponent(TriaxialVisibleComponent):
     """Rotating triaxial component with a MGE projected density (i.e. a bar)
@@ -954,20 +1114,57 @@ class Plummer(DarkComponent):
     def __init__(self, **kwds):
         super().__init__(symmetry='spherical', **kwds)
 
+    def validate(self):
+        par = ['m', 'a']
+        super().validate(par=par)
+
     def density(x, y, z, pars):
         M, a = pars
         r = (x**2 + y**2 + z**2)**0.5
         rho = 3*M/4/np.pi/a**3 * (1. + (r/a)**2)**-2.5
         return rho
 
-    def mass_enclosed(R, pars):
+    def mass_enclosed(x, y, z, pars):
         M, a = pars
-        Menc = M*R**3/a**3*(1 + R**2/a**2)**(-1.5)
+        r = (x**2 + y**2 + z**2)**0.5
+        Menc = M*r**3/a**3*(1 + r**2/a**2)**(-1.5)
         return Menc
 
-    def validate(self):
-        par = ['m', 'a']
-        super().validate(par=par)
+    @staticmethod
+    def acceleration(x, y, z, par):
+        """
+        Gravitational acceleration of a Plummer sphere.
+
+        Parameters
+        ----------
+        x, y, z : float or array-like
+            Cartesian coordinates [pc]
+        pars : tuple
+            (M, a_pc [pc])
+
+        Returns
+        -------
+        ax, ay, az : ndarray
+            Acceleration components [(km/s)**2 / pc]
+        """
+        M    = par['m']
+        a_pc = par['a_pc']
+
+        x = np.asarray(x, dtype=float)
+        y = np.asarray(y, dtype=float)
+        z = np.asarray(z, dtype=float)
+
+        r2 = x**2 + y**2 + z**2
+        denom = (r2 + a_pc**2)**1.5
+
+        # G = 4.3009172706e-3  # pc * (km/s)**2 / Msun
+        G = dyn.constants.GRAV_CONST_KM / dyn.constants.PARSEC_KM
+        factor = -G * M / denom
+
+        ax = factor * x
+        ay = factor * y
+        az = factor * z
+        return ax, ay, az
 
 
 class NFW(DarkComponent):
@@ -1022,7 +1219,7 @@ class NFW_m200_c(DarkComponent):
         stars = system.get_component_from_class(TriaxialVisibleComponent)
         M_stars_tot = stars.get_M_stars_tot(system.distMPc, parset)
         f = parset[f'f-{self.name}']
-        h=0.671 #add paper
+        h = 0.671 #add paper
         #total mass of dark matter
         MvDM = f * M_stars_tot
         #dutton&maccio2014 (https://arxiv.org/pdf/1402.7073.pdf) Eq. (8)
@@ -1215,21 +1412,145 @@ class GeneralisedNFW(DarkComponent):
         return is_valid
 
     ## fixme: should actually derive (rhoc,rc) from (c,Mvir)
-    def potential(x, y, z, pars):
-        rhoc, rc, gamma = pars
+    @staticmethod
+    def convert_parset(par):
+        '''
+        Returns
+        -------
+        rhoc : float
+            Scale density, unit : Msun/pc**3
+        rc : float
+            Scale radius, unit : pc
+        '''
+        Mvir = par['Mvir']
+        c = par['c']
+        gam = par['gam']
+
+        # H0 = 73                                    # km/s/Mpc, used in Fortran
+        # G = 4.3009172706e-3                        # pc/Msun⋅(km/s)**2
+        # rho_crit = 3 * H0**2 * 1e-12 / (8*np.pi*G) # Msun/pc**3
+        rho_crit = dyn.constants.RHO_CRIT * dyn.constants.PARSEC_KM ** 3
+
+        r200 = (3 * Mvir / (800 * np.pi * rho_crit))**(1.0 / 3.0)
+        rc = r200 / c
+
+        gamma1 = 3.0 - gam
+        hyp = special.hyp2f1(gamma1, gamma1, gamma1 + 1.0, -c)
+        rhoc = Mvir * gamma1 / (4.0 * np.pi * rc**3 * c**gamma1 * hyp)
+
+
+        return rhoc, rc, gam
+
+    @staticmethod
+    def potential(x, y, z, halo_pars):
+        '''
+        Returns
+        -------
+        psi : float
+            Scale density, unit : (km/s)^2
+        '''
+
+        # G = 4.3009172706e-3                        # pc/Msun⋅(km/s)**2
+        G = dyn.constants.GRAV_CONST_KM / dyn.constants.PARSEC_KM
+        rhoc, rc, gamma = halo_pars
+
+        x = np.asarray(x, dtype=float)
+        y = np.asarray(y, dtype=float)
+        z = np.asarray(z, dtype=float)
+
+        r = np.sqrt(x**2 + y**2 + z**2)
+
         xi = r/(r + rc)
-        psi = 4*np.pi*G*rhoc*rc**2*(rc/r*xi**(3-gamma)/(3-gamma)*special.hyp2f1(3-gamma,1,4-gamma,xi) + (1 - xi**(3-gamma))/(2-gamma))
+        psi = ( 4 * np.pi * G * rhoc * rc**2 * (rc/r * xi**(3-gamma)/(3-gamma)
+                * special.hyp2f1(3-gamma,1,4-gamma,xi)
+                + (1 - xi**(3-gamma))/(2-gamma)))
         return psi
 
-    def density(x, y, z, pars):
-        rhoc, rc, gamma = pars
-        rho = rhoc*rc**3*r**(-gamma)*(r + rc)**(gamma-3)
+    @staticmethod
+    def density(x, y, z, halo_pars):
+        '''
+        Parameters
+        ----------
+        x, y, z : unit: pc
+        pars = (rhoc, rc, gam)
+
+        Returns
+        -------
+        rho : float
+            Scale density, unit : Msun/pc**3
+        '''
+        rhoc, rc, gamma = halo_pars
+        x = np.asarray(x, dtype=float)
+        y = np.asarray(y, dtype=float)
+        z = np.asarray(z, dtype=float)
+
+        r = np.sqrt(x**2 + y**2 + z**2)
+        rho = rhoc * rc**3 * r**(-gamma) * (r + rc)**(gamma-3)
         return rho
 
-    def mass_enclosed(x, y, z, pars):
-        rhoc, rc, gamma = pars
+    @staticmethod
+    def mass_enclosed(x, y, z, halo_pars):
+        '''
+        Parameters
+        ----------
+        x, y, z : unit: pc
+        pars = (rhoc, rc, gam)
+
+        Returns
+        -------
+        Menc : float
+            Mass, unit : Msun
+        '''
+        rhoc, rc, gamma = halo_pars
+
+        x = np.asarray(x, dtype=float)
+        y = np.asarray(y, dtype=float)
+        z = np.asarray(z, dtype=float)
+
+        r = np.sqrt(x**2 + y**2 + z**2)
+
         xi = r/(r + rc)
-        Menc = 4*np.pi*rc**3*rhoc*xi**(3-gamma)/(3-gamma)*special.hyp2f1(3-gamma,1,4-gamma,xi)
+        Menc = (4 * np.pi * rc**3 * rhoc * xi**(3-gamma)/(3-gamma)
+                * special.hyp2f1(3-gamma,1,4-gamma,xi))
+        return Menc
+
+    @staticmethod
+    def acceleration(x, y, z, par):
+        """
+        Gravitational acceleration of the gNFW halo.
+
+        Parameters
+        ----------
+        x, y, z : float or array-like
+            Cartesian coordinates [pc].
+        par : dict
+            Parameter dictionary from parset.
+
+        Returns
+        -------
+        ax, ay, az : ndarray
+            Acceleration components [(km/s)**2/pc].
+        """
+        x = np.asarray(x, dtype=float)
+        y = np.asarray(y, dtype=float)
+        z = np.asarray(z, dtype=float)
+
+        r = np.sqrt(x**2 + y**2 + z**2)
+
+        rhoc, rc, gamma = GeneralisedNFW.convert_parset(par)
+
+        halo_pars = (rhoc, rc, gamma)
+        M_enc = GeneralisedNFW.mass_enclosed(x, y, z, halo_pars)
+
+        # G = 4.3009172706e-3                # [pc*(km/s)**2/Msun]
+        G = dyn.constants.GRAV_CONST_KM / dyn.constants.PARSEC_KM
+        factor = -G * M_enc / r**3
+
+        ax = factor * x
+        ay = factor * y
+        az = factor * z
+
+        return ax, ay, az
 
 
 class Chi2Ext(Component):
@@ -1285,14 +1606,16 @@ class Chi2Ext(Component):
         pars = [self.get_parname(p.name) for p in self.parameters]
         super().validate(par=pars)
 
-    def get_chi2(self, parset):
+    def get_chi2(self, model_id, config):
         """
         Returns the chi2 value for the parameter set.
 
         Parameters
         ----------
-        parset : dict
-            based on an astropy table row, containing all current parameters
+        model_id : int
+            Model ID in the all_models table.
+        config : a ``dyn.config.DynamiteConfig`` object
+            The current DYNAMITE configuration
 
         Returns
         -------
@@ -1300,7 +1623,7 @@ class Chi2Ext(Component):
             The chi2 value
 
         """
-        self.logger.debug(f'Calling external chi2 method with {parset=}.')
-        return self.ext_chi2(parset)
+        self.logger.debug(f'Calling external chi2 method with {model_id=}.')
+        return self.ext_chi2(model_id, config)
 
 # end
