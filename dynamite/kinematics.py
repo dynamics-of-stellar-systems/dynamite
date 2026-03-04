@@ -1,6 +1,5 @@
 import numpy as np
 from scipy import special, stats
-from scipy.interpolate import RegularGridInterpolator
 from scipy.optimize import curve_fit
 from astropy import table
 import logging
@@ -1733,9 +1732,10 @@ class ProperMotions(Kinematics, data.Integrated):
     a dictionary with the keys as above. Additionally, the ``self.data``
     key 'hist_scale' will be added.
 
-    ``PM_2dhist`` and ``PM_2dhist_sigma`` are normalised to 1.0 when summed
-    over all spatial and velocity bins. ``self.data['hist_scale']`` is set to
-    the scaling factor used for this normalisation.
+    In each spatial bin, ``PM_2dhist`` and ``PM_2dhist_sigma`` are normalised
+    to 1.0 when summed over all velocity bins. ``self.data['hist_scale']`` is
+    set to the scaling factor used for this normalisation and has
+    shape=(n_apertures,).
 
     """
     def __init__(self, **kwargs):
@@ -1756,30 +1756,30 @@ class ProperMotions(Kinematics, data.Integrated):
         super().__init__(proper_motions=True, **kwargs)
         if hasattr(self, 'data'):
             self.sanity_ceck()
-            hist_scale = np.sum(self.data['PM_2dhist'])
-            if np.isclose(hist_scale, 1.0):
-                self.data['hist_scale'] = 1.0
-            else:
-                self.logger.info(f'{self.name}: PM_2dhist read from input ' \
-                                 'does not sum to 1.')
-                nstarbin_match = \
-                    np.isclose(self.data['nstarbin'],
-                               np.sum(self.data['PM_2dhist'], axis=(1,2)))
-                if not np.all(nstarbin_match):
-                    self.logger.info(f'{self.name}: PM_2dhist read from ' \
-                        'input does not sum to nstarbin in ' \
-                        f'{len(self.data["nstarbin"][~nstarbin_match])} '\
-                        'spatial bins.')
-                # Scale the 2d histograms the same way as LegacyFortran does:
-                # the PM_2dhist and PM_2dhist_sigma are normalised such that
-                # PM_2dhist summed over all spatial and velocity bins is
-                # equal to 1.0.
-                self.data['hist_scale'] = hist_scale
-                self.logger.info(f'{self.name}: Scaling PM_2dhist and ' \
-                    'PM_2dhist_sigma by '
-                    f'{hist_scale} to make it a proper distribution.')
-                self.data['PM_2dhist'] /= hist_scale
-                self.data['PM_2dhist_sigma'] /= hist_scale
+            self.normalise()
+
+    def normalise(self):
+        """Normalise the 2d histograms
+
+        Normalises the PM_2dhist and PM_2dhist_sigma such that in each spatial
+        bin, PM_2dhist summed over all velocity bins is equal to 1.0. Updates
+        the attribute ``self.data['hist_scale']`` to the scaling factor used
+        for this normalisation.
+
+        Returns
+        -------
+        None
+
+        """
+        hist_scale = np.sum(self.data['PM_2dhist'], axis=(1, 2), keepdims=True)
+        if np.allclose(hist_scale, 1.0):
+            self.logger.info(f'{self.name}: PM_2dhist already normalised.')
+        else:
+            self.logger.info(f'{self.name}: Scaling PM_2dhist and ' \
+                'PM_2dhist_sigma to normalise PM_2dhist in each spatial bin.')
+            self.data['PM_2dhist'] /= hist_scale
+            self.data['PM_2dhist_sigma'] /= hist_scale
+        self.data['hist_scale'] = np.squeeze(hist_scale)
 
     def get_data(self):
         """Returns the proper motions data.
