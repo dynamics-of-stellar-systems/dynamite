@@ -472,6 +472,14 @@ class Plotter():
                 kin_set,
                 cbar_lims=cbar_lims,
                 **kwargs)
+        elif kin_type is kinematics.ProperMotions:
+            txt = 'ProperMotions kinematic maps not yet implemented!'
+            self.logger.error(txt)
+            raise NotImplementedError(txt)
+        else:
+            txt = f'Unknown kinematics {kin_type}!'
+            self.logger.error(txt)
+            raise ValueError(txt)
 
         figname = self.plotdir + f'kinematic_map_{kin_name}' + figtype
         fig.savefig(figname, dpi=300)
