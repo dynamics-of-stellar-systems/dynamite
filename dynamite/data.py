@@ -7,7 +7,8 @@ from plotbin import display_pixels
 class Data(object):
     """Abstract class for data in Astropy ECSV files
 
-    The data is stored in the Astropy table at ``self.data``
+    The data is stored in the Astropy table at ``self.data`` if proper_motions
+    is False, or in a dictionary at ``self.data`` if proper_motions is True.
 
     Parameters
     ----------
@@ -17,30 +18,48 @@ class Data(object):
         name of the Astropy ECSV datafile
     input_directory : string, or None
         location of the data file
+    proper_motions : bool, optional
+        if True, the datafile is assumed to be a proper motions data file
+        (i.e. a .npz file) as described in the ``dyn.kinematics.ProperMotions``
+        class. The default is False.
 
     """
 
     def __init__(self,
                  name=None,
                  datafile=None,
-                 input_directory=None
+                 input_directory=None,
+                 proper_motions=False
                  ):
         self.logger = logging.getLogger(f'{__name__}.{__class__.__name__}')
         self.name = name
+        self.proper_motions = proper_motions
         if not hasattr(self, 'input_directory'):
             self.datafile = datafile
-            self.input_directory = input_directory if input_directory else ''
+            self.input_directory=input_directory if input_directory else ''
             if datafile is not None:
-                self.data = ascii.read(self.input_directory+self.datafile)
-                self.logger.debug(f'Data {self.name} read from '
-                                  f'{self.input_directory}{self.datafile}')
-                data_array = np.lib.recfunctions.structured_to_unstructured(
-                    self.data.as_array())
-                if np.isnan(data_array).any():
-                    txt=f'Input file {self.input_directory}{datafile} has nans'
-                    self.logger.error(f'{txt} at: '
-                                      f'{np.argwhere(np.isnan(data_array))}.')
-                    raise ValueError(txt)
+                f_name = self.input_directory + self.datafile
+                if not proper_motions:
+                    self.data = ascii.read(f_name)
+                    self.logger.debug(f'Data {self.name} read from {f_name}.')
+                    data_array=np.lib.recfunctions.structured_to_unstructured(
+                        self.data.as_array())
+                    if np.isnan(data_array).any():
+                        txt = f'Input file {f_name} has nans'
+                        self.logger.error(f'{txt} at: '
+                            f'{np.argwhere(np.isnan(data_array))}.')
+                        raise ValueError(txt)
+                    self.n_spatial_bins = len(self.data)
+                else:  # proper motions data is in a different format (.npz)
+                    self.data = dict(np.load(f_name, allow_pickle=False))
+                    self.logger.debug(f'Data {self.name} read from {f_name}.')
+                    self.n_spatial_bins = self.data['PM_2dhist'].shape[0]
+                    for array in 'PM_2dhist', 'PM_2dhist_sigma':
+                        if np.isnan(self.data[array]).any():
+                            txt = f'Input file {f_name} has nans in {array}'
+                            self.logger.error(f'{txt} at: '
+                                f'{np.argwhere(np.isnan(self.data[array]))}.')
+                            raise ValueError(txt)
 
 
 class Discrete(Data):
@@ -81,17 +100,24 @@ class Integrated(Data):
         super().__init__(**kwargs)
         self.logger = logging.getLogger(f'{__name__}.{__class__.__name__}')
         if hasattr(self, 'data'):
-            self.PSF = self.data.meta['PSF']
-            if abs(sum(self.PSF['weight'])-1.0) > 1e-8:
-                txt = f"PSF weights add up to {sum(self.PSF['weight'])}, " + \
-                      "not 1.0."
-                if hasattr(self, 'datafile'):
-                    txt += ' Check input data in '
-                    if hasattr(self, 'input_directory'):
-                        txt += f'{self.input_directory}'
-                    txt += f'{self.datafile}.'
-                self.logger.error(txt)
-                raise ValueError(txt)
+            if self.proper_motions:
+                sigma = 0.8
+                weight = 1.0
+                self.PSF = {'sigma':[sigma], 'weight':[weight]}
+                self.logger.debug('Proper motions: using default PSF: '
+                                  f'{self.PSF}.')
+            else:
+                self.PSF = self.data.meta['PSF']
+                if abs(sum(self.PSF['weight']) - 1.0) > 1e-8:
+                    txt = f"PSF weights add up to {sum(self.PSF['weight'])}," \
+                          " not 1.0."
+                    if hasattr(self, 'datafile'):
+                        txt += ' Check input data in '
+                        if hasattr(self, 'input_directory'):
+                            txt += f'{self.input_directory}'
+                        txt += f'{self.datafile}.'
+                    self.logger.error(txt)
+                    raise ValueError(txt)
         if self.aperturefile is not None and self.binfile is not None:
             self.read_aperture_and_bin_files()
 
@@ -183,13 +209,21 @@ class Integrated(Data):
             self.logger.error(txt)
             raise ValueError(txt)
         self.logger.debug(f'{self.aperturefile} and {self.binfile} read.')
-        n_bins_kinem = self.data[-1][0] + (1 if self.data[0][0] == 0 else 0)
-        if not (n_bins_kinem == len(self.data) == max(grid)):
-            txt = f'Numbers of kinematic bins do not match: {len(self.data)}'\
+        if not self.proper_motions:
+            n_bins_kinem=self.data[-1][0] + (1 if self.data[0][0] == 0 else 0)
+            if not (n_bins_kinem == len(self.data) == max(grid)):
+                txt=f'Numbers of kinematic bins do not match: {len(self.data)}'\
                   f' (length of {self.datafile}), {n_bins_kinem} (last id in '\
                   f'{self.datafile}), max number {max(grid)} in {self.binfile}.'
-            self.logger.error(txt)
-            raise ValueError(txt)
+                self.logger.error(txt)
+                raise ValueError(txt)
+        else:
+            if not (self.n_spatial_bins == max(grid)):
+                txt = 'Numbers of kinematic bins do not match: '\
+                  f'{self.n_spatial_bins} (length of data in {self.datafile})'\
+                  f' and max number {max(grid)} in {self.binfile}.'
+                self.logger.error(txt)
+                raise ValueError(txt)
         self.logger.debug(f'Number of vbins in {self.datafile}, '
                           f'{self.binfile} validated.')
         # bins start counting at 1 in fortran and at 0 in idl:
