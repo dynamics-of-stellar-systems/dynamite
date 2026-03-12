@@ -780,7 +780,7 @@ class Plotter():
         stars = self.system.get_unique_triaxial_visible_component()
         kinematics_data = stars.kinematic_data[kin_set].get_data(
             self.settings.weight_solver_settings,
-            apply_systematic_error=False)
+            apply_systematic_error=True)
         # pick out the projected masses only for this kinematic set
         flux = \
             stars.mge_lum.get_projected_masses_from_file(model.directory_noml)

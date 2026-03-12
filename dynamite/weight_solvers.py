@@ -126,7 +126,7 @@ class WeightSolver(object):
                                                           weights=weights)
             # get the observed projected masses (unused) and kinematic data
             kinematics_data = \
-                kin_data.get_data(self.settings, apply_systematic_error=False)
+                kin_data.get_data(self.settings, apply_systematic_error=True)
             # calculate chi2_kinmap
             for coef in coefs:
                 obs_val = np.array(kinematics_data[coef])
@@ -519,19 +519,6 @@ class LegacyWeightSolver(WeightSolver):
         n_apertures = len(projected_masses)
         chi2_kin = np.sum(chi2_vector[1+n_intrinsic+n_apertures:])
         return weights, chi2_tot, chi2_kin
-
-    # def chi2_kinmap(self):
-    #     """
-    #     Returns the chi2 directly calculated from the kinematic maps.
-
-    #     Returns
-    #     -------
-    #     chi2_kinmap : float
-    #         chi2 directly calculated from the kinematic maps.
-
-    #     """
-    #     _, chi2_kinmap = self.read_chi2()
-    #     return chi2_kinmap
 
     def read_chi2(self):
         """Read chi2 values from `nn_kinem.out`
