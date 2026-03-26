@@ -96,21 +96,25 @@ class MGE(data.Data):
     def __repr__(self):
         return f'{self.__class__.__name__}({self.__dict__})'
 
-    def get_projected_masses(self, ignore_existing_massfile=False):
+    def get_projected_masses(self, use_cache=True):
         """Calculate the mass of the mge in observed 2D apertures.
 
         Calculate the mass of the mge in observed 2D apertures using observed
         quantities only. Hence, this calculation is independent of the model's
         hyperparameters. The projected masses are written to mass_aper.ecsv
         in the output directory. If called again, this method will read
-        previously calculated projected masses from file unless
-        ignore_existing_massfile=True.
+        previously calculated projected masses from the visible component's
+        mass_aper attribute or from file unless use_cache=False.
 
         Parameters
         ----------
-        ignore_existing_massfile : bool, optional
-            If True, do not check for projected masses already existing on
-            disk, but recalculate them. The default is False.
+        use_cache : bool, optional
+            If False, the projected masses will be recalculated.
+            If True, check for projected masses already existing in the visible
+            component's mass_aper attribute or on disk and if yes, return those
+            projected masses. The mass_aper attribute will override data on
+            disk. If data is read from disk, it will be used to update the
+            visible component's mass_aper attribute. The default is True.
 
         Returns
         -------
@@ -122,16 +126,16 @@ class MGE(data.Data):
             vis_comp = c.system.get_unique_bar_component()
         else:
             vis_comp = c.system.get_unique_triaxial_visible_component()
-        if vis_comp.mass_aper is not None:
+        if use_cache and (vis_comp.mass_aper is not None):
             self.logger.info('Projected masses grabbed from vis. component.')
             return vis_comp.mass_aper  ########################################
         p_mass_fname = c.settings.io_settings['output_directory'] + \
                           'mass_aper.ecsv'
-        if not ignore_existing_massfile:
-            if os.path.isfile(p_mass_fname):
-                proj_mass = table.Table.read(p_mass_fname, format='ascii')
-                self.logger.info(f'Projected masses read from {p_mass_fname}.')
-                return np.array(proj_mass['proj_mass'])  ######################
+        if use_cache and os.path.isfile(p_mass_fname):
+            proj_mass = table.Table.read(p_mass_fname, format='ascii')
+            self.logger.info(f'Projected masses read from {p_mass_fname}.')
+            vis_comp.mass_aper = np.array(proj_mass['proj_mass'])
+            return vis_comp.mass_aper  ########################################
         kinematics = vis_comp.kinematic_data
         distMPc = c.system.distMPc
         arcsec_to_km = constants.ARC_KM(distMPc)
