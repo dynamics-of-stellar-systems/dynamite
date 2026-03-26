@@ -60,3 +60,4 @@ jobs:
         run: |
           # pytest -v
           ls
+          dev_tests/test_nnls.py
