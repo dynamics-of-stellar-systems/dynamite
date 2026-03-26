@@ -553,15 +553,6 @@ class Configuration(object):
         logger.debug(f'Settings: {self.settings}')
         logger.info('Configuration validated')
 
-        if self.settings.weight_solver_settings['type']!='LegacyWeightSolver':
-            if self.system.is_bar_disk_system():
-                bardisk = self.system.get_unique_bar_component()
-                bardisk.mge_lum_tot = bardisk.mge_lum + bardisk.disk_lum
-                bardisk.mge_lum_tot.get_projected_masses()
-            else:
-                stars = self.system.get_unique_triaxial_visible_component()
-                stars.mge_lum.get_projected_masses()
-
         if 'generator_settings' in self.settings.parameter_space_settings:
             self.set_threshold_del_chi2( \
                 self.settings.parameter_space_settings['generator_settings'])
@@ -583,6 +574,17 @@ class Configuration(object):
         for d in directories:
             self.all_models.update_orblib_flags(d)
         self.all_models.update_model_table()
+
+        if self.settings.weight_solver_settings['type']!='LegacyWeightSolver':
+            if self.system.is_bar_disk_system():
+                bardisk = self.system.get_unique_bar_component()
+                bardisk.mass_aper = None
+                bardisk.mge_lum_tot = bardisk.mge_lum + bardisk.disk_lum
+                bardisk.mass_aper = bardisk.mge_lum_tot.get_projected_masses()
+            else:
+                stars = self.system.get_unique_triaxial_visible_component()
+                stars.mass_aper = None
+                stars.mass_aper = stars.mge_lum.get_projected_masses()
 
         # self.backup_config_file(reset=False)
 

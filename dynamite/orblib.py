@@ -402,7 +402,7 @@ class LegacyOrbitLibrary(OrbitLibrary):
         triaxmass_file.write(text)
         triaxmass_file.close()
         #-----------------------
-        #write triaxmassbin.in
+        #write triaxmassbin.in (LegacyWeightSolver only)
         #-----------------------
         if self.LegacyWeightSolver:
             tab = '\t\t\t\t\t\t\t\t'
@@ -489,8 +489,9 @@ class LegacyOrbitLibrary(OrbitLibrary):
         os.chdir(cur_dir)
         log_files = f'Logfiles: {self.mod_dir}datfil/orblib.log, ' \
                     f'{self.mod_dir}datfil/orblibbox.log, ' \
-                    f'{self.mod_dir}datfil/triaxmass.log, ' \
-                    f'{self.mod_dir}datfil/triaxmassbin.log.'
+                    f'{self.mod_dir}datfil/triaxmass.log, '
+        if self.LegacyWeightSolver:
+            log_files += f'{self.mod_dir}datfil/triaxmassbin.log.'
         if not p.stdout.decode("UTF-8"):
             self.logger.info(f'...done - {cmdstr} exit code '
                              f'{p.returncode}. {log_files}')
@@ -524,8 +525,9 @@ class LegacyOrbitLibrary(OrbitLibrary):
         # move back to original directory
         os.chdir(cur_dir)
         log_files = f'Logfiles: {self.mod_dir}datfil/orblib.log, ' \
-                    f'{self.mod_dir}datfil/triaxmass.log, ' \
-                    f'{self.mod_dir}datfil/triaxmassbin.log.'
+                    f'{self.mod_dir}datfil/triaxmass.log, '
+        if self.LegacyWeightSolver:
+            log_files += f'{self.mod_dir}datfil/triaxmassbin.log.'
         if not p.stdout.decode("UTF-8"):
             self.logger.info(f'...done - {cmdstr_tube} exit code '
                              f'{p.returncode}. {log_files}')
@@ -671,17 +673,13 @@ class LegacyOrbitLibrary(OrbitLibrary):
             txt_file.write('rm -f datfil/mass_aper.dat\n')
         txt_file.write(f'{self.legacy_directory}/triaxmass '
                        '< infil/triaxmass.in >> datfil/triaxmass.log\n')
-        if self.system.is_bar_disk_system():
-            if self.LegacyWeightSolver:
+        if self.LegacyWeightSolver:
+            if self.system.is_bar_disk_system():
                 txt_file.write(f'{self.legacy_directory}/triaxmassbin_bar '
                     '< infil/triaxmassbin.in >> datfil/triaxmassbin.log')
-        else:
-            if self.LegacyWeightSolver:
+            else:
                 txt_file.write(f'{self.legacy_directory}/triaxmassbin '
                     '< infil/triaxmassbin.in >> datfil/triaxmassbin.log\n')
-        if self.LegacyWeightSolver:
-            txt_file.write(f'{self.legacy_directory}/triaxmassbin '
-                '< infil/triaxmassbin.in >> datfil/triaxmassbin.log\n')
         for f in 'qgrid', 'pops', 'losvd_hist':
             f_name = 'datfil/orblib_' + f + '.dat'
             txt_file.write(f'test -e {f_name} '

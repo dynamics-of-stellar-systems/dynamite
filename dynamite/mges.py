@@ -118,6 +118,13 @@ class MGE(data.Data):
             Aperture masses of the MGE
         """
         c = self.config
+        if c.system.is_bar_disk_system():
+            vis_comp = c.system.get_unique_bar_component()
+        else:
+            vis_comp = c.system.get_unique_triaxial_visible_component()
+        if vis_comp.mass_aper is not None:
+            self.logger.info('Projected masses grabbed from vis. component.')
+            return vis_comp.mass_aper  ########################################
         p_mass_fname = c.settings.io_settings['output_directory'] + \
                           'mass_aper.ecsv'
         if not ignore_existing_massfile:
@@ -125,10 +132,6 @@ class MGE(data.Data):
                 proj_mass = table.Table.read(p_mass_fname, format='ascii')
                 self.logger.info(f'Projected masses read from {p_mass_fname}.')
                 return np.array(proj_mass['proj_mass'])  ######################
-        if c.system.is_bar_disk_system():
-            vis_comp = c.system.get_unique_bar_component()
-        else:
-            vis_comp = c.system.get_unique_triaxial_visible_component()
         kinematics = vis_comp.kinematic_data
         distMPc = c.system.distMPc
         arcsec_to_km = constants.ARC_KM(distMPc)
@@ -338,7 +341,7 @@ class MGE(data.Data):
         array
             3D intrinsic_masses masses of the MGE in a polar grid with sizes
             (n_r, n_theta, n_phi) which are defined in the config file.
-            Their defaults are (6,6,10)
+            Their defaults are (6, 6, 10)
 
         """
         fname = f'{directory_noml}datfil/mass_qgrid.dat'
