@@ -49,8 +49,8 @@ class Kinematics(data.Data):
                 self.with_pops = False
                 self.pop_cols = []
             self.__class__.values = list(self.__dict__.keys())
-            if self.type==None or self.hist_width==None or \
-                    self.hist_center==None or self.hist_bins==None:
+            if self.type is None or self.hist_width is None or \
+                    self.hist_center is None or self.hist_bins is None:
                 text = 'Kinematics need (type, hist_width, hist_center, '\
                    f'hist_bins), but has ({self.type}, ' \
                    f'{self.hist_width}, {self.hist_center}, {self.hist_bins})'
