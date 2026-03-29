@@ -4,6 +4,7 @@
 Change Log
 ****************
 
+- Improvement: Gauss Hermite kinematics' systematic errors `GH_sys_err` are now always applied throughout DYNAMITE.
 - Improvement: Avoid confusing warnings when creating decomposition plots.
 - Improvement: Added the optional `fig_height` keyword argument to plotting Gauss Hermite kinematic maps, adjusting the plot height (and aspect ratio).
 - Bugfix: Fixed a bug that caused ``System.get_all_kinematic_data()`` to return only the first component's kinematic data.
