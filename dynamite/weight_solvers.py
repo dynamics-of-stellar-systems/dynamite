@@ -125,8 +125,7 @@ class WeightSolver(object):
             model_gh_coef = a.get_gh_model_kinematic_maps(v_sigma_option='fit',
                                                           weights=weights)
             # get the observed projected masses (unused) and kinematic data
-            kinematics_data = \
-                kin_data.get_data(self.settings, apply_systematic_error=True)
+            kinematics_data = kin_data.get_data()
             # calculate chi2_kinmap
             for coef in coefs:
                 obs_val = np.array(kinematics_data[coef])
@@ -203,7 +202,7 @@ class LegacyWeightSolver(WeightSolver):
             # make a dummy 'kins_combined' object ...
             kins_combined = copy.deepcopy(kinematics[0])
             # ...replace data attribute with stacked table of all kinematics
-            kins_combined.data = table.vstack([k.get_data(self.settings)
+            kins_combined.data = table.vstack([k.get_data()
                                                for k in kinematics])
             kins_combined.n_apertures = len(kins_combined.data)
             kins_combined.max_gh_order = self.settings['number_GH']
@@ -760,7 +759,7 @@ class NNLS(WeightSolver):
         if type(kins) is not dyn_kin.GaussHermite:
             return orb_gh
         orb_mu_v = orb_losvd.get_mean()
-        kins_data = kins.get_data(self.settings, apply_systematic_error=False)
+        kins_data = kins.get_data()
         obs_mu_v = kins_data['v']
         obs_sig_v = kins_data['sigma']
         delta_v = np.abs(orb_mu_v - obs_mu_v)
