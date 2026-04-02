@@ -1012,6 +1012,8 @@ class Configuration(object):
                             # get_data checks for errors >= 0 in chosen moments
                             _ = kin_data.get_data(
                                 self.settings.weight_solver_settings)
+                        ws_settings = self.settings.weight_solver_settings
+                        kin_data.update_data(ws_settings)
                 else:
                     txt = 'VisibleComponent must have kinematics: ' \
                           'GaussHermite, BayesLOSVD, and/or ProperMotions.'

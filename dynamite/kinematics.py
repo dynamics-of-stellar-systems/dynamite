@@ -1,3 +1,4 @@
+import math
 import numpy as np
 from scipy import special, stats
 from scipy.optimize import curve_fit
@@ -71,6 +72,16 @@ class Kinematics(data.Data):
                    f'{self.hist_width}, {self.hist_center}, {self.hist_bins})'
                 self.logger.error(text)
                 raise ValueError(text)
+
+    def update_data(self, weight_solver_settings):
+        """Update kinematics according to weight_solver_settings.
+
+        This is a placeholder method that allows to manipulate read-in data
+        according to weight_solver_settings entries. Examples include applying
+        systematic errors or changig the number of GH coefficients to use by
+        DYNAMITE.
+        """
+        pass
 
     def has_pops(self):
         """
@@ -1755,8 +1766,35 @@ class ProperMotions(Kinematics, data.Integrated):
         # then calls data.Integrated's __init__
         super().__init__(proper_motions=True, **kwargs)
         if hasattr(self, 'data'):
-            self.sanity_ceck()
+            self.sanity_check()
             self.normalise()
+
+    def update_data(self, weight_solver_settings):
+        """Update proper motions errors according to `PM_sys_err_factor`.
+
+        The configuration file may include a systematic error factor
+        `PM_sys_err_factor` which is to increase the errors
+        `self.data['PM_2dhist_sigma']` given in the data table. Effectively,
+        the errors are increased by a factor of `sqrt(PM_sys_err_factor)`.
+
+        Parameters
+        ----------
+        weight_solver_settings : dict
+            `Configuration.settings.weight_solver_settings` object
+        """
+        if 'PM_sys_err_factor' in weight_solver_settings.keys():
+            systematics = weight_solver_settings['PM_sys_err_factor']
+            if not (float(systematics) > 0):  # also catch NaNs
+                txt = 'weight_solver_settings: PM_sys_err_factor must be > 0.'
+                self.logger.error(txt)
+                raise ValueError(txt)
+            systematics = float(systematics)
+            txt = f'Kinematics {self.name}: systematic PM errors exist ' \
+                  f'(PM_sys_err_factor = {systematics}) and will increase ' \
+                  'the observation errors by a factor of ' \
+                  f'sqrt(PM_sys_err_factor) = {math.sqrt(systematics)}.'
+            self.logger.info(txt)
+            self.data['PM_2dhist_sigma'] *= math.sqrt(systematics)
 
     def normalise(self):
         """Normalise the 2d histograms
@@ -1793,7 +1831,7 @@ class ProperMotions(Kinematics, data.Integrated):
         """
         return copy.deepcopy(self.data)
 
-    def sanity_ceck(self, max_dv_factor=0.25, min_width_factor=5):
+    def sanity_check(self, max_dv_factor=0.25, min_width_factor=5):
         """Check the data for sanity
 
         Parameters
@@ -1826,11 +1864,13 @@ class ProperMotions(Kinematics, data.Integrated):
             if dv_factor > max_dv_factor:
                 self.logger.warning(f'{self.name}: d{xy} larger than '
                     'maximum recommended value of '
-                    f'{max_dv_factor}*{xy}_sigma!')
+                    f'{max_dv_factor}*{xy}_sigma '
+                    f'by {100 * (dv_factor / max_dv_factor - 1)}%!')
             if width_factor < min_width_factor:
                 self.logger.warning(f'{self.name}: {xy}_width smaller than'
                     ' minimum recommended value of '
-                    f'{min_width_factor}*{xy}_sigma!')
+                    f'{min_width_factor}*{xy}_sigma '
+                    f'by {100 * (1 - width_factor / min_width_factor)}%!')
 
     def as_histogram2d(self):
         """Return the data as Histogram2D object.
