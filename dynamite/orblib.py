@@ -57,6 +57,8 @@ class LegacyOrbitLibrary(OrbitLibrary):
         self.settings = config.settings.orblib_settings
         self.legacy_directory = config.settings.legacy_settings['directory']
         self.in_dir = config.settings.io_settings['input_directory']
+        weight_solver = config.settings.weight_solver_settings['type']
+        self.LegacyWeightSolver = weight_solver == 'LegacyWeightSolver'
         self.orblibs_in_parallel = \
             config.settings.multiprocessing_settings['orblibs_in_parallel']
         if len(config.all_models.table) == 0:
