@@ -101,9 +101,7 @@ class Integrated(Data):
         self.logger = logging.getLogger(f'{__name__}.{__class__.__name__}')
         if hasattr(self, 'data'):
             if self.proper_motions:
-                sigma = 0.8
-                weight = 1.0
-                self.PSF = {'sigma':[sigma], 'weight':[weight]}
+                self.PSF = {'sigma':[0.0], 'weight':[1.0]}
                 self.logger.debug('Proper motions: using default PSF: '
                                   f'{self.PSF}.')
             else:
