@@ -5,6 +5,7 @@ import os
 from scipy.integrate import quad
 from scipy import special
 from astropy import table
+from pathos.multiprocessing import Pool
 from dynamite import data
 from dynamite import constants
 
@@ -96,7 +97,7 @@ class MGE(data.Data):
     def __repr__(self):
         return f'{self.__class__.__name__}({self.__dict__})'
 
-    def get_projected_masses(self, use_cache=True):
+    def get_projected_masses(self, use_cache=True, parallel=True):
         """Calculate the mass of the mge in observed 2D apertures.
 
         Calculate the mass of the mge in observed 2D apertures using observed
@@ -115,6 +116,12 @@ class MGE(data.Data):
             projected masses. The mass_aper attribute will override data on
             disk. If data is read from disk, it will be used to update the
             visible component's mass_aper attribute. The default is True.
+        parallel : bool, optional
+            If True, then the mass integration will be done in `ncpus`
+            parallel processes where `ncpus` is taken from the configuration's
+            `multiprocessing_settings`. If False, the integration will not use
+            multiprocessing. False is recommended if called from within a
+            parallel process. The default is True.
 
         Returns
         -------
@@ -169,9 +176,9 @@ class MGE(data.Data):
             # psi_obs = psi_obs + psi_view
             isotwist = psi_obs  # Fortran: = psi_obs + psi_view - psi_view
 
-            grid = np.zeros((n_x, n_y))
-            # Consider parallelizing in i, j below
-            for i, j in [(i, j) for i in range(n_x) for j in range(n_y)]:
+            def _integrate(ij):
+                i, j = ij
+                out = 0.
                 for k in range(len(self.data)):
                     for psf_idx in range(len(psf_width)):
                         res = quad(self._integrand,
@@ -196,9 +203,20 @@ class MGE(data.Data):
                                   f'err={res[1]}, but should be <= ' \
                                   f'{2 * max(eps_abs, eps_rel * abs(res[0]))}.'
                             self.logger.warning(txt)
-                        grid[i, j] += res[0]
-            # Note that the normalization by totalmass doesn't have a ml
-            # factor (would be in surf_km). Even if it had, it would cancel
+                        out += res[0]
+                return out
+
+            grid = np.zeros((n_x, n_y))
+            ij = [(i, j) for i in range(n_x) for j in range(n_y)]
+            if parallel:
+                with Pool(c.settings.multiprocessing_settings['ncpus']) as p:
+                    output = p.map(_integrate, ij)
+            else:
+                output = [_integrate(ij_tuple) for ij_tuple in ij]
+            for ij_idx, ij_tuple in enumerate(ij):
+                grid[ij_tuple] = output[ij_idx]
+            # Note that the normalization by totalmass doesn't have an ml
+            # factor (would be in surf_km). In Fortran it has, but it cancels
             # out (cf. surf_km->surcor in _integrand vs. surf_km->totalmass).
             totalmass = 2 * math.pi * np.sum(surf_km * qobs * sigobs_km ** 2)
             grid /= totalmass

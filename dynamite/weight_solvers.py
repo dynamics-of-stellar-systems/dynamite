@@ -656,7 +656,7 @@ class NNLS(WeightSolver):
         self.intrinsic_masses = intrinsic_masses
         self.intrinsic_mass_error = self.settings['lum_intr_rel_err']
         # projected
-        self.projected_masses = mge.get_projected_masses()
+        self.projected_masses = mge.get_projected_masses(parallel=False)
         self.projected_mass_error = self.settings['sb_proj_rel_err']
         # total mass constraint
         self.total_mass = np.sum(intrinsic_masses)
