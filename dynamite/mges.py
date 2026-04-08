@@ -348,96 +348,97 @@ class MGE(data.Data):
         # Integration Constant
         V0 = 4. * math.pi * constants.GRAV_CONST_KM * \
             sigintr_km**2 * pintr * qintr * dens
-        # Compute the Constants for the inner approximation
-        F = np.zeros(len(self.data))
-        A1 = np.zeros_like(F)
-        A2 = np.zeros_like(F)
-        A3 = np.zeros_like(F)
-        for i in range(len(self.data)):  # consider vector implementation?
-            p = pintr[i]
-            q = qintr[i]
-            # Calculate the Elliptical integrals
-            k = math.sqrt((1. - p * p) / (1. - q * q))
-            F[i] = special.ellipkinc(math.acos(q), k**2)
-            E = special.ellipeinc(math.acos(q), k**2)
-            A1[i] = (F[i] - E) / (1. - p * p)
-            A2[i] = ((1. - q * q) * E - (p * p - q * q) * F[i] - \
-                     (q / p) * (1. - p * p) * math.sqrt(1. - q * q)) \
-                    / ((1. - p * p) * (p * p - q * q))
-            A3[i] = ((p / q) * math.sqrt(1. - q * q) - E) / (p * p - q * q)
-            # According to Glenn a1+a2+a3 should be equal to sqrt(1-q**2)/(p*q)
-            if abs((math.sqrt(1 - q**2) / (p * q)) - A1[i] - A2[i] - A3[i]) \
-               > 1.0e-6:
-                txt = "Failure to properly compute A1, A2 and A3. "
-                txt += f"gauss_n, A1, A2, A3: {i}, {A1[i]}, {A2[i]}, {A3[i]}, "
-                txt += f"{abs((math.sqrt(1-q**2)/(p*q))-A1[i]-A2[i]-A3[i])=}, "
-                txt += f"{p=}, {q=}, {(1-p*p)=}, "
-                txt += f"{(F(i) - E)=}, {k=}, {np.finfo(float).eps=}."
-                self.logger.error(txt)
-                raise ValueError(txt)
+        # Compute the constants for the inner approximation
+        k = np.sqrt((1 - pintr ** 2) / (1 - qintr ** 2))
+        F = special.ellipkinc(np.arccos(qintr), k ** 2)
+        E = special.ellipeinc(np.arccos(qintr), k ** 2)
+        A1 = (F - E) / (1 - pintr ** 2)
+        A2 = ((1 - qintr ** 2) * E - (pintr ** 2 - qintr ** 2) * F -
+              qintr / pintr * ( 1 - pintr ** 2) * np.sqrt(1 - qintr ** 2)) \
+             / ((1 - pintr ** 2) * (pintr ** 2 - qintr ** 2))
+        A3 = (pintr / qintr * np.sqrt(1 - qintr ** 2) - E) \
+             / (pintr ** 2 - qintr ** 2)
+        if any(abs(np.sqrt(1 - qintr ** 2) / (pintr * qintr) - A1 - A2 - A3) \
+           > 1e-6):
+            txt = "Failure to properly compute F, A1, A2 and/or A3. "
+            txt += f"{F=}, {E=}, {A1=}, {A2=}, {A3=}, "
+            txt += f"{abs((np.sqrt(1-qintr**2)/(pintr*qintr))-A1-A2-A3)=}."
+            self.logger.error(txt)
+            raise ValueError(txt)
+
         self.logger.info('Testing the accuracy of the approximation regimes.')
         inner_approx = 0.0001
         outer_approx = 300.
-        for i in range(len(self.data)):  # combine loops / vector impl.?
-            ax = potin(i, inner_approx*sigintr_km[i], 1., 1.)
-            ix = potmid(i, inner_approx*sigintr_km[i], 1., 1.)
-            if abs((ix - ax)/ix) > 1.0e-4:
+        for i in range(len(self.data)):
+            ax = potin(i, inner_approx * sigintr_km[i], 1., 1.)
+            ix = potmid(i, inner_approx * sigintr_km[i], 1., 1.)
+            if abs((ix - ax) / ix) > 1.0e-4:
                  txt = f"Failed test 1: {ix} != {ax}"
                  self.logger.error(txt)
                  raise ValueError(txt)
-            ax = potin(i, 1., 1., inner_approx*sigintr_km[i])
-            ix = potmid(i, 1., 1., inner_approx*sigintr_km[i])
-            if abs((ix - ax)/ix) > 1.0e-4:
+            ax = potin(i, 1., 1., inner_approx * sigintr_km[i])
+            ix = potmid(i, 1., 1., inner_approx * sigintr_km[i])
+            if abs((ix - ax) / ix) > 1.0e-4:
                  txt = f"Failed test 2: {ix} != {ax}"
                  self.logger.error(txt)
                  raise ValueError(txt)
-            ax = math.sqrt(math.pi/2.)*V0[i]/outer_approx
-            ix = potmid(i, outer_approx*sigintr_km[i], 0., 0.)
-            if abs((ix - ax)/ix) > 1.0e-4:
+            ax = math.sqrt(math.pi / 2.) * V0[i] / outer_approx
+            ix = potmid(i, outer_approx * sigintr_km[i], 0., 0.)
+            if abs((ix - ax) / ix) > 1.0e-4:
                  txt = f"Failed test 3: {ix} != {ax}"
                  self.logger.error(txt)
                  raise ValueError(txt)
-            ax = math.sqrt(math.pi/2.)*V0[i]/outer_approx
-            ix = potmid(i, 1., 1., outer_approx*sigintr_km[i])
-            if abs((ix - ax)/ix) > 1.0e-4:
+            ax = math.sqrt(math.pi / 2.) * V0[i] / outer_approx
+            ix = potmid(i, 1., 1., outer_approx * sigintr_km[i])
+            if abs((ix - ax) / ix) > 1.0e-4:
                  txt = f"Failed test 4: {ix} != {ax}"
                  self.logger.error(txt)
                  raise ValueError(txt)
-            ax, ay, az = accin(i, inner_approx*sigintr_km[i]*0.95,
-                0.2*inner_approx*sigintr_km[i], 0.2*inner_approx*sigintr_km[i])
-            ix, iy, iz = accmid(i, inner_approx*sigintr_km[i]*0.95,
-                0.2*inner_approx*sigintr_km[i], 0.2*inner_approx*sigintr_km[i])
-            if math.sqrt((ix - ax)**2 + (iy - ay)**2 + (iz - az)**2) / \
-                math.sqrt(ix**2 + iy**2 + iz**2) > 1.0e-3:
-                 txt = "Failed test 5: " \
-                       f"{math.sqrt((ix-ax)**2 + (iy-ay)**2 + (iz-az)**2)} " \
-                       f"!= {math.sqrt(ix**2+iy**2+iz**2)}"
-                 self.logger.error(txt)
-                 raise ValueError(txt)
-            ax, ay, az = accin(i, 0.2*inner_approx*sigintr_km[i],
-                0.2*inner_approx*sigintr_km[i], 0.95*inner_approx*sigintr_km[i])
-            ix, iy, iz = accmid(i, 0.2*inner_approx*sigintr_km[i],
-                0.2*inner_approx*sigintr_km[i], 0.95*inner_approx*sigintr_km[i])
-            if math.sqrt((ix - ax)**2 + (iy - ay)**2 + (iz - az)**2) / \
-                math.sqrt(ix**2 + iy**2 + iz**2) > 1.0e-2:
-                 txt = "Failed test 6: " \
-                       f"{math.sqrt((ix-ax)**2 + (iy-ay)**2 + (iz-az)**2)} " \
-                       f"!= {math.sqrt(ix**2+iy**2+iz**2)}"
-                 self.logger.error(txt)
-                 raise ValueError(txt)
-        self.logger.info('Integrating intrinsic masses.')
+            ax, ay, az = accin(i,
+                               inner_approx * sigintr_km[i] * 0.95,
+                               0.2 * inner_approx * sigintr_km[i],
+                               0.2 * inner_approx * sigintr_km[i])
+            ix, iy, iz = accmid(i,
+                                inner_approx * sigintr_km[i]*0.95,
+                                0.2 * inner_approx * sigintr_km[i],
+                                0.2 * inner_approx * sigintr_km[i])
+            if math.sqrt((ix - ax) ** 2 + (iy - ay) ** 2 + (iz - az) ** 2) / \
+               math.sqrt(ix ** 2 + iy ** 2 + iz ** 2) > 1.0e-3:
+                txt = "Failed test 5: " \
+                      f"{math.sqrt((ix-ax)**2 + (iy-ay)**2 + (iz-az)**2)} " \
+                      f"!= {math.sqrt(ix**2+iy**2+iz**2)}"
+                self.logger.error(txt)
+                raise ValueError(txt)
+            ax, ay, az = accin(i,
+                               0.2 * inner_approx * sigintr_km[i],
+                               0.2 * inner_approx * sigintr_km[i],
+                               0.95 * inner_approx * sigintr_km[i])
+            ix, iy, iz = accmid(i,
+                                0.2 * inner_approx * sigintr_km[i],
+                                0.2 * inner_approx * sigintr_km[i],
+                                0.95 * inner_approx * sigintr_km[i])
+            if math.sqrt((ix - ax) ** 2 + (iy - ay) ** 2 + (iz - az) ** 2) / \
+               math.sqrt(ix ** 2 + iy ** 2 + iz ** 2) > 1.0e-2:
+                txt = "Failed test 6: " \
+                      f"{math.sqrt((ix-ax)**2 + (iy-ay)**2 + (iz-az)**2)} " \
+                      f"!= {math.sqrt(ix**2+iy**2+iz**2)}"
+                self.logger.error(txt)
+                raise ValueError(txt)
+        self.logger.info('Integrating intrinsic masses: radmass...')
         radmass = self._intrin_radii(total_mass=total_mass,
                                      pintr=pintr,
                                      qintr=qintr,
                                      sigintr_km=sigintr_km,
                                      dens=dens,
                                      dir=dir)
+        self.logger.info('...and qgrid...')
         quad_grid = self._intrin_spher(total_mass=total_mass,
                                       pintr=pintr,
                                       qintr=qintr,
                                       sigintr_km=sigintr_km,
                                       dens=dens,
                                       dir=dir)
+        self.logger.info('...done.')
         return radmass, quad_grid
 
     def _intrin_spher_grid(self, low, up, P, Q, sigma, r0, r1, rho0):
