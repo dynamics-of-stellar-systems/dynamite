@@ -276,13 +276,13 @@ class MGE(data.Data):
         arcsec_to_km = constants.ARC_KM(distMPc)
 
         # Dispersion in km
-        sigobs_km = self.data['sigma'] * arcsec_to_km
+        sigobs_km = self.data['sigma'].data * arcsec_to_km
         # Surface brightness in L_sun/km^2 (we don't multiply by ml here)
-        surf_km = self.data['I'] / constants.PARSEC_KM ** 2
+        surf_km = self.data['I'].data / constants.PARSEC_KM ** 2
         # Observed flattening
-        qobs = self.data['q']
+        qobs = self.data['q'].data
         # Offset psi viewing angle in radians
-        psi_obs = self.data['PA_twist'] * math.pi / 180
+        psi_obs = self.data['PA_twist'].data * math.pi / 180
 
         theta_view *= math.pi / 180
         phi_view *= math.pi / 180
@@ -358,8 +358,8 @@ class MGE(data.Data):
             q = qintr[i]
             # Calculate the Elliptical integrals
             k = math.sqrt((1. - p * p) / (1. - q * q))
-            F[i] = special.ellipkinc(math.acos(q), k)
-            E = special.ellipeinc(math.acos(q), k)
+            F[i] = special.ellipkinc(math.acos(q), k**2)
+            E = special.ellipeinc(math.acos(q), k**2)
             A1[i] = (F[i] - E) / (1. - p * p)
             A2[i] = ((1. - q * q) * E - (p * p - q * q) * F[i] - \
                      (q / p) * (1. - p * p) * math.sqrt(1. - q * q)) \
@@ -368,7 +368,7 @@ class MGE(data.Data):
             # According to Glenn a1+a2+a3 should be equal to sqrt(1-q**2)/(p*q)
             if abs((math.sqrt(1 - q**2) / (p * q)) - A1[i] - A2[i] - A3[i]) \
                > 1.0e-6:
-                txt = "Failure to properly compute A1, A2 and A3 in tp_setup. "
+                txt = "Failure to properly compute A1, A2 and A3. "
                 txt += f"gauss_n, A1, A2, A3: {i}, {A1[i]}, {A2[i]}, {A3[i]}, "
                 txt += f"{abs((math.sqrt(1-q**2)/(p*q))-A1[i]-A2[i]-A3[i])=}, "
                 txt += f"{p=}, {q=}, {(1-p*p)=}, "
@@ -384,25 +384,25 @@ class MGE(data.Data):
             if abs((ix - ax)/ix) > 1.0e-4:
                  txt = f"Failed test 1: {ix} != {ax}"
                  self.logger.error(txt)
-                #  raise ValueError(txt)
+                 raise ValueError(txt)
             ax = potin(i, 1., 1., inner_approx*sigintr_km[i])
             ix = potmid(i, 1., 1., inner_approx*sigintr_km[i])
             if abs((ix - ax)/ix) > 1.0e-4:
                  txt = f"Failed test 2: {ix} != {ax}"
                  self.logger.error(txt)
-                #  raise ValueError(txt)
+                 raise ValueError(txt)
             ax = math.sqrt(math.pi/2.)*V0[i]/outer_approx
             ix = potmid(i, outer_approx*sigintr_km[i], 0., 0.)
             if abs((ix - ax)/ix) > 1.0e-4:
                  txt = f"Failed test 3: {ix} != {ax}"
                  self.logger.error(txt)
-                #  raise ValueError(txt)
+                 raise ValueError(txt)
             ax = math.sqrt(math.pi/2.)*V0[i]/outer_approx
             ix = potmid(i, 1., 1., outer_approx*sigintr_km[i])
             if abs((ix - ax)/ix) > 1.0e-4:
                  txt = f"Failed test 4: {ix} != {ax}"
                  self.logger.error(txt)
-                #  raise ValueError(txt)
+                 raise ValueError(txt)
             ax, ay, az = accin(i, inner_approx*sigintr_km[i]*0.95,
                 0.2*inner_approx*sigintr_km[i], 0.2*inner_approx*sigintr_km[i])
             ix, iy, iz = accmid(i, inner_approx*sigintr_km[i]*0.95,
@@ -413,7 +413,7 @@ class MGE(data.Data):
                        f"{math.sqrt((ix-ax)**2 + (iy-ay)**2 + (iz-az)**2)} " \
                        f"!= {math.sqrt(ix**2+iy**2+iz**2)}"
                  self.logger.error(txt)
-                #  raise ValueError(txt)
+                 raise ValueError(txt)
             ax, ay, az = accin(i, 0.2*inner_approx*sigintr_km[i],
                 0.2*inner_approx*sigintr_km[i], 0.95*inner_approx*sigintr_km[i])
             ix, iy, iz = accmid(i, 0.2*inner_approx*sigintr_km[i],
@@ -424,8 +424,8 @@ class MGE(data.Data):
                        f"{math.sqrt((ix-ax)**2 + (iy-ay)**2 + (iz-az)**2)} " \
                        f"!= {math.sqrt(ix**2+iy**2+iz**2)}"
                  self.logger.error(txt)
-                #  raise ValueError(txt)
-
+                 raise ValueError(txt)
+        self.logger.info('Integrating intrinsic masses.')
         radmass = self._intrin_radii(total_mass=total_mass,
                                      pintr=pintr,
                                      qintr=qintr,
