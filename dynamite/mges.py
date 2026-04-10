@@ -289,19 +289,19 @@ class MGE(data.Data):
         psi_view *= math.pi / 180
         psi_obs += psi_view
 
-        total_mass = math.tau * sum(surf_km * qobs * sigobs_km**2)
+        total_mass = math.tau * sum(surf_km * qobs * sigobs_km ** 2)
 
         secth = 1. / math.cos(theta_view)
         cotph = 1. / math.tan(phi_view)
-        delp = 1. - qobs**2
+        delp = 1. - qobs ** 2
         nom1minq2 = \
             delp * (2 * np.cos(2 * psi_obs) +
                     np.sin(2 * psi_obs) * (secth * cotph -
-                                             math.cos(theta_view) * math.tan(phi_view)))
+                                           math.cos(theta_view) * math.tan(phi_view)))
         nomp2minq2 = \
             delp * (2 * np.cos(2 * psi_obs) +
                     np.sin(2 * psi_obs) * (math.cos(theta_view) * cotph -
-                                             secth * math.tan(phi_view)))
+                                           secth * math.tan(phi_view)))
         denom = \
             2 * math.sin(theta_view)**2 * (delp * np.cos(psi_obs) *
                                            (np.cos(psi_obs) +
@@ -336,18 +336,18 @@ class MGE(data.Data):
             raise ValueError(txt)
         # intrinsic sigma (Cappellari 2002 eq 9.)
         sigintr_km = sigobs_km * \
-            np.sqrt(qobs / np.sqrt((pintr * math.cos(theta_view))**2
-                                   + (qintr * math.sin(theta_view))**2
-                                     *((pintr * math.cos(phi_view))**2 +
-                                       math.sin(phi_view)**2)))
+            np.sqrt(qobs / np.sqrt((pintr * math.cos(theta_view)) ** 2 +
+                                   (qintr * math.sin(theta_view)) ** 2 *
+                                    ((pintr * math.cos(phi_view)) ** 2 +
+                                     math.sin(phi_view)**2)))
         self.logger.debug('Unitless length of the projected major axis: u = '
                           f'{sigobs_km / sigintr_km}')
         # density factor
-        dens = surf_km * qobs * sigobs_km**2 / \
-                   (math.sqrt(math.tau) * pintr * qintr * sigintr_km**3)
+        dens = surf_km * qobs * sigobs_km ** 2 / \
+                (math.sqrt(math.tau) * pintr * qintr * sigintr_km ** 3)
         # Integration Constant
         V0 = 4. * math.pi * constants.GRAV_CONST_KM * \
-            sigintr_km**2 * pintr * qintr * dens
+              sigintr_km ** 2 * pintr * qintr * dens
         # Compute the constants for the inner approximation
         k = np.sqrt((1 - pintr ** 2) / (1 - qintr ** 2))
         F = special.ellipkinc(np.arccos(qintr), k ** 2)
@@ -438,46 +438,42 @@ class MGE(data.Data):
                                       sigintr_km=sigintr_km,
                                       dens=dens,
                                       dir=dir)
-        self.logger.info('...done.')
         return radmass, quad_grid
 
     def _intrin_spher_grid(self, low, up, P, Q, sigma, r0, r1, rho0):
         ''' calculate multi-dimensional integrals'''
         epsabs = 1.49e-8 # 1.0e-8
         epsrel = 1.49e-8
+        limit = 150
         # check integration limits
-        diffcoord = True
         intgsign = 1
-        for ii in range(2):
-            if low[ii] == up[ii]:
-                self.logger.debug("lower and upper limit are equal")
-                diffcoord = False
-            if low[ii] > up[ii]:
-                self.logger.debug("changing order of integration")
-                # dum = low[ii]
-                # low[ii] = up[ii]
-                # up[ii] = dum
-                low[ii], up[ii] = up[ii], low[ii]
-                intgsign = -intgsign
-        if diffcoord:
-            res, abserr = integrate.dblquad(self._intrin_spher_grid_func,
-                                            low[0],
-                                            up[0],
-                                            low[1],
-                                            up[1],
-                                            args=(P, Q, sigma, r0, r1, rho0),
-                                            epsabs=epsabs,
-                                            epsrel=epsrel)
-            if abserr > 2 * max(epsabs, epsrel * abs(res)):
-                txt = f'Intrinsic masses integral problem: err={abserr}, ' \
-                      f'but should be <= {2 * max(epsabs, epsrel * abs(res))}.'
-                self.logger.warning(txt)
-            res = intgsign*res
-        else:
+        low, up = np.array(low), np.array(up)
+        if any(low == up):
+            self.logger.debug("lower and upper limit are equal")
             res = 0.
+        else:
+            for ii in range(2):
+                if low[ii] > up[ii]:
+                    self.logger.debug("changing order of integration")
+                    low[ii], up[ii] = up[ii], low[ii]
+                    intgsign = -intgsign
+            res, abserr = integrate.nquad(self._intrin_spher_grid_func,
+                                          ranges=[[low[0], up[0]],
+                                                  [low[1], up[1]]],
+                                          args=(P, Q, sigma, r0, r1, rho0),
+                                          opts={'epsabs' : epsabs,
+                                                'epsrel' : epsrel,
+                                                'limit' : limit})
+            # Be generous with the error...
+            max_err = 20 * max(epsabs, epsrel * abs(res))
+            if abserr > max_err:
+                txt = f'Intrinsic masses integral problem: err={abserr}, ' \
+                      f'but should be <= {max_err}.'
+                self.logger.warning(txt)
+            res = intgsign * res
         return res
 
-    def _intrin_spher_grid_func(self, y, x, P, Q, sigma, r0, r1, rho0):
+    def _intrin_spher_grid_func(self, x, y, P, Q, sigma, r0, r1, rho0):
         sth = math.sin(x)
         cth = math.cos(x)
         sph = math.sin(y)
@@ -503,9 +499,9 @@ class MGE(data.Data):
         quad_lr = np.zeros(nr + 1)
         for i in range(nr):
             quad_lr[i] = \
-                10.**(rlogmin + (rlogmax - rlogmin) * (i - 1.0) / (nr - 1.0))
+                10. ** (rlogmin + (rlogmax - rlogmin) * (i - 1.0) / (nr - 1.0))
         quad_lr[0] = 0.0
-        quad_lr[nr] = 10.**rlogmax*100.0
+        quad_lr[nr] = 10. ** rlogmax * 100.0
         quad_lth = np.array([0., math.pi / 2])
         quad_lph = np.array([0., math.pi / 2])
 
@@ -539,7 +535,6 @@ class MGE(data.Data):
         return radmass
 
     def _intrin_spher(self, total_mass, pintr, qintr, sigintr_km, dens, dir):
-
         # Calculate like in qgrid_setup (instead of reading the orblib-file):
         # quad_nr, quad_nth, quad_nph, quad_lr, quad_lth, quad_lph
         #START
@@ -554,14 +549,14 @@ class MGE(data.Data):
         self.logger.debug(f'Grid dimension: {quad_nr = }, '
                           f'{quad_nth = }, {quad_nph = }.')
 
-        # Define a grid such that the boundaries define all possible bins
+        # Define a grid such that the boundaries define all possible bins.
         # This also means that there are N+1 boundaries for N bins.
         quad_lr = np.zeros(quad_nr + 1)
         quad_lr[0] = 0.
         for i in range(1, quad_nr):
             quad_lr[i] = 10.**(rlogmin +
-                (rlogmax - rlogmin + math.log10(0.5)) * i / (quad_nr - 0.0))
-        quad_lr[quad_nr] = max(10.**rlogmax * 100., max(sigobs_km) * 10.)
+                (rlogmax - rlogmin + math.log10(0.5)) * i / quad_nr)
+        quad_lr[quad_nr] = max(10. ** rlogmax * 100., max(sigobs_km) * 10.)
 
         # Define the angular bins
         quad_lth = np.zeros(quad_nth + 1)
