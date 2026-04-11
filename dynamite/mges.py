@@ -4,6 +4,7 @@ import numpy as np
 from scipy import integrate
 from scipy import special
 from astropy import table
+from pathos.multiprocessing import Pool
 from dynamite import data
 from dynamite import constants
 
@@ -123,7 +124,7 @@ class MGE(data.Data):
         return aperture_masses
 
     def get_intrinsic_masses(self, theta_view, psi_view, phi_view, dir,
-                             ignore_existing_massfile=False):
+                             use_cache=True, parallel=True):
         # calculate the mass of the mge in observed 3D grid given the
         # parameter set containing intrinsic axis ratios (p, q, u)
         # EXPERIMENTAL!
@@ -437,7 +438,8 @@ class MGE(data.Data):
                                       qintr=qintr,
                                       sigintr_km=sigintr_km,
                                       dens=dens,
-                                      dir=dir)
+                                      dir=dir,
+                                      parallel=parallel)
         return radmass, quad_grid
 
     def _intrin_spher_grid(self, low, up, P, Q, sigma, r0, r1, rho0):
@@ -534,11 +536,13 @@ class MGE(data.Data):
                          f'{mass_radmass_filename}.')
         return radmass
 
-    def _intrin_spher(self, total_mass, pintr, qintr, sigintr_km, dens, dir):
+    def _intrin_spher(self, total_mass, pintr, qintr, sigintr_km, dens, dir,
+                      parallel=True):
         # Calculate like in qgrid_setup (instead of reading the orblib-file):
         # quad_nr, quad_nth, quad_nph, quad_lr, quad_lth, quad_lph
         #START
-        settings = self.config.settings.orblib_settings
+        c = self.config
+        settings = c.settings.orblib_settings
         arcsec_to_km = constants.ARC_KM(self.config.system.distMPc)
         sigobs_km = self.data['sigma'] * arcsec_to_km
         rlogmin = settings['logrmin'] + math.log10(arcsec_to_km)
@@ -572,11 +576,9 @@ class MGE(data.Data):
         quad_lph[quad_nph] = math.pi / 2
         #END
 
-        quad_grid = np.zeros((quad_nph, quad_nth, quad_nr))
-
-        for (i, j, k) in [(i, j, k) for k in range(quad_nph)
-                                    for j in range(quad_nth)
-                                    for i in range(quad_nr)]:  # Parallelize...
+        def _integrate(ijk):
+            i, j, k = ijk
+            out = 0
             for i_gauss in range(len(self.data)):
                 low = (quad_lth[j], quad_lph[k])
                 up = (quad_lth[j + 1], quad_lph[k + 1])
@@ -588,7 +590,20 @@ class MGE(data.Data):
                                               r0=quad_lr[i],
                                               r1=quad_lr[i + 1],
                                               rho0=dens[i_gauss])
-                quad_grid[k, j, i] += res
+                out += res
+            return out
+
+        quad_grid = np.zeros((quad_nph, quad_nth, quad_nr))
+        ijk = [(i, j, k) for i in range(quad_nr)
+                         for j in range(quad_nth)
+                         for k in range(quad_nph)]
+        if parallel:
+            with Pool(c.settings.multiprocessing_settings['ncpus']) as p:
+                output = p.map(_integrate, ijk)
+        else:
+            output = [_integrate(ijk_tuple) for ijk_tuple in ijk]
+        for ijk_idx, ijk_tuple in enumerate(ijk):
+            quad_grid[ijk_tuple[::-1]] = output[ijk_idx]
 
         self.logger.debug('Percent of the Mass inside the projected grid: '
                           f'{sum(quad_grid) / total_mass * 100}.')
@@ -597,7 +612,7 @@ class MGE(data.Data):
 
         self.logger.debug(f'quad_grid: {quad_grid}')
         mass_qgrid_filename = \
-            self.config.settings.io_settings['output_directory'] + \
+            c.settings.io_settings['output_directory'] + \
                 f'{dir}/' + 'mass_qgrid.ecsv'
         qgrid_table = table.Table([quad_grid], names=('mass_qgrid',))
         qgrid_table.meta = \
@@ -605,7 +620,7 @@ class MGE(data.Data):
         qgrid_table.write(mass_qgrid_filename,
                           format='ascii.ecsv',
                           overwrite=True)
-        self.logger.info('Intrinsic masses mass_radmass written to '
+        self.logger.info('Intrinsic masses mass_qgrid written to '
                          f'{mass_qgrid_filename}.')
         return quad_grid
 
