@@ -123,8 +123,45 @@ class MGE(data.Data):
         aperture_masses = aperture_masses[:,1]
         return aperture_masses
 
-    def get_intrinsic_masses(self, theta_view, psi_view, phi_view, dir,
-                             use_cache=True, parallel=True):
+    def get_intrinsic_masses(self, model, use_cache=True, parallel=True):
+        """Calculate the mass of the mge in the intrinsic grid.
+
+        Calculate the mass of the mge in the intrinsic grid using observed
+        quantities and the viewing angles. The intrinsic masses in the
+        intrinsic grid and radius breaks are written to mass_radmass.ecsv and
+        mass_qgrid.ecsv in the model's datfil/ directory, respectively.
+        If called again, this method will read previously calculated intrinsic
+        masses from the respective files unless use_cache=False.
+
+        Parameters
+        ----------
+        use_cache : bool, optional
+            If False, the intrinsic masses will be recalculated.
+            If True, check for intrinsic masses already existing on disk and
+            if yes, read and return that data. The default is True.
+        parallel : bool, optional
+            If True, then the mass integration will be done in `ncpus`
+            parallel processes where `ncpus` is taken from the configuration's
+            `multiprocessing_settings`. If False, the integration will not use
+            multiprocessing. False is recommended if called from within a
+            parallel process. The default is True.
+
+        Returns
+        -------
+        Tuple (radmass, quad_grid)
+            radmass : np.array, shape=(n_r,)
+                mass inside the radial shells
+            quad_grid : np.array, shape=(quad_nph, quad_nth, quad_nr)
+                3D intrinsic_masses masses of the MGE in a polar grid of size
+                (quad_nph, quad_nth, quad_nr) as defined in the config file
+
+        """
+        dir = model.directory_noml + 'datfil/'
+        settings = self.config.settings.orblib_settings
+        quad_nr = settings['quad_nr']
+        quad_nth = settings['quad_nth']
+        quad_nph = settings['quad_nph']
+
         # calculate the mass of the mge in observed 3D grid given the
         # parameter set containing intrinsic axis ratios (p, q, u)
         # EXPERIMENTAL!
@@ -285,9 +322,7 @@ class MGE(data.Data):
         # Offset psi viewing angle in radians
         psi_obs = self.data['PA_twist'].data * math.pi / 180
 
-        theta_view *= math.pi / 180
-        phi_view *= math.pi / 180
-        psi_view *= math.pi / 180
+        theta_view, psi_view, phi_view = self._get_viewing_angles_rad(model)
         psi_obs += psi_view
 
         total_mass = math.tau * sum(surf_km * qobs * sigobs_km ** 2)
@@ -440,7 +475,47 @@ class MGE(data.Data):
                                       dens=dens,
                                       dir=dir,
                                       parallel=parallel)
-        return radmass, quad_grid
+        return radmass, np.reshape(quad_grid,
+                                   newshape=(quad_nph, quad_nth, quad_nr))
+
+    def _get_viewing_angles_rad(self, model):
+        """Return the model's visible component's viewing angles.
+
+        Parameters
+        ----------
+        model : a ``dyn.model.Model`` object
+
+        Returns
+        -------
+        Tuple (theta_view, psi_view, phi_view)
+            The viewing angels are returned in radians.
+        """
+        if self.config.system.is_bar_disk_system():
+            stars = self.config.system.get_unique_bar_component()
+        else:
+            stars = self.config.system.get_unique_triaxial_visible_component()
+        # used to derive the viewing angles
+        parset = model.parset
+        if self.config.system.is_bar_disk_system():
+            if self.config.system.is_bar_disk_system_with_angles():
+                theta_view = parset[f'theta-{stars.name}']
+                phi_view = parset[f'phi-{stars.name}']
+                psi_view = parset[f'psi-{stars.name}']
+            else:
+                q = parset[f'q-{stars.name}']
+                p = parset[f'p-{stars.name}']
+                u = parset[f'u-{stars.name}']
+                qdisk = parset[f'qdisk-{stars.name}']
+                theta_view, psi_view, phi_view = \
+                    stars.triax_pqu2tpp_bar(p, q, u, qdisk)
+                phi_view = -phi_view ## FIX ME
+        else:
+            q = parset[f'q-{stars.name}']
+            p = parset[f'p-{stars.name}']
+            u = parset[f'u-{stars.name}']
+            theta_view, psi_view, phi_view = stars.triax_pqu2tpp(p, q, u)
+        return theta_view * math.pi / 180, psi_view * math.pi / 180, \
+               phi_view * math.pi / 180
 
     def _intrin_spher_grid(self, low, up, P, Q, sigma, r0, r1, rho0):
         ''' calculate multi-dimensional integrals'''
@@ -525,9 +600,7 @@ class MGE(data.Data):
                           f'{sum(radmass) / total_mass * 100}')
         radmass /= total_mass
         self.logger.debug(f'radmass: {radmass}')
-        mass_radmass_filename = \
-            self.config.settings.io_settings['output_directory'] + \
-                f'{dir}/' + 'mass_radmass.ecsv'
+        mass_radmass_filename = dir + 'mass_radmass.ecsv'
         radmass_table = table.Table([radmass], names=('mass_radmass',))
         radmass_table.write(mass_radmass_filename,
                             format='ascii.ecsv',
@@ -608,15 +681,16 @@ class MGE(data.Data):
         self.logger.debug('Percent of the Mass inside the projected grid: '
                           f'{sum(quad_grid) / total_mass * 100}.')
         quad_grid /= total_mass
-        quad_grid = np.ravel(quad_grid, order='F')
+        quad_grid = np.ravel(quad_grid, order='F')  # retain legacy format
 
         self.logger.debug(f'quad_grid: {quad_grid}')
-        mass_qgrid_filename = \
-            c.settings.io_settings['output_directory'] + \
-                f'{dir}/' + 'mass_qgrid.ecsv'
+        mass_qgrid_filename = dir + 'mass_qgrid.ecsv'
         qgrid_table = table.Table([quad_grid], names=('mass_qgrid',))
         qgrid_table.meta = \
-            {'quad_nph': quad_nph, 'quad_nth': quad_nth,'quad_nr': quad_nr}
+            {'quad_nph': quad_nph,
+             'quad_nth': quad_nth,
+             'quad_nr': quad_nr,
+             'note': '3D array flattened in Fortran index order.'}
         qgrid_table.write(mass_qgrid_filename,
                           format='ascii.ecsv',
                           overwrite=True)
