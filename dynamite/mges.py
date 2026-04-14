@@ -123,7 +123,11 @@ class MGE(data.Data):
         aperture_masses = aperture_masses[:,1]
         return aperture_masses
 
-    def get_intrinsic_masses(self, model, use_cache=True, parallel=True):
+    def get_intrinsic_masses(self,
+                             model,
+                             len_mge_bulge=None,
+                             use_cache=True,
+                             parallel=True):
         """Calculate the mass of the mge in the intrinsic grid.
 
         Calculate the mass of the mge in the intrinsic grid using observed
@@ -135,6 +139,12 @@ class MGE(data.Data):
 
         Parameters
         ----------
+        model : a ``dynamite.model.Model`` object
+        len_mge_bulge : int or None
+            Bar systems have two mges which are concatenated in the .data
+            attribute. The first len_mge_bulge records correspond to the bulge
+            mge and the remaining to the disk mge. This parameter is only used
+            for bar systems and must be None for non-bar systems.
         use_cache : bool, optional
             If False, the intrinsic masses will be recalculated.
             If True, check for intrinsic masses already existing on disk and
@@ -309,73 +319,62 @@ class MGE(data.Data):
 
             return vx, vy, vz
 
-        c = self.config
-        distMPc = c.system.distMPc
-        arcsec_to_km = constants.ARC_KM(distMPc)
-
-        # Dispersion in km
-        sigobs_km = self.data['sigma'].data * arcsec_to_km
-        # Surface brightness in L_sun/km^2 (we don't multiply by ml here)
-        surf_km = self.data['I'].data / constants.PARSEC_KM ** 2
-        # Observed flattening
-        qobs = self.data['q'].data
-        # Offset psi viewing angle in radians
-        psi_obs = self.data['PA_twist'].data * math.pi / 180
-
-        theta_view, psi_view, phi_view = self._get_viewing_angles_rad(model)
-        psi_obs += psi_view
-
-        total_mass = math.tau * sum(surf_km * qobs * sigobs_km ** 2)
-
-        secth = 1 / math.cos(theta_view)
-        cotph = 1 / math.tan(phi_view)
-        delp = 1 - qobs ** 2
-        nom1minq2 = \
-            delp * (2 * np.cos(2 * psi_obs) +
-                    np.sin(2 * psi_obs) * (secth * cotph -
-                                           math.cos(theta_view) * math.tan(phi_view)))
-        nomp2minq2 = \
-            delp * (2 * np.cos(2 * psi_obs) +
-                    np.sin(2 * psi_obs) * (math.cos(theta_view) * cotph -
-                                           secth * math.tan(phi_view)))
-        denom = \
-            2 * math.sin(theta_view)**2 * (delp * np.cos(psi_obs) *
-                                           (np.cos(psi_obs) +
-                                            secth * cotph * np.sin(psi_obs)) - 1)
-        # These are temporary values of the squared intrinsic axial
-        # ratios p^2 and q^2
-        qintr = (1 - nom1minq2 / denom)
-        pintr = (qintr + nomp2minq2 / denom)
-        if any(qintr < 0) or any(pintr < 0):
-            txt = "p^2 or q^2 is below 0."
-            self.logger.error(txt)
-            raise ValueError(txt)
-        # intrinsic axial ratios p and q
-        qintr = np.sqrt(qintr)
-        pintr = np.sqrt(pintr)
-        self.logger.debug(f'Middle axis ratio p={pintr}, '
-                          f'minor axis ratio q={qintr}.')
-        # triaxiality parameter T = (1-p^2)/(1-q^2)
-        triaxpar = (1 - pintr**2) / (1 - qintr**2)
-        if any(triaxpar < 0) or any(triaxpar > 1):
-            txt = 'No triaxial deprojection possible!'
-            self.logger.error(txt)
-            raise ValueError(txt)
-        self.logger.debug(f'Triaxiality parameters: {triaxpar}')
-        if any(qintr > pintr):
-            txt = 'q > p'
-            self.logger.error(txt)
-            raise ValueError(txt)
-        if any(pintr > 1):
-            txt = 'p > 1'
-            self.logger.error(txt)
-            raise ValueError(txt)
-        # intrinsic sigma (Cappellari 2002 eq 9.)
-        sigintr_km = sigobs_km * \
-            np.sqrt(qobs / np.sqrt((pintr * math.cos(theta_view)) ** 2 +
-                                   (qintr * math.sin(theta_view)) ** 2 *
-                                    ((pintr * math.cos(phi_view)) ** 2 +
-                                     math.sin(phi_view)**2)))
+        if self.config.system.is_bar_disk_system():
+            if type(len_mge_bulge) is not int:
+                txt = 'len_mge_bulge must be an integer for bar systems.'
+                self.logger.error(txt)
+                raise ValueError(txt)
+            # DISK
+            arcsec_to_km = constants.ARC_KM(self.config.system.distMPc)
+            theta_view, _, _ = self._get_viewing_angles_rad(model)
+            disk_data = self.data[len_mge_bulge:]
+            # Dispersion in km
+            sigobs_km_d = disk_data['sigma'].data * arcsec_to_km
+            # Surface brightness in L_sun/km^2 (we don't multiply by ml here)
+            surf_km_d = disk_data['I'].data / constants.PARSEC_KM ** 2
+            # Observed flattening
+            qobs_d = disk_data['q'].data
+            # Offset psi viewing angle in radians
+            psi_obs_d = self.data['PA_twist'].data * math.pi / 180
+            psi_obs_d +=  90  # psi_view_disk = pi/2
+            qintr_d = (qobs_d ** 2 -
+                       math.cos(theta_view) ** 2) / math.sin(theta_view) ** 2
+            pintr_d = 0.9999999999 * np.ones_like(qintr_d)
+            # triaxpar_d = np.zeros_like(qintr_d)
+            sigintr_km_d = sigobs_km_d
+            if any(qintr_d < 0):
+                txt = 'q^2 is below 0 (in disk).'
+                self.logger.error(txt)
+                raise ValueError(txt)
+            qintr_d = np.sqrt(qintr_d)
+            if any(qintr_d > pintr_d):
+                txt = 'q>p in disk.'
+                self.logger.error(txt)
+                raise ValueError(txt)
+            # BULGE
+            intr_props = self._get_intrinsic(model,
+                                             self.data[:len_mge_bulge],
+                                             logtxt=' (bulge)')
+            pintr_b, qintr_b, sigintr_km_b, surf_km_b, qobs_b, sigobs_km_b = \
+                intr_props
+            # Combine all the gaussians together (disk + bulge). Note that the
+            # sequence is now disk first, then bulge like in LegacyFortran.
+            surf_km = np.concatenate((surf_km_d, surf_km_b))
+            qobs = np.concatenate((qobs_d, qobs_b))
+            sigobs_km = np.concatenate((sigobs_km_d, sigobs_km_b))
+            # psi_obs = np.concatenate((psi_obs_d, psi_obs_b))
+            qintr = np.concatenate((qintr_d, qintr_b))
+            pintr = np.concatenate((pintr_d, pintr_b))
+            sigintr_km = np.concatenate((sigintr_km_d, sigintr_km_b))
+            # triaxpar = np.concatenate((triaxpar_d, triaxpar_b))
+        else:
+            if len_mge_bulge is not None:
+                txt = 'len_mge_bulge must be None for non-bar systems.'
+                self.logger.error(txt)
+                raise ValueError(txt)
+            intr_props = self._get_intrinsic(model,
+                                             self.data)
+            pintr, qintr, sigintr_km, surf_km, qobs, sigobs_km = intr_props
         self.logger.debug('Unitless length of the projected major axis: u = '
                           f'{sigobs_km / sigintr_km}')
         # density factor
@@ -384,6 +383,8 @@ class MGE(data.Data):
         # Integration Constant
         V0 = 4 * math.pi * constants.GRAV_CONST_KM * \
               sigintr_km ** 2 * pintr * qintr * dens
+        # Total mass of the galaxy (except for ml parameter)
+        total_mass = math.tau * sum(surf_km * qobs * sigobs_km ** 2)
         # Compute the constants for the inner approximation
         k = np.sqrt((1 - pintr ** 2) / (1 - qintr ** 2))
         F = special.ellipkinc(np.arccos(qintr), k ** 2)
@@ -477,6 +478,67 @@ class MGE(data.Data):
                                       parallel=parallel)
         return radmass, np.reshape(quad_grid,
                                    newshape=(quad_nph, quad_nth, quad_nr))
+
+    def _get_intrinsic(self, model, mge_data, logtxt=''):
+        arcsec_to_km = constants.ARC_KM(self.config.system.distMPc)
+        theta_view, psi_view, phi_view = self._get_viewing_angles_rad(model)
+        secth = 1 / math.cos(theta_view)
+        cotph = 1 / math.tan(phi_view)
+        # Dispersion in km
+        sigobs_km = mge_data['sigma'].data * arcsec_to_km
+        # Surface brightness in L_sun/km^2 (we don't multiply by ml here)
+        surf_km = mge_data['I'].data / constants.PARSEC_KM ** 2
+        # Observed flattening
+        qobs = mge_data['q'].data
+        # Offset psi viewing angle in radians
+        psi_obs = mge_data['PA_twist'].data * math.pi / 180
+        psi_obs += psi_view
+        delp = 1 - qobs ** 2
+        nom1minq2 = delp * \
+            (2 * np.cos(2 * psi_obs) +
+             np.sin(2 * psi_obs) *
+                (secth * cotph - math.cos(theta_view) * math.tan(phi_view)))
+        nomp2minq2 = \
+            delp * (2 * np.cos(2 * psi_obs) +
+                    np.sin(2 * psi_obs) * (math.cos(theta_view) * cotph -
+                                           secth * math.tan(phi_view)))
+        denom = \
+            2 * math.sin(theta_view) ** 2 * (delp * np.cos(psi_obs) *
+                (np.cos(psi_obs) + secth * cotph * np.sin(psi_obs)) - 1)
+        # These are temporary values of the squared intrinsic axial
+        # ratios p^2 and q^2
+        qintr = (1 - nom1minq2 / denom)
+        pintr = (qintr + nomp2minq2 / denom)
+        if any(qintr < 0) or any(pintr < 0):
+            txt = f"p^2 or q^2 is below 0{logtxt}."
+            self.logger.error(txt)
+            raise ValueError(txt)
+        # intrinsic axial ratios p and q
+        qintr = np.sqrt(qintr)
+        pintr = np.sqrt(pintr)
+        self.logger.debug(f'Middle axis ratio{logtxt} p={pintr}, '
+                          f'minor axis ratio{logtxt} q={qintr}.')
+        if any(qintr > pintr):
+            txt = f"q > p{logtxt}."
+            self.logger.error(txt)
+            raise ValueError(txt)
+        if any(pintr > 1):
+            txt = f"p > 1{logtxt}."
+            self.logger.error(txt)
+            raise ValueError(txt)
+        # intrinsic sigma (Cappellari 2002 eq 9.)
+        sigintr_km = sigobs_km * \
+            np.sqrt(qobs / np.sqrt((pintr * math.cos(theta_view)) ** 2 +
+                (qintr * math.sin(theta_view)) ** 2 *
+                ((pintr * math.cos(phi_view)) ** 2 + math.sin(phi_view) ** 2)))
+        # triaxiality parameter T = (1-p^2)/(1-q^2)
+        triaxpar = (1 - pintr ** 2) / (1 - qintr ** 2)
+        if any(triaxpar < 0) or any(triaxpar > 1):
+            txt = f'No triaxial deprojection possible{logtxt}!'
+            self.logger.error(txt)
+            raise ValueError(txt)
+        self.logger.debug(f'Triaxiality parameters{logtxt}: {triaxpar}')
+        return pintr, qintr, sigintr_km, surf_km, qobs, sigobs_km
 
     def _get_viewing_angles_rad(self, model):
         """Return the model's visible component's viewing angles.
