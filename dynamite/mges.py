@@ -1,6 +1,7 @@
 import logging
 import math
 import numpy as np
+import os
 from scipy import integrate
 from scipy import special
 from astropy import table
@@ -130,12 +131,12 @@ class MGE(data.Data):
                              parallel=True):
         """Calculate the mass of the mge in the intrinsic grid.
 
-        Calculate the mass of the mge in the intrinsic grid using observed
-        quantities and the viewing angles. The intrinsic masses in the
-        intrinsic grid and radius breaks are written to mass_radmass.ecsv and
-        mass_qgrid.ecsv in the model's datfil/ directory, respectively.
-        If called again, this method will read previously calculated intrinsic
-        masses from the respective files unless use_cache=False.
+        Calculate the mass of the mge in the intrinsic grid using observation
+        data and the viewing angles. The intrinsic masses in the intrinsic grid
+        and radius breaks are written to mass_qgrid.ecsv and mass_radmass.ecsv
+        in the model's datfil/ directory, respectively. If called again, this
+        method will read previously calculated intrinsic masses from the
+        respective files unless use_cache=False.
 
         Parameters
         ----------
@@ -166,15 +167,32 @@ class MGE(data.Data):
                 (quad_nph, quad_nth, quad_nr) as defined in the config file
 
         """
-        dir = model.directory_noml + 'datfil/'
         settings = self.config.settings.orblib_settings
         quad_nr = settings['quad_nr']
         quad_nth = settings['quad_nth']
         quad_nph = settings['quad_nph']
+        dir = model.directory_noml + 'datfil/'
+        if use_cache:
+            mr_file = dir + 'mass_radmass.ecsv'
+            mq_file = dir + 'mass_qgrid.ecsv'
+            mr_exists = os.path.isfile(mr_file)
+            mq_exists = os.path.isfile(mq_file)
+            if mr_exists and mq_exists:
+                radmass = table.Table.read(mr_file,
+                                           format='ascii')['mass_radmass'].data
+                quad_grid = table.Table.read(mq_file,
+                                             format='ascii')['mass_qgrid'].data
+                self.logger.info(f'Intrinsic masses read from {mr_file} '
+                                 f'and {mq_file}, respectively.')
+                return radmass, \
+                       np.reshape(quad_grid,
+                                  newshape=(quad_nph, quad_nth, quad_nr))
+                ###############################################################
+            elif mr_exists or mq_exists:
+                self.logger.info(f'Strange, only one of {mr_file} and '
+                    f'{mq_file} exist, will re-calculate intrinsic masses.')
+        self.logger.info('Calculating intrinsic masses...')
 
-        # calculate the mass of the mge in observed 3D grid given the
-        # parameter set containing intrinsic axis ratios (p, q, u)
-        # EXPERIMENTAL!
         def potin(n, x, y, z):
             x2 = x*x
             y2 = y*y
@@ -480,6 +498,33 @@ class MGE(data.Data):
                                    newshape=(quad_nph, quad_nth, quad_nr))
 
     def _get_intrinsic(self, model, mge_data, logtxt=''):
+        """_summary_
+
+        Parameters
+        ----------
+        model : _type_
+            _description_
+        mge_data : _type_
+            _description_
+        logtxt : str, optional
+            _description_, by default ''
+
+        Returns
+        -------
+        _type_
+            _description_
+
+        Raises
+        ------
+        ValueError
+            _description_
+        ValueError
+            _description_
+        ValueError
+            _description_
+        ValueError
+            _description_
+        """
         arcsec_to_km = constants.ARC_KM(self.config.system.distMPc)
         theta_view, psi_view, phi_view = self._get_viewing_angles_rad(model)
         secth = 1 / math.cos(theta_view)
