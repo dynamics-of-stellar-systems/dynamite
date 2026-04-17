@@ -1,4 +1,5 @@
 import os
+import pathlib
 import subprocess
 import shutil
 import logging
@@ -51,6 +52,7 @@ class LegacyOrbitLibrary(OrbitLibrary):
                    'None provided.'
             self.logger.error(text)
             raise ValueError(text)
+        self.config = config
         self.mod_dir = mod_dir
         self.parset = parset
         self.system = config.system
@@ -123,6 +125,28 @@ class LegacyOrbitLibrary(OrbitLibrary):
                 self.get_orbit_library_par()
             else:
                 self.get_orbit_library()
+            # Calculate the orblib's intrinsic masses
+            model = self.config.all_models.get_model_from_parset(self.parset)
+            if self.system.is_bar_disk_system():
+                stars = self.system.get_unique_bar_component()
+                mge = stars.mge_lum_tot
+                len_mge_bulge = len(stars.mge_lum.data)
+                # intrinsic mass
+                self.intrinsic_masses = \
+                    mge.get_intrinsic_masses(model,
+                                             len_mge_bulge=len_mge_bulge,
+                                             parallel=False)[1]
+            else:
+                stars = self.system.get_unique_triaxial_visible_component()
+                mge = stars.mge_lum
+                # intrinsic mass
+                self.intrinsic_masses = \
+                    mge.get_intrinsic_masses(model, parallel=False)[1]
+            tube_done = os.path.isfile(self.mod_dir + 'datfil/tube_done')
+            box_done = os.path.isfile(self.mod_dir + 'datfil/box_done')
+            if tube_done and box_done:
+                pathlib.Path(self.mod_dir + 'datfil/tube_box_done').touch()
+
 
     def create_fortran_input_orblib(self, path):
         """write input files for Fortran orbit library programs
@@ -622,8 +646,6 @@ class LegacyOrbitLibrary(OrbitLibrary):
         txt_file.write('orblibbox=$!\n')
         txt_file.write('# wait for tube and box orbits to finish\n')
         txt_file.write('wait $orblib $orblibbox\n')
-        txt_file.write('# set flag\n')
-        txt_file.write('touch datfil/tube_box_done\n')
         txt_file.close()
         # returns the name of the executables
         return cmd_string
@@ -697,8 +719,6 @@ class LegacyOrbitLibrary(OrbitLibrary):
                 f'&& mv {f_name}.staging.bz2 {f_name}.bz2\n')
             txt_file.write(f'rm -f {f_name}\n')
         txt_file.write('touch datfil/box_done\n')
-        txt_file.write('test -e datfil/tube_done && '
-                       'touch datfil/tube_box_done\n')
         txt_file.close()
         # returns the name of the executables
         return cmdstr_tube, cmdstr_box

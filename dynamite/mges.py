@@ -128,6 +128,7 @@ class MGE(data.Data):
                              model,
                              len_mge_bulge=None,
                              use_cache=True,
+                             nocalc=False,
                              parallel=True):
         """Calculate the mass of the mge in the intrinsic grid.
 
@@ -150,6 +151,11 @@ class MGE(data.Data):
             If False, the intrinsic masses will be recalculated.
             If True, check for intrinsic masses already existing on disk and
             if yes, read and return that data. The default is True.
+        nocalc : bool, optional
+            If True, ignore the values of use_cache and parallel and return
+            the intrinsic masses already existing on disk. If the files do not
+            exist, raise an exception instead of attempting to calculate.
+            The default is False.
         parallel : bool, optional
             If True, then the mass integration will be done in `ncpus`
             parallel processes where `ncpus` is taken from the configuration's
@@ -166,13 +172,18 @@ class MGE(data.Data):
                 3D intrinsic masses of the MGE in a polar grid of size
                 (quad_nph, quad_nth, quad_nr) as defined in the config file
 
+        Raises
+        ------
+        FileNotFoundError
+            If nocalc=True and one or both of the intrinsic mass file(s) don't
+            exist.
         """
         settings = self.config.settings.orblib_settings
         quad_nr = settings['quad_nr']
         quad_nth = settings['quad_nth']
         quad_nph = settings['quad_nph']
         dir = model.directory_noml + 'datfil/'
-        if use_cache:
+        if use_cache or nocalc:
             mr_file = dir + 'mass_radmass.ecsv'
             mq_file = dir + 'mass_qgrid.ecsv'
             mr_exists = os.path.isfile(mr_file)
@@ -190,7 +201,11 @@ class MGE(data.Data):
                 ###############################################################
             elif mr_exists or mq_exists:
                 self.logger.info(f'Strange, only one of {mr_file} and '
-                    f'{mq_file} exist, will re-calculate intrinsic masses.')
+                    f'{mq_file} exists, will pretend neither exists.')
+            if nocalc:
+                txt=f'Unexpected: intrinsic mass file(s) inexistent in {dir}.'
+                self.logger.error(txt)
+                raise FileNotFoundError(txt)
         self.logger.info('Calculating intrinsic masses...')
 
         def potin(n, x, y, z):

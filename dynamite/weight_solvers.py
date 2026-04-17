@@ -647,19 +647,12 @@ class NNLS(WeightSolver):
 
         """
         if self.system.is_bar_disk_system():
-            stars = self.system.get_unique_bar_component()
-            mge = stars.mge_lum_tot
-            len_mge_bulge = len(stars.mge_lum.data)
-            # intrinsic mass
-            self.intrinsic_masses = \
-                mge.get_intrinsic_masses(self.model,
-                                         len_mge_bulge=len_mge_bulge,
-                                         parallel=False)[1]
+            mge = self.system.get_unique_bar_component().mge_lum_tot
         else:
             mge = self.system.get_unique_triaxial_visible_component().mge_lum
-            # intrinsic mass
-            self.intrinsic_masses = mge.get_intrinsic_masses(self.model,
-                                                             parallel=False)[1]
+        # intrinsic mass
+        self.intrinsic_masses = mge.get_intrinsic_masses(self.model,
+                                                         nocalc=True)[1]
 
         self.intrinsic_mass_error = self.settings['lum_intr_rel_err']
         # projected
