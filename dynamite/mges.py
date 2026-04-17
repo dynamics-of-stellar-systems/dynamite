@@ -163,7 +163,7 @@ class MGE(data.Data):
             radmass : np.array, shape=(n_r,)
                 mass inside the radial shells
             quad_grid : np.array, shape=(quad_nph, quad_nth, quad_nr)
-                3D intrinsic_masses masses of the MGE in a polar grid of size
+                3D intrinsic masses of the MGE in a polar grid of size
                 (quad_nph, quad_nth, quad_nr) as defined in the config file
 
         """
@@ -269,7 +269,8 @@ class MGE(data.Data):
                 d = 1 - (1 - pintr[gn]*pintr[gn])*t*t
                 e = 1 - (1 - qintr[gn]*qintr[gn])*t*t
                 # Integral part of formula 12 of Cappellari 2002.
-                a = math.exp(-t*t/(2*sigintr_km[gn]**2)*(gx*gx + (gy*gy)/d + (gz*gz)/e))
+                a = math.exp(-t*t/(2*sigintr_km[gn]**2)*
+                             (gx*gx + (gy*gy)/d + (gz*gz)/e))
                 # dF/dx
                 return -gx/sigintr_km[gn]**2*t*t*a/math.sqrt(d*e)
 
@@ -278,7 +279,8 @@ class MGE(data.Data):
                 e = 1 - (1 - qintr[gn]*qintr[gn])*t*t
 
                 # Integral part of formula 12 of Cappellari 2002.
-                a = math.exp(-t*t/(2*sigintr_km[gn]**2)*(gx*gx + (gy*gy)/d + (gz*gz)/e))
+                a = math.exp(-t*t/(2*sigintr_km[gn]**2)*
+                             (gx*gx + (gy*gy)/d + (gz*gz)/e))
                 # dF/dy
                 return -gy/sigintr_km[gn]**2*t*t/d*a/math.sqrt(d*e)
 
@@ -288,7 +290,8 @@ class MGE(data.Data):
                 e = 1 - (1 - qintr[gn]*qintr[gn])*t*t
 
                 # Integral part of formula 12 of Cappellari 2002.
-                a = math.exp(-t*t/(2*sigintr_km[gn]**2)*(gx*gx + (gy*gy)/d + (gz*gz)/e))
+                a = math.exp(-t*t/(2*sigintr_km[gn]**2)*
+                             (gx*gx + (gy*gy)/d + (gz*gz)/e))
                 # dF/dz
                 return -gz/sigintr_km[gn]**2*t*t/e*a/math.sqrt(d*e)
 
@@ -361,12 +364,12 @@ class MGE(data.Data):
             # triaxpar_d = np.zeros_like(qintr_d)
             sigintr_km_d = sigobs_km_d
             if any(qintr_d < 0):
-                txt = 'q^2 is below 0 (in disk).'
+                txt = 'qintr^2 is below 0 (in disk).'
                 self.logger.error(txt)
                 raise ValueError(txt)
             qintr_d = np.sqrt(qintr_d)
             if any(qintr_d > pintr_d):
-                txt = 'q>p in disk.'
+                txt = 'qintr > pintr in disk.'
                 self.logger.error(txt)
                 raise ValueError(txt)
             # BULGE
@@ -401,7 +404,7 @@ class MGE(data.Data):
         # Integration Constant
         V0 = 4 * math.pi * constants.GRAV_CONST_KM * \
               sigintr_km ** 2 * pintr * qintr * dens
-        # Total mass of the galaxy (except for ml parameter)
+        # Total mass of the galaxy (except for ml i.e., assuming ml=1)
         total_mass = math.tau * sum(surf_km * qobs * sigobs_km ** 2)
         # Compute the constants for the inner approximation
         k = np.sqrt((1 - pintr ** 2) / (1 - qintr ** 2))
@@ -498,32 +501,32 @@ class MGE(data.Data):
                                    newshape=(quad_nph, quad_nth, quad_nr))
 
     def _get_intrinsic(self, model, mge_data, logtxt=''):
-        """_summary_
+        """Helper function: calculate intrinsic properties
 
         Parameters
         ----------
-        model : _type_
-            _description_
-        mge_data : _type_
-            _description_
+        model : a ``dynamite.model.Model`` object
+        mge_data : astropy table of length len_mge
+            The mge data delivering dispersion, surface brightness, observed
+            flattening, and the offset psi viewing angle for each mge component
         logtxt : str, optional
-            _description_, by default ''
+            The logtxt is added to logged messages and is intended to help
+            keeping calls to this method from different places apart. The
+            default is '' (the empty string).
 
         Returns
         -------
-        _type_
-            _description_
+        tuple (pintr, qintr, sigintr_km, surf_km, qobs, sigobs_km)
+            pintr and qintr are the intrinsic axial ratios, sigintr_km the
+            intrinsic dispersion, surf_km the observed surface brightness, qobs
+            the observed flattening, and sigobs_km the observed dispersion.
+            Each tuple element is a numpy array of shape (len_mge,).
 
         Raises
         ------
         ValueError
-            _description_
-        ValueError
-            _description_
-        ValueError
-            _description_
-        ValueError
-            _description_
+            If pintr^2 < 0 or qintr^2 < 0, qintr > pintr, pintr > 1, or the
+            triaxiality parameter is less than 0 or greater than 1
         """
         arcsec_to_km = constants.ARC_KM(self.config.system.distMPc)
         theta_view, psi_view, phi_view = self._get_viewing_angles_rad(model)
@@ -555,20 +558,20 @@ class MGE(data.Data):
         qintr = (1 - nom1minq2 / denom)
         pintr = (qintr + nomp2minq2 / denom)
         if any(qintr < 0) or any(pintr < 0):
-            txt = f"p^2 or q^2 is below 0{logtxt}."
+            txt = f"pintr^2 or qintr^2 is below 0{logtxt}."
             self.logger.error(txt)
             raise ValueError(txt)
         # intrinsic axial ratios p and q
         qintr = np.sqrt(qintr)
         pintr = np.sqrt(pintr)
-        self.logger.debug(f'Middle axis ratio{logtxt} p={pintr}, '
-                          f'minor axis ratio{logtxt} q={qintr}.')
+        self.logger.debug(f'Middle axis ratio{logtxt} {pintr=}, '
+                          f'minor axis ratio{logtxt} {qintr=}.')
         if any(qintr > pintr):
-            txt = f"q > p{logtxt}."
+            txt = f"qintr > pintr{logtxt}."
             self.logger.error(txt)
             raise ValueError(txt)
         if any(pintr > 1):
-            txt = f"p > 1{logtxt}."
+            txt = f"pintr > 1{logtxt}."
             self.logger.error(txt)
             raise ValueError(txt)
         # intrinsic sigma (Cappellari 2002 eq 9.)
@@ -625,7 +628,7 @@ class MGE(data.Data):
                phi_view * math.pi / 180
 
     def _intrin_spher_grid(self, low, up, P, Q, sigma, r0, r1, rho0):
-        ''' calculate multi-dimensional integrals'''
+        """Calculate the intrinsic mass multi-dimensional integrals"""
         epsabs = 1.49e-8
         epsrel = 1.49e-8
         limit = 150
@@ -658,6 +661,7 @@ class MGE(data.Data):
         return res
 
     def _intrin_spher_grid_func(self, x, y, P, Q, sigma, r0, r1, rho0):
+        """Integrand of the intrinsic mass multi-dimensional integrals"""
         sth = math.sin(x)
         cth = math.cos(x)
         sph = math.sin(y)
@@ -673,6 +677,28 @@ class MGE(data.Data):
         return answ * 8
 
     def _intrin_radii(self, total_mass, pintr, qintr, sigintr_km, dens, dir):
+        """Integrate the intrinsic mass inside the radial shells
+
+        Parameters
+        ----------
+        total_mass : float
+            Total mass of the system
+        pintr : numpy array of shape (len_mge,)
+            Intrinsic axial ratio p
+        qintr : numpy array of shape (len_mge,)
+            Intrinsic axial ratio q
+        sigintr_km : numpy array of shape (len_mge,)
+            Intrinsic dispersion
+        dens : numpy array of shape (len_mge,)
+            Density factor
+        dir : str
+            Destination directory for the output file
+
+        Returns
+        -------
+        np.array, shape=(n_r,)
+            Intrinsic mass inside the radial shells
+        """
         settings = self.config.settings.orblib_settings
         arcsec_to_km = constants.ARC_KM(self.config.system.distMPc)
         nr = settings['nE']
@@ -718,9 +744,40 @@ class MGE(data.Data):
 
     def _intrin_spher(self, total_mass, pintr, qintr, sigintr_km, dens, dir,
                       parallel=True):
+        """Integrate the intrinsic mass inside the polar grid
+
+        Calculate the 3D intrinsic masses of the MGE in a polar grid of size
+        (quad_nph, quad_nth, quad_nr) as defined in the config file.
+
+        Parameters
+        ----------
+        total_mass : float
+            Total mass of the system
+        pintr : numpy array of shape (len_mge,)
+            Intrinsic axial ratio p
+        qintr : numpy array of shape (len_mge,)
+            Intrinsic axial ratio q
+        sigintr_km : numpy array of shape (len_mge,)
+            Intrinsic dispersion
+        dens : numpy array of shape (len_mge,)
+            Density factor
+        dir : str
+            Destination directory for the output file
+        parallel : bool, optional
+            If True, then the mass integration will be done in `ncpus`
+            parallel processes where `ncpus` is taken from the configuration's
+            `multiprocessing_settings`. If False, the integration will not use
+            multiprocessing. False is recommended if called from within a
+            parallel process. The default is True.
+
+        Returns
+        -------
+        quad_grid : np.array, shape=(quad_nph, quad_nth, quad_nr)
+            3D intrinsic masses of the MGE in a polar grid of size
+            (quad_nph, quad_nth, quad_nr)
+        """
         # Calculate like in qgrid_setup (instead of reading the orblib-file):
         # quad_nr, quad_nth, quad_nph, quad_lr, quad_lth, quad_lph
-        #START
         c = self.config
         settings = c.settings.orblib_settings
         arcsec_to_km = constants.ARC_KM(self.config.system.distMPc)
@@ -741,20 +798,17 @@ class MGE(data.Data):
             quad_lr[i] = 10**(rlogmin +
                 (rlogmax - rlogmin + math.log10(0.5)) * i / quad_nr)
         quad_lr[quad_nr] = max(10 ** rlogmax * 100, max(sigobs_km) * 10)
-
         # Define the angular bins
         quad_lth = np.zeros(quad_nth + 1)
         quad_lth[0] = 0
         for i in range(1, quad_nth):
             quad_lth[i] = math.pi / 2 * i / quad_nth
         quad_lth[quad_nth] = math.pi / 2
-
         # Define the angular bins
         quad_lph = np.zeros(quad_nph + 1)
         for i in range(1, quad_nph):
             quad_lph[i] = math.pi / 2 * i / quad_nph
         quad_lph[quad_nph] = math.pi / 2
-        #END
 
         def _integrate(ijk):
             i, j, k = ijk
