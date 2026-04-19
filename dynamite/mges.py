@@ -97,7 +97,10 @@ class MGE(data.Data):
     def __repr__(self):
         return f'{self.__class__.__name__}({self.__dict__})'
 
-    def get_projected_masses(self, use_cache=True, parallel=True):
+    def get_projected_masses(self,
+                             use_cache=True,
+                             nocalc=False,
+                             parallel=True):
         """Calculate the mass of the mge in observed 2D apertures.
 
         Calculate the mass of the mge in observed 2D apertures using observed
@@ -116,6 +119,11 @@ class MGE(data.Data):
             projected masses. The mass_aper attribute will override data on
             disk. If data is read from disk, it will be used to update the
             visible component's mass_aper attribute. The default is True.
+        nocalc : bool, optional
+            If True, ignore the values of use_cache and parallel and return
+            the projected masses from the visible component's mass_aper
+            attribute or from disk. If the data does not exist, raise an
+            exception instead of attempting to calculate. The default is False.
         parallel : bool, optional
             If True, then the mass integration will be done in `ncpus`
             parallel processes where `ncpus` is taken from the configuration's
@@ -127,22 +135,34 @@ class MGE(data.Data):
         -------
         numpy array, shape=(n_spatial_bins,)
             Aperture masses of the MGE
+
+        Raises
+        ------
+        FileNotFoundError
+            If nocalc=True, the visible component's mass_aper attribute is
+            None, and the projected mass file doesn't exist.
         """
         c = self.config
         if c.system.is_bar_disk_system():
             vis_comp = c.system.get_unique_bar_component()
         else:
             vis_comp = c.system.get_unique_triaxial_visible_component()
-        if use_cache and (vis_comp.mass_aper is not None):
+        if (use_cache or nocalc) and (vis_comp.mass_aper is not None):
             self.logger.info('Projected masses grabbed from vis. component.')
             return vis_comp.mass_aper  ########################################
         p_mass_fname = c.settings.io_settings['output_directory'] + \
                           'mass_aper.ecsv'
-        if use_cache and os.path.isfile(p_mass_fname):
+        if (use_cache or nocalc) and os.path.isfile(p_mass_fname):
             proj_mass = table.Table.read(p_mass_fname, format='ascii')
             self.logger.info(f'Projected masses read from {p_mass_fname}.')
             vis_comp.mass_aper = np.array(proj_mass['proj_mass'])
             return vis_comp.mass_aper  ########################################
+        if nocalc:
+            txt = "Unexpected: projected masses neither in visible " \
+                  f"component's mass_aper attribute nor in folder {dir}."
+            self.logger.error(txt)
+            raise FileNotFoundError(txt)
+
         kinematics = vis_comp.kinematic_data
         distMPc = c.system.distMPc
         arcsec_to_km = constants.ARC_KM(distMPc)
@@ -297,10 +317,10 @@ class MGE(data.Data):
             The integrand evaluated at x
         """
         # compute new gaussian size after convolving with the psf:
-        sb = math.sqrt(sigobs_km**2 + psf_width**2)
+        sb = math.sqrt(sigobs_km ** 2 + psf_width ** 2)
         qb = math.sqrt((sigobs_km*sigobs_km*qobs*qobs + psf_width*psf_width) /
                        (sigobs_km*sigobs_km + psf_width*psf_width))
-        surcor = surf_km*qobs/qb*(sigobs_km**2) / (sb**2)
+        surcor = surf_km * qobs / qb * sigobs_km ** 2 / (sb ** 2)
 
         # Angle is the angle form the PA to the X-axis ccw
         # To rotate the grid to the PA rotate of -angle ccw
@@ -316,9 +336,9 @@ class MGE(data.Data):
         #       / k * (derf(f0)-derf(f1)) * exp ( - (x*x)/(k*k*sb*sb))
 
         # Cappellari formula from ic1459 paper (2002) Appendix B3, formula (B6 and B7)
-        p = math.sqrt(1 + qb*qb + (1.0 - qb*qb)*math.cos(2*alpha))
-        f0 = 1.0/(2*p*qb*sb) * ((1.0 - qb*qb)*x*math.sin(2*alpha) - p*p*y0)
-        f1 = 1.0/(2*p*qb*sb) * ((1.0 - qb*qb)*x*math.sin(2*alpha) - p*p*y1)
+        p = math.sqrt(1 + qb*qb + (1 - qb*qb)*math.cos(2*alpha))
+        f0 = 1/(2*p*qb*sb) * ((1.0 - qb*qb)*x*math.sin(2*alpha) - p*p*y0)
+        f1 = 1/(2*p*qb*sb) * ((1.0 - qb*qb)*x*math.sin(2*alpha) - p*p*y1)
 
         return psf_weight*surcor*qb*sb*math.sqrt(math.pi)/p * \
                (special.erf(f0) - special.erf(f1))*math.exp(-(x/(p*sb))**2)
