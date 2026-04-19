@@ -742,7 +742,6 @@ class MGE(data.Data):
                                               r0=quad_lr[i],
                                               r1=quad_lr[i + 1],
                                               rho0=dens[i_gauss])
-                self.logger.debug(f'{i=}, {i_gauss=}, {res/total_mass*100=}')
                 radmass[i] += res
         self.logger.debug('Percent of the mass inside the radial shells: '
                           f'{sum(radmass) / total_mass * 100}')
@@ -859,7 +858,6 @@ class MGE(data.Data):
         quad_grid /= total_mass
         quad_grid = np.ravel(quad_grid, order='F')  # retain legacy format
 
-        self.logger.debug(f'quad_grid: {quad_grid}')
         mass_qgrid_filename = dir + 'mass_qgrid.ecsv'
         qgrid_table = table.Table([quad_grid], names=('mass_qgrid',))
         qgrid_table.meta = \
