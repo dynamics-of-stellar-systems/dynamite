@@ -644,8 +644,8 @@ class MGE(data.Data):
 
     def _intrin_spher_grid(self, low, up, P, Q, sigma, r0, r1, rho0):
         """Calculate the intrinsic mass multi-dimensional integrals"""
-        epsabs = 1.49e-8
-        epsrel = 1.49e-8
+        epsabs = 5e-7  # 1.49e-8
+        epsrel = 5e-7  # 1.49e-8
         limit = 150
         # check integration limits
         intgsign = 1
@@ -666,8 +666,8 @@ class MGE(data.Data):
                                           opts={'epsabs' : epsabs,
                                                 'epsrel' : epsrel,
                                                 'limit' : limit})
-            # Be generous with the error...
-            max_err = 20 * max(epsabs, epsrel * abs(res))
+            # Be somewhat generous with the error...
+            max_err = 2 * max(epsabs, epsrel * abs(res))
             if abserr > max_err:
                 txt = f'Intrinsic masses integral problem: err={abserr}, ' \
                       f'but should be <= {max_err}.'
