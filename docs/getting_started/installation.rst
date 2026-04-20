@@ -349,9 +349,13 @@ DYNAMITE installation option (A)
 Your terminal will likely express several warnings again, but these are not critical and refer to different coding conventions in earlier Fortran versions. Now, take a look in the directory ``.../legacy_fortran`` and check that you have .f90 files and executables (no file name extension) for:
 
 * orbitstart
+* orbitstart_bar
 * orblib_new_mirror
+* orblib_bar
 * triaxmass
+* triaxmass_bar
 * triaxmassbin
+* triaxmassbin_bar
 * triaxnnls_CRcut
 * triaxnnls_noCRcut
 
@@ -364,9 +368,11 @@ DYNAMITE installation option (B)
 Your terminal will likely express several warnings again, but these are not critical and refer to different coding conventions in earlier Fortran versions. Now, take a look in the directory ``.../legacy_fortran`` and check that you have .f90 files and executables (no file name extension) for:
 
 * orbitstart
+* orbitstart_bar
 * orblib_new_mirror
-* triaxmass
+* orblib_bar
 * triaxmassbin
+* triaxmassbin_bar
 
 
 3. Installing DYNAMITE

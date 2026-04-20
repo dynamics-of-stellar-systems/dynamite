@@ -4,6 +4,7 @@
 Change Log
 ****************
 
+- Improvement: Calculate intrinsic masses in Python instead of legacy Fortran when using the Python NNLS solvers.
 - Bugfix: The bar code now works with ``orblibs_in_parallel: False``.
 - Improvement: Avoid confusing warnings when creating decomposition plots.
 - Improvement: Added the optional `fig_height` keyword argument to plotting Gauss Hermite kinematic maps, adjusting the plot height (and aspect ratio).
