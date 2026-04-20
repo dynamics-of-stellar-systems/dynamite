@@ -705,15 +705,15 @@ class LegacyOrbitLibrary(OrbitLibrary):
             txt_file.write('rm -f datfil/mass_qgrid.dat '
                            'datfil/mass_radmass.dat\n')
             if self.system.is_bar_disk_system():
-                exec = 'triaxmass'
-            else:
                 exec = 'triaxmass_bar'
+            else:
+                exec = 'triaxmass'
             txt_file.write(f'{self.legacy_directory}/{exec} '
                            '< infil/triaxmass.in >> datfil/triaxmass.log\n')
         if self.system.is_bar_disk_system():
-            exec = 'triaxmassbin'
-        else:
             exec = 'triaxmassbin_bar'
+        else:
+            exec = 'triaxmassbin'
         txt_file.write(f'{self.legacy_directory}/{exec} '
                        '< infil/triaxmassbin.in >> datfil/triaxmassbin.log\n')
         for f in 'qgrid', 'pops', 'losvd_hist':
