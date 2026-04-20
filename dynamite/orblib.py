@@ -89,7 +89,7 @@ class LegacyOrbitLibrary(OrbitLibrary):
                                              LegacyWeightSolver only)
             - mass_qgrid.dat                (MGE masses in 3D grid)
             - mass_radmass.dat              (MGE masses in radial bins)
-            - +8 log and status files
+            - + up to 8 log and status files
 
         """
         # check whether orbit library was calculated already
@@ -489,9 +489,10 @@ class LegacyOrbitLibrary(OrbitLibrary):
         os.chdir(cur_dir)
         log_files = f'Logfiles: {self.mod_dir}datfil/orblib.log, ' \
                     f'{self.mod_dir}datfil/orblibbox.log, ' \
-                    f'{self.mod_dir}datfil/triaxmass.log, '
+                    f'{self.mod_dir}datfil/triaxmass.log'
         if self.LegacyWeightSolver:
-            log_files += f'{self.mod_dir}datfil/triaxmassbin.log.'
+            log_files += f', {self.mod_dir}datfil/triaxmassbin.log'
+        log_files += '.'
         if not p.stdout.decode("UTF-8"):
             self.logger.info(f'...done - {cmdstr} exit code '
                              f'{p.returncode}. {log_files}')
@@ -525,9 +526,10 @@ class LegacyOrbitLibrary(OrbitLibrary):
         # move back to original directory
         os.chdir(cur_dir)
         log_files = f'Logfiles: {self.mod_dir}datfil/orblib.log, ' \
-                    f'{self.mod_dir}datfil/triaxmass.log, '
+                    f'{self.mod_dir}datfil/triaxmass.log'
         if self.LegacyWeightSolver:
-            log_files += f'{self.mod_dir}datfil/triaxmassbin.log.'
+            log_files += f', {self.mod_dir}datfil/triaxmassbin.log'
+        log_files += '.'
         if not p.stdout.decode("UTF-8"):
             self.logger.info(f'...done - {cmdstr_tube} exit code '
                              f'{p.returncode}. {log_files}')

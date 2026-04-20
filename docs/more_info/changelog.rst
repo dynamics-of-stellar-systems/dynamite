@@ -4,6 +4,7 @@
 Change Log
 ****************
 
+- Improvement: Calculate projected masses in Python instead of legacy Fortran when using the Python NNLS solvers.
 - Improvement: Calculate the projected masses only once as they are independent of the model.
 - Improvement: Avoid confusing warnings when creating decomposition plots.
 - Improvement: Added the optional `fig_height` keyword argument to plotting Gauss Hermite kinematic maps, adjusting the plot height (and aspect ratio).
