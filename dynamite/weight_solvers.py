@@ -653,7 +653,6 @@ class NNLS(WeightSolver):
         # intrinsic mass
         self.intrinsic_masses = mge.get_intrinsic_masses(self.model,
                                                          nocalc=True)[1]
-
         self.intrinsic_mass_error = self.settings['lum_intr_rel_err']
         # projected
         projected_masses = mge.get_projected_masses_from_file(self.direc_no_ml)
