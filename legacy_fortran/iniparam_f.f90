@@ -81,7 +81,7 @@ module initial_parameters
     real(kind=dp), parameter, public :: &
         grav_const_km = 6.67428e-11_dp*1.98892e30_dp/1e9_dp, &
         parsec_km = 1.4959787068d8*(648d3/pi_d), &
-        rho_crit = (3.0_dp*(7.3d-5/parsec_km)**2)/(8.0_dp*pi_d*grav_const_km)
+        rho_crit = (3.0_dp*(7.0d-5/parsec_km)**2)/(8.0_dp*pi_d*grav_const_km)
 
     private ! default private
     public :: iniparam, iniparam_bar
