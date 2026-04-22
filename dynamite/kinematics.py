@@ -1739,6 +1739,10 @@ class ProperMotions(Kinematics, data.Integrated):
     'xbin' : x coordinates of the spatial bin centers, shape=(n_apertures,)
     'ybin' : y coordinates of the spatial bin centers, shape=(n_apertures,)
 
+    It is expected that the 2D histograms have an odd number of velocity bins
+    in each vx and vy. Also, any outliers should have been removed so that
+    vxrange and vyrange result in meaningful histogram widths.
+
     Upon reading the data, the ``self.data`` attribute will hold the data in
     a dictionary with the keys as above. Additionally, the ``self.data``
     key 'hist_scale' will be added.
