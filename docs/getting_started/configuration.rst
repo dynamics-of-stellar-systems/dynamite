@@ -82,7 +82,7 @@ This section lists the following attributes of the system::
       distMPc: ...        # distance in MPc
       name:  ...          # name for your galaxy
 
-Note: DYNAMITE assumes :math:`H_0 = 70\;\mathrm{km/s/Mpc}` and that the system is at zero redshift :math:`z=0`. An extension to different cosmologies and system redshifts may be implemented at a later point.
+Note: DYNAMITE assumes a value of :math:`H_0 = 70\;\mathrm{km/s/Mpc}` which is often used in the literature. Also, the system is assumed at zero redshift :math:`z=0`. An extension to different cosmologies and system redshifts may be implemented at a later point.
 
 ``system_components``
 =====================
