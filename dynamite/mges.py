@@ -151,7 +151,7 @@ class MGE(data.Data):
             self.logger.info('Projected masses grabbed from vis. component.')
             return vis_comp.mass_aper  ########################################
         p_mass_fname = c.settings.io_settings['output_directory'] + \
-                          'mass_aper.ecsv'
+                       constants.p_masses_file
         if (use_cache or nocalc) and os.path.isfile(p_mass_fname):
             proj_mass = table.Table.read(p_mass_fname, format='ascii')
             self.logger.info(f'Projected masses read from {p_mass_fname}.')

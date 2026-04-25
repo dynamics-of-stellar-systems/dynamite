@@ -777,6 +777,27 @@ class Configuration(object):
         self.logger.info('Instantiated empty AllModels object')
         self.logger.debug(f'AllModels:\n{self.all_models.table}')
 
+    def remove_projected_masses_file(self):
+        """
+        Deletes the projected masses file
+
+        Deletes the projected masses file if it exists.
+
+        Raises
+        ------
+        Exception if the file cannot be removed.
+
+        Returns
+        -------
+        None.
+
+        """
+        p_mass_fname = self.settings.io_settings['output_directory'] + \
+                       const.p_masses_file
+        if os.path.isfile(p_mass_fname):
+            os.remove(p_mass_fname)
+            self.logger.info(f'Deleted existing {p_mass_fname}.')
+
     def remove_all_existing_output(self, wipe_all=False, create_tree=True):
         """
         Removes all existing DYNAMITE output.

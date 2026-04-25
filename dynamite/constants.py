@@ -6,7 +6,8 @@ GRAV_CONST_KM = 6.67428e-11*1.98892e30/1e9
 PARSEC_KM = 1.4959787068e8*(648.000e3/np.pi)
 RHO_CRIT = (3.*(H0 * 1e-6/PARSEC_KM)**2)/(8.*np.pi*GRAV_CONST_KM)
 
-weight_file = 'orbit_weights.ecsv'
+weight_file = 'orbit_weights.ecsv'  # weights file
+p_masses_file = 'mass_aper.ecsv'  # projected masses file
 
 def ARC_KPC(distance):
     """Returns the conversion factor from arcseconds to kiloparsecs.
