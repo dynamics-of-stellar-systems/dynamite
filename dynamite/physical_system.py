@@ -837,7 +837,7 @@ class TriaxialVisibleComponent(VisibleComponent):
         secth = 1.0 / costh
         cotph = 1.0 / tanph
 
-        delp = 1.0 - qobs_pot**2
+        delp = 1.0 - qobs_pot ** 2
 
         nom1minq2 = delp * (
             2.0 * np.cos(2.0 * psi_obs) + np.sin(2.0 * psi_obs) *
@@ -845,7 +845,7 @@ class TriaxialVisibleComponent(VisibleComponent):
         nomp2minq2 = delp * (
             2.0 * np.cos(2.0 * psi_obs) + np.sin(2.0 * psi_obs) *
             (np.cos(theta_view) * cotph - secth * np.tan(phi_view)))
-        denom = 2.0 * np.sin(theta_view)**2 * (
+        denom = 2.0 * np.sin(theta_view) ** 2 * (
             delp * np.cos(psi_obs) *
             (np.cos(psi_obs) + secth * cotph * np.sin(psi_obs)) - 1.0)
 
@@ -855,24 +855,24 @@ class TriaxialVisibleComponent(VisibleComponent):
 
         # These are temporary values of the squared intrinsic axial
         # ratios p^2 and q^2
-        qintr_sq = (1.0 - nom1minq2 / denom)
-        pintr_sq = (qintr_sq + nomp2minq2 / denom)
+        qintr = 1.0 - nom1minq2 / denom
+        pintr = qintr + nomp2minq2 / denom
 
         # Quick check to see if we are not going to take the sqrt of
         # a negative number.
-        if (np.min(qintr_sq) < 1.0e-6) or (np.min(pintr_sq) <= 1.0e-6):
+        if (np.min(qintr) < 1.0e-6) or (np.min(pintr) <= 1.0e-6):
             print(
                 "triax_tpp2pqu: negative or too small intrinsic axis ratio squared "
-                f"(min(q^2)={np.min(qintr_sq)}, min(p^2)={np.min(pintr_sq)})."
+                f"(min(q^2)={np.min(qintr)}, min(p^2)={np.min(pintr)})."
             )
             return np.nan, np.nan, np.nan
 
         # intrinsic axial ratios p and q
-        qintr = np.sqrt(qintr_sq)
-        pintr = np.sqrt(pintr_sq)
+        qintr = np.sqrt(qintr)
+        pintr = np.sqrt(pintr)
 
         # triaxiality parameter T = (1-p^2)/(1-q^2)
-        triaxpar = (1.0 - pintr**2) / (1.0 - qintr**2)
+        triaxpar = (1.0 - pintr ** 2) / (1.0 - qintr ** 2)
         if (np.max(triaxpar) > 1.0) or (np.min(triaxpar) < 0.0):
             print(
                 "triax_tpp2pqu: triaxiality parameter T out of [0, 1], "
@@ -887,17 +887,15 @@ class TriaxialVisibleComponent(VisibleComponent):
 
         if np.min(qintr) <= 0.0:
             print(
-                "triax_tpp2pqu: intrinsic minor axis ratio q <= 0, min(q)={np.min(qintr)}."
+                f"triax_tpp2pqu: intrinsic minor axis ratio q <= 0, min(q)={np.min(qintr)}."
             )
             return np.nan, np.nan, np.nan
 
-        pintr2 = pintr
-        qintr2 = qintr
-        uintr2 = 1. / (np.sqrt(qobs_pot / np.sqrt(
+        uintr = 1. / (np.sqrt(qobs_pot / np.sqrt(
             (pintr * np.cos(theta_view))**2 + (qintr * np.sin(theta_view))**2 *
             ((pintr * np.cos(phi_view))**2 + np.sin(phi_view)**2))))
 
-        return pintr2, qintr2, uintr2
+        return pintr, qintr, uintr
 
     @staticmethod
     def acceleration(x, y, z,
