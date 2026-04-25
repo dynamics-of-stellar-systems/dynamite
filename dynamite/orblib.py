@@ -156,12 +156,15 @@ class LegacyOrbitLibrary(OrbitLibrary):
                 phi = self.parset[f'phi-{stars.name}']
                 psi = self.parset[f'psi-{stars.name}']
             else:
+                # Bar-disk systems with q, p, u, qdisk are
+                # NOT YET IMPLEMENTED. The config reader checks this, so this
+                # else-branch should never be encountered.
                 q = self.parset[f'q-{stars.name}']
                 p = self.parset[f'p-{stars.name}']
                 u = self.parset[f'u-{stars.name}']
                 qdisk = self.parset[f'qdisk-{stars.name}']
-                theta, psi, phi = stars.triax_pqu2tpp_bar(p,q,u,qdisk)
-                phi = -phi ## FIX ME
+                theta, psi, phi = stars.triax_pqu2tpp_bar(p,q,u,qdisk)  # TO DO
+                phi = -phi  # FIX ME
         else:
             q = self.parset[f'q-{stars.name}']
             p = self.parset[f'p-{stars.name}']
