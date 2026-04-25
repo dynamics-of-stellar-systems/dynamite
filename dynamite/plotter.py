@@ -782,8 +782,11 @@ class Plotter():
             self.settings.weight_solver_settings,
             apply_systematic_error=False)
         # pick out the projected masses only for this kinematic set
-        flux = \
-            stars.mge_lum.get_projected_masses_from_file(model.directory_noml)
+        if self.settings.weight_solver_settings['type']=='LegacyWeightSolver':
+            flux = \
+             stars.mge_lum.get_projected_masses_from_file(model.directory_noml)
+        else:
+            flux = stars.mge_lum.get_projected_masses()
         ap_idx_range_start = \
             sum([stars.kinematic_data[i].n_apertures for i in range(kin_set)])
         ap_idx_range_end = ap_idx_range_start + len(kinematics_data)
