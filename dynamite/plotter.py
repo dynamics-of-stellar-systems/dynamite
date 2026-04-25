@@ -1030,9 +1030,12 @@ class Plotter():
         phi = incl[1]
         psi = incl[2]
 
-        pintr, qintr, uintr = self.triax_tpp2pqu(theta=theta, phi=phi, psi=psi,
-                                                qobs=qobs_pot, psi_off=psi_off,
-                                                res=1)
+        pintr, qintr, uintr = \
+            physys.TriaxialVisibleComponent.triax_tpp2pqu(theta=theta,
+                                                          phi=phi,
+                                                          psi=psi,
+                                                          qobs_pot=qobs_pot,
+                                                          psi_off=psi_off)
         p_pot = np.copy(pintr)
         q_pot = np.copy(qintr)
         sig_pot_pc = np.copy(sigobs_pot_pc)
@@ -1056,63 +1059,6 @@ class Plotter():
             res[i] = mi2*8
 
         return res
-
-#############################################################################
-
-    def triax_tpp2pqu(self, theta=None, phi=None, psi=None, qobs=None,
-                      psi_off=None, res=None):
-
-        res = 1
-        theta_view = theta * (np.pi/180.0)
-        phi_view = phi * (np.pi/180.0)
-        psi_obs = (psi+psi_off) * (np.pi /180.0)
-
-        secth = 1.0/np.cos(theta_view)
-        cotph = 1.0/np.tan(  phi_view)
-
-        if abs(np.cos(theta_view)) < 1.0e-6 : res=0
-        if abs(np.tan(phi_view  )) < 1.0e-6 : res=0
-
-        delp = 1.0 - qobs**2
-
-        nom1minq2 = delp*(2.0*np.cos(2.0*psi_obs) + np.sin(2.0*psi_obs)*
-                    (secth*cotph - np.cos(theta_view) * np.tan(phi_view)))
-        nomp2minq2 = delp*(2.0*np.cos(2.0*psi_obs) + np.sin(2.0*psi_obs)*
-                     (np.cos(theta_view)*cotph - secth*np.tan(phi_view)))
-        denom = 2.0*np.sin(theta_view)**2*(delp*np.cos(psi_obs)*
-                (np.cos(psi_obs) + secth*cotph*np.sin(psi_obs)) - 1.0)
-
-        if np.max(np.abs(denom)) < 1.0e-6: res=0
-
-        # These are temporary values of the squared intrinsic axial
-        # ratios p^2 and q^2
-        qintr = (1.0 - nom1minq2 /denom)
-        pintr = (qintr + nomp2minq2/denom)
-
-        # Quick check to see if we are not going to take the sqrt of
-        # a negative number.
-        if ((np.min(qintr) < 1.0e-6) | (np.min(pintr) <= 1.0e-6)): res = 0
-
-        # intrinsic axial ratios p and q
-        qintr = np.sqrt(qintr)
-        pintr = np.sqrt(pintr)
-
-        # triaxiality parameter T = (1-p^2)/(1-q^2)
-        triaxpar = (1.0-pintr**2)/(1.0-qintr**2)
-        if (np.max(triaxpar) > 1.0) : res=0
-        if (np.min(triaxpar) < 0.0): res=0
-
-        if (np.max(qintr - pintr) > 0): res=0
-        if (np.min(qintr) <= 0.0) : res=0
-
-        #if (res == 1):
-        pintr2 = pintr
-        qintr2 = qintr
-        uintr2 = 1./(np.sqrt(qobs/np.sqrt((pintr*np.cos(theta_view))**2 +
-                                          (qintr*np.sin(theta_view))**2*
-                                          ((pintr*np.cos(phi_view))**2 + np.sin(phi_view)**2))))
-
-        return  pintr2, qintr2, uintr2
 
 #############################################################################
 
@@ -1938,9 +1884,12 @@ class Plotter():
         r = np.arange(101, dtype=float)/100.0*max(Rpc)*1.02
         n = len(r)
 
-        pintr, qintr, uintr = self.triax_tpp2pqu(theta=theta, phi=phi,
-                                                 psi=psi, qobs=qobs,
-                                                 psi_off=psi_off, res=1)
+        pintr, qintr, uintr = \
+            physys.TriaxialVisibleComponent.triax_tpp2pqu(theta=theta,
+                                                          phi=phi,
+                                                          psi=psi,
+                                                          qobs_pot=qobs,
+                                                          psi_off=psi_off)
         sigintr_pc = sigma_pc/uintr
         sb3 = surf_pc*(2*np.pi*sigma_pc**2*qobs)/ \
               ((sigintr_pc*np.sqrt(2*np.pi))**3*pintr*qintr)
