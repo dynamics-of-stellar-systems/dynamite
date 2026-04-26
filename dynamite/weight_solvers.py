@@ -647,22 +647,19 @@ class NNLS(WeightSolver):
 
         """
         if self.system.is_bar_disk_system():
-            bardisk = self.system.get_unique_bar_component()
-            mge = bardisk.mge_lum + bardisk.disk_lum
+            mge = self.system.get_unique_bar_component().mge_lum_tot
         else:
-            stars = self.system.get_unique_triaxial_visible_component()
-            mge = stars.mge_lum
-
+            mge = self.system.get_unique_triaxial_visible_component().mge_lum
         # intrinsic mass
-        intrinsic_masses = mge.get_intrinsic_masses_from_file(self.direc_no_ml)
-        self.intrinsic_masses = intrinsic_masses
+        self.intrinsic_masses = mge.get_intrinsic_masses(self.model,
+                                                         nocalc=True)[1]
         self.intrinsic_mass_error = self.settings['lum_intr_rel_err']
         # projected
         projected_masses = mge.get_projected_masses_from_file(self.direc_no_ml)
         self.projected_masses = projected_masses
         self.projected_mass_error = self.settings['sb_proj_rel_err']
         # total mass constraint
-        self.total_mass = np.sum(intrinsic_masses)
+        self.total_mass = np.sum(self.intrinsic_masses)
         self.total_mass_error = np.min([self.intrinsic_mass_error/10.,
                                         np.abs(1. - self.total_mass)])
         # enumerate the mass constriants

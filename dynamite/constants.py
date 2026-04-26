@@ -12,3 +12,8 @@ def ARC_KPC(distance):
     """Returns the conversion factor from arcseconds to kiloparsecs.
     The distance is in MPc, and the result is in kpc/arcsec."""
     return distance * np.pi / 648
+
+def ARC_KM(distance):
+    """Returns the conversion factor from arcseconds to km.
+    The distance is in MPc, and the result is in km/arcsec."""
+    return distance * 1e6 * np.tan(np.pi / 648e3) * PARSEC_KM
