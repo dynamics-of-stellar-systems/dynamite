@@ -423,7 +423,7 @@ class LegacyOrbitLibrary(OrbitLibrary):
         f.close()
 
     def get_orbit_ics(self):
-        """Execute the bash script to calculate orbit ICs
+        """Run the Fortran executable to calculate orbit ICs
         """
         cur_dir = os.getcwd()
         os.chdir(self.mod_dir)
@@ -442,7 +442,7 @@ class LegacyOrbitLibrary(OrbitLibrary):
                              f'{p.returncode}. {log_file}')
         else:
             text = f'...failed! orbitstart{bar} exit code {p.returncode}. ' \
-                   f'Message: {p.stdout.decode("UTF-8")}'
+                   f'Message: {p.stdout.decode("UTF-8")}. {log_file}'
             if p.returncode == 127: # command not found
                 text += 'Check DYNAMITE legacy_fortran executables.'
                 self.logger.error(text)
