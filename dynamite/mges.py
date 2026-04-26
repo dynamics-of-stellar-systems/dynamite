@@ -8,6 +8,7 @@ from astropy import table
 from pathos.multiprocessing import Pool
 from dynamite import data
 from dynamite import constants
+from dynamite.physical_system import TriaxialVisibleComponent as vis_comp
 
 class MGE(data.Data):
     """Multi Gaussian Expansions"""
@@ -362,7 +363,8 @@ class MGE(data.Data):
                 raise ValueError(txt)
             # DISK
             arcsec_to_km = constants.ARC_KM(self.config.system.distMPc)
-            theta_view, _, _ = self._get_viewing_angles_rad(model)
+            theta_view, _, _ = self._get_viewing_angles_deg(model)
+            theta_view = np.deg2rad(theta_view)
             disk_data = self.data[len_mge_bulge:]
             # Dispersion in km
             sigobs_km_d = disk_data['sigma'].data * arcsec_to_km
@@ -370,9 +372,10 @@ class MGE(data.Data):
             surf_km_d = disk_data['I'].data / constants.PARSEC_KM ** 2
             # Observed flattening
             qobs_d = disk_data['q'].data
-            # Offset psi viewing angle in radians
-            psi_obs_d = self.data['PA_twist'].data * math.pi / 180
-            psi_obs_d +=  90  # psi_view_disk = pi/2
+            # # Offset psi viewing angle in radians
+            # psi_obs_d = self.data['PA_twist'].data
+            # psi_obs_d +=  90  # psi_view_disk = pi/2
+            # psi_obs_d = np.deg2rad(psi_obs_d)
             qintr_d = (qobs_d ** 2 -
                        math.cos(theta_view) ** 2) / math.sin(theta_view) ** 2
             pintr_d = 0.9999999999 * np.ones_like(qintr_d)
@@ -544,66 +547,32 @@ class MGE(data.Data):
             triaxiality parameter is less than 0 or greater than 1
         """
         arcsec_to_km = constants.ARC_KM(self.config.system.distMPc)
-        theta_view, psi_view, phi_view = self._get_viewing_angles_rad(model)
-        secth = 1 / math.cos(theta_view)
-        cotph = 1 / math.tan(phi_view)
+        theta_view, psi_view, phi_view = self._get_viewing_angles_deg(model)
         # Dispersion in km
         sigobs_km = mge_data['sigma'].data * arcsec_to_km
         # Surface brightness in L_sun/km^2 (we don't multiply by ml here)
         surf_km = mge_data['I'].data / constants.PARSEC_KM ** 2
         # Observed flattening
         qobs = mge_data['q'].data
-        # Offset psi viewing angle in radians
-        psi_obs = mge_data['PA_twist'].data * math.pi / 180
-        psi_obs += psi_view
-        delp = 1 - qobs ** 2
-        nom1minq2 = delp * \
-            (2 * np.cos(2 * psi_obs) +
-             np.sin(2 * psi_obs) *
-                (secth * cotph - math.cos(theta_view) * math.tan(phi_view)))
-        nomp2minq2 = \
-            delp * (2 * np.cos(2 * psi_obs) +
-                    np.sin(2 * psi_obs) * (math.cos(theta_view) * cotph -
-                                           secth * math.tan(phi_view)))
-        denom = \
-            2 * math.sin(theta_view) ** 2 * (delp * np.cos(psi_obs) *
-                (np.cos(psi_obs) + secth * cotph * np.sin(psi_obs)) - 1)
-        # These are temporary values of the squared intrinsic axial
-        # ratios p^2 and q^2
-        qintr = (1 - nom1minq2 / denom)
-        pintr = (qintr + nomp2minq2 / denom)
-        if any(qintr < 0) or any(pintr < 0):
-            txt = f"pintr^2 or qintr^2 is below 0{logtxt}."
-            self.logger.error(txt)
-            raise ValueError(txt)
-        # intrinsic axial ratios p and q
-        qintr = np.sqrt(qintr)
-        pintr = np.sqrt(pintr)
+        # Offset psi viewing angle in degrees
+        psi_obs = mge_data['PA_twist'].data
+        pintr, qintr, _ = vis_comp.triax_tpp2pqu(theta=theta_view,
+                                                 phi=phi_view,
+                                                 psi=psi_view,
+                                                 qobs_pot=qobs,
+                                                 psi_off=psi_obs)
         self.logger.debug(f'Middle axis ratio{logtxt} {pintr=}, '
                           f'minor axis ratio{logtxt} {qintr=}.')
-        if any(qintr > pintr):
-            txt = f"qintr > pintr{logtxt}."
-            self.logger.error(txt)
-            raise ValueError(txt)
-        if any(pintr > 1):
-            txt = f"pintr > 1{logtxt}."
-            self.logger.error(txt)
-            raise ValueError(txt)
         # intrinsic sigma (Cappellari 2002 eq 9.)
+        theta_view = np.deg2rad(theta_view)
+        phi_view = np.deg2rad(phi_view)
         sigintr_km = sigobs_km * \
             np.sqrt(qobs / np.sqrt((pintr * math.cos(theta_view)) ** 2 +
                 (qintr * math.sin(theta_view)) ** 2 *
                 ((pintr * math.cos(phi_view)) ** 2 + math.sin(phi_view) ** 2)))
-        # triaxiality parameter T = (1-p^2)/(1-q^2)
-        triaxpar = (1 - pintr ** 2) / (1 - qintr ** 2)
-        if any(triaxpar < 0) or any(triaxpar > 1):
-            txt = f'No triaxial deprojection possible{logtxt}!'
-            self.logger.error(txt)
-            raise ValueError(txt)
-        self.logger.debug(f'Triaxiality parameters{logtxt}: {triaxpar}')
         return pintr, qintr, sigintr_km, surf_km, qobs, sigobs_km
 
-    def _get_viewing_angles_rad(self, model):
+    def _get_viewing_angles_deg(self, model):
         """Return the model's visible component's viewing angles.
 
         Parameters
@@ -613,7 +582,7 @@ class MGE(data.Data):
         Returns
         -------
         Tuple (theta_view, psi_view, phi_view)
-            The viewing angels are returned in radians.
+            The viewing angels are returned in degrees.
         """
         if self.config.system.is_bar_disk_system():
             stars = self.config.system.get_unique_bar_component()
@@ -639,8 +608,7 @@ class MGE(data.Data):
             p = parset[f'p-{stars.name}']
             u = parset[f'u-{stars.name}']
             theta_view, psi_view, phi_view = stars.triax_pqu2tpp(p, q, u)
-        return theta_view * math.pi / 180, psi_view * math.pi / 180, \
-               phi_view * math.pi / 180
+        return theta_view, psi_view, phi_view
 
     def _intrin_spher_grid(self, low, up, P, Q, sigma, r0, r1, rho0):
         """Calculate the intrinsic mass multi-dimensional integrals"""
