@@ -423,25 +423,26 @@ class LegacyOrbitLibrary(OrbitLibrary):
         f.close()
 
     def get_orbit_ics(self):
-        """Execute the bash script to calculate orbit ICs
+        """Run the Fortran executable to calculate orbit ICs
         """
         cur_dir = os.getcwd()
         os.chdir(self.mod_dir)
-        cmdstr = self.write_executable_for_ics()
         self.logger.info(f'Calculating initial conditions for {self.mod_dir}.')
-        # p = subprocess.call('bash '+cmdstr, shell=True)
-        p = subprocess.run('bash '+cmdstr,
+        cmd = self.legacy_directory
+        bar = '_bar' if self.system.is_bar_disk_system() else ''
+        cmd += f'/orbitstart{bar} < infil/orbstart.in >> datfil/orbstart.log'
+        p = subprocess.run(cmd,
                            stdout=subprocess.PIPE,
                            stderr=subprocess.STDOUT,
                            shell=True)
         os.chdir(cur_dir)
         log_file = f'Logfile: {self.mod_dir}datfil/orbstart.log.'
         if not p.stdout.decode("UTF-8"):
-            self.logger.info(f'...done - {cmdstr} exit code {p.returncode}. '
-                             f'{log_file}')
+            self.logger.info(f'...done - orbitstart{bar} exit code '
+                             f'{p.returncode}. {log_file}')
         else:
-            text = f'...failed! {cmdstr} exit code {p.returncode}. ' \
-                   f'Message: {p.stdout.decode("UTF-8")}'
+            text = f'...failed! orbitstart{bar} exit code {p.returncode}. ' \
+                   f'Message: {p.stdout.decode("UTF-8")}. {log_file}'
             if p.returncode == 127: # command not found
                 text += 'Check DYNAMITE legacy_fortran executables.'
                 self.logger.error(text)
@@ -450,22 +451,6 @@ class LegacyOrbitLibrary(OrbitLibrary):
                 text += f'{log_file} Be wary: DYNAMITE may crash...'
                 self.logger.warning(text)
                 raise RuntimeError(text)
-
-    def write_executable_for_ics(self):
-        """Write the bash script to calculate orbit ICs
-        """
-        cmdstr = 'cmd_orb_start'
-        #create the fortran executable
-        txt_file = open(cmdstr, "w")
-        txt_file.write('#!/bin/bash' + '\n')
-        if (self.system.is_bar_disk_system()):
-            tmp = '/orbitstart_bar < infil/orbstart.in >> datfil/orbstart.log\n'
-        else:
-            tmp = '/orbitstart < infil/orbstart.in >> datfil/orbstart.log\n'
-        txt_file.write(f'{self.legacy_directory}{tmp}')
-        txt_file.close()
-        # the name of the executable must be returned to use in subprocess.call
-        return cmdstr
 
     def get_orbit_library_par(self):
         """Execute the bash script to calculate orbit libraries in parallel
