@@ -11,7 +11,7 @@ from scipy.sparse import csr_matrix
 from scipy.sparse.csgraph import maximum_bipartite_matching
 import matplotlib as mpl
 from matplotlib.ticker import MaxNLocator, FixedLocator,LogLocator
-from matplotlib.ticker import NullFormatter
+from matplotlib.ticker import NullFormatter, FormatStrFormatter
 import matplotlib.pyplot as plt
 import astropy
 from plotbin import display_pixels
@@ -388,7 +388,8 @@ class Plotter():
         fig_height : float or None, optional
             Gauss Hermite kinematics only: Sets the plot height in inches (the
             width is always set automatically). If None, the plot height is
-            12 inches. The default is None.
+            set to 12 inches if the aspect ratio y/x >= 0.25 and automatically
+            less otherwise. The default is None.
 
         Raises
         ------
@@ -471,6 +472,14 @@ class Plotter():
                 kin_set,
                 cbar_lims=cbar_lims,
                 **kwargs)
+        elif kin_type is kinematics.ProperMotions:
+            txt = 'ProperMotions kinematic maps not yet implemented!'
+            self.logger.error(txt)
+            raise NotImplementedError(txt)
+        else:
+            txt = f'Unknown kinematics {kin_type}!'
+            self.logger.error(txt)
+            raise ValueError(txt)
 
         figname = self.plotdir + f'kinematic_map_{kin_name}' + figtype
         fig.savefig(figname, dpi=300)
@@ -611,10 +620,11 @@ class Plotter():
             return idx_to_plot
         # get the model LOSVDs
         orblib = model.get_orblib()
-        weight_solver = model.get_weights(orblib)
-        orblib.read_losvd_histograms()
+        _ = model.get_weights(orblib)
+        if not hasattr(orblib, 'vel_histograms'):  # only if not already there
+            orblib.read_vel_histograms()
         losvd_orblib = kin_set.transform_orblib_to_observables(
-            orblib.losvd_histograms[0],
+            orblib.vel_histograms[0],
             None)
         losvd_model = np.einsum('ijk,i->jk', losvd_orblib, model.weights)
         # normalise LOSVDs to same scale at data, i.e. summing to 1
@@ -841,7 +851,8 @@ class Plotter():
         grid = dp_args['idx_bin_to_pix']
         angle_deg = dp_args['angle']
         self.logger.debug(f"Pixel grid dimension is {dx=}, "
-                          f"{len(x)=}, {len(y)=}.")
+                          f"{len(x)=}, {len(y)=}, "
+                          f"{min(x)=}, {max(x)=}, {min(y)=}, {max(y)=}.")
         self.logger.debug(f'PA: {angle_deg}')
 
         # Only select the pixels that have a bin associated with them.
@@ -874,9 +885,16 @@ class Plotter():
         right_margin = 27 * 0.03
         col_width = (27 - left_margin - right_margin) / 5
         fig_width = left_margin + col_width * n_col + right_margin
-        text_x = 0.015 * 27 / fig_width
         if fig_height is None:
-            fig_height = 12
+            aspect_r = (max(y) - min(y)) / (max(x) - min(x))
+            if aspect_r < 0.25:  # only for 'edge-on-like' cases...
+                fig_height = 12 * aspect_r
+                fig_height += 40 / 72 + 6 * 10 / 72  # title+ax. ticks & labels
+                min_height = 3 * 120 / 72 + 40 / 72  # 3*text + title
+                fig_height = max(fig_height, min_height)
+            else:
+                fig_height = 12
+        text_x = 0.015 * 27 / fig_width
         fig = plt.figure(figsize=(fig_width, fig_height))
         kwtext = dict(size=20, ha='center', va='center', rotation=90.)
         fig.text(text_x, 0.83, 'data', **kwtext)
@@ -2580,6 +2598,256 @@ class Plotter():
         plt.tight_layout()
         # format and save
         figname = self.plotdir + 'Rmax_vs_zmax' + figtype
+        fig.savefig(figname)
+        self.logger.info(f'Plot {figname} saved.')
+        return fig
+
+        #### covariance ellipse
+
+    def get_cov_eig(self, cov):
+        """
+        Gets the eigenvalues from the covariance matrix to draw an ellipse
+
+        x_ellipse = x0 + (sigmas*np.sqrt(lbd_1))*np.cos(tht)*np.cos(phi) - (sigmas*np.sqrt(lbd_2))*np.sin(tht)*np.sin(phi)
+        y_ellipse = y0 + (sigmas*np.sqrt(lbd_1))*np.sin(tht)*np.cos(phi) + (sigmas*np.sqrt(lbd_2))*np.cos(tht)*np.sin(phi)
+
+        where 'lbd_1' and 'lbd_2' are the eigenvalues of the covariance matrix,
+              'tht' is the rotation of the ellipse from the directions of the
+              eigenvectors of the covariance matrix,
+              'phi' are the angle position for drawing the ellipse -> 0..2pi.
+
+        Parameters
+        ----------
+        cov : 2d array with the covariance matrix.
+            cov = [[<x^2>,<xy>],[<xy>,<y^2>]]
+
+        Returns
+        -------
+        (lbd_01, lbd2) : tuple of floats
+            the first and second eigenvalue of the covariance matrix
+        """
+        a,b,c, = cov[0,0],cov[0,1],cov[1,1]
+
+        lambda_01 = (a+c)/2 + np.sqrt(((a-c)/2)**2+b**2)
+        lambda_02 = (a+c)/2 - np.sqrt(((a-c)/2)**2+b**2)
+
+        return lambda_01, lambda_02
+
+    def get_ellipse_cov(self, cov, mean=[0,0], sigmas=1):
+        """
+        Gets the (x,y) positions for the ellipse defined by the covariance
+        matrix 'cov' centered at 'mean' and size 'sigmas'.
+
+        Parameters
+        ----------
+        cov : 2d array with the covariance matrix.
+            cov = [[<x^2>,<xy>],[<xy>,<y^2>]]
+        mean : list of 2 floats [x0, y0], optional
+            center of the ellipse. The default is mean = [x0, y0] = [0,0].
+        sigmas : float, optional
+            size of the ellipse as function of how many sigmas (dispersion)
+            the area of the ellipse covers. The default is 1.
+
+        """
+
+        lbd_1,lbd_2 = self.get_cov_eig(cov)
+
+        if cov[0,1] == 0 and cov[0,0] >= cov[1,1]:
+            tht = 0
+        elif cov[0,1] == 0 and cov[0,0] <  cov[1,1]:
+            tht = np.pi/2
+        else:
+            tht = np.arctan2(lbd_1-cov[0,0],cov[0,1])
+
+
+        phi = np.linspace(0.,2*np.pi,100)
+
+        x_ellipse = mean[0] + (sigmas*np.sqrt(lbd_1))*np.cos(tht)*np.cos(phi) \
+                            - (sigmas*np.sqrt(lbd_2))*np.sin(tht)*np.sin(phi)
+        y_ellipse = mean[1] + (sigmas*np.sqrt(lbd_1))*np.sin(tht)*np.cos(phi) \
+                            + (sigmas*np.sqrt(lbd_2))*np.cos(tht)*np.sin(phi)
+
+        return x_ellipse, y_ellipse
+
+    def draw_ellipse_cov(self, ax, cov, mean, sigmas, line='-', c='r', alpha=1):
+        """Draws an ellipse
+
+        Draws an ellipse in the axis 'ax', defined by the covariance matrix
+        'cov' and centered at 'mean'
+
+        Parameters
+        ----------
+        ax : matplotlib axis instance where to draw the ellipse
+        cov : 2d array with the covariance matrix.
+            cov = [[<x^2>,<xy>],[<xy>,<y^2>]]
+        mean : list of 2 float-compatible values [x0, y0] to center the ellipse
+        sigmas : float
+            size of the ellipse as function of how many sigmas (dispersion)
+            the area of the ellipse covers
+        line : string, optional
+            style for the ellipse line (default '-')
+        c : string, optional
+            color of the ellipse (default 'r')
+        alpha : float
+            transparency of the ellipse (default 1)
+
+        """
+        x_ellipse,y_ellipse = self.get_ellipse_cov(cov,mean=mean,sigmas=sigmas)
+
+        ax.plot(x_ellipse,y_ellipse,line,c=c,alpha=alpha)
+
+    def hist2d_plot(self,
+                    hist2d,
+                    orb_idx=0,
+                    sp_bin_idx=0,
+                    show_1d=False,
+                    draw_vel_ellipse=False,
+                    moments='auto',
+                    sigmas=[1],
+                    empty_bins=False,
+                    stats=False,
+                    figtype='.png'):
+        """Plots a 2d histogram
+
+        Creates a figure with a 2d histogram for a specific orbit and spatial
+        bin from a ``dyn.kinematics.Histogram2D`` object.
+
+        Parameters
+        ----------
+        hist2d : a ``dyn.kinematics.Histogram2D`` object to plot
+            hist2d.xedg : tuple (array(n_bins[0]+1), array(n_bins[1]+1))
+                2d histogram bin edges
+                hist2d.xedg[0] : 1d-array with the edges of the bins in the
+                    x-direction, shape=(n_bins[0]+1,)
+                hist2d.xedg[1] : 1d-array with the edges of the bins in the
+                    y-direction, shape=(n_bins[1]+1,)
+            hist2d.y : array (n_orbits, n_bins[0], n_bins[1], n_apertures)
+                2d histogram values
+        orb_idx : int, optional
+            index of the orbit to plot the histogram of. The default is 0.
+        sp_bin_idx : int, optional
+            index of the spatial bin to plot the histogram of. The default is 0.
+        show_1d : boolean, optional
+            If True, plot the marginalized 1d histograms in the x and y
+            directions in addition to the 2d histogram. The default is False.
+        draw_vel_ellipse : boolean, optional
+            If True, draw the velocity ellipsoid given the velocity moments
+            provided by
+                moments = [mean_vx, mean_vy, sigma_x, sigma_y, cov_xy]
+            or calculated from the histogram data.
+            Calls the draw_ellipse_cov method to draw as many ellipses as the
+            length of the 'sigmas' parameter. The default is False.
+        moments : list of floats or 'auto', optional
+            List of moments necessary to draw the velocity ellipsoid. Format:
+                moments = [mean_vx, mean_vy, sigma_x, sigma_y, covariance_xy]
+            If 'auto', then the moments are calculated from the histogram data.
+            The default is 'auto'.
+        sigmas : list of float compatible values, optional
+            Which sigmas to draw as an ellipse.
+            Example: sigmas = [1,2,3] will draw 3 ellipses corresponding to
+            1, 2 and 3 sigmas following the covariance matrix.
+            The default is [1].
+        empty_bins : boolean, optional
+            If True, it will identify the bins with zero counts and mark them
+            in the figure with a magenta x. The default is False.
+        stats : boolean, optional
+            If True, it will compute and show the mean and sigma of the
+            distribution in both x and y directions inside the 1d histograms.
+            Has only an effect if show_1d=True. The default is False.
+        figtype : str, optional
+            File type extension to save the plot. The default is ``'.png'``.
+
+        Returns
+        -------
+        fig : ``matplotlib.figure.figure``
+            Figure instance.
+
+        """
+
+        data = hist2d.y[orb_idx,:,:,sp_bin_idx].T  # shape=(n_bins_y, n_bins_x)
+        extent = (hist2d.xedg[0][0], hist2d.xedg[0][-1],
+                  hist2d.xedg[1][0], hist2d.xedg[1][-1])
+
+        fig = plt.figure(figsize=(4,4))
+
+        if show_1d:
+            gsc = fig.add_gridspec(4,4)
+            axs = fig.add_subplot(gsc[1:,:3])
+            axs_1dx = fig.add_subplot(gsc[0,:3])
+            axs_1dy = fig.add_subplot(gsc[1:,3])
+
+            axs_1dx.stairs(np.sum(data,axis=0),hist2d.xedg[0],color='k')
+            axs_1dy.stairs(np.sum(data,axis=1),hist2d.xedg[1],orientation='horizontal',color='k')
+            if stats:
+                pm_mean, pm_sigma = hist2d.get_sigma(get_mean=True)
+                v_mean = tuple(round(p[orb_idx, sp_bin_idx]) for p in pm_mean)
+                v_sigma = tuple(round(p[orb_idx, sp_bin_idx]) for p in pm_sigma)
+                for ax_idx, ax in enumerate([axs_1dx, axs_1dy]):
+                    ax.text(0.99,
+                            0.99,
+                            f'${v_mean[ax_idx]}\\pm{v_sigma[ax_idx]}$',
+                            fontsize='small',
+                            va='top',
+                            ha='right',
+                            transform=ax.transAxes)
+            aux_xlim = [min([hist2d.x[0][0],hist2d.x[1][0]]),max([hist2d.x[0][-1],hist2d.x[1][-1]])]
+            aux_ylim = aux_xlim
+
+            axs.set_xlim(aux_xlim)
+            axs.set_ylim(aux_ylim)
+
+            axs_1dx.set_xlim(aux_xlim)
+            axs_1dy.set_ylim(aux_ylim)
+
+            axs_1dx.xaxis.set_major_formatter(FormatStrFormatter(''))
+            axs_1dx.yaxis.set_major_formatter(FormatStrFormatter(''))
+
+            axs_1dy.xaxis.set_major_formatter(FormatStrFormatter(''))
+            axs_1dy.yaxis.set_major_formatter(FormatStrFormatter(''))
+
+            fig.subplots_adjust(wspace=0.0,hspace=0.0)
+        else:
+            axs = fig.add_subplot(111)
+
+        axs.imshow(data,origin='lower',aspect='auto',extent=extent,cmap='Greys')
+        axs.set_xlabel(r'$v_x$')
+        axs.set_ylabel(r'$v_y$')
+
+        if draw_vel_ellipse:
+            if moments == 'auto':
+                mean = hist2d.get_mean()
+                cov = hist2d.get_cov(orb_idx, sp_bin_idx)
+                mean_vx, mean_vy = (m[orb_idx, sp_bin_idx] for m in mean)
+                sigma_vx, sigma_vy = np.diagonal(cov)
+                cov_xy = cov[0,1]
+                moments = [mean_vx, mean_vy, sigma_vx, sigma_vy, cov_xy]
+            aux_vx  = moments[0]
+            aux_vy  = moments[1]
+            aux_cov = np.array([[moments[2],moments[4]],[moments[4],moments[3]]])
+
+            axs.axvline(x=aux_vx,ls=':',c='b',lw=1)
+            axs.axhline(y=aux_vy,ls=':',c='b',lw=1)
+            if show_1d:
+                axs_1dx.axvline(x=aux_vx,ls=':',c='b',lw=1)
+                axs_1dy.axhline(y=aux_vy,ls=':',c='b',lw=1)
+
+            #axs.errorbar(aux_vx,aux_vy,xerr=aux_cov[0,0]**0.5,yerr=aux_cov[1,1]**0.5,fmt='or',lw=0.5)
+
+            for k in range(len(sigmas)):
+                self.draw_ellipse_cov(axs,aux_cov,[aux_vx,aux_vy],sigmas[k],line='-',alpha=1/sigmas[k])
+
+        #empty bins
+        if empty_bins:
+            idx_zero = np.where(data.T==0)  # shape=(n_bins_x, n_bins_y)
+            for k in range(len(idx_zero[1])):
+                aux_a = hist2d.x[0][idx_zero[0][k]]
+                aux_b = hist2d.x[1][idx_zero[1][k]]
+                # aux_a = 0.5*(x_edges[idx_zero[0][k]]+x_edges[idx_zero[0][k]+1])
+                # aux_b = 0.5*(y_edges[idx_zero[1][k]]+y_edges[idx_zero[1][k]+1])
+
+                axs.plot(aux_a,aux_b,'xm',alpha=0.5)
+        # format and save
+        figname = self.plotdir + 'hist2d' + figtype
         fig.savefig(figname)
         self.logger.info(f'Plot {figname} saved.')
         return fig
