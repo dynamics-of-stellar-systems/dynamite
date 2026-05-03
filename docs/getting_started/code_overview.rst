@@ -267,7 +267,7 @@ Different models can be run as separate processes. The number of processes which
   multiprocessing_settings:
       ncpus: 4 # an integer or 'all_available'
 
-If ``ncpus: 'all_available'`` is selected, the program will automatically detect the total number of disposable cpus.
+If ``ncpus: 'all_available'`` is selected, the program will automatically detect the total number of disposable cpus. There is more information on the multiprocessing settings in the :ref:`multiprocessing_settings` section of the Configuration page.
 
 If you use the Slurm job submission system on a cluster, then you must add a Python `shebang line <https://en.wikipedia.org/wiki/Shebang_(Unix)>`_ and any Slurm settings to the top of ``main_script.py`` e.g.
 

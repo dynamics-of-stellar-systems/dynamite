@@ -380,7 +380,8 @@ class Configuration(object):
                     if 'mge_pot' in data_comp:
                         path = self.settings.io_settings['input_directory']
                         c.mge_pot = mge.MGE(input_directory=path,
-                                        datafile=data_comp['mge_pot'])
+                                            datafile=data_comp['mge_pot'],
+                                            config=self)
                         logger.debug(f'{comp}... mge_pot read from '
                                      f'{data_comp["mge_pot"]}.')
                     else:
@@ -389,7 +390,8 @@ class Configuration(object):
                     if 'mge_lum' in data_comp:
                         path = self.settings.io_settings['input_directory']
                         c.mge_lum = mge.MGE(input_directory=path,
-                                        datafile=data_comp['mge_lum'])
+                                            datafile=data_comp['mge_lum'],
+                                            config=self)
                         logger.debug(f'{comp}... mge_lum read from '
                                      f'{data_comp["mge_lum"]}.')
                     else:
@@ -399,7 +401,8 @@ class Configuration(object):
                     if 'disk_pot' in data_comp:
                         path = self.settings.io_settings['input_directory']
                         c.disk_pot = mge.MGE(input_directory=path,
-                                             datafile=data_comp['disk_pot'])
+                                             datafile=data_comp['disk_pot'],
+                                             config=self)
                         logger.debug(f'{comp}... disk_pot read from '
                                      f'{data_comp["disk_pot"]}.')
                     else:
@@ -408,7 +411,8 @@ class Configuration(object):
                     if 'disk_lum' in data_comp:
                         path = self.settings.io_settings['input_directory']
                         c.disk_lum = mge.MGE(input_directory=path,
-                                             datafile=data_comp['disk_lum'])
+                                             datafile=data_comp['disk_lum'],
+                                             config=self)
                         logger.debug(f'{comp}... disk_lum read from '
                                      f'{data_comp["disk_lum"]}.')
                     else:
@@ -548,6 +552,11 @@ class Configuration(object):
         # logger.debug(f'System: {self.system}')  # logged as part of parspace
         logger.debug(f'Settings: {self.settings}')
         logger.info('Configuration validated')
+
+        if self.settings.weight_solver_settings['type']!='LegacyWeightSolver':
+            if self.system.is_bar_disk_system():
+                bardisk = self.system.get_unique_bar_component()
+                bardisk.mge_lum_tot = bardisk.mge_lum + bardisk.disk_lum
 
         if 'generator_settings' in self.settings.parameter_space_settings:
             self.set_threshold_del_chi2( \
