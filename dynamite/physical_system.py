@@ -343,7 +343,8 @@ class System(object):
     def is_bar_disk_system(self):
         """is_bar_disk_system
 
-        Check if the system contains at least one bar component and at least one disk component.
+        Check if the system contains at least one bar component and at least
+        one disk component.
 
         Returns
         -------
@@ -356,14 +357,16 @@ class System(object):
     def is_bar_disk_system_with_angles(self):
         """is_bar_disk_system_with_angles
 
-        Check if the system is a bar-disk with phi, psi, theta specified directly in the configuration file.
+        Check if the system is a bar-disk with phi, psi, theta specified
+        directly in the configuration file.
 
         Returns
         -------
         hasangles : Bool
             System is specified by angles.
         """
-        hasangles = self.is_bar_disk_system() and (type(self.get_unique_bar_component()) is BarDiskComponentAngles)
+        hasangles = self.is_bar_disk_system() and \
+            (type(self.get_unique_bar_component()) is BarDiskComponentAngles)
         return hasangles
 
     def number_of_visible_components(self):
