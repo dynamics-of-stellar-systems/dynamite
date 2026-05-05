@@ -1,0 +1,63 @@
+name: CI
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+    branches: [main, master]
+  workflow_dispatch:  
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.11", "3.12", "3.13"]
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v5
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: pip
+
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y gfortran
+
+      - name: Show compiler versions
+        run: |
+          python --version
+          gfortran --version
+          make --version
+
+      - name: Install Python dependencies
+        run: |
+          python -m pip install --upgrade pip
+          if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
+          if [ -f pyproject.toml ]; then pip install .; fi
+          if [ -f requirements-dev.txt ]; then pip install -r requirements-dev.txt; fi
+
+      - name: Build Fortran executables
+        run: make nogal
+        working-directory: legacy_fortran
+
+      - name: Verify build artifacts
+        run: |
+          ls -R legacy_fortran
+          # Example:
+          # test -x ./bin/my_fortran_executable
+
+      - name: Run tests
+        env:
+          PYTHONPATH: .
+        run: |
+          # pytest -v
+          ls
+          dev_tests/test_nnls.py
