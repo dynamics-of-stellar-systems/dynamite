@@ -4,6 +4,7 @@
 Change Log
 ****************
 
+- Improvement: Gauss Hermite kinematics' systematic errors `GH_sys_err` are now always applied throughout DYNAMITE.
 - Improvement: The new utility method ``Configuration.remove_projected_masses_file()`` deletes the projected masses file.
 - Improvement: Calculate projected masses in Python instead of legacy Fortran when using the Python NNLS solvers.
 - Improvement: Calculate the projected masses only once as they are independent of the model.

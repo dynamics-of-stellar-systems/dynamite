@@ -778,9 +778,7 @@ class Plotter():
 
         # get the observed projected masses and kinematic data
         stars = self.system.get_unique_triaxial_visible_component()
-        kinematics_data = stars.kinematic_data[kin_set].get_data(
-            self.settings.weight_solver_settings,
-            apply_systematic_error=False)
+        kinematics_data = stars.kinematic_data[kin_set].get_data()
         # pick out the projected masses only for this kinematic set
         if self.settings.weight_solver_settings['type']=='LegacyWeightSolver':
             flux = \
