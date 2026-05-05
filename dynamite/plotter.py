@@ -13,7 +13,6 @@ import matplotlib as mpl
 from matplotlib.ticker import MaxNLocator, FixedLocator,LogLocator
 from matplotlib.ticker import NullFormatter
 import matplotlib.pyplot as plt
-import astropy
 from plotbin import display_pixels
 from dynamite import constants
 from dynamite import kinematics
@@ -778,12 +777,13 @@ class Plotter():
 
         # get the observed projected masses and kinematic data
         stars = self.system.get_unique_triaxial_visible_component()
-        kinematics_data = stars.kinematic_data[kin_set].get_data(
-            self.settings.weight_solver_settings,
-            apply_systematic_error=False)
+        kinematics_data = stars.kinematic_data[kin_set].get_data()
         # pick out the projected masses only for this kinematic set
-        flux = \
-            stars.mge_lum.get_projected_masses_from_file(model.directory_noml)
+        if self.settings.weight_solver_settings['type']=='LegacyWeightSolver':
+            flux = \
+             stars.mge_lum.get_projected_masses_from_file(model.directory_noml)
+        else:
+            flux = stars.mge_lum.get_projected_masses()
         ap_idx_range_start = \
             sum([stars.kinematic_data[i].n_apertures for i in range(kin_set)])
         ap_idx_range_end = ap_idx_range_start + len(kinematics_data)
@@ -1007,9 +1007,7 @@ class Plotter():
         #Input parameters: NFW dark matter concentration and fraction,
         #and stellar mass
 
-        grav_const_km = 6.67428e-11*1.98892e30/1e9
-        parsec_km = 1.4959787068e8*(648.000e3/np.pi)
-        rho_crit = (3.*((7.3000e-5)/parsec_km)**2)/(8.*np.pi*grav_const_km)
+        rho_crit = constants.RHO_CRIT
 
         rhoc = (200./3.)*rho_crit*cc**3/(np.log(1.+cc) - cc/(1.+cc))
         rc = (3./(800.*np.pi*rho_crit*cc**3)*dmfrac*mstars)**(1./3.)
