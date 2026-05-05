@@ -1219,7 +1219,7 @@ class NFW_m200_c(DarkComponent):
         stars = system.get_component_from_class(TriaxialVisibleComponent)
         M_stars_tot = stars.get_M_stars_tot(system.distMPc, parset)
         f = parset[f'f-{self.name}']
-        h = 0.671 #add paper
+        h = dyn.constants.H0 / 100
         #total mass of dark matter
         MvDM = f * M_stars_tot
         #dutton&maccio2014 (https://arxiv.org/pdf/1402.7073.pdf) Eq. (8)
@@ -1420,9 +1420,6 @@ class GeneralisedNFW(DarkComponent):
         c = par['c']
         gam = par['gam']
 
-        # H0 = 73                                    # km/s/Mpc, used in Fortran
-        # G = 4.3009172706e-3                        # pc/Msun⋅(km/s)**2
-        # rho_crit = 3 * H0**2 * 1e-12 / (8*np.pi*G) # Msun/pc**3
         rho_crit = dyn.constants.RHO_CRIT * dyn.constants.PARSEC_KM ** 3
 
         r200 = (3 * Mvir / (800 * np.pi * rho_crit))**(1.0 / 3.0)
