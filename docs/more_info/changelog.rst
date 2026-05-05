@@ -5,6 +5,10 @@ Change Log
 ****************
 
 - Improvement: DYNAMITE now consistently uses :math:`H_0 = 70\;\mathrm{km/s/Mpc}`.
+- Improvement: Gauss Hermite kinematics' systematic errors `GH_sys_err` are now always applied throughout DYNAMITE.
+- Improvement: The new utility method ``Configuration.remove_projected_masses_file()`` deletes the projected masses file.
+- Improvement: Calculate projected masses in Python instead of legacy Fortran when using the Python NNLS solvers.
+- Improvement: Calculate the projected masses only once as they are independent of the model.
 - Improvement: Avoid confusing warnings when creating decomposition plots.
 - Improvement: Added the optional `fig_height` keyword argument to plotting Gauss Hermite kinematic maps, adjusting the plot height (and aspect ratio).
 - Bugfix: Fixed a bug that caused ``System.get_all_kinematic_data()`` to return only the first component's kinematic data.

@@ -49,14 +49,24 @@ class Kinematics(data.Data):
                 self.with_pops = False
                 self.pop_cols = []
             self.__class__.values = list(self.__dict__.keys())
-            if self.type==None or self.hist_width==None or \
-                    self.hist_center==None or self.hist_bins==None:
+            if self.type is None or self.hist_width is None or \
+                    self.hist_center is None or self.hist_bins is None:
                 text = 'Kinematics need (type, hist_width, hist_center, '\
                    f'hist_bins), but has ({self.type}, ' \
                    f'{self.hist_width}, {self.hist_center}, {self.hist_bins})'
                 self.logger.error(text)
                 raise ValueError(text)
             self.n_spatial_bins = len(self.data)
+
+    def update_data(self, weight_solver_settings):
+        """Update kinematics according to weight_solver_settings.
+
+        This is a placeholder method that allows to manipulate read-in data
+        according to weight_solver_settings entries. Examples include applying
+        systematic errors or changig the number of GH coefficients to use by
+        DYNAMITE.
+        """
+        pass
 
     def has_pops(self):
         """
@@ -193,21 +203,18 @@ class GaussHermite(Kinematics, data.Integrated):
             self._data_raw = None
             self._data_with_sys_err = None
 
-    def get_data(self,
-                 weight_solver_settings,
-                 apply_systematic_error=False,
-                 cache_data=True):
-        """Get GH kinematics data consistent with `number_GH` configuration.
+    def update_data(self, weight_solver_settings):
+        """Update kinematics according to number_GH and GH_sys_err settings.
 
-        Returns an astropy table holding the observed Gauss Hermite kinematics
-        with their uncertainties, adapted to the desired number of GH
-        coefficients and optionally including the systematic errors.
-        The `number_GH` setting from the configuration file determines the
-        number of returned GH coefficients. The data in the returned table is
-        a deep copy of the observed data.
+        The configuration file may include systematic errors of the GH
+        kinematics coefficients which are to be considered in addition to the
+        errors given in the data table. This method adds the systematic errors
+        in quadrature.
 
-        If number_GH (configuration file) greater than max_GH_order (number of
-        gh coefficients in the kinematics file), columns with zeros
+        Also, adapt the number of GH coefficients to the number_GH setting
+        in the configuration file.
+        If number_GH (configuration file) is greater than max_GH_order (number
+        of GH coefficients in the kinematics data file), columns with zeros
         `h<max_GH_order+1> dh<max_GH_order+1>` ... `h<number_GH> dh<number_GH>`
         will be added to the gh kinematics data. If number_GH is less than
         `max_GH_order`, the corresponding columns will be removed from the
@@ -219,41 +226,19 @@ class GaussHermite(Kinematics, data.Integrated):
             `Configuration.settings.weight_solver_settings` object.
             Must include the key `number_GH` and - if apply_systematic_error
             is set to `True` - the key `GH_sys_err`.
-        apply_systematic_error : bool, optional
-            If set to `True`, apply the systematic uncertainties to the dv,
-            dsigma, dh3, dh4, ... values.
-        cache_data : bool, optional
-            If set to `True`, the first call of this method will store the
-            calculated data table in attribute self._data_raw
-            (if apply_systematic_error=False) or self._data_with_sys_err
-            (if apply_systematic_error=True), respectively. Consecutive calls
-            will return the stored data. The default is `True`.
-
-        Returns
-        -------
-        gh_data : astropy table
-            GH kinemtics coefficients
-
         """
-        if cache_data:
-            if not apply_systematic_error and self._data_raw is not None:
-                self.logger.debug(f'Kin {self.name}: get cached data w/o err')
-                return self._data_raw.copy(copy_data=True)  # #################
-            if apply_systematic_error and self._data_with_sys_err is not None:
-                self.logger.debug(f'Kin {self.name}: get cached data with err')
-                return self._data_with_sys_err.copy(copy_data=True)  # ########
-
         number_gh = weight_solver_settings['number_GH']
-        if cache_data and self._data_raw is not None:  # Apply sys_err to cache?
-            gh_data = self._data_raw.copy(copy_data=True)
-        else:  # Calculate data table with number_GH coefs
-            gh_data = self.data.copy(copy_data=True)
-            if number_gh > self.max_gh_order:
-                systematics = weight_solver_settings['GH_sys_err']
-                if type(systematics) is not str:
-                    txt = 'weight_solver_settings: GH_sys_err must be a string.'
-                    self.logger.error(txt)
-                    raise ValueError(txt)
+        if 'GH_sys_err' in weight_solver_settings.keys():
+            systematics = weight_solver_settings['GH_sys_err']
+            if type(systematics) is not str:
+                txt = 'weight_solver_settings: GH_sys_err must be a string.'
+                self.logger.error(txt)
+                raise ValueError(txt)
+            self.logger.info('Note: systematic GH errors exist (GH_sys_err) '
+                             'and will be added in quadrature to the ' \
+                             'observation errors in the data table.')
+        if number_gh > self.max_gh_order:
+            if 'GH_sys_err' in weight_solver_settings.keys():
                 systematics = [float(x) for x in systematics.split(' ')]
                 systematics = np.array(systematics)
                 if any(systematics[self.max_gh_order:number_gh] <= 0):
@@ -261,53 +246,52 @@ class GaussHermite(Kinematics, data.Integrated):
                           ' for extra GH coefficients.'
                     self.logger.error(txt)
                     raise ValueError(txt)
-                cols_to_add = [f'{d}h{i+1}'
-                               for i in range(self.max_gh_order, number_gh)
-                               for d in ('', 'd')]
-                gh_data.add_columns(
-                    [np.zeros(self.n_apertures) for i in cols_to_add],
-                    names=cols_to_add)
-                self.logger.info(f'Kinematics {self.name}: '
-                                 f'added all-zero gh columns {cols_to_add}.')
-            elif number_gh < self.max_gh_order:
-                cols_to_remove = [f'{d}h{i+1}'
-                                  for i in range(number_gh, self.max_gh_order)
-                                  for d in ('', 'd')]
-                gh_data.remove_columns(cols_to_remove)
-                self.logger.info(f'Kinematics {self.name}: '
-                                 f'removed gh columns {cols_to_remove}.')
-            if cache_data:
-                self._data_raw = gh_data.copy(copy_data=True)
-        if apply_systematic_error:
+            cols_to_add = [f'{d}h{i+1}'
+                           for i in range(self.max_gh_order, number_gh)
+                           for d in ('', 'd')]
+            self.data.add_columns(
+                [np.zeros(self.n_apertures) for i in cols_to_add],
+                names=cols_to_add)
+            self.logger.info(f'Kinematics {self.name}: '
+                             f'added all-zero gh columns {cols_to_add}.')
+        elif number_gh < self.max_gh_order:
+            cols_to_remove = [f'{d}h{i+1}'
+                              for i in range(number_gh, self.max_gh_order)
+                              for d in ('', 'd')]
+            self.data.remove_columns(cols_to_remove)
+            self.logger.info(f'Kinematics {self.name}: '
+                             f'removed gh columns {cols_to_remove}.')
+        if 'GH_sys_err' in weight_solver_settings.keys():
             # add the systematic uncertainties
             systematics = weight_solver_settings['GH_sys_err']
             if type(systematics) is str:
                 systematics = systematics.split(' ')
                 systematics = [float(x) for x in systematics]
             systematics = np.array(systematics)[0:number_gh]
-            gh_data['dv'] = np.sqrt(gh_data['dv']**2 + systematics[0]**2)
-            gh_data['dsigma']=np.sqrt(gh_data['dsigma']**2 + systematics[1]**2)
+            self.data['dv'] = np.sqrt(self.data['dv']**2 + systematics[0]**2)
+            self.data['dsigma'] = \
+                np.sqrt(self.data['dsigma']**2 + systematics[1]**2)
             for i in range(3, number_gh + 1):
-                gh_data[f'dh{i}'] = \
-                    np.sqrt(gh_data[f'dh{i}']**2 + systematics[i - 1]**2)
+                self.data[f'dh{i}'] = \
+                    np.sqrt(self.data[f'dh{i}']**2 + systematics[i - 1]**2)
             self.logger.debug(f'Kinematics {self.name}: '
                               'applied systematic errors.')
-            if cache_data:
-                self._data_with_sys_err = gh_data.copy(copy_data=True)
         bad_err = [(int(bin) + 1, 'dv')
-                   for bin in np.flatnonzero(gh_data['dv'] <= 0)]
+                   for bin in np.flatnonzero(self.data['dv'] <= 0)]
         bad_err += [(int(bin) + 1, 'dsigma')
-                    for bin in np.flatnonzero(gh_data['dsigma'] <= 0)]
+                    for bin in np.flatnonzero(self.data['dsigma'] <= 0)]
         for i in range(3, number_gh + 1):
             bad_err += [(int(bin) + 1, f'dh{i}')
-                        for bin in np.flatnonzero(gh_data[f'dh{i}'] <= 0)]
+                        for bin in np.flatnonzero(self.data[f'dh{i}'] <= 0)]
         if len(bad_err) > 0:
             txt = 'Kinematics uncertainties cannot be zero or negative. ' \
-                'Consider editing the kinematics datafile(s) and/or ' \
-                f'GH_sys_err. Violating vbin_id / data_id pair(s): {bad_err}.'
+                  'Consider editing the kinematics datafile(s) and/or ' \
+                  f'GH_sys_err. Violating vbin_id / data_id: {bad_err}.'
             self.logger.error(txt)
             raise ValueError(txt)
-        return gh_data
+        if 'GH_sys_err' in weight_solver_settings['GH_sys_err']:
+            self.set_default_hist_width()
+            self.set_default_hist_bins()
 
     def has_pops(self):
         """
@@ -427,9 +411,7 @@ class GaussHermite(Kinematics, data.Integrated):
     def convert_to_old_format(self,
                               filename_old_format,
                               weight_solver_settings):
-        data = self.get_data(weight_solver_settings,
-                             apply_systematic_error=False,
-                             cache_data=False)
+        data = self.get_data()
         nbins = len(data)
         n_gh = weight_solver_settings['number_GH']
         # write comment string
@@ -735,8 +717,7 @@ class GaussHermite(Kinematics, data.Integrated):
 
         """
         number_gh = weight_solver_settings['number_GH']
-        gh_data = self.get_data(weight_solver_settings,
-                                apply_systematic_error=True)
+        gh_data = self.get_data()
         # construct observed values
         observed_values = np.zeros((self.n_apertures, number_gh))
         # h1, h2 = 0, 0

@@ -303,9 +303,9 @@ If any kinematics have of type ``GaussHermite``, the following additional settin
 
 - ``weight_solver_settings``
     - ``number_GH``: integer, the highest order kinematics to be used when solving for orbital weights. Note that this can be different from the order of the input data you provide. If ``number_GH`` is lower than in the data, then higher order kinematics are ignored while weight solving. Alternatively, if ``number_GH`` is higher than in the data, then we (fictitiously) assume that the higher-order kinematics were observed to be zero, with a *nonzero* systematic error that must be specified in the ``GH_sys_err`` setting. The latter option can be considered as a form of regularisation, penalising solutions where higher-order kinematics (although unobserved) reach unrealistically high values.
-    - ``GH_sys_err``: a string of floats, must contain at least ``number_GH`` entries. These are systematic errors applied to ``V``, ``sigma``, ``h3``, ..., ``hN``. During weight solving, these systematic errors are added in quadrature to the random errors which you provide in the data file. If ``number_GH`` is larger than the kinematic order of the observed data, then the corresponding systematic errors must be > 0 and can be interpreted as a typical value for higher order kinematics; models with higher-order kinematics which exceed this typical value will be penalised.
+    - ``GH_sys_err``: a string of floats, must contain at least ``number_GH`` entries. These are systematic errors applied to ``V``, ``sigma``, ``h3``, ..., ``hN``. If existing, these systematic errors are added in quadrature to the random errors which you provide in the data file and the new errors are used throughout DYNAMITE. If ``number_GH`` is larger than the kinematic order of the observed data, then the corresponding systematic errors must be > 0 and can be interpreted as a typical value for higher order kinematics; models with higher-order kinematics which exceed this typical value will be penalised.
 
-If any kinematic set has type ``BayesLOSVD``, then the ``weight_solver_settings`` must have type ``NNLS``, and no additional settings are required.
+If any kinematic set has type ``BayesLOSVD``, then the ``weight_solver_settings`` must state ``type: "NNLS"``.
 
 If DYNAMITE shall recover from an unsuccessful weight solving attempt, the following option can be used:
 
@@ -348,6 +348,8 @@ Settings specifying the location of input and output directory names. Paths are 
         output_directory: "output/"         # directory (will be created) for output
         all_models_file: "all_models.ecsv"  # filename for the summary file of models run so far
 
+.. _multiprocessing_settings:
+
 ``multiprocessing_settings``
 ============================
 
@@ -359,7 +361,7 @@ Settings for multiprocessing. Models can be evaluated in parallel, with the numb
       orblibs_in_parallel: True             # calculate tube and box orbits in parallel (default: False)
       modeliterator: 'SplitModelIterator'   # optional (default: 'ModelInnerIterator')
 
-Due to very different CPU and memory consumption of orbit integration and weight solving, there are two different settings: while orbit integration will use ``ncpus``, weight solving will use ``ncpus_weights`` parallel processes, with ``ncpus`` ≥ ``ncpus_weights`` in general. Note that ``ncpus_weights`` will default to ``ncpus`` if not specified. Currently, only the ``SplitModelIterator`` model iterator and recovering from an unsuccessful weight solving attempt (``reattempt_failures=True``) use the ``ncpus_weights`` setting.
+Due to very different CPU and memory consumption of orbit integration and weight solving, there are two different settings: while orbit integration and integrating projected masses will use ``ncpus``, weight solving will use ``ncpus_weights`` parallel processes, with ``ncpus`` ≥ ``ncpus_weights`` in general. Note that ``ncpus_weights`` will default to ``ncpus`` if not specified. Currently, only the ``SplitModelIterator`` model iterator and recovering from an unsuccessful weight solving attempt (``reattempt_failures=True``) use the ``ncpus_weights`` setting.
 
 If ``orblibs_in_parallel`` is set to ``False``, DYNAMITE will first integrate the tube orbits and then the box orbits. If it is set to ``True``, the tube and box orbits will be integrated in parallel, which will use 2 parallel processes per model.
 
