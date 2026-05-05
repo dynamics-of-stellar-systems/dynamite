@@ -145,8 +145,8 @@ class Integrated(Data):
                                            if line.lstrip(' ')[0] != '#']
         minx = float(lines[0][0])
         miny = float(lines[0][1])
-        sx = float(lines[1][0])  # extent in x
-        sy = float(lines[1][1])  # extent in y
+        x_size = sx = float(lines[1][0])  # extent in x
+        y_size = sy = float(lines[1][1])  # extent in y
         sy = sy + miny
         angle_deg = float(lines[2][0])
         nx = int(lines[3][0])
@@ -197,8 +197,14 @@ class Integrated(Data):
         # Only select the pixels that have a bin associated with them.
         s = np.ravel(np.where((grid >= 0)))
         x, y = xi[s], yi[s]
-        # store the arguments needed to use `plotbin.display_pixels`
-        dp_args = {'x':x,
+        # store the arguments needed to use `plotbin.display_pixels` and mge
+        dp_args = {'min_x': minx,
+                   'min_y': miny,
+                   'x_size': x_size,
+                   'y_size': y_size,
+                   'n_x': nx,
+                   'n_y': ny,
+                   'x':x,
                    'y':y,
                    'dx':dx,
                    'idx_bin_to_pix':grid[s],
