@@ -846,7 +846,7 @@ class MGE(data.Data):
         Parameters
         ----------
         directory_noml : string
-            name of model directory exclusing the ``ml/`` extension
+            name of model directory excluding the ``ml/`` extension
 
         Returns
         -------
