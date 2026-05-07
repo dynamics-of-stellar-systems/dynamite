@@ -197,8 +197,7 @@ class MGE(data.Data):
                 self.logger.info(f'Intrinsic masses read from {mr_file} '
                                  f'and {mq_file}, respectively.')
                 return radmass, \
-                       np.reshape(quad_grid,
-                                  newshape=(quad_nph, quad_nth, quad_nr))
+                       np.reshape(quad_grid, (quad_nph, quad_nth, quad_nr))
                 ###############################################################
             elif mr_exists or mq_exists:
                 self.logger.info(f'Strange, only one of {mr_file} and '
@@ -515,8 +514,7 @@ class MGE(data.Data):
                                       dens=dens,
                                       dir=dir,
                                       parallel=parallel)
-        return radmass, np.reshape(quad_grid,
-                                   newshape=(quad_nph, quad_nth, quad_nr))
+        return radmass, np.reshape(quad_grid, (quad_nph, quad_nth, quad_nr))
 
     def _get_intrinsic(self, model, mge_data, logtxt=''):
         """Helper function: calculate intrinsic properties
@@ -754,9 +752,9 @@ class MGE(data.Data):
 
         Returns
         -------
-        quad_grid : np.array, shape=(quad_nph, quad_nth, quad_nr)
+        quad_grid : 1d np.array, shape=(quad_nph * quad_nth * quad_nr,)
             3D intrinsic masses of the MGE in a polar grid of size
-            (quad_nph, quad_nth, quad_nr)
+            (quad_nph, quad_nth, quad_nr).
         """
         # Calculate like in qgrid_setup (instead of reading the orblib-file):
         # quad_nr, quad_nth, quad_nph, quad_lr, quad_lth, quad_lph
@@ -822,7 +820,7 @@ class MGE(data.Data):
             quad_grid[ijk_tuple[::-1]] = output[ijk_idx]
 
         self.logger.debug('Percent of the Mass inside the projected grid: '
-                          f'{sum(quad_grid) / total_mass * 100}.')
+                          f'{np.sum(quad_grid) / total_mass * 100}.')
         quad_grid /= total_mass
         quad_grid = np.ravel(quad_grid, order='F')  # retain legacy format
 
