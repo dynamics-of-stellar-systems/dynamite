@@ -29,7 +29,7 @@ contains
 
     subroutine dm_setup()
         ! use triaxpotent, only: tp_setup
-        real(kind=dp) :: darkmass, dm_zeta, zh_betai, tmp_gamma, zh_gammln
+        real(kind=dp) :: darkmass, dm_zeta, zh_betai, tmp_gamma, zh_gammln, r200
         ! call tp_setup()
 
         select case (dm_profile_type)
@@ -41,17 +41,11 @@ contains
             if (n_dmparam .ne. 2) stop 'wrong number of NFW halo parameters'
             print *, 'Parameters of NFW concentration and fraction', dmparam(1), dmparam(2)
 
-            ! Parameters for NFW profile
-            rhoc = (200.0_dp/3.0_dp)*rho_crit*dmparam(1)**3/ &
-                   (log(1.0_dp + dmparam(1)) - dmparam(1)/(1.0_dp + dmparam(1)))
-
-            rc = (3.0_dp/(800.0_dp*pi_d*rho_crit*dmparam(1)**3) &
-                  *dmparam(2)*totalmass)**(1.0_dp/3.0_dp)
-
-            ! 12 Oct 2011: LW found unit conversion bug in print statment
-            print *, "Parameters of NFW potential (rho_c in solarmass/km^3 and r_c in km): ", rhoc, rc
-            ! Calculate M200, in Msun
-            darkmass = 800_dp*pi_d/3_dp*rho_crit*rc**3*dmparam(1)**3
+            ! 15 May 2026: PJ fixes conversion from (c,f_DM) to (rhoc,rc)
+            darkmass = dmparam(2)*totalmass
+            r200 = (3.0_dp*darkmass/(800.0_dp*pi_d*rho_crit))**(1.0_dp/3.0_dp)
+            rc = r200/dmparam(1)
+            rhoc = darkmass/4.0_dp/pi_d/rc**3.0_dp/(log(1.0_dp + dmparam(1)) - dmparam(1)/(1.0_dp + dmparam(1)))
 
             print *, "Total stellar mass is (Msun): ", totalmass
             print *, "Total dark halo mass (M200 in Msun): ", darkmass
