@@ -93,6 +93,16 @@ class Kinematics(data.Data):
         """
         pass
 
+    def update_data(self, weight_solver_settings):
+        """Update kinematics according to weight_solver_settings.
+
+        This is a placeholder method that allows to manipulate read-in data
+        according to weight_solver_settings entries. Examples include applying
+        systematic errors or changig the number of GH coefficients to use by
+        DYNAMITE.
+        """
+        pass
+
     def has_pops(self):
         """
         Identifies population data in the kinematics data file.
