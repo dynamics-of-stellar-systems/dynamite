@@ -381,7 +381,8 @@ class Configuration(object):
                     if 'mge_pot' in data_comp:
                         path = self.settings.io_settings['input_directory']
                         c.mge_pot = mge.MGE(input_directory=path,
-                                        datafile=data_comp['mge_pot'])
+                                            datafile=data_comp['mge_pot'],
+                                            config=self)
                         logger.debug(f'{comp}... mge_pot read from '
                                      f'{data_comp["mge_pot"]}.')
                     else:
@@ -390,7 +391,8 @@ class Configuration(object):
                     if 'mge_lum' in data_comp:
                         path = self.settings.io_settings['input_directory']
                         c.mge_lum = mge.MGE(input_directory=path,
-                                        datafile=data_comp['mge_lum'])
+                                            datafile=data_comp['mge_lum'],
+                                            config=self)
                         logger.debug(f'{comp}... mge_lum read from '
                                      f'{data_comp["mge_lum"]}.')
                     else:
@@ -400,7 +402,8 @@ class Configuration(object):
                     if 'disk_pot' in data_comp:
                         path = self.settings.io_settings['input_directory']
                         c.disk_pot = mge.MGE(input_directory=path,
-                                             datafile=data_comp['disk_pot'])
+                                             datafile=data_comp['disk_pot'],
+                                             config=self)
                         logger.debug(f'{comp}... disk_pot read from '
                                      f'{data_comp["disk_pot"]}.')
                     else:
@@ -409,7 +412,8 @@ class Configuration(object):
                     if 'disk_lum' in data_comp:
                         path = self.settings.io_settings['input_directory']
                         c.disk_lum = mge.MGE(input_directory=path,
-                                             datafile=data_comp['disk_lum'])
+                                             datafile=data_comp['disk_lum'],
+                                             config=self)
                         logger.debug(f'{comp}... disk_lum read from '
                                      f'{data_comp["disk_lum"]}.')
                     else:
@@ -546,7 +550,7 @@ class Configuration(object):
             raise ValueError(text)
         logger.info('System assembled')
         self.validate()
-        logger.debug(f'System: {self.system}')
+        # logger.debug(f'System: {self.system}')  # logged as part of parspace
         logger.debug(f'Settings: {self.settings}')
         logger.info('Configuration validated')
 
@@ -556,7 +560,7 @@ class Configuration(object):
 
         self.parspace = parspace.ParameterSpace(self.system)
         logger.info('Instantiated parameter space')
-        logger.debug(f'Parameter space: {[p for p in self.parspace]}')
+        logger.debug(f'Parameter space: {self.parspace}')
 
         self.all_models = model.AllModels(config=self)
         logger.info('Instantiated AllModels object')
@@ -571,6 +575,17 @@ class Configuration(object):
         for d in directories:
             self.all_models.update_orblib_flags(d)
         self.all_models.update_model_table()
+
+        if self.settings.weight_solver_settings['type']!='LegacyWeightSolver':
+            if self.system.is_bar_disk_system():
+                bardisk = self.system.get_unique_bar_component()
+                bardisk.mass_aper = None
+                bardisk.mge_lum_tot = bardisk.mge_lum + bardisk.disk_lum
+                bardisk.mass_aper = bardisk.mge_lum_tot.get_projected_masses()
+            else:
+                stars = self.system.get_unique_triaxial_visible_component()
+                stars.mass_aper = None
+                stars.mass_aper = stars.mge_lum.get_projected_masses()
 
         # self.backup_config_file(reset=False)
 
@@ -762,6 +777,27 @@ class Configuration(object):
         self.all_models = model.AllModels(config=self)
         self.logger.info('Instantiated empty AllModels object')
         self.logger.debug(f'AllModels:\n{self.all_models.table}')
+
+    def remove_projected_masses_file(self):
+        """
+        Deletes the projected masses file
+
+        Deletes the projected masses file if it exists.
+
+        Raises
+        ------
+        Exception if the file cannot be removed.
+
+        Returns
+        -------
+        None.
+
+        """
+        p_mass_fname = self.settings.io_settings['output_directory'] + \
+                       const.p_masses_file
+        if os.path.isfile(p_mass_fname):
+            os.remove(p_mass_fname)
+            self.logger.info(f'Deleted existing {p_mass_fname}.')
 
     def remove_all_existing_output(self, wipe_all=False, create_tree=True):
         """
@@ -997,7 +1033,7 @@ class Configuration(object):
                             # check weight solver type
                             if ws_type == 'LegacyWeightSolver':
                                 txt = "LegacyWeightSolver can't be used with "\
-                                      "BayesLOSVD nor ProperMotions - " \
+                                      "BayesLOSVD nor with ProperMotions - " \
                                       "use weight-solver type NNLS"
                                 self.logger.error(txt)
                                 raise ValueError(txt)
@@ -1008,10 +1044,6 @@ class Configuration(object):
                                       'use chi2 or kinchi2.'
                                 self.logger.error(txt)
                                 raise ValueError(txt)
-                        else:  # GaussHermite kinematics
-                            # get_data checks for errors >= 0 in chosen moments
-                            _ = kin_data.get_data(
-                                self.settings.weight_solver_settings)
                         ws_settings = self.settings.weight_solver_settings
                         kin_data.update_data(ws_settings)
                 else:
