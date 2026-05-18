@@ -361,7 +361,7 @@ Settings for multiprocessing. Models can be evaluated in parallel, with the numb
       orblibs_in_parallel: True             # calculate tube and box orbits in parallel (default: False)
       modeliterator: 'SplitModelIterator'   # optional (default: 'ModelInnerIterator')
 
-Due to very different CPU and memory consumption of orbit integration and weight solving, there are two different settings: while orbit integration and integrating projected masses will use ``ncpus``, weight solving will use ``ncpus_weights`` parallel processes, with ``ncpus`` ≥ ``ncpus_weights`` in general. Note that ``ncpus_weights`` will default to ``ncpus`` if not specified. Currently, only the ``SplitModelIterator`` model iterator and recovering from an unsuccessful weight solving attempt (``reattempt_failures=True``) use the ``ncpus_weights`` setting.
+Due to very different CPU and memory consumption of orbit integration and weight solving, there are two different settings: while orbit integration and (optionally) integrating intrinsic and projected masses will use ``ncpus``, weight solving will use ``ncpus_weights`` parallel processes, with ``ncpus`` ≥ ``ncpus_weights`` in general. Note that ``ncpus_weights`` will default to ``ncpus`` if not specified. Currently, only the ``SplitModelIterator`` model iterator and recovering from an unsuccessful weight solving attempt (``reattempt_failures=True``) use the ``ncpus_weights`` setting.
 
 If ``orblibs_in_parallel`` is set to ``False``, DYNAMITE will first integrate the tube orbits and then the box orbits. If it is set to ``True``, the tube and box orbits will be integrated in parallel, which will use 2 parallel processes per model.
 

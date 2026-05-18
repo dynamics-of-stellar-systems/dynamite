@@ -635,18 +635,16 @@ class NNLS(WeightSolver):
             mge = self.system.get_unique_bar_component().mge_lum_tot
         else:
             mge = self.system.get_unique_triaxial_visible_component().mge_lum
-
         # intrinsic mass
-        intrinsic_masses = mge.get_intrinsic_masses_from_file(self.direc_no_ml)
-        self.intrinsic_masses = intrinsic_masses
+        self.intrinsic_masses = mge.get_intrinsic_masses(self.model,
+                                                         nocalc=True)[1]
         self.intrinsic_mass_error = self.settings['lum_intr_rel_err']
         # projected
         self.projected_masses = mge.get_projected_masses(nocalc=True)
         self.projected_mass_error = self.settings['sb_proj_rel_err']
         # total mass constraint
-        self.total_mass = np.sum(intrinsic_masses)
-        self.total_mass_error = np.min([self.intrinsic_mass_error/10.,
-                                        np.abs(1. - self.total_mass)])
+        self.total_mass = np.sum(self.intrinsic_masses)
+        self.total_mass_error = max(abs(1. - self.total_mass), 1e-8)
         # enumerate the mass constriants
         n_intrinsic = np.prod(self.intrinsic_masses.shape)
         n_apertures = len(self.projected_masses)
@@ -677,8 +675,6 @@ class NNLS(WeightSolver):
         # total mass
         con[0] = self.total_mass
         econ[0] = self.total_mass_error
-        if econ[0]<=0.0:
-            econ[0] = con[0]*0.01
         orbmat[0,:] = 1.
         # intrinsic mass
         idx = slice(1,1+self.n_intrinsic)
