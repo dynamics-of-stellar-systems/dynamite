@@ -828,18 +828,9 @@ class MGE(data.Data):
         # used to derive the viewing angles
         parset = model.parset
         if self.config.system.is_bar_disk_system():
-            if self.config.system.is_bar_disk_system_with_angles():
-                theta_view = parset[f'theta-{stars.name}']
-                phi_view = parset[f'phi-{stars.name}']
-                psi_view = parset[f'psi-{stars.name}']
-            else:
-                q = parset[f'q-{stars.name}']
-                p = parset[f'p-{stars.name}']
-                u = parset[f'u-{stars.name}']
-                qdisk = parset[f'qdisk-{stars.name}']
-                theta_view, psi_view, phi_view = \
-                    stars.triax_pqu2tpp_bar(p, q, u, qdisk)
-                phi_view = -phi_view ## FIX ME
+            theta_view = parset[f'theta-{stars.name}']
+            phi_view = parset[f'phi-{stars.name}']
+            psi_view = parset[f'psi-{stars.name}']
         else:
             q = parset[f'q-{stars.name}']
             p = parset[f'p-{stars.name}']
