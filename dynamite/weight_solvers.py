@@ -644,8 +644,7 @@ class NNLS(WeightSolver):
         self.projected_mass_error = self.settings['sb_proj_rel_err']
         # total mass constraint
         self.total_mass = np.sum(self.intrinsic_masses)
-        self.total_mass_error = np.min([self.intrinsic_mass_error/10.,
-                                        np.abs(1. - self.total_mass)]) + 1e-8
+        self.total_mass_error = max(abs(1. - self.total_mass), 1e-8)
         # enumerate the mass constriants
         n_intrinsic = np.prod(self.intrinsic_masses.shape)
         n_apertures = len(self.projected_masses)
@@ -676,8 +675,6 @@ class NNLS(WeightSolver):
         # total mass
         con[0] = self.total_mass
         econ[0] = self.total_mass_error
-        if econ[0]<=0.0:
-            econ[0] = con[0]*0.01
         orbmat[0,:] = 1.
         # intrinsic mass
         idx = slice(1,1+self.n_intrinsic)
