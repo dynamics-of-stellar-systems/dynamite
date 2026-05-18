@@ -4,6 +4,7 @@
 Change Log
 ****************
 
+- Improvement: Reconfirmed DYNAMITE compatibility with numpy 2.x.
 - Improvement: DYNAMITE now consistently uses :math:`H_0 = 70\;\mathrm{km/s/Mpc}`.
 - Improvement: Gauss Hermite kinematics' systematic errors `GH_sys_err` are now always applied throughout DYNAMITE.
 - Improvement: The new utility method ``Configuration.remove_projected_masses_file()`` deletes the projected masses file.
