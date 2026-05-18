@@ -125,8 +125,7 @@ class WeightSolver(object):
             model_gh_coef = a.get_gh_model_kinematic_maps(v_sigma_option='fit',
                                                           weights=weights)
             # get the observed projected masses (unused) and kinematic data
-            kinematics_data = \
-                kin_data.get_data(self.settings, apply_systematic_error=False)
+            kinematics_data = kin_data.get_data()
             # calculate chi2_kinmap
             for coef in coefs:
                 obs_val = np.array(kinematics_data[coef])
@@ -203,7 +202,7 @@ class LegacyWeightSolver(WeightSolver):
             # make a dummy 'kins_combined' object ...
             kins_combined = copy.deepcopy(kinematics[0])
             # ...replace data attribute with stacked table of all kinematics
-            kins_combined.data = table.vstack([k.get_data(self.settings)
+            kins_combined.data = table.vstack([k.get_data()
                                                for k in kinematics])
             kins_combined.n_apertures = len(kins_combined.data)
             kins_combined.max_gh_order = self.settings['number_GH']
@@ -246,7 +245,6 @@ class LegacyWeightSolver(WeightSolver):
         'datfil/mass_aper.dat' +'\n' + \
         str(self.settings['number_GH']) + '	                           [ # of GH moments to constrain the model]' +'\n' + \
         'infil/'+kin_data_file+'\n' + \
-        str(self.settings['GH_sys_err']) + '    [ systemic error of v, sigma, h3, h4... ]' + '\n' + \
         str(self.settings['lum_intr_rel_err']) + '                               [ relative error for intrinsic luminosity ]' +'\n' + \
         str(self.settings['sb_proj_rel_err']) + '                               [ relative error for projected SB ]' + '\n' + \
         str(ml_scaling_factor)  + '                                [ scale factor related to M/L, sqrt( (M/L)_k / (M/L)_ref ) ]' + '\n'
@@ -520,19 +518,6 @@ class LegacyWeightSolver(WeightSolver):
         chi2_kin = np.sum(chi2_vector[1+n_intrinsic+n_apertures:])
         return weights, chi2_tot, chi2_kin
 
-    # def chi2_kinmap(self):
-    #     """
-    #     Returns the chi2 directly calculated from the kinematic maps.
-
-    #     Returns
-    #     -------
-    #     chi2_kinmap : float
-    #         chi2 directly calculated from the kinematic maps.
-
-    #     """
-    #     _, chi2_kinmap = self.read_chi2()
-    #     return chi2_kinmap
-
     def read_chi2(self):
         """Read chi2 values from `nn_kinem.out`
 
@@ -647,19 +632,16 @@ class NNLS(WeightSolver):
 
         """
         if self.system.is_bar_disk_system():
-            bardisk = self.system.get_unique_bar_component()
-            mge = bardisk.mge_lum + bardisk.disk_lum
+            mge = self.system.get_unique_bar_component().mge_lum_tot
         else:
-            stars = self.system.get_unique_triaxial_visible_component()
-            mge = stars.mge_lum
+            mge = self.system.get_unique_triaxial_visible_component().mge_lum
 
         # intrinsic mass
         intrinsic_masses = mge.get_intrinsic_masses_from_file(self.direc_no_ml)
         self.intrinsic_masses = intrinsic_masses
         self.intrinsic_mass_error = self.settings['lum_intr_rel_err']
         # projected
-        projected_masses = mge.get_projected_masses_from_file(self.direc_no_ml)
-        self.projected_masses = projected_masses
+        self.projected_masses = mge.get_projected_masses(nocalc=True)
         self.projected_mass_error = self.settings['sb_proj_rel_err']
         # total mass constraint
         self.total_mass = np.sum(intrinsic_masses)
@@ -774,7 +756,7 @@ class NNLS(WeightSolver):
         if type(kins) is not dyn_kin.GaussHermite:
             return orb_gh
         orb_mu_v = orb_losvd.get_mean()
-        kins_data = kins.get_data(self.settings, apply_systematic_error=False)
+        kins_data = kins.get_data()
         obs_mu_v = kins_data['v']
         obs_sig_v = kins_data['sigma']
         delta_v = np.abs(orb_mu_v - obs_mu_v)
