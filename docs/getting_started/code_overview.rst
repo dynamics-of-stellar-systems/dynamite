@@ -46,9 +46,10 @@ After running the script, the following directories/files will be created::
   | ├── main_script.py
   | ├── dynamite.log    # a log file
   | ├── output
-  | │   ├── models/     # output model directory
-  | │   ├── plots/      # output plot directory
-  | │   ├── all_models.ecsv        # summarises all models run so far
+  | │   ├── models/          # output model directory
+  | │   ├── plots/           # output plot directory
+  | │   ├── all_models.ecsv  # summarises all models run so far
+  | │   └── mass_aper.ecsv   # projected masses (Python NNLS only)
   |
 
 Subsequent runs of scripts from the main directory (e.g. after you have altered configuration settings) will not change this directory structure.

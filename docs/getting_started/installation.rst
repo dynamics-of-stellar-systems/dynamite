@@ -371,8 +371,6 @@ Your terminal will likely express several warnings again, but these are not crit
 * orbitstart_bar
 * orblib_new_mirror
 * orblib_bar
-* triaxmassbin
-* triaxmassbin_bar
 
 
 3. Installing DYNAMITE
