@@ -46,9 +46,10 @@ After running the script, the following directories/files will be created::
   | ├── main_script.py
   | ├── dynamite.log    # a log file
   | ├── output
-  | │   ├── models/     # output model directory
-  | │   ├── plots/      # output plot directory
-  | │   ├── all_models.ecsv        # summarises all models run so far
+  | │   ├── models/          # output model directory
+  | │   ├── plots/           # output plot directory
+  | │   ├── all_models.ecsv  # summarises all models run so far
+  | │   └── mass_aper.ecsv   # projected masses (Python NNLS only)
   |
 
 Subsequent runs of scripts from the main directory (e.g. after you have altered configuration settings) will not change this directory structure.
@@ -267,7 +268,7 @@ Different models can be run as separate processes. The number of processes which
   multiprocessing_settings:
       ncpus: 4 # an integer or 'all_available'
 
-If ``ncpus: 'all_available'`` is selected, the program will automatically detect the total number of disposable cpus.
+If ``ncpus: 'all_available'`` is selected, the program will automatically detect the total number of disposable cpus. There is more information on the multiprocessing settings in the :ref:`multiprocessing_settings` section of the Configuration page.
 
 If you use the Slurm job submission system on a cluster, then you must add a Python `shebang line <https://en.wikipedia.org/wiki/Shebang_(Unix)>`_ and any Slurm settings to the top of ``main_script.py`` e.g.
 

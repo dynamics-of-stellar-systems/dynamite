@@ -825,7 +825,7 @@ class TriaxialVisibleComponent(VisibleComponent):
         secth = 1.0 / costh
         cotph = 1.0 / tanph
 
-        delp = 1.0 - qobs_pot**2
+        delp = 1.0 - qobs_pot ** 2
 
         nom1minq2 = delp * (
             2.0 * np.cos(2.0 * psi_obs) + np.sin(2.0 * psi_obs) *
@@ -833,7 +833,7 @@ class TriaxialVisibleComponent(VisibleComponent):
         nomp2minq2 = delp * (
             2.0 * np.cos(2.0 * psi_obs) + np.sin(2.0 * psi_obs) *
             (np.cos(theta_view) * cotph - secth * np.tan(phi_view)))
-        denom = 2.0 * np.sin(theta_view)**2 * (
+        denom = 2.0 * np.sin(theta_view) ** 2 * (
             delp * np.cos(psi_obs) *
             (np.cos(psi_obs) + secth * cotph * np.sin(psi_obs)) - 1.0)
 
@@ -843,24 +843,24 @@ class TriaxialVisibleComponent(VisibleComponent):
 
         # These are temporary values of the squared intrinsic axial
         # ratios p^2 and q^2
-        qintr_sq = (1.0 - nom1minq2 / denom)
-        pintr_sq = (qintr_sq + nomp2minq2 / denom)
+        qintr = 1.0 - nom1minq2 / denom
+        pintr = qintr + nomp2minq2 / denom
 
         # Quick check to see if we are not going to take the sqrt of
         # a negative number.
-        if (np.min(qintr_sq) < 1.0e-6) or (np.min(pintr_sq) <= 1.0e-6):
+        if (np.min(qintr) < 1.0e-6) or (np.min(pintr) <= 1.0e-6):
             print(
                 "triax_tpp2pqu: negative or too small intrinsic axis ratio squared "
-                f"(min(q^2)={np.min(qintr_sq)}, min(p^2)={np.min(pintr_sq)})."
+                f"(min(q^2)={np.min(qintr)}, min(p^2)={np.min(pintr)})."
             )
             return np.nan, np.nan, np.nan
 
         # intrinsic axial ratios p and q
-        qintr = np.sqrt(qintr_sq)
-        pintr = np.sqrt(pintr_sq)
+        qintr = np.sqrt(qintr)
+        pintr = np.sqrt(pintr)
 
         # triaxiality parameter T = (1-p^2)/(1-q^2)
-        triaxpar = (1.0 - pintr**2) / (1.0 - qintr**2)
+        triaxpar = (1.0 - pintr ** 2) / (1.0 - qintr ** 2)
         if (np.max(triaxpar) > 1.0) or (np.min(triaxpar) < 0.0):
             print(
                 "triax_tpp2pqu: triaxiality parameter T out of [0, 1], "
@@ -875,17 +875,15 @@ class TriaxialVisibleComponent(VisibleComponent):
 
         if np.min(qintr) <= 0.0:
             print(
-                "triax_tpp2pqu: intrinsic minor axis ratio q <= 0, min(q)={np.min(qintr)}."
+                f"triax_tpp2pqu: intrinsic minor axis ratio q <= 0, min(q)={np.min(qintr)}."
             )
             return np.nan, np.nan, np.nan
 
-        pintr2 = pintr
-        qintr2 = qintr
-        uintr2 = 1. / (np.sqrt(qobs_pot / np.sqrt(
+        uintr = 1. / (np.sqrt(qobs_pot / np.sqrt(
             (pintr * np.cos(theta_view))**2 + (qintr * np.sin(theta_view))**2 *
             ((pintr * np.cos(phi_view))**2 + np.sin(phi_view)**2))))
 
-        return pintr2, qintr2, uintr2
+        return pintr, qintr, uintr
 
     @staticmethod
     def acceleration(x, y, z,
@@ -1189,7 +1187,7 @@ class NFW_m200_c(DarkComponent):
         stars = system.get_component_from_class(TriaxialVisibleComponent)
         M_stars_tot = stars.get_M_stars_tot(system.distMPc, parset)
         f = parset[f'f-{self.name}']
-        h = 0.671 #add paper
+        h = dyn.constants.H0 / 100
         #total mass of dark matter
         MvDM = f * M_stars_tot
         #dutton&maccio2014 (https://arxiv.org/pdf/1402.7073.pdf) Eq. (8)
@@ -1390,9 +1388,6 @@ class GeneralisedNFW(DarkComponent):
         c = par['c']
         gam = par['gam']
 
-        # H0 = 73                                    # km/s/Mpc, used in Fortran
-        # G = 4.3009172706e-3                        # pc/Msun⋅(km/s)**2
-        # rho_crit = 3 * H0**2 * 1e-12 / (8*np.pi*G) # Msun/pc**3
         rho_crit = dyn.constants.RHO_CRIT * dyn.constants.PARSEC_KM ** 3
 
         r200 = (3 * Mvir / (800 * np.pi * rho_crit))**(1.0 / 3.0)
