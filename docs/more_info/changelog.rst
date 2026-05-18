@@ -5,6 +5,7 @@ Change Log
 ****************
 
 - Improvement: Calculate intrinsic masses in Python instead of legacy Fortran when using the Python NNLS solvers.
+- Improvement: Reconfirmed DYNAMITE compatibility with numpy 2.x.
 - Bugfix: The bar code now works with ``orblibs_in_parallel: False``.
 - Improvement: DYNAMITE now consistently uses :math:`H_0 = 70\;\mathrm{km/s/Mpc}`.
 - Improvement: Gauss Hermite kinematics' systematic errors `GH_sys_err` are now always applied throughout DYNAMITE.
