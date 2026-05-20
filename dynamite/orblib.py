@@ -180,17 +180,9 @@ class LegacyOrbitLibrary(OrbitLibrary):
         bh = self.system.get_component_from_class(physys.Plummer)
         # used to derive the viewing angles
         if self.system.is_bar_disk_system():
-            if self.system.is_bar_disk_system_with_angles():
-                theta = self.parset[f'theta-{stars.name}']
-                phi = self.parset[f'phi-{stars.name}']
-                psi = self.parset[f'psi-{stars.name}']
-            else:
-                q = self.parset[f'q-{stars.name}']
-                p = self.parset[f'p-{stars.name}']
-                u = self.parset[f'u-{stars.name}']
-                qdisk = self.parset[f'qdisk-{stars.name}']
-                theta, psi, phi = stars.triax_pqu2tpp_bar(p,q,u,qdisk)
-                phi = -phi ## FIX ME
+            theta = self.parset[f'theta-{stars.name}']
+            phi = self.parset[f'phi-{stars.name}']
+            psi = self.parset[f'psi-{stars.name}']
         else:
             q = self.parset[f'q-{stars.name}']
             p = self.parset[f'p-{stars.name}']

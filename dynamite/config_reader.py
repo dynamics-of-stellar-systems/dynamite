@@ -990,8 +990,11 @@ class Configuration(object):
 
         if self.system.is_bar_disk_system():
             if self.system.number_of_bar_components() != 1:
-                self.logger.error('Bar/disk system needs to have exactly one BarDiskComponent object')
-                raise ValueError('Bar/disk system needs to have exactly one BarDiskComponent object')
+                txt = 'Bar/disk system needs to have exactly one ' \
+                      'BarDiskComponent object'
+                self.logger.error(txt)
+                raise ValueError(txt)
+
         else:
             if self.system.number_of_visible_components() != 1:
                 self.logger.error('System needs to have exactly one '
