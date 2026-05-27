@@ -1,4 +1,5 @@
 import os
+import pathlib
 import subprocess
 import shutil
 import logging
@@ -51,6 +52,7 @@ class LegacyOrbitLibrary(OrbitLibrary):
                    'None provided.'
             self.logger.error(text)
             raise ValueError(text)
+        self.config = config
         self.mod_dir = mod_dir
         self.parset = parset
         self.system = config.system
@@ -99,10 +101,13 @@ class LegacyOrbitLibrary(OrbitLibrary):
             - orblibbox_pops.dat.bz2(*)     (zipped populations 0d hists)
             - orblibbox_pm_hist.dat.bz2(*)  (zipped proper motions 2d histograms)
             - orblibbox.dat_orbclass.out    (orbit classification for box orbs)
-            - mass_aper.dat                 (MGE masses in apertures,
-                                             LegacyWeightSolver only)
-            - mass_qgrid.dat                (MGE masses in 3D grid)
-            - mass_radmass.dat              (MGE masses in radial bins)
+            - LegacyWeightSolver only:
+                - mass_aper.dat             (MGE masses in apertures)
+                - mass_qgrid.dat            (MGE masses in 3D grid)
+                - mass_radmass.dat          (MGE masses in radial bins)
+            - Not for LegacyWeightSolver:
+                - mass_qgrid.ecsv           (MGE masses in 3D grid)
+                - mass_radmass.ecsv         (MGE masses in radial bins)
             - + up to 8 log and status files
         (*) only created if there are kinematic datasets with losvd 1d
             histograms, populations datasets, or proper motion datasets, resp.
@@ -137,6 +142,27 @@ class LegacyOrbitLibrary(OrbitLibrary):
                 self.get_orbit_library_par()
             else:
                 self.get_orbit_library()
+            if not self.LegacyWeightSolver:
+                # Calculate the orblib's parset's observed intrinsic masses
+                model=self.config.all_models.get_model_from_parset(self.parset)
+                if self.system.is_bar_disk_system():
+                    stars = self.system.get_unique_bar_component()
+                    mge = stars.mge_lum_tot
+                    len_mge_bulge = len(stars.mge_lum.data)
+                    # intrinsic masses
+                    _ = mge.get_intrinsic_masses(model,
+                                                 len_mge_bulge=len_mge_bulge,
+                                                 parallel=False)
+                else:
+                    stars = self.system.get_unique_triaxial_visible_component()
+                    mge = stars.mge_lum
+                    # intrinsic masses
+                    _ = mge.get_intrinsic_masses(model, parallel=False)
+            tube_done = os.path.isfile(self.mod_dir + 'datfil/tube_done')
+            box_done = os.path.isfile(self.mod_dir + 'datfil/box_done')
+            if tube_done and box_done:
+                pathlib.Path(self.mod_dir + 'datfil/tube_box_done').touch()
+
 
     def create_fortran_input_orblib(self, path):
         """write input files for Fortran orbit library programs
@@ -153,7 +179,7 @@ class LegacyOrbitLibrary(OrbitLibrary):
             - parameters_lum.in
             - orblib.in
             - orblibbox.in
-            - triaxmass.in
+            - triaxmass.in (LegacyWeightSolver only)
             - triaxmassbin.in (LegacyWeightSolver only)
 
         """
@@ -164,17 +190,9 @@ class LegacyOrbitLibrary(OrbitLibrary):
         bh = self.system.get_component_from_class(physys.Plummer)
         # used to derive the viewing angles
         if self.system.is_bar_disk_system():
-            if self.system.is_bar_disk_system_with_angles():
-                theta = self.parset[f'theta-{stars.name}']
-                phi = self.parset[f'phi-{stars.name}']
-                psi = self.parset[f'psi-{stars.name}']
-            else:
-                q = self.parset[f'q-{stars.name}']
-                p = self.parset[f'p-{stars.name}']
-                u = self.parset[f'u-{stars.name}']
-                qdisk = self.parset[f'qdisk-{stars.name}']
-                theta, psi, phi = stars.triax_pqu2tpp_bar(p,q,u,qdisk)
-                phi = -phi ## FIX ME
+            theta = self.parset[f'theta-{stars.name}']
+            phi = self.parset[f'phi-{stars.name}']
+            psi = self.parset[f'psi-{stars.name}']
         else:
             q = self.parset[f'q-{stars.name}']
             p = self.parset[f'p-{stars.name}']
@@ -285,7 +303,7 @@ class LegacyOrbitLibrary(OrbitLibrary):
             label = '[starting orbit]'
             line = f"{self.settings['starting_orbit']}{tab}{label}\n"
             f.write(line)
-            label = '[orbits  to intergrate; -1 --> all orbits]'
+            label = '[orbits to integrate; -1 --> all orbits]'
             line = f"{self.settings['number_orbits']}{tab}{label}\n"
             f.write(line)
             label = '[accuracy]'
@@ -418,20 +436,20 @@ class LegacyOrbitLibrary(OrbitLibrary):
             f.close()
         write_orblib_dot_in(box=False)
         write_orblib_dot_in(box=True)
-        #-------------------
-        #write triaxmass.in
-        #-------------------
-        text='infil/parameters_lum.in' +'\n' + \
-        'datfil/orblib_qgrid.dat' +'\n' + \
-        'datfil/mass_radmass.dat' +'\n' + \
-        'datfil/mass_qgrid.dat'
-        triaxmass_file= open(path+'triaxmass.in',"w")
-        triaxmass_file.write(text)
-        triaxmass_file.close()
-        #-----------------------
-        #write triaxmassbin.in (LegacyWeightSolver only)
-        #-----------------------
         if self.LegacyWeightSolver:
+            #--------------------------------------------
+            #write triaxmass.in (LegacyWeightSolver only)
+            #--------------------------------------------
+            text = 'infil/parameters_lum.in\n' + \
+                   'datfil/orblib_qgrid.dat\n' + \
+                   'datfil/mass_radmass.dat\n' + \
+                   'datfil/mass_qgrid.dat'
+            triaxmass_file = open(path+'triaxmass.in',"w")
+            triaxmass_file.write(text)
+            triaxmass_file.close()
+            #-----------------------------------------------
+            #write triaxmassbin.in (LegacyWeightSolver only)
+            #-----------------------------------------------
             tab = '\t\t\t\t\t\t\t\t'
             f = open(path + 'triaxmassbin.in', 'w')
             f.write('infil/parameters_lum.in\n')
@@ -454,25 +472,26 @@ class LegacyOrbitLibrary(OrbitLibrary):
             f.close()
 
     def get_orbit_ics(self):
-        """Execute the bash script to calculate orbit ICs
+        """Run the Fortran executable to calculate orbit ICs
         """
         cur_dir = os.getcwd()
         os.chdir(self.mod_dir)
-        cmdstr = self.write_executable_for_ics()
         self.logger.info(f'Calculating initial conditions for {self.mod_dir}.')
-        # p = subprocess.call('bash '+cmdstr, shell=True)
-        p = subprocess.run('bash '+cmdstr,
+        cmd = self.legacy_directory
+        bar = '_bar' if self.system.is_bar_disk_system() else ''
+        cmd += f'/orbitstart{bar} < infil/orbstart.in >> datfil/orbstart.log'
+        p = subprocess.run(cmd,
                            stdout=subprocess.PIPE,
                            stderr=subprocess.STDOUT,
                            shell=True)
         os.chdir(cur_dir)
         log_file = f'Logfile: {self.mod_dir}datfil/orbstart.log.'
         if not p.stdout.decode("UTF-8"):
-            self.logger.info(f'...done - {cmdstr} exit code {p.returncode}. '
-                             f'{log_file}')
+            self.logger.info(f'...done - orbitstart{bar} exit code '
+                             f'{p.returncode}. {log_file}')
         else:
-            text = f'...failed! {cmdstr} exit code {p.returncode}. ' \
-                   f'Message: {p.stdout.decode("UTF-8")}'
+            text = f'...failed! orbitstart{bar} exit code {p.returncode}. ' \
+                   f'Message: {p.stdout.decode("UTF-8")}. {log_file}'
             if p.returncode == 127: # command not found
                 text += 'Check DYNAMITE legacy_fortran executables.'
                 self.logger.error(text)
@@ -481,22 +500,6 @@ class LegacyOrbitLibrary(OrbitLibrary):
                 text += f'{log_file} Be wary: DYNAMITE may crash...'
                 self.logger.warning(text)
                 raise RuntimeError(text)
-
-    def write_executable_for_ics(self):
-        """Write the bash script to calculate orbit ICs
-        """
-        cmdstr = 'cmd_orb_start'
-        #create the fortran executable
-        txt_file = open(cmdstr, "w")
-        txt_file.write('#!/bin/bash' + '\n')
-        if (self.system.is_bar_disk_system()):
-            tmp = '/orbitstart_bar < infil/orbstart.in >> datfil/orbstart.log\n'
-        else:
-            tmp = '/orbitstart < infil/orbstart.in >> datfil/orbstart.log\n'
-        txt_file.write(f'{self.legacy_directory}{tmp}')
-        txt_file.close()
-        # the name of the executable must be returned to use in subprocess.call
-        return cmdstr
 
     def get_orbit_library_par(self):
         """Execute the bash script to calculate orbit libraries in parallel
@@ -515,11 +518,12 @@ class LegacyOrbitLibrary(OrbitLibrary):
         # move back to original directory
         os.chdir(cur_dir)
         log_files = f'Logfiles: {self.mod_dir}datfil/orblib.log, ' \
-                    f'{self.mod_dir}datfil/orblibbox.log, ' \
-                    f'{self.mod_dir}datfil/triaxmass.log'
+                    f'{self.mod_dir}datfil/orblibbox.log'
         if self.LegacyWeightSolver:
             log_files += f', {self.mod_dir}datfil/triaxmassbin.log'
-        log_files += '.'
+            log_files += f', {self.mod_dir}datfil/triaxmass.log.'
+        else:
+            log_files += '.'
         if not p.stdout.decode("UTF-8"):
             self.logger.info(f'...done - {cmdstr} exit code '
                              f'{p.returncode}. {log_files}')
@@ -552,11 +556,12 @@ class LegacyOrbitLibrary(OrbitLibrary):
                            shell=True)
         # move back to original directory
         os.chdir(cur_dir)
-        log_files = f'Logfiles: {self.mod_dir}datfil/orblib.log, ' \
-                    f'{self.mod_dir}datfil/triaxmass.log'
+        log_files = f'Logfiles: {self.mod_dir}datfil/orblib.log'
         if self.LegacyWeightSolver:
             log_files += f', {self.mod_dir}datfil/triaxmassbin.log'
-        log_files += '.'
+            log_files += f', {self.mod_dir}datfil/triaxmass.log.'
+        else:
+            log_files += '.'
         if not p.stdout.decode("UTF-8"):
             self.logger.info(f'...done - {cmdstr_tube} exit code '
                              f'{p.returncode}. {log_files}')
@@ -611,9 +616,10 @@ class LegacyOrbitLibrary(OrbitLibrary):
         txt_file.write('rm -f datfil/tube_done datfil/box_done '
                        'datfil/tube_box_done\n')
         txt_file.write('# check whether executables exist\n')
-        execs = [orb_prgrm, 'triaxmass']
+        execs = [orb_prgrm]
         if self.LegacyWeightSolver:
-            execs.append('triaxmassbin')
+            execs += ['triaxmass', 'triaxmass_bar',
+                      'triaxmassbin', 'triaxmassbin_bar']
         for f_name in execs:
             txt_file.write(f'test -e {self.legacy_directory}/{f_name} || ' +
                            f'{{ echo "File {self.legacy_directory}/{f_name} ' +
@@ -625,22 +631,15 @@ class LegacyOrbitLibrary(OrbitLibrary):
                        'datfil/orblib_pm_hist.dat\n')
         txt_file.write(f'{self.legacy_directory}/{orb_prgrm} < infil/orblib.in '
                         '>> datfil/orblib.log\n')
-        txt_file.write('rm -f datfil/mass_qgrid.dat datfil/mass_radmass.dat\n')
         if self.LegacyWeightSolver:
-            txt_file.write('rm -f datfil/mass_aper.dat\n')
-
-        if self.system.is_bar_disk_system():
-            txt_file.write(f'{self.legacy_directory}/triaxmass_bar '
-                           '< infil/triaxmass.in >> datfil/triaxmass.log\n')
-            if self.LegacyWeightSolver:
-                txt_file.write(f'{self.legacy_directory}/triaxmassbin_bar '
-                    '< infil/triaxmassbin.in >> datfil/triaxmassbin.log')
-        else:
-            txt_file.write(f'{self.legacy_directory}/triaxmass '
-                           '< infil/triaxmass.in >> datfil/triaxmass.log\n')
-            if self.LegacyWeightSolver:
-                txt_file.write(f'{self.legacy_directory}/triaxmassbin '
-                    '< infil/triaxmassbin.in >> datfil/triaxmassbin.log\n')
+            txt_file.write('rm -f datfil/mass_qgrid.dat '
+                           'datfil/mass_radmass.dat '
+                           'datfil/mass_aper.dat\n')
+            bar = '_bar' if self.system.is_bar_disk_system() else ''
+            txt_file.write(f'{self.legacy_directory}/triaxmass{bar} '
+                '< infil/triaxmass.in >> datfil/triaxmass.log\n')
+            txt_file.write(f'{self.legacy_directory}/triaxmassbin{bar} '
+                '< infil/triaxmassbin.in >> datfil/triaxmassbin.log\n')
         for f in 'qgrid', 'pm_hist', 'pops', 'losvd_hist':
             f_name = 'datfil/orblib_' + f + '.dat'
             txt_file.write(f'test -e {f_name} '
@@ -663,8 +662,6 @@ class LegacyOrbitLibrary(OrbitLibrary):
         txt_file.write('orblibbox=$!\n')
         txt_file.write('# wait for tube and box orbits to finish\n')
         txt_file.write('wait $orblib $orblibbox\n')
-        txt_file.write('# set flag\n')
-        txt_file.write('touch datfil/tube_box_done\n')
         txt_file.close()
         # returns the name of the executables
         return cmd_string
@@ -683,9 +680,10 @@ class LegacyOrbitLibrary(OrbitLibrary):
         txt_file.write('# clear flags\n')
         txt_file.write('rm -f datfil/tube_done datfil/tube_box_done\n')
         txt_file.write('# check whether executables exist\n')
-        execs = [orb_prgrm, 'triaxmass']
+        execs = [orb_prgrm]
         if self.LegacyWeightSolver:
-            execs.append('triaxmassbin')
+            execs += ['triaxmass', 'triaxmass_bar',
+                      'triaxmassbin', 'triaxmassbin_bar']
         for f_name in execs:
             txt_file.write(f'test -e {self.legacy_directory}/{f_name} || ' +
                            f'{{ echo "File {self.legacy_directory}/{f_name} ' +
@@ -701,18 +699,15 @@ class LegacyOrbitLibrary(OrbitLibrary):
                         'datfil/orblib_pm_hist.dat.bz2\n')
         txt_file.write(f'{self.legacy_directory}/{orb_prgrm} < infil/orblib.in '
                        '>> datfil/orblib.log\n')
-        txt_file.write('rm -f datfil/mass_qgrid.dat datfil/mass_radmass.dat\n')
+        txt_file.write('rm -f datfil/mass_aper.dat\n')
         if self.LegacyWeightSolver:
-            txt_file.write('rm -f datfil/mass_aper.dat\n')
-        txt_file.write(f'{self.legacy_directory}/triaxmass '
-                       '< infil/triaxmass.in >> datfil/triaxmass.log\n')
-        if self.LegacyWeightSolver:
-            if self.system.is_bar_disk_system():
-                txt_file.write(f'{self.legacy_directory}/triaxmassbin_bar '
-                    '< infil/triaxmassbin.in >> datfil/triaxmassbin.log')
-            else:
-                txt_file.write(f'{self.legacy_directory}/triaxmassbin '
-                    '< infil/triaxmassbin.in >> datfil/triaxmassbin.log\n')
+            txt_file.write('rm -f datfil/mass_qgrid.dat '
+                           'datfil/mass_radmass.dat\n')
+            bar = '_bar' if self.system.is_bar_disk_system() else ''
+            txt_file.write(f'{self.legacy_directory}/triaxmass{bar} '
+                '< infil/triaxmass.in >> datfil/triaxmass.log\n')
+            txt_file.write(f'{self.legacy_directory}/triaxmassbin{bar} '
+                '< infil/triaxmassbin.in >> datfil/triaxmassbin.log\n')
         for f in 'qgrid', 'pm_hist', 'pops', 'losvd_hist':
             f_name = 'datfil/orblib_' + f + '.dat'
             txt_file.write(f'test -e {f_name} '
@@ -751,8 +746,6 @@ class LegacyOrbitLibrary(OrbitLibrary):
                 f'&& mv {f_name}.staging.bz2 {f_name}.bz2\n')
             txt_file.write(f'rm -f {f_name}\n')
         txt_file.write('touch datfil/box_done\n')
-        txt_file.write('test -e datfil/tube_done && '
-                       'touch datfil/tube_box_done\n')
         txt_file.close()
         # returns the name of the executables
         return cmdstr_tube, cmdstr_box

@@ -317,9 +317,13 @@ class AllModels(object):
                     and os.path.isfile(d + 'orblibbox_losvd_hist.dat.bz2')
             orblib_files_ok = orblib_files_ok and check
         # additional files from orblib integration
-        extra_files = ['orblib.dat_orbclass.out', 'mass_radmass.dat',
-                       'mass_qgrid.dat', 'mass_aper.dat',
-                       'orblibbox.dat_orbclass.out']
+        extra_files = ['orblib.dat_orbclass.out', 'orblibbox.dat_orbclass.out']
+        ws_type = self.config.settings.weight_solver_settings['type']
+        if ws_type == 'LegacyWeightSolver':
+            extra_files += ['mass_radmass.dat', 'mass_qgrid.dat',
+                            'mass_aper.dat']
+        else:
+            extra_files += ['mass_radmass.ecsv', 'mass_qgrid.ecsv']
         check = all([os.path.isfile(d + f) for f in extra_files])
         orblib_files_ok = orblib_files_ok and check
         # files that need to be there if populations with own apertures exist

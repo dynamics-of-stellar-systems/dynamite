@@ -343,7 +343,8 @@ class System(object):
     def is_bar_disk_system(self):
         """is_bar_disk_system
 
-        Check if the system contains at least one bar component and at least one disk component.
+        Check if the system contains at least one bar component and at least
+        one disk component.
 
         Returns
         -------
@@ -352,19 +353,6 @@ class System(object):
         """
         isbardisk = len(self.get_all_bar_components()) > 0
         return isbardisk
-
-    def is_bar_disk_system_with_angles(self):
-        """is_bar_disk_system_with_angles
-
-        Check if the system is a bar-disk with phi, psi, theta specified directly in the configuration file.
-
-        Returns
-        -------
-        hasangles : Bool
-            System is specified by angles.
-        """
-        hasangles = self.is_bar_disk_system() and (type(self.get_unique_bar_component()) is BarDiskComponentAngles)
-        return hasangles
 
     def number_of_visible_components(self):
         return sum(1 for i in self.cmp_list if isinstance(i, VisibleComponent))
@@ -999,24 +987,6 @@ class TriaxialVisibleComponent(VisibleComponent):
 
 
 class BarDiskComponent(TriaxialVisibleComponent):
-    """Rotating triaxial component with a MGE projected density (i.e. a bar)
-
-    Note: all bar components are constrained to have the same omega.
-
-    """
-    def __init__(self,
-                 mge_pot=None,
-                 mge_lum=None,
-                 disk_pot=None,
-                 disk_lum=None,
-                 **kwds):
-        super().__init__(**kwds)
-        self.logger = logging.getLogger(f'{__name__}.{__class__.__name__}')
-        self.qobs = np.nan
-        self.par = ['q', 'p', 'u', 'qdisk']
-
-
-class BarDiskComponentAngles(BarDiskComponent):
     """Rotating triaxial component with a MGE projected density (i.e. a bar),
     with viewing angles specified.
 
