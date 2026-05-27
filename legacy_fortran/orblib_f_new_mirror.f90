@@ -39,6 +39,12 @@
 ! adapted from code originally by Behzad Tahmasebzadeh, July 2023
 !++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
+!++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+! Added proper motions 2d histograms
+! Removed aperture_polygon
+! Thomas I. Maindl, November 2025
+!++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
 module random_gauss_generator
     use numeric_kinds
     implicit none
@@ -861,11 +867,11 @@ module projection
     ! stop projection module
     public :: projection_stop
 
-    ! Project pos(3,:),vel(3,:) to proj(2,:),lofvel(:)
+    ! Project pos(3,:),vel(3,:) to proj(2,:),losvel(:),velx(:),vely(:)
     ! Using the n'th projection
     private :: project_n
 
-    ! Project pos(3,:),vel(3,:) to proj(2,:),lofvel(:)
+    ! Project pos(3,:),vel(3,:) to proj(2,:),losvel(:),velx(:),vely(:)
     !Done is set to .true. if all projections are finished
     public :: project
 
@@ -925,20 +931,22 @@ contains
     end subroutine projection_stop
 
     !++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-    subroutine project_n(type, pos, vel, proj, losvel, n)
+    subroutine project_n(type, pos, vel, proj, losvel, vel2d, n)
       use initial_parameters, only :  Omega ! (BT)
         ! use initial_parameters, only : theta_view, phi_view
         ! pos( :, (r,z) )
-        real(kind=dp), intent(in), dimension(:, :)   :: pos
+        real(kind=dp), intent(in), dimension(:, :)             :: pos
         ! vel (:, (r,z,theta))
-        real(kind=dp), intent(in), dimension(size(pos, 1), 3) :: vel
+        real(kind=dp), intent(in), dimension(size(pos, 1), 3)  :: vel
         ! proj(:,(x',y'))
-        real(kind=dp), intent(out), dimension(size(pos, 1), 2)           :: proj
+        real(kind=dp), intent(out), dimension(size(pos, 1), 2) :: proj
         ! losvd (:)
-        real(kind=dp), intent(out), dimension(size(pos, 1))             :: losvel
-        integer(kind=i4b), intent(in)                       :: type, n
+        real(kind=dp), intent(out), dimension(size(pos, 1))    :: losvel
+        ! velx(:), vely(:)
+        real(kind=dp), intent(out), dimension(size(pos, 1), 2) :: vel2d
+        integer(kind=i4b), intent(in)                          :: type, n
         !----------------------------------------------------------------------
-        real(kind=dp)              :: t1, t2, t3, theta, phi
+        real(kind=dp)                          :: t1, t2, t3, theta, phi
 
         real (kind=dp),dimension(3,8,5) ::vsgn          ! (BT)
         real (kind=dp),dimension(3,8) ::psgn            ! (BT)
@@ -1026,6 +1034,28 @@ contains
         t3 = cos(theta)*vsgn(3, n, type)
         losvel(:) = t1*vel(:, 1) + t2*vel(:, 2) + t3*vel(:, 3)
 
+        ! pm_x
+        t1 = -sin(phi)*vsgn(1, n, type)
+        t2 = cos(phi)*vsgn(2, n, type)
+        vel2d(:, 1) = t1*vel(:, 1) + t2*vel(:, 2)
+
+        ! pm_y
+        t1 = -cos(theta)*cos(phi)*vsgn(1, n, type)
+        t2 = -cos(theta)*sin(phi)*vsgn(2, n, type)
+        t3 = sin(theta)*vsgn(3, n, type)
+        vel2d(:, 2) = t1*vel(:, 1) + t2*vel(:, 2) + t3*vel(:, 3)
+
+        ! ! v_radial and v_tangential START
+        ! ! r'
+        ! projr = sqrt(proj(:, 1)**2 + proj(:, 2)**2)
+
+        ! ! pm_radial
+        ! velr = ( proj(:, 1)*velx(:) + proj(:, 2)*vely(:) ) / projr
+
+        ! ! pm_tangential
+        ! velt = ( proj(:, 1)*vely(:) + proj(:, 2)*velx(:) ) / projr
+        ! ! v_radial and v_tangential END
+
         !xaa = (-sin(phi)*x+cos(phi)*y)*sin(psi)-(-cos(theta)*cos(phi)*x-cos(theta)*sin(phi)*y+sin(theta)*z)*cos(psi);
         !yaa = (-sin(phi)*x+cos(phi)*y)*cos(psi)+(-cos(theta)*cos(phi)*x-cos(theta)*sin(phi)*y+sin(theta)*z)*sin(psi);
 
@@ -1046,14 +1076,16 @@ contains
     end subroutine project_n
 
     !++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-    subroutine project(type, pos, vel, proj, lofvel, done, first)
+    subroutine project(type, pos, vel, proj, losvel, vel2d, done, first)
         integer(kind=i4b), intent(in)                        :: type
         real(kind=dp), intent(in), dimension(:, :) :: pos
         real(kind=dp), intent(in), dimension(size(pos, 1), 3) :: vel
         real(kind=dp), intent(out), dimension(size(pos, 1)*projection_symmetry, 2) &
              & :: proj
         real(kind=dp), intent(out), dimension(size(pos, 1)*projection_symmetry) &
-             & :: lofvel
+             & :: losvel
+        real(kind=dp), intent(out), dimension(size(pos, 1)*projection_symmetry, 2) &
+             & :: vel2d
         logical, intent(out)                          :: done
         logical, intent(in)                          :: first
         !----------------------------------------------------------------------
@@ -1065,12 +1097,13 @@ contains
         done = .false.
 
         if (count <= proj_number) then
-            call project_n(type, pos, vel, proj, lofvel, count)
+            call project_n(type, pos, vel, proj, losvel, vel2d, count)
         else
             count = proj_number + 1
             done = .true.
             proj(:, :) = 0.0_dp
-            lofvel(:) = 0.0_dp
+            losvel(:) = 0.0_dp
+            vel2d(:, :) = 0.0_dp
         end if
 
     end subroutine project
@@ -1098,6 +1131,8 @@ module psf
 
     ! how many psf are there?
     integer(kind=i4b), public                           :: psf_n
+    ! what is the histogram dimension of the psf(psf_n)?
+    integer(kind=i4b), public, allocatable, dimension(:) :: psf_hist_dim
     ! kind of psf(psf_n)
     integer(kind=i4b), private, allocatable, dimension(:) :: psf_kind
     ! size of psf for (n,psf)
@@ -1125,7 +1160,8 @@ contains
     subroutine psf_stop()
         !----------------------------------------------------------------------
         if (allocated(psf_kind)) then
-            deallocate (psf_kind, psf_sigma, psf_iten)
+            deallocate (psf_kind, psf_sigma, psf_iten, psf_hist_dim)
+            deallocate (psf_randomsigma)
         end if
 
     end subroutine psf_stop
@@ -1141,7 +1177,7 @@ contains
         print *, "  * How many different psf's?"
         read *, psf_n
         print *, "   ", psf_n
-        allocate (psf_kind(psf_n))
+        allocate (psf_kind(psf_n), psf_hist_dim(psf_n))
 
         do i = 1, psf_n
             print *, "  * How many gaussians does the ", i, "psf consist of?"
@@ -1287,6 +1323,8 @@ module aperture
     integer(kind=i4b), public                          :: aperture_n
     ! Number of apertures with 0d histograms (mass only)
     integer(kind=i4b), public                          :: ap_hist0d_n
+    ! Number of apertures with 2d histograms
+    integer(kind=i4b), public                          :: ap_hist2d_n
     ! histogram dimension for each aperture (0=0D, 1=1D, 2=2D)
     integer(kind=i4b), public, allocatable, dimension(:) :: ap_hist_dim
 
@@ -1556,6 +1594,7 @@ contains
         print *, "  * using ", aperture_n, " aperture(s)"
 
         ap_hist0d_n = 0
+        ap_hist2d_n = 0
         do i = 1, aperture_n
             print *, "  * What's the filename of the ", i, " aperture file ? :"
             read *, file
@@ -1573,16 +1612,14 @@ contains
                 stop " That PSF does not exist!"
             end if
 
-            ! print *, "  * Histogram dimensions for this aperture (0, 1, or 2)?"
-            print *, "  * Histogram dimensions for this aperture (0 or 1)?"
+            print *, "  * Histogram dimensions for this aperture (0, 1, or 2)?"
             read *, ap_hist_dim(i)
             print *, "  * The histograms are ", ap_hist_dim(i), " dimensional."
-            ! if (ap_hist_dim(i) < 0 .or. ap_hist_dim(i) > 2) then
-            !     stop "  Histogram dimension must be 0, 1, or 2!"
-            if (ap_hist_dim(i) < 0 .or. ap_hist_dim(i) > 1) then
-                stop "  Histogram dimension must be 0 or 1!"
+            if (ap_hist_dim(i) < 0 .or. ap_hist_dim(i) > 2) then
+                stop "  Histogram dimension must be 0, 1, or 2!"
             end if
             if (ap_hist_dim(i) == 0) ap_hist0d_n = ap_hist0d_n + 1
+            if (ap_hist_dim(i) == 2) ap_hist2d_n = ap_hist2d_n + 1
         end do
         print *, "  ** aperture setup finished"
 
@@ -1665,9 +1702,11 @@ module binning
 
     ! bin the aperture
     public :: binning_bin
+    public :: binning_bin_h2d
 
     ! function for binning of type 1
     private :: binning_add_it_up
+    private :: binning_add_it_up_h2d
 
     ! Type of binning. (0=no binning) (1=simple binning)
     integer(kind=i4b), private, allocatable, dimension(:)   ::  bin_type
@@ -1773,6 +1812,20 @@ contains
     end subroutine binning_bin
 
     !++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+    subroutine binning_bin_h2d(ap, h, newsize)  ! version for 2d histograms
+        integer(kind=i4b), intent(in)                     :: ap
+        real(kind=dp), intent(in out), dimension(:, :, :) :: h
+        integer(kind=i4b), intent(out)                    :: newsize
+        !----------------------------------------------------------------------
+        if (bin_type(ap) == 1) then
+            call binning_add_it_up_h2d(ap, h, newsize)
+        else
+            newsize = size(h, 1)
+        end if
+
+    end subroutine binning_bin_h2d
+
+    !++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
     subroutine binning_add_it_up(ap, h, newsize)
         integer(kind=i4b), intent(in)                        :: ap
         integer(kind=i4b), intent(out)                       :: newsize
@@ -1798,6 +1851,32 @@ contains
 
     end subroutine binning_add_it_up
 
+    !++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+    subroutine binning_add_it_up_h2d(ap, h, newsize)  ! version for 2d histograms
+        integer(kind=i4b), intent(in)                        :: ap
+        integer(kind=i4b), intent(out)                       :: newsize
+        real(kind=dp), intent(in out), dimension(:, :, :)    :: h
+        !----------------------------------------------------------------------
+        real(kind=dp), dimension(0:bin_max(ap), size(h, 2), size(h, 3)) :: t
+        integer(kind=i4b)                                    :: i
+
+        newsize = bin_max(ap)
+        t(:, :, :) = 0.0_dp
+        ! check boundaries
+        if (newsize > size(h, 1)) stop "Error: binning_add_it_up: new bin&
+             &s are bigger then the original "
+        if (size(h, 1) /= bin_size(ap)) stop " Wrong number of bins in a bin"
+
+        do i = 1, size(h, 1)
+            t(bin_order(i, ap), :, :) = t(bin_order(i, ap), :, :) + h(i, :, :)
+        end do
+
+        ! If you assume nothing, there is no way to do this without
+        ! copying it back.
+        h(1:newsize, :, :) = t(1:newsize, :, :)
+
+    end subroutine binning_add_it_up_h2d
+
 end module binning
 
 !######################################################################
@@ -1812,24 +1891,28 @@ module histograms
 
     ! histogram data (aperture,vel)
     real(kind=dp), Dimension(:, :), private, allocatable  :: histogram
-    ! hist_basic(n,i) n=aperture number, i=width,center,#bins
-    real(kind=dp), Dimension(:, :), public, allocatable  :: hist_basic
+    ! 2d histogram data (aperture,vel1,vel2)
+    real(kind=dp), Dimension(:, :, :), private, allocatable  :: histogram2d
+    ! hist_basic(n,i) n=aperture number, i=width,center,#bins, dim
+    real(kind=dp), Dimension(:, :, :), public, allocatable  :: hist_basic
     ! Are the velocity bins all the same?
     logical, public                                      :: hist_thesame
-    !h_beg,h_end : begin/end of histogram
-    !h_bin,width : amount of / width of histogram pixels
-    real(kind=dp), Dimension(:), private, allocatable  :: h_beg, h_end, h_width
-    integer(kind=i4b), Dimension(:), private, allocatable:: h_bin
+    !h_beg(n,dim),h_end(n,dim) n=aperture_n: begin/end of histogram
+    !h_bin(n,dim),h_width(n,dim) : amount of / width of histogram pixels
+    real(kind=dp), Dimension(:, :), private, allocatable  :: h_beg, h_end, h_width
+    integer(kind=i4b), Dimension(:, :), private, allocatable:: h_bin
     ! h_start(n)  :  where start the first histogram of aperture n
     integer(kind=i4b), Dimension(:), private, allocatable:: h_start
     ! number of polygons/bins in each histogram for each aperture
     integer(kind=i4b), Dimension(:), private, allocatable:: h_blocks
-    ! number of histograms
+    ! number of histograms (set = aperture_n)
     integer(kind=i4b), private                           :: h_n
     ! number of points stored in histogram ( Used in normalising. )
     real(kind=dp), Dimension(:), private, allocatable     :: h_n_stored
     ! total number of histograms/constraints  after binning
     integer(kind=i4b), private                           :: h_nconstr
+    ! maximum histogram dimension
+    integer(kind=i4b), public                            :: h_maxdim
 
     ! routines for writing histogram part of output files
     public :: histogram_write, histogram_setup_write
@@ -1838,7 +1921,7 @@ module histograms
     ! Store velocities in the histogram(n).
     public :: histogram_store
 
-    ! Calculate the velocity bin from the losvd
+    ! Calculate the velocity bin from the velocity distribution
     public :: histogram_velbin
 
     ! function to reset the histogram for the next orbit
@@ -1852,8 +1935,10 @@ contains
 
     !++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
     subroutine histogram_reset()
+        use aperture, only: aperture_n, ap_hist2d_n
         !----------------------------------------------------------------------
-        histogram(:, :) = 0.0_dp
+        if (aperture_n - ap_hist2d_n > 0) histogram(:, :) = 0.0_dp
+        if (ap_hist2d_n > 0) histogram2d(:, :, :) = 0.0_dp
         h_n_stored(:) = 0.0_dp
 
     end subroutine histogram_reset
@@ -1865,8 +1950,8 @@ contains
         integer(kind=i4b) :: t1
         !write information about the kinematical constraints and velocity histogram
         ! original names: nconstr,nvcube,dvcube
-        t1 = hist_basic(1, 3)/2.0_sp ! corrected by Remco 20/JAN/2003
-        write (unit=handle) h_nconstr, t1, hist_basic(1, 1)/hist_basic(1, 3)
+        t1 = hist_basic(1, 3, 1)/2.0_sp ! corrected by Remco 20/JAN/2003
+        write (unit=handle) h_nconstr, t1, hist_basic(1, 1, 1)/hist_basic(1, 3, 1)
 
     end subroutine histogram_setup_write
 
@@ -1879,10 +1964,10 @@ contains
     end subroutine histogram_setup_write_mass
 
     !++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-    subroutine histogram_write(handle, handle_pops)
+    subroutine histogram_write(handle, handle_pops, handle_pm)
         use aperture, only: ap_hist_dim
-        use binning, only: binning_bin
-        integer(kind=i4b), intent(in) :: handle, handle_pops
+        use binning, only: binning_bin, binning_bin_h2d
+        integer(kind=i4b), intent(in) :: handle, handle_pops, handle_pm
         !----------------------------------------------------------------------
         integer(kind=i4b)            :: i, bg, ed
         print *, "  * Normalising and Writing histogram data."
@@ -1896,15 +1981,26 @@ contains
         do i = 1, h_n
             bg = h_start(i)
             ed = h_blocks(i) + h_start(i) - 1
-            call binning_bin(i, histogram(bg:ed, 1:h_bin(i)), ed)
-            ed = h_start(i) - 1 + ed
-            !conversion normalizing
-            histogram(bg:ed, 1:h_bin(i)) = h_n_stored(i)*histogram(bg:ed, 1:h_bin(i))
-            if (handle_pops > 0 .and. ap_hist_dim(i) == 0) then
-                if (h_bin(i) /= 1) stop " 0d histogram must have 1 bin only."
-                write (unit=handle_pops) histogram(bg:ed, 1:h_bin(i))
-            else
-                call histogram_write_compat_sparse(handle, i, histogram(bg:ed, 1:h_bin(i)))
+            if (ap_hist_dim(i) < 2) then  ! 0d or 1d histograms
+                call binning_bin(i, histogram(bg:ed, 1:h_bin(i, 1)), ed)
+                ed = h_start(i) - 1 + ed
+                !conversion normalizing
+                histogram(bg:ed, 1:h_bin(i, 1)) = &
+                    &h_n_stored(i)*histogram(bg:ed, 1:h_bin(i, 1))
+                if (ap_hist_dim(i) == 0) then
+                    if (h_bin(i, 1) /= 1) stop " 0d histogram must have 1 bin only."
+                    write (unit=handle_pops) histogram(bg:ed, 1:h_bin(i, 1))
+                else  ! 1d histograms
+                    call histogram_write_compat_sparse(handle, i, histogram(bg:ed, 1:h_bin(i, 1)))
+                end if
+            else  ! 2d histograms
+                call binning_bin_h2d(i, histogram2d(bg:ed, 1:h_bin(i, 1), 1:h_bin(i, 2)), ed)
+                ed = h_start(i) - 1 + ed
+                !conversion normalizing
+                histogram2d(bg:ed, 1:h_bin(i, 1), 1:h_bin(i, 2)) = &
+                    &h_n_stored(i)*histogram2d(bg:ed, 1:h_bin(i, 1), 1:h_bin(i, 2))
+                call histogram2d_write_compat_sparse(handle_pm, i, &
+                    &histogram2d(bg:ed, 1:h_bin(i, 1), 1:h_bin(i, 2)))
             end if
         end do
     end subroutine histogram_write
@@ -1916,8 +2012,8 @@ contains
         !----------------------------------------------------------------------
         integer(kind=i4b) :: ap, b, e, i, k, bout, eout
         do ap = 1, size(t, 1)
-            b = 2*hist_basic(i_hist, 3)
-            e = -2*hist_basic(i_hist, 3)
+            b = 2*hist_basic(i_hist, 3, 1)
+            e = -2*hist_basic(i_hist, 3, 1)
             do i = 1, size(t, 2)
                 if (t(ap, i) > 0.0_dp) then
                     b = min(b, i)
@@ -1926,7 +2022,7 @@ contains
             end do
 
             ! write the relevant information for all velocity histograms to file
-            k = hist_basic(i_hist, 3)/2.0_sp + 1.0_sp
+            k = hist_basic(i_hist, 3, 1)/2.0_sp + 1.0_sp
             bout = b - k
             eout = e - k
             write (unit=handle) bout, eout
@@ -1936,64 +2032,138 @@ contains
     end subroutine histogram_write_compat_sparse
 
     !++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-    subroutine histogram_velbin(pf, vel, bin)
-        use aperture, only: aperture_psf
-        integer(kind=i4b), intent(in) :: pf
-        real(kind=dp), dimension(:), intent(in) :: vel
-        integer(kind=i4b), dimension(size(vel)), intent(out) :: bin
+    subroutine histogram2d_write_compat_sparse(handle, aperture, t)
+        integer(kind=i4b), intent(in) :: handle, aperture
+        real(kind=dp), dimension(:, :, :), intent(in) :: t
         !----------------------------------------------------------------------
-        integer(kind=i4b) :: i, ap, bins
+        integer(kind=i4b) :: ap, i, k
+        integer(kind=i4b), dimension(2) :: min_idx, max_idx, center_bin
+        integer(kind=i4b), dimension(2) :: begin_out, end_out
+        do ap = 1, size(t, 1)
+            min_idx = h_bin(aperture, :) + 1
+            max_idx = -1
+            do i = 1, size(t, 2)
+                do k = 1, size(t, 3)
+                    if (t(ap, i, k) > 0.0_dp) then
+                        min_idx = min(min_idx, [i, k])
+                        max_idx = max(max_idx, [i, k])
+                    end if
+                end do
+            end do
+            ! write the relevant information for all velocity histograms to file
+            center_bin = h_bin(aperture, :) / 2 + 1
+            begin_out = min_idx - center_bin
+            end_out = max_idx - center_bin
+            write (unit=handle) begin_out, end_out
+            if (all(min_idx <= max_idx)) then
+                write (unit=handle) t(ap, min_idx(1):max_idx(1), min_idx(2):max_idx(2))
+            end if
+        end do
+
+    end subroutine histogram2d_write_compat_sparse
+
+    !++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+    subroutine histogram_velbin(pf, vel1d, vel2d, bin1d, bin2d)
+        use aperture, only: aperture_psf, ap_hist_dim
+        integer(kind=i4b), intent(in) :: pf
+        real(kind=dp), dimension(:), intent(in) :: vel1d
+        real(kind=dp), dimension(:, :), intent(in) :: vel2d
+        integer(kind=i4b), dimension(size(vel1d)), intent(out) :: bin1d
+        integer(kind=i4b), dimension(size(vel2d, 1), size(vel2d, 2)), intent(out) :: bin2d
+        !----------------------------------------------------------------------
+        integer(kind=i4b) :: i, ap, bins, dim
+        integer(kind=i4b), dimension(size(vel2d, 2)) :: bins2
         real(kind=dp) :: v, beg, width, hend
+        real(kind=dp), dimension(size(vel2d, 2)) :: v2, beg2, width2, hend2
         ! find an aperture which is in this pf
         do i = 1, h_n
             if (aperture_psf(i) == pf) ap = i
         end do
 
-        beg = h_beg(ap)
-        hend = h_end(ap)
-        width = h_width(ap)
-        bins = h_bin(ap)
-
-        do i = 1, size(vel)
-            v = vel(i)
-            if (v > beg) then
-                if (v < hend) then
-                    ! photon lies within the velocity range
-                    bin(i) = int(((v - beg)/width)) + 1
+        if (ap_hist_dim(ap) < 2) then  ! 0d or 1d histograms
+            beg = h_beg(ap, 1)
+            hend = h_end(ap, 1)
+            width = h_width(ap, 1)
+            bins = h_bin(ap, 1)
+            do i = 1, size(vel1d)
+                v = vel1d(i)
+                if (v > beg) then
+                    if (v < hend) then
+                        ! photon lies within the velocity range
+                        bin1d(i) = int(((v - beg)/width)) + 1
+                    else
+                        ! photon lies above the range
+                        ! Assign photon to the last velocity bin.
+                        bin1d(i) = bins
+                    end if
                 else
-                    ! photon lies above the range
-                    ! Assign photon to the last velocity bin.
-                    bin(i) = bins
+                    ! photon lies below the velocity range
+                    ! assign to first bin
+                    bin1d(i) = 1
                 end if
-            else
-                ! photon lies below the velocity range
-                ! assign to first bin
-                bin(i) = 1
-            end if
-        end do
+            end do
+        else  ! 2d histograms  FIXME: can be coded more efficiently, together with 0d, 1d
+            beg2 = h_beg(ap, :)
+            hend2 = h_end(ap, :)
+            width2 = h_width(ap, :)
+            bins2 = h_bin(ap, :)
+            do i = 1, size(vel2d, 1)
+                v2 = vel2d(i, :)
+                do dim = 1, size(vel2d, 2)
+                    if (v2(dim) > beg2(dim)) then
+                        if (v2(dim) < hend2(dim)) then
+                            ! photon lies within the velocity range
+                            bin2d(i, dim) = int(((v2(dim) - beg2(dim))/width2(dim))) + 1
+                        else
+                            ! photon lies above the range
+                            ! Assign photon to the last velocity bin.
+                            bin2d(i, dim) = bins2(dim)
+                        end if
+                    else
+                        ! photon lies below the velocity range
+                        ! assign to first bin
+                        bin2d(i, dim) = 1
+                    end if
+                end do
+            end do
+        end if
 
     end subroutine histogram_velbin
 
     !++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-    subroutine histogram_store(ap, n, velb, tot)
+    subroutine histogram_store(ap, n, velb, velb2d, tot)
+        use aperture, only: ap_hist_dim
         integer(kind=i4b), intent(in)  :: ap
         integer(kind=i4b)                                   :: i, k, v
         integer(kind=i4b), dimension(:), intent(in)  :: n
         integer(kind=i4b), dimension(size(n, 1)), intent(in)  :: velb
+        integer(kind=i4b), dimension(size(n, 1), 2), intent(in)  :: velb2d
         integer(kind=i4b), intent(in)  :: tot
+        integer(kind=i4b), dimension(size(velb2d, 2))       :: v2d
         !----------------------------------------------------------------------
         !update number of points stored (including points not stored)
         ! For normalising.
         h_n_stored(ap) = h_n_stored(ap) + tot
 
-        do i = 1, size(n, 1)
-            k = n(i)
-            if (k /= 0) then
-                k = k + h_start(ap) - 1
-                v = velb(i)
-                histogram(k, v) = histogram(k, v) + 1.0_dp
-            end if
-        end do
+        if (ap_hist_dim(ap) < 2) then  ! 0d or 1d histograms
+            do i = 1, size(n, 1)
+                k = n(i)
+                if (k /= 0) then
+                    k = k + h_start(ap) - 1
+                    v = velb(i)
+                    histogram(k, v) = histogram(k, v) + 1.0_dp
+                end if
+            end do
+        else  ! 2d histograms
+            do i = 1, size(n, 1)
+                k = n(i)
+                if (k /= 0) then
+                    k = k + h_start(ap) - 1
+                    v2d = velb2d(i, :)
+                    histogram2d(k, v2d(1), v2d(2)) = histogram2d(k, v2d(1), v2d(2)) + 1.0_dp
+                end if
+            end do
+        end if
 
     end subroutine histogram_store
 
@@ -2002,7 +2172,10 @@ contains
         use binning, only: binning_stop
         !----------------------------------------------------------------------
         if (allocated(h_bin)) then
-            deallocate (hist_basic, h_beg, h_end, h_bin, h_width, h_start, histogram)
+            deallocate (hist_basic, h_beg, h_end, h_bin, h_width, h_start)
+            deallocate (h_n_stored, h_blocks)
+            if (allocated(histogram)) deallocate (histogram)
+            if (allocated(histogram2d)) deallocate (histogram2d)
         end if
         call binning_stop()
 
@@ -2010,58 +2183,129 @@ contains
 
     !++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
     subroutine histogram_setup()
-        use aperture, only: aperture_n, aperture_size, aperture_psf, ap_hist_dim
+        use aperture, only: aperture_n, aperture_size, aperture_psf, ap_hist_dim, &
+                            ap_hist2d_n
         use binning, only: binning_setup, bin_max
-        use psf, only: psf_n
+        use psf, only: psf_n, psf_hist_dim
         !----------------------------------------------------------------------
-        integer(kind=i4b)  :: i, j, ap
+        integer(kind=i4b)  :: i, j, ap, h_bin_max, ap_size
+        integer(kind=i4b), dimension(2)      :: h_bin_max2d
+        integer(kind=i4b), dimension(psf_n)  :: psf_aperture
         real(kind=dp)  :: width, center, bins
 
         print *, "  * Starting Histogram module"
         h_n = aperture_n
-        allocate (hist_basic(h_n, 3), h_beg(h_n), h_end(h_n), h_bin(h_n))
-        allocate (h_width(h_n), h_start(h_n), h_n_stored(h_n), h_blocks(h_n))
-
-        do i = 1, psf_n
-            print *, "  * Give for psf ", i, " the histogram width, center and"
-            print *, "    amount of bins"
-            read *, width, center, bins
-            print *, width, center, bins
-            if (width <= 0) stop " Width to small"
-            if (bins < 1) stop " Too few bins"
-            do j = 1, h_n
-                if (aperture_psf(j) == i) then
-                    hist_basic(j, 1) = width
-                    hist_basic(j, 2) = center
-                    hist_basic(j, 3) = bins
-                end if
-            end do
+        ! for each psf, determine associated aperture
+        ! intended for use with DYNAMITE: assuming 1-1 relation
+        do j = 1, aperture_n
+            psf_aperture(aperture_psf(j)) = j
+            psf_hist_dim(aperture_psf(j)) = ap_hist_dim(j)
         end do
 
-        h_beg(:) = hist_basic(:, 2) - (0.5_dp*hist_basic(:, 1))
-        h_end(:) = hist_basic(:, 2) + (0.5_dp*hist_basic(:, 1))
-        h_bin(:) = hist_basic(:, 3)
-        h_width(:) = hist_basic(:, 1)/hist_basic(:, 3)
+        ! allocate memory for histograms
+        ! h_start, h_n_stored, h_blocks are independent of dimension
+        allocate (h_start(h_n), h_n_stored(h_n), h_blocks(h_n))
+        ! hist_basic, h_beg, h_end, h_bin, h_width are dimension-specific
+        h_maxdim = maxval(psf_hist_dim)
+        allocate(hist_basic(h_n, 3, h_maxdim))
+        allocate(h_beg(h_n, h_maxdim), h_end(h_n, h_maxdim))
+        allocate(h_bin(h_n, h_maxdim), h_width(h_n, h_maxdim))
 
-        allocate (histogram(sum(aperture_size(:)), maxval(h_bin(:))))
-        print *, "  * Histogram size : ", size(histogram), "=", size(histogram, 1), "*",&
-             & size(histogram, 2)
+        ! read histogram metadata
+        do i = 1, psf_n
+            print *, "  * PSF ", i, " has ", psf_hist_dim(i), "d histograms"
+            if (psf_hist_dim(i) == 0) then
+                print *, "  * Setting width, center, #bins to 1., 0., 1"
+                hist_basic(psf_aperture(i), 1, 1) = 1.0_dp
+                hist_basic(psf_aperture(i), 2, 1) = 0.0_dp
+                hist_basic(psf_aperture(i), 3, 1) = 1.0_dp
+            else if (psf_hist_dim(i) <= 2) then
+                do j = 1, psf_hist_dim(i)
+                    print *, "  * Give for psf ", i, " the histogram width, center and"
+                    print *, "    amount of bins for dimension ", j
+                    read *, width, center, bins
+                    print *, width, center, bins
+                    if (width <= 0) stop " Width to small"
+                    if (bins < 1) stop " Too few bins"
+                    hist_basic(psf_aperture(i), 1, j) = width
+                    hist_basic(psf_aperture(i), 2, j) = center
+                    hist_basic(psf_aperture(i), 3, j) = bins
+                end do
+            else
+                stop "  * Only 0d, 1d, and 2d histograms are supported"
+            end if
+        end do
+
+        h_beg(:, :) = hist_basic(:, 2, :) - (0.5_dp*hist_basic(:, 1, :))
+        h_end(:, :) = hist_basic(:, 2, :) + (0.5_dp*hist_basic(:, 1, :))
+        h_bin(:, :) = hist_basic(:, 3, :)
+        h_width(:, :) = hist_basic(:, 1, :)/hist_basic(:, 3, :)
+
+        ! allocate memory for 0d and 1d histograms
+        if (aperture_n - ap_hist2d_n > 0) then
+            h_bin_max = 0
+            ap_size = 0
+            do ap = 1, h_n
+                if (ap_hist_dim(ap) < 2) then
+                    h_bin_max = max(h_bin_max, h_bin(ap, 1))
+                    ap_size = ap_size + aperture_size(ap)
+                end if
+            end do
+            ! FIXME: sum(aperture_size(:)) is too large
+            ! allocate (histogram(sum(aperture_size(:)), h_bin_max))
+            allocate (histogram(ap_size, h_bin_max))
+            print *, "  * Histogram size : ", size(histogram), "=", size(histogram, 1), "*",&
+                & size(histogram, 2)
+        end if
+        ! allocate memory for 2d histograms
+        if (ap_hist2d_n > 0) then
+            h_bin_max2d = 0
+            ap_size = 0
+            do ap = 1, h_n
+                if (ap_hist_dim(ap) == 2) then
+                    h_bin_max2d(:) = max(h_bin_max2d(:), h_bin(ap, :))
+                    ap_size = ap_size + aperture_size(ap)
+                end if
+            end do
+            ! FIXME: sum(aperture_size(:)) is too large
+            ! allocate (histogram2d(sum(aperture_size(:)), h_bin_max2d(1), h_bin_max2d(2)))
+            allocate (histogram2d(ap_size, h_bin_max2d(1), h_bin_max2d(2)))
+            print *, "  * 2d Histogram size : ", size(histogram2d), "=", size(histogram2d, 1), "*",&
+                & size(histogram2d, 2), "*", size(histogram2d, 3)
+        end if
 
         h_blocks(:) = aperture_size(:)
-        i = 1
-
+        ! i = 1
+        ! do ap = 1, h_n
+        !     h_start(ap) = i
+        !     i = i + h_blocks(ap)
+        ! end do
+        ! IMPORTANT
+        !   0d and 1d histograms:
+        !     h_start(ap) points into histogram(individual_aperture, velbin)
+        !   2d histograms:
+        !     h_start(ap) points into histogram2d(individual_aperture, velbin1, velbin2)
+        i = 1  ! 1d histogram counter
+        j = 1  ! 2d histogram counter
         do ap = 1, h_n
-            h_start(ap) = i
-            i = i + h_blocks(ap)
+            if (ap_hist_dim(ap) < 2) then  ! 0d or 1d histograms
+                h_start(ap) = i
+                i = i + h_blocks(ap)
+            else  ! 2d histograms
+                h_start(ap) = j
+                j = j + h_blocks(ap)
+            end if
         end do
 
         call histogram_reset()
         call binning_setup()
 
         ! Figure out how many histograms there are.
+        ! adapted to DYNAMITE: only 1d histograms are counted
+        ! (required by LegacyWeightSolver)
         h_nconstr = 0
-        do ap = 1, h_n
-            if (ap_hist_dim(ap) == 1) then  ! only count 1d histograms (required by LegacyWeightSolver)
+        do ap = 1, aperture_n
+            if (ap_hist_dim(ap) == 1) then
                 if (bin_max(ap) == 0) then
                     h_nconstr = h_nconstr + aperture_size(ap)
                 else
@@ -2070,20 +2314,29 @@ contains
             end if
         end do
 
-        ! Figure out if all the velocityhistograms are the same.
+        ! Figure out if all the 0d and 1d velocity histograms are the same.
         hist_thesame = .true.
-        width = hist_basic(1, 1)
-        center = hist_basic(1, 2)
-        bins = hist_basic(1, 3)
-        do ap = 2, h_n
-            if (width /= hist_basic(ap, 1)) hist_thesame = .false.
-            if (center /= hist_basic(ap, 2)) hist_thesame = .false.
-            if (bins /= hist_basic(ap, 3)) hist_thesame = .false.
+        do j = 1, aperture_n  ! find first 0d or 1d histogram
+            if (ap_hist_dim(j) <= 1) then
+                width = hist_basic(j, 1, 1)
+                center = hist_basic(j, 2, 1)
+                bins = hist_basic(j, 3, 1)
+                ap = j
+                exit
+            end if
+        end do
+        do j = ap + 1, aperture_n  ! compare with the rest
+            if (ap_hist_dim(j) <= 1) then
+                if (width /= hist_basic(j, 1, 1)) hist_thesame = .false.
+                if (center /= hist_basic(j, 2, 1)) hist_thesame = .false.
+                if (bins /= hist_basic(j, 3, 1)) hist_thesame = .false.
+                exit
+            end if
         end do
         if (hist_thesame) then
-            print *, "  * All velocity-bins are the same"
+            print *, "  * All LOSVD velocity-bins and 0d hist bins are the same"
         else
-            print *, "  * Velocity-bins are not the same. The standard NNLS will not"
+            print *, "  * LOSVD velocity-bins are not the same. The standard NNLS will not"
             print *, "  * understand the ouput correctly (exception: pops data "
             print *, "  * velocity-bins may differ)."
         end if
@@ -2393,7 +2646,7 @@ module output
     private
 
     integer(kind=i4b), private :: out_handle = 0_i4b
-    character(len=80), public  :: out_file_qgrid, out_file_pops &
+    character(len=80), public  :: out_file_qgrid, out_file_pm, out_file_pops &
                                   , out_file_losvd, out_file_orbclass
     character(len=84), private :: out_tmp_file
 
@@ -2409,7 +2662,7 @@ contains
     subroutine output_setup()
         use integrator, only: integrator_setup_write, integrator_set_current,&
              &                   integrator_current
-        use aperture, only: ap_hist0d_n
+        use aperture, only: aperture_n, ap_hist0d_n, ap_hist2d_n
         use histograms, only: histogram_setup_write
         use histograms, only: histogram_setup_write_mass
         use quadrantgrid, only: qgrid_setup_write
@@ -2431,9 +2684,17 @@ contains
             print *, out_file_pops
         end if
 
-        print *, "  * Give the name of the 1d losvd histogram outputfile:"
-        read *, out_file_losvd
-        print *, out_file_losvd
+        if (aperture_n - ap_hist0d_n - ap_hist2d_n > 0) then
+            print *, "  * Give the name of the 1d losvd histogram outputfile:"
+            read *, out_file_losvd
+            print *, out_file_losvd
+        end if
+
+        if (ap_hist2d_n > 0) then
+            print *, "  * Give the name of the proper motions 2d histogram outputfile:"
+            read *, out_file_pm
+            print *, out_file_pm
+        end if
 
         print *, "  * Give the name of the orbit classification outputfile:"
         read *, out_file_orbclass
@@ -2470,11 +2731,19 @@ contains
                 close (unit=out_handle, iostat=error)  ! no setup, just create file
                 if (error /= 0) stop "  Error closing pops file."
             end if
-            open (unit=out_handle, iostat=error, file=out_file_losvd, action="write", &
+            if (aperture_n - ap_hist0d_n - ap_hist2d_n > 0) then
+                open (unit=out_handle, iostat=error, file=out_file_losvd, action="write", &
+                    status="new", form="unformatted")
+                call histogram_setup_write(out_handle)  ! for LegacyWeightSolver only
+                close (unit=out_handle, iostat=error)
+                if (error /= 0) stop "  Error closing losvd file."
+            end if
+            if (ap_hist2d_n > 0) then
+                open (unit=out_handle, iostat=error, file=out_file_pm, action="write", &
                   status="new", form="unformatted")
-            call histogram_setup_write(out_handle)
-            close (unit=out_handle, iostat=error)
-            if (error /= 0) stop "  Error closing losvd file."
+                close (unit=out_handle, iostat=error)  ! no setup, just create file
+                if (error /= 0) stop "  Error closing proper motions file."
+            end if
 
             ! Write status file
             write (unit=out_handle + 1, fmt=*, iostat=error) integrator_current
@@ -2512,7 +2781,7 @@ contains
     !++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
     subroutine output_close()
         use integrator, only: integrator_current
-        use aperture, only: ap_hist0d_n
+        use aperture, only: aperture_n, ap_hist0d_n, ap_hist2d_n
         !----------------------------------------------------------------------
         integer :: error
         print *, "  * Closing files and stopping output module"
@@ -2533,13 +2802,24 @@ contains
                 close (unit=out_handle, iostat=error)
                 if (error /= 0) stop "  Error closing pops file."
             end if
-            open (unit=out_handle, iostat=error, file=out_file_losvd, action="write", &
-                 & status="old", position="append", form="unformatted")
-            if (error /= 0) stop "  Error opening losvd file."
-            write (unit=out_handle, iostat=error) " "
-            if (error /= 0) stop "  Error writing to losvd file. Disk full?"
-            close (unit=out_handle, iostat=error)
-            if (error /= 0) stop "  Error closing losvd file."
+            if (aperture_n - ap_hist0d_n - ap_hist2d_n > 0) then
+                open (unit=out_handle, iostat=error, file=out_file_losvd, action="write", &
+                    & status="old", position="append", form="unformatted")
+                if (error /= 0) stop "  Error opening losvd file."
+                write (unit=out_handle, iostat=error) " "
+                if (error /= 0) stop "  Error writing to losvd file. Disk full?"
+                close (unit=out_handle, iostat=error)
+                if (error /= 0) stop "  Error closing losvd file."
+            end if
+            if (ap_hist2d_n > 0) then
+                open (unit=out_handle, iostat=error, file=out_file_pm, action="write", &
+                    & status="old", position="append", form="unformatted")
+                if (error /= 0) stop "  Error opening proper motions file."
+                write (unit=out_handle, iostat=error) " "
+                if (error /= 0) stop "  Error writing to proper motions file. Disk full?"
+                close (unit=out_handle, iostat=error)
+                if (error /= 0) stop "  Error closing proper motions file."
+            end if
         end if
 
         ! Update the temp file to finished status
@@ -2562,11 +2842,11 @@ contains
     !++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
     subroutine output_write()
         use histograms, only: histogram_write
-        use aperture, only: ap_hist0d_n
+        use aperture, only: aperture_n, ap_hist0d_n, ap_hist2d_n
         use quadrantgrid, only: qgrid_write
         use integrator, only: integrator_write, integrator_current
         !----------------------------------------------------------------------
-        integer :: error, out_handle_pops
+        integer :: error, out_handle_pops, out_handle_pm
         ! Update the temp file to writing status
         open (unit=out_handle + 1, iostat=error, file=out_tmp_file, action="write", &
              & status="old", position="rewind")
@@ -2577,7 +2857,11 @@ contains
         close (unit=out_handle + 1, iostat=error)
         if (error /= 0) stop "  Error closing status file."
 
-        ! Write the orbit to the *binary* output file (typically orblib.dat).
+        ! Write the orbit to the *binary* output files
+        ! (typically orblib_qgrid.dat, orblib_pops.dat, orblib_losvd_hist.dat,
+        ! orblib_pm.dat).
+
+        ! open and write to the qgrid file
         open (unit=out_handle, iostat=error, file=out_file_qgrid, action="write", &
              & status="old", position="append", form="unformatted")
         if (error /= 0) stop "  Error opening qgrid file."
@@ -2585,6 +2869,8 @@ contains
         call qgrid_write(out_handle)
         close (unit=out_handle, iostat=error)
         if (error /= 0) stop "  Error closing qgrid file."
+
+        ! open the pops file if 0d histograms exist
         if (ap_hist0d_n > 0) then
             out_handle_pops = out_handle + 10
             open (unit=out_handle_pops, iostat=error, file=out_file_pops, action="write", &
@@ -2593,16 +2879,38 @@ contains
         else
             out_handle_pops = 0
         end if
-        open (unit=out_handle, iostat=error, file=out_file_losvd, action="write", &
-        & status="old", position="append", form="unformatted")
-        if (error /= 0) stop "  Error opening losvd file."
-        call histogram_write(out_handle, out_handle_pops)
+        ! open the losvd file if 1d histograms exist
+        if (aperture_n - ap_hist0d_n - ap_hist2d_n > 0) then
+            open (unit=out_handle, iostat=error, file=out_file_losvd, action="write", &
+                & status="old", position="append", form="unformatted")
+            if (error /= 0) stop "  Error opening losvd file."
+        end if
+        ! open the proper motions file if 2d histograms exist
+        if (ap_hist2d_n > 0) then
+            out_handle_pm = out_handle + 20
+            open (unit=out_handle_pm, iostat=error, file=out_file_pm, action="write", &
+                & status="old", position="append", form="unformatted")
+            if (error /= 0) stop "  Error opening proper motions file."
+        else
+            out_handle_pm = 0
+        end if
+        ! write 0d, 1d, and 2d (if existing) histograms
+        call histogram_write(out_handle, out_handle_pops, out_handle_pm)
+        ! close the pops file if 0d histograms exist
         if (ap_hist0d_n > 0) then
             close (unit=out_handle_pops, iostat=error)
             if (error /= 0) stop "  Error closing pops file."
         end if
-        close (unit=out_handle, iostat=error)
-        if (error /= 0) stop "  Error closing losvd file."
+        ! close the losvd file if 1d histograms exist
+        if (aperture_n - ap_hist0d_n - ap_hist2d_n > 0) then
+            close (unit=out_handle, iostat=error)
+            if (error /= 0) stop "  Error closing losvd file."
+        end if
+        ! close the proper motions file if 2d histograms exist
+        if (ap_hist2d_n > 0) then
+            close (unit=out_handle_pm, iostat=error)
+            if (error /= 0) stop "  Error closing proper motions file."
+        end if
 
         ! Update the temp file to intermediate status
         open (unit=out_handle + 1, iostat=error, file=out_tmp_file, action="write", &
@@ -2684,7 +2992,7 @@ contains
     subroutine run()
       use initial_parameters, only: Omega
         use histograms, only: histogram_reset, hist_thesame, &
-                              histogram_velbin, histogram_store
+                              histogram_velbin, histogram_store, h_maxdim
         use projection, only: project, projection_symmetry
         use integrator, only: integrator_integrate, integrator_points
         use output, only: output_write
@@ -2699,7 +3007,9 @@ contains
         real(kind=dp), dimension(integrator_points, 3) :: vel
         real(kind=dp), dimension(integrator_points*projection_symmetry, 2):: proj, vec_gauss
         real(kind=dp), dimension(integrator_points*projection_symmetry):: losvel
+        real(kind=dp), dimension(integrator_points*projection_symmetry, 2):: vel2d
         integer(kind=i4b), dimension(integrator_points*projection_symmetry):: velb, poly
+        integer(kind=i4b), dimension(integrator_points*projection_symmetry, 2):: velb2d
         integer(kind=i4b)                                          :: ap, i
 
         integer(kind=i4b) :: type
@@ -2722,18 +3032,22 @@ contains
                 call qgrid_store(pos(:, :), vel(:, :), type)
                 first = .true.
                 do ! for all projections
-                    call project(type, pos, vel, proj, losvel, done, first)
+                    call project(type, pos, vel, proj, losvel, vel2d, done, first)
                     if (done) exit
                     first = .false.
 
-                    if (hist_thesame) call histogram_velbin(1, losvel, velb)
+                    if (hist_thesame .and. h_maxdim <= 1) then
+                        call histogram_velbin(1, losvel, vel2d, velb, velb2d)
+                    end if
                     do i = 1, psf_n
-                        if (.not. hist_thesame) call histogram_velbin(i, losvel, velb)
+                        if (.not. hist_thesame .or. h_maxdim >= 2) then
+                            call histogram_velbin(i, losvel, vel2d, velb, velb2d)
+                        end if
                         call psf_gaussian(i, proj, vec_gauss)
                         do ap = 1, aperture_n
                             if (i == aperture_psf(ap)) then
                                 call aperture_boxed_find(ap, vec_gauss, poly)
-                                call histogram_store(ap, poly, velb, size(proj, 1))
+                                call histogram_store(ap, poly, velb, velb2d, size(proj, 1))
                             end if
                         end do
                     end do

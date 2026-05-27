@@ -444,8 +444,8 @@ class Decomposition:
         self.logger.info('Calculating flux, v, and sigma for components '
                          f'{self.decomp.meta["comps"]}, {v_sigma_option=}.')
         # Get losvd_histograms and projected_masses
-        self.orblib.read_losvd_histograms()
-        losvd_histograms = self.orblib.losvd_histograms[self.kin_set]
+        self.orblib.read_vel_histograms()
+        losvd_histograms = self.orblib.vel_histograms[self.kin_set]
         proj_mass = self.orblib.projected_masses[self.kin_set]
         self.logger.debug(f'{losvd_histograms.y.shape=}, {proj_mass.shape=}.')
         comp_flux_v_sigma = astropy.table.Table(
@@ -467,8 +467,8 @@ class Decomposition:
             losvd_hist = dyn.kinematics.Histogram(losvd_histograms.xedg,
                                                   y=losvd)
             if v_sigma_option == 'moments':
-                v_mean = np.squeeze(losvd_hist.get_mean())
-                v_sigma = np.squeeze(losvd_hist.get_sigma())
+                v_mean, v_sigma = (np.squeeze(x) for x in
+                                   losvd_hist.get_sigma(get_mean=True))
             elif v_sigma_option == 'fit':
                 v_mean, v_sigma = losvd_hist.get_mean_sigma_gaussfit()
                 v_mean = np.squeeze(v_mean)
@@ -773,12 +773,12 @@ class Analysis:
         # and calculate flux. flux.shape = (n_bundles, n_aperture)
         if kin:
             if not hasattr(orblib, 'projected_masses'):
-                orblib.read_losvd_histograms()  # default is pops=False
+                orblib.read_vel_histograms()  # default is pops=False
             flux = np.matmul(bundle_mapping, orblib.projected_masses[kin_set])
         else:
             # If kin is False, we need to read the projected masses binned for
             # the populations.
-            orblib.read_losvd_histograms(pops=True)
+            orblib.read_vel_histograms(pops=True)
             flux = np.matmul(bundle_mapping,
                              orblib.pops_projected_masses[pop_set])
         flux_all = np.sum(flux, axis=0)
@@ -927,11 +927,11 @@ class Analysis:
             _ = model.get_weights(orblib)
             weights = model.weights
         # get losvd_histograms and projected masses if necessary:
-        if not (hasattr(orblib, 'losvd_histograms')
+        if not (hasattr(orblib, 'vel_histograms')
                 and hasattr(orblib, 'projected_masses')):
-            orblib.read_losvd_histograms()
+            orblib.read_vel_histograms()
         # get all orbits' losvds; orbits_losvd.shape = n_orb,n_vbin,n_aperture
-        orbits_losvd = orblib.losvd_histograms[kin_set].y[:,:,]
+        orbits_losvd = orblib.vel_histograms[kin_set].y[:,:,]
         # weighted sum of orbits_losvd; model_losvd.shape = 1,n_vbin,n_aperture
         model_losvd = np.dot(orbits_losvd.T, weights).T[np.newaxis]
         #model_losvd /= np.sum(model_losvd, 0) # normalisation not necessary
@@ -939,11 +939,11 @@ class Analysis:
                                    weights) # .shape = n_aperture
         # calculate v_mean and v_sigma values from the losvd histograms
         model_losvd_hist = \
-            dyn.kinematics.Histogram(xedg=orblib.losvd_histograms[kin_set].xedg,
+            dyn.kinematics.Histogram(xedg=orblib.vel_histograms[kin_set].xedg,
                                      y=model_losvd)
         if v_sigma_option == 'moments':
-            v_mean = np.squeeze(model_losvd_hist.get_mean()) # from distr.
-            v_sigma = np.squeeze(model_losvd_hist.get_sigma()) # from distr.
+            v_mean, v_sigma = (np.squeeze(x) for x in
+                               model_losvd_hist.get_sigma(get_mean=True))
             v_sig_text = 'losvd moments'
         elif v_sigma_option == 'fit':
             v_mean, v_sigma = model_losvd_hist.get_mean_sigma_gaussfit()
