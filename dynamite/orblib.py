@@ -101,10 +101,7 @@ class LegacyOrbitLibrary(OrbitLibrary):
         if not os.path.isfile(self.mod_dir + 'datfil/tube_box_done'):
             # prepare the fortran input files for orblib
             self.create_fortran_input_orblib(self.mod_dir+'infil/')
-            if self.system.is_bar_disk_system():
-                stars = self.system.get_unique_bar_component()
-            else:
-                stars = self.system.get_unique_triaxial_visible_component()
+            stars = self.system.get_unique_triaxial_visible_component()
             # create the kinematics and populations input files for each
             # kinematic dataset and population dataset with own apertures
             pops = [p for p in stars.population_data if p.kin_aper is None]
@@ -133,7 +130,6 @@ class LegacyOrbitLibrary(OrbitLibrary):
                 # Calculate the orblib's parset's observed intrinsic masses
                 model=self.config.all_models.get_model_from_parset(self.parset)
                 if self.system.is_bar_disk_system():
-                    stars = self.system.get_unique_bar_component()
                     mge = stars.mge_lum_tot
                     len_mge_bulge = len(stars.mge_lum.data)
                     # intrinsic masses
@@ -141,7 +137,6 @@ class LegacyOrbitLibrary(OrbitLibrary):
                                                  len_mge_bulge=len_mge_bulge,
                                                  parallel=False)
                 else:
-                    stars = self.system.get_unique_triaxial_visible_component()
                     mge = stars.mge_lum
                     # intrinsic masses
                     _ = mge.get_intrinsic_masses(model, parallel=False)
@@ -173,10 +168,7 @@ class LegacyOrbitLibrary(OrbitLibrary):
         #---------------------------------------------
         #write parameters_pot.in and parameters_lum.in
         #---------------------------------------------
-        if self.system.is_bar_disk_system():
-            stars = self.system.get_unique_bar_component()
-        else:
-            stars = self.system.get_unique_triaxial_visible_component()
+        stars = self.system.get_unique_triaxial_visible_component()
         bh = self.system.get_component_from_class(physys.Plummer)
         # used to derive the viewing angles
         if self.system.is_bar_disk_system():
@@ -799,10 +791,7 @@ class LegacyOrbitLibrary(OrbitLibrary):
         list contains the bin edges of the 3D grid.
 
         """
-        if self.system.is_bar_disk_system():
-            stars = self.system.get_unique_bar_component()
-        else:
-            stars = self.system.get_unique_triaxial_visible_component()
+        stars = self.system.get_unique_triaxial_visible_component()
         norb = self.settings['nE'] * self.settings['nI2'] * self.settings['nI3']
         ml = self.parset['ml']
         cur_dir = os.getcwd()
@@ -1111,10 +1100,7 @@ class LegacyOrbitLibrary(OrbitLibrary):
                 populations data
 
         """
-        if self.system.is_bar_disk_system():
-            stars = self.system.get_unique_bar_component()
-        else:
-            stars = self.system.get_unique_triaxial_visible_component()
+        stars = self.system.get_unique_triaxial_visible_component()
         n_kins = len(stars.kinematic_data)
         n_pops = len(stars.population_data) if pops else 0
 

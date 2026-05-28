@@ -34,10 +34,7 @@ class AllModels(object):
             raise ValueError(text)
         self.config = config
         self.system = config.system
-        if config.system.is_bar_disk_system():
-            stars = config.system.get_unique_bar_component()
-        else:
-            stars = config.system.get_unique_triaxial_visible_component()
+        stars = config.system.get_unique_triaxial_visible_component()
         self.has_pops = len([p for p in stars.population_data
                              if p.kin_aper is None]) > 0
         self.has_pms = False  # fill in after implementing proper motions
