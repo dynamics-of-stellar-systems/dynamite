@@ -144,10 +144,7 @@ class MGE(data.Data):
             None, and the projected mass file doesn't exist.
         """
         c = self.config
-        if c.system.is_bar_disk_system():
-            vis_comp = c.system.get_unique_bar_component()
-        else:
-            vis_comp = c.system.get_unique_triaxial_visible_component()
+        vis_comp = c.system.get_unique_triaxial_visible_component()
         if (use_cache or nocalc) and (vis_comp.mass_aper is not None):
             self.logger.info('Projected masses grabbed from vis. component.')
             return vis_comp.mass_aper  ########################################
@@ -821,10 +818,7 @@ class MGE(data.Data):
         Tuple (theta_view, psi_view, phi_view)
             The viewing angels are returned in degrees.
         """
-        if self.config.system.is_bar_disk_system():
-            stars = self.config.system.get_unique_bar_component()
-        else:
-            stars = self.config.system.get_unique_triaxial_visible_component()
+        stars = self.config.system.get_unique_triaxial_visible_component()
         # used to derive the viewing angles
         parset = model.parset
         if self.config.system.is_bar_disk_system():

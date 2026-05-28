@@ -209,10 +209,7 @@ class Decomposition:
 
         """
         mpl.rcParams['savefig.dpi'] = dpi
-        if self.config.system.is_bar_disk_system():
-            stars = self.config.system.get_unique_bar_component()
-        else:
-            stars = self.config.system.get_unique_triaxial_visible_component()
+        stars = self.config.system.get_unique_triaxial_visible_component()
         n_kin = len(stars.kinematic_data)
         if kin_set >= n_kin:
             text = f'kin_set must be < {n_kin}, but it is {kin_set}'
@@ -742,10 +739,7 @@ class Analysis:
             raise ValueError(txt)
         if model is None:
             model = self.model
-        if self.config.system.is_bar_disk_system():
-            stars = self.config.system.get_unique_bar_component()
-        else:
-            stars = self.config.system.get_unique_triaxial_visible_component()
+        stars = self.config.system.get_unique_triaxial_visible_component()
         if isinstance(kin_set, int) or (kin_set is None and pop_set is None):
             if kin_set is None:
                 kin_set = self.kin_set
@@ -915,10 +909,7 @@ class Analysis:
                    "'both'."
             self.logger.error(txt)
             raise ValueError(txt)
-        if self.config.system.is_bar_disk_system():
-            stars = self.config.system.get_unique_bar_component()
-        else:
-            stars = self.config.system.get_unique_triaxial_visible_component()
+        stars = self.config.system.get_unique_triaxial_visible_component()
         kin_name = stars.kinematic_data[kin_set].name
         self.logger.info('Getting projected masses and losvds for kinematics '
                          f'{kin_name} and model {model.directory}.')
