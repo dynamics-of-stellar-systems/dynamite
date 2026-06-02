@@ -225,13 +225,13 @@ class LegacyOrbitLibrary(OrbitLibrary):
         text += f"{settngs['quad_nth']}\n"
         text += f"{settngs['quad_nph']}\n"
         text += f"{dm_specs}\n"
-        text += f"{dm_par_vals}"
+        text += f"{dm_par_vals}\n"
         if self.system.is_bar_disk_system():
             len_disk_pot = len(stars.disk_pot.data)
             header_string_pot = str(len_mge_pot + len_disk_pot) + " 1 " + str(len_mge_pot) + " " + str(len_disk_pot)
             len_disk_lum = len(stars.disk_lum.data)
             header_string_lum = str(len_mge_lum + len_disk_lum) + " 1 " + str(len_mge_lum) + " " + str(len_disk_lum)
-            text += f"\n{self.parset['omega']}"
+            text += f"{self.parset['omega']}\n"
             mge_pot = stars.mge_pot + stars.disk_pot
             mge_lum = stars.mge_lum + stars.disk_lum
         else:
@@ -239,6 +239,7 @@ class LegacyOrbitLibrary(OrbitLibrary):
             header_string_lum = str(len_mge_lum)
             mge_pot = stars.mge_pot
             mge_lum = stars.mge_lum
+        text += f"{self.system.H*1e-6}"
 
         # parameters_pot.in
         np.savetxt(path + 'parameters_pot.in',
