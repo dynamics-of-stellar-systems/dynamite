@@ -81,8 +81,14 @@ This section lists the following attributes of the system::
   system_attributes:
       distMPc: ...        # distance in MPc
       name:  ...          # name for your galaxy
+      H:  ...             # Hubble parameter in km/s/Mpc (optional, default = 70)
 
-Note: DYNAMITE assumes a value of :math:`H_0 = 70\;\mathrm{km/s/Mpc}` which is often used in the literature. Also, the system is assumed at zero redshift :math:`z=0`. An extension to different cosmologies and system redshifts may be implemented at a later point.
+To model systems at redshifts :math:`z>0`, provide the angular diameter distance and the Hubble parameter at the appropriate redshift. These can be calculated using `astropy.cosmology` e.g. for :math:`z=2` in the Planck 2018 cosmology,
+
+  from astropy.cosmology import Planck18 as cosmo
+  z = 2
+  H = cosmo.H(z)
+  distMPc = cosmo.H(z)
 
 ``system_components``
 =====================
