@@ -83,7 +83,7 @@ This section lists the following attributes of the system::
       name:  ...          # name for your galaxy
       H:  ...             # Hubble parameter in km/s/Mpc (optional, default = 70)
 
-To model systems at redshifts :math:`z>0`, provide the angular diameter distance and the Hubble parameter at the appropriate redshift. These can be calculated using `astropy.cosmology` e.g. for :math:`z=2` in the Planck 2018 cosmology,
+To model systems at redshifts :math:`z>0`, provide the angular diameter distance and the Hubble parameter at the appropriate redshift. These can be calculated using `astropy.cosmology` e.g. for :math:`z=2` in the Planck 2018 cosmology::
 
   from astropy.cosmology import Planck18 as cosmo
   z = 2
