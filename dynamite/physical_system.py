@@ -543,6 +543,7 @@ class VisibleComponent(Component):
          # visible components have MGE surface density
         self.mge_pot = mge_pot
         self.mge_lum = mge_lum
+        self.mass_aper = None
         super().__init__(visible=True, **kwds)
         self.logger = logging.getLogger(f'{__name__}.{__class__.__name__}')
 
