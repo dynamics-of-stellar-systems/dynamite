@@ -1153,7 +1153,7 @@ class NFW(DarkComponent):
 
 
 class NFW_m200_c(DarkComponent):
-    """An NFW halo with m200-c relation from Dutton & Maccio 14
+    """An NFW halo with the z=0 m200-c relation from Dutton & Maccio 14
 
     The relation: log10(c200) = 0.905 - 0.101 * log10(M200/(1e12/h)).
     Component defined with parameter f [dm-fraction, M200/total-stellar-mass]
