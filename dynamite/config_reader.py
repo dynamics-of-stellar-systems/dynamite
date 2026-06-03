@@ -9,6 +9,7 @@ import importlib
 import yaml
 
 from datetime import datetime, timezone
+from astropy import table
 
 import dynamite as dyn
 from dynamite import constants as const
@@ -576,8 +577,17 @@ class Configuration(object):
         self.all_models.update_model_table()
 
         if self.settings.weight_solver_settings['type']!='LegacyWeightSolver':
+            p_mass_fname = self.settings.io_settings['output_directory'] + \
+                           const.p_masses_file
             stars = self.system.get_unique_triaxial_visible_component()
-            stars.mass_aper = None
+            if os.path.isfile(p_mass_fname):
+                n_bins = sum([max(k.dp_args['idx_bin_to_pix']) + 1
+                            for k in stars.kinematic_data])
+                proj_mass = table.Table.read(p_mass_fname, format='ascii')
+                if n_bins != len(proj_mass):
+                    self.logger.warning('Removing existing projected masses '
+                                        'file due to spatial bin mismatch.')
+                    self.remove_projected_masses_file()
             if self.system.is_bar_disk_system():
                 stars.mge_lum_tot = stars.mge_lum + stars.disk_lum
                 stars.mass_aper = stars.mge_lum_tot.get_projected_masses()
