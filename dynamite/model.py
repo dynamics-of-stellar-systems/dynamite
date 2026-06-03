@@ -35,10 +35,13 @@ class AllModels(object):
         self.config = config
         self.system = config.system
         stars = config.system.get_unique_triaxial_visible_component()
-        self.has_losvd_kins = len(stars.kinematic_data)
+        self.has_losvd_kins = \
+            len([k for k in stars.kinematic_data
+                 if not isinstance(k, dyn.kinematics.ProperMotions)]) > 0
         self.has_pops = len([p for p in stars.population_data
                              if p.kin_aper is None]) > 0
-        self.has_pms = False  # fill in after implementing proper motions
+        self.has_pms = len([k for k in stars.kinematic_data
+                            if isinstance(k, dyn.kinematics.ProperMotions)])>0
         self.set_filename(config.settings.io_settings['all_models_file'])
         self.make_empty_table()
         self.dynamite_parameters = config.parspace.par_names[:]
@@ -293,9 +296,10 @@ class AllModels(object):
         Parameters
         ----------
         orblib_directory : str
-            The orblib directory, i.e. the model directory without the ml part,
-            ending with a '/'.
+            The orblib directory, i.e. the model directory without the ml part.
         """
+        if orblib_directory[-1] != '/':
+            orblib_directory += '/'
         d = orblib_directory + 'datfil/'
         orblib_files_ok = True
         # files that always need to be there...
@@ -327,8 +331,9 @@ class AllModels(object):
             orblib_files_ok = orblib_files_ok and check
         # files that need to be there if proper motion data exist
         if self.has_pms:
-            # orblib_files_ok = orblib_files_ok
-            pass
+            check = os.path.isfile(d + 'orblib_pm_hist.dat.bz2') \
+                    and os.path.isfile(d + 'orblibbox_pm_hist.dat.bz2')
+            orblib_files_ok = orblib_files_ok and check
         # set the indicator files in the orblib directory
         ind_files = [pathlib.Path(d + f_name + '_done')
                      for f_name in ('tube', 'box', 'tube_box')]
@@ -701,7 +706,7 @@ class AllModels(object):
         n : int, optional
             How many models to get. If negative, all models except the
             n best models will be returned. The default is 10.
-        which_chi2 : str, optional
+        which_chi2 : str or None, optional
             Which chi2 is used for determining the best models. If None, the
             setting from the configuration file will be used.
             The default is None.
