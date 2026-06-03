@@ -43,7 +43,7 @@ def run_user_test(make_comp=False):
     # c.backup_config_file(keep=3, delete_other=True)
     # c.remove_existing_plots()
 
-    print(f'{const.GRAV_CONST_KM=}, {const.PARSEC_KM=}, {const.RHO_CRIT=}.')
+    print(f'{const.GRAV_CONST_KM=}, {const.PARSEC_KM=}')
 
     which_chi2 = c.settings.parameter_space_settings['which_chi2']
 

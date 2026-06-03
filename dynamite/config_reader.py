@@ -7,6 +7,7 @@ import math
 import logging
 import importlib
 import yaml
+import numpy as np
 
 from datetime import datetime, timezone
 from astropy import table
@@ -199,8 +200,7 @@ class Configuration(object):
                           f'located at {dyn.__path__}')
 
         self.logger.debug('Global variables: ' \
-                          f'{const.GRAV_CONST_KM = }, {const.PARSEC_KM = }, ' \
-                          f'{const.RHO_CRIT = }.')
+                          f'{const.GRAV_CONST_KM = }, {const.PARSEC_KM = }.')
 
         legacy_dir = \
             os.path.realpath(os.path.dirname(__file__)+'/../legacy_fortran')
@@ -453,13 +453,16 @@ class Configuration(object):
                 logger.info('system_attributes...')
                 logger.debug(f'system_attributes: {tuple(value.keys())}')
                 # check here so system attributes are not set arbitrarily
-                if any(k not in ['distMPc', 'name'] for k in value):
-                    text = 'system_attributes can only be distMPc and name, '\
+                if any(k not in ['distMPc', 'name', 'H'] for k in value):
+                    text = 'system_attributes can only be distMPc, name and (optionally) H '\
                            f'not {list(value.keys())}.'
                     logger.error(text)
                     raise ValueError(text)
                 for other, data in value.items():
                     setattr(self.system, other, data)
+                if hasattr(self.system, 'H') == False:
+                    self.system.H = 70.
+                self.system.RHO_CRIT = (3.*(self.system.H * 1e-6/const.PARSEC_KM)**2)/(8.*np.pi*const.GRAV_CONST_KM)
 
             # add orbit library settings to Settings object
 

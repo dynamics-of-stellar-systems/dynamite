@@ -1154,7 +1154,7 @@ class NFW(DarkComponent):
 
 
 class NFW_m200_c(DarkComponent):
-    """An NFW halo with m200-c relation from Dutton & Maccio 14
+    """An NFW halo with the z=0 m200-c relation from Dutton & Maccio 14
 
     The relation: log10(c200) = 0.905 - 0.101 * log10(M200/(1e12/h)).
     Component defined with parameter f [dm-fraction, M200/total-stellar-mass]
@@ -1188,7 +1188,7 @@ class NFW_m200_c(DarkComponent):
         stars = system.get_component_from_class(TriaxialVisibleComponent)
         M_stars_tot = stars.get_M_stars_tot(system.distMPc, parset)
         f = parset[f'f-{self.name}']
-        h = dyn.constants.H0 / 100
+        h = system.H / 100
         #total mass of dark matter
         MvDM = f * M_stars_tot
         #dutton&maccio2014 (https://arxiv.org/pdf/1402.7073.pdf) Eq. (8)
@@ -1373,58 +1373,6 @@ class GeneralisedNFW(DarkComponent):
         else:
             is_valid = True
         return is_valid
-
-    ## fixme: should actually derive (rhoc,rc) from (c,Mvir)
-    @staticmethod
-    def convert_parset(par):
-        '''
-        Returns
-        -------
-        rhoc : float
-            Scale density, unit : Msun/pc**3
-        rc : float
-            Scale radius, unit : pc
-        '''
-        Mvir = par['Mvir']
-        c = par['c']
-        gam = par['gam']
-
-        rho_crit = dyn.constants.RHO_CRIT * dyn.constants.PARSEC_KM ** 3
-
-        r200 = (3 * Mvir / (800 * np.pi * rho_crit))**(1.0 / 3.0)
-        rc = r200 / c
-
-        gamma1 = 3.0 - gam
-        hyp = special.hyp2f1(gamma1, gamma1, gamma1 + 1.0, -c)
-        rhoc = Mvir * gamma1 / (4.0 * np.pi * rc**3 * c**gamma1 * hyp)
-
-
-        return rhoc, rc, gam
-
-    @staticmethod
-    def potential(x, y, z, halo_pars):
-        '''
-        Returns
-        -------
-        psi : float
-            Scale density, unit : (km/s)^2
-        '''
-
-        # G = 4.3009172706e-3                        # pc/Msun⋅(km/s)**2
-        G = dyn.constants.GRAV_CONST_KM / dyn.constants.PARSEC_KM
-        rhoc, rc, gamma = halo_pars
-
-        x = np.asarray(x, dtype=float)
-        y = np.asarray(y, dtype=float)
-        z = np.asarray(z, dtype=float)
-
-        r = np.sqrt(x**2 + y**2 + z**2)
-
-        xi = r/(r + rc)
-        psi = ( 4 * np.pi * G * rhoc * rc**2 * (rc/r * xi**(3-gamma)/(3-gamma)
-                * special.hyp2f1(3-gamma,1,4-gamma,xi)
-                + (1 - xi**(3-gamma))/(2-gamma)))
-        return psi
 
     @staticmethod
     def density(x, y, z, halo_pars):
