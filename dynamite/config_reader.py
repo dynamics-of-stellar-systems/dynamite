@@ -1141,10 +1141,7 @@ class Configuration(object):
                 for k in stars.kinematic_data:
                     k.hist_bins = max_bins
         else:  # enforce odd number of histogram bins
-            if self.system.is_bar_disk_system():
-                stars = self.system.get_unique_bar_component()
-            else:
-                stars = self.system.get_unique_triaxial_visible_component()
+            stars = self.system.get_unique_triaxial_visible_component()
             hist_bins = [k.hist_bins % 2 for k in stars.kinematic_data]
             if any([h == 0 for h in hist_bins]):
                 all_hist_bins = {k.name: k.hist_bins

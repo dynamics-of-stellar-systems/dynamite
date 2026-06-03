@@ -504,11 +504,10 @@ class LegacyWeightSolver(WeightSolver):
         chi2_vector = (np.dot(A, weights) - b)**2.
         chi2_tot = np.sum(chi2_vector)
 
+        stars = self.system.get_unique_triaxial_visible_component()
         if self.system.is_bar_disk_system():
-            bardisk = self.system.get_unique_bar_component()
-            mge = bardisk.mge_lum + bardisk.disk_lum
+            mge = stars.mge_lum + stars.disk_lum
         else:
-            stars = self.system.get_unique_triaxial_visible_component()
             mge = stars.mge_lum
 
         intrinsic_masses = mge.get_intrinsic_masses_from_file(self.direc_no_ml)
