@@ -81,8 +81,14 @@ This section lists the following attributes of the system::
   system_attributes:
       distMPc: ...        # distance in MPc
       name:  ...          # name for your galaxy
+      H:  ...             # Hubble parameter in km/s/Mpc (optional, default = 70)
 
-Note: DYNAMITE assumes a value of :math:`H_0 = 70\;\mathrm{km/s/Mpc}` which is often used in the literature. Also, the system is assumed at zero redshift :math:`z=0`. An extension to different cosmologies and system redshifts may be implemented at a later point.
+To model systems at redshifts :math:`z>0`, provide the angular diameter distance and the Hubble parameter at the appropriate redshift. These can be calculated using `astropy.cosmology` e.g. for :math:`z=2` in the Planck 2018 cosmology::
+
+  from astropy.cosmology import Planck18 as cosmo
+  z = 2
+  H = cosmo.H(z)
+  distMPc = cosmo.H(z)
 
 ``system_components``
 =====================
@@ -143,7 +149,7 @@ The following types of component are available, listed with their parameters:
 - ``NFW``
     - ``c``: concentration parameter [:math:`R_{200}` / NFW-scale-length]
     - ``f``: dark matter fraction [:math:`M_{200}` / total-stellar-mass]
-- ``NFW_m200_c``, an NFW halo with mass-concentration from `Dutton & Maccio (2014) <https://ui.adsabs.harvard.edu/abs/2014MNRAS.441.3359D/abstract>`_
+- ``NFW_m200_c``, an NFW halo with the [:math:`z=0`] mass-concentration relation from `Dutton & Maccio (2014) <https://ui.adsabs.harvard.edu/abs/2014MNRAS.441.3359D/abstract>`_
     - ``f``: dark matter fraction [:math:`M_{200}` / total-stellar-mass]
 - ``Hernquist``
     - ``rhoc``: central density [:math:`M_\odot/\mathrm{km}^3`]

@@ -63,10 +63,7 @@ class LegacyOrbitLibrary(OrbitLibrary):
         self.LegacyWeightSolver = weight_solver == 'LegacyWeightSolver'
         self.orblibs_in_parallel = \
             config.settings.multiprocessing_settings['orblibs_in_parallel']
-        if self.system.is_bar_disk_system():
-            self.stars = self.system.get_unique_bar_component()
-        else:
-            self.stars = self.system.get_unique_triaxial_visible_component()
+        self.stars = self.system.get_unique_triaxial_visible_component()
         self.n_hist1d = len([k for k in self.stars.kinematic_data
                              if not isinstance(k, dyn_kin.ProperMotions)])
         self.n_hist2d = len([k for k in self.stars.kinematic_data
@@ -146,7 +143,6 @@ class LegacyOrbitLibrary(OrbitLibrary):
                 # Calculate the orblib's parset's observed intrinsic masses
                 model=self.config.all_models.get_model_from_parset(self.parset)
                 if self.system.is_bar_disk_system():
-                    stars = self.system.get_unique_bar_component()
                     mge = stars.mge_lum_tot
                     len_mge_bulge = len(stars.mge_lum.data)
                     # intrinsic masses
@@ -154,7 +150,6 @@ class LegacyOrbitLibrary(OrbitLibrary):
                                                  len_mge_bulge=len_mge_bulge,
                                                  parallel=False)
                 else:
-                    stars = self.system.get_unique_triaxial_visible_component()
                     mge = stars.mge_lum
                     # intrinsic masses
                     _ = mge.get_intrinsic_masses(model, parallel=False)
@@ -235,13 +230,13 @@ class LegacyOrbitLibrary(OrbitLibrary):
         text += f"{settngs['quad_nth']}\n"
         text += f"{settngs['quad_nph']}\n"
         text += f"{dm_specs}\n"
-        text += f"{dm_par_vals}"
+        text += f"{dm_par_vals}\n"
         if self.system.is_bar_disk_system():
             len_disk_pot = len(stars.disk_pot.data)
             header_string_pot = str(len_mge_pot + len_disk_pot) + " 1 " + str(len_mge_pot) + " " + str(len_disk_pot)
             len_disk_lum = len(stars.disk_lum.data)
             header_string_lum = str(len_mge_lum + len_disk_lum) + " 1 " + str(len_mge_lum) + " " + str(len_disk_lum)
-            text += f"\n{self.parset['omega']}"
+            text += f"{self.parset['omega']}\n"
             mge_pot = stars.mge_pot + stars.disk_pot
             mge_lum = stars.mge_lum + stars.disk_lum
         else:
@@ -249,6 +244,7 @@ class LegacyOrbitLibrary(OrbitLibrary):
             header_string_lum = str(len_mge_lum)
             mge_pot = stars.mge_pot
             mge_lum = stars.mge_lum
+        text += f"{self.system.H*1e-6}"
 
         # parameters_pot.in
         np.savetxt(path + 'parameters_pot.in',
@@ -694,9 +690,9 @@ class LegacyOrbitLibrary(OrbitLibrary):
                        'datfil/orblib_qgrid.dat.bz2 datfil/orblib_pops.dat '
                        'datfil/orblib_pops.dat.bz2 '
                        'datfil/orblib_losvd_hist.dat '
-                        'datfil/orblib_losvd_hist.dat.bz2 '
-                        'datfil/orblib_pm_hist.dat '
-                        'datfil/orblib_pm_hist.dat.bz2\n')
+                       'datfil/orblib_losvd_hist.dat.bz2 '
+                       'datfil/orblib_pm_hist.dat '
+                       'datfil/orblib_pm_hist.dat.bz2\n')
         txt_file.write(f'{self.legacy_directory}/{orb_prgrm} < infil/orblib.in '
                        '>> datfil/orblib.log\n')
         txt_file.write('rm -f datfil/mass_aper.dat\n')

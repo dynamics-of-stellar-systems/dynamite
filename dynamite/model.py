@@ -34,10 +34,7 @@ class AllModels(object):
             raise ValueError(text)
         self.config = config
         self.system = config.system
-        if config.system.is_bar_disk_system():
-            stars = config.system.get_unique_bar_component()
-        else:
-            stars = config.system.get_unique_triaxial_visible_component()
+        stars = config.system.get_unique_triaxial_visible_component()
         self.has_losvd_kins = \
             len([k for k in stars.kinematic_data
                  if not isinstance(k, dyn.kinematics.ProperMotions)]) > 0
@@ -299,9 +296,10 @@ class AllModels(object):
         Parameters
         ----------
         orblib_directory : str
-            The orblib directory, i.e. the model directory without the ml part,
-            ending with a '/'.
+            The orblib directory, i.e. the model directory without the ml part.
         """
+        if orblib_directory[-1] != '/':
+            orblib_directory += '/'
         d = orblib_directory + 'datfil/'
         orblib_files_ok = True
         # files that always need to be there...
@@ -310,12 +308,12 @@ class AllModels(object):
         if not check:
             check = os.path.isfile(d + 'orblib_qgrid.dat.bz2') \
                     and os.path.isfile(d + 'orblibbox_qgrid.dat.bz2')
-        orblib_files_ok = orblib_files_ok and check
-        # check for 'regular' losvd kinematics
-        if self.has_losvd_kins:
-            check = os.path.isfile(d + 'orblib_losvd_hist.dat.bz2') \
-                    and os.path.isfile(d + 'orblibbox_losvd_hist.dat.bz2')
             orblib_files_ok = orblib_files_ok and check
+            # check for 'regular' losvd kinematics
+            if self.has_losvd_kins:
+                check = os.path.isfile(d + 'orblib_losvd_hist.dat.bz2') \
+                        and os.path.isfile(d + 'orblibbox_losvd_hist.dat.bz2')
+                orblib_files_ok = orblib_files_ok and check
         # additional files from orblib integration
         extra_files = ['orblib.dat_orbclass.out', 'orblibbox.dat_orbclass.out']
         ws_type = self.config.settings.weight_solver_settings['type']

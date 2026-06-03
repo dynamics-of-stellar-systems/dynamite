@@ -10,6 +10,7 @@ import yaml
 import numpy as np
 
 from datetime import datetime, timezone
+from astropy import table
 
 import dynamite as dyn
 from dynamite import constants as const
@@ -199,8 +200,7 @@ class Configuration(object):
                           f'located at {dyn.__path__}')
 
         self.logger.debug('Global variables: ' \
-                          f'{const.GRAV_CONST_KM = }, {const.PARSEC_KM = }, ' \
-                          f'{const.RHO_CRIT = }.')
+                          f'{const.GRAV_CONST_KM = }, {const.PARSEC_KM = }.')
 
         legacy_dir = \
             os.path.realpath(os.path.dirname(__file__)+'/../legacy_fortran')
@@ -453,13 +453,17 @@ class Configuration(object):
                 logger.info('system_attributes...')
                 logger.debug(f'system_attributes: {tuple(value.keys())}')
                 # check here so system attributes are not set arbitrarily
-                if any(k not in ['distMPc', 'name'] for k in value):
-                    text = 'system_attributes can only be distMPc and name, '\
-                           f'not {list(value.keys())}.'
+                if any(k not in ['distMPc', 'name', 'H'] for k in value):
+                    text = 'system_attributes can only be distMPc, name, and '\
+                           f'(optionally) H, not {list(value.keys())}.'
                     logger.error(text)
                     raise ValueError(text)
                 for other, data in value.items():
                     setattr(self.system, other, data)
+                if hasattr(self.system, 'H') == False:
+                    self.system.H = 70.
+                self.system.RHO_CRIT = \
+                    (3.*(self.system.H * 1e-6/const.PARSEC_KM)**2)/(8.*np.pi*const.GRAV_CONST_KM)
 
             # add orbit library settings to Settings object
 
@@ -577,14 +581,21 @@ class Configuration(object):
         self.all_models.update_model_table()
 
         if self.settings.weight_solver_settings['type']!='LegacyWeightSolver':
+            p_mass_fname = self.settings.io_settings['output_directory'] + \
+                           const.p_masses_file
+            stars = self.system.get_unique_triaxial_visible_component()
+            if os.path.isfile(p_mass_fname):
+                n_bins = sum([max(k.dp_args['idx_bin_to_pix']) + 1
+                            for k in stars.kinematic_data])
+                proj_mass = table.Table.read(p_mass_fname, format='ascii')
+                if n_bins != len(proj_mass):
+                    self.logger.warning('Removing existing projected masses '
+                                        'file due to spatial bin mismatch.')
+                    self.remove_projected_masses_file()
             if self.system.is_bar_disk_system():
-                bardisk = self.system.get_unique_bar_component()
-                bardisk.mass_aper = None
-                bardisk.mge_lum_tot = bardisk.mge_lum + bardisk.disk_lum
-                bardisk.mass_aper = bardisk.mge_lum_tot.get_projected_masses()
+                stars.mge_lum_tot = stars.mge_lum + stars.disk_lum
+                stars.mass_aper = stars.mge_lum_tot.get_projected_masses()
             else:
-                stars = self.system.get_unique_triaxial_visible_component()
-                stars.mass_aper = None
                 stars.mass_aper = stars.mge_lum.get_projected_masses()
 
         # self.backup_config_file(reset=False)
@@ -1137,10 +1148,7 @@ class Configuration(object):
                 for k in stars.kinematic_data:
                     k.hist_bins = max_bins
         else:  # enforce odd number of histogram bins
-            if self.system.is_bar_disk_system():
-                stars = self.system.get_unique_bar_component()
-            else:
-                stars = self.system.get_unique_triaxial_visible_component()
+            stars = self.system.get_unique_triaxial_visible_component()
             hist_bins = [[k.hist_bins] for k in stars.kinematic_data
                                        if isinstance(k.hist_bins, int)]
             hist_bins += [list(k.hist_bins) for k in stars.kinematic_data
