@@ -77,11 +77,10 @@ module initial_parameters
     ![http://physics.nist.gov/cgi-bin/cuu/Value?bg|search_for=newtonian]
 
     !           G = 1.33381d11 km^3/(s^2 Msun)
-    !  critical density rho_crit = 3H^2/8piG
     real(kind=dp), parameter, public :: &
         grav_const_km = 6.67428e-11_dp*1.98892e30_dp/1e9_dp, &
-        parsec_km = 1.4959787068d8*(648d3/pi_d), &
-        rho_crit = (3.0_dp*(7.3d-5/parsec_km)**2)/(8.0_dp*pi_d*grav_const_km)
+        parsec_km = 1.4959787068d8*(648d3/pi_d)
+    real(kind=dp), public :: rho_crit
 
     private ! default private
     public :: iniparam, iniparam_bar
@@ -92,7 +91,7 @@ contains
 
         character(len=256) :: infil
         real(kind=dp), dimension(:), allocatable :: surf_pc, sigobs_arcsec
-        real(kind=dp) :: distance, upsilon, softl_arcsec
+        real(kind=dp) :: distance, upsilon, softl_arcsec, H
         integer(kind=i4b) :: j
 
         print *, "Gravitational Constant in km^3/(s^2 Msun)", grav_const_km
@@ -149,9 +148,13 @@ contains
         read (unit=13, fmt=*) dm_profile_type, n_dmparam
         allocate (dmparam(n_dmparam))
         read (unit=13, fmt=*) dmparam(1:n_dmparam)
+        read (unit=13, fmt=*) H
 
         close (unit=13)
 
+        !  critical density rho_crit = 3H^2/8piG
+        rho_crit = (3.0_dp*(H/parsec_km)**2)/(8.0_dp*pi_d*grav_const_km)
+    
         ! apply dithering to the number of orbits
         Nener = Nener*orbit_dithering
         nI2 = nI2*orbit_dithering
@@ -200,7 +203,7 @@ contains
         real (kind=dp), dimension(:), allocatable :: surf_pc, sigobs_arcsec        ! (BT)
         real (kind=dp), dimension(:), allocatable :: surf_pc_d, sigobs_arcsec_d    ! (BT)
         real (kind=dp), dimension(:), allocatable :: surf_pc_b, sigobs_arcsec_b    ! (BT)
-        real(kind=dp) :: distance, upsilon, softl_arcsec
+        real(kind=dp) :: distance, upsilon, softl_arcsec, H
         integer(kind=i4b) :: j
 
         print *, "Gravitational Constant in km^3/(s^2 Msun)", grav_const_km
@@ -281,7 +284,12 @@ contains
         allocate (dmparam(n_dmparam))
         read (unit=13, fmt=*) dmparam(1:n_dmparam)
         read (unit=13, fmt=*) Omega   ! (BT) reading pattern speed
+        read (unit=13, fmt=*) H
+
         close (unit=13)
+
+        !  critical density rho_crit = 3H^2/8piG
+        rho_crit = (3.0_dp*(H/parsec_km)**2)/(8.0_dp*pi_d*grav_const_km)
 
         ! apply dithering to the number of orbits
         Nener = Nener*orbit_dithering

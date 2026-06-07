@@ -343,7 +343,8 @@ class System(object):
     def is_bar_disk_system(self):
         """is_bar_disk_system
 
-        Check if the system contains at least one bar component and at least one disk component.
+        Check if the system contains at least one bar component and at least
+        one disk component.
 
         Returns
         -------
@@ -352,19 +353,6 @@ class System(object):
         """
         isbardisk = len(self.get_all_bar_components()) > 0
         return isbardisk
-
-    def is_bar_disk_system_with_angles(self):
-        """is_bar_disk_system_with_angles
-
-        Check if the system is a bar-disk with phi, psi, theta specified directly in the configuration file.
-
-        Returns
-        -------
-        hasangles : Bool
-            System is specified by angles.
-        """
-        hasangles = self.is_bar_disk_system() and (type(self.get_unique_bar_component()) is BarDiskComponentAngles)
-        return hasangles
 
     def number_of_visible_components(self):
         return sum(1 for i in self.cmp_list if isinstance(i, VisibleComponent))
@@ -555,6 +543,7 @@ class VisibleComponent(Component):
          # visible components have MGE surface density
         self.mge_pot = mge_pot
         self.mge_lum = mge_lum
+        self.mass_aper = None
         super().__init__(visible=True, **kwds)
         self.logger = logging.getLogger(f'{__name__}.{__class__.__name__}')
 
@@ -837,7 +826,7 @@ class TriaxialVisibleComponent(VisibleComponent):
         secth = 1.0 / costh
         cotph = 1.0 / tanph
 
-        delp = 1.0 - qobs_pot**2
+        delp = 1.0 - qobs_pot ** 2
 
         nom1minq2 = delp * (
             2.0 * np.cos(2.0 * psi_obs) + np.sin(2.0 * psi_obs) *
@@ -845,7 +834,7 @@ class TriaxialVisibleComponent(VisibleComponent):
         nomp2minq2 = delp * (
             2.0 * np.cos(2.0 * psi_obs) + np.sin(2.0 * psi_obs) *
             (np.cos(theta_view) * cotph - secth * np.tan(phi_view)))
-        denom = 2.0 * np.sin(theta_view)**2 * (
+        denom = 2.0 * np.sin(theta_view) ** 2 * (
             delp * np.cos(psi_obs) *
             (np.cos(psi_obs) + secth * cotph * np.sin(psi_obs)) - 1.0)
 
@@ -855,24 +844,24 @@ class TriaxialVisibleComponent(VisibleComponent):
 
         # These are temporary values of the squared intrinsic axial
         # ratios p^2 and q^2
-        qintr_sq = (1.0 - nom1minq2 / denom)
-        pintr_sq = (qintr_sq + nomp2minq2 / denom)
+        qintr = 1.0 - nom1minq2 / denom
+        pintr = qintr + nomp2minq2 / denom
 
         # Quick check to see if we are not going to take the sqrt of
         # a negative number.
-        if (np.min(qintr_sq) < 1.0e-6) or (np.min(pintr_sq) <= 1.0e-6):
+        if (np.min(qintr) < 1.0e-6) or (np.min(pintr) <= 1.0e-6):
             print(
                 "triax_tpp2pqu: negative or too small intrinsic axis ratio squared "
-                f"(min(q^2)={np.min(qintr_sq)}, min(p^2)={np.min(pintr_sq)})."
+                f"(min(q^2)={np.min(qintr)}, min(p^2)={np.min(pintr)})."
             )
             return np.nan, np.nan, np.nan
 
         # intrinsic axial ratios p and q
-        qintr = np.sqrt(qintr_sq)
-        pintr = np.sqrt(pintr_sq)
+        qintr = np.sqrt(qintr)
+        pintr = np.sqrt(pintr)
 
         # triaxiality parameter T = (1-p^2)/(1-q^2)
-        triaxpar = (1.0 - pintr**2) / (1.0 - qintr**2)
+        triaxpar = (1.0 - pintr ** 2) / (1.0 - qintr ** 2)
         if (np.max(triaxpar) > 1.0) or (np.min(triaxpar) < 0.0):
             print(
                 "triax_tpp2pqu: triaxiality parameter T out of [0, 1], "
@@ -887,17 +876,15 @@ class TriaxialVisibleComponent(VisibleComponent):
 
         if np.min(qintr) <= 0.0:
             print(
-                "triax_tpp2pqu: intrinsic minor axis ratio q <= 0, min(q)={np.min(qintr)}."
+                f"triax_tpp2pqu: intrinsic minor axis ratio q <= 0, min(q)={np.min(qintr)}."
             )
             return np.nan, np.nan, np.nan
 
-        pintr2 = pintr
-        qintr2 = qintr
-        uintr2 = 1. / (np.sqrt(qobs_pot / np.sqrt(
+        uintr = 1. / (np.sqrt(qobs_pot / np.sqrt(
             (pintr * np.cos(theta_view))**2 + (qintr * np.sin(theta_view))**2 *
             ((pintr * np.cos(phi_view))**2 + np.sin(phi_view)**2))))
 
-        return pintr2, qintr2, uintr2
+        return pintr, qintr, uintr
 
     @staticmethod
     def acceleration(x, y, z,
@@ -1001,24 +988,6 @@ class TriaxialVisibleComponent(VisibleComponent):
 
 
 class BarDiskComponent(TriaxialVisibleComponent):
-    """Rotating triaxial component with a MGE projected density (i.e. a bar)
-
-    Note: all bar components are constrained to have the same omega.
-
-    """
-    def __init__(self,
-                 mge_pot=None,
-                 mge_lum=None,
-                 disk_pot=None,
-                 disk_lum=None,
-                 **kwds):
-        super().__init__(**kwds)
-        self.logger = logging.getLogger(f'{__name__}.{__class__.__name__}')
-        self.qobs = np.nan
-        self.par = ['q', 'p', 'u', 'qdisk']
-
-
-class BarDiskComponentAngles(BarDiskComponent):
     """Rotating triaxial component with a MGE projected density (i.e. a bar),
     with viewing angles specified.
 
@@ -1185,7 +1154,7 @@ class NFW(DarkComponent):
 
 
 class NFW_m200_c(DarkComponent):
-    """An NFW halo with m200-c relation from Dutton & Maccio 14
+    """An NFW halo with the z=0 m200-c relation from Dutton & Maccio 14
 
     The relation: log10(c200) = 0.905 - 0.101 * log10(M200/(1e12/h)).
     Component defined with parameter f [dm-fraction, M200/total-stellar-mass]
@@ -1219,7 +1188,7 @@ class NFW_m200_c(DarkComponent):
         stars = system.get_component_from_class(TriaxialVisibleComponent)
         M_stars_tot = stars.get_M_stars_tot(system.distMPc, parset)
         f = parset[f'f-{self.name}']
-        h = 0.671 #add paper
+        h = system.H / 100
         #total mass of dark matter
         MvDM = f * M_stars_tot
         #dutton&maccio2014 (https://arxiv.org/pdf/1402.7073.pdf) Eq. (8)
@@ -1410,61 +1379,6 @@ class GeneralisedNFW(DarkComponent):
         else:
             is_valid = True
         return is_valid
-
-    ## fixme: should actually derive (rhoc,rc) from (c,Mvir)
-    @staticmethod
-    def convert_parset(par):
-        '''
-        Returns
-        -------
-        rhoc : float
-            Scale density, unit : Msun/pc**3
-        rc : float
-            Scale radius, unit : pc
-        '''
-        Mvir = par['Mvir']
-        c = par['c']
-        gam = par['gam']
-
-        # H0 = 73                                    # km/s/Mpc, used in Fortran
-        # G = 4.3009172706e-3                        # pc/Msun⋅(km/s)**2
-        # rho_crit = 3 * H0**2 * 1e-12 / (8*np.pi*G) # Msun/pc**3
-        rho_crit = dyn.constants.RHO_CRIT * dyn.constants.PARSEC_KM ** 3
-
-        r200 = (3 * Mvir / (800 * np.pi * rho_crit))**(1.0 / 3.0)
-        rc = r200 / c
-
-        gamma1 = 3.0 - gam
-        hyp = special.hyp2f1(gamma1, gamma1, gamma1 + 1.0, -c)
-        rhoc = Mvir * gamma1 / (4.0 * np.pi * rc**3 * c**gamma1 * hyp)
-
-
-        return rhoc, rc, gam
-
-    @staticmethod
-    def potential(x, y, z, halo_pars):
-        '''
-        Returns
-        -------
-        psi : float
-            Scale density, unit : (km/s)^2
-        '''
-
-        # G = 4.3009172706e-3                        # pc/Msun⋅(km/s)**2
-        G = dyn.constants.GRAV_CONST_KM / dyn.constants.PARSEC_KM
-        rhoc, rc, gamma = halo_pars
-
-        x = np.asarray(x, dtype=float)
-        y = np.asarray(y, dtype=float)
-        z = np.asarray(z, dtype=float)
-
-        r = np.sqrt(x**2 + y**2 + z**2)
-
-        xi = r/(r + rc)
-        psi = ( 4 * np.pi * G * rhoc * rc**2 * (rc/r * xi**(3-gamma)/(3-gamma)
-                * special.hyp2f1(3-gamma,1,4-gamma,xi)
-                + (1 - xi**(3-gamma))/(2-gamma)))
-        return psi
 
     @staticmethod
     def density(x, y, z, halo_pars):

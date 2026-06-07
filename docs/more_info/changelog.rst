@@ -5,8 +5,17 @@ Change Log
 ****************
 
 - Bugfix: Fixed crash in the density() method of the NFW_m200_c dark halo
+- Improvement: provide option to specify Hubble parameter in config file to allow modelling at :math:`z>0`. Default is :math:`H = 70\;\mathrm{km/s/Mpc}`.
+- Improvement: Calculate intrinsic masses in Python instead of legacy Fortran when using the Python NNLS solvers.
+- Improvement: Reconfirmed DYNAMITE compatibility with numpy 2.x.
+- Bugfix: The bar code now works with ``orblibs_in_parallel: False``.
+- Improvement: Gauss Hermite kinematics' systematic errors `GH_sys_err` are now always applied throughout DYNAMITE.
+- Improvement: The new utility method ``Configuration.remove_projected_masses_file()`` deletes the projected masses file.
+- Improvement: Calculate projected masses in Python instead of legacy Fortran when using the Python NNLS solvers.
+- Improvement: Calculate the projected masses only once as they are independent of the model.
 - Improvement: Avoid confusing warnings when creating decomposition plots.
 - Improvement: Added the optional `fig_height` keyword argument to plotting Gauss Hermite kinematic maps, adjusting the plot height (and aspect ratio).
+- Improvement: Changed the default BayesLOSVD histogram width and number of velocity bins to be consistent with the data (no oversampling by default).
 - Bugfix: Fixed a bug that caused ``System.get_all_kinematic_data()`` to return only the first component's kinematic data.
 - Improvement: Added more troubleshooting to Making the Documentation docs.
 

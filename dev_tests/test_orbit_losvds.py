@@ -80,7 +80,7 @@ def run_orbit_losvd_test(make_comparison_losvd=False):
     model = dyn.model.Model(config=c, parset=parset)
     model.setup_directories()
     orbit_library = model.get_orblib()
-    orbit_library.read_losvd_histograms()
+    orbit_library.read_vel_histograms()
 
     file_dir = os.path.dirname(__file__)
     fname = file_dir if file_dir else '.'
@@ -88,8 +88,8 @@ def run_orbit_losvd_test(make_comparison_losvd=False):
     if make_comparison_losvd:
         # create comparison file
         np.savez_compressed(fname,
-                            xedg=orbit_library.losvd_histograms[0].xedg,
-                            y=orbit_library.losvd_histograms[0].y)
+                            xedg=orbit_library.vel_histograms[0].xedg,
+                            y=orbit_library.vel_histograms[0].y)
 
         logging.info(f'Losvd comparison file {fname} created')
     else:
@@ -102,7 +102,7 @@ def run_orbit_losvd_test(make_comparison_losvd=False):
         ax = plot_losvds(comparison_losvd,
                          orb_idx,
                          aperture_idx_list)
-        ax = plot_losvds(orbit_library.losvd_histograms[0],
+        ax = plot_losvds(orbit_library.vel_histograms[0],
                          orb_idx,
                          aperture_idx_list,
                          ls='--',

@@ -7,8 +7,10 @@ import math
 import logging
 import importlib
 import yaml
+import numpy as np
 
 from datetime import datetime, timezone
+from astropy import table
 
 import dynamite as dyn
 from dynamite import constants as const
@@ -198,8 +200,7 @@ class Configuration(object):
                           f'located at {dyn.__path__}')
 
         self.logger.debug('Global variables: ' \
-                          f'{const.GRAV_CONST_KM = }, {const.PARSEC_KM = }, ' \
-                          f'{const.RHO_CRIT = }.')
+                          f'{const.GRAV_CONST_KM = }, {const.PARSEC_KM = }.')
 
         legacy_dir = \
             os.path.realpath(os.path.dirname(__file__)+'/../legacy_fortran')
@@ -380,7 +381,8 @@ class Configuration(object):
                     if 'mge_pot' in data_comp:
                         path = self.settings.io_settings['input_directory']
                         c.mge_pot = mge.MGE(input_directory=path,
-                                        datafile=data_comp['mge_pot'])
+                                            datafile=data_comp['mge_pot'],
+                                            config=self)
                         logger.debug(f'{comp}... mge_pot read from '
                                      f'{data_comp["mge_pot"]}.')
                     else:
@@ -389,7 +391,8 @@ class Configuration(object):
                     if 'mge_lum' in data_comp:
                         path = self.settings.io_settings['input_directory']
                         c.mge_lum = mge.MGE(input_directory=path,
-                                        datafile=data_comp['mge_lum'])
+                                            datafile=data_comp['mge_lum'],
+                                            config=self)
                         logger.debug(f'{comp}... mge_lum read from '
                                      f'{data_comp["mge_lum"]}.')
                     else:
@@ -399,7 +402,8 @@ class Configuration(object):
                     if 'disk_pot' in data_comp:
                         path = self.settings.io_settings['input_directory']
                         c.disk_pot = mge.MGE(input_directory=path,
-                                             datafile=data_comp['disk_pot'])
+                                             datafile=data_comp['disk_pot'],
+                                             config=self)
                         logger.debug(f'{comp}... disk_pot read from '
                                      f'{data_comp["disk_pot"]}.')
                     else:
@@ -408,7 +412,8 @@ class Configuration(object):
                     if 'disk_lum' in data_comp:
                         path = self.settings.io_settings['input_directory']
                         c.disk_lum = mge.MGE(input_directory=path,
-                                             datafile=data_comp['disk_lum'])
+                                             datafile=data_comp['disk_lum'],
+                                             config=self)
                         logger.debug(f'{comp}... disk_lum read from '
                                      f'{data_comp["disk_lum"]}.')
                     else:
@@ -448,13 +453,17 @@ class Configuration(object):
                 logger.info('system_attributes...')
                 logger.debug(f'system_attributes: {tuple(value.keys())}')
                 # check here so system attributes are not set arbitrarily
-                if any(k not in ['distMPc', 'name'] for k in value):
-                    text = 'system_attributes can only be distMPc and name, '\
-                           f'not {list(value.keys())}.'
+                if any(k not in ['distMPc', 'name', 'H'] for k in value):
+                    text = 'system_attributes can only be distMPc, name, and '\
+                           f'(optionally) H, not {list(value.keys())}.'
                     logger.error(text)
                     raise ValueError(text)
                 for other, data in value.items():
                     setattr(self.system, other, data)
+                if hasattr(self.system, 'H') == False:
+                    self.system.H = 70.
+                self.system.RHO_CRIT = \
+                    (3.*(self.system.H * 1e-6/const.PARSEC_KM)**2)/(8.*np.pi*const.GRAV_CONST_KM)
 
             # add orbit library settings to Settings object
 
@@ -570,6 +579,24 @@ class Configuration(object):
         for d in directories:
             self.all_models.update_orblib_flags(d)
         self.all_models.update_model_table()
+
+        if self.settings.weight_solver_settings['type']!='LegacyWeightSolver':
+            p_mass_fname = self.settings.io_settings['output_directory'] + \
+                           const.p_masses_file
+            stars = self.system.get_unique_triaxial_visible_component()
+            if os.path.isfile(p_mass_fname):
+                n_bins = sum([max(k.dp_args['idx_bin_to_pix']) + 1
+                            for k in stars.kinematic_data])
+                proj_mass = table.Table.read(p_mass_fname, format='ascii')
+                if n_bins != len(proj_mass):
+                    self.logger.warning('Removing existing projected masses '
+                                        'file due to spatial bin mismatch.')
+                    self.remove_projected_masses_file()
+            if self.system.is_bar_disk_system():
+                stars.mge_lum_tot = stars.mge_lum + stars.disk_lum
+                stars.mass_aper = stars.mge_lum_tot.get_projected_masses()
+            else:
+                stars.mass_aper = stars.mge_lum.get_projected_masses()
 
         # self.backup_config_file(reset=False)
 
@@ -761,6 +788,27 @@ class Configuration(object):
         self.all_models = model.AllModels(config=self)
         self.logger.info('Instantiated empty AllModels object')
         self.logger.debug(f'AllModels:\n{self.all_models.table}')
+
+    def remove_projected_masses_file(self):
+        """
+        Deletes the projected masses file
+
+        Deletes the projected masses file if it exists.
+
+        Raises
+        ------
+        Exception if the file cannot be removed.
+
+        Returns
+        -------
+        None.
+
+        """
+        p_mass_fname = self.settings.io_settings['output_directory'] + \
+                       const.p_masses_file
+        if os.path.isfile(p_mass_fname):
+            os.remove(p_mass_fname)
+            self.logger.info(f'Deleted existing {p_mass_fname}.')
 
     def remove_all_existing_output(self, wipe_all=False, create_tree=True):
         """
@@ -954,8 +1002,11 @@ class Configuration(object):
 
         if self.system.is_bar_disk_system():
             if self.system.number_of_bar_components() != 1:
-                self.logger.error('Bar/disk system needs to have exactly one BarDiskComponent object')
-                raise ValueError('Bar/disk system needs to have exactly one BarDiskComponent object')
+                txt = 'Bar/disk system needs to have exactly one ' \
+                      'BarDiskComponent object'
+                self.logger.error(txt)
+                raise ValueError(txt)
+
         else:
             if self.system.number_of_visible_components() != 1:
                 self.logger.error('System needs to have exactly one '
@@ -986,33 +1037,34 @@ class Configuration(object):
                     for kin_data in c.kinematic_data:
                         check_gh = (kin_data.type == 'GaussHermite')
                         check_bl = (kin_data.type == 'BayesLOSVD')
-                        if (not check_gh) and (not check_bl):
+                        check_pm = (kin_data.type == 'ProperMotions')
+                        if not (check_gh or check_bl or check_pm):
                             txt = 'VisibleComponent kinematics type must be ' \
-                                  'GaussHermite or BayesLOSVD'
+                                  'GaussHermite, BayesLOSVD, or ProperMotions.'
                             self.logger.error(txt)
                             raise ValueError(txt)
-                        if check_bl:
+                        if check_bl or check_pm:
                             # check weight solver type
                             if ws_type == 'LegacyWeightSolver':
                                 txt = "LegacyWeightSolver can't be used with "\
-                                      "BayesLOSVD - use weight-solver type NNLS"
+                                      "BayesLOSVD nor with ProperMotions - " \
+                                      "use weight-solver type NNLS"
                                 self.logger.error(txt)
                                 raise ValueError(txt)
                             # check for compatible chi2 variant
                             if which_chi2 == 'kinmapchi2':
                                 txt = 'kinmapchi2 cannot be used with ' \
-                                      'BayesLOSVD - use chi2 or kinchi2.'
+                                      'BayesLOSVD nor ProperMotions - ' \
+                                      'use chi2 or kinchi2.'
                                 self.logger.error(txt)
                                 raise ValueError(txt)
-                        else:  # GaussHermite kinematics
-                            # get_data checks for errors >= 0 in chosen moments
-                            _ = kin_data.get_data(
-                                self.settings.weight_solver_settings)
+                        ws_settings = self.settings.weight_solver_settings
+                        kin_data.update_data(ws_settings)
                 else:
-                    self.logger.error('VisibleComponent must have kinematics: '
-                                      'either GaussHermite or BayesLOSVD')
-                    raise ValueError('VisibleComponent must have kinematics: '
-                                     'either GaussHermite or BayesLOSVD')
+                    txt = 'VisibleComponent must have kinematics: ' \
+                          'GaussHermite, BayesLOSVD, and/or ProperMotions.'
+                    self.logger.error(txt)
+                    raise ValueError(txt)
                 if c.population_data and len(c.population_data) > 1:
                     txt = 'VisibleComponent can either have 0 or 1 set(s) ' \
                           f'of population data, not {len(c.population_data)}.'
@@ -1096,12 +1148,13 @@ class Configuration(object):
                 for k in stars.kinematic_data:
                     k.hist_bins = max_bins
         else:  # enforce odd number of histogram bins
-            if self.system.is_bar_disk_system():
-                stars = self.system.get_unique_bar_component()
-            else:
-                stars = self.system.get_unique_triaxial_visible_component()
-            hist_bins = [k.hist_bins % 2 for k in stars.kinematic_data]
-            if any([h == 0 for h in hist_bins]):
+            stars = self.system.get_unique_triaxial_visible_component()
+            hist_bins = [[k.hist_bins] for k in stars.kinematic_data
+                                       if isinstance(k.hist_bins, int)]
+            hist_bins += [list(k.hist_bins) for k in stars.kinematic_data
+                                       if not isinstance(k.hist_bins, int)]
+            hist_bins = np.array([i for h in hist_bins for i in h])
+            if np.any(hist_bins % 2 == 0):
                 all_hist_bins = {k.name: k.hist_bins
                                  for k in stars.kinematic_data}
                 txt = 'Value of hist_bins must be odd for all kinematic ' \

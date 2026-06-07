@@ -136,7 +136,7 @@ system_components:
                 fixed: True
                 value: 90.0
                 LaTeX: "$\\psi$"
-        type: "BarDiskComponentAngles" # class name
+        type: "BarDiskComponent" # class name
         mge_pot: "bar_mge.ecsv"
         mge_lum: "bar_mge.ecsv"
         disk_pot: "disk_mge.ecsv"

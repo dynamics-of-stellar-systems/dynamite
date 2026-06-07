@@ -32,6 +32,7 @@ system_components:
                 LaTeX: "$a_\\mathrm{BH}$"
         type: "Plummer" # class name
         include: True
+        contributes_to_potential: True
 
     dh: # dark_halo
         parameters:
@@ -57,6 +58,7 @@ system_components:
                 LaTeX: "$\\log(M_{200}/M_\\mathrm{stars})$"
         type: NFW
         include: True
+        contributes_to_potential: True
 
     # dh: # dark_halo
     #     parameters:
@@ -72,6 +74,7 @@ system_components:
     #             LaTeX: "$\\log(M_{200}/M_\\mathrm{stars})$"
     #     type: NFW_m200_c
     #     include: True
+    #     contributes_to_potential: True
 
     stars:
         parameters:
@@ -106,6 +109,7 @@ system_components:
         mge_pot: "mge.ecsv"
         mge_lum: "mge.ecsv"
         include: True
+        contributes_to_potential: True
         kinematics: # optional, only specified for components with kinematics
             kinset1:
                 type: GaussHermite # specifies which object class to create
@@ -116,41 +120,26 @@ system_components:
                 # datafile: "gauss_hermite_kins_with_pops.ecsv"  # both discr. & integrated
                 aperturefile: "aperture.dat" # integrated only
                 binfile: "bins.dat"          # integrated only
-                # with_pops: True # If True, pop columns will create pop object. Default: False
+                with_pops: False # If True, pop columns will create pop object, default: False
+            propermotions:
+                type: ProperMotions
+                hist_width:
+                    - '2719.8215332031'
+                    - '1000.'
+                hist_center:
+                    - '0.0000'
+                    - '0.0000'
+                hist_bins:
+                    - '15'
+                    - '11'
+                datafile: "proper_motions_dummy.ecsv"
+                aperturefile: "aperture_for_pm.dat"
+                binfile: "bins_for_pm.dat"
         # populations: # optional, only specified for components with kinematics
         #     pop1:
         #         datafile: "stellar_pops.ecsv"  # both discr. & integrated
         #         aperturefile: "aperture_for_pops.dat" # integrated only
         #         binfile: "bins_for_pops.dat"          # integrated only
-
-    gas:
-        type: Chi2Ext  # static external chi2 component's DYNAMITE class name
-        parameters:
-            a:  # choose any name and number of parameters
-                par_generator_settings:
-                    lo: 0.0
-                    hi: 1.0
-                    step: 0.1
-                    minstep: 0.01
-                logarithmic: True
-                fixed: True
-                value: 0.5
-                LaTeX: "$\\chi^2$ EXT a"
-            b:  # choose any name and number of parameters
-                par_generator_settings:
-                    lo: 0.0
-                    hi: 1.0
-                    step: 0.1
-                    minstep: 0.01
-                logarithmic: False
-                fixed: False
-                value: 0.25
-                LaTeX: "$\\chi^2$ EXT b"
-        ext_module: "chi2_ext"  # module implementing external chi2 calculation
-        ext_class: "Chi2Ext"  # class name in module_file.py
-        ext_class_args: {arg1 : 47, arg2 : "val2"}  # ext_class parameters
-        ext_chi2: "chi2"  # method in ext_class returning the chi2 value
-        include: True
 
 system_parameters:
     ml: # M/L
@@ -229,7 +218,6 @@ io_settings: # paths can be given with or without trailing slash
 multiprocessing_settings:
     ncpus: 'all_available' # integer or 'all_available' for multiprocessing
     ncpus_weights: 'all_available' # integer or 'all_available', optional, defaults to ncpus (not used by all iterators)
-    ncpus_ext: 'all_available' # integer or 'all_available', optional, defaults to ncpus (only used for external chi2)
     modeliterator: 'SplitModelIterator' # optional, default 'ModelInnerIterator'
     orblibs_in_parallel: True
 
