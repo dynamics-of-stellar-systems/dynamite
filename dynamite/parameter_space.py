@@ -365,7 +365,7 @@ class ParameterGenerator(object):
 
     """
     def __init__(self,
-                 par_space=[],
+                 par_space,
                  parspace_settings=None,
                  name=None):
         self.logger = logging.getLogger(f'{__name__}.{__class__.__name__}')
@@ -718,7 +718,7 @@ class LegacyGridSearch(ParameterGenerator):
     parspace_settings : dict
 
     """
-    def __init__(self, par_space=[], parspace_settings=None):
+    def __init__(self, par_space, parspace_settings=None):
         super().__init__(par_space=par_space,
                          parspace_settings=parspace_settings,
                          name='LegacyGridSearch')
@@ -858,7 +858,7 @@ class GridWalk(ParameterGenerator):
 
     """
     def __init__(self,
-                 par_space=[],
+                 par_space,
                  parspace_settings=None):
         super().__init__(par_space=par_space,
                          parspace_settings=parspace_settings,
@@ -1057,7 +1057,7 @@ class FullGrid(ParameterGenerator):
 
     """
     def __init__(self,
-                 par_space=[],
+                 par_space,
                  parspace_settings=None):
         super().__init__(par_space=par_space,
                          parspace_settings=parspace_settings,
@@ -1275,7 +1275,7 @@ class SpecificModels(ParameterGenerator):
 
     """
     def __init__(self,
-                 par_space=[],
+                 par_space,
                  parspace_settings=None):
         super().__init__(par_space=par_space,
                          parspace_settings=parspace_settings,

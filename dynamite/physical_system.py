@@ -373,22 +373,24 @@ class Component(object):
         whether this is visible <--> whether it has an associated MGE
     symmetry : string
         one of 'spherical', 'axisymm', or 'triax' **not currently used**
-    kinematic_data : list
-        a list of ``dyn.kinemtics.Kinematic`` data for this component
-    parameters  : list
-        a list of ``dyn.parameter_space.Parameter`` objects for this component
-    population_data : list
-        a list of ``dyn.populations.Population`` data for this component **not
-        currently used**
+    kinematic_data : list, optional
+        A list of ``dyn.kinemtics.Kinematic`` data for this component.
+        The default is None -> empty list.
+    parameters  : list, optional
+        A list of ``dyn.parameter_space.Parameter`` objects for this component.
+        The default is None -> empty list.
+    population_data : list, optional
+        A list of ``dyn.populations.Population`` data for this component.
+        The default is None -> empty list.
 
     """
     def __init__(self,
-                 name = None,
+                 name=None,
                  visible=None,
                  symmetry=None,
-                 kinematic_data=[],
-                 population_data=[],
-                 parameters=[]):
+                 kinematic_data=None,
+                 population_data=None,
+                 parameters=None):
         self.logger = logging.getLogger(f'{__name__}.{__class__.__name__}')
         if name is None:
             self.name = self.__class__.__name__
@@ -396,9 +398,10 @@ class Component(object):
             self.name = name
         self.visible = visible
         self.symmetry = symmetry
-        self.kinematic_data = kinematic_data
-        self.population_data = population_data
-        self.parameters = parameters
+        self.kinematic_data = [] if kinematic_data is None else kinematic_data
+        self.population_data = \
+            [] if population_data is None else population_data
+        self.parameters = [] if parameters is None else parameters
 
     def validate(self, par=None):
         """
@@ -1032,9 +1035,11 @@ class DarkComponent(Component):
     def fit_mge(self,
                 density,
                 parameters,
-                xyz_grid=[]):
+                xyz_grid=None):
         # fit an MGE for a given set of parameters
         # will be used in potential calculation
+        if xyz_grid is None:
+            xyz_grid = []
         rho = self.density.evaluate(xyz_grid, parameters)
         # self.mge = MGES.intrinsic_MGE_from_xyz_grid(xyz_grid, rho)
 

@@ -21,8 +21,6 @@ class ModelIterator(object):
     Parameters
     ----------
     config : a ``dyn.config_reader.Configuration`` object
-    model_kwargs : dict
-        other kewyord argument required for this model
     do_dummy_run : Bool
         whether this is a dummy run - if so, dummy_chi2_funciton is executed
         instead of the model (for testing!)
@@ -34,7 +32,6 @@ class ModelIterator(object):
     """
     def __init__(self,
                  config=None,
-                 model_kwargs={},
                  do_dummy_run=None,
                  dummy_chi2_function=None,
                  plots=True):
@@ -418,7 +415,7 @@ class ModelInnerIterator(object):
             is_new = True
         return is_new
 
-    def assign_model_directories(self, rows_orblib=[], rows_ml=[]):
+    def assign_model_directories(self, rows_orblib=None, rows_ml=None):
         """
         Assigns model directories in all_models.table.
 
@@ -436,10 +433,11 @@ class ModelInnerIterator(object):
         Parameters
         ----------
         rows_orblib : list, optional
-            Indices of models with new orbit libraries. The default is None.
+            Indices of models with new orbit libraries.
+            The default is None -> [].
         rows_ml : list, optional
             Indices of models with existing orbit libraries.
-            The default is None.
+            The default is None -> [].
 
         Raises
         ------
@@ -452,6 +450,8 @@ class ModelInnerIterator(object):
         None.
 
         """
+        rows_orblib = [] if rows_orblib is None else rows_orblib
+        rows_ml = [] if rows_ml is None else rows_ml
         # new orblib model directories
         nodir = ''
         for row in rows_orblib:
