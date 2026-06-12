@@ -526,7 +526,7 @@ class GaussHermite(Kinematics, data.Integrated):
         v = np.atleast_2d(v)
         v_mu = np.atleast_1d(v_mu)
         v_sig = np.atleast_1d(v_sig)
-        assert v_mu.shape==v_mu.shape
+        assert v_mu.shape == v_sig.shape
         w = (v.T - v_mu)/v_sig
         w = w.T
         return w
