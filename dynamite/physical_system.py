@@ -1477,16 +1477,16 @@ class Chi2Ext(Component):
     Parameters
     ----------
     ext_module : str
-        the name of the module implementing the external :math:`\chi^2`
+        the name of the module implementing the external :math:`\\chi^2`
         calculation. The associated .py file should be in the Python path.
     ext_class : str
         the class name in the external module implementing the external
-        :math:`\chi^2` calculation. It will be instantiated once, at the time
+        :math:`\\chi^2` calculation. It will be instantiated once, at the time
         the config file is read.
     ext_class_args : dict
         the class parameters, can be empty (``{}``)
     ext_chi2 : str
-        the name of the ``ext_class`` method returning :math:`\chi^2`
+        the name of the ``ext_class`` method returning :math:`\\chi^2`
         as a single ``float``. In DYNAMITE, it will be called right after
         weight solving, passing the entire current parset.
     """
