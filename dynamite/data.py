@@ -165,8 +165,9 @@ class Integrated(Data):
         """
         # read aperture file
         aperture_fname = self.input_directory + self.aperturefile
-        lines = [line.rstrip('\n').split() for line in open(aperture_fname)
-                                           if line.lstrip(' ')[0] != '#']
+        lines = [line.rstrip('\n').split()
+                 for line in open(aperture_fname)
+                 if line.strip() and not line.strip().startswith('#')]
         minx = float(lines[0][0])
         miny = float(lines[0][1])
         x_size = sx = float(lines[1][0])  # extent in x
@@ -186,8 +187,9 @@ class Integrated(Data):
         yi = yt
         # read bin file
         bin_fname = self.input_directory + self.binfile
-        lines_bins = [line.rstrip('\n').split() for line in open(bin_fname)
-                                                if line.lstrip(' ')[0] != '#']
+        lines_bins = [line.rstrip('\n').split()
+                      for line in open(bin_fname)
+                      if line.strip() and not line.strip().startswith('#')]
         i = 0
         i_var = []
         grid = []
