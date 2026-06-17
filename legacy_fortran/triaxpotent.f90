@@ -712,6 +712,7 @@ contains
         do
             read(unit=unit, fmt='(A)', iostat=iostat) next_content_line
             if (iostat /= 0) stop "End of file or error!"
+            if ( len(trim(next_content_line)) == 0 ) cycle
             if ( index(adjustl(next_content_line), "#") == 1 ) cycle
             exit
         end do

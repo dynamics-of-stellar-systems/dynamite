@@ -1,3 +1,4 @@
+import copy
 import logging
 import math
 import numpy as np
@@ -1100,8 +1101,8 @@ class MGE(data.Data):
         new_mge : Object of type MGE
 
         """
-        mge1_data = self.data
-        mge2_data = other.data
+        mge1_data = copy.deepcopy(self.data)
+        mge2_data = copy.deepcopy(other.data)
         mge1_data['row_merge_ID'] = list(range(1,len(mge1_data)+1))
         mge2_data['row_merge_ID'] = list(range(len(mge1_data)+1,
                                                len(mge1_data)+len(mge2_data)+1))
