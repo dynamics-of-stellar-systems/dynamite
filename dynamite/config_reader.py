@@ -97,6 +97,13 @@ class Settings(object):
                    f"{self.orblib_settings['nI2']}."
             self.logger.error(text)
             raise ValueError(text)
+        for quad in ['nr', 'nth', 'nph']:
+            key = 'quad_' + quad
+            if key not in self.orblib_settings.keys():
+                default = 10 if quad == 'nr' else 6
+                self.orblib_settings[key] = default
+                self.logger.info(f'No value given for orblib setting {key} '
+                                 f'- set to its default {default}.')
         self.logger.debug('Settings validated.')
 
     def __repr__(self):
@@ -477,10 +484,9 @@ class Configuration(object):
             self.logger.error(text)
             raise ValueError(text)
         logger.info('System assembled')
+        self.validate()
         logger.debug(f'System: {self.system}')
         logger.debug(f'Settings: {self.settings}')
-
-        self.validate()
         logger.info('Configuration validated')
 
         if 'generator_settings' in self.settings.parameter_space_settings:
