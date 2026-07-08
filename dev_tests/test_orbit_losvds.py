@@ -63,10 +63,12 @@ def run_orbit_losvd_test(make_comparison_losvd=False):
 
     # read configuration
     fname = 'user_test_config.yaml'
-    c = dyn.config_reader.Configuration(fname,reset_logging=False)
+    c = dyn.config_reader.Configuration(fname,
+                                        reset_logging=False,
+                                        reset_existing_output=True)
 
-    c.remove_existing_orblibs()
-    c.remove_existing_all_models_file()
+    # c.remove_existing_orblibs()
+    # c.remove_existing_all_models_file()
     # c.backup_config_file(reset=True)
 
     plotdir = c.settings.io_settings['plot_directory']
@@ -78,7 +80,7 @@ def run_orbit_losvd_test(make_comparison_losvd=False):
     model = dyn.model.Model(config=c, parset=parset)
     model.setup_directories()
     orbit_library = model.get_orblib()
-    orbit_library.read_losvd_histograms()
+    orbit_library.read_vel_histograms()
 
     file_dir = os.path.dirname(__file__)
     fname = file_dir if file_dir else '.'
@@ -86,22 +88,21 @@ def run_orbit_losvd_test(make_comparison_losvd=False):
     if make_comparison_losvd:
         # create comparison file
         np.savez_compressed(fname,
-                            xedg=orbit_library.losvd_histograms[0].xedg,
-                            y=orbit_library.losvd_histograms[0].y)
+                            xedg=orbit_library.vel_histograms[0].xedg,
+                            y=orbit_library.vel_histograms[0].y)
 
         logging.info(f'Losvd comparison file {fname} created')
     else:
         # read orbits and plot them
         tmp = np.load(fname)
         comparison_losvd = dyn.kinematics.Histogram(xedg=tmp['xedg'],
-                                                    y=tmp['y'],
-                                                    normalise=False)
+                                                    y=tmp['y'])
         orb_idx = 15
         aperture_idx_list = [0, 2, 20, 30]
         ax = plot_losvds(comparison_losvd,
                          orb_idx,
                          aperture_idx_list)
-        ax = plot_losvds(orbit_library.losvd_histograms[0],
+        ax = plot_losvds(orbit_library.vel_histograms[0],
                          orb_idx,
                          aperture_idx_list,
                          ls='--',

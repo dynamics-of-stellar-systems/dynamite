@@ -349,7 +349,7 @@ class ParameterGenerator(object):
     evaluate models based on existing models. This is an abstrct class, specific
     implementations should be implemented as child-classes (e.g.
     ``LegacyGridSearch``). Every implementation may have a method
-    ``check_specific_stopping_critera`` and must have a method
+    ``check_specific_stopping_criteria`` and must have a method
     ``specific_generate_method`` which
     define the stopping criteria and parameter generation algorithm for that
     implementation. These are exectuted in addition to ``generic`` methods,
@@ -426,9 +426,9 @@ class ParameterGenerator(object):
         Parameters
         ----------
         current_models : dynamite.AllModels
-        kw_specific_generate_method : dict
+        kw_specific_generate_method : dict, optional
             keyword arguments passed to the specific_generate_method of the
-            child class
+            child class. The default is {}
 
         Returns
         -------
@@ -449,7 +449,7 @@ class ParameterGenerator(object):
             self.logger.error(errormsg)
             raise ValueError(errormsg)
         self.current_models = current_models
-        self.check_stopping_critera()
+        self.check_stopping_criteria()
         if len(self.current_models.table)==0:
             this_iter = 0
         else:
@@ -534,24 +534,38 @@ class ParameterGenerator(object):
             row.append(val)
         self.current_models.table.add_row(row)
 
-    def check_stopping_critera(self):
+    def check_stopping_criteria(self):
         """Check stopping criteria
 
         This is a wrapper which checks both the generic stopping criteria and
-        also the ``specific_stopping_critera`` revelant for any particular
+        also the ``specific_stopping_criteria`` revelant for any particular
         ``ParameterGenerator`` used.
+
+        Returns
+        -------
+        None
+            Sets the attribute ``self.status['stop']`` to True if any of the
+            stopping criteria are met, else to False.
+
         """
         self.status['stop'] = False
         if len(self.current_models.table) > 0:
             # never stop when current_models is empty
-            self.check_generic_stopping_critera()
-            self.check_specific_stopping_critera()
+            self.check_generic_stopping_criteria()
+            self.check_specific_stopping_criteria()
             if any(v for v in self.status.values() if type(v) is bool):
                 self.status['stop'] = True
                 self.logger.info(f'Stopping criteria met: {self.status}.')
 
-    def check_generic_stopping_critera(self):
-        """check generic stopping critera
+    def check_generic_stopping_criteria(self):
+        """check generic stopping criteria
+
+        Returns
+        -------
+        None
+            Sets the attributes ``self.status['n_max_mods_reached']`` and
+            ``self.status['n_max_iter_reached']``.
+
         """
         self.status['n_max_mods_reached'] = \
             len(self.current_models.table) \
@@ -561,8 +575,8 @@ class ParameterGenerator(object):
                 >= self.parspace_settings['stopping_criteria']['n_max_iter']
         # iii) ...
 
-    def check_specific_stopping_critera(self):
-        """checks specific stopping critera
+    def check_specific_stopping_criteria(self):
+        """checks specific stopping criteria
 
         If the last iteration did not improve the chi2 by at least
         min_delta_chi2, then stop. May be overwritten or extended in
@@ -571,7 +585,7 @@ class ParameterGenerator(object):
         Returns
         -------
         None
-            sets Bool to ``self.status['min_delta_chi2_reached']``
+            Sets the attribute ``self.status['min_delta_chi2_reached']``
 
         """
         # stop if...
@@ -695,7 +709,7 @@ class LegacyGridSearch(ParameterGenerator):
     """Search around all reasonable models
 
     This is the method used by previous code versions AKA schwpy. See docstrings
-    for ``specific_generate_method`` and ``check_specific_stopping_critera``
+    for ``specific_generate_method`` and ``check_specific_stopping_criteria``
     for full description.
 
     Parameters
@@ -835,7 +849,7 @@ class GridWalk(ParameterGenerator):
     """Walk after the current best fit
 
     See docstrings for ``specific_generate_method`` and
-    ``check_specific_stopping_critera`` for full description.
+    ``check_specific_stopping_criteria`` for full description.
 
     Parameters
     ----------
@@ -1235,20 +1249,20 @@ class SpecificModels(ParameterGenerator):
     Create specific models.
 
     Creates models with parameter values according to the entries in the
-    lists ``fixed_values`` in a single iteration. If any parameter's
-    ``fixed_values`` entry is missing, its ``value`` entry will be used.
+    lists ``specific_values`` in a single iteration. If any parameter's
+    ``specific_values`` entry is missing, its ``value`` entry will be used.
     ``parspace_settings['generator_settings']['SpecificModels_mode']``
     determines how models are constructed:
     ``list``: selects parameter values element-wise. All parameters'
-    ``fixed_values`` lists must be of equal length (or zero length if their
+    ``specific_values`` lists must be of equal length (or zero length if their
     respective ``value`` entry is to be used).
-    ``cartesian``: Cartesian product of fixed parameter values. The parameters'
-    ``fixed_values`` lists don't need to be of equal length. May result
-    in a large number of models.
+    ``cartesian``: Cartesian product of specific parameter values. The
+    parameters' ``specific_values`` lists don't need to be of equal length.
+    May result in a large number of models.
 
-    Note that this parameter generator ignores ``step``, ``minstep``,
-    ``lo``, and ``high``. Also, ``fixed`` will be ignored if ``fixed_values``
-    is specified.
+    Note that this parameter generator ignores ``lo``, ``high``, ``step``,
+    ``minstep``, and ``fixed``. Also, ``value`` will be ignored if
+    ``specific_values`` is specified.
 
     Further, all models are run in a single iteration and the optimality
     tolerances in the ``stopping_criteria`` section in the configuration file's
@@ -1297,18 +1311,18 @@ class SpecificModels(ParameterGenerator):
         par_list_idx = \
           [i for i in range(len(self.par_space))
              if self.par_space[i].par_generator_settings
-             if 'fixed_values' in self.par_space[i].par_generator_settings]
+             if 'specific_values' in self.par_space[i].par_generator_settings]
         if len(par_list_idx) == 0: # nothing to do really...
             self.model_list.append([copy.deepcopy(p) for p in self.par_space])
             self.logger.info('Found ONE individual model.')
             return ###########################################################
 
         lengths = \
-            [len(self.par_space[i].par_generator_settings['fixed_values'])
+            [len(self.par_space[i].par_generator_settings['specific_values'])
              for i in par_list_idx]
         if self.mode == 'list':
             if len(set(lengths)) > 1:
-                text = 'For a simple list of new models all fixed_values ' \
+                text = 'For a simple list of new models all specific_values ' \
                        'lists must be of equal length.'
                 self.logger.error(text)
                 raise ValueError(text)
@@ -1317,32 +1331,33 @@ class SpecificModels(ParameterGenerator):
             n_mod = np.prod(lengths)
         self.logger.info(f'Adding {n_mod} individual models.')
 
-        fixed_values=[self.par_space[i].par_generator_settings['fixed_values']
-                      for i in par_list_idx]
+        specific_values = \
+            [self.par_space[i].par_generator_settings['specific_values']
+             for i in par_list_idx]
         if self.mode == 'list':
             for i in range(n_mod):
                 new_parset = [copy.deepcopy(p) for p in self.par_space]
-                for idx in par_list_idx:
-                    new_parset[idx].raw_value = fixed_values[idx][i]
+                for val_idx, idx in enumerate(par_list_idx):
+                    new_parset[idx].raw_value = specific_values[val_idx][i]
                 self.model_list.append([copy.deepcopy(p) for p in new_parset])
         else:
-            for val in itertools.product(*fixed_values):
+            for val in itertools.product(*specific_values):
                 new_parset = [copy.deepcopy(p) for p in self.par_space]
-                for idx in par_list_idx:
-                    new_parset[idx].raw_value = val[idx]
+                for val_idx, idx in enumerate(par_list_idx):
+                    new_parset[idx].raw_value = val[val_idx]
                 self.model_list.append([copy.deepcopy(p) for p in new_parset])
 
         return
 
-    def check_specific_stopping_critera(self):
-        """The specific stopping critera
+    def check_specific_stopping_criteria(self):
+        """The specific stopping criteria
 
         Will always stop after creating all specific models.
 
         Returns
         -------
         None
-            sets ``self.status['min_delta_chi2_reached']`` to ``True``
+            Sets ``self.status['min_delta_chi2_reached']`` to ``True``
 
         """
         self.status['min_delta_chi2_reached'] = True

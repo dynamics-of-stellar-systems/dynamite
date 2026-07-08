@@ -11,7 +11,6 @@
 system_attributes:
     distMPc: 39.96
     name: "NGC6278"
-    position_angle: 97.69
 
 system_components:
 
@@ -33,7 +32,6 @@ system_components:
                 LaTeX: "$a_\\mathrm{BH}$"
         type: "Plummer" # class name
         include: True
-        contributes_to_potential: True
 
     dh: # dark_halo
         parameters:
@@ -59,7 +57,6 @@ system_components:
                 LaTeX: "$\\log(M_{200}/M_\\mathrm{stars})$"
         type: NFW
         include: True
-        contributes_to_potential: True
 
     stars:
         parameters:
@@ -94,7 +91,6 @@ system_components:
         mge_pot: "mge.ecsv"
         mge_lum: "mge.ecsv"
         include: True
-        contributes_to_potential: True
         kinematics: # optional, only specified for components with kinematics
             set1:
                 type: GaussHermite # specifies which object class to create

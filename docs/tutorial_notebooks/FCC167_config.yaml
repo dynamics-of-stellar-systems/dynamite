@@ -9,9 +9,8 @@
 ###############################################################################
 
 system_attributes:
-    distMPc: 39.96
-    name: "NGC6278"
-    position_angle: 97.69
+    distMPc: 17.62
+    name: "FCC167"
 
 system_components:
 
@@ -23,18 +22,11 @@ system_components:
                     hi: 10.0
                     step: 1.
                     minstep: 0.
-                    fixed_values:
-                        - 5.0
-                        - 5.5
                 fixed: True
-                value: 5.0
+                value: 8.0
                 logarithmic: True
                 LaTeX: "$\\log(M_\\mathrm{BH}/M_\\odot)$"
             a: # scale length
-                par_generator_settings:
-                    fixed_values:
-                        - 0.001
-                        - 0.002
                 fixed: True
                 value: 1.e-3  # dot required, renders as str '1e-3' otherwise
                 LaTeX: "$a_\\mathrm{BH}$"
@@ -46,13 +38,13 @@ system_components:
         parameters:
             c: # NFW Darkmatter concentration
                 par_generator_settings:
-                    lo: 2.0
-                    hi: 4.0
+                    lo: 0.5
+                    hi: 4.3
                     step: 1.0
                     minstep: 0.1
                 logarithmic: True
                 fixed: True
-                value: 3.0
+                value: 0.843767  # log10(6.978580868)
                 LaTeX: "$\\log(C)$"
             f: # NFW Darkmatter fraction
                 par_generator_settings:
@@ -62,56 +54,40 @@ system_components:
                     minstep: 0.1
                 logarithmic: True
                 fixed: True
-                value: 1.0
+                value: 1.6  # log10(39.810717055)
                 LaTeX: "$\\log(M_{200}/M_\\mathrm{stars})$"
         type: NFW
         include: True
         contributes_to_potential: True
 
-    # dh: # dark_halo
-    #     parameters:
-    #         f: # NFW Darkmatter fraction
-    #             par_generator_settings:
-    #                 lo: 0.0
-    #                 hi: 2.0
-    #                 step: 0.5
-    #                 minstep: 0.1
-    #             logarithmic: True
-    #             fixed: True
-    #             value: 1.0
-    #             LaTeX: "$\\log(M_{200}/M_\\mathrm{stars})$"
-    #     type: NFW_m200_c
-    #     include: True
-    #     contributes_to_potential: True
-
     stars:
         parameters:
             q: # intrinsic flattening (C/A)
                 par_generator_settings:
-                    lo: 0.05
+                    lo: 0.01
                     hi: 0.99
-                    step: 0.04
-                    minstep: 0.02
+                    step: 0.05
+                    minstep: 0.01
                 fixed: True
-                value: 0.54
+                value: 0.1800
                 LaTeX: "$q_\\mathrm{min}$"
             p: # intrinsic B/A
                 par_generator_settings:
-                    lo: 0.99
+                    lo: 0.5
                     hi: 0.999
-                    step: 0.02
-                    minstep: 0.01
+                    step: 0.2
+                    minstep: 0.05
                 fixed: True
-                value: 0.99
+                value: 0.9600
                 LaTeX: "$p_\\mathrm{min}$"
             u: # sigma_obs / sigma_intrinsic
                 par_generator_settings:
-                    lo: 0.95
-                    hi: 1.0
-                    step: 0.01
-                    minstep: 0.01
+                    lo: 0.02
+                    hi: 0.99
+                    step: 0.19
+                    minstep: 0.05
                 fixed: True
-                value: 0.9999
+                value: 0.9699
                 LaTeX: "$u_\\mathrm{min}$"
         type: "TriaxialVisibleComponent" # class name
         mge_pot: "mge.ecsv"
@@ -121,12 +97,19 @@ system_components:
         kinematics: # optional, only specified for components with kinematics
             kinset1:
                 type: GaussHermite # specifies which object class to create
-                hist_width: '2719.8215332031'
-                hist_center: '0.0000'
-                hist_bins: '203'
+                # hist_width: '2719.8215332031'
+                # hist_center: '0.0000'
+                # hist_bins: '203'
                 datafile: "gauss_hermite_kins.ecsv"  # both discr. & integrated
+                # datafile: "gauss_hermite_kins_with_pops.ecsv"  # both discr. & integrated
                 aperturefile: "aperture.dat" # integrated only
                 binfile: "bins.dat"          # integrated only
+                with_pops: False # If True, pop columns will create pop object
+        populations: # optional, only specified for components with kinematics
+            pop1:
+                datafile: "met_es.ecsv"  # both discr. & integrated
+                aperturefile: "aperture_pops.dat" # integrated only
+                binfile: "bins_pops.dat"          # integrated only
 
 system_parameters:
     ml: # M/L
@@ -135,8 +118,8 @@ system_parameters:
             hi: 9.
             step: 4.0
             minstep: 0.5
-        fixed: False
-        value: 5.
+        fixed: True
+        value: 5.4
         LaTeX: "$Y_\\mathrm{r}$"
 
 ###############################################################################
@@ -146,11 +129,15 @@ system_parameters:
 
 orblib_settings:
     nE: 6
-    logrmin: -0.101275
-    logrmax: 1.99123
+    logrmin: 0.0
+    logrmax: 2.15
     nI2: 5        # must be >= 4
     nI3: 4
     dithering: 1
+    # sampling of grid recording the intrinsic moments, default: 10, 6, 6
+    quad_nr: 10
+    quad_nth: 6
+    quad_nph: 6
     #the following values should usually not be changed
     orbital_periods: 200
     sampling: 50000
@@ -162,13 +149,13 @@ orblib_settings:
     random_seed: 4242 # integer; any value <= 0 results in stochastic seed
 
 weight_solver_settings:
-    type: "LegacyWeightSolver"
-    nnls_solver: 1
-    # type: "NNLS"
-    # nnls_solver: 'scipy'
+    # type: "LegacyWeightSolver"
+    # nnls_solver: 1
+    type: "NNLS"
+    nnls_solver: 'scipy'
     CRcut: True
     regularisation: 0
-    number_GH: 4
+    number_GH: 6
     GH_sys_err: '0.0 0.0 0.0 0.0 0.3 0.3 0.6 0.6'
     lum_intr_rel_err: 0.01
     sb_proj_rel_err: 0.02
@@ -176,28 +163,26 @@ weight_solver_settings:
                              # again based on the existing orblibs
 
 parameter_space_settings:
-    # generator_type: "LegacyGridSearch"
+    generator_type: "LegacyGridSearch"
     # generator_type: "GridWalk"
     # generator_type: "FullGrid"
-    generator_type: "SpecificModels"
     which_chi2: "kinchi2" # "chi2", "kinchi2", or "kinmapchi2"
     generator_settings:
         # For LegacyGridSearch, specify ONE of the following two settings
         #threshold_del_chi2_abs: 0.5  # absolute change in chi2 threshold
-        # threshold_del_chi2_as_frac_of_sqrt2nobs: 0.1
-        SpecificModels_mode: "cartesian" # "list" or "cartesian"
+        threshold_del_chi2_as_frac_of_sqrt2nobs: 0.1
     stopping_criteria:
-        # min_delta_chi2_abs : 0.5  # absolute "optimality tolerance"
-        # #min_delta_chi2_rel : 0.05 # relative "optimality tolerance"
-        n_max_mods : 3
-        n_max_iter : 10
+        min_delta_chi2_abs : 0.5  # absolute "optimality tolerance"
+        #min_delta_chi2_rel : 0.05 # relative "optimality tolerance"
+        n_max_mods : 30
+        n_max_iter : 2
 
 legacy_settings:
     directory: "default"
 
 io_settings: # paths can be given with or without trailing slash
-    input_directory: "NGC6278_input/"
-    output_directory: "NGC6278_output/"
+    input_directory: "FCC167_input"
+    output_directory: "FCC167_output"
     all_models_file: "all_models.ecsv"
 
 multiprocessing_settings:

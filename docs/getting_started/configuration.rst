@@ -81,6 +81,14 @@ This section lists the following attributes of the system::
   system_attributes:
       distMPc: ...        # distance in MPc
       name:  ...          # name for your galaxy
+      H:  ...             # Hubble parameter in km/s/Mpc (optional, default = 70)
+
+To model systems at redshifts :math:`z>0`, provide the angular diameter distance and the Hubble parameter at the appropriate redshift. These can be calculated using `astropy.cosmology` e.g. for :math:`z=2` in the Planck 2018 cosmology::
+
+  from astropy.cosmology import Planck18 as cosmo
+  z = 2
+  H = cosmo.H(z)
+  distMPc = cosmo.H(z)
 
 ``system_components``
 =====================
@@ -89,7 +97,6 @@ The system consists of a number of physical components - e.g. the stars, black h
 
 - ``component name``: a descriptive name, but preferably short as this will be used to refer to the component in the code (e.g. ``bh`` for black hole)
     - ``type``: a string corresponding to one of the options in in `component types`_
-    - ``contributes_to_potential``: Boolean (not currently used)
     - ``include``: Boolean, whether to include this component or not. If False, equivalent to omitting this component entirely
     - ``parameters``. The required parameters for each component are listed in `component types`_. Each  parameter must have values specified for
         - ``fixed``: Boolean, whether the parameter is to be kept fixed
@@ -99,8 +106,32 @@ The system consists of a number of physical components - e.g. the stars, black h
             - ``hi``: maximum value
             - ``step``: initial step size for parameter search
             - ``minstep``: minimum allowed stepsize for this parameter
+            - ``specific_values``: only for ``SpecificModels`` parameter generator, a list of fixed values for this parameter. If specified, then ``lo``, ``hi``, ``step``, ``minstep``, ``fixed``, and ``value`` are ignored.
         - ``logarithmic``: Boolean, whether logarithmic steps should be used for parameter search. If true, then (``value``, ``lo``, ``hi``) must all have log units.
         - ``LaTeX``: LaTeX string for this parameter to be used for plots.
+
+**Note:** the following (component type ``Chi2Ext`` and associated functionality) hasn't been tested with actual data yet and is still in a **BETA** state. Hence, the details of its implementation and API may change in future releases.
+
+There is a special component type ``Chi2Ext`` that allows external modules to calculate a :math:`\chi^2` value for DYNAMITE models. These external :math:`\chi^2` values are calculated after DYNAMITE's internal :math:`\chi^2` calculations then appended to DYNAMITE's all_models, then can be used to inform the parameter search for later model iterations. The ``Chi2Ext`` component has different settings from the ones built in DYNAMITE:
+
+- ``component name``: a descriptive name, but preferably short as this will be used to refer to the component in the code (e.g. ``gas``)
+    - ``type``: ``Chi2Ext``
+    - ``contributes_to_potential``: optional, will always be set to False (not currently used)
+    - ``include``: Boolean, whether to include this component or not. If False, equivalent to omitting this component entirely
+    - ``parameters``: Choose any parameter names as you see fit (e.g., par1, par2,...). Each parameter must have values specified for
+        - ``fixed``: Boolean, whether the parameter is to be kept fixed
+        - ``value``: an initial value for the parameter
+        - ``par_generator_settings``: settings controlling parameter search (can be omitted if ``fixed=True``). Note that if these settings are given, then ``value`` must be consistent with ``lo`` and ``hi``.
+            - ``lo``: minimum value
+            - ``hi``: maximum value
+            - ``step``: initial step size for parameter search
+            - ``minstep``: minimum allowed stepsize for this parameter
+        - ``logarithmic``: Boolean, whether logarithmic steps should be used for parameter search. If true, then (``value``, ``lo``, ``hi``) must all have log units.
+        - ``LaTeX``: LaTeX string for this parameter to be used for plots.
+    - ``ext_module``: a string which is the name of the module implementing the external :math:`\chi^2` calculation. The associated .py file should be in the Python path.
+    - ``ext_class``: a string denoting the class name in the external module implementing the external :math:`\chi^2` calculation. It will be instantiated once, at the time the config file is read.
+    - ``ext_class_args``: a dict holding the class parameters, can be empty (``{}``). Example: if ``ext_class_args: {arg1:47, arg2:"val2"}`` and ``ext_class: Chi2``, it will be instantiated via ``Chi2(arg1=47, arg2="val2")``.
+    - ``ext_chi2``: a string which is the name of the ``ext_class`` method returning :math:`\chi^2` as a single ``float``. In DYNAMITE, it will be called after weight solving, passing the entire current parameter set as a dict, e.g. ``{a-bh:<val1>, m-bh:<val2>, ... ,p-stars:<valx>, q-stars:<valy>, ..., par1-gas:<valg1>, par2-gas:<valg2>}``.
 
 ``component types``
 ^^^^^^^^^^^^^^^^^^^^
@@ -118,7 +149,7 @@ The following types of component are available, listed with their parameters:
 - ``NFW``
     - ``c``: concentration parameter [:math:`R_{200}` / NFW-scale-length]
     - ``f``: dark matter fraction [:math:`M_{200}` / total-stellar-mass]
-- ``NFW_m200_c``, an NFW halo with mass-concentration from `Dutton & Maccio (2014) <https://ui.adsabs.harvard.edu/abs/2014MNRAS.441.3359D/abstract>`_
+- ``NFW_m200_c``, an NFW halo with the [:math:`z=0`] mass-concentration relation from `Dutton & Maccio (2014) <https://ui.adsabs.harvard.edu/abs/2014MNRAS.441.3359D/abstract>`_
     - ``f``: dark matter fraction [:math:`M_{200}` / total-stellar-mass]
 - ``Hernquist``
     - ``rhoc``: central density [:math:`M_\odot/\mathrm{km}^3`]
@@ -132,9 +163,11 @@ The following types of component are available, listed with their parameters:
     - ``c``: concentration parameter [:math:`R_{200}` / NFW-scale-length]
     - ``Mvir``: virial mass :math:`M_{200}` [:math:`M_\odot`]
     - ``gam``: AKA gamma, the inner logarithmic density slope, must be :math:`\leq 1`
+- ``Chi2Ext`` (**BETA**), for external :math:`\chi^2` calculations
+    - Choose any parameter names as you see fit (e.g., ``par1``, ``par2``,...)
 
 .. note::
-  currently, there are only two combinations of component types that are valid. This is to ensure compatibility with the Fortran implementation of the orbit integrator. Later implementations may offer more flexibility. The current valid combinations of components are:
+  currently, there are limited combinations of component types that are valid. This is to ensure compatibility with the Fortran implementation of the orbit integrator. Later implementations may offer more flexibility. The current valid combinations of components are:
 
   - one ``Plummer`` component
       - representing the black hole
@@ -143,6 +176,8 @@ The following types of component are available, listed with their parameters:
       - representing the stars
   - either no dark halo or exactly one out of [``NFW``, ``NFW_m200_c``, ``Hernquist``, ``TriaxialCoredLogPotential``, ``GeneralisedNFW``]
       - representing the dark halo
+  - either no or one ``Chi2Ext`` component
+      - calculating the external additive :math:`\chi^2`
 
 .. _observed_data:
 
@@ -154,18 +189,23 @@ The ``TriaxialVisibleComponent`` represents the galaxy's stars, and therefore ha
 - ``TriaxialVisibleComponent``
     - ``mge_lum``: string, filename for the MGE of the projected luminosity density, with intensity units of :math:`L_\odot \mathrm{pc}^{-2}`.
     - ``mge_pot``: string, filename for the MGE of the projected mass density, with intensity units of :math:`M_\odot \mathrm{pc}^{-2}`. If you assume that stellar-mass follows stellar-light, then the files ``mge_lum`` and ``mge_pot`` will be identical.
-    - ``kinematics``
+    - ``kinematics``:
         - ``name_of_the_kinematic_set``: a descriptive name, best without spaces as it will be part of the kinematic plot file name.
             - ``type``: type of kinematics - either ``GaussHermite`` or ``BayesLOSVD``
-            - ``weight``: float, weighting applied to this kinematic set in chi2 calculation; weights don't need to add up to 1.0.
             - ``datafile``: string, filename for the kinematics ECSV data file
             - ``aperturefile``: string, filename of the aperture file for this kinematic set
             - ``binfile``: string, filename of the bin file for this kinematic set
-            - ``hist_width``: *optional*, float or 'default', the width (i.e. min. to max. value) of the velocity histogram for storing orbits. The default option is a width slightly wider than that of the observed kinematics.
+            - ``hist_width``: *optional*, float or 'default', the width (i.e. min. to max. value) of the velocity histogram for storing orbits. The default values are :math:`2\max(|v|+3\sigma_v)` for ``GaussHermite`` and :math:`4\max(|\min(v)|,|\max(v)|)` for ``BayesLOSVD``, respectively.
             - ``hist_center``: *optional*, float or 'default', the center of the velocity histogram for storing orbits. The default option is 0.
             - ``hist_bins``: *optional*, int or 'default', the number of bins in the velocity histogram for storing orbits. The default option gives about 10 times better velocity sampling than the data.
-        - ``name_of_next_kinematic_set`` (if any...)
+            - ``with_pops``: *optional*, Boolean. Only relevant if population data exists in this kinematic set's ``datafile``. If True, the population data is used; if False, the population data is ignored. The default is False.
+        - ``name_of_next_kinematic_set``: (if any...)
             - ...
+    - ``populations``: (optional, BETA FUNCTIONALITY)
+        - ``name_of_the_population``: a descriptive name, best without spaces. Note that currently only one population dataset can be specified.
+            - ``datafile``: string, filename for the population ECSV data file
+            - ``aperturefile``: string, filename of the aperture file for this population set
+            - ``binfile``: string, filename of the bin file for this population set
 
 For more information on the input file formats, please refer to the :ref:`input_files` section of the Overview page.
 
@@ -271,6 +311,7 @@ Settings relevant for solving for orbital weights.
         - ``type = NNLS`` then ``nnls_solver`` can be one of the strings,
             - ``scipy`` to use the `scipy NNLS function <https://docs.scipy.org/doc/scipy/reference/generated/scipy.optimize.nnls.html>`_
             - ``cvxopt`` to use an implementation using the `CVXOPT <https://cvxopt.org/>`_ package
+    - ``maxiter_factor``: integer, only used if ``type = NNLS`` and ``nnls_solver = scipy``. This is a factor multiplied by the number of orbits to give the maximum number of iterations for the scipy NNLS solver. The default value is 3, which is also the default for scipy's NNLS implementation.
     - ``lum_intr_rel_err``: float, typical 0.01, the systematic error (fraction) applied to the intrinsic luminosity constraint
     - ``sb_proj_rel_err``: float, typical 0.01, the systematic error (fraction) applied to the projected surface brightness constraint
     - ``CRcut``: Boolean, default False, whether to use the ``CRcut`` solution for the counter-rotating orbit problem. See `Zhu et al. 2018 <https://ui.adsabs.harvard.edu/abs/2018MNRAS.473.3000Z/abstract>`_ for more details.
@@ -279,14 +320,14 @@ If any kinematics have of type ``GaussHermite``, the following additional settin
 
 - ``weight_solver_settings``
     - ``number_GH``: integer, the highest order kinematics to be used when solving for orbital weights. Note that this can be different from the order of the input data you provide. If ``number_GH`` is lower than in the data, then higher order kinematics are ignored while weight solving. Alternatively, if ``number_GH`` is higher than in the data, then we (fictitiously) assume that the higher-order kinematics were observed to be zero, with a *nonzero* systematic error that must be specified in the ``GH_sys_err`` setting. The latter option can be considered as a form of regularisation, penalising solutions where higher-order kinematics (although unobserved) reach unrealistically high values.
-    - ``GH_sys_err``: a string of floats, must contain at least ``number_GH`` entries. These are systematic errors applied to ``V``, ``sigma``, ``h3``, ..., ``hN``. During weight solving, these systematic errors are added in quadrature to the random errors which you provide in the data file. If ``number_GH`` is larger than the kinematic order of the observed data, then the corresponding systematic errors must be > 0 and can be interpreted as a typical value for higher order kinematics; models with higher-order kinematics which exceed this typical value will be penalised.
+    - ``GH_sys_err``: a string of floats, must contain at least ``number_GH`` entries. These are systematic errors applied to ``V``, ``sigma``, ``h3``, ..., ``hN``. If existing, these systematic errors are added in quadrature to the random errors which you provide in the data file and the new errors are used throughout DYNAMITE. If ``number_GH`` is larger than the kinematic order of the observed data, then the corresponding systematic errors must be > 0 and can be interpreted as a typical value for higher order kinematics; models with higher-order kinematics which exceed this typical value will be penalised.
 
-If any kinematic set has type ``BayesLOSVD``, then the ``weight_solver_settings`` must have type ``NNLS``, and no additional settings are required.
+If any kinematic set has type ``BayesLOSVD``, then the ``weight_solver_settings`` must state ``type: "NNLS"``.
 
 If DYNAMITE shall recover from an unsuccessful weight solving attempt, the following option can be used:
 
 - ``weight_solver_settings``
-    - ``reattempt_failures``: if True, DYNAMITE will use a model's existing orblibs from an earlier run to reattempt weight solving.
+    - ``reattempt_failures``: if True, DYNAMITE will use a model's existing orblib from an earlier run to reattempt weight solving. Please refer to the ``AllModels.update_model_table()`` :ref:`API documentation <model>` for more details on how DYNAMITE deals with incomplete or partially completed models upon restart.
 
 ``parameter_space_settings``
 ============================
@@ -298,15 +339,19 @@ Settings relevant for parameter search.
         - ``GridWalk``: Start at the initial point. Start the iteration: (i) find the model with the minimum :math:`\chi^2`, (ii) for each free parameter, seed new models by independently take a step :math:`\pm 1` of size ``step`` (cartesian grid in one step size, so if 2 parameters are free, 8 new models will be created). Repeat until :math:`\chi^2` is improved by less than min_delta_chi2. This may result in a large number of models.
         - ``LegacyGridSearch``: Start at the initial point. Start the iteration: (i) find all models with :math:`|\chi^2 - \chi_\mathrm{min}^2|` within the threshold (specified with ``threshold_del_chi2_XXX``), (ii) for each model within the threshold, seed new models by independently take a step :math:`\pm 1` of size ``step`` (i.e. as done for ``GridWalk``).  If no new models are seeded at the end of an iteration, then divide all parameter stepsizes by two till their specified ``minstep`` are reached.
         - ``FullGrid``: Create a *full* grid, i.e. a Cartesian grid in all free parameters, with bounds ``lo/hi`` and stepsize ``step``. **Warning**: If several (>3) parameters are free, this will result in a large number of models.
+        - ``SpecificModels``: Create a set of specific models, which are specified in the parameters' ``value`` (single value) or ``par_generator_settings:specific_values`` (multiple values) attributes in the configuration file. This is useful for testing specific parameter combinations, or for running a set of models around a specific point in parameter space. In the configuration file, the ``parameter_space_settings:generator_settings:SpecificModels_mode`` determines whether multiple parameter lists are combined element-wise or whether the Cartesian product of all parameter lists is used. This parameter generator will create all models in a single iteration and then stop, ignoring the stopping criteria.
     - ``which_chi2``: string, specifies which :math:`\chi^2` value to consider when generating new parameters, must be one of the following:
         - ``kinchi2``: this includes contributions from only the kinematics. If ``GaussHermite`` kinematics are used then this is includes terms from all Hermite coefficients :math:`h_1, h2, h3, ..., h_N`. If ``BayesLOSVD`` kinematics are used, then this includes contributions from all LOSVD bins.
         - ``chi2``: this includes contributions from the observed surface density, de-projected 3D density, and kinematics (as specified above).
         - ``kinmapchi2``: the :math:`\chi^2` directly calculated from the ``GaussHermite`` kinematic maps (not available for ``BayesLOSVD`` kinematics).
-    - ``generator_settings``: if ``generator_type = LegacyGridSearch``, then one of the following two settings must be set. These are the :math:`|\chi^2|` thresholds used for in ``LegacyGridSearch``,
-        - ``threshold_del_chi2_abs``: an absolute :math:`|\chi^2|` threshold
-        - ``threshold_del_chi2_as_frac_of_sqrt2nobs``: a threshold given as a fraction of :math:`\sqrt{2N_\mathrm{obs}}` where :math:`N_\mathrm{obs}` is the total number of kinematic observations, which is equal to the number of spatial apertures multiplied by (i) ``number_GH`` if ``GaussHermite`` kinematics are used, or (ii) the number of LOSVD bins if ``BayesLOSVD`` kinematics are used.
+    - ``generator_settings``:
+        - If ``generator_type = LegacyGridSearch``, then one of the following two settings must be set. These are the :math:`|\chi^2|` thresholds used for in ``LegacyGridSearch``,
+            - ``threshold_del_chi2_abs``: an absolute :math:`|\chi^2|` threshold
+            - ``threshold_del_chi2_as_frac_of_sqrt2nobs``: a threshold given as a fraction of :math:`\sqrt{2N_\mathrm{obs}}` where :math:`N_\mathrm{obs}` is the total number of kinematic observations, which is equal to the number of spatial apertures multiplied by (i) ``number_GH`` if ``GaussHermite`` kinematics are used, or (ii) the number of LOSVD bins if ``BayesLOSVD`` kinematics are used.
+        - If ``generator_type = SpecificModels``, then the following needs to be set,
+            - ``SpecificModels_mode``: determines how models are constructed. ``"list"`` selects parameter values element-wise. All parameters' ``specific_values`` lists must be of equal length (or empty if their respective ``value`` entry is to be used). ``"cartesian"`` constructs the Cartesian product of fixed parameter values. The parameters' ``specific_values`` lists don't need to be of equal length in that case (may result in a large number of models).
     - ``stopping_criteria``: all of the following must be specified. If any of the criteria are met, then the parameter generation will stop:
-        - One of ``min_delta_chi2_abs`` or ``min_delta_chi2_rel`` must be set: float, absolute or relative tolerance for ending the parameter search. If an iteration does not improve the minimum chi2 by this threshold, no new iteration will be performed.
+        - One of ``min_delta_chi2_abs`` or ``min_delta_chi2_rel`` must be set: float, absolute or relative tolerance for ending the parameter search. If an iteration does not improve the minimum chi2 by this threshold, no new iteration will be performed. In case new models shall be force-created incdependently of :math:`\chi^2`, negative values for these parameters are allowed.
         - ``n_max_mods``: int, maximum number of models desired
         - ``n_max_iter``: int, maximum number of iterations to be run. The iteration a model was created in is listed under the ``which_iter`` column of the ``all_models`` table, and these are indexed from ``0,... n_max_iter-1``. The ``n_max_iter`` setting controls the total *cumulative* number of iterations to run i.e. if you specify ``n_max_iter=10`` and there are existing models which ``which_iter=9``, then no new iterations will be run. Note that the first two iterations are always run together i.e. whether you specify ``n_max_iter=1`` or ``n_max_iter=2``, iterations 0 and 1 will both be run.
 
@@ -320,6 +365,8 @@ Settings specifying the location of input and output directory names. Paths are 
         output_directory: "output/"         # directory (will be created) for output
         all_models_file: "all_models.ecsv"  # filename for the summary file of models run so far
 
+.. _multiprocessing_settings:
+
 ``multiprocessing_settings``
 ============================
 
@@ -331,7 +378,7 @@ Settings for multiprocessing. Models can be evaluated in parallel, with the numb
       orblibs_in_parallel: True             # calculate tube and box orbits in parallel (default: False)
       modeliterator: 'SplitModelIterator'   # optional (default: 'ModelInnerIterator')
 
-Due to very different CPU and memory consumption of orbit integration and weight solving, there are two different settings: while orbit integration will use ``ncpus``, weight solving will use ``ncpus_weights`` parallel processes, with ``ncpus`` ≥ ``ncpus_weights`` in general. Note that ``ncpus_weights`` will default to ``ncpus`` if not specified. Currently, only the ``SplitModelIterator`` model iterator and recovering from an unsuccessful weight solving attempt (``reattempt_failures=True``) use the ``ncpus_weights`` setting.
+Due to very different CPU and memory consumption of orbit integration and weight solving, there are two different settings: while orbit integration and (optionally) integrating intrinsic and projected masses will use ``ncpus``, weight solving will use ``ncpus_weights`` parallel processes, with ``ncpus`` ≥ ``ncpus_weights`` in general. Note that ``ncpus_weights`` will default to ``ncpus`` if not specified. Currently, only the ``SplitModelIterator`` model iterator and recovering from an unsuccessful weight solving attempt (``reattempt_failures=True``) use the ``ncpus_weights`` setting.
 
 If ``orblibs_in_parallel`` is set to ``False``, DYNAMITE will first integrate the tube orbits and then the box orbits. If it is set to ``True``, the tube and box orbits will be integrated in parallel, which will use 2 parallel processes per model.
 

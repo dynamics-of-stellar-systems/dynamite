@@ -27,7 +27,9 @@ def run_user_test():
     # read configuration
     # this file uses the old 'LegcayWeight' weight solver
     fname = 'reimplement_nnls_config1.yaml'
-    c1 = dyn.config_reader.Configuration(fname, reset_logging=True)
+    c1 = dyn.config_reader.Configuration(fname,
+                                         reset_logging=True,
+                                         reset_existing_output=True)
     remove_existing_output(c1, remove_orblibs=True)
 
     # run the models
@@ -83,7 +85,7 @@ def run_user_test():
                   s=40,
                   c=c1amt['kinchi2'])
     ax[1].set_xscale('log')
-    ax[1].set_title('LegacyWeightSolver $\chi^2$')
+    ax[1].set_title(r'LegacyWeightSolver $\chi^2$')
     ax[1].set_xlabel('$f_{DM}$')
     ax[1].set_ylabel('ML')
     # plot chi2 grid using new solver
@@ -98,9 +100,9 @@ def run_user_test():
                             rtol=1e-10,
                             atol=1e-6)
     if all_close:
-        ax[2].set_title('new $\chi^2$ ARE IDENTICAL')
+        ax[2].set_title(r'new $\chi^2$ ARE IDENTICAL')
     else:
-        ax[2].set_title('new $\chi^2$ ARE NOT IDENTICAL')
+        ax[2].set_title(r'new $\chi^2$ ARE NOT IDENTICAL')
     ax[2].set_xlabel('$f_{DM}$')
     ax[2].set_ylabel('ML')
     fig.tight_layout()

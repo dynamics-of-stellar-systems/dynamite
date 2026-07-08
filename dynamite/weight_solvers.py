@@ -12,8 +12,8 @@ try:
 except ModuleNotFoundError:
     pass
 
+from dynamite import constants
 from dynamite import analysis
-from dynamite import physical_system as physys
 from dynamite import kinematics as dyn_kin
 
 
@@ -26,8 +26,7 @@ class WeightSolver(object):
     Parameters
     ----------
     config : a ``dyn.config_reader.Configuration`` object
-    directory_with_ml : string
-        model directory with the ml extension
+    model : a ``dyn.model.Model`` object
     CRcut : Bool, default False
         whether to use the `CRcut` solution for the counter-rotating orbit
         problem. See Zhu et al. 2018 for more. If `CRcut` is given in the
@@ -36,17 +35,18 @@ class WeightSolver(object):
 
     """
 
-    def __init__(self, config, directory_with_ml, CRcut=False):
-        self.logger = logging.getLogger(f"{__name__}.{__class__.__name__}")
+    def __init__(self, config, model, CRcut=False):
+        self.logger = logging.getLogger(f'{__name__}.{__class__.__name__}')
         self.config = config
         self.system = config.system
         self.settings = config.settings.weight_solver_settings
-        self.direc_with_ml = directory_with_ml
-        self.direc_no_ml = directory_with_ml[: directory_with_ml[:-1].rindex("/") + 1]
-        if "CRcut" in self.settings.keys():
-            CRcut = self.settings["CRcut"]
+        self.model = model
+        self.direc_with_ml = model.directory
+        self.direc_no_ml = model.directory_noml
+        if 'CRcut' in self.settings.keys():
+            CRcut = self.settings['CRcut']
         self.CRcut = CRcut
-        self.weight_file = f"{self.direc_with_ml}orbit_weights.ecsv"
+        self.weight_file = f'{self.direc_with_ml}{constants.weight_file}'
 
     def solve(self, orblib, ignore_existing_weights=False):
         """Template solve method
@@ -106,28 +106,24 @@ class WeightSolver(object):
             squared residuals of V, sigma, and GH coefficients from h_3 to h_N
 
         """
-        stars = self.system.get_component_from_class(physys.TriaxialVisibleComponent)
-        if any(k.type != "GaussHermite" for k in stars.kinematic_data):
-            self.logger.info(
-                "'GaussHermite' kinematics required for "
-                "kinmapchi2. Value set to nan."
-            )
-            return float("nan")  # #######################################
-        number_gh = self.settings["number_GH"]
-        mod = self.config.all_models.get_model_from_directory(self.direc_with_ml)
-        chi2_kinmap = 0.0
+        stars = self.system.get_unique_triaxial_visible_component()
+        if any(k.type != 'GaussHermite' for k in stars.kinematic_data):
+            self.logger.info("All kinematics must be 'GaussHermite' for "
+                             "kinmapchi2. Value set to nan.")
+            return float('nan')  # #######################################
+        number_gh = self.settings['number_GH']
+        chi2_kinmap = 0.
         for kin_set, kin_data in enumerate(stars.kinematic_data):
             n_gh = min(number_gh, kin_data.max_gh_order)
             coefs = ["v", "sigma"] + [f"h{i}" for i in range(3, n_gh + 1)]
             # get the model's projected masses=flux (unused) and kinematic data
-            a = analysis.Analysis(config=self.config, model=mod, kin_set=kin_set)
-            model_gh_coef = a.get_gh_model_kinematic_maps(
-                v_sigma_option="fit", weights=weights
-            )
+            a=analysis.Analysis(config=self.config,
+                                model=self.model,
+                                kin_set=kin_set)
+            model_gh_coef = a.get_gh_model_kinematic_maps(v_sigma_option='fit',
+                                                          weights=weights)
             # get the observed projected masses (unused) and kinematic data
-            kinematics_data = kin_data.get_data(
-                self.settings, apply_systematic_error=False
-            )
+            kinematics_data = kin_data.get_data()
             # calculate chi2_kinmap
             for coef in coefs:
                 obs_val = np.array(kinematics_data[coef])
@@ -169,6 +165,16 @@ class LegacyWeightSolver(WeightSolver):
         self.ml = float(ml_str[:-1]) if ml_str[-1] == "/" else float(ml_str)
         self.fname_nn_kinem = self.direc_with_ml + "nn_kinem.out"
         self.fname_nn_nnls = self.direc_with_ml + "nn_nnls.out"
+        # check the format of the orbit library files
+        # check == True means there are 2 orblib_* and 2 orblibbox_* files
+        # check == False means there are only two orblib files,
+        # orblib.dat.bz2 and orbibbox.dat.bz2 (legacy behavior)
+        pth = self.direc_no_ml + "datfil/"
+        check = os.path.isfile(f"{pth}orblib_qgrid.dat.bz2") \
+                and os.path.isfile(f"{pth}orblib_losvd_hist.dat.bz2") \
+                and os.path.isfile(f"{pth}orblibbox_qgrid.dat.bz2") \
+                and os.path.isfile(f"{pth}orblibbox_losvd_hist.dat.bz2")
+        self.legacy_files = False if check else True
         # prepare fortran input file for nnls
         self.copy_kinematic_data()
         self.create_fortran_input_nnls()
@@ -199,9 +205,8 @@ class LegacyWeightSolver(WeightSolver):
             # make a dummy 'kins_combined' object ...
             kins_combined = copy.deepcopy(kinematics[0])
             # ...replace data attribute with stacked table of all kinematics
-            kins_combined.data = table.vstack(
-                [k.get_data(self.settings) for k in kinematics]
-            )
+            kins_combined.data = table.vstack([k.get_data()
+                                               for k in kinematics])
             kins_combined.n_apertures = len(kins_combined.data)
             kins_combined.max_gh_order = self.settings["number_GH"]
             old_filename = self.direc_no_ml + "infil/kin_data_combined.dat"
@@ -222,13 +227,12 @@ class LegacyWeightSolver(WeightSolver):
         # When varying ml the LOSVD is scaled - no new orbits are calculated.
         # Therefore we need to know the ml that was used for the orbit library.
         # The scaling factor is sqrt(model_ml/original_orblib_ml).
-        mod = self.config.all_models.get_model_from_directory(self.direc_with_ml)
-        ml_scaling_factor = self.config.all_models.get_model_velocity_scaling_factor(
-            model=mod
-        )
-        # -------------------
-        # write nn.in
-        # -------------------
+        ml_scaling_factor = \
+            self.config.all_models.get_model_velocity_scaling_factor(
+                model=self.model)
+        #-------------------
+        #write nn.in
+        #-------------------
         n_kin = len(self.system.get_unique_triaxial_visible_component().kinematic_data)
 
         if n_kin == 1:
@@ -237,40 +241,23 @@ class LegacyWeightSolver(WeightSolver):
         else:
             kin_data_file = "kin_data_combined.dat"
 
-        text = (
-            "infil/parameters_pot.in"
-            + "\n"
-            + str(self.settings["regularisation"])
-            + "                                  [ regularization strength, 0 = no regularization ]"
-            + "\n"
-            + f"ml{self.ml:{self.sformat}}/nn\n"
-            + "datfil/mass_qgrid.dat"
-            + "\n"
-            + "datfil/mass_aper.dat"
-            + "\n"
-            + str(self.settings["number_GH"])
-            + "	                           [ # of GH moments to constrain the model]"
-            + "\n"
-            + "infil/"
-            + kin_data_file
-            + "\n"
-            + str(self.settings["GH_sys_err"])
-            + "    [ systemic error of v, sigma, h3, h4... ]"
-            + "\n"
-            + str(self.settings["lum_intr_rel_err"])
-            + "                               [ relative error for intrinsic luminosity ]"
-            + "\n"
-            + str(self.settings["sb_proj_rel_err"])
-            + "                               [ relative error for projected SB ]"
-            + "\n"
-            + str(ml_scaling_factor)
-            + "                                [ scale factor related to M/L, sqrt( (M/L)_k / (M/L)_ref ) ]"
-            + "\n"
-            + f"datfil/orblib_{self.ml}.dat\n"
-            + f"datfil/orblibbox_{self.ml}.dat\n"
-            + str(self.settings["nnls_solver"])
-            + "                                  [ nnls solver ]"
-        )
+        text='infil/parameters_pot.in' +'\n' + \
+        str(self.settings['regularisation'])   + '                                  [ regularization strength, 0 = no regularization ]' +'\n'  + \
+        f'ml{self.ml:{self.sformat}}/nn\n' + \
+        'datfil/mass_qgrid.dat' +'\n' + \
+        'datfil/mass_aper.dat' +'\n' + \
+        str(self.settings['number_GH']) + '	                           [ # of GH moments to constrain the model]' +'\n' + \
+        'infil/'+kin_data_file+'\n' + \
+        str(self.settings['lum_intr_rel_err']) + '                               [ relative error for intrinsic luminosity ]' +'\n' + \
+        str(self.settings['sb_proj_rel_err']) + '                               [ relative error for projected SB ]' + '\n' + \
+        str(ml_scaling_factor)  + '                                [ scale factor related to M/L, sqrt( (M/L)_k / (M/L)_ref ) ]' + '\n'
+        if self.legacy_files:
+            text += 2 * f'datfil/orblib_{self.ml}.dat\n' + \
+                    2 * f'datfil/orblibbox_{self.ml}.dat\n'  # yes, really...
+        else:
+            for f in '_qgrid', '_losvd_hist', 'box_qgrid', 'box_losvd_hist':
+                text += f'datfil/orblib{f}_{self.ml}.dat\n'
+        text += str(self.settings['nnls_solver']) + '                                  [ nnls solver ]'
 
         nn_file = open(self.direc_no_ml + f"ml{self.ml:{self.sformat}}/nn.in", "w")
         nn_file.write(text)
@@ -386,6 +373,7 @@ class LegacyWeightSolver(WeightSolver):
             # kinmapchi2, and save to the weight file.
             weights, chi2_tot, chi2_kin = self.get_weights_and_chi2_from_orbmat_file()
             chi2_kinmap = self.chi2_kinmap(weights)
+            # save the output
             results = table.Table()
             results["weights"] = weights
             results.meta = {
@@ -541,11 +529,10 @@ class LegacyWeightSolver(WeightSolver):
         chi2_vector = (np.dot(A, weights) - b) ** 2.0
         chi2_tot = np.sum(chi2_vector)
 
+        stars = self.system.get_unique_triaxial_visible_component()
         if self.system.is_bar_disk_system():
-            bardisk = self.system.get_unique_bar_component()
-            mge = bardisk.mge_lum + bardisk.disk_lum
+            mge = stars.mge_lum + stars.disk_lum
         else:
-            stars = self.system.get_unique_triaxial_visible_component()
             mge = stars.mge_lum
 
         intrinsic_masses = mge.get_intrinsic_masses_from_file(self.direc_no_ml)
@@ -554,19 +541,6 @@ class LegacyWeightSolver(WeightSolver):
         n_apertures = len(projected_masses)
         chi2_kin = np.sum(chi2_vector[1 + n_intrinsic + n_apertures :])
         return weights, chi2_tot, chi2_kin
-
-    # def chi2_kinmap(self):
-    #     """
-    #     Returns the chi2 directly calculated from the kinematic maps.
-
-    #     Returns
-    #     -------
-    #     chi2_kinmap : float
-    #         chi2 directly calculated from the kinematic maps.
-
-    #     """
-    #     _, chi2_kinmap = self.read_chi2()
-    #     return chi2_kinmap
 
     def read_chi2(self):
         """Read chi2 values from `nn_kinem.out`
@@ -597,8 +571,8 @@ class LegacyWeightSolver(WeightSolver):
         a = self.__read_file_element(fname, [1, 1], [1, 2])
         ngh = np.int64(a[1])  # number of 'observables'
         nobs = np.int64(a[1])
-        nvel = np.int64(a[0])
-        ncon = np.int64(a[0])
+        # nvel = np.int64(a[0])
+        # ncon = np.int64(a[0])
         rows = 3 + np.arange(nobs)  # rows 1- 9
         cols = 3 + np.zeros(nobs, dtype=int)  # skip over text
         fname = self.fname_nn_nnls
@@ -676,50 +650,26 @@ class NNLS(WeightSolver):
                 - ``self.intrinsic_mass_error``
                 - ``self.projected_masses``
                 - ``self.projected_mass_error``
+                - ``self.total_mass``
+                - ``self.total_mass_error``
                 -   constraint counts ``self.n_intrinsic``, ``self.n_apertures``
                     and ``self.n_mass_constraints``
 
         """
         if self.system.is_bar_disk_system():
-            bardisk = self.system.get_unique_bar_component()
-            mge = bardisk.mge_lum + bardisk.disk_lum
+            mge = self.system.get_unique_bar_component().mge_lum_tot
         else:
-            stars = self.system.get_unique_triaxial_visible_component()
-            mge = stars.mge_lum
-
+            mge = self.system.get_unique_triaxial_visible_component().mge_lum
         # intrinsic mass
-        intrinsic_masses = mge.get_intrinsic_masses_from_file(self.direc_no_ml)
-        self.intrinsic_masses = intrinsic_masses
-        self.intrinsic_mass_error = self.settings["lum_intr_rel_err"]
+        self.intrinsic_masses = mge.get_intrinsic_masses(self.model,
+                                                         nocalc=True)[1]
+        self.intrinsic_mass_error = self.settings['lum_intr_rel_err']
         # projected
-        projected_masses = mge.get_projected_masses_from_file(self.direc_no_ml)
-        if kins and pops:
-            self.projected_masses = projected_masses
-        elif kins:
-            self.projected_masses = projected_masses[: sum(n_kin_ap)]
-        elif pops:
-            i_kins = set(
-                p.kin_aper  # collect all apertures used by pops
-                for p in stars.population_data
-                if p.kin_aper is not None
-            )
-            cum_n_kin_ap = np.cumsum(n_kin_ap)
-            pr_masses = []
-            for i_kin in i_kins:  # add proj ms for kin apertures used by pops
-                i_ap0 = cum_n_kin_ap[i_kin - 1] if i_kin > 0 else 0
-                pr_masses += projected_masses[i_ap0 : cum_n_kin_ap[i_kin]]
-            pr_masses += projected_masses[sum(n_kin_ap) :]
-            self.projected_masses = pr_masses
-        else:
-            txt = "Specify kins or pops."
-            self.logger.error(txt)
-            raise ValueError(txt)
-        self.projected_mass_error = self.settings["sb_proj_rel_err"]
+        self.projected_masses = mge.get_projected_masses(nocalc=True)
+        self.projected_mass_error = self.settings['sb_proj_rel_err']
         # total mass constraint
-        self.total_mass = np.sum(intrinsic_masses)
-        self.total_mass_error = np.min(
-            [self.intrinsic_mass_error / 10.0, np.abs(1.0 - self.total_mass)]
-        )
+        self.total_mass = np.sum(self.intrinsic_masses)
+        self.total_mass_error = max(abs(1. - self.total_mass), 1e-8)
         # enumerate the mass constriants
         n_intrinsic = np.prod(self.intrinsic_masses.shape)
         n_apertures = len(self.projected_masses)
@@ -743,16 +693,14 @@ class NNLS(WeightSolver):
 
         """
         # construct vector of observed constraints (con), errors (econ) and
-        # matrix or orbit propertites (orbmat)
+        # matrix of orbit propertites (orbmat)
         con = np.zeros(self.n_mass_constraints)
         econ = np.zeros(self.n_mass_constraints)
         orbmat = np.zeros((self.n_mass_constraints, orblib.n_orbs))
         # total mass
         con[0] = self.total_mass
         econ[0] = self.total_mass_error
-        if econ[0] <= 0.0:
-            econ[0] = con[0] * 0.01
-        orbmat[0, :] = 1.0
+        orbmat[0,:] = 1.
         # intrinsic mass
         idx = slice(1, 1 + self.n_intrinsic)
         con[idx] = np.ravel(self.intrinsic_masses)
@@ -770,11 +718,12 @@ class NNLS(WeightSolver):
         orbmat[idx, :] = np.hstack(orblib.projected_masses).T
         # add kinematics to con, econ, orbmat
         stars = self.system.get_unique_triaxial_visible_component()
-        kins_and_orb_losvds = zip(stars.kinematic_data, orblib.losvd_histograms)
+        kins_and_orb_veldist = zip(stars.kinematic_data, orblib.vel_histograms)
         idx_ap_start = 0
-        for kins, orb_losvd in kins_and_orb_losvds:
+        for (kins, orb_veldist) in kins_and_orb_veldist:
+            hist_dim = len(orb_veldist.y[0,...,0].shape)  # 1D or 2D vel hists
             # pick out the projected masses for this kinematic set
-            n_ap = kins.n_spatial_bins  # OK for both GaussHermite & BayesLOSVD
+            n_ap = kins.n_spatial_bins  # OK for all kinematics
             idx_ap_end = idx_ap_start + n_ap
             prj_mass_i = self.projected_masses[idx_ap_start:idx_ap_end]
             idx_ap_start += n_ap
@@ -783,15 +732,17 @@ class NNLS(WeightSolver):
             obs_kins, obs_kins_err = tmp
             obs_kins = (obs_kins.T * prj_mass_i).T
             obs_kins_err = (obs_kins_err.T * prj_mass_i).T
-            # set the first and last point in the velocity histograms to zero
-            # to mimic what is done in `triaxnnnls_CRcut.f90`
-            orb_losvd.y[:, 0, :] = 0.0
-            orb_losvd.y[:, -1, :] = 0.0
+            if hist_dim == 1:  # Do we need this for proper motions (2d hists)?
+                # set the first and last point in the velocity histograms to
+                # zero to mimic what is done in `triaxnnnls_CRcut.f90`
+                orb_veldist.y[:,0,:] = 0.
+                orb_veldist.y[:,-1,:] = 0.
             # transform orblib to same parameterisation as observed kinematics
-            orb_kins = kins.transform_orblib_to_observables(orb_losvd, self.settings)
+            orb_kins = kins.transform_orblib_to_observables(orb_veldist,
+                                                            self.settings)
             if self.CRcut:
                 # note: this only has an effect if type(kins) is GaussHermite
-                orb_kins = self.apply_CR_cut(kins, orb_losvd, orb_kins)
+                orb_kins = self.apply_CR_cut(kins, orb_veldist, orb_kins)
             # append constraints/errors/orbits to con/econ/orbmat
             obs_kins = np.ravel(obs_kins)
             con = np.concatenate((con, obs_kins))
@@ -800,9 +751,25 @@ class NNLS(WeightSolver):
             orb_kins = np.reshape(orb_kins, (orblib.n_orbs, -1))
             orbmat = np.vstack((orbmat, orb_kins.T))
         # divide constraint vector and matrix by errors
-        rhs = con / econ
-        orbmat = (orbmat.T / econ).T
-        return orbmat, rhs
+        if np.any(con[econ==0] != 0):
+            txt = 'Weight solving fail: zero errors for nonzero constraints!'
+            self.logger.error(txt)
+            raise ValueError(txt)
+        # previous statement: rhs = con/econ, np.divide has the "where" clause
+        rhs = np.zeros_like(con)
+        np.divide(con, econ, out=rhs, where=econ!=0)  # con = econ = 0 is ok
+        if np.any(np.ravel(orbmat[econ==0]) != 0):
+            err_loc = np.nonzero(((orbmat != 0).T * (econ == 0)).T)
+            txt = f'Weight solving problem in {self.direc_with_ml}: ' \
+                  'zero errors for nonzero matrix coefficients at ' \
+                  f'[constraint no, orbit no] = {err_loc}! Matrix value(s) ' \
+                  f'there ({orbmat[err_loc]}) will be considered zero.'
+            self.logger.warning(txt)
+            orbmat[err_loc] = 0
+        # previous statement: orbmat = (orbmat.T/econ).T, np.divide has "where"
+        orbmat = orbmat.T
+        np.divide(orbmat, econ, out=orbmat, where=econ!=0)
+        return orbmat.T, rhs
 
     def apply_CR_cut(self, kins, orb_losvd, orb_gh):
         r"""apply `CRcut`
@@ -828,9 +795,9 @@ class NNLS(WeightSolver):
         if type(kins) is not dyn_kin.GaussHermite:
             return orb_gh
         orb_mu_v = orb_losvd.get_mean()
-        kins_data = kins.get_data(self.settings, apply_systematic_error=False)
-        obs_mu_v = kins_data["v"]
-        obs_sig_v = kins_data["sigma"]
+        kins_data = kins.get_data()
+        obs_mu_v = kins_data['v']
+        obs_sig_v = kins_data['sigma']
         delta_v = np.abs(orb_mu_v - obs_mu_v)
         condition1 = np.abs(obs_mu_v) / obs_sig_v > 1.5
         condition2 = delta_v / obs_sig_v > 3.0
@@ -855,10 +822,14 @@ class NNLS(WeightSolver):
         **Note:** the returned chi2 values are not the same as
         ``LegacyWeightSolver.read_chi2`` - see the docstring for more info
 
+        Apart from weight solving, the attributes ``orblib.intrinsic_masses``,
+        ``orblib.projected_masses``, and ``orblib.vel_histograms`` are set
+        via calling ``orblib.read_vel_histograms()``.
+
         Parameters
         ----------
         orblib : dyn.OrbitLibrary
-        ignore_existing_weights : bool
+        ignore_existing_weights : bool, optional
             If True, do not check for already existing weights and solve again.
             Default is False.
 
@@ -875,12 +846,8 @@ class NNLS(WeightSolver):
                     kinematic maps
 
         """
-        self.logger.info(
-            f"Using WeightSolver: {__class__.__name__}/" f"{self.nnls_solver}"
-        )
-        orblib.read_losvd_histograms()  # sets orblib.losvd_histograms,
-        # orblib.intrinsic_masses, and
-        # orblib.projected_masses
+        self.logger.info(f"Using WeightSolver: {__class__.__name__}/"
+                         f"{self.nnls_solver}")
         if (not ignore_existing_weights) and self.weight_file_exists():
             results = ascii.read(self.weight_file, format="ecsv")
             self.logger.info("NNLS solution read from existing output")
@@ -889,6 +856,9 @@ class NNLS(WeightSolver):
             chi2_kin = results.meta["chi2_kin"]
             chi2_kinmap = results.meta["chi2_kinmap"]
         else:
+            orblib.read_vel_histograms()  # sets orblib.vel_histograms,
+                                          # orblib.intrinsic_masses, and
+                                          # orblib.projected_masses
             A, b = self.construct_nnls_matrix_and_rhs(orblib)
 
             # Normalize the data

@@ -3,6 +3,7 @@
 
 import os
 import time
+import argparse
 
 # Set matplotlib backend to 'Agg' (compatible when X11 is not running
 # e.g., on a cluster). Note that the backend can only be set BEFORE
@@ -15,7 +16,7 @@ from astropy import table
 import dynamite as dyn
 import dynamite.constants as const
 
-def run_user_test(make_comp=False):
+def run_user_test(fname=None, make_comp=False):
 
     print('Using DYNAMITE version:', dyn.__version__)
     print('Located at:', dyn.__path__)
@@ -27,9 +28,12 @@ def run_user_test(make_comp=False):
             os.chdir(file_dir)
     else:
         file_dir = None
-    fname = 'user_test_config_ml.yaml'
+    # fname = 'user_test_config_ml.yaml'
+    # fname = 'user_test_config_ml_gas.yaml'
     # fname = 'FCC047_2kin/FCC047_config.yaml'
-    # fname = 'user_test_config_fixedvalues.yaml'
+    # fname = 'user_test_config_specificmodels.yaml'
+    # fname = 'FCC167/FCC167.yaml'
+    print(f'Using configuration file: {fname}')
     c = dyn.config_reader.Configuration(fname,
                                         reset_logging=True,
                                         user_logfile='test_nnls',
@@ -41,7 +45,7 @@ def run_user_test(make_comp=False):
     # c.backup_config_file(keep=3, delete_other=True)
     # c.remove_existing_plots()
 
-    print(f'{const.GRAV_CONST_KM=}, {const.PARSEC_KM=}, {const.RHO_CRIT=}.')
+    print(f'{const.GRAV_CONST_KM=}, {const.PARSEC_KM=}')
 
     which_chi2 = c.settings.parameter_space_settings['which_chi2']
 
@@ -117,9 +121,10 @@ def run_user_test(make_comp=False):
     else:
         return c
 
-def create_comparison_data():
+def create_comparison_data(fname):
 
-    model_results, output_file, n_max = run_user_test(make_comp=True)
+    model_results, output_file, n_max = run_user_test(fname=args.fname,
+                                                      make_comp=True)
     t = table.Table()
     t['model_id'] = range(n_max)
     for which_chi2 in ('chi2', 'kinchi2', 'kinmapchi2'):
@@ -131,7 +136,16 @@ def create_comparison_data():
     t.write(output_file, format='ascii', overwrite=True)
 
 if __name__ == '__main__':
-    # create_comparison_data()
-    c = run_user_test()
+    fname_default = 'user_test_config_ml.yaml'
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+        "fname",
+        help=f"file name of configuration file, default: {fname_default}",
+        nargs='?',
+        default=fname_default)
+    args = parser.parse_args()
+    print('Using configuration file:', args.fname)
+    # create_comparison_data(fname=args.fname)
+    c = run_user_test(fname=args.fname)
 
 # end

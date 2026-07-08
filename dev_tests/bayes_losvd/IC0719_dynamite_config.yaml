@@ -11,7 +11,6 @@
 system_attributes:
     distMPc: 28.6
     name: "IC0719"
-    position_angle: 37. # -53.+90.
 
 system_components:
 
@@ -33,7 +32,6 @@ system_components:
                 LaTeX: "$a_{BH}$"
         type: "Plummer" # class name
         include: True
-        contributes_to_potential: True
 
     dh: # dark_halo
         parameters:
@@ -59,7 +57,6 @@ system_components:
                 LaTeX: "$log(M_{200}/M_{star})$"
         type: NFW
         include: True
-        contributes_to_potential: True
 
     stars:
         parameters:
@@ -94,7 +91,6 @@ system_components:
         mge_pot: "mge.ecsv"
         mge_lum: "mge.ecsv"
         include: True
-        contributes_to_potential: True
         kinematics:
             MUSE_CaT:
                 weight: 1.0
@@ -139,6 +135,7 @@ orblib_settings:
 weight_solver_settings:
     type: "NNLS"
     nnls_solver: 'scipy'
+    maxiter_factor: 3  # nnls_solver 'scipy' only; default: 3
     lum_intr_rel_err: 0.01
     sb_proj_rel_err: 0.02
 

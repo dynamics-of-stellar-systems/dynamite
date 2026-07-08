@@ -17,6 +17,7 @@ The following pages contain the API documentation for this procedure, and each p
   data
   mges
   kinematics
+  populations
   physical_system
   parameter_space
   model
@@ -25,6 +26,7 @@ The following pages contain the API documentation for this procedure, and each p
   model_iterator
   plotting
   analysis
+  coloring
 
 Inheritance Diagram
 ===================

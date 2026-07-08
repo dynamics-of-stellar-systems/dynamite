@@ -4,16 +4,58 @@
 Change Log
 ****************
 
+- Improvement: provide option to specify Hubble parameter in config file to allow modelling at :math:`z>0`. Default is :math:`H = 70\;\mathrm{km/s/Mpc}`.
+- Improvement: Calculate intrinsic masses in Python instead of legacy Fortran when using the Python NNLS solvers.
+- Improvement: Reconfirmed DYNAMITE compatibility with numpy 2.x.
+- Bugfix: The bar code now works with ``orblibs_in_parallel: False``.
+- Improvement: Gauss Hermite kinematics' systematic errors `GH_sys_err` are now always applied throughout DYNAMITE.
+- Improvement: The new utility method ``Configuration.remove_projected_masses_file()`` deletes the projected masses file.
+- Improvement: Calculate projected masses in Python instead of legacy Fortran when using the Python NNLS solvers.
+- Improvement: Calculate the projected masses only once as they are independent of the model.
+- Improvement: Avoid confusing warnings when creating decomposition plots.
+- Improvement: Added the optional `fig_height` keyword argument to plotting Gauss Hermite kinematic maps, adjusting the plot height (and aspect ratio).
+- Improvement: Changed the default BayesLOSVD histogram width and number of velocity bins to be consistent with the data (no oversampling by default).
+- Bugfix: Fixed a bug that caused ``System.get_all_kinematic_data()`` to return only the first component's kinematic data.
+- Improvement: Added more troubleshooting to Making the Documentation docs.
+
+Version: 5.0
+================
+
+- Bugfix: Avoid crash when Decomposition class is instantiated with model argument other than None.
+- New feature: Support adding externally calculated chi2 values for components not interacting with DYNAMITE components (still in beta).
+- Improvement: The unused but mandatory component attribute ``contributes_to_potential`` has been removed and DEPRECATED.
+- Bugfix: Fixed a possible crash in orbit integration (in triaxmassbin) with multiple kinematics.
+- New feature: Added R_max vs z_max diagrams to the Plotter class (method: rmax_zmax_plot).
+- Improvement: Decomposition is more efficient (results are cached, kin_set moved to plot_decomp, velocity histograms are only read when needed).
+- Improvement: The nomenclature of decomposition components can now be either ['thin_d', 'thick_d', 'disk', 'cr_thin_d', 'cr_thick_d', 'cr_disk', 'bulge', 'all'] or ['cold', 'warm', 'cold+warm', 'cr_cold', 'cr_warm', 'cr_cold+warm', 'hot', 'all'].
+- New feature: "Coloring" adds support for fitting population data such as stellar age and metallicity, see new tutorial 8_coloring.ipynb.
+- Improvement: Updated documentation (clarifications and fixes).
+- Improvement: The (confusing) annotations in the aperture and bins files are now optional. Comment lines (#) in those files can now be used to add any information.
+- Improvement: Unknown entries in the configuration file will now raise an error rather than be ignored.
+- Improvement: Updated the recommended Python version to 3.10 or later (Python 3.9 end of life was Oct 31, 2025) and required scipy versions 1.11 or >=1.16 to warrant stable Python NNLS.
+- Improvement: Added weight_solver_settings parameter ``maxiter_factor`` to control the maxiter parameter of scipy nnls. Setting it beyond its default 3 can help when weight solving fails.
+- Improvement: Use indicator files for existing orblibs instead of checking multiple files (preparation for coloring and proper motions).
+- Improvement: Replaced staging files by directly checking for orblibs and weight files on disk.
+- Improvement: Significant performance gain when reading existing model weights (eliminated unnecessary reading of orbit library)
+- Bugfix: fix a bug in beta_plot and anistotropy_single, subtract first moments, plot only beta_r, enable log x-axis, plot pc/kpc scale on upper x-axis
+- Improvement: misc. improvements in plotter (auto select kpc vs. pc everywhere, added r in (k)pc to qpu_plot, better filename for mass_plot).
+- Improvement: Rmax_arcs is now an optional parameter for mass_plot and qpu_plot (default value taken from the config file).
+- Improvement: significant performance gain when reading existing model weights (eliminated unnecessary reading of orbit library).
+- Improvement: in the orbit distribution plot r can now be binned and plotted in linear scale (in addition to the default logarithmic scale).
+- Bugfix: fixed a bug that prevented sensible kinematic maps colorbar limits if flux is zero in one or more bins.
+- New feature: DYNAMITE models now support multiple kinematic data sets of different types and with different histogram settings
+- Improvement: the orbit_plot now allows custom orbit cuts via the ocut parameter (same behavior as in the Decomposition class)
+- Bugfix: fixed a crash of the SpecificModels parameter generator with certain specific value lists.
 - Improvement: more robust directory naming when failed models are present in the all_models table
 - Bugfix: don't crash with pops data when using ModelInnerIterator.
 - Bugfix: don't crash when continuing a run with just one valid model.
 - Improvement: added counter-rotating components to decomposition.
-- Bugfix: fix a bug that prevents Bayes LOSVD kinemtic maps from being created more than once
+- Bugfix: fix a bug that prevents Bayes LOSVD kinematic maps from being created more than once
 - New feature: a dark halo is no longer mandatory (models can consist of either zero or one dark halo component)
 - Improvement: Reduced disk space requirements and performance by splitting orbit library files while maintaining backward compatibility.
 - Bugfix: avoid DYNAMITE crashing because it gets stuck in a model directory due to a Fortran error
 - Improvement: better error messages to improve debugging with multiprocessing
-- Improvement: minor improvements of tutorials 2 and 3
+- Improvement: minor improvements of tutorials 1, 2, and 3
 
 Version: 4.3
 ================

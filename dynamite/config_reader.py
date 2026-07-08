@@ -7,7 +7,10 @@ import math
 import logging
 import importlib
 import yaml
-import datetime
+import numpy as np
+
+from datetime import datetime, timezone
+from astropy import table
 
 import dynamite as dyn
 from dynamite import constants as const
@@ -137,26 +140,26 @@ class Configuration(object):
 
     Does some rudimentary checks for consistency.
     Builds the output directory tree if it does not exist already
-    (does not delete existing data).
+    (does not delete existing data unless reset_existing_output is True).
 
     Parameters
     ----------
     filename : string
         needs to refer to an existing file including path
-    reset_logging : bool
-        if False: use the calling application's logging settings
-        if True: set logging to Dynamite defaults
-    user_logfile : str or None or False
-        Name of the logfile (``.log`` will be appended).
+    reset_logging : bool, optional
+        If False: use the calling application's logging settings.
+        If True: set logging to Dynamite defaults. The default is False.
+    user_logfile : str or None or False, optional
+        Name of the logfile without extension (``.log`` will be appended).
         Special values: ``user_logfile=None`` will not create a logfile.
         ``user_logfile=False`` will create a UTC-timestamped logfile
         ``dynamiteYYMMDD-HHMMSSuuuuuu.log``.
         Will be ignored if ``reset_logging=False``.
         The default is ``user_logfile='dynamite'``.
-
-    reset_existing_output : bool
-        if False: do not touch existing data in the output directory tree
-        if True: rebuild the output directory tree and delete existing data
+    reset_existing_output : bool, optional
+        If False: do not touch existing data in the output directory tree.
+        If True: rebuild the output directory tree and delete existing data.
+        The default is False.
 
     Raises
     ------
@@ -197,8 +200,7 @@ class Configuration(object):
                           f'located at {dyn.__path__}')
 
         self.logger.debug('Global variables: ' \
-                          f'{const.GRAV_CONST_KM = }, {const.PARSEC_KM = }, ' \
-                          f'{const.RHO_CRIT = }.')
+                          f'{const.GRAV_CONST_KM = }, {const.PARSEC_KM = }.')
 
         legacy_dir = \
             os.path.realpath(os.path.dirname(__file__)+'/../legacy_fortran')
@@ -224,6 +226,13 @@ class Configuration(object):
         logger.info('io_settings...')
         logger.debug(f'Read: {self.params["io_settings"]}')
 
+        if set(self.params['io_settings'].keys()) != \
+              set(['input_directory', 'output_directory', 'all_models_file']):
+            txt = 'io_settings must contain input_directory, ' \
+                  'output_directory, and all_models_file, not ' \
+                  f'{list(self.params["io_settings"].keys())}.'
+            self.logger.error(txt)
+            raise ValueError(txt)
         try:
             for io in ['input', 'output']:
                 d = self.params['io_settings'][io+'_directory']
@@ -256,20 +265,43 @@ class Configuration(object):
 
                     # instantiate the component
 
-                    logger.debug(f"{comp}... instantiating {data_comp['type']} "
-                              "object")
-                    if 'contributes_to_potential' not in data_comp:
-                        text = f'Component {comp} needs ' + \
-                                'contributes_to_potential attribute'
-                        logger.error(text)
+                    logger.debug(f"{comp}... instantiating "
+                                 f"{data_comp['type']} object.")
+                    if data_comp['type'] == 'Chi2Ext':  # Chi2Ext component
+                        c = getattr(physys,data_comp['type'])(name = comp,
+                                ext_module=data_comp['ext_module'],
+                                ext_class=data_comp['ext_class'],
+                                ext_class_args=data_comp['ext_class_args'],
+                                ext_chi2=data_comp['ext_chi2'])
+                    else:  # all 'regular' components
+    #                    c = globals()[data_comp['type']]()
+                        c = getattr(physys,data_comp['type'])(name = comp)
+                    # check for extra config entries/typos before any more
+                    # information is read from config file
+                    keys_ok = ['parameters', 'type', 'include',
+                               'contributes_to_potential']
+                    if isinstance(c, physys.VisibleComponent):
+                        keys_ok.extend(['mge_pot', 'mge_lum',
+                                        'disk_pot', 'disk_lum',
+                                        'kinematics', 'populations'])
+                    elif isinstance(c, physys.Chi2Ext):
+                        keys_ok.extend(['ext_module', 'ext_class',
+                                       'ext_class_args', 'ext_chi2'])
+                    if any(k not in keys_ok for k in data_comp):
+                        text = f'Component {c.name} has unknown config ' \
+                            'entries: ' \
+                            f'{[k for k in data_comp if k not in keys_ok]}. ' \
+                            f'Allowed entries: {keys_ok}. Check for typos.'
+                        self.logger.error(text)
                         raise ValueError(text)
-#                    c = globals()[data_comp['type']](contributes_to_potential
-#                        = data_comp['contributes_to_potential'])
-                    c = getattr(physys,data_comp['type'])(name = comp,
-                            contributes_to_potential \
-                            = data_comp['contributes_to_potential'])
+                    if 'contributes_to_potential' in data_comp:
+                        text = f'Component {comp}: the attribute ' + \
+                                'contributes_to_potential is DEPRECATED ' + \
+                                'and will be ignored. In a future ' + \
+                                'DYNAMITE release this will cause an error.'
+                        logger.warning(text)
 
-                    # initialize the component's paramaters, kinematics,
+                    # initialize the component's parameters, kinematics,
                     # and populations
 
                     par_list, kin_list = [], []
@@ -292,8 +324,6 @@ class Configuration(object):
                     # read kinematics
 
                     if 'kinematics' in data_comp:
-                    # shall we include a check here (e.g., only
-                    # VisibleComponent has kinematics?)
                         logger.debug('Has kinematics '
                                     f'{list(data_comp["kinematics"].keys())}')
                         kin_id = 0
@@ -303,7 +333,7 @@ class Configuration(object):
                                 logger.warning(f'Kinematics {kin}: the '
                                     '\'weight\' attribute is DEPRECATED and '
                                     'will be ignored. In a future DYNAMITE '
-                                    'realease this will report an error.')
+                                    'release this will cause an error.')
                                 del data_kin['weight']
                             kinematics_set = getattr(kinem,data_kin['type'])\
                                                 (name=kin,
@@ -324,6 +354,9 @@ class Configuration(object):
                             kin_list.append(kinematics_set)
                             kin_id += 1
                         c.kinematic_data = kin_list
+                    else:
+                        logger.debug(f'{comp}... no kinematics to '
+                                     'be read from config file.')
 
                     # read populations
 
@@ -339,24 +372,53 @@ class Configuration(object):
                                                 input_directory=path,
                                                 **data_pop)
                             c.population_data.append(populations_set)
+                    else:
+                        logger.debug(f'{comp}... no populations data to '
+                                     'be read from config file.')
+
+                    # read other data
 
                     if 'mge_pot' in data_comp:
                         path = self.settings.io_settings['input_directory']
                         c.mge_pot = mge.MGE(input_directory=path,
-                                        datafile=data_comp['mge_pot'])
+                                            datafile=data_comp['mge_pot'],
+                                            config=self)
+                        logger.debug(f'{comp}... mge_pot read from '
+                                     f'{data_comp["mge_pot"]}.')
+                    else:
+                        logger.debug(f'{comp}... no mge_pot to '
+                                     'be read from config file.')
                     if 'mge_lum' in data_comp:
                         path = self.settings.io_settings['input_directory']
                         c.mge_lum = mge.MGE(input_directory=path,
-                                        datafile=data_comp['mge_lum'])
+                                            datafile=data_comp['mge_lum'],
+                                            config=self)
+                        logger.debug(f'{comp}... mge_lum read from '
+                                     f'{data_comp["mge_lum"]}.')
+                    else:
+                        logger.debug(f'{comp}... no mge_lum data to '
+                                     'be read from config file.')
 
                     if 'disk_pot' in data_comp:
                         path = self.settings.io_settings['input_directory']
                         c.disk_pot = mge.MGE(input_directory=path,
-                                             datafile=data_comp['disk_pot'])
+                                             datafile=data_comp['disk_pot'],
+                                             config=self)
+                        logger.debug(f'{comp}... disk_pot read from '
+                                     f'{data_comp["disk_pot"]}.')
+                    else:
+                        logger.debug(f'{comp}... no disk_pot to '
+                                     'be read from config file.')
                     if 'disk_lum' in data_comp:
                         path = self.settings.io_settings['input_directory']
                         c.disk_lum = mge.MGE(input_directory=path,
-                                             datafile=data_comp['disk_pot'])
+                                             datafile=data_comp['disk_lum'],
+                                             config=self)
+                        logger.debug(f'{comp}... disk_lum read from '
+                                     f'{data_comp["disk_lum"]}.')
+                    else:
+                        logger.debug(f'{comp}... no disk_lum to '
+                                     'be read from config file.')
 
                     # add component to system
                     c.validate()
@@ -370,9 +432,6 @@ class Configuration(object):
                             self.logger.error(text)
                         raise ValueError(text)
                     self.system.add_component(c)
-
-                # once all components added, put all kinematic_data in a list
-                self.system.get_all_kinematic_data()
 
             # add system parameters
 
@@ -393,8 +452,18 @@ class Configuration(object):
             elif key == 'system_attributes':
                 logger.info('system_attributes...')
                 logger.debug(f'system_attributes: {tuple(value.keys())}')
+                # check here so system attributes are not set arbitrarily
+                if any(k not in ['distMPc', 'name', 'H'] for k in value):
+                    text = 'system_attributes can only be distMPc, name, and '\
+                           f'(optionally) H, not {list(value.keys())}.'
+                    logger.error(text)
+                    raise ValueError(text)
                 for other, data in value.items():
                     setattr(self.system, other, data)
+                if hasattr(self.system, 'H') == False:
+                    self.system.H = 70.
+                self.system.RHO_CRIT = \
+                    (3.*(self.system.H * 1e-6/const.PARSEC_KM)**2)/(8.*np.pi*const.GRAV_CONST_KM)
 
             # add orbit library settings to Settings object
 
@@ -452,16 +521,16 @@ class Configuration(object):
                     pass
                 if 'ncpus' not in value:
                     value['ncpus'] = 'all_available'
-                if value['ncpus']=='all_available':
+                if value['ncpus'] == 'all_available':
                     value['ncpus'] = self.get_n_cpus()
                 logger.info(f"... using {value['ncpus']} CPUs "
                              "for orbit integration.")
-                if 'ncpus_weights' not in value:
-                    value['ncpus_weights'] = value['ncpus']
-                elif value['ncpus_weights'] == 'all_available':
-                    value['ncpus_weights'] = self.get_n_cpus()
-                logger.info(f"... using {value['ncpus_weights']} CPUs "
-                            "for weight solving.")
+                for ncpus in ('ncpus_weights', 'ncpus_ext'):
+                    if ncpus not in value:
+                        value[ncpus] = value['ncpus']
+                    elif value[ncpus] == 'all_available':
+                        value[ncpus] = self.get_n_cpus()
+                    logger.info(f'... using {value[ncpus]} CPUs for {ncpus}.')
                 if 'modeliterator' not in value:
                     value['modeliterator'] = 'ModelInnerIterator'
                 logger.debug(f"... using iterator {value['modeliterator']}.")
@@ -485,7 +554,7 @@ class Configuration(object):
             raise ValueError(text)
         logger.info('System assembled')
         self.validate()
-        logger.debug(f'System: {self.system}')
+        # logger.debug(f'System: {self.system}')  # logged as part of parspace
         logger.debug(f'Settings: {self.settings}')
         logger.info('Configuration validated')
 
@@ -500,7 +569,34 @@ class Configuration(object):
         self.all_models = model.AllModels(config=self)
         logger.info('Instantiated AllModels object')
         logger.debug(f'AllModels:\n{self.all_models.table}')
+        # Update the indicator files in the orblib directories. This is
+        # necessary here because the indicators depend on the exising data
+        # like kinematics, populations, proper motions.
+        path = self.settings.io_settings['model_directory']
+        directories = [path + d for d in self.all_models.table['directory']]
+        # Now, convert the model dirs to orblib dirs, eliminating duplicates
+        directories = set([d[:d[:-1].rindex('/') + 1] for d in directories])
+        for d in directories:
+            self.all_models.update_orblib_flags(d)
         self.all_models.update_model_table()
+
+        if self.settings.weight_solver_settings['type']!='LegacyWeightSolver':
+            p_mass_fname = self.settings.io_settings['output_directory'] + \
+                           const.p_masses_file
+            stars = self.system.get_unique_triaxial_visible_component()
+            if os.path.isfile(p_mass_fname):
+                n_bins = sum([max(k.dp_args['idx_bin_to_pix']) + 1
+                            for k in stars.kinematic_data])
+                proj_mass = table.Table.read(p_mass_fname, format='ascii')
+                if n_bins != len(proj_mass):
+                    self.logger.warning('Removing existing projected masses '
+                                        'file due to spatial bin mismatch.')
+                    self.remove_projected_masses_file()
+            if self.system.is_bar_disk_system():
+                stars.mge_lum_tot = stars.mge_lum + stars.disk_lum
+                stars.mass_aper = stars.mge_lum_tot.get_projected_masses()
+            else:
+                stars.mass_aper = stars.mge_lum.get_projected_masses()
 
         # self.backup_config_file(reset=False)
 
@@ -692,6 +788,27 @@ class Configuration(object):
         self.all_models = model.AllModels(config=self)
         self.logger.info('Instantiated empty AllModels object')
         self.logger.debug(f'AllModels:\n{self.all_models.table}')
+
+    def remove_projected_masses_file(self):
+        """
+        Deletes the projected masses file
+
+        Deletes the projected masses file if it exists.
+
+        Raises
+        ------
+        Exception if the file cannot be removed.
+
+        Returns
+        -------
+        None.
+
+        """
+        p_mass_fname = self.settings.io_settings['output_directory'] + \
+                       const.p_masses_file
+        if os.path.isfile(p_mass_fname):
+            os.remove(p_mass_fname)
+            self.logger.info(f'Deleted existing {p_mass_fname}.')
 
     def remove_all_existing_output(self, wipe_all=False, create_tree=True):
         """
@@ -885,8 +1002,11 @@ class Configuration(object):
 
         if self.system.is_bar_disk_system():
             if self.system.number_of_bar_components() != 1:
-                self.logger.error('Bar/disk system needs to have exactly one BarDiskComponent object')
-                raise ValueError('Bar/disk system needs to have exactly one BarDiskComponent object')
+                txt = 'Bar/disk system needs to have exactly one ' \
+                      'BarDiskComponent object'
+                self.logger.error(txt)
+                raise ValueError(txt)
+
         else:
             if self.system.number_of_visible_components() != 1:
                 self.logger.error('System needs to have exactly one '
@@ -898,13 +1018,15 @@ class Configuration(object):
             self.logger.error('System must have zero or one DM Halo object')
             raise ValueError('System must have zero or one DM Halo object')
 
-        if not 1 < len(self.system.cmp_list) < 4:
-            self.logger.error('System needs to comprise exactly one Plummer, '
-                              'one VisibleComponent, and zero or one DM Halo '
-                              'object(s)')
-            raise ValueError('System needs to comprise exactly one Plummer, '
-                             'one VisibleComponent, and zero or one DM Halo '
-                             'object(s)')
+        if self.system.get_unique_ext_chi2_component() is None:
+            check = (2, 3)
+        else:
+            check = (3, 4)
+        if len(self.system.cmp_list) not in check:
+            txt = 'System needs to comprise exactly one Plummer, ' \
+                  'one VisibleComponent, and zero or one DM Halo object(s)'
+            self.logger.error(txt)
+            raise ValueError(txt)
 
         ws_type = self.settings.weight_solver_settings['type']
 
@@ -915,29 +1037,39 @@ class Configuration(object):
                     for kin_data in c.kinematic_data:
                         check_gh = (kin_data.type == 'GaussHermite')
                         check_bl = (kin_data.type == 'BayesLOSVD')
-                        if (not check_gh) and (not check_bl):
+                        check_pm = (kin_data.type == 'ProperMotions')
+                        if not (check_gh or check_bl or check_pm):
                             txt = 'VisibleComponent kinematics type must be ' \
-                                  'GaussHermite or BayesLOSVD'
+                                  'GaussHermite, BayesLOSVD, or ProperMotions.'
                             self.logger.error(txt)
                             raise ValueError(txt)
-                        if check_bl:
+                        if check_bl or check_pm:
                             # check weight solver type
                             if ws_type == 'LegacyWeightSolver':
                                 txt = "LegacyWeightSolver can't be used with "\
-                                      "BayesLOSVD - use weight-solver type NNLS"
+                                      "BayesLOSVD nor with ProperMotions - " \
+                                      "use weight-solver type NNLS"
                                 self.logger.error(txt)
                                 raise ValueError(txt)
                             # check for compatible chi2 variant
                             if which_chi2 == 'kinmapchi2':
                                 txt = 'kinmapchi2 cannot be used with ' \
-                                      'BayesLOSVD - use chi2 or kinchi2.'
+                                      'BayesLOSVD nor ProperMotions - ' \
+                                      'use chi2 or kinchi2.'
                                 self.logger.error(txt)
                                 raise ValueError(txt)
+                        ws_settings = self.settings.weight_solver_settings
+                        kin_data.update_data(ws_settings)
                 else:
-                    self.logger.error('VisibleComponent must have kinematics: '
-                                      'either GaussHermite or BayesLOSVD')
-                    raise ValueError('VisibleComponent must have kinematics: '
-                                     'either GaussHermite or BayesLOSVD')
+                    txt = 'VisibleComponent must have kinematics: ' \
+                          'GaussHermite, BayesLOSVD, and/or ProperMotions.'
+                    self.logger.error(txt)
+                    raise ValueError(txt)
+                if c.population_data and len(c.population_data) > 1:
+                    txt = 'VisibleComponent can either have 0 or 1 set(s) ' \
+                          f'of population data, not {len(c.population_data)}.'
+                    self.logger.error(txt)
+                    raise ValueError(txt)
                 if c.symmetry != 'triax':
                     self.logger.error('Legacy mode: VisibleComponent must be '
                                       'triaxial')
@@ -970,7 +1102,8 @@ class Configuration(object):
         chi2abs = self.__class__.thresh_chi2_abs
         chi2scaled = self.__class__.thresh_chi2_scaled
         gen_set=self.settings.parameter_space_settings.get('generator_settings')
-        if gen_set != None and (chi2abs in gen_set and chi2scaled in gen_set):
+        if gen_set is not None \
+           and (chi2abs in gen_set and chi2scaled in gen_set):
             self.logger.error(f'Only specify one of {chi2abs}, {chi2scaled}, '
                               'not both')
             raise ValueError(f'Only specify one of {chi2abs}, {chi2scaled}, '
@@ -1014,6 +1147,20 @@ class Configuration(object):
                     max_bins += 1
                 for k in stars.kinematic_data:
                     k.hist_bins = max_bins
+        else:  # enforce odd number of histogram bins
+            stars = self.system.get_unique_triaxial_visible_component()
+            hist_bins = [[k.hist_bins] for k in stars.kinematic_data
+                                       if isinstance(k.hist_bins, int)]
+            hist_bins += [list(k.hist_bins) for k in stars.kinematic_data
+                                       if not isinstance(k.hist_bins, int)]
+            hist_bins = np.array([i for h in hist_bins for i in h])
+            if np.any(hist_bins % 2 == 0):
+                all_hist_bins = {k.name: k.hist_bins
+                                 for k in stars.kinematic_data}
+                txt = 'Value of hist_bins must be odd for all kinematic ' \
+                      f'data, but they are {all_hist_bins}.'
+                self.logger.error(txt)
+                raise ValueError(txt)
 
     def validate_chi2(self, which_chi2=None):
         """
@@ -1041,7 +1188,7 @@ class Configuration(object):
 
         """
         allowed_chi2 = ('chi2', 'kinchi2', 'kinmapchi2')
-        if which_chi2 == None:
+        if which_chi2 is None:
             which_chi2 = self.settings.parameter_space_settings['which_chi2']
         if which_chi2 not in allowed_chi2:
             text = 'parameter_space_settings: which_chi2 must be one of ' \
@@ -1087,7 +1234,7 @@ class DynamiteLogging(object):
                                            logfile_formatter = None):
         if logfile is False: # as opposed to None...
             logfile = 'dynamite' +\
-                      datetime.datetime.utcnow().strftime('%Y%m%d-%H%M%S%f')
+                      datetime.now(timezone.utc).strftime('%Y%m%d-%H%M%S%f')
         if type(logfile) is str:
             logfile += '.log'
         logging.shutdown()

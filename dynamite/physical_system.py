@@ -2,17 +2,12 @@
 # e.g. the stellar light, dark matter, black hole, globular clusters
 
 import numpy as np
-from scipy import special
+from scipy import special, integrate
 
-# some tricks to add the current path to sys.path (so the imports below work)
-
-import os.path
-import sys
 import logging
 
+import dynamite as dyn
 from dynamite import mges as mge
-from dynamite import constants as const
-from dynamite import orblib as orb
 
 class System(object):
     """The physical system being modelled
@@ -25,7 +20,6 @@ class System(object):
         self.logger = logging.getLogger(f'{__name__}.{__class__.__name__}')
         self.n_cmp = 0
         self.cmp_list = []
-        self.n_pot = 0
         self.n_kin = 0
         self.n_pop = 0
         self.parameters = None
@@ -49,7 +43,6 @@ class System(object):
         """
         self.cmp_list += [cmp]
         self.n_cmp += 1
-        self.n_pot += cmp.contributes_to_potential
         self.n_kin += len(cmp.kinematic_data)
         self.n_pop += len(cmp.population_data)
 
@@ -85,7 +78,7 @@ class System(object):
             raise ValueError(text)
         #if len(self.parameters) != 1 and self.parameters[0].name != 'ml':
         if self.parameters[0].name != 'ml':
-            text = 'System needs ml as its first parameter'
+            text = 'System needs ml as its first parameter.'
             self.logger.error(text)
             raise ValueError(text)
         ml = self.parameters[0]
@@ -99,11 +92,16 @@ class System(object):
                 self.logger.warning(text)
                 generator_settings['minstep'] = generator_settings['step']
         if len(self.parameters) > 1:
-            omega = self.parameters[1]
+            # omega = self.parameters[1]
             if self.parameters[1].name != 'omega':
-                text = 'System needs omega as its second parameter'
+                text = 'System needs omega as its second parameter.'
                 self.logger.error(text)
                 raise ValueError(text)
+        if len(self.parameters) > 2:
+            text = 'System can only have ml and omega parameters, not ' \
+                   f'{[p.name for p in self.parameters]} - check for typos.'
+            self.logger.error(text)
+            raise ValueError(text)
 
     def validate_parset(self, par):
         """
@@ -216,11 +214,14 @@ class System(object):
             a list of Component objects
 
         """
-        mge_cmp = [c for c in self.cmp_list if isinstance(c, TriaxialVisibleComponent) or isinstance(c, BarDiskComponent)]
+        mge_cmp = [c for c in self.cmp_list
+                   if isinstance(c, TriaxialVisibleComponent)
+                   or isinstance(c, BarDiskComponent)]
         return mge_cmp
 
     def get_unique_triaxial_visible_component(self):
-        """Return the unique non-bar MGE component (raises an error if there are zero or multiple such components)
+        """Return the unique non-bar MGE component (raises an error if there
+        are zero or multiple such components)
 
         Returns
         -------
@@ -242,14 +243,15 @@ class System(object):
         Returns
         -------
         list
-            a list of Component objects, keeping only the rotating MGE components
+            list of Component objects, keeping only the rotating MGE components
 
         """
         bar_cmp = [c for c in self.cmp_list if isinstance(c, BarDiskComponent)]
         return bar_cmp
 
     def get_unique_bar_component(self):
-        """Return the unique rotating bar component (raises an error if there are zero or multiple such components)
+        """Return the unique rotating bar component (raises an error if there
+        are zero or multiple such components)
 
         Returns
         -------
@@ -294,6 +296,34 @@ class System(object):
         dark_non_plum_cmp = [c for c in dark_cmp if not isinstance(c, Plummer)]
         return dark_non_plum_cmp
 
+    def get_unique_ext_chi2_component(self):
+        """Return the unique Chi2Ext component
+
+        Raises
+        ------
+        ValueError
+            If there are multiple Chi2Ext components
+
+        Returns
+        -------
+            a ``dyn.physical_system.Chi2Ext`` object
+
+        """
+        chi2_ext_cmp = [c for c in self.cmp_list if isinstance(c, Chi2Ext)]
+        if len(chi2_ext_cmp) > 1:
+            self.logger.error('Found more than one Chi2Ext component')
+            raise ValueError('Found more than one Chi2Ext component')
+        if len(chi2_ext_cmp) == 0:
+            return None
+        else:
+            return chi2_ext_cmp[0]
+
+    @property
+    def has_chi2_ext(self):
+        """True if the system has an external chi2 component, else False
+        """
+        return False if self.get_unique_ext_chi2_component() is None else True
+
     def get_all_kinematic_data(self):
         """get_all_kinematic_data
 
@@ -308,12 +338,13 @@ class System(object):
         all_kinematics = []
         for component in self.cmp_list:
             all_kinematics += component.kinematic_data
-            return all_kinematics
+        return all_kinematics
 
     def is_bar_disk_system(self):
         """is_bar_disk_system
 
-        Check if the system contains at least one bar component and at least one disk component.
+        Check if the system contains at least one bar component and at least
+        one disk component.
 
         Returns
         -------
@@ -322,19 +353,6 @@ class System(object):
         """
         isbardisk = len(self.get_all_bar_components()) > 0
         return isbardisk
-
-    def is_bar_disk_system_with_angles(self):
-        """is_bar_disk_system_with_angles
-
-        Check if the system is a bar-disk with phi, psi, theta specified directly in the configuration file.
-
-        Returns
-        -------
-        hasangles : Bool
-            System is specified by angles.
-        """
-        hasangles = self.is_bar_disk_system() and (type(self.get_unique_bar_component()) is BarDiskComponentAngles)
-        return hasangles
 
     def number_of_visible_components(self):
         return sum(1 for i in self.cmp_list if isinstance(i, VisibleComponent))
@@ -353,8 +371,6 @@ class Component(object):
         a short but descriptive name of the component
     visible : Bool
         whether this is visible <--> whether it has an associated MGE
-    contributes_to_potential : Bool
-        whether this contributes_to_potential **not currently used**
     symmetry : string
         one of 'spherical', 'axisymm', or 'triax' **not currently used**
     kinematic_data : list
@@ -369,20 +385,16 @@ class Component(object):
     def __init__(self,
                  name = None,
                  visible=None,
-                 contributes_to_potential=None,
                  symmetry=None,
                  kinematic_data=[],
                  population_data=[],
                  parameters=[]):
         self.logger = logging.getLogger(f'{__name__}.{__class__.__name__}')
-        if name == None:
+        if name is None:
             self.name = self.__class__.__name__
         else:
             self.name = name
         self.visible = visible
-        self.contributes_to_potential = contributes_to_potential
-        self.logger.info(f'{self.name}: DYNAMITE will currently ignore the '
-                         'mandatory attribute contributes_to_potential.')
         self.symmetry = symmetry
         self.kinematic_data = kinematic_data
         self.population_data = population_data
@@ -413,10 +425,6 @@ class Component(object):
         errstr = f'Component {self.__class__.__name__} needs attribute '
         if self.visible is None:
             text = errstr + 'visible'
-            self.logger.error(text)
-            raise ValueError(text)
-        if self.contributes_to_potential is None:
-            text = errstr + 'contributes_to_potential'
             self.logger.error(text)
             raise ValueError(text)
         if not self.parameters:
@@ -535,6 +543,7 @@ class VisibleComponent(Component):
          # visible components have MGE surface density
         self.mge_pot = mge_pot
         self.mge_lum = mge_lum
+        self.mass_aper = None
         super().__init__(visible=True, **kwds)
         self.logger = logging.getLogger(f'{__name__}.{__class__.__name__}')
 
@@ -564,31 +573,6 @@ class VisibleComponent(Component):
         sigobs_pc = mgesigma*arctpc
 
         return 2 * np.pi * np.sum(mgeI * mgeq * sigobs_pc ** 2) * parset['ml']
-
-    def intrin_spher(self, distance, parset):
-        totalmass = self.get_M_stars_tot(distance, parset)
-        mge = self.mge_pot
-        ngauss_mge = len(mge.data)
-
-        quad_nr = 10 # size of (r, th, ph) grid, hardcoded in Fortran
-        quad_nth = 6
-        quad_nph = 6
-
-        quad_grid = np.zeros([quad_nph, quad_nth, quad_nr])
-        quad_lr = np.zeros(quad_nr + 1)
-        quad_lth = np.zeros(quad_nth + 1)
-        quad_lph = np.zeros(quad_nph + 1)
-
-    def intrin_radii(self, distance, parset, orblib_settings):
-        totalmass = self.get_M_stars_tot(distance, parset)
-        mge = self.mge_pot
-        ngauss_mge = len(mge.data)
-        qobs = mge.data['q']
-        rlogmin = orblib_settings['logrmin']
-        rlogmax = orblib_settings['logrmax']
-        orbit_dithering = orblib_settings['dithering']
-        nener = orblib_settings['nE']
-        pintr, qintr, sigintr_km, dens = self.triax_deproj()
 
     def validate(self, **kwds):
         super().validate(**kwds)
@@ -685,19 +669,19 @@ class TriaxialVisibleComponent(VisibleComponent):
         # Check for p=0
         if np.isclose(p, 0.):
             theta = phi = psi = np.nan
-            self.logger.debug(f'DEPROJ FAIL: p=0')
+            self.logger.debug('DEPROJ FAIL: p=0')
         # Check for q=0
         if np.isclose(q, 0.):
             theta = phi = psi = np.nan
-            self.logger.debug(f'DEPROJ FAIL: q=0')
+            self.logger.debug('DEPROJ FAIL: q=0')
         # Check for u=0
         if np.isclose(u, 0.):
             theta = phi = psi = np.nan
-            self.logger.debug(f'DEPROJ FAIL: u=0')
+            self.logger.debug('DEPROJ FAIL: u=0')
         # Check for u>1
         if u>1:
             theta = phi = psi = np.nan
-            self.logger.debug(f'DEPROJ FAIL: u>1')
+            self.logger.debug('DEPROJ FAIL: u>1')
         if np.isclose(u,p):
             u=p
         # Check for possible triaxial deprojection (v. d. Bosch 2004,
@@ -793,7 +777,7 @@ class TriaxialVisibleComponent(VisibleComponent):
         """
         (p, q, u), valid = self.find_grid_of_valid_pqu()
         text = "No deprojection possible for the specificed values of (p,q,u)."
-        text += "Here are some suggestions: \n"
+        text += " Here are some suggestions:\n"
         # take avg of valid p's and q's where u is close to targer value
         target_u = 0.9
         idx = np.where(np.abs(u[valid]-target_u)<0.005)
@@ -818,24 +802,192 @@ class TriaxialVisibleComponent(VisibleComponent):
             text += f'\t\t value : {val:.2f}\n'
         return text
 
+    @staticmethod
+    def triax_tpp2pqu(theta, phi, psi, qobs_pot, psi_off):
+        """
+        transform viewing angles to axis ratios
+        """
+        theta_view = np.deg2rad(theta)
+        phi_view   = np.deg2rad(phi)
+        psi_obs    = np.deg2rad(psi + psi_off)
+
+        costh = np.cos(theta_view)
+        tanph = np.tan(phi_view)
+        if np.abs(costh) < 1.0e-6:
+            print(
+                "triax_tpp2pqu: |cos(theta)| too small -> invalid geometry.")
+            return np.nan, np.nan, np.nan
+
+        if np.abs(tanph) < 1.0e-6:
+            print(
+                "triax_tpp2pqu: |tan(phi)| too small -> invalid geometry.")
+            return np.nan, np.nan, np.nan
+
+        secth = 1.0 / costh
+        cotph = 1.0 / tanph
+
+        delp = 1.0 - qobs_pot ** 2
+
+        nom1minq2 = delp * (
+            2.0 * np.cos(2.0 * psi_obs) + np.sin(2.0 * psi_obs) *
+            (secth * cotph - np.cos(theta_view) * np.tan(phi_view)))
+        nomp2minq2 = delp * (
+            2.0 * np.cos(2.0 * psi_obs) + np.sin(2.0 * psi_obs) *
+            (np.cos(theta_view) * cotph - secth * np.tan(phi_view)))
+        denom = 2.0 * np.sin(theta_view) ** 2 * (
+            delp * np.cos(psi_obs) *
+            (np.cos(psi_obs) + secth * cotph * np.sin(psi_obs)) - 1.0)
+
+        if np.max(np.abs(denom)) < 1.0e-6:
+            print("triax_tpp2pqu: denominator ~ 0 -> invalid geometry.")
+            return np.nan, np.nan, np.nan
+
+        # These are temporary values of the squared intrinsic axial
+        # ratios p^2 and q^2
+        qintr = 1.0 - nom1minq2 / denom
+        pintr = qintr + nomp2minq2 / denom
+
+        # Quick check to see if we are not going to take the sqrt of
+        # a negative number.
+        if (np.min(qintr) < 1.0e-6) or (np.min(pintr) <= 1.0e-6):
+            print(
+                "triax_tpp2pqu: negative or too small intrinsic axis ratio squared "
+                f"(min(q^2)={np.min(qintr)}, min(p^2)={np.min(pintr)})."
+            )
+            return np.nan, np.nan, np.nan
+
+        # intrinsic axial ratios p and q
+        qintr = np.sqrt(qintr)
+        pintr = np.sqrt(pintr)
+
+        # triaxiality parameter T = (1-p^2)/(1-q^2)
+        triaxpar = (1.0 - pintr ** 2) / (1.0 - qintr ** 2)
+        if (np.max(triaxpar) > 1.0) or (np.min(triaxpar) < 0.0):
+            print(
+                "triax_tpp2pqu: triaxiality parameter T out of [0, 1], "
+                f"min(T)={np.min(triaxpar)}, max(T)={np.max(triaxpar)}.")
+            return np.nan, np.nan, np.nan
+
+        if np.max(qintr - pintr) > 0:
+            print(
+                "triax_tpp2pqu: intrinsic axis ordering violated (q > p). "
+                f"max(q-p)={np.max(qintr - pintr)}.")
+            return np.nan, np.nan, np.nan
+
+        if np.min(qintr) <= 0.0:
+            print(
+                f"triax_tpp2pqu: intrinsic minor axis ratio q <= 0, min(q)={np.min(qintr)}."
+            )
+            return np.nan, np.nan, np.nan
+
+        uintr = 1. / (np.sqrt(qobs_pot / np.sqrt(
+            (pintr * np.cos(theta_view))**2 + (qintr * np.sin(theta_view))**2 *
+            ((pintr * np.cos(phi_view))**2 + np.sin(phi_view)**2))))
+
+        return pintr, qintr, uintr
+
+    @staticmethod
+    def acceleration(x, y, z,
+                     viewing_angle,
+                     ml,
+                     surf_pot_pc,
+                     sigobs_pot_pc,
+                     qobs_pot,
+                     psi_off=None,
+                     epsrel=1e-4):
+        """
+        Gravitational acceleration of a triaxial MGE.
+
+        Parameters
+        ----------
+        x, y, z : float or array-like
+            Cartesian coordinates [pc].
+        viewing_angle : tuple
+            (theta, phi, psi) in degrees.
+        surf_pot_pc, sigobs_pot_pc, qobs_pot : array-like
+            Projected MGE quantities.
+        ml : float
+            Mass-to-light ratio.
+        epsrel : float
+            Relative accuracy for integration.
+
+        Returns
+        -------
+        ax, ay, az : ndarray
+            Acceleration components [(km/s)**2/pc].
+        """
+
+        # gravitational constant
+        # G = 4.3009172706e-3   # [pc*(km/s)**2 / Msun]
+        G = dyn.constants.GRAV_CONST_KM / dyn.constants.PARSEC_KM
+
+        theta = viewing_angle[0]
+        phi   = viewing_angle[1]
+        psi   = viewing_angle[2]
+
+        if psi_off is None:
+            psi_off = np.zeros_like(qobs_pot)
+
+        # deprojection: viewing angles -> intrinsic axis ratios
+        pintr, qintr, uintr = TriaxialVisibleComponent.triax_tpp2pqu(
+            theta,phi,psi,qobs_pot,psi_off)
+
+        p_pot = pintr
+        q_pot = qintr
+        sig_pot_pc = sigobs_pot_pc
+        sigintr_pc = sig_pot_pc / uintr
+
+        V0 = (surf_pot_pc * (2.0 * np.pi * sig_pot_pc**2 * qobs_pot)
+              * np.sqrt(2.0 / np.pi) / sigintr_pc**3 * G * ml)
+
+        x = np.atleast_1d(np.asarray(x, dtype=float))
+        y = np.atleast_1d(np.asarray(y, dtype=float))
+        z = np.atleast_1d(np.asarray(z, dtype=float))
+
+        ax = np.zeros_like(x)
+        ay = np.zeros_like(x)
+        az = np.zeros_like(x)
+
+        # --- integrands ---
+        def _acc_x_integrand(t, x_, y_, z_):
+            dt = 1.0 - (1.0 - p_pot**2) * t**2
+            et = 1.0 - (1.0 - q_pot**2) * t**2
+            m2 = x_**2 + y_**2 / dt + z_**2 / et
+            ker = (-np.exp(-t**2 * m2 / (2.0 * sigintr_pc**2))
+                / np.sqrt(dt * et) * t**2 * x_)
+            return np.sum(V0 * ker)
+
+        def _acc_y_integrand(t, x_, y_, z_):
+            dt = 1.0 - (1.0 - p_pot**2) * t**2
+            et = 1.0 - (1.0 - q_pot**2) * t**2
+            m2 = x_**2 + y_**2 / dt + z_**2 / et
+            ker = (-np.exp(-t**2 * m2 / (2.0 * sigintr_pc**2))
+                / np.sqrt(dt**3 * et)* t**2 * y_)
+            return np.sum(V0 * ker)
+
+        def _acc_z_integrand(t, x_, y_, z_):
+            dt = 1.0 - (1.0 - p_pot**2) * t**2
+            et = 1.0 - (1.0 - q_pot**2) * t**2
+            m2 = x_**2 + y_**2 / dt + z_**2 / et
+            ker = (-np.exp(-t**2 * m2 / (2.0 * sigintr_pc**2))
+                / np.sqrt(dt * et**3)* t**2 * z_)
+            return np.sum(V0 * ker)
+
+        # main loop
+        for i in range(len(x)):
+            ax[i], _ = integrate.quad(_acc_x_integrand, 0.0, 1.0,
+                                      args=(x[i], y[i], z[i]),epsrel=epsrel,)
+
+            ay[i], _ = integrate.quad(_acc_y_integrand, 0.0, 1.0,
+                                      args=(x[i], y[i], z[i]),epsrel=epsrel,)
+
+            az[i], _ = integrate.quad(_acc_z_integrand, 0.0, 1.0,
+                                      args=(x[i], y[i], z[i]),epsrel=epsrel,)
+
+        return ax, ay, az
+
+
 class BarDiskComponent(TriaxialVisibleComponent):
-    """Rotating triaxial component with a MGE projected density (i.e. a bar)
-
-    Note: all bar components are constrained to have the same omega.
-
-    """
-    def __init__(self,
-                 mge_pot=None,
-                 mge_lum=None,
-                 disk_pot=None,
-                 disk_lum=None,
-                 **kwds):
-        super().__init__(**kwds)
-        self.logger = logging.getLogger(f'{__name__}.{__class__.__name__}')
-        self.qobs = np.nan
-        self.par = ['q', 'p', 'u', 'qdisk']
-
-class BarDiskComponentAngles(BarDiskComponent):
     """Rotating triaxial component with a MGE projected density (i.e. a bar),
     with viewing angles specified.
 
@@ -856,6 +1008,7 @@ class BarDiskComponentAngles(BarDiskComponent):
     def validate_parset(self, par):
         # Skip validation as we already know the angles
         return True
+
 
 class DarkComponent(Component):
     """Any dark component of the sytem, with no observed MGE or kinemtics
@@ -930,20 +1083,57 @@ class Plummer(DarkComponent):
     def __init__(self, **kwds):
         super().__init__(symmetry='spherical', **kwds)
 
+    def validate(self):
+        par = ['m', 'a']
+        super().validate(par=par)
+
     def density(x, y, z, pars):
         M, a = pars
         r = (x**2 + y**2 + z**2)**0.5
         rho = 3*M/4/np.pi/a**3 * (1. + (r/a)**2)**-2.5
         return rho
 
-    def mass_enclosed(R, pars):
+    def mass_enclosed(x, y, z, pars):
         M, a = pars
-        Menc = M*R**3/a**3*(1 + R**2/a**2)**(-1.5)
+        r = (x**2 + y**2 + z**2)**0.5
+        Menc = M*r**3/a**3*(1 + r**2/a**2)**(-1.5)
         return Menc
 
-    def validate(self):
-        par = ['m', 'a']
-        super().validate(par=par)
+    @staticmethod
+    def acceleration(x, y, z, par):
+        """
+        Gravitational acceleration of a Plummer sphere.
+
+        Parameters
+        ----------
+        x, y, z : float or array-like
+            Cartesian coordinates [pc]
+        pars : tuple
+            (M, a_pc [pc])
+
+        Returns
+        -------
+        ax, ay, az : ndarray
+            Acceleration components [(km/s)**2 / pc]
+        """
+        M    = par['m']
+        a_pc = par['a_pc']
+
+        x = np.asarray(x, dtype=float)
+        y = np.asarray(y, dtype=float)
+        z = np.asarray(z, dtype=float)
+
+        r2 = x**2 + y**2 + z**2
+        denom = (r2 + a_pc**2)**1.5
+
+        # G = 4.3009172706e-3  # pc * (km/s)**2 / Msun
+        G = dyn.constants.GRAV_CONST_KM / dyn.constants.PARSEC_KM
+        factor = -G * M / denom
+
+        ax = factor * x
+        ay = factor * y
+        az = factor * z
+        return ax, ay, az
 
 
 class NFW(DarkComponent):
@@ -964,7 +1154,7 @@ class NFW(DarkComponent):
 
 
 class NFW_m200_c(DarkComponent):
-    """An NFW halo with m200-c relation from Dutton & Maccio 14
+    """An NFW halo with the z=0 m200-c relation from Dutton & Maccio 14
 
     The relation: log10(c200) = 0.905 - 0.101 * log10(M200/(1e12/h)).
     Component defined with parameter f [dm-fraction, M200/total-stellar-mass]
@@ -998,7 +1188,7 @@ class NFW_m200_c(DarkComponent):
         stars = system.get_component_from_class(TriaxialVisibleComponent)
         M_stars_tot = stars.get_M_stars_tot(system.distMPc, parset)
         f = parset[f'f-{self.name}']
-        h=0.671 #add paper
+        h = system.H / 100
         #total mass of dark matter
         MvDM = f * M_stars_tot
         #dutton&maccio2014 (https://arxiv.org/pdf/1402.7073.pdf) Eq. (8)
@@ -1184,21 +1374,164 @@ class GeneralisedNFW(DarkComponent):
             is_valid = True
         return is_valid
 
-    ## fixme: should actually derive (rhoc,rc) from (c,Mvir)
-    def potential(x, y, z, pars):
-        rhoc, rc, gamma = pars
-        xi = r/(r + rc)
-        psi = 4*np.pi*G*rhoc*rc**2*(rc/r*xi**(3-gamma)/(3-gamma)*special.hyp2f1(3-gamma,1,4-gamma,xi) + (1 - xi**(3-gamma))/(2-gamma))
-        return psi
+    @staticmethod
+    def density(x, y, z, halo_pars):
+        '''
+        Parameters
+        ----------
+        x, y, z : unit: pc
+        pars = (rhoc, rc, gam)
 
-    def density(x, y, z, pars):
-        rhoc, rc, gamma = pars
-        rho = rhoc*rc**3*r**(-gamma)*(r + rc)**(gamma-3)
+        Returns
+        -------
+        rho : float
+            Scale density, unit : Msun/pc**3
+        '''
+        rhoc, rc, gamma = halo_pars
+        x = np.asarray(x, dtype=float)
+        y = np.asarray(y, dtype=float)
+        z = np.asarray(z, dtype=float)
+
+        r = np.sqrt(x**2 + y**2 + z**2)
+        rho = rhoc * rc**3 * r**(-gamma) * (r + rc)**(gamma-3)
         return rho
 
-    def mass_enclosed(x, y, z, pars):
-        rhoc, rc, gamma = pars
+    @staticmethod
+    def mass_enclosed(x, y, z, halo_pars):
+        '''
+        Parameters
+        ----------
+        x, y, z : unit: pc
+        pars = (rhoc, rc, gam)
+
+        Returns
+        -------
+        Menc : float
+            Mass, unit : Msun
+        '''
+        rhoc, rc, gamma = halo_pars
+
+        x = np.asarray(x, dtype=float)
+        y = np.asarray(y, dtype=float)
+        z = np.asarray(z, dtype=float)
+
+        r = np.sqrt(x**2 + y**2 + z**2)
+
         xi = r/(r + rc)
-        Menc = 4*np.pi*rc**3*rhoc*xi**(3-gamma)/(3-gamma)*special.hyp2f1(3-gamma,1,4-gamma,xi)
+        Menc = (4 * np.pi * rc**3 * rhoc * xi**(3-gamma)/(3-gamma)
+                * special.hyp2f1(3-gamma,1,4-gamma,xi))
+        return Menc
+
+    @staticmethod
+    def acceleration(x, y, z, par):
+        """
+        Gravitational acceleration of the gNFW halo.
+
+        Parameters
+        ----------
+        x, y, z : float or array-like
+            Cartesian coordinates [pc].
+        par : dict
+            Parameter dictionary from parset.
+
+        Returns
+        -------
+        ax, ay, az : ndarray
+            Acceleration components [(km/s)**2/pc].
+        """
+        x = np.asarray(x, dtype=float)
+        y = np.asarray(y, dtype=float)
+        z = np.asarray(z, dtype=float)
+
+        r = np.sqrt(x**2 + y**2 + z**2)
+
+        rhoc, rc, gamma = GeneralisedNFW.convert_parset(par)
+
+        halo_pars = (rhoc, rc, gamma)
+        M_enc = GeneralisedNFW.mass_enclosed(x, y, z, halo_pars)
+
+        # G = 4.3009172706e-3                # [pc*(km/s)**2/Msun]
+        G = dyn.constants.GRAV_CONST_KM / dyn.constants.PARSEC_KM
+        factor = -G * M_enc / r**3
+
+        ax = factor * x
+        ay = factor * y
+        az = factor * z
+
+        return ax, ay, az
+
+
+class Chi2Ext(Component):
+    """External component independent of DYNAMITE orbit and weight calculations
+
+    This component interfaces to an external class that implements a chi2
+    calculation independent of DYNAMITE orbit integration and weight solving.
+    That chi2 value is added to all three chi2 values right after weight
+    solving and is used by the parameter generator.
+
+    Parameters
+    ----------
+    ext_module : str
+        the name of the module implementing the external :math:`\chi^2`
+        calculation. The associated .py file should be in the Python path.
+    ext_class : str
+        the class name in the external module implementing the external
+        :math:`\chi^2` calculation. It will be instantiated once, at the time
+        the config file is read.
+    ext_class_args : dict
+        the class parameters, can be empty (``{}``)
+    ext_chi2 : str
+        the name of the ``ext_class`` method returning :math:`\chi^2`
+        as a single ``float``. In DYNAMITE, it will be called right after
+        weight solving, passing the entire current parset.
+    """
+    def __init__(self,
+                 ext_module=None,
+                 ext_class=None,
+                 ext_class_args=None,
+                 ext_chi2=None,
+                 **kwds):
+        super().__init__(**kwds)
+        self.logger = logging.getLogger(f'{__name__}.{__class__.__name__}')
+        if ext_module is None or ext_class is None or ext_class_args is None \
+           or ext_chi2 is None:
+            txt = 'ext_module, ext_class, ext_class_args, ext_chi2 ' \
+                  'cannot be None.'
+            self.logger.error(txt)
+            raise ValueError(txt)
+        self.contributes_to_potential = False
+        self.visible = False
+        self.logger.debug(f'Importing {ext_module=}')
+        import importlib  # only used once and only if Chi2Ext component exists
+        the_ext_module = importlib.import_module(ext_module)
+        args = tuple(f'{a}={ext_class_args[a]}' for a in ext_class_args)
+        self.logger.debug('Instantiating '
+                          f'{ext_module}.{ext_class}({args}).')
+        ext_object = getattr(the_ext_module, ext_class)(**ext_class_args)
+        self.ext_chi2 = getattr(ext_object, ext_chi2)
+
+    def validate(self):  # allow any parameter names
+        pars = [self.get_parname(p.name) for p in self.parameters]
+        super().validate(par=pars)
+
+    def get_chi2(self, model_id, config):
+        """
+        Returns the chi2 value for the parameter set.
+
+        Parameters
+        ----------
+        model_id : int
+            Model ID in the all_models table.
+        config : a ``dyn.config.DynamiteConfig`` object
+            The current DYNAMITE configuration
+
+        Returns
+        -------
+        float
+            The chi2 value
+
+        """
+        self.logger.debug(f'Calling external chi2 method with {model_id=}.')
+        return self.ext_chi2(model_id, config)
 
 # end

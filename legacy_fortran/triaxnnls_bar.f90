@@ -405,7 +405,6 @@ subroutine readobservations()
   integer (kind=i4b) :: cmin,cmax,iherm
 
   real(kind=dp) :: ftmp,minmass,masserror
-  real(kind=dp),allocatable,dimension(:) :: kinerrscale
   real(kind=dp),dimension(:,:,:),allocatable :: tmass
 
   print*,"  * Read parameters.in"
@@ -463,7 +462,6 @@ subroutine readobservations()
 
   print*, "Give input file with intrinsic masses"
   print*, "This is mass mass_qgrid.dat"
-  !read (unit=*, fmt="(a256)") infile
   infile='datfil/mass_radmass.dat'
   print*,infile
   open (unit=41,file=infile,status="old",action="read",position="rewind")
@@ -503,7 +501,6 @@ subroutine readobservations()
 
   print*, "  Give the number of hermite moments to be fitted"
   read (unit=*, fmt=*) hermax
-  allocate (kinerrscale(hermax))
 
   print*, "Give input file with observed kinematical data"
   print*, "at the constraint points"
@@ -528,17 +525,6 @@ subroutine readobservations()
           (velmom(i,j),dvelmom(i,j),j=3,minval( (/hermax, nherm/) ))
   end do
 
-
-  print*,"Give the kinematic systematic error for each moment."
-  read (unit=*,fmt=*) kinerrscale(:)
-  print*,kinerrscale(:)
-  print*,'stope1',minval(kinerrscale)
-  if (minval(kinerrscale) < 0.0_dp) stop " scale is smaller then zero"
-
-  do i=1,hermax
-     dvelmom(:,i)=sqrt(dvelmom(:,i)**2 + kinerrscale(i)**2)
-  end do
-
   ! this maximum error exist because this is what it sets zero error's to.
   print*,'stope2', maxval(dvelmom)
   if (maxval(dvelmom) > 1.0e32_dp) stop " maximum error on kinematics exceeded"
@@ -547,7 +533,6 @@ subroutine readobservations()
 
   close (unit=44)
 
-  deallocate(kinerrscale)
 !---------------------------------------------------------
 
  convecl=nmass1*nmass2*nmass3 + 1 + nconstr*(hermax+1)
