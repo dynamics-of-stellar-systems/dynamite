@@ -847,6 +847,14 @@ class NNLS(WeightSolver):
         The returned value is the largest violation, scaled by
         ``||A_col|| * ||b||`` so it is dimensionless.
 
+        .. warning::
+           The scaling makes this number OPTIMISTIC when ``b`` is dominated by
+           one large entry, which is exactly the case here: ``b[0] = 1e8`` gives
+           a scale factor of order 1e16, so a raw violation of 3.6e3 is reported
+           as 3.6e-13. Use the value to COMPARE solutions of the same problem,
+           not as an absolute statement of convergence. A raw (unscaled) figure
+           should be reported alongside it; see the TODO in ``solve_adelie_alm``.
+
         Because the conditions are sufficient as well as necessary, this value
         grades a solution on an absolute scale and needs no reference solution.
         On the omega Cen matrix the stored scipy solution gives 9.55e-04, with
@@ -921,6 +929,18 @@ class NNLS(WeightSolver):
         The inner solves are inexact, so the multiplier oscillates about its
         fixed point and the final iterate is arbitrary within that spread. The
         iterate with the lowest chi2 is returned instead.
+
+        .. warning::
+           **Known limitation: ``adelie_mu`` is an absolute constant but should
+           be relative to the matrix scale.** The default 1e7 was validated on
+           omega Cen and NGC6278, where the non-total-mass rows have column
+           norms of order 1e4 to 1e5, so ``sqrt(mu) ~ 3e3`` is comparable to
+           them. On a synthetic problem whose other rows are of order 1, the
+           same mu leaves chi2 = 8.5 where 0 is attainable, while mu = 1e2
+           reaches 1.6e-4. A galaxy whose constraint magnitudes differ from
+           omega Cen's may therefore sit off the validated plateau, and the
+           failure is silent. Until mu is set from the data, check the logged
+           chi2 against a scipy solve on any new dataset.
 
         Parameters
         ----------
