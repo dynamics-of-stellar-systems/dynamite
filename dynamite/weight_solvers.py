@@ -865,6 +865,14 @@ class NNLS(WeightSolver):
         float
             maximum scaled KKT violation; ~0 for a converged solution.
 
+        References
+        ----------
+        Karush, W. 1939, MSc thesis, Univ. of Chicago
+        Kuhn, H. W. & Tucker, A. W. 1951, in Proc. 2nd Berkeley Symposium on
+            Mathematical Statistics and Probability, 481
+        Boyd, S. & Vandenberghe, L. 2004, Convex Optimization (Cambridge Univ.
+            Press), Sect. 5.5.3 -- sufficiency of KKT for convex problems
+
         """
         grad = A.T @ (A @ weights - b)
         viol = np.where(weights > 0, np.abs(grad), np.maximum(-grad, 0.0))
@@ -925,6 +933,41 @@ class NNLS(WeightSolver):
         -------
         array
             orbit weights
+
+        References
+        ----------
+        Augmented Lagrangian method:
+
+        Hestenes, M. R. 1969, J. Optim. Theory Appl., 4, 303
+        Powell, M. J. D. 1969, in Optimization, ed. R. Fletcher (Academic
+            Press), 283
+        Rockafellar, R. T. 1973, Math. Program., 5, 354 -- convergence theory
+        Bertsekas, D. P. 1982, Constrained Optimization and Lagrange Multiplier
+            Methods (Academic Press)
+        Nocedal, J. & Wright, S. J. 2006, Numerical Optimization, 2nd edn.
+            (Springer), Chap. 17
+
+        Solver and the underlying least-squares problems:
+
+        Yang, J. & Hastie, T. 2024a, arXiv:2410.03014 -- the BVLS coordinate
+            descent solver used here, and the sparsity/local-uniqueness theory
+            for polyhedron-constrained least squares
+        Yang, J. & Hastie, T. 2024b, arXiv:2405.08631 -- the adelie package
+        Lawson, C. L. & Hanson, R. J. 1974, Solving Least Squares Problems
+            (Prentice-Hall; SIAM Classics reprint 1995) -- the active-set NNLS
+            algorithm used by the scipy backend
+        Stark, P. B. & Parker, R. L. 1995, Comput. Stat., 10, 129 -- bounded
+            variable least squares
+        Tseng, P. 2001, J. Optim. Theory Appl., 109, 475 -- convergence of
+            block coordinate descent
+
+        Schwarzschild modelling context:
+
+        Schwarzschild, M. 1979, ApJ, 232, 236
+        van den Bosch, R. C. E., van de Ven, G., Verolme, E. K., Cappellari, M.
+            & de Zeeuw, P. T. 2008, MNRAS, 385, 647
+        Zhu, L., van de Ven, G., van den Bosch, R., et al. 2018, MNRAS, 473,
+            3000 -- the CRcut treatment of counter-rotating orbits
 
         """
         n_threads = int(os.environ.get("OMP_NUM_THREADS", os.cpu_count() or 1))
