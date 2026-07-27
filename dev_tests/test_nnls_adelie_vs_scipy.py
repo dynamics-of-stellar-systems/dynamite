@@ -72,15 +72,16 @@ def main():
                 dt = time.perf_counter() - t0
                 orblib.read_vel_histograms()
                 A, b = ws.construct_nnls_matrix_and_rhs(orblib)
-                kkt = NNLS.kkt_violation(A, b, w)
+                kkt, kkt_raw = NNLS.kkt_violation(A, b, w)
                 rows.append(dict(i=i, ml=float(c.all_models.table["ml"][i]),
                                  chi2=chi2, kinchi2=kinchi2, t=dt,
                                  sw=float(np.sum(w)),
-                                 act=int(np.sum(w > 0)), kkt=kkt))
+                                 act=int(np.sum(w > 0)), kkt=kkt,
+                                 kkt_raw=kkt_raw))
                 print(f"  [{solver}] model {i} ml={rows[-1]['ml']:.2f}: "
                       f"chi2={chi2:.2f} kinchi2={kinchi2:.2f} "
                       f"sum_w={rows[-1]['sw']:.8f} act={rows[-1]['act']} "
-                      f"KKT={kkt:.2e} ({dt:.1f}s)", flush=True)
+                      f"KKT={kkt:.2e} raw={kkt_raw:.2e} ({dt:.1f}s)", flush=True)
             except Exception as e:
                 print(f"  [{solver}] model {i}: FAILED "
                       f"{type(e).__name__}: {e}", flush=True)

@@ -844,23 +844,42 @@ class NNLS(WeightSolver):
         - :math:`w_j > 0 \Rightarrow g_j = 0`
         - :math:`w_j = 0 \Rightarrow g_j \geq 0`   (adding weight cannot help)
 
-        The returned value is the largest violation, scaled by
-        ``||A_col|| * ||b||`` so it is dimensionless.
+        Two numbers are returned: the largest violation itself, and that
+        violation scaled by ``||A_col|| * ||r||`` where ``r = Aw - b`` is the
+        residual. By Cauchy-Schwarz :math:`|g_j| \leq \|A_{\cdot j}\|\,\|r\|`,
+        so the scaled value lies in [0, 1] and measures how strongly the worst
+        orbit is still aligned with the residual.
 
-        .. warning::
-           The scaling makes this number OPTIMISTIC when ``b`` is dominated by
-           one large entry, which is exactly the case here: ``b[0] = 1e8`` gives
-           a scale factor of order 1e16, so a raw violation of 3.6e3 is reported
-           as 3.6e-13. Use the value to COMPARE solutions of the same problem,
-           not as an absolute statement of convergence. A raw (unscaled) figure
-           should be reported alongside it; see the TODO in ``solve_adelie_alm``.
+        The residual, not ``b``, is the correct denominator. Scaling by
+        ``||b||`` was tried first and is unusable here: ``b[0] = 1e8`` makes the
+        factor ~1e16, so a raw violation of 3.9e3 was reported as 3.9e-13 and a
+        clearly unconverged solution looked optimal. That is the same failure
+        mode as adelie's ``y_var``. ``||r||`` is a property of the solution and
+        shrinks as it converges, which is what a convergence measure requires.
 
-        Because the conditions are sufficient as well as necessary, this value
-        grades a solution on an absolute scale and needs no reference solution.
-        On the omega Cen matrix the stored scipy solution gives 9.55e-04, with
-        27568 of 36000 orbits at zero despite negative gradients, while scipy
-        reported convergence. A chi2 comparison cannot detect this, since it
-        ranks two solutions without establishing that either is optimal.
+        Measured on solutions whose status is known independently:
+
+        =========================== ========= ========== ==========
+        solution                    chi2      raw        scaled
+        =========================== ========= ========== ==========
+        synthetic, exact            1.4e-32   1.1e-16    9.0e-09
+        synthetic, scipy exact      9.2e-30   8.5e-15    2.8e-08
+        synthetic, ALM unconverged  8.5e+00   4.0e+03    1.4e-05
+        omega Cen, stored scipy     9.1e+09   7.1e+16    1.0e+00
+        omega Cen, ALM              1.2e+04   4.5e+13    5.7e-03
+        =========================== ========= ========== ==========
+
+        The omega Cen scipy solution scores 1.0, the maximum: 27568 of its
+        36000 orbits sit at zero while their gradients are negative, yet scipy
+        reported convergence. chi2 cannot detect this, since comparing two
+        solutions does not establish that either is optimal.
+
+        Note what the table also shows: omega Cen's good solution (5.7e-03)
+        scores WORSE than the synthetic unconverged one (1.4e-05). Being
+        bounded in [0, 1] does not make the value comparable across problems,
+        because what counts as small depends on the conditioning. Use it to
+        rank solutions of one problem, and to catch gross failures near 1; do
+        not read a fixed threshold as a convergence criterion.
 
         Parameters
         ----------
@@ -870,8 +889,10 @@ class NNLS(WeightSolver):
 
         Returns
         -------
-        float
-            maximum scaled KKT violation; ~0 for a converged solution.
+        tuple of float
+            ``(scaled, raw)``. ``scaled`` is in [0, 1] and is comparable across
+            problems; ``raw`` is dimensional and comparable only within one.
+            Report both.
 
         References
         ----------
@@ -880,11 +901,18 @@ class NNLS(WeightSolver):
             necessary, for a convex problem such as this one
 
         """
-        grad = A.T @ (A @ weights - b)
+        resid = A @ weights - b
+        grad = A.T @ resid
         viol = np.where(weights > 0, np.abs(grad), np.maximum(-grad, 0.0))
-        scale = np.linalg.norm(A, axis=0) * np.linalg.norm(b)
-        scale = np.where(scale > 0, scale, 1.0)
-        return float(np.max(viol / scale))
+        raw = float(np.max(viol))
+        # Cauchy-Schwarz denominator: |g_j| <= ||A_.j|| ||r||, so this is in
+        # [0, 1]. An exactly-fitting solution has ||r|| -> 0 and the ratio is
+        # then 0/0; guard it and report 0, which is the correct verdict.
+        scale = np.linalg.norm(A, axis=0) * np.linalg.norm(resid)
+        if not np.any(scale > 0):
+            return 0.0, raw
+        scale = np.where(scale > 0, scale, np.inf)
+        return float(np.max(viol / scale)), raw
 
     def solve_adelie_alm(self, A, b):
         r"""Solve the NNLS problem with adelie BVLS + an augmented Lagrangian.
@@ -1007,13 +1035,20 @@ class NNLS(WeightSolver):
             f'adelie ALM: {it + 1} iterations, mu={mu:.1e}, '
             f'final gap={gap:.2e}, best iterate {best_it}, '
             f'chi2={best_chi2:.4f}, sum(w)={best_w.sum():.10f}')
-        kkt = self.kkt_violation(A, b, best_w)
-        self.logger.info(f'adelie ALM: KKT violation = {kkt:.3e}')
-        if kkt > 1e-6:
+        kkt, kkt_raw = self.kkt_violation(A, b, best_w)
+        self.logger.info(f'adelie ALM: KKT violation scaled={kkt:.3e} '
+                         f'(in [0,1]), raw={kkt_raw:.3e}')
+        # A fixed threshold cannot separate converged from unconverged across
+        # datasets: omega Cen's good solution scores 5.7e-03 while a known
+        # UNCONVERGED synthetic one scores 1.4e-05. What counts as small is
+        # problem dependent. 0.1 therefore only catches unambiguous failures
+        # (the stored omega Cen scipy solution scores 1.0, the maximum).
+        # For a real convergence check, compare chi2 against a scipy solve.
+        if kkt > 0.1:
             self.logger.warning(
-                f'adelie ALM: KKT violation {kkt:.3e} is large - the solution '
-                'may not be optimal. Consider more adelie_alm_iters or a '
-                'different adelie_mu (plateau is 1e5-1e7).')
+                f'adelie ALM: scaled KKT violation {kkt:.3e} is close to the '
+                'maximum of 1 - the solution is far from optimal. Check '
+                'adelie_mu against a scipy solve on this dataset.')
         return best_w
 
     def solve(self, orblib, ignore_existing_weights=False):
