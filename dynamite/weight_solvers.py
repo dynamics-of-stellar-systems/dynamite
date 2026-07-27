@@ -12,6 +12,12 @@ try:
 except ModuleNotFoundError:
     pass
 
+try:
+    import adelie.solver as _adelie_solver
+    _ADELIE_AVAILABLE = True
+except ImportError:
+    _ADELIE_AVAILABLE = False
+
 from dynamite import constants
 from dynamite import analysis
 from dynamite import kinematics as dyn_kin
@@ -622,7 +628,9 @@ class NNLS(WeightSolver):
     Parameters
     ----------
     nnls_solver : string
-        either ``scipy`` or ``cvxopt``
+        one of ``scipy``, ``cvxopt`` or ``adelie``. ``adelie`` uses
+        coordinate-descent BVLS with an augmented Lagrangian on the total-mass
+        constraint; see ``solve_adelie_alm``
 
     """
 
@@ -631,8 +639,17 @@ class NNLS(WeightSolver):
         self.logger = logging.getLogger(f"{__name__}.{__class__.__name__}")
         if nnls_solver is None:
             nnls_solver = self.settings["nnls_solver"]
-        assert nnls_solver in ["scipy", "cvxopt"], "Unknown nnls_solver"
+        assert nnls_solver in ["scipy", "cvxopt", "adelie"], \
+            "Unknown nnls_solver"
         self.nnls_solver = nnls_solver
+        # ALM settings for the adelie solver. On NGC6278, where scipy provides
+        # a verified optimum, mu between 1e5 and 1e7 reproduces it; 1e7 gave the
+        # lowest KKT violation (7e-11) and a monotone gap, whereas 1e6
+        # oscillated. See docs/source/adelie_branch_migration.md.
+        self.adelie_mu = float(self.settings.get('adelie_mu', 1.0e7))
+        self.adelie_alm_iters = int(self.settings.get('adelie_alm_iters', 200))
+        self.adelie_tol = float(self.settings.get('adelie_tol', 1.0e-10))
+        self.adelie_gap_tol = float(self.settings.get('adelie_gap_tol', 1e-10))
         self.get_observed_mass_constraints()
 
     def get_observed_mass_constraints(self):
@@ -816,6 +833,150 @@ class NNLS(WeightSolver):
         orb_gh[idx_cut[0], idx_cut[1], 0] = 3.0 / dvhist
         return orb_gh
 
+    @staticmethod
+    def kkt_violation(A, b, weights):
+        r"""Optimality certificate for the NNLS solution.
+
+        NNLS is convex, so the Karush-Kuhn-Tucker conditions are necessary
+        **and sufficient**: a point satisfying them is a global optimum. With
+        :math:`g = A^T(Aw-b)` they read, per orbit,
+
+        - :math:`w_j > 0 \Rightarrow g_j = 0`
+        - :math:`w_j = 0 \Rightarrow g_j \geq 0`   (adding weight cannot help)
+
+        The returned value is the largest violation, scaled by
+        ``||A_col|| * ||b||`` so it is dimensionless.
+
+        Because the conditions are sufficient as well as necessary, this value
+        grades a solution on an absolute scale and needs no reference solution.
+        On the omega Cen matrix the stored scipy solution gives 9.55e-04, with
+        27568 of 36000 orbits at zero despite negative gradients, while scipy
+        reported convergence. A chi2 comparison cannot detect this, since it
+        ranks two solutions without establishing that either is optimal.
+
+        Parameters
+        ----------
+        A : array (n_constraints, n_orbits)
+        b : array (n_constraints,)
+        weights : array (n_orbits,)
+
+        Returns
+        -------
+        float
+            maximum scaled KKT violation; ~0 for a converged solution.
+
+        """
+        grad = A.T @ (A @ weights - b)
+        viol = np.where(weights > 0, np.abs(grad), np.maximum(-grad, 0.0))
+        scale = np.linalg.norm(A, axis=0) * np.linalg.norm(b)
+        scale = np.where(scale > 0, scale, 1.0)
+        return float(np.max(viol / scale))
+
+    def solve_adelie_alm(self, A, b):
+        r"""Solve the NNLS problem with adelie BVLS + an augmented Lagrangian.
+
+        **Why an augmented Lagrangian.** Row 0 enforces
+        :math:`\sum_j w_j = M_{tot}` with ``econ[0] = 1e-8``, so it contributes
+        :math:`\tfrac{1}{2}\,10^{16}(\mathbf{1}^Tw-1)^2`. That is the
+        :math:`\mu\to\infty` limit of a quadratic penalty, i.e. a hard equality
+        constraint imposed by brute force. On omega Cen the row raises the
+        condition number to 5e22. It also inflates adelie's convergence
+        threshold: the stopping test is ``convg_measure <= tol * y_var`` with
+        ``y_var = ||b||^2/n``, and ``b[0] = 1e8`` gives ``y_var = 1.04e12``, so
+        the threshold becomes ~1e5 instead of ~1e-7. adelie then reports
+        convergence after 2 iterations at ``sum(w) = 0``.
+
+        ALM imposes the same constraint with a moderate ``mu`` by carrying a
+        multiplier, so the matrix passed to adelie stays well scaled::
+
+            row     = sqrt(mu) * 1',   target = sqrt(mu) * (1 + lam/mu)
+            lam    <- lam - mu * (1'w - 1)
+
+        A fixed penalty alone would leave a biased optimum. Updating the target
+        through ``lam`` removes that bias without raising ``mu``: on omega Cen
+        the constraint gap reaches 6e-11 with ``mu = 1e7``.
+
+        Three implementation details are needed for this to be practical:
+
+        1. ``mu`` is fixed. Raising it when convergence stalls restores the
+           original scaling problem; one such attempt reached ``mu = 5.3e11``
+           and stalled at a gap of 2e-4.
+        2. With ``mu`` fixed the augmented matrix does not change between
+           iterations (only the scalar target does), so it is built and
+           column-scaled once.
+        3. Each subproblem is warm-started from the previous adelie state.
+           Consecutive subproblems differ by one number and converge in 1 to 2
+           inner iterations.
+
+        Items 2 and 3 reduced the per-iteration cost from 18.2 s to 0.6 s on
+        NGC6278, which is what makes several hundred multiplier updates
+        affordable.
+
+        The inner solves are inexact, so the multiplier oscillates about its
+        fixed point and the final iterate is arbitrary within that spread. The
+        iterate with the lowest chi2 is returned instead.
+
+        Parameters
+        ----------
+        A : array (n_constraints, n_orbits)
+        b : array (n_constraints,)
+
+        Returns
+        -------
+        array
+            orbit weights
+
+        """
+        n_threads = int(os.environ.get("OMP_NUM_THREADS", os.cpu_count() or 1))
+        mu = self.adelie_mu
+        sqrt_mu = np.sqrt(mu)
+        A_rest, b_rest = A[1:, :], b[1:]
+        n_orbs = A.shape[1]
+
+        # Build the augmented matrix once. Unit-L2 column scaling is an exact
+        # change of variable, since positive diagonal scaling preserves w >= 0,
+        # and the column norms here span about 15 orders of magnitude. The array
+        # is stored F-contiguous because coordinate descent accesses one column
+        # at a time.
+        X = np.vstack([sqrt_mu * np.ones((1, n_orbs)), A_rest])
+        col_norm = np.linalg.norm(X, axis=0)
+        col_norm[col_norm == 0] = 1.0
+        X = np.asfortranarray(X / col_norm)
+        y = np.concatenate([[0.0], b_rest])
+        lower = np.zeros(n_orbs, dtype=np.float64)
+        upper = np.full(n_orbs, np.inf, dtype=np.float64)
+
+        lam = 0.0
+        state = None
+        best_chi2, best_w, best_it = np.inf, None, -1
+        for it in range(self.adelie_alm_iters):
+            y[0] = sqrt_mu * (1.0 + lam / mu)
+            state = _adelie_solver.bvls(
+                X, np.ascontiguousarray(y), lower, upper,
+                n_threads=n_threads, tol=self.adelie_tol,
+                max_iters=int(2e5), warm_start=state)
+            w = np.asarray(state.beta).ravel() / col_norm
+            gap = float(w.sum() - 1.0)
+            lam -= mu * gap
+            chi2 = float(np.sum((A @ w - b) ** 2))
+            if chi2 < best_chi2:
+                best_chi2, best_w, best_it = chi2, w.copy(), it
+            if abs(gap) < self.adelie_gap_tol:
+                break
+
+        self.logger.info(
+            f'adelie ALM: {it + 1} iterations, mu={mu:.1e}, '
+            f'final gap={gap:.2e}, best iterate {best_it}, '
+            f'chi2={best_chi2:.4f}, sum(w)={best_w.sum():.10f}')
+        kkt = self.kkt_violation(A, b, best_w)
+        self.logger.info(f'adelie ALM: KKT violation = {kkt:.3e}')
+        if kkt > 1e-6:
+            self.logger.warning(
+                f'adelie ALM: KKT violation {kkt:.3e} is large - the solution '
+                'may not be optimal. Consider more adelie_alm_iters or a '
+                'different adelie_mu (plateau is 1e5-1e7).')
+        return best_w
+
     def solve(self, orblib, ignore_existing_weights=False):
         """Solve for orbit weights
 
@@ -867,7 +1028,27 @@ class NNLS(WeightSolver):
             b_max = np.max(np.abs(b))
             b_normalized = b / b_max
 
-            if self.nnls_solver == "scipy":
+            if self.nnls_solver == "adelie":
+                # NB: the ALM solver takes the UNNORMALISED A, b. It applies
+                # its own unit-L2 column scaling to the augmented matrix and
+                # undoes it on the solution, so the A_max/b_max normalisation
+                # above must not be applied here.
+                if not _ADELIE_AVAILABLE:
+                    text = ("nnls_solver 'adelie' is not installed. "
+                            "Run: pip install adelie")
+                    self.logger.error(text)
+                    raise ImportError(text)
+                try:
+                    weights = self.solve_adelie_alm(A, b)
+                except Exception as e:
+                    txt = (
+                        f'Orblib {orblib.mod_dir}, ml={orblib.parset["ml"]}'
+                        f": adelie ALM solver error occured: {e} All weights "
+                        "and chi2 set to nan. Consider trying scipy."
+                    )
+                    self.logger.warning(txt)
+                    weights = np.full(A.shape[1], np.nan)
+            elif self.nnls_solver == "scipy":
                 try:
                     # Solve the NNLS problem with normalized data
                     x_normalized, rnorm = optimize.nnls(A_normalized, b_normalized)
