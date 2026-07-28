@@ -1058,6 +1058,33 @@ class LegacyOrbitLibrary(OrbitLibrary):
                 np.array(nv, dtype=np.int64))
 
     @staticmethod
+    def _value_batches(nv, max_values):
+        """Split pairs into batches holding at most ``max_values`` values each.
+
+        Parameters
+        ----------
+        nv : 1d numpy array of int
+            number of velocity values per (orbit, aperture) pair
+        max_values : int
+            values per batch. A pair whose own length exceeds this still forms
+            a batch by itself, so the split is always progressing.
+
+        Returns
+        -------
+        1d numpy array of int
+            batch boundaries, starting at 0 and ending at ``len(nv)``
+
+        """
+        if nv.size == 0:
+            return np.array([0])
+        cumulative = np.cumsum(nv)
+        n_batches = int(cumulative[-1] // max_values) + 1
+        # the first pair whose running total passes each multiple of the budget
+        cuts = np.searchsorted(
+            cumulative, np.arange(1, n_batches) * max_values, side='left') + 1
+        return np.unique(np.concatenate(([0], cuts, [nv.size])))
+
+    @staticmethod
     def _gather_float64(buf, byte_offsets):
         """Read float64 values at arbitrary 4-byte-aligned byte offsets.
 
@@ -1078,7 +1105,7 @@ class LegacyOrbitLibrary(OrbitLibrary):
 
     def _read_losvd_hist_vectorised(self, fname, norb, kin_idx_per_ap,
                                     idx_ap_reset, hist_bins, velhist0,
-                                    chunk=1000000):
+                                    chunk=2000000):
         """Fill ``velhist0`` from a losvd histogram file, without a read loop.
 
         Equivalent to the per-record ``FortranFile`` loop in
@@ -1106,7 +1133,10 @@ class LegacyOrbitLibrary(OrbitLibrary):
         velhist0 : list of 3d numpy arrays
             modified in place; element k has shape (norb, nv, n_apertures)
         chunk : int, optional
-            number of pairs processed per batch, to bound peak memory.
+            number of velocity values processed per batch. The scatter builds
+            index arrays as long as the expanded values, so this is what bounds
+            peak memory; roughly 56 bytes are needed per value. The default
+            keeps the temporaries near 110 MB regardless of library size.
         """
         # memory-map rather than read: the file is only touched once, and this
         # keeps a large library off the heap (and is marginally faster)
@@ -1117,8 +1147,12 @@ class LegacyOrbitLibrary(OrbitLibrary):
         kin_idx_per_ap = np.asarray(kin_idx_per_ap)
         idx_ap_reset = np.asarray(idx_ap_reset)
         nv0 = np.array([(b - 1) // 2 for b in hist_bins])
-        for lo in range(0, n_pairs, chunk):
-            hi = min(lo + chunk, n_pairs)
+        # Split on the number of velocity values, not on the number of pairs:
+        # the scatter below builds several arrays as long as the expanded
+        # values, so batching by pairs would let peak memory grow with the
+        # library's occupancy instead of staying bounded.
+        edges = self._value_batches(nv, chunk)
+        for lo, hi in zip(edges[:-1], edges[1:]):
             k = np.arange(lo, hi)[nv[lo:hi] > 0]
             if k.size == 0:
                 continue
@@ -1131,14 +1165,15 @@ class LegacyOrbitLibrary(OrbitLibrary):
             within = np.arange(tot) - np.repeat(np.cumsum(nvs) - nvs, nvs)
             vals = self._gather_float64(
                 buf, np.repeat(start[k] * 4, nvs) + 8 * within)
-            orb_e = np.repeat(orb, nvs)
-            ap0_e = np.repeat(ap - idx_ap_reset[kin], nvs)
             kin_e = np.repeat(kin, nvs)
-            vidx = np.repeat(ivmin[k] + nv0[kin], nvs) + within
             # each kinematic set has its own velhist0 array
             for kin_id in np.unique(kin_e):
                 m = kin_e == kin_id
-                velhist0[kin_id][orb_e[m], vidx[m], ap0_e[m]] = vals[m]
+                velhist0[kin_id][np.repeat(orb, nvs)[m],
+                                 (np.repeat(ivmin[k] + nv0[kin], nvs)
+                                  + within)[m],
+                                 np.repeat(ap - idx_ap_reset[kin], nvs)[m]] \
+                    = vals[m]
 
     def _read_individual_orbit(self, fort_file, quad_light_grid_sizes):
         """Read individual orbit parameters from file
