@@ -1,6 +1,8 @@
 # Parallelising orbit integration by splitting the orbit range
 
-Status: **planning / feasibility**. Created 2026-07-28.
+Status: **feasibility tests executed, all pass**. Created 2026-07-28.
+Results in section 8; the plan below is kept as written for context, and where
+a test refuted an expectation that is called out rather than edited away.
 
 Goal: cut the wall-clock cost of building an orbit library by running N
 processes over disjoint orbit ranges, without touching the integrator physics.
@@ -216,3 +218,135 @@ Full omega Cen chunked end-to-end, compared against the existing library. Costs
   (`orblib.py:1241`), so the LOSVD parse is `ml`-independent yet repeated for
   every `ml`. Caching it would nearly eliminate the read, at the cost of holding
   those tens of GB across models.
+
+---
+
+# 8. Results
+
+All seven tests executed on NGC6278 (480 orbits, tube + box). Harness in
+`~/research/dynamite_analysis/` scratch; the merge utility is
+`merge_chunks.py`.
+
+## 8.1 Test 1 -- chunk equivalence: PASS, after a second blocker
+
+Chunked output is bit-identical to a monolithic run for every chunk. Reaching
+that needed **two** order dependencies removed, not the one this plan
+predicted:
+
+1. **The RNG** (section 4.2), as expected. Re-seeded per orbit index. This
+   needed more than a plain re-seed: seeds `base + 7919k` leave the
+   generator's *first* draw U-shaped over [0,1) instead of uniform (measured
+   KS p=0.02 over 2000 orbits), which would have biased every orbit's sampling
+   phase the same way. Sixteen warm-up draws restore uniformity (p=0.40).
+2. **`real(kind=dp), save :: stepsize` in `real_integrator`** -- not
+   anticipated here. DOP853's converged step was carried into the *next*
+   orbit as its initial guess, so orbit k's trajectory depended on orbit k-1.
+   This is exactly the hidden-state class that section 6 cites as the reason
+   to avoid OpenMP; it defeats process chunking too. Lifted to module scope
+   and reset per orbit.
+
+## 8.2 The initial step matters, and the integration is not converged
+
+Resetting the step to zero (letting DOP853 estimate it) shifted chi2 by
+**+0.45% / +2.26% / +0.27%**, i.e. 5.4 and 3.3 sigma against seed scatter.
+An ablation isolated the cause to the stepsize, not the RNG. Giving DOP853 a
+deterministic guess of the right magnitude (the sampling interval, `RPAR(2)`)
+moved chi2 the *other* way, -2.12% on the same model.
+
+Tightening the tolerance does **not** resolve this. chi2 wanders
+non-monotonically:
+
+| tol | old (inherited step) | new (deterministic) |
+|---|---|---|
+| 1e-5 | 13308 | 13049 |
+| 1e-6 | 14106 | 12771 |
+| 1e-7 | 12848 | 13015 |
+| 1e-8 | 13331 | 13462 |
+
+Spread across tolerance and scheme is ~1335 in absolute chi2 for **all three**
+models (1.2%, 10.1%, 0.8% relative), against a seed scatter of only 30-110
+(0.1-0.2%). No integrator retries fire at any of these tolerances, so the
+retry logic is not the mechanism.
+
+The sensitivity is spread over essentially every orbit, not a chaotic
+minority: between 1e-7 and 1e-8, only 1 of 480 tube orbits and **0 of 480**
+box orbits change by less than 1%, and the ten worst orbits carry just 8-10%
+of the total difference. Box orbits are systematically more sensitive than
+tube (median per-orbit relative L1 0.125 vs 0.084), as expected for the more
+chaotic family in a triaxial potential.
+
+It only partly cancels in differences: across all settings the spread in
+chi2 differences between models is 630 (model0, 53% cancellation) and 862
+(model2, none).
+
+**Reading.** The orbit library is a Monte Carlo object whose per-bin LOSVDs
+are reshuffled by any perturbation -- seed, tolerance, initial step, and
+formerly the position of an orbit in the run. Changing the initial-step scheme
+perturbs it by about as much as changing the tolerance by one decade. So
+removing the order dependence is not a degradation, but it is a **one-time
+re-baselining**: libraries built after this change are not comparable at the
+sub-percent level with libraries built before it. Model ranking was preserved
+in every configuration tested.
+
+This is a pre-existing systematic in the code, surfaced rather than introduced
+by this work, and it is worth understanding on its own terms before it is used
+to set confidence intervals.
+
+## 8.3 Tests 2, 3, 7 -- merge, end-to-end chi2, determinism: PASS
+
+- **Merge** is byte-identical to monolithic on all four streams. One trap: each
+  chunk closes its file with a 1-byte Fortran record, so a merged file must
+  carry exactly one of them, not one per chunk.
+- **chi2** from a merged 4-chunk and 8-chunk library is identical to the
+  monolithic value to the cent (111288.54 / 13076.08 / 99634.66).
+- **Determinism**: two identical chunked runs, executed concurrently with other
+  jobs, produced identical output.
+
+## 8.4 Test 4 -- scaling
+
+| chunks | processes | wall | speedup |
+|---|---|---|---|
+| 1 | 2 | 19.5 s | 1.00x |
+| 2 | 4 | 11.2 s | 1.74x |
+| 4 | 8 | 7.4 s | 2.63x |
+| 8 | 16 | 6.3 s | 3.07x |
+| 11 | 22 | 5.7 s | 3.42x |
+
+3.42x on 11 cores, below linear for reasons that are artefacts of this test
+rather than the method: tube and box each spawn `chunks` processes, so
+`chunks=11` is 22 processes 2x-oversubscribed on 11 cores; the merge is serial
+and included in the timing; and at 20 s total the per-process 0.23 s startup is
+a visible fraction. On omega Cen (9.28 CPU-h, 12000 orbits) all three shrink to
+noise. Choose `chunks ~ cores/2` since both families run concurrently.
+
+## 8.5 Test 5 -- compiler flags
+
+| variant | chi2 vs baseline | integrate |
+|---|---|---|
+| baseline (`-ffast-math -O3 -march=native`) | -- | 24.2 s |
+| **without `-march=native`** | **identical** | 24.4 s |
+| without `-ffast-math` | 0.618% max | 25.8 s |
+| neither | 0.618% max | 26.3 s |
+
+**Dropping `-march=native` is free** -- bit-identical chi2, no measurable speed
+cost -- and it removes the SIGILL risk on heterogeneous compute nodes. Do it
+before the grid. `-ffast-math` is a real choice: it changes results by 0.6%
+(comparable to the integration-setting noise in 8.2) and is worth ~7% of
+runtime.
+
+## 8.6 Test 6 -- script interactions
+
+`triaxmass`/`triaxmassbin` are gated on `LegacyWeightSolver` and are not
+invoked at all under `type: NNLS`. When active they sit once in the tube
+branch, and they depend on the potential rather than the orbit library, so a
+chunked script must invoke them once, not per chunk. A placement constraint,
+not a blocker.
+
+## 8.7 What still needs doing
+
+- Wire chunking into `orblib.py`'s script generation (`chunks` config key,
+  N input files, merge step, `triaxmass` invoked once).
+- Full omega Cen run as the final gate (9.28 CPU-h).
+- Decide the re-baselining question in 8.2. That is a science call: the
+  integration-setting sensitivity is real and pre-existing, and chunking
+  requires picking one deterministic scheme and living with it.
