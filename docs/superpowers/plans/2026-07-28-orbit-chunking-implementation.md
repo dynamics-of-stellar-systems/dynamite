@@ -17,17 +17,22 @@ full scale.
 configuration setting, and have the result be indistinguishable from today's
 single-process library.
 
-**Acceptance.** Two full-scale omega Cen models, identical in every respect
-except the new setting, must produce:
+**The claim to defend**, at every chunk count:
 
-1. **byte-identical** `orblib_qgrid.dat.bz2`, `orblib_losvd_hist.dat.bz2` and
-   the box equivalents, after merging;
+1. **byte-identical** `orblib_qgrid.dat`, `orblib_losvd_hist.dat` and the box
+   equivalents, after merging;
 2. **identical** `chi2` and `kinchi2` from the weight solver;
 3. a wall-clock reduction consistent with the chunk count.
 
-(1) is the strong claim and the one worth designing the whole exercise around.
-It already holds at NGC6278 scale for 4 and 8 chunks; section 5 is about
-demonstrating it where it matters.
+(1) is the strong claim and the one worth designing around: if the bytes match,
+everything downstream follows for free.
+
+**Where it is checked.** NGC6278 is the development gate (section 5). It runs
+in ~20 s per library on a laptop, has stored chi2 references, and already has a
+harness. Omega Cen cannot serve this purpose -- one library is 9.28 CPU-h and
+needs the cluster -- so it is a post-hoc confirmation (section 6), run once the
+implementation is already believed correct. Nothing in development should block
+on it.
 
 ## 2. Configuration interface
 
@@ -51,7 +56,7 @@ Note this placement does **not** avoid the config-diff warning.
 from the config file backup" against every existing model, even though the
 setting provably cannot alter them. That is pre-existing behaviour and out of
 scope here, but it must be called out in the documentation, and it shapes the
-validation protocol in section 5 (use separate output trees).
+validation protocol in section 6 (use separate output trees).
 
 ### 2.2 Semantics
 
@@ -69,7 +74,7 @@ validation protocol in section 5 (use separate output trees).
   per chunk rather than all landing on the last one.
 - `orblib_chunks: 1` must take the existing code path unchanged, not a
   one-chunk special case of the new one. This keeps the default risk-free and
-  makes the A/B in section 5 meaningful.
+  makes the A/B in section 6 meaningful.
 
 ### 2.3 Validation, in `config_reader.py`
 
@@ -129,7 +134,88 @@ Two details that will bite if forgotten, both learned the hard way:
 - **The config-diff warning** (section 2.1), so the first person to change the
   setting on an existing tree is not alarmed.
 
-## 5. Full-scale A/B validation
+## 5. Development gate: NGC6278
+
+Everything below runs on a laptop in under a minute per library, so it can be
+run after every step in section 7.
+
+### 5.1 The primary check is an invariant, not a reference value
+
+`chunked == unchunked, same binary` is the property that matters, and it needs
+no reference file at all:
+
+- merged `_qgrid.dat` and `_losvd_hist.dat` **byte-identical** to a
+  single-process run, for both families;
+- `chi2`/`kinchi2` identical;
+- chunk counts **1, 2, 4, 7, 8**. Seven is there deliberately: 480 does not
+  divide by 7, so it exercises the remainder distribution, which is the most
+  likely place for an off-by-one to hide.
+
+Also assert the error paths: `orblib_chunks` greater than the orbit count is
+clamped with a warning, and `orblib_chunks: 1` takes the old code path.
+
+`dev_tests/test_orblib_chunking.py` already does the comparison; it needs
+extending to drive the config setting rather than the executable directly.
+
+### 5.2 `test_nnls.py` must run, and there is a trap
+
+`test_nnls.py` does a bare `import dynamite`, so **it tests whatever is
+installed, not the working tree.** Run from the repo without care, it silently
+exercises site-packages and reports success against code you did not change.
+It must be run as::
+
+    PYTHONPATH=$HOME/research/dynamite python test_nnls.py user_test_config_ml.yaml
+
+or against an editable install. Mixing the two is worse than either: installed
+Python writes a 21-line `parameters_pot.in` while the repo's Fortran expects 22
+(it added a Hubble constant), so the combination dies in `orbitstart` with an
+EOF in `iniparam_f.f90`. Anyone bisecting this behaviour should know that up
+front.
+
+### 5.3 The tracked references are already stale
+
+Measured with the stock 6/5/4 config, `chi2` for the three models against
+`data/chi2_compare_ml_654.dat`:
+
+| combination | model 0 | model 1 | model 2 |
+|---|---|---|---|
+| installed dynamite + installed binaries | -0.31% | -2.39% | -0.92% |
+| **repo HEAD + pre-change binary** | **+3.62%** | **+8.34%** | **+4.37%** |
+| repo HEAD + chunking binary (vs the row above) | -3.94% | -12.33% | -4.77% |
+
+Two separate things are going on, and they must not be conflated:
+
+1. **The repo already diverges from the reference**, before any work on this
+   branch, by up to +8.3%. The installed release nearly reproduces it. The
+   likely cause is the potential/dark-halo change that added `H` to
+   `parameters_pot.in`. This is not ours to fix here, but it means
+   `chi2_compare_ml_654.dat` cannot be used as a pass/fail gate as things
+   stand.
+2. **The chunking commit shifts results further**, as expected from the DOP853
+   initial-step change.
+
+Note the 6/5/4 config integrates only 120 orbits, so its Monte Carlo noise is
+much larger than the 480-orbit tree used elsewhere; that is why these
+percentages are bigger than the ~1-2% measured at 10/8/6. It is a
+smoke-test-grade configuration, not a precision one.
+
+**Action.** Regenerate the references from repo HEAD with
+`create_comparison_data`, commit the old and new values side by side with a
+note on what changed and why, and keep the invariant in 5.1 as the actual
+regression gate. `test_nnls.py` is a visual test -- it plots calculated against
+reference and asserts nothing -- so its role here is "the pipeline runs
+end-to-end and the numbers are sane and correctly ordered", not "the numbers
+match to the digit".
+
+`dev_tests/test_orbit_losvds.py` compares against a tracked
+`data/comparison_losvd.npz` and is affected the same way; regenerate it in the
+same pass.
+
+## 6. Full-scale A/B validation, after the fact
+
+Omega Cen cannot gate development -- one library is 9.28 CPU-h and needs the
+cluster -- so this runs once the NGC6278 gate in section 5 is green, to confirm
+at production scale what has already been demonstrated at small scale.
 
 Two omega Cen runs, identical except `orblib_chunks`.
 
@@ -154,7 +240,7 @@ localises immediately), or another piece of order-dependent state survives that
 NGC6278 did not exercise. Two were found already, both invisible at small scale
 until specifically hunted; a third is not unthinkable.
 
-### 5.1 A separate A/B: the re-baselining question
+### 6.1 A separate A/B: the re-baselining question
 
 Distinct from the above, and worth not conflating with it. The Fortran changes
 necessarily pick a different DOP853 initial step, so libraries built after them
@@ -168,26 +254,35 @@ question that decides whether published numbers need revisiting. It is a
 science judgement, not an engineering one, and it does not block the
 implementation.
 
-## 6. Suggested order
+## 7. Suggested order
 
 1. Merger into the package, with its unit test (already written).
 2. `write_orblib_dot_in` parameterisation; assert byte-identical `.in` output
    for the default arguments before going further.
-3. Chunked script writer plus dispatch; NGC6278 regression via the existing
-   `test_orblib_chunking.py`.
+3. Chunked script writer plus dispatch; the section 5.1 invariant across chunk
+   counts 1, 2, 4, 7, 8.
 4. Config validation and documentation.
-5. Full-scale A/B (section 5).
-6. Only then, `orblib_chunks: 'auto'`, if wanted.
+5. Regenerate `chi2_compare_ml_654.dat` and `comparison_losvd.npz` from repo
+   HEAD (section 5.3), recording old and new values together.
+6. `test_nnls.py` and `test_orbit_losvds.py` end to end, **with `PYTHONPATH`
+   set** (section 5.2), unchunked and chunked. The two must agree with each
+   other exactly; agreement with the regenerated references is then automatic.
+7. Full-scale A/B (section 6), on the cluster.
+8. Only then, `orblib_chunks: 'auto'`, if wanted.
 
 Step 2 is where a silent regression would be easiest to introduce and hardest
 to notice, hence the explicit byte-comparison of the generated input files
 before any behaviour changes.
 
-## 7. Out of scope
+Step 6 is the one to be pedantic about: run it the wrong way and it passes
+against the installed package while telling you nothing about the working
+tree.
+
+## 8. Out of scope
 
 - Adaptive chunk counts (section 2.3).
 - The integrator rewrite, JAX or otherwise. If it is ever taken up, note that
-  it forces the same re-baselining as section 5.1, so the two decisions are
+  it forces the same re-baselining as section 6.1, so the two decisions are
   cheaper made together than separately.
 - The integrator-tolerance systematic documented in the feasibility study
   (chi2 varying by ~1300 absolute, non-monotonically, across tolerances). It is
