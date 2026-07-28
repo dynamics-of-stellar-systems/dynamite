@@ -12,6 +12,7 @@ import sparse
 
 from dynamite import physical_system as physys
 from dynamite import kinematics as dyn_kin
+from dynamite import orblib_chunks
 from dynamite.constants import PARSEC_KM
 
 class OrbitLibrary(object):
@@ -63,6 +64,8 @@ class LegacyOrbitLibrary(OrbitLibrary):
         self.LegacyWeightSolver = weight_solver == 'LegacyWeightSolver'
         self.orblibs_in_parallel = \
             config.settings.multiprocessing_settings['orblibs_in_parallel']
+        self.n_chunks = \
+            config.settings.multiprocessing_settings['orblib_chunks']
         self.stars = self.system.get_unique_triaxial_visible_component()
         self.n_hist1d = len([k for k in self.stars.kinematic_data
                              if not isinstance(k, dyn_kin.ProperMotions)])
@@ -135,7 +138,9 @@ class LegacyOrbitLibrary(OrbitLibrary):
                 if check2:
                     os.remove(self.mod_dir + f'datfil/{file2}')
                 self.get_orbit_ics()
-            if self.orblibs_in_parallel:
+            if self.n_chunks > 1 and self.can_chunk_orbits():
+                self.get_orbit_library_chunked(self.n_chunks)
+            elif self.orblibs_in_parallel:
                 self.get_orbit_library_par()
             else:
                 self.get_orbit_library()
@@ -277,12 +282,27 @@ class LegacyOrbitLibrary(OrbitLibrary):
         n_psf_kin = len(stars.kinematic_data)  # write data for all kinematics
         psf_pop_idx = [i for i, p in enumerate(stars.population_data)
                        if p.kin_aper is None]  # pops with their own apertures
-        def write_orblib_dot_in(box=False):
+        def write_orblib_dot_in(box=False, start=None, number=None, tag=''):
+            """Write one orbit library input file.
+
+            Parameters
+            ----------
+            box : bool, optional
+                write the box orbit file rather than the tube one.
+            start, number : int, optional
+                first orbit and orbit count, overriding the ``starting_orbit``
+                and ``number_orbits`` settings. Used to give each chunk its
+                own slice of the library. The defaults are None, meaning use
+                the settings.
+            tag : string, optional
+                suffix for this file and for the orbit library it writes, so
+                that chunks integrated concurrently do not collide. The
+                default is '', i.e. the usual unchunked file names.
+
+            """
             tab = '\t\t\t\t\t\t\t\t'
-            if box:
-                f = open(path +'orblibbox.in', 'w')
-            else:
-                f = open(path +'orblib.in', 'w')
+            fileroot = 'orblibbox' if box else 'orblib'
+            f = open(f'{path}{fileroot}{tag}.in', 'w')
             label = '[random seed for orbit integration]'
             f.write(f"{self.settings['random_seed']}{tab}{label}\n")
             f.write('infil/parameters_pot.in\n')
@@ -297,10 +317,12 @@ class LegacyOrbitLibrary(OrbitLibrary):
             line = f"{self.settings['sampling']}{tab}{label}\n"
             f.write(line)
             label = '[starting orbit]'
-            line = f"{self.settings['starting_orbit']}{tab}{label}\n"
+            s = self.settings['starting_orbit'] if start is None else start
+            line = f"{s}{tab}{label}\n"
             f.write(line)
             label = '[orbits to integrate; -1 --> all orbits]'
-            line = f"{self.settings['number_orbits']}{tab}{label}\n"
+            n = self.settings['number_orbits'] if number is None else number
+            line = f"{n}{tab}{label}\n"
             f.write(line)
             label = '[accuracy]'
             line = f"{self.settings['accuracy']}{tab}{label}\n"
@@ -410,7 +432,7 @@ class LegacyOrbitLibrary(OrbitLibrary):
                 label = f'[binfile for populations aperture {1+i}]'
                 line = f'"infil/{pop_i.binfile}"{tab[:-3]}{label}\n'
                 f.write(line)
-            o_file = 'datfil/orblibbox' if box else 'datfil/orblib'
+            o_file = f'datfil/{fileroot}{tag}'
             f_name = f'"{o_file}_qgrid.dat"'
             f.write(f'{f_name}{tab[:-4] if len(f_name) >= 32 else tab[:-3]}'
                     '[orbit qgrid file]\n')
@@ -432,6 +454,14 @@ class LegacyOrbitLibrary(OrbitLibrary):
             f.close()
         write_orblib_dot_in(box=False)
         write_orblib_dot_in(box=True)
+        # when integrating in chunks, each process needs its own input file
+        # naming its own orbit range and its own output files
+        if self.n_chunks > 1 and self.can_chunk_orbits():
+            for start, number, tag in self.orbit_chunk_bounds(self.n_chunks):
+                write_orblib_dot_in(box=False, start=start, number=number,
+                                    tag=tag)
+                write_orblib_dot_in(box=True, start=start, number=number,
+                                    tag=tag)
         if self.LegacyWeightSolver:
             #--------------------------------------------
             #write triaxmass.in (LegacyWeightSolver only)
@@ -496,6 +526,71 @@ class LegacyOrbitLibrary(OrbitLibrary):
                 text += f'{log_file} Be wary: DYNAMITE may crash...'
                 self.logger.warning(text)
                 raise RuntimeError(text)
+
+    def get_orbit_library_chunked(self, n_chunks):
+        """Integrate the orbit library in chunks, then merge the results.
+
+        Splits each orbit family's starting points into ``n_chunks``
+        consecutive ranges, integrates all of them concurrently, merges each
+        family's output back into the usual single files and compresses them.
+
+        The merged library is **bit-identical** to the one produced by the
+        unchunked path: the orbit range only selects which starting points a
+        process integrates, and each orbit's result depends on its own index
+        rather than on how many orbits preceded it.
+
+        Parameters
+        ----------
+        n_chunks : int
+            number of chunks per orbit family.
+
+        Raises
+        ------
+        FileNotFoundError
+            if a Fortran executable or an expected chunk file is missing.
+        RuntimeError
+            if the integration script reports an error.
+
+        """
+        cur_dir = os.getcwd()
+        os.chdir(self.mod_dir)
+        try:
+            bounds = self.orbit_chunk_bounds(n_chunks)
+            cmdstr = self.write_executable_for_integrate_orbits_chunked(bounds)
+            self.logger.info(
+                f'Integrating orbit library for {self.mod_dir} in '
+                f'{len(bounds)} chunk(s) per family '
+                f'({2 * len(bounds)} processes).')
+            p = subprocess.run('bash ' + cmdstr,
+                               stdout=subprocess.PIPE,
+                               stderr=subprocess.STDOUT,
+                               shell=True)
+            if p.stdout.decode('UTF-8'):
+                text = f'...failed! {cmdstr} exit code {p.returncode}. ' \
+                       f'Message: {p.stdout.decode("UTF-8")}'
+                if p.returncode == 127:
+                    text += 'Check DYNAMITE legacy_fortran executables.'
+                    self.logger.error(text)
+                    raise FileNotFoundError(text)
+                self.logger.warning(text + ' Be wary: DYNAMITE may crash...')
+                raise RuntimeError(text)
+            # merge before compressing: the chunks are only meaningful together
+            tags = [tag for _, _, tag in bounds]
+            n_orbits = self.n_orbit_starting_points() \
+                * self.settings['dithering'] ** 3
+            for fileroot in ('orblib', 'orblibbox'):
+                merged = orblib_chunks.merge_chunks(
+                    'datfil', fileroot, tags, n_orbits)
+                for f_name in merged:
+                    subprocess.run(f'rm -f {f_name}.bz2 && bzip2 {f_name}',
+                                   shell=True, check=True)
+                self.logger.debug(f'{self.mod_dir}: merged {len(tags)} '
+                                  f'{fileroot} chunks.')
+            self.logger.info(f'...done - {cmdstr} exit code {p.returncode}. '
+                             f'Logfiles: {self.mod_dir}datfil/orblib.log, '
+                             f'{self.mod_dir}datfil/orblibbox.log.')
+        finally:
+            os.chdir(cur_dir)
 
     def get_orbit_library_par(self):
         """Execute the bash script to calculate orbit libraries in parallel
@@ -597,6 +692,137 @@ class LegacyOrbitLibrary(OrbitLibrary):
                 text += f'{log_file} Be wary: DYNAMITE may crash...'
                 self.logger.warning(text)
                 raise RuntimeError(text)
+
+    def n_orbit_starting_points(self):
+        """Number of orbit starting points in the library.
+
+        This is what the Fortran's ``starting orbit`` and ``orbits to
+        integrate`` input lines count, and therefore what a chunk range refers
+        to. Each starting point expands into ``dithering^3`` integrated orbits.
+
+        Returns
+        -------
+        int
+            ``nE * nI2 * nI3 / dithering^3``
+
+        """
+        s = self.settings
+        return (s['nE'] * s['nI2'] * s['nI3']) // s['dithering'] ** 3
+
+    def can_chunk_orbits(self):
+        """Whether this orbit library may be integrated in chunks.
+
+        Chunking merges the ``qgrid`` and ``losvd_hist`` output streams. The
+        proper motion (2d histogram) and populations streams are not merged, so
+        libraries producing them are integrated in one piece regardless of the
+        ``orblib_chunks`` setting.
+
+        Returns
+        -------
+        bool
+            True if chunked integration is supported for this library.
+
+        """
+        has_pops = any(p.kin_aper is None for p in self.stars.population_data)
+        return self.n_hist2d == 0 and not has_pops
+
+    def orbit_chunk_bounds(self, n_chunks):
+        """Divide the orbit starting points into consecutive chunks.
+
+        The remainder is spread one per chunk rather than landing entirely on
+        the last one, so chunk sizes differ by at most one orbit.
+
+        Parameters
+        ----------
+        n_chunks : int
+            number of chunks. Clamped to the number of starting points.
+
+        Returns
+        -------
+        list of tuple
+            one ``(start, number, tag)`` per chunk, in ascending orbit order.
+            ``start`` is 1-based, matching the Fortran input file, and ``tag``
+            is the suffix distinguishing this chunk's files.
+
+        """
+        n_orbits = self.n_orbit_starting_points()
+        n_chunks = max(1, min(int(n_chunks), n_orbits))
+        base, rem = divmod(n_orbits, n_chunks)
+        bounds, start = [], 1
+        for k in range(n_chunks):
+            number = base + (1 if k < rem else 0)
+            bounds.append((start, number, f'_c{k}'))
+            start += number
+        return bounds
+
+    def write_executable_for_integrate_orbits_chunked(self, bounds):
+        """Write the bash script integrating both orbit families in chunks.
+
+        Every chunk of both families runs concurrently, giving
+        ``2 * len(bounds)`` processes. Unlike the unchunked scripts this one
+        does not compress its output: the chunks must be merged first, which
+        :meth:`get_orbit_library_chunked` does once the script returns.
+
+        Parameters
+        ----------
+        bounds : list of tuple
+            ``(start, number, tag)`` per chunk, from
+            :meth:`orbit_chunk_bounds`.
+
+        Returns
+        -------
+        string
+            name of the script written.
+
+        """
+        if self.system.is_bar_disk_system():
+            orb_prgrm = 'orblib_bar'
+        else:
+            orb_prgrm = 'orblib_new_mirror'
+        cmd_string = 'cmd_tube_box_orbs_chunked'
+        txt_file = open(cmd_string, 'w')
+        txt_file.write('#!/bin/bash\n')
+        txt_file.write('# clear flags\n')
+        txt_file.write('rm -f datfil/tube_done datfil/box_done '
+                       'datfil/tube_box_done\n')
+        txt_file.write('# check whether executables exist\n')
+        execs = [orb_prgrm]
+        if self.LegacyWeightSolver:
+            execs += ['triaxmass', 'triaxmass_bar',
+                      'triaxmassbin', 'triaxmassbin_bar']
+        for f_name in execs:
+            txt_file.write(f'test -e {self.legacy_directory}/{f_name} || ' +
+                           f'{{ echo "File {self.legacy_directory}/{f_name} ' +
+                           'not found." && exit 127; }\n')
+        txt_file.write(f'# integrate {len(bounds)} chunk(s) of each orbit '
+                       'family, all in parallel\n')
+        pids = []
+        for fileroot in ('orblib', 'orblibbox'):
+            for _, _, tag in bounds:
+                stem = f'datfil/{fileroot}{tag}'
+                txt_file.write(f'(rm -f {stem}_qgrid.dat.tmp {stem}_qgrid.dat '
+                               f'{stem}_losvd_hist.dat\n')
+                txt_file.write(f'{self.legacy_directory}/{orb_prgrm} '
+                               f'< infil/{fileroot}{tag}.in '
+                               f'>> datfil/{fileroot}.log) &\n')
+                pid = f'p_{fileroot}{tag}'
+                txt_file.write(f'{pid}=$!\n')
+                pids.append(pid)
+        txt_file.write('# wait for every chunk to finish\n')
+        txt_file.write('wait ' + ' '.join(f'${p}' for p in pids) + '\n')
+        if self.LegacyWeightSolver:
+            # depends on the potential rather than the orbit library, so it is
+            # run once here, not once per chunk
+            txt_file.write('rm -f datfil/mass_qgrid.dat '
+                           'datfil/mass_radmass.dat datfil/mass_aper.dat\n')
+            bar = '_bar' if self.system.is_bar_disk_system() else ''
+            txt_file.write(f'{self.legacy_directory}/triaxmass{bar} '
+                           '< infil/triaxmass.in >> datfil/triaxmass.log\n')
+            txt_file.write(f'{self.legacy_directory}/triaxmassbin{bar} '
+                           '< infil/triaxmassbin.in '
+                           '>> datfil/triaxmassbin.log\n')
+        txt_file.close()
+        return cmd_string
 
     def write_executable_for_integrate_orbits_par(self):
         """Write the bash script to calculate orbit libraries

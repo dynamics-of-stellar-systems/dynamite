@@ -376,11 +376,21 @@ Settings for multiprocessing. Models can be evaluated in parallel, with the numb
       ncpus: 4                              # integer or string 'all_available' (default: 'all_available')
       ncpus_weights: 4                      # int or 'all_available', optional (default: ncpus), not used by all iterators
       orblibs_in_parallel: True             # calculate tube and box orbits in parallel (default: False)
+      orblib_chunks: 4                      # split each orbit library across this many processes (default: 1)
       modeliterator: 'SplitModelIterator'   # optional (default: 'ModelInnerIterator')
 
 Due to very different CPU and memory consumption of orbit integration and weight solving, there are two different settings: while orbit integration and (optionally) integrating intrinsic and projected masses will use ``ncpus``, weight solving will use ``ncpus_weights`` parallel processes, with ``ncpus`` ≥ ``ncpus_weights`` in general. Note that ``ncpus_weights`` will default to ``ncpus`` if not specified. Currently, only the ``SplitModelIterator`` model iterator and recovering from an unsuccessful weight solving attempt (``reattempt_failures=True``) use the ``ncpus_weights`` setting.
 
 If ``orblibs_in_parallel`` is set to ``False``, DYNAMITE will first integrate the tube orbits and then the box orbits. If it is set to ``True``, the tube and box orbits will be integrated in parallel, which will use 2 parallel processes per model.
+
+``orblib_chunks`` splits each orbit library into that many consecutive ranges of orbits, integrates them concurrently, and merges the results. It is a resource setting only: **the merged orbit library is bit-identical to the one obtained with** ``orblib_chunks: 1``, and so are all quantities derived from it. Each orbit's result depends on its own index rather than on how many orbits were integrated before it, so it does not matter how the work is divided. The default is 1, which leaves DYNAMITE's behaviour completely unchanged.
+
+Note that ``orblib_chunks`` reduces the wall-clock time of a *single* model, not the total CPU time, so it helps only when there are spare cores. Running many models at once already keeps a machine busy, and in that situation chunking will not increase throughput. It is useful when fewer models are being evaluated concurrently than the machine has cores, for example in the later, narrower iterations of a parameter search, or when a single large model is being computed on its own.
+
+Chunking is skipped, with the library integrated in one piece, for orbit libraries containing proper motion (2d histogram) or population data.
+
+.. note::
+   Changing any setting alters the configuration file, and DYNAMITE compares the whole configuration file against the copy stored in each model directory. Changing ``orblib_chunks`` on an existing set of models will therefore produce "ACTION REQUIRED, PLEASE CHECK: The current config file differs..." warnings, even though this setting cannot affect any result. The warnings can be ignored in this case.
 
 If ``ncpus : 'all_available'`` or ``ncpus_weights : 'all_available'`` is set, then DYNAMITE automatically detects the number of available cpus :math:`N_\mathrm{CPU}` for parallelisation and will set ``ncpus`` = ``ncpus_weights`` = :math:`N_\mathrm{CPU}`.
 
@@ -388,6 +398,7 @@ Important performance hint:
 
 - Most ``numpy`` and ``scipy`` implementations are compiled for shared-memory parallelism (e.g., involving blas/openblas). This can be verified by inspecting the ``MAX_THREADS`` values in the output of ``numpy.__config__.show()`` and ``scipy.__config__.show()``, respectively. The number of threads to be used by ``numpy`` and ``scipy`` can be limited by setting the environment variable ``OMP_NUM_THREADS`` to the desired value before executing DYNAMITE.
 - Recommendation: ``OMP_NUM_THREADS=n`` with ``ncpus * n`` ≤ :math:`N_\mathrm{CPU}` if ``orblibs_in_parallel`` is set to ``False`` and ``ncpus * n`` ≤ :math:`\frac{1}{2}\,N_\mathrm{CPU}` if ``orblibs_in_parallel`` is set to ``True``.
+- With ``orblib_chunks`` > 1 each model uses that many orbit integration processes per orbit family, so the recommendation becomes ``ncpus * orblib_chunks * n`` ≤ :math:`N_\mathrm{CPU}`, or ≤ :math:`\frac{1}{2}\,N_\mathrm{CPU}` if ``orblibs_in_parallel`` is also set. DYNAMITE logs the resulting number of processes and warns if it exceeds the detected CPU count.
 
 ``legacy_settings``
 =====================

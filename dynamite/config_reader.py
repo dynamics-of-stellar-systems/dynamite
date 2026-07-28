@@ -538,6 +538,33 @@ class Configuration(object):
                     value['orblibs_in_parallel'] = False
                 logger.debug("... integrate orblibs in parallel: "
                              f"{value['orblibs_in_parallel']}.")
+                if 'orblib_chunks' not in value:
+                    value['orblib_chunks'] = 1
+                try:
+                    value['orblib_chunks'] = int(value['orblib_chunks'])
+                except (TypeError, ValueError):
+                    text = "orblib_chunks must be an integer >= 1, not " \
+                           f"{value['orblib_chunks']}."
+                    logger.error(text)
+                    raise ValueError(text)
+                if value['orblib_chunks'] < 1:
+                    text = "orblib_chunks must be >= 1, not " \
+                           f"{value['orblib_chunks']}."
+                    logger.error(text)
+                    raise ValueError(text)
+                if value['orblib_chunks'] > 1:
+                    # each chunk of each orbit family is one process
+                    families = 2 if value['orblibs_in_parallel'] else 1
+                    n_proc = value['ncpus']*value['orblib_chunks']*families
+                    logger.info("... splitting each orbit family into "
+                                f"{value['orblib_chunks']} chunks "
+                                f"({n_proc} orbit integration processes for "
+                                f"{value['ncpus']} concurrent models).")
+                    if n_proc > self.get_n_cpus():
+                        logger.warning(
+                            f'{n_proc} orbit integration processes exceeds '
+                            f'the {self.get_n_cpus()} available CPUs. Reduce '
+                            'ncpus or orblib_chunks to avoid oversubscribing.')
                 logger.debug(f'multiprocessing_settings: {tuple(value.keys())}')
                 self.settings.add('multiprocessing_settings', value)
 

@@ -1,145 +1,183 @@
 #!/usr/bin/env python3
-"""Run an orbit library monolithically and in N chunks, and compare.
+"""Check that integrating an orbit library in chunks changes nothing.
 
-Drives legacy_fortran/orblib_new_mirror directly by rewriting the orbit-range
-and output-filename lines of an existing orblib.in.
+Builds the same orbit library several times through DYNAMITE, varying only
+``multiprocessing_settings: orblib_chunks``, and requires that the merged
+libraries are byte-identical to the single-process one and that the weight
+solver returns identical chi2.
 
-    python chunk_test.py <model_dir> --chunks 4 [--tag T] [--norb N] [--parallel]
+Each configuration runs in its own copy of the model tree, so they can run
+concurrently without contending over ``datfil``. On APFS the copies are clones
+and cost nothing.
+
+Chunk count 7 is included deliberately: it does not divide the orbit count, so
+it exercises the distribution of the remainder.
+
+Usage:
+    python test_orblib_chunking.py [--config user_test_config_ml.yaml]
 """
+
 import argparse
+import filecmp
+import glob
 import os
-import re
+import shutil
 import subprocess
 import sys
 import time
+from concurrent import futures
 
-import numpy as np
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-sys.path.insert(0, "/Users/pesmith/research/dynamite")
-from dynamite.orblib import LegacyOrbitLibrary as L        # noqa: E402
+import dynamite as dyn                                    # noqa: E402
 
-EXE = os.path.expanduser("~/research/dynamite/legacy_fortran/orblib_new_mirror")
-
-
-class _Parser:
-    """Borrow the vectorised record parser without constructing an orblib."""
-    _walk_losvd_records = L._walk_losvd_records
-    _gather_float64 = staticmethod(L._gather_float64)
-    _read_losvd_hist_vectorised = L._read_losvd_hist_vectorised
+HERE = os.path.dirname(os.path.abspath(__file__))
+LIB_FILES = ('orblib_qgrid.dat.bz2', 'orblib_losvd_hist.dat.bz2',
+             'orblibbox_qgrid.dat.bz2', 'orblibbox_losvd_hist.dat.bz2')
 
 
-def write_in(src, dst, start, number, tag):
-    """Copy an orblib.in, setting the orbit range and output filenames."""
-    lines = open(src).read().splitlines()
-    out = []
-    for line in lines:
-        if re.search(r"\[starting orbit\]", line):
-            line = re.sub(r"^\s*\d+", str(start), line, count=1)
-        elif re.search(r"orbits\s+to\s+int", line):
-            line = re.sub(r"^\s*-?\d+", str(number), line, count=1)
-        elif "_qgrid.dat" in line and line.strip().startswith('"'):
-            line = re.sub(r'"[^"]*_qgrid\.dat"', f'"datfil/{tag}_qgrid.dat"', line)
-        elif "_losvd_hist.dat" in line and line.strip().startswith('"'):
-            line = re.sub(r'"[^"]*_losvd_hist\.dat"',
-                          f'"datfil/{tag}_losvd.dat"', line)
-        elif "orbclass.out" in line and line.strip().startswith('"'):
-            line = re.sub(r'"[^"]*orbclass\.out"', f'"datfil/{tag}_class.out"',
-                          line)
-        out.append(line)
-    open(dst, "w").write("\n".join(out) + "\n")
+def make_work_dir(root, name, config, out_dir, in_dir, n_chunks):
+    """Copy the model tree and write a config with the given chunk count."""
+    work = os.path.join(root, name)
+    if os.path.exists(work):
+        shutil.rmtree(work)
+    os.makedirs(work)
+    for d in (out_dir, in_dir):
+        src = os.path.join(HERE, d)
+        if os.path.isdir(src):
+            # -c asks for APFS clones; harmless where unsupported
+            subprocess.run(['cp', '-Rc', src, os.path.join(work, d)],
+                           check=True)
+    text = open(os.path.join(HERE, config)).read()
+    if 'orblib_chunks' in text:
+        raise ValueError(f'{config} already sets orblib_chunks; this test '
+                         'needs to control it')
+    text = text.replace('multiprocessing_settings:',
+                        'multiprocessing_settings:\n'
+                        f'    orblib_chunks: {n_chunks}', 1)
+    cfg = os.path.join(work, 'cfg.yaml')
+    open(cfg, 'w').write(text)
+    return work, cfg
 
 
-def run(model_dir, tag, start, number, src_in, background=False):
-    for suffix in ("_qgrid.dat", "_qgrid.dat.tmp", "_losvd.dat", "_class.out"):
-        p = os.path.join(model_dir, "datfil", tag + suffix)
-        if os.path.exists(p):
-            os.remove(p)
-    in_path = os.path.join(model_dir, "infil", tag + ".in")
-    write_in(src_in, in_path, start, number, tag)
-    log = open(os.path.join(model_dir, "datfil", tag + ".log"), "w")
-    proc = subprocess.Popen([EXE], stdin=open(in_path), stdout=log,
-                            stderr=subprocess.STDOUT, cwd=model_dir)
-    if background:
-        return proc
-    proc.wait()
-    return proc
+def build_subprocess(work, cfg, out_dir):
+    """Run one build in its own process.
+
+    Each build changes directory and reconfigures DYNAMITE's logging, both of
+    which are process-global, so builds cannot share an interpreter.
+
+    Returns
+    -------
+    tuple
+        ``(datfil, seconds, chi2, kinchi2)``
+
+    """
+    r = subprocess.run(
+        [sys.executable, os.path.abspath(__file__), '--build', work, cfg,
+         out_dir],
+        capture_output=True, text=True)
+    for line in reversed(r.stdout.splitlines()):
+        if line.startswith('RESULT '):
+            datfil, secs, chi2, kinchi2 = line[7:].rsplit('\t', 3)
+            return datfil, float(secs), float(chi2), float(kinchi2)
+    raise RuntimeError(f'build in {work} produced no result:\n'
+                       f'{r.stdout[-2000:]}\n{r.stderr[-2000:]}')
 
 
-def hdr(path):
-    b = np.memmap(path, dtype=np.uint8, mode="r")
-    i = b[:16].view(np.int32)
-    return int(i[1]), int(i[2])          # n_apertures, nvhist
-
-
-def read_losvd(path, norb):
-    n_ap, nvh = hdr(path)
-    nv = 2 * nvh + 1
-    out = [np.zeros((norb, nv, n_ap))]
-    _Parser()._read_losvd_hist_vectorised(
-        path, norb, np.zeros(n_ap, int), np.array([0]), [nv], out)
-    return out[0]
+def build(work, cfg, out_dir):
+    """Force a fresh integration in ``work``; return files, time and chi2."""
+    model_dirs = glob.glob(os.path.join(work, out_dir, 'models', 'orblib_*'))
+    if not model_dirs:
+        raise FileNotFoundError(f'no orblib directory under {work}/{out_dir}')
+    datfil = os.path.join(model_dirs[0], 'datfil')
+    for f in glob.glob(os.path.join(datfil, 'orblib*')):
+        os.remove(f)
+    cwd = os.getcwd()
+    os.chdir(work)
+    try:
+        t_0 = time.perf_counter()
+        c = dyn.config_reader.Configuration(os.path.basename(cfg),
+                                            reset_logging=True,
+                                            reset_existing_output=False)
+        if len(c.all_models.table) > 0:
+            mod = c.all_models.get_model_from_row(0)
+        else:
+            from astropy import table as aptable
+            vals = {p.name: [p.par_value] for p in c.parspace}
+            parset = aptable.Table(
+                {n: vals[n] for n in c.parspace.par_names})[0]
+            mod = dyn.model.Model(config=c, parset=parset)
+        orblib = mod.get_orblib()
+        elapsed = time.perf_counter() - t_0
+        ws = dyn.weight_solvers.NNLS(config=c, model=mod)
+        _, chi2, kinchi2, _ = ws.solve(orblib, ignore_existing_weights=True)
+    finally:
+        os.chdir(cwd)
+    return datfil, elapsed, float(chi2), float(kinchi2)
 
 
 def main():
+    if len(sys.argv) > 1 and sys.argv[1] == '--build':
+        # internal single-build mode, invoked by build_subprocess
+        datfil, secs, chi2, kinchi2 = build(*sys.argv[2:5])
+        print(f'RESULT {datfil}\t{secs}\t{chi2}\t{kinchi2}')
+        return 0
+
     ap = argparse.ArgumentParser()
-    ap.add_argument("model_dir")
-    ap.add_argument("--chunks", type=int, default=4)
-    ap.add_argument("--norb", type=int, required=True)
-    ap.add_argument("--tag", default="CT")
-    ap.add_argument("--parallel", action="store_true")
-    ap.add_argument("--src", default="infil/orblib.in")
+    ap.add_argument('--config', default='user_test_config_ml.yaml')
+    ap.add_argument('--chunks', default='1,2,4,7,8')
+    ap.add_argument('--workdir', default='/tmp/dyn_chunk_test')
     args = ap.parse_args()
 
-    md = os.path.abspath(os.path.expanduser(args.model_dir))
-    src = os.path.join(md, args.src)
-    N, norb = args.chunks, args.norb
+    counts = [int(x) for x in args.chunks.split(',')]
+    if 1 not in counts:
+        counts.insert(0, 1)
 
-    # monolithic
-    t0 = time.perf_counter()
-    run(md, f"{args.tag}mono", 1, -1, src)
-    t_mono = time.perf_counter() - t0
-    print(f"monolithic: {t_mono:.1f}s", flush=True)
+    cfg_text = open(os.path.join(HERE, args.config)).read()
 
-    # chunks
-    base, rem = divmod(norb, N)
-    bounds, s = [], 1
-    for k in range(N):
-        n = base + (1 if k < rem else 0)
-        bounds.append((s, n))
-        s += n
-    t0 = time.perf_counter()
-    if args.parallel:
-        procs = [run(md, f"{args.tag}c{k}", st, n, src, background=True)
-                 for k, (st, n) in enumerate(bounds)]
-        for p in procs:
-            p.wait()
-    else:
-        for k, (st, n) in enumerate(bounds):
-            run(md, f"{args.tag}c{k}", st, n, src)
-    t_chunk = time.perf_counter() - t0
-    print(f"{N} chunks{' (parallel)' if args.parallel else ''}: "
-          f"{t_chunk:.1f}s  -> {t_mono / max(t_chunk, 1e-9):.2f}x", flush=True)
+    def setting(name):
+        for line in cfg_text.splitlines():
+            if line.strip().startswith(name):
+                return line.split(':', 1)[1].strip().strip('"\'').rstrip('/')
+        raise KeyError(name)
 
-    # compare
-    mono = read_losvd(os.path.join(md, "datfil", f"{args.tag}mono_losvd.dat"),
-                      norb)
+    out_dir, in_dir = setting('output_directory'), setting('input_directory')
+
+    print(f'dynamite {dyn.__version__} from {dyn.__path__[0]}')
+    print(f'config {args.config}, chunk counts {counts}', flush=True)
+
+    os.makedirs(args.workdir, exist_ok=True)
+    jobs = {n: make_work_dir(args.workdir, f'chunks{n}', args.config,
+                             out_dir, in_dir, n) for n in counts}
+
+    results = {}
+    with futures.ThreadPoolExecutor(len(jobs)) as ex:
+        fut = {ex.submit(build_subprocess, w, c, out_dir): n
+               for n, (w, c) in jobs.items()}
+        for f in futures.as_completed(fut):
+            n = fut[f]
+            results[n] = f.result()
+            print(f'  chunks={n}: {results[n][1]:6.1f}s  '
+                  f'chi2={results[n][2]:.2f}  kinchi2={results[n][3]:.2f}',
+                  flush=True)
+
+    ref_datfil, ref_t, ref_chi2, ref_kin = results[1]
+    print(f'\n{"chunks":>7s} {"files match":>12s} {"chi2 match":>11s} '
+          f'{"time":>9s}')
     ok = True
-    off = 0
-    for k, (st, n) in enumerate(bounds):
-        f = os.path.join(md, "datfil", f"{args.tag}c{k}_losvd.dat")
-        got = read_losvd(f, n)
-        ref = mono[off:off + n]
-        same = np.array_equal(ref, got)
-        ok &= same
-        if same:
-            print(f"  chunk {k} (orbits {st}-{st + n - 1}): identical")
-        else:
-            d = np.abs(ref - got).sum() / max(np.abs(ref).sum(), 1e-300)
-            print(f"  chunk {k} (orbits {st}-{st + n - 1}): DIFFER relL1={d:.3e}")
-        off += n
-    print(f"\nALL CHUNKS IDENTICAL: {ok}")
+    for n in counts:
+        datfil, elapsed, chi2, kinchi2 = results[n]
+        same_files = all(
+            filecmp.cmp(os.path.join(ref_datfil, f), os.path.join(datfil, f),
+                        shallow=False) for f in LIB_FILES)
+        same_chi2 = (chi2 == ref_chi2) and (kinchi2 == ref_kin)
+        ok &= same_files and same_chi2
+        print(f'{n:7d} {str(same_files):>12s} {str(same_chi2):>11s} '
+              f'{elapsed:8.1f}s')
+
+    print(f'\nchunked == unchunked: {"PASS" if ok else "FAIL"}')
     return 0 if ok else 1
 
 
-if __name__ == "__main__":
+if __name__ == '__main__':
     sys.exit(main())
