@@ -376,7 +376,8 @@ Settings for multiprocessing. Models can be evaluated in parallel, with the numb
       ncpus: 4                              # integer or string 'all_available' (default: 'all_available')
       ncpus_weights: 4                      # int or 'all_available', optional (default: ncpus), not used by all iterators
       orblibs_in_parallel: True             # calculate tube and box orbits in parallel (default: False)
-      orblib_chunks: 4                      # split each orbit library across this many processes (default: 1)
+      orblib_chunks: 4                      # split each orbit library across this many processes, or 'auto' (default: 1)
+      total_cores: 192                      # core budget used by orblib_chunks: auto (default: all available)
       modeliterator: 'SplitModelIterator'   # optional (default: 'ModelInnerIterator')
 
 Due to very different CPU and memory consumption of orbit integration and weight solving, there are two different settings: while orbit integration and (optionally) integrating intrinsic and projected masses will use ``ncpus``, weight solving will use ``ncpus_weights`` parallel processes, with ``ncpus`` ≥ ``ncpus_weights`` in general. Note that ``ncpus_weights`` will default to ``ncpus`` if not specified. Currently, only the ``SplitModelIterator`` model iterator and recovering from an unsuccessful weight solving attempt (``reattempt_failures=True``) use the ``ncpus_weights`` setting.
@@ -388,6 +389,14 @@ If ``orblibs_in_parallel`` is set to ``False``, DYNAMITE will first integrate th
 Note that ``orblib_chunks`` reduces the wall-clock time of a *single* model, not the total CPU time, so it helps only when there are spare cores. Running many models at once already keeps a machine busy, and in that situation chunking will not increase throughput. It is useful when fewer models are being evaluated concurrently than the machine has cores, for example in the later, narrower iterations of a parameter search, or when a single large model is being computed on its own.
 
 Chunking is skipped, with the library integrated in one piece, for orbit libraries containing proper motion (2d histogram) or population data.
+
+Setting ``orblib_chunks: auto`` lets DYNAMITE choose the chunk count separately for each iteration, from the ``total_cores`` budget and the number of orbit libraries that iteration actually builds::
+
+    orblib_chunks = total_cores / (number of new orbit libraries x families)
+
+where ``families`` is 2 if ``orblibs_in_parallel`` is set and 1 otherwise. A wide iteration already occupies the machine and is left unchunked; a narrow one, such as the later stages of a parameter search, spreads each library over the cores that would otherwise be idle. This is why the setting is resolved per iteration rather than once: the right value depends on how much other work there is to do at the time. ``total_cores`` defaults to all available CPUs, and should be set explicitly on a shared machine.
+
+Note that only ``SplitModelIterator`` runs orbit integration and weight solving as separate phases, and therefore only it can apply a different concurrency limit to each. With the default ``ModelInnerIterator`` a single pool of ``ncpus`` processes does both, so ``ncpus_weights`` has no effect and weight solving cannot be limited independently. Since weight solving is the memory-intensive phase, ``SplitModelIterator`` is the better choice for large models.
 
 .. note::
    Changing any setting alters the configuration file, and DYNAMITE compares the whole configuration file against the copy stored in each model directory. Changing ``orblib_chunks`` on an existing set of models will therefore produce "ACTION REQUIRED, PLEASE CHECK: The current config file differs..." warnings, even though this setting cannot affect any result. The warnings can be ignored in this case.

@@ -289,6 +289,48 @@ class ModelInnerIterator(object):
         self.ncpus_ext = config.settings.multiprocessing_settings['ncpus_ext']
         self.n_to_do = 0
 
+    def resolve_orblib_chunks(self, n_orblib):
+        """Choose how many chunks to split each orbit library into.
+
+        With ``orblib_chunks: auto``, the chunk count is decided per iteration
+        rather than once in the configuration file, because it depends on how
+        many orbit libraries this iteration actually builds. A wide iteration
+        already occupies the machine and gets no chunking; a narrow one, such
+        as the later stages of a parameter search or the tail of any
+        iteration, spreads each library over the cores that would otherwise
+        sit idle.
+
+        Chunking only reduces a model's wall-clock time, never the total CPU
+        time, so there is nothing to gain from splitting further than the
+        available cores.
+
+        Parameters
+        ----------
+        n_orblib : int
+            number of new orbit libraries to be built this iteration
+
+        Returns
+        -------
+        int
+            the chunk count, also written back into the multiprocessing
+            settings so that the worker processes pick it up
+
+        """
+        settings = self.config.settings.multiprocessing_settings
+        if not settings.get('orblib_chunks_auto', False):
+            return settings['orblib_chunks']
+        if n_orblib == 0:  # nothing to integrate, only weights to solve
+            settings['orblib_chunks'] = 1
+            return 1
+        families = 2 if settings['orblibs_in_parallel'] else 1
+        chunks = max(1, settings['total_cores'] // (n_orblib * families))
+        settings['orblib_chunks'] = chunks
+        self.logger.info(
+            f'{n_orblib} orbit librar(y/ies) this iteration, '
+            f"{settings['total_cores']} total cores -> orblib_chunks="
+            f'{chunks} ({n_orblib * families * chunks} integration processes).')
+        return chunks
+
     def run_iteration(self, split_orblib_weights=False):
         """Run one iteration step
 
@@ -330,6 +372,10 @@ class ModelInnerIterator(object):
             # rows_to_do_orblib are the rows that need orblib and weight_solver
             rows_to_do_orblib=[i for i in rows_to_do if self.is_new_orblib(i)]
             n_orblib = len(rows_to_do_orblib)
+            # decide the chunk count before any pool is started: the workers
+            # read it from the (pickled) configuration when they build a
+            # library, so it must be settled now
+            self.resolve_orblib_chunks(n_orblib)
             # rows_to_do_ml are the rows that need weight_solver only
             rows_to_do_ml=[i for i in rows_to_do if i not in rows_to_do_orblib]
             self.assign_model_directories(rows_to_do_orblib, rows_to_do_ml)

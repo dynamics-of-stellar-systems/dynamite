@@ -538,13 +538,29 @@ class Configuration(object):
                     value['orblibs_in_parallel'] = False
                 logger.debug("... integrate orblibs in parallel: "
                              f"{value['orblibs_in_parallel']}.")
+                if 'total_cores' not in value:
+                    value['total_cores'] = self.get_n_cpus()
+                elif value['total_cores'] == 'all_available':
+                    value['total_cores'] = self.get_n_cpus()
+                value['total_cores'] = int(value['total_cores'])
                 if 'orblib_chunks' not in value:
                     value['orblib_chunks'] = 1
+                if value['orblib_chunks'] == 'auto':
+                    # resolved per iteration by the model iterator, which knows
+                    # how many orbit libraries are about to be built; until
+                    # then behave as if unset
+                    value['orblib_chunks_auto'] = True
+                    value['orblib_chunks'] = 1
+                    logger.info('... orblib_chunks: auto - chunk count will be '
+                                f"set per iteration from {value['total_cores']}"
+                                ' total cores.')
+                else:
+                    value['orblib_chunks_auto'] = False
                 try:
                     value['orblib_chunks'] = int(value['orblib_chunks'])
                 except (TypeError, ValueError):
-                    text = "orblib_chunks must be an integer >= 1, not " \
-                           f"{value['orblib_chunks']}."
+                    text = "orblib_chunks must be 'auto' or an integer >= 1, " \
+                           f"not {value['orblib_chunks']}."
                     logger.error(text)
                     raise ValueError(text)
                 if value['orblib_chunks'] < 1:
