@@ -4,6 +4,7 @@
 Change Log
 ****************
 
+- Bugfix: Fixed crash in the density() method of the NFW_m200_c dark halo
 - Improvement: provide option to specify Hubble parameter in config file to allow modelling at :math:`z>0`. Default is :math:`H = 70\;\mathrm{km/s/Mpc}`.
 - Improvement: Calculate intrinsic masses in Python instead of legacy Fortran when using the Python NNLS solvers.
 - Improvement: Reconfirmed DYNAMITE compatibility with numpy 2.x.

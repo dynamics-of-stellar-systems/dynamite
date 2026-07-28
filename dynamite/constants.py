@@ -1,7 +1,7 @@
 import numpy as np
 
-GRAV_CONST_KM = 6.67428e-11*1.98892e30/1e9
-PARSEC_KM = 1.4959787068e8*(648.000e3/np.pi)
+GRAV_CONST_KM = 6.67428e-11*1.98892e30/1e9  # unit km**3 / Msun / s**2
+PARSEC_KM = 1.4959787068e8*(648.000e3/np.pi)  # unit km
 
 weight_file = 'orbit_weights.ecsv'  # weights file
 p_masses_file = 'mass_aper.ecsv'  # projected masses file

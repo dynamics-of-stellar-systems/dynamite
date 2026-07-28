@@ -10,7 +10,7 @@ from scipy.interpolate import UnivariateSpline
 from scipy.sparse import csr_matrix
 from scipy.sparse.csgraph import maximum_bipartite_matching
 import matplotlib as mpl
-from matplotlib.ticker import MaxNLocator, FixedLocator,LogLocator
+from matplotlib.ticker import MaxNLocator, FixedLocator
 from matplotlib.ticker import NullFormatter, FormatStrFormatter
 import matplotlib.pyplot as plt
 from plotbin import display_pixels
@@ -156,7 +156,7 @@ class Plotter():
         val = val[n_excl:]
 
         #only use models that are finished
-        val=val[val['all_done']==True]
+        val=val[val['all_done']]
 
         # add black hole scaling
         scale_factor = np.zeros(len(val))
@@ -187,7 +187,7 @@ class Plotter():
             elif type(dh) is physys.GeneralisedNFW:
                 val[f'Mvir-{dh.name}'] = val[f'Mvir-{dh.name}']*scale_factor**2
             else:
-                text = f'unknown dark halo type component'
+                text = 'Unknown dark halo type component.'
                 self.logger.error(text)
                 raise ValueError(text)
 
@@ -202,7 +202,7 @@ class Plotter():
         nofix_islog=[]
 
         for i in np.arange(len(pars)):
-            if pars[i].fixed==False:
+            if not pars[i].fixed:
                 nofix_sel.append(i)
                 if pars[i].name == 'ml':
                     nofix_name.insert(0, 'ml')
@@ -230,7 +230,6 @@ class Plotter():
 
         figname = self.plotdir + which_chi2 + '_plot' + figtype
 
-        colormap_orig = mpl.cm.viridis
         colormap = mpl.colormaps.get_cmap('viridis_r')
 
         size = 12+len(nofix_islog)
@@ -243,7 +242,8 @@ class Plotter():
                 xtit = ''
                 ytit = ''
 
-                if i==0 : ytit = nofix_latex[j]
+                if i == 0:
+                    ytit = nofix_latex[j]
                 xtit = nofix_latex[i]
 
                 pltnum = (nnofix-1-j) * (nnofix-1) + i+1
@@ -453,7 +453,6 @@ class Plotter():
             model = self.all_models.get_model_from_row(model_id)
 
         kin_type = type(stars.kinematic_data[kin_set])
-        ws_type = self.settings.weight_solver_settings['type']
 
         if kin_type is kinematics.GaussHermite:
             if cbar_lims=='default':
@@ -709,7 +708,7 @@ class Plotter():
             col = cmap(col)
             ax0.text(0.05, 0.95, f'{i+1}',
                      transform=ax0.transAxes, ha='left', va='top',
-                     bbox = dict(boxstyle=f"circle", fc=col, alpha=0.5)
+                     bbox = dict(boxstyle="circle", fc=col, alpha=0.5)
                     )
             dat_line, = ax0.plot(varr,
                                  kin_data['losvd'][idx0],
@@ -1228,7 +1227,8 @@ class Plotter():
 
             mass[:,i,0] = mstars
             mass[:,i,1] = mdm
-            nm_mbh = np.empty(nm); nm_mbh.fill(mbh)
+            nm_mbh = np.empty(nm)
+            nm_mbh.fill(mbh)
             mass[:,i,2] = nm_mbh.flatten()
             bhm[i] = mbh
             mlstellar[i] = ml
@@ -1557,7 +1557,8 @@ class Plotter():
 
     def N_car2sph(self, x, y, z, eps):
 
-        if not eps: eps=1.0e-10
+        if not eps:
+            eps=1.0e-10
         R = np.sqrt(x**2 + y**2)
         rr = np.sqrt(R**2 + z**2)
         res = np.zeros((3,3))
@@ -1593,7 +1594,8 @@ class Plotter():
         #              | mu_z |                    | <mu_zx> <mu_zy> <mu_zz> |
         #idem for spherical but with (x,y,z) -> (r,theta,phi)
 
-        if not eps: eps=1.0e-10
+        if not eps:
+            eps=1.0e-10
         nn=len(x)
         mu1sph=np.zeros((nn,3))
         mu2sph=np.zeros((nn,3,3))
@@ -1617,7 +1619,8 @@ class Plotter():
         #<v>=N<u>, with <v> spherical and <u> Cartesian
         #from http://en.wikipedia.org/wiki/List_of_canonical_coordinate_transformations
 
-        if not eps: eps=1.0e-10
+        if not eps:
+            eps=1.0e-10
         R2 = x**2 + y**2
         R=np.sqrt(R2)
         res = np.zeros((3,3))
@@ -1639,7 +1642,8 @@ class Plotter():
         #Conversion from Cartesian to cylindrical intrinsic moments
         #of first and second order (in first octant with x>0, y>0, and z>0)
 
-        if not eps: eps=1.0e-10
+        if not eps:
+            eps=1.0e-10
         nn=len(x)
         mu1sph=np.zeros((nn,3))
         mu2sph=np.zeros((nn,3,3))
@@ -1682,7 +1686,7 @@ class Plotter():
         ntot = nph * nth * nrr  # default is 360
         data = moments.reshape((ntot,nmom))  # match legacy r,th,ph
 
-        d = data[:,0]  # density
+        # d = data[:,0]  # density
         x = data[:,1]  # x
         y = data[:,2]  # y
         z = data[:,3]  # z
@@ -2240,7 +2244,7 @@ class Plotter():
             n_bundles = orblib.projection_tensor.shape[-1]
             weights = np.ones(n_bundles)/n_bundles
         else:
-            weight_solver = model.get_weights(orblib)
+            _ = model.get_weights(orblib)
             weights = model.weights
         mod_orb_dists = orblib.projection_tensor.dot(weights)
         mod_orbclass_fracs = np.sum(mod_orb_dists, (1,2))
