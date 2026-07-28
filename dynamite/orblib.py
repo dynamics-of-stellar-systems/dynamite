@@ -579,11 +579,33 @@ class LegacyOrbitLibrary(OrbitLibrary):
             n_orbits = self.n_orbit_starting_points() \
                 * self.settings['dithering'] ** 3
             for fileroot in ('orblib', 'orblibbox'):
+                # Models sharing an orbit library may be evaluated
+                # concurrently, in which case more than one of them integrates
+                # into this directory. If another has already merged and
+                # compressed this family, its chunks are gone and there is
+                # nothing left to do.
+                done = [f'datfil/{fileroot}_{kind}.dat.bz2'
+                        for kind in orblib_chunks.HEADER_RECORDS]
+                if all(os.path.isfile(f) for f in done):
+                    self.logger.debug(
+                        f'{self.mod_dir}: {fileroot} already merged by a '
+                        'concurrent model, discarding this process\' chunks.')
+                    orblib_chunks.remove_chunks('datfil', fileroot, tags)
+                    continue
+                # Every intermediate is per-process; only the final .bz2 has a
+                # shared name, and it appears atomically via mv. Concurrent
+                # models therefore overwrite each other with identical content,
+                # exactly as the unchunked path does, instead of colliding
+                # halfway through.
+                out_tag = f'.p{os.getpid()}'
                 merged = orblib_chunks.merge_chunks(
-                    'datfil', fileroot, tags, n_orbits)
+                    'datfil', fileroot, tags, n_orbits, out_tag=out_tag)
                 for f_name in merged:
-                    subprocess.run(f'rm -f {f_name}.bz2 && bzip2 {f_name}',
-                                   shell=True, check=True)
+                    final = f_name[:-len(out_tag)] + '.bz2'
+                    subprocess.run(
+                        f'bzip2 -c {f_name} > {f_name}.bz2 '
+                        f'&& mv {f_name}.bz2 {final} && rm -f {f_name}',
+                        shell=True, check=True)
                 self.logger.debug(f'{self.mod_dir}: merged {len(tags)} '
                                   f'{fileroot} chunks.')
             self.logger.info(f'...done - {cmdstr} exit code {p.returncode}. '
@@ -744,6 +766,15 @@ class LegacyOrbitLibrary(OrbitLibrary):
             ``start`` is 1-based, matching the Fortran input file, and ``tag``
             is the suffix distinguishing this chunk's files.
 
+        Notes
+        -----
+        The tag carries the process id. Models sharing an orbit library may be
+        evaluated concurrently, and each such process integrates into the same
+        ``datfil`` directory; without the process id they would write over each
+        other's chunks, and one could merge another's half-written files. The
+        merged output does not carry the tag, so concurrent processes still
+        produce the same final library, exactly as the unchunked path does.
+
         """
         n_orbits = self.n_orbit_starting_points()
         n_chunks = max(1, min(int(n_chunks), n_orbits))
@@ -751,7 +782,7 @@ class LegacyOrbitLibrary(OrbitLibrary):
         bounds, start = [], 1
         for k in range(n_chunks):
             number = base + (1 if k < rem else 0)
-            bounds.append((start, number, f'_c{k}'))
+            bounds.append((start, number, f'_p{os.getpid()}_c{k}'))
             start += number
         return bounds
 
@@ -779,7 +810,10 @@ class LegacyOrbitLibrary(OrbitLibrary):
             orb_prgrm = 'orblib_bar'
         else:
             orb_prgrm = 'orblib_new_mirror'
-        cmd_string = 'cmd_tube_box_orbs_chunked'
+        # per-process name: concurrently evaluated models sharing this orbit
+        # library each write and run their own script, with their own chunk
+        # tags in it
+        cmd_string = f'cmd_tube_box_orbs_chunked_p{os.getpid()}'
         txt_file = open(cmd_string, 'w')
         txt_file.write('#!/bin/bash\n')
         txt_file.write('# clear flags\n')

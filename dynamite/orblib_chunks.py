@@ -128,8 +128,42 @@ def merge_files(chunk_files, out_file, kind, n_orbits=None):
     return out_file
 
 
+def remove_chunks(datfil, fileroot, chunk_tags,
+                  kinds=('qgrid', 'losvd_hist')):
+    """Delete one orbit family's chunk files, ignoring any already gone.
+
+    Used to discard a process' chunks when another process has already merged
+    the library, so that concurrently evaluated models sharing an orbit library
+    do not leave a full extra copy of it on disk.
+
+    Parameters
+    ----------
+    datfil : string
+        the model's ``datfil`` directory
+    fileroot : string
+        ``'orblib'`` or ``'orblibbox'``
+    chunk_tags : list of string
+        per-chunk file name suffixes
+    kinds : tuple of string, optional
+        which output streams to delete. The default is
+        ``('qgrid', 'losvd_hist')``.
+
+    """
+    for kind in kinds:
+        for tag in chunk_tags:
+            for suffix in ('', '.tmp'):
+                path = os.path.join(
+                    datfil, f'{fileroot}{tag}_{kind}.dat{suffix}')
+                if os.path.isfile(path):
+                    os.remove(path)
+    for tag in chunk_tags:
+        path = os.path.join(datfil, f'{fileroot}{tag}.dat_orbclass.out')
+        if os.path.isfile(path):
+            os.remove(path)
+
+
 def merge_chunks(datfil, fileroot, chunk_tags, n_orbits,
-                 kinds=('qgrid', 'losvd_hist'), remove_chunks=True):
+                 kinds=('qgrid', 'losvd_hist'), cleanup=True, out_tag=''):
     """Merge one orbit family's chunk files, and delete the chunks.
 
     Parameters
@@ -146,8 +180,13 @@ def merge_chunks(datfil, fileroot, chunk_tags, n_orbits,
     kinds : tuple of string, optional
         which output streams to merge. The default is
         ``('qgrid', 'losvd_hist')``.
-    remove_chunks : bool, optional
+    cleanup : bool, optional
         whether to delete the chunk files once merged. The default is True.
+    out_tag : string, optional
+        suffix for the merged file names. Concurrently evaluated models sharing
+        an orbit library would otherwise merge into the same file at the same
+        time; giving each its own name and renaming afterwards keeps that safe.
+        The default is '', i.e. the plain names.
 
     Returns
     -------
@@ -167,10 +206,9 @@ def merge_chunks(datfil, fileroot, chunk_tags, n_orbits,
         for p in parts:
             if not os.path.isfile(p):
                 raise FileNotFoundError(f'missing orbit library chunk: {p}')
-        out = os.path.join(datfil, f'{fileroot}_{kind}.dat')
-        merge_files(parts, out, kind, n_orbits)
-        merged.append(out)
-        if remove_chunks:
-            for p in parts:
-                os.remove(p)
+        merged.append(merge_files(
+            parts, os.path.join(datfil, f'{fileroot}_{kind}.dat{out_tag}'),
+            kind, n_orbits))
+    if cleanup:
+        remove_chunks(datfil, fileroot, chunk_tags, kinds)
     return merged
