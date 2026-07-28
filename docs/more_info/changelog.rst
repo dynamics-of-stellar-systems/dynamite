@@ -4,6 +4,9 @@
 Change Log
 ****************
 
+- Improvement: orbit libraries can be integrated by several processes at once, via the new ``orblib_chunks`` setting in ``multiprocessing_settings``. Each process integrates a disjoint range of orbits and the results are merged, giving a library bit-identical to the single-process one. Setting ``orblib_chunks: auto`` lets DYNAMITE size the split per iteration from the new ``total_cores`` budget and the number of orbit libraries that iteration builds.
+- Improvement: reading an orbit library's LOSVD histograms is now roughly 20 times faster, by parsing the file in bulk rather than one Fortran record at a time. Results are unchanged.
+- Bugfix: the ``starting_orbit`` and ``number_orbits`` orblib settings did not work for any ``starting_orbit`` other than 1. The Fortran compared an absolute orbit index against a count, so it integrated no orbits and then crashed. Together with two sources of order dependence (the sampling phase was drawn from one global random stream, and the DOP853 initial step was carried over from the previous orbit), this meant an orbit's result depended on how many orbits preceded it. An orbit's result now depends only on its own index.
 - Improvement: provide option to specify Hubble parameter in config file to allow modelling at :math:`z>0`. Default is :math:`H = 70\;\mathrm{km/s/Mpc}`.
 - Improvement: Calculate intrinsic masses in Python instead of legacy Fortran when using the Python NNLS solvers.
 - Improvement: Reconfirmed DYNAMITE compatibility with numpy 2.x.

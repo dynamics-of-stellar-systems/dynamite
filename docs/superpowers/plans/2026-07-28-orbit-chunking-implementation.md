@@ -1,13 +1,19 @@
 # Implementing chunked orbit integration in DYNAMITE
 
-Status: **planned**. Created 2026-07-28.
+Status: **implemented**, apart from the two items in section 9. Created
+2026-07-28.
 Feasibility study and measurements: `2026-07-28-orbit-integration-parallelisation.md`.
 
-The Fortran side is already done and committed on this branch: an orbit library
-can be built by N processes over disjoint orbit ranges, and the result is
-bit-identical to a single-process run. What remains is exposing that through
-`orblib.py` and the configuration file, documenting it, and validating it at
-full scale.
+Section 9 records what was built and what was learned that this plan did not
+anticipate. The plan itself is left as written, so that where a prediction was
+wrong that is visible rather than edited away.
+
+The Fortran side was already done and committed on this branch when this plan
+was written: an orbit library can be built by N processes over disjoint orbit
+ranges, and the result is bit-identical to a single-process run. What remained
+was exposing that through `orblib.py` and the configuration file, documenting
+it, and validating it at full scale. All but the full-scale validation is now
+done; see section 9.
 
 ---
 
@@ -92,6 +98,11 @@ An `orblib_chunks: 'auto'` value, deriving the count from spare cores, is
 deliberately **not** in scope. It needs to know how many models run
 concurrently, which lives in the model iterator, and a fixed integer gets the
 entire benefit for a cluster run. Revisit once the search driver is settled.
+
+> **Superseded.** `auto` was implemented after all, and turned out to be cheap:
+> `ModelInnerIterator.run_iteration` already computes the number of distinct
+> orbit libraries an iteration will build, before any process pool starts. See
+> section 9.1.
 
 ## 3. Code changes
 
@@ -289,3 +300,82 @@ tree.
   pre-existing, it is unaffected by chunking, and it deserves its own
   investigation -- particularly before fine structure in a 5-10 dimensional
   chi2 landscape is trusted.
+
+---
+
+# 9. Outcome
+
+## 9.1 Built
+
+- `dynamite/orblib_chunks.py` -- merges chunked libraries; byte-identical to a
+  single-process run.
+- `orblib_chunks` in `multiprocessing_settings`, plus `total_cores` and
+  `orblib_chunks: auto`. Default 1, taking the pre-existing code path untouched.
+- `LegacyOrbitLibrary.get_orbit_library_chunked` and the chunked script writer;
+  `write_orblib_dot_in` gained `start`/`number`/`tag`.
+- `ModelInnerIterator.resolve_orblib_chunks`, resolving the count per iteration
+  from the distinct-orbit-library count, which `run_iteration` already computes
+  before any pool starts.
+- `dev_tests/test_orblib_chunking.py`, driving the config setting across chunk
+  counts 1, 2, 4, 7, 8.
+- Documented in `configuration.rst`, the API docs and the changelog.
+
+## 9.2 What the plan got wrong
+
+**Section 5.1's invariant was the right gate**, and it earned its place: the
+first working implementation passed the chunk-count matrix and still returned
+NaN for two of three models under `test_nnls`. The reason was concurrency.
+Models sharing an orbit library are evaluated concurrently, so several
+processes integrate into the same `datfil`. The unchunked path survives that
+because every process writes the same filenames with identical content and the
+last writer wins; chunked integration has more steps, and *every* shared
+intermediate between them was a collision -- the chunk files, the script itself,
+the merged `.dat`, and a `.bz2` that `bzip2` had created but not finished
+writing.
+
+Everything intermediate is now per-process, and only the final `.bz2` has a
+shared name, appearing atomically by renaming a staging file. Three separate
+attempts were needed before enumerating every filename in the path rather than
+fixing them one at a time; that enumeration is what found the last two.
+
+**This also revealed something worth its own attention:** models sharing an
+orbit library each integrate it redundantly. Three models, three full
+integrations. That is pre-existing, wasteful, and independent of chunking.
+
+**The `H` attribution in section 5.3 was wrong.** The repo's deviation from
+`chi2_compare_ml_654.dat` is not caused by the Hubble parameter: at the default
+`H = 70` the new code writes `70 * 1e-6`, which is bit-identical to the literal
+`7.0d-5` the old Fortran hardcoded, so `rho_crit` is unchanged. The same is
+true of the fork-local polar-grid revert `c7eb8f5`, whose config sets 10/6/6 --
+exactly the values previously hardcoded. The real cause is that the reference
+was last regenerated in **#291**, before #513 (GH systematic errors now always
+applied, and the test config sets `GH_sys_err`), #515 and #517 (new projected
+and intrinsic mass calculations) and #442. Accumulated intended change, not a
+regression, which makes regenerating it routine.
+
+## 9.3 A memory regression found along the way
+
+The vectorised LOSVD read shipped earlier on this branch peaked at **4.9x** the
+histograms it returns, where the loop it replaced peaked at 1.01x. Its `chunk`
+parameter counted (orbit, aperture) pairs while the temporaries scale with
+pairs x values-per-pair, so it bounded nothing for a small library and bounded
+at roughly 20x the intent for a large one. Batches are now sized by values;
+peak is 2.13x on NGC6278 and the parser's own overhead is 0.41x at omega Cen
+scale, with the 24x speedup unchanged.
+
+This matters here because peak memory during the read, not the solver, is what
+limits concurrent weight solves. Production monitoring shows single processes
+reaching **99.6 GB** and the system reaching 636 GB.
+
+## 9.4 Still to do
+
+1. **Regenerate `chi2_compare_ml_654.dat` and `comparison_losvd.npz`** from repo
+   HEAD, after confirming with the owners of #513/#515/#517 that the shift is
+   expected. Until then `test_nnls` cannot be a pass/fail gate.
+2. **Full-scale omega Cen A/B** (section 6), on the cluster.
+
+Also worth doing, and independent of this work: re-measure the read's peak
+memory on a Linux node to set `ncpus_weights` from real numbers rather than a
+macOS extrapolation, and measure delta-chi2 between adjacent grid points to see
+whether the integration systematic in the feasibility study matters at the
+spacing an actual search uses.

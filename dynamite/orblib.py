@@ -1092,6 +1092,19 @@ class LegacyOrbitLibrary(OrbitLibrary):
         payloads are alternately 8-byte aligned and 4-byte misaligned and
         cannot all be read through a single ``view(np.float64)``. Splitting on
         the offset's alignment lets each half be read as an aligned view.
+
+        Parameters
+        ----------
+        buf : 1d numpy array of uint8
+            the file contents
+        byte_offsets : 1d numpy array of int
+            byte offset of each value to read, each a multiple of 4
+
+        Returns
+        -------
+        1d numpy array of float64
+            the values, in the order their offsets were given
+
         """
         out = np.empty(byte_offsets.size, dtype=np.float64)
         for phase in (0, 4):
