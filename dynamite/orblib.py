@@ -784,14 +784,22 @@ class LegacyOrbitLibrary(OrbitLibrary):
         integrate`` input lines count, and therefore what a chunk range refers
         to. Each starting point expands into ``dithering^3`` integrated orbits.
 
+        Note that this is ``nE * nI2 * nI3``, *not* that divided by
+        ``dithering^3``: the Fortran multiplies the grid it reads from
+        ``parameters_pot.in`` by the dithering (``iniparam_f.f90``) before
+        dividing by ``dithering^3`` again to get the bundle count, so the two
+        cancel. Dividing here as well makes every chunked library short by a
+        factor ``dithering^3``, which the reader only notices when it runs off
+        the end of the file.
+
         Returns
         -------
         int
-            ``nE * nI2 * nI3 / dithering^3``
+            ``nE * nI2 * nI3``
 
         """
         s = self.settings
-        return (s["nE"] * s["nI2"] * s["nI3"]) // s["dithering"] ** 3
+        return s["nE"] * s["nI2"] * s["nI3"]
 
     def can_chunk_orbits(self):
         """Whether this orbit library may be integrated in chunks.
