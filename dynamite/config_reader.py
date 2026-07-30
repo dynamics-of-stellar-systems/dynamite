@@ -569,9 +569,9 @@ class Configuration(object):
                     logger.error(text)
                     raise ValueError(text)
                 if value['orblib_chunks'] > 1:
-                    # each chunk of each orbit family is one process
-                    families = 2 if value['orblibs_in_parallel'] else 1
-                    n_proc = value['ncpus']*value['orblib_chunks']*families
+                    # each chunk of each orbit family is one process, and the
+                    # chunked script always runs both families concurrently
+                    n_proc = value['ncpus']*value['orblib_chunks']*2
                     logger.info("... splitting each orbit family into "
                                 f"{value['orblib_chunks']} chunks "
                                 f"({n_proc} orbit integration processes for "

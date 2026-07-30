@@ -322,7 +322,9 @@ class ModelInnerIterator(object):
         if n_orblib == 0:  # nothing to integrate, only weights to solve
             settings['orblib_chunks'] = 1
             return 1
-        families = 2 if settings['orblibs_in_parallel'] else 1
+        # the chunked script runs both orbit families concurrently whatever
+        # orblibs_in_parallel says, so the divisor is always 2 here
+        families = 2
         chunks = max(1, settings['total_cores'] // (n_orblib * families))
         settings['orblib_chunks'] = chunks
         self.logger.info(
