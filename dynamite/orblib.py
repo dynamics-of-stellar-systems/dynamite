@@ -158,6 +158,16 @@ class LegacyOrbitLibrary(OrbitLibrary):
                 box_done = os.path.isfile(self.mod_dir + "datfil/box_done")
                 if tube_done and box_done:
                     pathlib.Path(self.mod_dir + "datfil/tube_box_done").touch()
+                else:
+                    # without tube_box_done this library counts as un-built, so
+                    # every model that needs it integrates it again - silent,
+                    # unbounded rework rather than a visible failure
+                    self.logger.warning(
+                        f"{self.mod_dir}: integration finished but "
+                        f"{'tube_done' if not tube_done else 'box_done'} is "
+                        "missing, so the library is not marked complete and "
+                        "will be integrated again."
+                    )
             finally:
                 # release the claim regardless of outcome: on failure this
                 # lets a retry (or the next run) attempt the build again
@@ -688,6 +698,11 @@ class LegacyOrbitLibrary(OrbitLibrary):
                         check=True,
                     )
                 self.logger.debug(f"{self.mod_dir}: merged {len(tags)} {fileroot} chunks.")
+            # the unchunked scripts touch these themselves; the chunked script
+            # only clears them, so without this the library is never recorded
+            # as done and every later model reintegrates it
+            pathlib.Path("datfil/tube_done").touch()
+            pathlib.Path("datfil/box_done").touch()
             self.logger.info(
                 f"...done - {cmdstr} exit code {p.returncode}. "
                 f"Logfiles: {self.mod_dir}datfil/orblib.log, "
