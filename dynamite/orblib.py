@@ -342,14 +342,19 @@ class LegacyOrbitLibrary(OrbitLibrary):
         """Wait for a concurrently building orbit library to finish.
 
         Polls for ``datfil/tube_box_done`` instead of integrating the
-        library a second time. If the claiming process dies before
-        finishing (lock goes stale) or this waits longer than ``timeout``,
-        attempts the build here instead of waiting forever.
+        library a second time. If the claiming process dies before finishing
+        (lock goes stale), attempts the build here instead of waiting forever.
+
+        ``timeout`` bounds a wait during which *nothing happens*: as long as
+        the claiming process is alive it is making progress, so the wait is
+        extended. A whole orbit library can take many hours, and a timeout
+        that fires while the owner still holds the lock would either start a
+        redundant build or recurse once per timeout for the rest of the run.
 
         Parameters
         ----------
         timeout : float, optional
-            Maximum seconds to wait before giving up and building anyway.
+            Maximum seconds to wait with no live process holding the lock.
         poll_interval : float, optional
             Seconds between checks.
 
@@ -359,16 +364,22 @@ class LegacyOrbitLibrary(OrbitLibrary):
         waited = 0.0
         while not os.path.isfile(done_path):
             if not os.path.isfile(lock_path) or self._orblib_lock_is_stale(lock_path):
+                # The owner touches tube_box_done before releasing the lock, so
+                # a lock that vanished between the two checks above means the
+                # build finished, not that it died. Without this re-check the
+                # library gets rebuilt from scratch every time that ordering
+                # falls inside one poll interval.
+                if os.path.isfile(done_path):
+                    return
                 self.get_orblib()
                 return
             if waited >= timeout:
-                self.logger.warning(
-                    f"{self.mod_dir}: waited {timeout}s for a concurrent "
-                    "orbit library build with no result; attempting it "
-                    "here."
+                self.logger.debug(
+                    f"{self.mod_dir}: still waiting for a concurrent orbit "
+                    f"library build after {waited:.0f}s; the claiming process "
+                    "is alive, so continuing to wait."
                 )
-                self.get_orblib()
-                return
+                waited = 0.0
             time.sleep(poll_interval)
             waited += poll_interval
 
