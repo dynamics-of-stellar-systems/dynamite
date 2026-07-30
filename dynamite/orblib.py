@@ -1,3 +1,4 @@
+import functools
 import os
 import pathlib
 import subprocess
@@ -15,6 +16,60 @@ from dynamite import physical_system as physys
 from dynamite import kinematics as dyn_kin
 from dynamite import orblib_chunks
 from dynamite.constants import PARSEC_KM
+
+
+def restores_cwd(method):
+    """Return to the original working directory however the method exits.
+
+    The legacy Fortran programs take relative paths, so these methods
+    ``os.chdir`` into the model directory. Most of them chdir back only on the
+    paths they expect to take, which leaves the process in the model directory
+    when anything else raises. Models are evaluated in a reused
+    ``pathos.multiprocessing`` pool, so the next model handled by that worker
+    then resolves ``datfil/...`` against the previous model's directory - one
+    failed model turns into a cascade of unrelated ones.
+
+    An inner ``os.chdir(cur_dir)`` that already ran is harmless: this just
+    restores the same directory again.
+    """
+
+    @functools.wraps(method)
+    def wrapper(self, *args, **kwargs):
+        cwd = os.getcwd()
+        try:
+            return method(self, *args, **kwargs)
+        finally:
+            if os.getcwd() != cwd:
+                os.chdir(cwd)
+
+    return wrapper
+
+
+def removes_decompressed_files(method):
+    """Delete any orbit library file left decompressed on disk.
+
+    The read paths decompress the library to a temporary file and remove it
+    themselves when they are done, so anything still listed here means the
+    method exited abnormally. These files are the whole uncompressed library -
+    gigabytes each for a large one - and a run whose models all fail would
+    otherwise fill the disk with them.
+    """
+
+    @functools.wraps(method)
+    def wrapper(self, *args, **kwargs):
+        self._decompressed = []
+        try:
+            return method(self, *args, **kwargs)
+        finally:
+            for f_name in self._decompressed:
+                try:
+                    os.remove(f_name)
+                    self.logger.debug(f"Removed leftover {f_name}.")
+                except FileNotFoundError:
+                    pass  # the normal case: the method cleaned up after itself
+            self._decompressed = []
+
+    return wrapper
 
 
 class OrbitLibrary(object):
@@ -61,6 +116,8 @@ class LegacyOrbitLibrary(OrbitLibrary):
         self.LegacyWeightSolver = weight_solver == "LegacyWeightSolver"
         self.orblibs_in_parallel = config.settings.multiprocessing_settings["orblibs_in_parallel"]
         self.n_chunks = config.settings.multiprocessing_settings["orblib_chunks"]
+        # populated by removes_decompressed_files around the read methods
+        self._decompressed = []
         self.stars = self.system.get_unique_triaxial_visible_component()
         self.n_hist1d = len([k for k in self.stars.kinematic_data if not isinstance(k, dyn_kin.ProperMotions)])
         self.n_hist2d = len([k for k in self.stars.kinematic_data if isinstance(k, dyn_kin.ProperMotions)])
@@ -596,6 +653,7 @@ class LegacyOrbitLibrary(OrbitLibrary):
             f.write('"datfil/mass_aper.dat"')
             f.close()
 
+    @restores_cwd
     def get_orbit_ics(self):
         """Run the Fortran executable to calculate orbit ICs"""
         cur_dir = os.getcwd()
@@ -622,6 +680,7 @@ class LegacyOrbitLibrary(OrbitLibrary):
                 self.logger.warning(text)
                 raise RuntimeError(text)
 
+    @restores_cwd
     def get_orbit_library_chunked(self, n_chunks):
         """Integrate the orbit library in chunks, then merge the results.
 
@@ -711,6 +770,7 @@ class LegacyOrbitLibrary(OrbitLibrary):
         finally:
             os.chdir(cur_dir)
 
+    @restores_cwd
     def get_orbit_library_par(self):
         """Execute the bash script to calculate orbit libraries in parallel"""
         # move to model directory
@@ -741,6 +801,7 @@ class LegacyOrbitLibrary(OrbitLibrary):
                 self.logger.warning(text)
                 raise RuntimeError(text)
 
+    @restores_cwd
     def get_orbit_library(self):
         """Execute the bash script to calculate orbit libraries: first tube,
         then box orbits
@@ -1336,6 +1397,8 @@ class LegacyOrbitLibrary(OrbitLibrary):
         density_3D_orb = quad_light[:, :, :, 0]
         return orbtypes_dith, density_3D_orb, quad_light
 
+    @restores_cwd
+    @removes_decompressed_files
     def read_orbit_base(self, fileroot, return_intrinsic_moments=False, pops=False):
         """
         Read orbit library from file datfil/{fileroot}.dat.bz2'
