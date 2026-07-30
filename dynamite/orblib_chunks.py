@@ -16,6 +16,7 @@ Merged files are byte-identical to the output of a single-process run.
 """
 
 import os
+import shutil
 import struct
 
 import numpy as np
@@ -128,6 +129,52 @@ def merge_files(chunk_files, out_file, kind, n_orbits=None):
     return out_file
 
 
+def merge_orbclass(datfil, fileroot, chunk_tags):
+    """Concatenate one orbit family's ``orbclass.out`` chunks.
+
+    Unlike the two binary streams this one is text and has no header: the line
+    ``integrator_setup_write`` writes to unit 30 is discarded, because
+    ``output_setup`` reopens unit 30 with ``status="replace"`` afterwards. So
+    the file is nothing but one ``integrator_moments`` block per orbit, and
+    merging is a concatenation in ascending orbit order.
+
+    Parameters
+    ----------
+    datfil : string
+        the model's ``datfil`` directory
+    fileroot : string
+        ``'orblib'`` or ``'orblibbox'``
+    chunk_tags : list of string
+        per-chunk file name suffixes, in ascending orbit order
+
+    Returns
+    -------
+    string
+        the merged file name
+
+    Raises
+    ------
+    FileNotFoundError
+        if any chunk file is missing, naming the first one.
+
+    """
+    parts = [os.path.join(datfil, f'{fileroot}{tag}.dat_orbclass.out')
+             for tag in chunk_tags]
+    for p in parts:
+        if not os.path.isfile(p):
+            raise FileNotFoundError(f'missing orbit class chunk: {p}')
+    out_file = os.path.join(datfil, f'{fileroot}.dat_orbclass.out')
+    # write to a temporary name and rename, so a concurrently evaluated model
+    # sharing this library never sees a half-written file
+    tmp = f'{out_file}.tmp{os.getpid()}'
+    with open(tmp, 'wb') as out:
+        for p in parts:
+            with open(p, 'rb') as f:
+                shutil.copyfileobj(f, out)
+    os.replace(tmp, out_file)
+    return out_file
+
+
 def remove_chunks(datfil, fileroot, chunk_tags,
                   kinds=('qgrid', 'losvd_hist')):
     """Delete one orbit family's chunk files, ignoring any already gone.
@@ -209,6 +256,9 @@ def merge_chunks(datfil, fileroot, chunk_tags, n_orbits,
         merged.append(merge_files(
             parts, os.path.join(datfil, f'{fileroot}_{kind}.dat{out_tag}'),
             kind, n_orbits))
+    # not returned with the others: this one is text, is not compressed, and is
+    # already at its final name, so the caller must not post-process it
+    merge_orbclass(datfil, fileroot, chunk_tags)
     if cleanup:
         remove_chunks(datfil, fileroot, chunk_tags, kinds)
     return merged
