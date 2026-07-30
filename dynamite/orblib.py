@@ -977,7 +977,14 @@ class LegacyOrbitLibrary(OrbitLibrary):
             )
         for f in "qgrid", "pm_hist", "pops", "losvd_hist":
             f_name = "datfil/orblib_" + f + ".dat"
-            txt_file.write(f"test -e {f_name} && rm -f {f_name}.bz2 && bzip2 -k {f_name}\n")
+            # compress to a private name and rename: models sharing this
+            # library may be reading the .bz2 while this one rebuilds it, and
+            # rewriting it in place hands them a truncated archive
+            txt_file.write(
+                f"test -e {f_name} "
+                f"&& bzip2 -kc {f_name} > {f_name}.staging.$$.bz2 "
+                f"&& mv {f_name}.staging.$$.bz2 {f_name}.bz2\n"
+            )
             txt_file.write(f"rm -f {f_name}\n")
         txt_file.write("touch datfil/tube_done) &\n")
         txt_file.write("orblib=$!\n")
@@ -990,7 +997,14 @@ class LegacyOrbitLibrary(OrbitLibrary):
         txt_file.write(f"{self.legacy_directory}/{orb_prgrm} < infil/orblibbox.in >> datfil/orblibbox.log\n")
         for f in "qgrid", "pm_hist", "pops", "losvd_hist":
             f_name = "datfil/orblibbox_" + f + ".dat"
-            txt_file.write(f"test -e {f_name} && rm -f {f_name}.bz2 && bzip2 -k {f_name}\n")
+            # compress to a private name and rename: models sharing this
+            # library may be reading the .bz2 while this one rebuilds it, and
+            # rewriting it in place hands them a truncated archive
+            txt_file.write(
+                f"test -e {f_name} "
+                f"&& bzip2 -kc {f_name} > {f_name}.staging.$$.bz2 "
+                f"&& mv {f_name}.staging.$$.bz2 {f_name}.bz2\n"
+            )
             txt_file.write(f"rm -f {f_name}\n")
         txt_file.write("touch datfil/box_done) &\n")
         txt_file.write("orblibbox=$!\n")
@@ -1046,8 +1060,8 @@ class LegacyOrbitLibrary(OrbitLibrary):
             f_name = "datfil/orblib_" + f + ".dat"
             txt_file.write(
                 f"test -e {f_name} "
-                f"&& bzip2 -kc {f_name} > {f_name}.staging.bz2 "
-                f"&& mv {f_name}.staging.bz2 {f_name}.bz2\n"
+                f"&& bzip2 -kc {f_name} > {f_name}.staging.$$.bz2 "
+                f"&& mv {f_name}.staging.$$.bz2 {f_name}.bz2\n"
             )
             txt_file.write(f"rm -f {f_name}\n")
         txt_file.write("touch datfil/tube_done\n")
@@ -1081,8 +1095,8 @@ class LegacyOrbitLibrary(OrbitLibrary):
             f_name = "datfil/orblibbox_" + f + ".dat"
             txt_file.write(
                 f"test -e {f_name} "
-                f"&& bzip2 -kc {f_name} > {f_name}.staging.bz2 "
-                f"&& mv {f_name}.staging.bz2 {f_name}.bz2\n"
+                f"&& bzip2 -kc {f_name} > {f_name}.staging.$$.bz2 "
+                f"&& mv {f_name}.staging.$$.bz2 {f_name}.bz2\n"
             )
             txt_file.write(f"rm -f {f_name}\n")
         txt_file.write("touch datfil/box_done\n")
