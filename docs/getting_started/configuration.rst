@@ -264,6 +264,9 @@ This section is used for settings relevant for the calculation of orbit librarie
      --------------------------------  ------------------------------------------------
      =====  =====  =====  ===========  ================================================
 
+.. note::
+   :math:`(n_E, n_{I2}, n_{I3})` and ``dithering`` determine the orbit initial conditions, which are stored in each model's ``datfil/begin.dat``. Model directories are named after the iteration and row of the model, not after the orbit grid, so re-running into an existing output directory after changing any of these four settings finds initial conditions for the previous grid. DYNAMITE detects this and regenerates them, logging ``begin.dat holds initial conditions for an ...x...x... dithered grid, but the configuration asks for ...``. That is expected and harmless; it just means the initial conditions are being recomputed. Note that the orbit libraries themselves are *not* invalidated automatically, so use a fresh output directory when changing the orbit grid.
+
 - ``orblib_settings``
     - ``nE``: integer, size of grid in integral-of-motion :math:`E`
     - ``nI2``: integer, size of grid in second integral-of-motion :math:`I_2` (similar to :math:`L_z`). Must be at least 4.
@@ -388,13 +391,17 @@ If ``orblibs_in_parallel`` is set to ``False``, DYNAMITE will first integrate th
 
 Note that ``orblib_chunks`` reduces the wall-clock time of a *single* model, not the total CPU time, so it helps only when there are spare cores. Running many models at once already keeps a machine busy, and in that situation chunking will not increase throughput. It is useful when fewer models are being evaluated concurrently than the machine has cores, for example in the later, narrower iterations of a parameter search, or when a single large model is being computed on its own.
 
-Chunking is skipped, with the library integrated in one piece, for orbit libraries containing proper motion (2d histogram) or population data.
+Chunking is skipped, with the library integrated in one piece and a line logged saying so, in the cases the chunked path cannot produce a correct library for:
+
+- orbit libraries containing proper motion (2d histogram) or population data, whose output streams are not merged;
+- ``weight_solver_settings: type: 'LegacyWeightSolver'``, because the legacy ``triaxmass`` program reads the whole merged orbit library, which does not exist until after every chunk has finished;
+- libraries deliberately restricted to part of the orbit range, i.e. ``starting_orbit`` other than 1 or ``number_orbits`` other than ``-1``, since the chunks' own ranges would replace that restriction and the library would come back complete.
 
 Setting ``orblib_chunks: auto`` lets DYNAMITE choose the chunk count separately for each iteration, from the ``total_cores`` budget and the number of orbit libraries that iteration actually builds::
 
-    orblib_chunks = total_cores / (number of new orbit libraries x families)
+    orblib_chunks = total_cores / (number of new orbit libraries x 2)
 
-where ``families`` is 2 if ``orblibs_in_parallel`` is set and 1 otherwise. A wide iteration already occupies the machine and is left unchunked; a narrow one, such as the later stages of a parameter search, spreads each library over the cores that would otherwise be idle. This is why the setting is resolved per iteration rather than once: the right value depends on how much other work there is to do at the time. ``total_cores`` defaults to all available CPUs, and should be set explicitly on a shared machine.
+where the factor 2 is the two orbit families: when chunking is in use both families are always integrated concurrently, whatever ``orblibs_in_parallel`` says. A wide iteration already occupies the machine and is left unchunked; a narrow one, such as the later stages of a parameter search, spreads each library over the cores that would otherwise be idle. This is why the setting is resolved per iteration rather than once: the right value depends on how much other work there is to do at the time. ``total_cores`` defaults to all available CPUs, and should be set explicitly on a shared machine.
 
 Note that only ``SplitModelIterator`` runs orbit integration and weight solving as separate phases, and therefore only it can apply a different concurrency limit to each. With the default ``ModelInnerIterator`` a single pool of ``ncpus`` processes does both, so ``ncpus_weights`` has no effect and weight solving cannot be limited independently. Since weight solving is the memory-intensive phase, ``SplitModelIterator`` is the better choice for large models.
 
@@ -407,7 +414,7 @@ Important performance hint:
 
 - Most ``numpy`` and ``scipy`` implementations are compiled for shared-memory parallelism (e.g., involving blas/openblas). This can be verified by inspecting the ``MAX_THREADS`` values in the output of ``numpy.__config__.show()`` and ``scipy.__config__.show()``, respectively. The number of threads to be used by ``numpy`` and ``scipy`` can be limited by setting the environment variable ``OMP_NUM_THREADS`` to the desired value before executing DYNAMITE.
 - Recommendation: ``OMP_NUM_THREADS=n`` with ``ncpus * n`` ≤ :math:`N_\mathrm{CPU}` if ``orblibs_in_parallel`` is set to ``False`` and ``ncpus * n`` ≤ :math:`\frac{1}{2}\,N_\mathrm{CPU}` if ``orblibs_in_parallel`` is set to ``True``.
-- With ``orblib_chunks`` > 1 each model uses that many orbit integration processes per orbit family, so the recommendation becomes ``ncpus * orblib_chunks * n`` ≤ :math:`N_\mathrm{CPU}`, or ≤ :math:`\frac{1}{2}\,N_\mathrm{CPU}` if ``orblibs_in_parallel`` is also set. DYNAMITE logs the resulting number of processes and warns if it exceeds the detected CPU count.
+- With ``orblib_chunks`` > 1 each model uses that many orbit integration processes for *each* of the two orbit families - both are integrated concurrently regardless of ``orblibs_in_parallel`` - so the recommendation becomes ``ncpus * orblib_chunks * 2 * n`` ≤ :math:`N_\mathrm{CPU}`. DYNAMITE logs the resulting number of processes and warns if it exceeds the detected CPU count.
 
 ``legacy_settings``
 =====================
