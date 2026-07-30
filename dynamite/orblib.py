@@ -831,7 +831,30 @@ class LegacyOrbitLibrary(OrbitLibrary):
 
         """
         has_pops = any(p.kin_aper is None for p in self.stars.population_data)
-        return self.n_hist2d == 0 and not has_pops
+        # triaxmass reads datfil/orblib_qgrid.dat, and the chunked script has to
+        # run it before the merge that creates that file - the unchunked scripts
+        # run it while the Fortran's own output is still on disk. Rather than
+        # reorder the legacy programs, do not chunk these libraries.
+        if self.LegacyWeightSolver:
+            self.logger.info(
+                f"{self.mod_dir}: LegacyWeightSolver needs triaxmass to run "
+                "against the whole orbit library; integrating it in one piece."
+            )
+        # the chunks' ranges replace starting_orbit/number_orbits outright, so
+        # a library that is deliberately only a slice must not be chunked - it
+        # would silently come back complete
+        full = self.settings["starting_orbit"] == 1 and self.settings["number_orbits"] in (
+            -1,
+            self.n_orbit_starting_points(),
+        )
+        if not full:
+            self.logger.info(
+                f"{self.mod_dir}: starting_orbit="
+                f"{self.settings['starting_orbit']}, number_orbits="
+                f"{self.settings['number_orbits']} is a partial library; "
+                "integrating it in one piece."
+            )
+        return self.n_hist2d == 0 and not has_pops and full and not self.LegacyWeightSolver
 
     def orbit_chunk_bounds(self, n_chunks):
         """Divide the orbit starting points into consecutive chunks.
@@ -927,15 +950,10 @@ class LegacyOrbitLibrary(OrbitLibrary):
                 pids.append(pid)
         txt_file.write("# wait for every chunk to finish\n")
         txt_file.write("wait " + " ".join(f"${p}" for p in pids) + "\n")
-        if self.LegacyWeightSolver:
-            # depends on the potential rather than the orbit library, so it is
-            # run once here, not once per chunk
-            txt_file.write("rm -f datfil/mass_qgrid.dat datfil/mass_radmass.dat datfil/mass_aper.dat\n")
-            bar = "_bar" if self.system.is_bar_disk_system() else ""
-            txt_file.write(f"{self.legacy_directory}/triaxmass{bar} < infil/triaxmass.in >> datfil/triaxmass.log\n")
-            txt_file.write(
-                f"{self.legacy_directory}/triaxmassbin{bar} < infil/triaxmassbin.in >> datfil/triaxmassbin.log\n"
-            )
+        # No triaxmass/triaxmassbin here: they read datfil/orblib_qgrid.dat,
+        # which does not exist until the merge that follows this script. That is
+        # why can_chunk_orbits refuses LegacyWeightSolver libraries outright
+        # rather than running the legacy programs against missing input.
         txt_file.close()
         return cmd_string
 
