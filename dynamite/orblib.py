@@ -1187,6 +1187,42 @@ class LegacyOrbitLibrary(OrbitLibrary):
         # ...
         pass
 
+    def _decompress(self, src, dest):
+        """Decompress an orbit library file, failing loudly if it is damaged.
+
+        ``bunzip2`` exiting non-zero used to be ignored, leaving a truncated
+        ``dest`` that surfaced much later as an unintelligible ``FortranFile``
+        error from somewhere deep in the read. A partly written archive is a
+        real possibility whenever models sharing a library are evaluated
+        concurrently, so say so here.
+
+        Parameters
+        ----------
+        src : string
+            the ``.bz2`` file to read
+        dest : string
+            the file to write
+
+        Raises
+        ------
+        RuntimeError
+            if decompression fails.
+
+        """
+        # absolute, so the cleanup does not depend on the working directory
+        # still being the model directory when it runs
+        self._decompressed.append(os.path.abspath(dest))
+        p = subprocess.run(f"bunzip2 -c {src} > {dest}", shell=True, stderr=subprocess.PIPE)
+        if p.returncode != 0:
+            err_msg = (
+                f"{self.mod_dir}: cannot decompress {src} "
+                f"(exit code {p.returncode}): {p.stderr.decode('UTF-8').strip()}. "
+                "The orbit library is damaged or incomplete; delete it and "
+                "the datfil/*_done flags to have it rebuilt."
+            )
+            self.logger.error(err_msg)
+            raise RuntimeError(err_msg)
+
     def _walk_losvd_records(self, buf, n_pairs):
         """Locate every losvd histogram payload in a raw file buffer.
 
@@ -1330,7 +1366,22 @@ class LegacyOrbitLibrary(OrbitLibrary):
         buf = np.memmap(fname, dtype=np.uint8, mode="r")
         n_ap_total = len(kin_idx_per_ap)
         n_pairs = norb * n_ap_total
-        start, ivmin, nv = self._walk_losvd_records(buf, n_pairs)
+        try:
+            start, ivmin, nv = self._walk_losvd_records(buf, n_pairs)
+        except IndexError:
+            # the walk ran off the end of the file. Checking the bound on every
+            # one of the millions of pairs would cost more than it is worth, so
+            # let it fail and name the file here instead of surfacing a bare
+            # IndexError from inside the loop.
+            err_msg = (
+                f"{fname} (model {self.mod_dir}) ended before the expected "
+                f"{n_pairs} (orbit, aperture) pairs ({norb} orbits x "
+                f"{n_ap_total} apertures) had been read; the file is "
+                "truncated. Delete the orbit library and the datfil/*_done "
+                "flags to have it rebuilt."
+            )
+            self.logger.error(err_msg)
+            raise ValueError(err_msg) from None
         kin_idx_per_ap = np.asarray(kin_idx_per_ap)
         idx_ap_reset = np.asarray(idx_ap_reset)
         nv0 = np.array([(b - 1) // 2 for b in hist_bins])
@@ -1468,7 +1519,7 @@ class LegacyOrbitLibrary(OrbitLibrary):
                 tmpfname = f"datfil/{fileroot}_qgrid_{ml}.dat"
             # unzip orblib to a temporary file with ml value attached
             # ml value is needed to prevent different processes clashing
-            subprocess.run(f"bunzip2 -c {orblib_file} > {tmpfname}", shell=True)
+            self._decompress(orblib_file, tmpfname)
             # read the fortran file
             orblib_in = FortranFile(tmpfname, "r")
             # read size of orbit library
@@ -1529,13 +1580,13 @@ class LegacyOrbitLibrary(OrbitLibrary):
                 if any(i == 1 for i in hist_dim):
                     orblib_file = f"datfil/{fileroot}_losvd_hist.dat.bz2"
                     tmpfname = f"datfil/{fileroot}_losvd_hist_{ml}.dat"
-                    subprocess.run(f"bunzip2 -c {orblib_file} > {tmpfname}", shell=True)
+                    self._decompress(orblib_file, tmpfname)
                     # read the fortran file
                     orblib_in = FortranFile(tmpfname, "r")
                 if any(i == 2 for i in hist_dim):
                     orblib_file = f"datfil/{fileroot}_pm_hist.dat.bz2"
                     tmpfname_pm = f"datfil/{fileroot}_pm_hist_{ml}.dat"
-                    subprocess.run(f"bunzip2 -c {orblib_file} > {tmpfname_pm}", shell=True)
+                    self._decompress(orblib_file, tmpfname_pm)
                     orblib_in_pm = FortranFile(tmpfname_pm, "r")
             # read the losvd and pm histogram data
             # from histogram_setup_write, lines 1917-1926: (losvd only)
@@ -1687,7 +1738,7 @@ class LegacyOrbitLibrary(OrbitLibrary):
                 raise FileNotFoundError(error_msg)
             os.chdir(self.mod_dir)
             tmpfname = f"datfil/{fileroot}_pops_{ml}.dat"
-            subprocess.run(f"bunzip2 -c {pops_file} > {tmpfname}", shell=True)
+            self._decompress(pops_file, tmpfname)
             # read the fortran file
             orblib_in = FortranFile(tmpfname, "r")
             for j in range(norb):
