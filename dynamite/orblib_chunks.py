@@ -24,6 +24,10 @@ import numpy as np
 # number of Fortran records making up each file's header
 HEADER_RECORDS = {'qgrid': 5, 'losvd_hist': 1}
 
+# records integrator_write/qgrid_write emit per orbit, and therefore what
+# _read_individual_orbit consumes per orbit
+QGRID_RECORDS_PER_ORBIT = 3
+
 
 def header_length(buf, n_records):
     """Byte offset just past the first ``n_records`` Fortran records.
@@ -61,6 +65,47 @@ def header_length(buf, n_records):
     return pos
 
 
+def count_records(buf, start, end):
+    """Number of Fortran records between two byte offsets.
+
+    Walks the length markers, so the cost is one hop per record rather than one
+    per byte.
+
+    Parameters
+    ----------
+    buf : 1d numpy array of uint8
+        the file contents
+    start, end : int
+        byte offsets bounding the region to walk
+
+    Returns
+    -------
+    int
+        number of records found
+
+    Raises
+    ------
+    ValueError
+        if a record's length markers disagree or a record crosses ``end``,
+        either of which means the region is not a whole number of records.
+
+    """
+    pos, n_records = start, 0
+    while pos < end:
+        n = int(np.frombuffer(buf[pos:pos + 4], dtype=np.int32)[0])
+        if pos + 8 + n > end:
+            raise ValueError('a record runs past the end of the body - '
+                             'the file is truncated or not an orbit library')
+        trail = int(np.frombuffer(buf[pos + 4 + n:pos + 8 + n],
+                                  dtype=np.int32)[0])
+        if trail != n:
+            raise ValueError('record length markers disagree '
+                             f'({n} vs {trail}) - not an orbit library file?')
+        pos += 8 + n
+        n_records += 1
+    return n_records
+
+
 def footer_offset(buf):
     """Byte offset of the one-byte record that closes an orbit library file.
 
@@ -84,8 +129,16 @@ def footer_offset(buf):
         if the closing record's length markers disagree.
 
     """
+    if buf.nbytes < 8:
+        raise ValueError(f'file is {buf.nbytes} bytes - too short to hold any '
+                         'record; the writing process probably died')
     n = int(np.frombuffer(buf[-4:], dtype=np.int32)[0])
     start = buf.nbytes - 8 - n
+    if not 0 <= start <= buf.nbytes - 8:
+        # a negative start would index from the end of the buffer and could
+        # read a plausible-looking marker from unrelated bytes
+        raise ValueError(f'trailing record length {n} does not fit in a '
+                         f'{buf.nbytes}-byte file - it is truncated')
     lead = int(np.frombuffer(buf[start:start + 4], dtype=np.int32)[0])
     if lead != n:
         raise ValueError('trailing record length markers disagree '
@@ -105,21 +158,45 @@ def merge_files(chunk_files, out_file, kind, n_orbits=None):
     kind : string
         ``'qgrid'`` or ``'losvd_hist'``, selecting the header length
     n_orbits : int, optional
-        total number of orbits. Written into the ``qgrid`` header, which
-        records it; ignored for other kinds. The default is None.
+        total number of orbits. Both the ``qgrid`` header, which records it,
+        and the number of orbits actually present in the body are checked
+        against it; ignored for other kinds. The default is None.
 
     Returns
     -------
     string
         ``out_file``
 
+    Raises
+    ------
+    ValueError
+        if the chunks do not together hold ``n_orbits`` orbits.
+
     """
     bufs = [np.fromfile(f, dtype=np.uint8) for f in chunk_files]
     head_len = header_length(bufs[0], HEADER_RECORDS[kind])
     header = bytearray(bufs[0][:head_len].tobytes())
     if kind == 'qgrid' and n_orbits is not None:
-        # the first record's payload begins at byte 4 and starts with n_orbits
-        struct.pack_into('<i', header, 4, n_orbits)
+        # the first record's payload begins at byte 4 and starts with n_orbits.
+        # Check rather than overwrite: patching the header only defers the
+        # failure to the reader, which then runs off the end of the body.
+        written = struct.unpack_from('<i', header, 4)[0]
+        if written != n_orbits:
+            raise ValueError(
+                f'{out_file}: the orbit library header says {written} orbits '
+                f'but {n_orbits} were expected - the chunk ranges do not '
+                'cover the library')
+        # The header alone is not enough: the Fortran writes it from
+        # begin.dat, so it states the full library size whatever range the
+        # process was asked for. Only counting the bodies catches chunk ranges
+        # that are individually valid but do not add up.
+        found = sum(count_records(b, header_length(b, HEADER_RECORDS[kind]),
+                                  footer_offset(b)) for b in bufs)
+        if found != QGRID_RECORDS_PER_ORBIT * n_orbits:
+            raise ValueError(
+                f'{out_file}: the chunks hold '
+                f'{found / QGRID_RECORDS_PER_ORBIT:g} orbits but {n_orbits} '
+                'were expected - the chunk ranges do not cover the library')
     with open(out_file, 'wb') as f:
         f.write(header)
         for buf in bufs:
