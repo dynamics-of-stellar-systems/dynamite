@@ -187,6 +187,13 @@ class LegacyOrbitLibrary(OrbitLibrary):
                 file2 = "beginbox.dat"
                 check1 = os.path.isfile(self.mod_dir + f"datfil/{file1}")
                 check2 = os.path.isfile(self.mod_dir + f"datfil/{file2}")
+                if check1 and check2 and not self.ics_match_settings():
+                    # stale initial conditions for a different orbit grid; the
+                    # Fortran would either refuse them ("Not so many orbits") or
+                    # integrate the wrong starting points
+                    os.remove(self.mod_dir + f"datfil/{file1}")
+                    os.remove(self.mod_dir + f"datfil/{file2}")
+                    check1 = check2 = False
                 if check1 + check2 != 2:
                     if check1:
                         os.remove(self.mod_dir + f"datfil/{file1}")
@@ -231,6 +238,49 @@ class LegacyOrbitLibrary(OrbitLibrary):
                 # instead of being stuck waiting for a done-file that will
                 # never appear
                 self.release_orblib_build_claim()
+
+    def ics_match_settings(self):
+        """Whether ``datfil/begin.dat`` was generated for the current orbit grid.
+
+        Model directories are named ``orblib_<iteration>_<row>``, not after the
+        orbit grid, so re-running into an existing output directory after
+        changing ``nE``, ``nI2``, ``nI3`` or ``dithering`` finds initial
+        conditions for the old grid and reuses them. ``orbitstart`` writes the
+        *dithered* grid into ``begin.dat``'s first line (``iniparam_f.f90``
+        multiplies by the dithering before ``orbitstart`` writes it), so that
+        line identifies which grid the file belongs to.
+
+        Returns
+        -------
+        bool
+            True if the initial conditions match the current settings, False if
+            they do not or cannot be read - in both cases the caller should
+            regenerate them.
+
+        """
+        s = self.settings
+        want = (
+            s["nE"] * s["dithering"],
+            s["nI2"] * s["dithering"],
+            s["nI3"] * s["dithering"],
+        )
+        path = self.mod_dir + "datfil/begin.dat"
+        try:
+            with open(path) as f:
+                got = tuple(int(x) for x in f.readline().split()[:3])
+        except (OSError, ValueError, IndexError):
+            self.logger.warning(f"Cannot read the orbit grid from {path}; regenerating initial conditions.")
+            return False
+        if got != want:
+            self.logger.warning(
+                f"{path} holds initial conditions for an "
+                f"{got[0]}x{got[1]}x{got[2]} dithered grid, but the "
+                f"configuration asks for {want[0]}x{want[1]}x{want[2]} "
+                f"(nE={s['nE']}, nI2={s['nI2']}, nI3={s['nI3']}, "
+                f"dithering={s['dithering']}). Regenerating them."
+            )
+            return False
+        return True
 
     def claim_orblib_build(self):
         """Atomically claim responsibility for building this orbit library.
