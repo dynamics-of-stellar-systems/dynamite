@@ -534,6 +534,11 @@ class Configuration(object):
                 if 'modeliterator' not in value:
                     value['modeliterator'] = 'ModelInnerIterator'
                 logger.debug(f"... using iterator {value['modeliterator']}.")
+                if 'ncpus_weights_maxtasksperchild' in value:
+                    logger.info(
+                        '... weight-solving workers recycled every '
+                        f"{value['ncpus_weights_maxtasksperchild']} model(s) "
+                        '(ncpus_weights_maxtasksperchild).')
                 if 'orblibs_in_parallel' not in value:
                     value['orblibs_in_parallel'] = False
                 logger.debug("... integrate orblibs in parallel: "

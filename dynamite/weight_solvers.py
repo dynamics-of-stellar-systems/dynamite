@@ -638,6 +638,22 @@ class NNLS(WeightSolver):
         coordinate-descent BVLS with an augmented Lagrangian on the total-mass
         constraint; see ``solve_adelie_alm``
 
+    Weight solver settings
+    ----------------------
+    nnls_dtype : string, optional
+        ``'float64'`` (default) or ``'float32'``. ``'float32'`` roughly
+        halves the memory of the retained orbit-library data
+        (``vel_histograms``/``intrinsic_masses``/``projected_masses``) and
+        of the NNLS matrix/solve arrays, at the cost of a small precision
+        loss. Validated against float64 on NGC6278 (matrix-only and
+        end-to-end): chi2 agrees to <0.001%, KKT violation stays within the
+        range of previously accepted float64 solutions. Not yet validated on
+        datasets whose constraint-row scaling differs from NGC6278/omega
+        Cen - carries the same caveat as ``adelie_mu`` (see
+        ``solve_adelie_alm``). Applies to the orbit-library data and the
+        constructed matrix regardless of ``nnls_solver``, but has only been
+        validated with ``nnls_solver='adelie'``.
+
     """
 
     def __init__(self, nnls_solver=None, **kwargs):
@@ -656,6 +672,18 @@ class NNLS(WeightSolver):
         self.adelie_alm_iters = int(self.settings.get('adelie_alm_iters', 200))
         self.adelie_tol = float(self.settings.get('adelie_tol', 1.0e-10))
         self.adelie_gap_tol = float(self.settings.get('adelie_gap_tol', 1e-10))
+        # Optional float32 mode: roughly halves the memory of the orbit
+        # library data retained for the solve (vel_histograms/intrinsic_masses
+        # /projected_masses) and of the NNLS matrix/solve arrays. Validated
+        # against float64 on NGC6278 (matrix-only and end-to-end): chi2 agrees
+        # to <0.001%, KKT violation stays within the range of previously
+        # accepted float64 solutions. Not yet validated on datasets whose
+        # constraint-row scaling differs from NGC6278/omega Cen - adelie_mu
+        # itself carries the same caveat (see solve_adelie_alm docstring).
+        nnls_dtype = self.settings.get('nnls_dtype', 'float64')
+        assert nnls_dtype in ('float32', 'float64'), \
+            "nnls_dtype must be 'float32' or 'float64'"
+        self.nnls_dtype = np.float32 if nnls_dtype == 'float32' else np.float64
         self.get_observed_mass_constraints()
 
     def get_observed_mass_constraints(self):
@@ -717,9 +745,10 @@ class NNLS(WeightSolver):
         """
         # construct vector of observed constraints (con), errors (econ) and
         # matrix of orbit propertites (orbmat)
-        con = np.zeros(self.n_mass_constraints)
-        econ = np.zeros(self.n_mass_constraints)
-        orbmat = np.zeros((self.n_mass_constraints, orblib.n_orbs))
+        dtype = self.nnls_dtype
+        con = np.zeros(self.n_mass_constraints, dtype=dtype)
+        econ = np.zeros(self.n_mass_constraints, dtype=dtype)
+        orbmat = np.zeros((self.n_mass_constraints, orblib.n_orbs), dtype=dtype)
         # total mass
         con[0] = self.total_mass
         econ[0] = self.total_mass_error
@@ -767,11 +796,11 @@ class NNLS(WeightSolver):
                 # note: this only has an effect if type(kins) is GaussHermite
                 orb_kins = self.apply_CR_cut(kins, orb_veldist, orb_kins)
             # append constraints/errors/orbits to con/econ/orbmat
-            obs_kins = np.ravel(obs_kins)
+            obs_kins = np.ravel(obs_kins).astype(dtype)
             con = np.concatenate((con, obs_kins))
-            obs_kins_err = np.ravel(obs_kins_err)
+            obs_kins_err = np.ravel(obs_kins_err).astype(dtype)
             econ = np.concatenate((econ, obs_kins_err))
-            orb_kins = np.reshape(orb_kins, (orblib.n_orbs, -1))
+            orb_kins = np.reshape(orb_kins, (orblib.n_orbs, -1)).astype(dtype)
             orbmat = np.vstack((orbmat, orb_kins.T))
         # divide constraint vector and matrix by errors
         if np.any(con[econ==0] != 0):
@@ -1003,6 +1032,7 @@ class NNLS(WeightSolver):
         n_threads = int(os.environ.get("OMP_NUM_THREADS", os.cpu_count() or 1))
         mu = self.adelie_mu
         sqrt_mu = np.sqrt(mu)
+        dtype = A.dtype
         A_rest, b_rest = A[1:, :], b[1:]
         n_orbs = A.shape[1]
 
@@ -1011,13 +1041,18 @@ class NNLS(WeightSolver):
         # and the column norms here span about 15 orders of magnitude. The array
         # is stored F-contiguous because coordinate descent accesses one column
         # at a time.
-        X = np.vstack([sqrt_mu * np.ones((1, n_orbs)), A_rest])
+        X = np.vstack([np.full((1, n_orbs), sqrt_mu, dtype=dtype), A_rest])
         col_norm = np.linalg.norm(X, axis=0)
         col_norm[col_norm == 0] = 1.0
         X = np.asfortranarray(X / col_norm)
-        y = np.concatenate([[0.0], b_rest])
-        lower = np.zeros(n_orbs, dtype=np.float64)
-        upper = np.full(n_orbs, np.inf, dtype=np.float64)
+        y = np.concatenate([[0.0], b_rest]).astype(dtype)
+        lower = np.zeros(n_orbs, dtype=dtype)
+        upper = np.full(n_orbs, np.inf, dtype=dtype)
+        # adelie's bvls() infers a state dtype from X but defaults `weights`
+        # to np.full(n, 1/n) (always float64); when X is float32 that
+        # mismatch makes an internal `np.array(..., copy=False)` raise under
+        # numpy>=2.0. Passing weights explicitly in X's dtype avoids it.
+        weights_arr = np.full(X.shape[0], 1 / X.shape[0], dtype=dtype)
 
         lam = 0.0
         state = None
@@ -1026,12 +1061,13 @@ class NNLS(WeightSolver):
             y[0] = sqrt_mu * (1.0 + lam / mu)
             state = _adelie_solver.bvls(
                 X, np.ascontiguousarray(y), lower, upper,
-                n_threads=n_threads, tol=self.adelie_tol,
+                weights=weights_arr, n_threads=n_threads, tol=self.adelie_tol,
                 max_iters=int(2e5), warm_start=state)
-            w = np.asarray(state.beta).ravel() / col_norm
+            w = (np.asarray(state.beta).ravel() / col_norm).astype(np.float64)
             gap = float(w.sum() - 1.0)
             lam -= mu * gap
-            chi2 = float(np.sum((A @ w - b) ** 2))
+            chi2 = float(np.sum((A.astype(np.float64) @ w
+                                  - b.astype(np.float64)) ** 2))
             if chi2 < best_chi2:
                 best_chi2, best_w, best_it = chi2, w.copy(), it
             if abs(gap) < self.adelie_gap_tol:
@@ -1100,6 +1136,16 @@ class NNLS(WeightSolver):
             orblib.read_vel_histograms()  # sets orblib.vel_histograms,
                                           # orblib.intrinsic_masses, and
                                           # orblib.projected_masses
+            if self.nnls_dtype == np.float32:
+                # downcast the retained orbit-library data before building
+                # the NNLS matrix - this is most of the memory (see
+                # construct_nnls_matrix_and_rhs), not the matrix itself
+                for hist in orblib.vel_histograms:
+                    hist.y = hist.y.astype(np.float32)
+                orblib.intrinsic_masses = \
+                    orblib.intrinsic_masses.astype(np.float32)
+                orblib.projected_masses = \
+                    [p.astype(np.float32) for p in orblib.projected_masses]
             A, b = self.construct_nnls_matrix_and_rhs(orblib)
 
             # Normalize the data
