@@ -125,6 +125,18 @@ class WeightSolver(object):
             return float('nan')  # #######################################
         number_gh = self.settings['number_GH']
         chi2_kinmap = 0.
+        # NOTE: this must be a FRESH orbit library, not the one construct_
+        # nnls_matrix_and_rhs was given - that method zeroes the first/last
+        # velocity bin of each 1D histogram in place (orb_veldist.y[:,0,:]=0,
+        # orb_veldist.y[:,-1,:]=0), mutating orblib.vel_histograms as a side
+        # effect of building the NNLS matrix. Reusing that mutated orblib
+        # here would silently change chi2_kinmap's value (confirmed by
+        # testing: chi2_kinmap differed by ~7% when a mutated orblib was
+        # reused vs. a fresh one, with identical weights/chi2_tot/chi2_kin).
+        # A single fresh read is still shared across all kinematic sets in
+        # the loop below, rather than one fresh read per set as before.
+        fresh_orblib = self.model.get_orblib()
+        fresh_orblib.read_vel_histograms()
         for kin_set, kin_data in enumerate(stars.kinematic_data):
             n_gh = min(number_gh, kin_data.max_gh_order)
             coefs = ["v", "sigma"] + [f"h{i}" for i in range(3, n_gh + 1)]
@@ -132,8 +144,8 @@ class WeightSolver(object):
             a=analysis.Analysis(config=self.config,
                                 model=self.model,
                                 kin_set=kin_set)
-            model_gh_coef = a.get_gh_model_kinematic_maps(v_sigma_option='fit',
-                                                          weights=weights)
+            model_gh_coef = a.get_gh_model_kinematic_maps(
+                v_sigma_option='fit', weights=weights, orblib=fresh_orblib)
             # get the observed projected masses (unused) and kinematic data
             kinematics_data = kin_data.get_data()
             # calculate chi2_kinmap

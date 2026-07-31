@@ -81,16 +81,81 @@ much larger, riskier rewrite (dense allocation happens too early in
    **not** reduce memory used *during* one model's solve, which was the
    original ask; kept as a complementary hygiene fix, not the primary lever.
 
-## Planned, not yet implemented
+## Also shipped: orbit-library copy-chain preallocation
 
-See `docs/superpowers/plans/2026-07-31-orblib-copy-chain-preallocation.md`:
-replace `duplicate_flip_and_interlace_orblib` + `combine_orblibs` (which
-build the final per-kinematic-dataset array through 3 full-copy generations,
-~3-4x peak) with a single function that allocates the final array once and
-writes tube/box data directly into its slices. Composes with `nnls_dtype`
-(different axis: allocation count vs. bytes per element). Sidesteps the
-reclaim question entirely since it reduces what's allocated, not what's
-freed.
+See `docs/superpowers/plans/2026-07-31-orblib-copy-chain-preallocation.md`
+for the design. `duplicate_flip_and_interlace_orblib` + `combine_orblibs`
+(which built the final per-kinematic-dataset array through 3 full-copy
+generations, ~3-4x peak) were replaced with `combine_and_mirror_orblibs`, a
+single function that allocates the final array once and writes tube/box
+data directly into its slices. Prototyped and validated first: bit-exact
+equivalence, full weight-solve output bit-identical (A/b/weights/chi2),
+dtype-preserving, ~4% faster, peak RSS reduced 4.7-12.1% (fresh-process
+comparisons, small and 1.2GB test orbit libraries). Then landed in
+`orblib.py` and re-verified against the real patched file (three
+independent scripts, exact pre-change chi2 reproduced). Composes with
+`nnls_dtype` (different axis: allocation count vs. bytes per element) and
+sidesteps the reclaim question entirely since it reduces what's allocated,
+not what's freed.
+
+Not yet tested against a real orbit library: `mirror=False` (bar/disk
+systems) and 2D histograms (proper motions) - both branches are
+implemented but no locally-built orbit library exercises either case.
+
+## Found (and fixed, carefully) a real double-read in chi2_kinmap
+
+Running the "run all tests" pass at full scale surfaced something new:
+`NNLS.solve()`'s `chi2_kinmap()` step (run whenever all kinematics are
+GaussHermite) calls `Analysis.get_gh_model_kinematic_maps()` once per
+kinematic set, and that method does `orblib = model.get_orblib()` - and
+`Model.get_orblib()` (`model.py:1184`) always constructs a brand-new
+`LegacyOrbitLibrary` with no caching. So a full, independent
+`read_vel_histograms()` happens once per kinematic set, on top of the read
+already done for the main NNLS solve - N+1 total reads for N kinematic sets
+per model, not 1.
+
+The obvious fix - pass the caller's already-read `orblib` into
+`chi2_kinmap`/`get_gh_model_kinematic_maps` instead of fetching fresh ones -
+is **unsafe as a naive reuse** and was caught by testing before it shipped:
+`construct_nnls_matrix_and_rhs` (`weight_solvers.py:790-791`) zeroes the
+first and last velocity bin of each 1D histogram *in place* on
+`orblib.vel_histograms`, unconditionally (not gated by the `CRcut` setting),
+as a side effect of building the NNLS matrix. Before any fix, `chi2_kinmap`
+happened to get an unmutated orblib (a fresh one, never passed through
+`construct_nnls_matrix_and_rhs`). Reusing the *outer*, already-mutated
+orblib changed `chi2_kinmap`'s value silently - confirmed by A/B testing
+with `git stash`: chi2_kinmap went from 695753.906576 (correct, matching
+the pre-change baseline) to 650393.493585 (wrong) on the same weights/
+chi2_tot/chi2_kin, on the small NGC6278 test model.
+
+**The shipped fix**: `chi2_kinmap` fetches its own fresh, unmutated orblib
+**once** (not per kinematic set) and reuses that single fresh read across
+the loop over kinematic sets - deduplicating N reads down to 1, without
+ever touching the outer (mutated) orblib. Verified this reproduces the
+exact pre-change chi2_kinmap value.
+
+**Validated on a real N>1 case**: the NGC5139 (omega Cen) "mini" orbit
+library at `~/research/dynamite_analysis/test_head` (already integrated,
+3 GaussHermite kinematic datasets, no `all_models.ecsv` existed yet so one
+was built by registering the fixed parset directly) gives a genuine N=3
+test. `git stash`-based A/B comparison:
+
+| | pre-fix | with fix |
+|---|---|---|
+| chi2_tot | 1739592.046419 | 1739592.046419 |
+| chi2_kin | 118613.274617 | 118613.274617 |
+| chi2_kinmap | 133142.838583 | 133142.838583 (exact match) |
+| solve() wall time | 7.04 s | 5.81-5.90 s (~17% less) |
+
+Confirms both correctness (bit-identical chi2_kinmap with N=3, not just
+N=1) and a real, measurable time saving from eliminating 2 of the 3
+redundant per-kinematic-set reads. This "mini" library is still small; on
+the full production omega Cen orbit library (~34.7 GB combined histograms
+per the production memory note) each eliminated read would cost far more
+in both wall-time and transient peak memory, so the production benefit
+should be substantially larger than this 17%. `float32` (`nnls_dtype`) also
+verified working correctly on this same N=3 model: chi2_tot=1739592.021756
+vs the float64 value 1739592.046419, agreement to <0.00001%.
 
 ## Caveats
 
