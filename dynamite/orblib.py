@@ -1815,49 +1815,81 @@ class LegacyOrbitLibrary(OrbitLibrary):
                 velhists += [vvv]
         return velhists, density_3D  #######################
 
-    def duplicate_flip_and_interlace_orblib(self, orblib):
-        """flip the tube orbits
+    def combine_and_mirror_orblibs(self, tube, box, mirror=True):
+        """Build the combined (tube+box) orbit library in one allocation.
 
-        Take an orbit library, create a duplicate library with the velocity
-        signs flipped, then interlace the two i.e. so that resulting library
-        alternates between flipped/unflipped. This creates an orbit library
-        consistent with the Fortran output, enforcing the ordering created by
-        the for loops in lines 157-178 of triaxnnls_CRcut.f90
+        Replaces the previous ``duplicate_flip_and_interlace_orblib`` +
+        ``combine_orblibs`` pair, which built the final array through three
+        full-copy generations (mirrored tube, then combined), leaving a
+        transient ~3-4x peak live at once. This allocates the final array
+        once and writes the tube (optionally mirrored/interlaced) and box
+        data directly into their slices - verified bit-exact against the
+        previous two-function pipeline, see
+        ``docs/superpowers/plans/2026-07-31-orblib-copy-chain-preallocation.md``.
+
+        If ``mirror`` is True, the tube orbits are duplicated with the
+        velocity signs flipped and interlaced (alternating flipped/
+        unflipped), consistent with the Fortran output's ordering (see the
+        for loops in lines 157-178 of triaxnnls_CRcut.f90). ``mirror=False``
+        is used for bar/disk systems, where tube orbits are not mirrored.
 
         Parameters
         ----------
-        orblib : ``dyn.kinematics.Histogram`` or ``dyn.kinematics.Histogram2D``
+        tube : ``dyn.kinematics.Histogram`` or ``dyn.kinematics.Histogram2D``
+        box : ``dyn.kinematics.Histogram`` or ``dyn.kinematics.Histogram2D``
+        mirror : bool
+            whether to mirror+interlace the tube orbits. Default True.
 
         Returns
         -------
         ``dyn.kinematics.Histogram`` or ``dyn.kinematics.Histogram2D``
-            the duplicated, flipped and interlaced orblib
+            the combined (and, if mirror, mirrored/interlaced) orbit library
 
         """
-        self.logger.debug("Checking for symmetric velocity array...")
-        error_msg = "velocity array must be symmetric"
-        if orblib.y.ndim == 3:  # 1D histograms
-            assert np.allclose(orblib.xedg, -orblib.xedg[::-1]), error_msg
+        if mirror:
+            self.logger.debug("Checking for symmetric velocity array...")
+            error_msg = "velocity array must be symmetric"
+            if tube.y.ndim == 3:  # 1D histograms
+                assert np.allclose(tube.xedg, -tube.xedg[::-1]), error_msg
+            else:  # 2D histograms
+                assert np.allclose(tube.xedg[0], -tube.xedg[0][::-1]), error_msg
+                assert np.allclose(tube.xedg[1], -tube.xedg[1][::-1]), error_msg
+            self.logger.debug("...check ok.")
+
+        self.logger.debug("Checking number of velocity bins...")
+        error_msg = "orblibs have different number of velocity bins"
+        assert tube.y.shape[1:-1] == box.y.shape[1:-1], error_msg
+        self.logger.debug("Checking velocity arrays...")
+        error_msg = "orblibs have different velocity arrays"
+        if tube.y.ndim == 3:  # 1D histograms
+            assert np.array_equal(tube.x, box.x), error_msg
         else:  # 2D histograms
-            assert np.allclose(orblib.xedg[0], -orblib.xedg[0][::-1]), error_msg
-            assert np.allclose(orblib.xedg[1], -orblib.xedg[1][::-1]), error_msg
-        self.logger.debug("...check ok.")
-        vel_d = orblib.y
-        if vel_d.ndim == 3:  # 1D histograms (losvd)
-            n_orbs, n_vel_bins, n_spatial_bins = vel_d.shape
-            reversed_vel_d = vel_d[:, ::-1, :]
-            new_vel_d = np.zeros((2 * n_orbs, n_vel_bins, n_spatial_bins))
-        else:  # 2D histograms (proper motion)
-            n_orbs, n_vel_bins1, n_vel_bins2, n_spatial_bins = vel_d.shape
-            reversed_vel_d = vel_d[:, ::-1, ::-1, :]
-            new_vel_d = np.zeros((2 * n_orbs, n_vel_bins1, n_vel_bins2, n_spatial_bins))
-        new_vel_d[0::2] = vel_d
-        new_vel_d[1::2] = reversed_vel_d
-        if vel_d.ndim == 3:  # 1D histograms
-            new_orblib = dyn_kin.Histogram(xedg=orblib.xedg, y=new_vel_d)
-        else:  # 2D histograms
-            new_orblib = dyn_kin.Histogram2D(xedg=orblib.xedg, y=new_vel_d)
-        return new_orblib
+            assert np.array_equal(tube.x[0], box.x[0]), error_msg
+            assert np.array_equal(tube.x[1], box.x[1]), error_msg
+        self.logger.debug("Checking number of spatial bins...")
+        error_msg = "orblibs have different number of spatial bins"
+        assert tube.y.shape[-1] == box.y.shape[-1], error_msg
+        self.logger.debug("...checks ok.")
+
+        n_tube = tube.y.shape[0]
+        n_box = box.y.shape[0]
+        n_tube_out = 2 * n_tube if mirror else n_tube
+        final_shape = (n_tube_out + n_box,) + tube.y.shape[1:]
+        final = np.zeros(final_shape, dtype=tube.y.dtype)
+
+        if mirror:
+            if tube.y.ndim == 3:  # 1D histograms (losvd)
+                final[0:2 * n_tube:2] = tube.y
+                final[1:2 * n_tube:2] = tube.y[:, ::-1, :]
+            else:  # 2D histograms (proper motion)
+                final[0:2 * n_tube:2] = tube.y
+                final[1:2 * n_tube:2] = tube.y[:, ::-1, ::-1, :]
+        else:
+            final[0:n_tube] = tube.y
+        final[n_tube_out:] = box.y
+
+        cls = dyn_kin.Histogram if tube.y.ndim == 3 else dyn_kin.Histogram2D
+        return cls(xedg=tube.xedg, y=final)
 
     def duplicate_flip_and_interlace_intmoms(self, intmom):
         """equiv of `duplicate_flip_and_interlace_orblib` for intrinsic moments"""
@@ -1871,59 +1903,6 @@ class LegacyOrbitLibrary(OrbitLibrary):
         reversed_intmom[:, :, :, :, 6] *= -1.0  # ... vz
         new_intmom[1::2, :] = reversed_intmom
         return new_intmom
-
-    def combine_orblibs(self, orblib1, orblib2):
-        """Combine two velocity distribution histograms into one.
-
-        Parameters
-        ----------
-        orblib1 : ``dyn.kinematics.Histogram`` or ``dyn.kinematics.Histogram2D``
-        orblib2 : ``dyn.kinematics.Histogram`` or ``dyn.kinematics.Histogram2D``
-
-        Returns
-        -------
-        ``dyn.kinematics.Histogram`` or ``dyn.kinematics.Histogram2D``
-            the combined orbit libraries
-
-        """
-        # check orblibs are compatible
-        tmp1 = orblib1.y.shape
-        tmp2 = orblib2.y.shape
-        n_orbs1 = tmp1[0]
-        n_orbs2 = tmp2[0]
-        n_spatial_bins1 = tmp1[-1]
-        n_spatial_bins2 = tmp2[-1]
-        if orblib1.y.ndim == 3:  # 1D histograms
-            n_vel_bins1 = tmp1[1]
-            n_vel_bins2 = tmp2[1]
-        else:  # 2D histograms
-            n_vel_bins1 = tmp1[1:3]
-            n_vel_bins2 = tmp2[1:3]
-        self.logger.debug("Checking number of velocity bins...")
-        error_msg = "orblibs have different number of velocity bins"
-        assert n_vel_bins1 == n_vel_bins2, error_msg
-        self.logger.debug("Checking velocity arrays...")
-        error_msg = "orblibs have different velocity arrays"
-        if orblib1.y.ndim == 3:  # 1D histograms
-            assert np.array_equal(orblib1.x, orblib2.x), error_msg
-        else:  # 2D histograms
-            assert np.array_equal(orblib1.x[0], orblib2.x[0]), error_msg
-            assert np.array_equal(orblib1.x[1], orblib2.x[1]), error_msg
-        self.logger.debug("Checking number of spatial bins...")
-        error_msg = "orblibs have different number of spatial bins"
-        assert n_spatial_bins1 == n_spatial_bins2, error_msg
-        self.logger.debug("...checks ok.")
-        if orblib1.y.ndim == 3:
-            new_vel_d = np.zeros((n_orbs1 + n_orbs2, n_vel_bins1, n_spatial_bins1))
-        else:
-            new_vel_d = np.zeros((n_orbs1 + n_orbs2, n_vel_bins1[0], n_vel_bins1[1], n_spatial_bins1))
-        new_vel_d[:n_orbs1] = orblib1.y
-        new_vel_d[n_orbs1:] = orblib2.y
-        if orblib1.y.ndim == 3:
-            new_orblib = dyn_kin.Histogram(xedg=orblib1.xedg, y=new_vel_d)
-        else:
-            new_orblib = dyn_kin.Histogram2D(xedg=orblib1.xedg, y=new_vel_d)
-        return new_orblib
 
     def read_vel_histograms(self, pops=False):
         """Read the orbit library
@@ -1965,14 +1944,9 @@ class LegacyOrbitLibrary(OrbitLibrary):
             )
             raise
 
-        if not self.system.is_bar_disk_system():
-            # tube orbits are mirrored/flipped and used twice
-            tmp = []
-            for t in tube_orblib:
-                tmp.append(self.duplicate_flip_and_interlace_orblib(t))
-            tube_orblib = tmp
-            if n_pops == 0:
-                tube_density_3D = np.repeat(tube_density_3D, 2, axis=0)
+        mirror = not self.system.is_bar_disk_system()
+        if mirror and n_pops == 0:
+            tube_density_3D = np.repeat(tube_density_3D, 2, axis=0)
 
         # read box orbits
         try:
@@ -1986,8 +1960,12 @@ class LegacyOrbitLibrary(OrbitLibrary):
             )
             raise
 
-        # combine orblibs
-        self.vel_histograms = [self.combine_orblibs(t, b) for t, b in zip(tube_orblib, box_orblib)]
+        # combine (and, if mirror, mirror/interlace) orblibs in one
+        # allocation rather than building through several copy generations
+        self.vel_histograms = [
+            self.combine_and_mirror_orblibs(t, b, mirror=mirror)
+            for t, b in zip(tube_orblib, box_orblib)
+        ]
         # combine density_3D arrays
         if n_pops == 0:
             density_3D = np.vstack((tube_density_3D, box_density_3D))

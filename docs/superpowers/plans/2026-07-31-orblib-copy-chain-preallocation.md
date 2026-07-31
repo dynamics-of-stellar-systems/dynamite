@@ -1,6 +1,17 @@
 # Plan: eliminate the read/mirror/combine copy chain in `read_vel_histograms`
 
-Status: **design only, not implemented**. Written after measuring that a
+Status: **implemented** (`orblib.py`: `duplicate_flip_and_interlace_orblib`
++ `combine_orblibs` replaced by `combine_and_mirror_orblibs`). Verified
+against the real patched file: exact pre-change chi2 reproduced via three
+independent scripts (a dedicated verification script, the `nnls_dtype`
+float32/float64 validation, and the repo's pre-existing
+`dev_tests/test_nnls_adelie.py`), on both `nnls_dtype` settings. The
+`mirror=False` (bar/disk) and 2D-histogram (proper motions) branches are
+implemented (the function branches on `orblib.y.ndim` and the `mirror` flag
+explicitly) but still lack a real-orblib test the way the mirrored/1D path
+now has - no locally-built orbit library exercises either case yet.
+
+Written after measuring that a
 `del`-based cleanup of `orblib.vel_histograms`/`intrinsic_masses`/
 `projected_masses` does not reduce process RSS (tested at 0.36/1.2/3.5/7.7 GB,
 all ~0% reclaimed - see `dynamite_production_memory.md` and the OOM
@@ -152,6 +163,36 @@ they act on different axes (allocation count vs. bytes per element).
 - The old functions should stay in the codebase temporarily during
   validation (e.g. as `_legacy_duplicate_flip_and_interlace_orblib`) so the
   new path can be checked against them array-for-array before deleting them.
+
+## Prototype results (2026-07-31)
+
+The `combine_and_mirror_orblibs` sketch above was implemented standalone
+(not yet in `orblib.py`) and tested against the current
+`duplicate_flip_and_interlace_orblib` + `combine_orblibs` pipeline on the
+mirrored/1D-histogram path (`mirror=True`, `ndim==3`), the dominant case:
+
+- **Bit-exact equivalence** (`np.array_equal`, not `allclose`) on both the
+  small NGC6278 test orbit library and the 1.2GB scratch build from the OOM
+  investigation.
+- **Peak RSS**, measured with a background sampling thread (not
+  before/after snapshots - the peak is transient and happens mid-function)
+  and compared across separate fresh processes (an in-process comparison
+  was tried first and gave a nonsensical result, contaminated by allocator
+  history from running both paths in one process - the same effect this
+  whole investigation is about):
+
+  | orbit library | old path peak | new path peak | reduction |
+  |---|---|---|---|
+  | small (0.36GB final array) | 1.224 GB | 1.166 GB | 4.7% |
+  | 1.2GB scratch build | 2.942 GB | 2.586 GB | 12.1% |
+
+Not yet tested: `mirror=False` (bar/disk systems - `dev_tests/bartest.yaml`
+exists but its orbit library has never been integrated) and 2D histograms
+/ proper motions (`dev_tests/user_test_config_ml_with_pm.yaml` exists but
+its orbit library lacks the `*_pm_hist.dat.bz2` files). Both branch
+explicitly on `orblib.y.ndim`/a `mirror` flag in the sketch above and are
+expected to behave the same way, but that is not yet demonstrated the way
+the two tested cases are.
 
 ## Validation plan before trusting this
 
