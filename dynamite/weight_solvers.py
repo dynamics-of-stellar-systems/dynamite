@@ -13,14 +13,20 @@ except ModuleNotFoundError:
     pass
 
 try:
-    import adelie.solver as _adelie_solver
-    _ADELIE_AVAILABLE = True
     # adelie's rayon thread pool mis-detects core count on high-core-count
     # machines and narrows this process's own CPU affinity to a single core
     # as a side effect of import; every process forked afterwards (pool
     # workers, orblib chunks) would otherwise inherit that one-core mask.
-    if hasattr(os, 'sched_setaffinity'):
-        os.sched_setaffinity(0, range(os.cpu_count()))
+    # Restore what we had rather than opening up to os.cpu_count(): that is
+    # the whole machine, so it would also discard a restriction the user
+    # meant to impose (taskset is not cgroup-enforced, so nothing else
+    # would put it back).
+    _saved_affinity = (os.sched_getaffinity(0)
+                       if hasattr(os, 'sched_getaffinity') else None)
+    import adelie.solver as _adelie_solver
+    _ADELIE_AVAILABLE = True
+    if _saved_affinity is not None:
+        os.sched_setaffinity(0, _saved_affinity)
 except ImportError:
     _ADELIE_AVAILABLE = False
 
