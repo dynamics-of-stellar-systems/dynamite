@@ -21,8 +21,16 @@ import struct
 
 import numpy as np
 
-# number of Fortran records making up each file's header
-HEADER_RECORDS = {'qgrid': 5, 'losvd_hist': 1}
+# number of Fortran records making up each file's header.
+#
+# Only the two streams that have a setup writer have a header: qgrid gets
+# integrator_setup_write + qgrid_setup_write, and losvd_hist gets
+# histogram_setup_write. `output_setup` creates the proper-motion file with
+# nothing but `status="new"` ("no setup, just create file"), so orblib_pm_hist
+# is pure body -- which is also why `read_orbit_base` guards its one header
+# read behind `any(i == 1 for i in hist_dim)` and never skips one on the pm
+# file. Zero is therefore a real entry, not a missing one.
+HEADER_RECORDS = {'qgrid': 5, 'losvd_hist': 1, 'pm_hist': 0}
 
 # records integrator_write/qgrid_write emit per orbit, and therefore what
 # _read_individual_orbit consumes per orbit

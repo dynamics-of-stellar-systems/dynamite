@@ -64,11 +64,33 @@ def losvd_body(orbit, n_ap=3):
     return out
 
 
+def pm_body(orbit, n_ap=3):
+    """histogram2d_write_compat_sparse: a (begin, end) pair per aperture.
+
+    Two int32 pairs rather than one, and a rectangular payload when the box is
+    non-empty. There is no header record at all -- output_setup creates the pm
+    file without a setup writer -- which is what HEADER_RECORDS['pm_hist'] = 0
+    encodes.
+    """
+    out = b''
+    for ap in range(n_ap):
+        if (orbit + ap) % 4 == 0:            # empty box: no payload record
+            out += rec(struct.pack('<4i', 1, 1, 0, 0))
+        else:
+            n1 = 1 + (orbit + ap) % 3
+            n2 = 1 + (orbit * 2 + ap) % 3
+            out += rec(struct.pack('<4i', -1, -1, -1 + n1 - 1, -1 + n2 - 1))
+            out += rec(struct.pack(f'<{n1 * n2}d',
+                                   *(float(orbit * 100 + i)
+                                     for i in range(n1 * n2))))
+    return out
+
+
 CLOSING = rec(b' ')     # output_close writes a single blank
 
 
 def write_family(datfil, fileroot, tag, orbits, n_orbits_header):
-    """Write one chunk's (or the whole library's) three output files."""
+    """Write one chunk's (or the whole library's) output files."""
     with open(os.path.join(datfil, f'{fileroot}{tag}_qgrid.dat'), 'wb') as f:
         f.write(qgrid_header(n_orbits_header))
         for o in orbits:
@@ -79,6 +101,10 @@ def write_family(datfil, fileroot, tag, orbits, n_orbits_header):
         f.write(losvd_header())
         for o in orbits:
             f.write(losvd_body(o))
+        f.write(CLOSING)
+    with open(os.path.join(datfil, f'{fileroot}{tag}_pm_hist.dat'), 'wb') as f:
+        for o in orbits:                     # no header: pure body
+            f.write(pm_body(o))
         f.write(CLOSING)
     with open(os.path.join(datfil,
                            f'{fileroot}{tag}.dat_orbclass.out'), 'w') as f:
@@ -100,9 +126,10 @@ def check_split(datfil, n_orbits, chunk_sizes):
         lo += size
     assert lo == n_orbits, 'test bug: chunk sizes do not sum to n_orbits'
 
-    oc.merge_chunks(datfil, 'orblib', tags, n_orbits)
+    kinds = ('qgrid', 'losvd_hist', 'pm_hist')
+    oc.merge_chunks(datfil, 'orblib', tags, n_orbits, kinds=kinds)
 
-    for kind in ('qgrid', 'losvd_hist'):
+    for kind in kinds:
         got = open(os.path.join(datfil, f'orblib_{kind}.dat'), 'rb').read()
         want = open(os.path.join(datfil, f'reference_{kind}.dat'), 'rb').read()
         assert got == want, (
@@ -114,7 +141,7 @@ def check_split(datfil, n_orbits, chunk_sizes):
 
     # the chunks must be gone, so a later run cannot merge a stale one
     for tag in tags:
-        for kind in ('qgrid', 'losvd_hist'):
+        for kind in kinds:
             leftover = os.path.join(datfil, f'orblib{tag}_{kind}.dat')
             assert not os.path.isfile(leftover), f'chunk left behind: {leftover}'
         leftover = os.path.join(datfil, f'orblib{tag}.dat_orbclass.out')

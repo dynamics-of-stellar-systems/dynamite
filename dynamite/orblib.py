@@ -789,19 +789,20 @@ class LegacyOrbitLibrary(OrbitLibrary):
             # merge before compressing: the chunks are only meaningful together
             tags = [tag for _, _, tag in bounds]
             n_orbits = self.settings["nE"] * self.settings["nI2"] * self.settings["nI3"]
+            kinds = self.chunk_kinds()
             for fileroot in ("orblib", "orblibbox"):
                 # Models sharing an orbit library may be evaluated
                 # concurrently, in which case more than one of them integrates
                 # into this directory. If another has already merged and
                 # compressed this family, its chunks are gone and there is
                 # nothing left to do.
-                done = [f"datfil/{fileroot}_{kind}.dat.bz2" for kind in orblib_chunks.HEADER_RECORDS]
+                done = [f"datfil/{fileroot}_{kind}.dat.bz2" for kind in kinds]
                 if all(os.path.isfile(f) for f in done):
                     self.logger.debug(
                         f"{self.mod_dir}: {fileroot} already merged by a "
                         "concurrent model, discarding this process' chunks."
                     )
-                    orblib_chunks.remove_chunks("datfil", fileroot, tags)
+                    orblib_chunks.remove_chunks("datfil", fileroot, tags, kinds)
                     continue
                 # Every intermediate is per-process; only the final .bz2 has a
                 # shared name, and it appears atomically via mv. Concurrent
@@ -809,7 +810,9 @@ class LegacyOrbitLibrary(OrbitLibrary):
                 # exactly as the unchunked path does, instead of colliding
                 # halfway through.
                 out_tag = f".p{os.getpid()}"
-                merged = orblib_chunks.merge_chunks("datfil", fileroot, tags, n_orbits, out_tag=out_tag)
+                merged = orblib_chunks.merge_chunks(
+                    "datfil", fileroot, tags, n_orbits, kinds=kinds, out_tag=out_tag
+                )
                 for f_name in merged:
                     final = f_name[: -len(out_tag)] + ".bz2"
                     subprocess.run(
@@ -938,13 +941,36 @@ class LegacyOrbitLibrary(OrbitLibrary):
         s = self.settings
         return s["nE"] * s["nI2"] * s["nI3"]
 
+    def chunk_kinds(self):
+        """The orbit library output streams this library actually writes.
+
+        ``write_orblib_dot_in`` only names an output file for a stream that has
+        apertures feeding it, and the Fortran only creates the ones it was
+        given a name for. Merging must therefore be told which streams to
+        expect rather than assuming a fixed set: asking for ``losvd_hist`` on a
+        proper-motion-only library looks like a missing chunk.
+
+        Returns
+        -------
+        tuple of string
+            keys of ``orblib_chunks.HEADER_RECORDS``, in the order the streams
+            are merged.
+
+        """
+        kinds = ["qgrid"]
+        if self.n_hist1d > 0:
+            kinds.append("losvd_hist")
+        if self.n_hist2d > 0:
+            kinds.append("pm_hist")
+        return tuple(kinds)
+
     def can_chunk_orbits(self):
         """Whether this orbit library may be integrated in chunks.
 
-        Chunking merges the ``qgrid`` and ``losvd_hist`` output streams. The
-        proper motion (2d histogram) and populations streams are not merged, so
-        libraries producing them are integrated in one piece regardless of the
-        ``orblib_chunks`` setting.
+        Chunking merges the ``qgrid``, ``losvd_hist`` and ``pm_hist`` output
+        streams. The populations stream is not merged, so libraries producing
+        it are integrated in one piece regardless of the ``orblib_chunks``
+        setting.
 
         Returns
         -------
@@ -976,7 +1002,7 @@ class LegacyOrbitLibrary(OrbitLibrary):
                 f"{self.settings['number_orbits']} is a partial library; "
                 "integrating it in one piece."
             )
-        return self.n_hist2d == 0 and not has_pops and full and not self.LegacyWeightSolver
+        return not has_pops and full and not self.LegacyWeightSolver
 
     def orbit_chunk_bounds(self, n_chunks):
         """Divide the orbit starting points into consecutive chunks.
@@ -1063,7 +1089,11 @@ class LegacyOrbitLibrary(OrbitLibrary):
         for fileroot in ("orblib", "orblibbox"):
             for _, _, tag in bounds:
                 stem = f"datfil/{fileroot}{tag}"
-                txt_file.write(f"(rm -f {stem}_qgrid.dat.tmp {stem}_qgrid.dat {stem}_losvd_hist.dat\n")
+                # every stream this library writes, because output_setup opens
+                # them with status="new" and a stale chunk file from a failed
+                # run stops the integration dead
+                stale = " ".join(f"{stem}_{kind}.dat" for kind in self.chunk_kinds())
+                txt_file.write(f"(rm -f {stem}_qgrid.dat.tmp {stale}\n")
                 txt_file.write(
                     f"{self.legacy_directory}/{orb_prgrm} < infil/{fileroot}{tag}.in >> datfil/{fileroot}.log) &\n"
                 )
