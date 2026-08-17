@@ -685,7 +685,11 @@ class Plotter():
                 ax_losvds += [ax]
                 if i<2:
                     ax.set_xticks([])
-                else:
+                elif j == 1:
+                    # ponytail: was set on all 3 bottom-row axes -- with
+                    # wspace=0 between them the identical labels overlapped
+                    # into unreadable text. One shared label, centered under
+                    # the middle column, is enough.
                     ax.set_xlabel(r'$v_\mathrm{LOS}$ [km/s]')
                 ax.set_yticks([])
         # get cmap
@@ -1260,11 +1264,27 @@ class Plotter():
             np.isfinite(1)
 
         mm = np.sum(mass, axis=2)
-        maxmass = (int(np.max(mm/10**10.)) + 1.)*10**10.
+        # ponytail: was hardcoded to a galaxy-scale [1e6, next-1e10-up] range,
+        # which silently blanks the plot for anything much smaller than a
+        # galaxy (e.g. NGC5139's ~1e6 Msun total sits at ~0.01% of that axis).
+        # Round to a "nice" ceiling (1/2/5 x a power of ten) derived from the
+        # data itself instead, so this works at any mass scale.
+        def _nice_ceiling(x):
+            if not x > 0:
+                return 1.0
+            mag = 10 ** np.floor(np.log10(x))
+            for mult in (1, 2, 5, 10):
+                if mult * mag >= x:
+                    return mult * mag
+            return 10 * mag
+        maxmass = _nice_ceiling(np.max(mm))
+        mm_pos = mm[mm > 0]
+        ymin = maxmass * 1e-4 if y_scale == 'log' and mm_pos.size \
+            else 0.0
 
         ## plot in linear scale
         xrange = np.array([0.1, Rmax_arcs])
-        yrange = np.array([1.0e6,maxmass])
+        yrange = np.array([ymin, maxmass])
 
         filename = self.plotdir + 'enclosed_mass' + figtype
         fig = plt.figure(figsize=(5,5))
