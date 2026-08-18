@@ -686,7 +686,7 @@ class GaussHermite(Kinematics, data.Integrated):
                       nrm.pdf(w),
                       hpolys,
                       vel_hist.dx,
-                      optimize=False)
+                      optimize=True)  # ~1.5x faster, intermediates stay small
         h *= 2 * np.pi**0.5 # pre-factor in eqn 7
         return h
 
@@ -1636,12 +1636,30 @@ class BayesLOSVD(Kinematics, data.Integrated):
         f2[f2>1] = 1
         f2[f2<0] = 0
         f = np.minimum(f1, f2)
-        # TODO:  check if the following is faster if we use sparseness of f
-        # sparse matrix multiplication won't work with einsum, but may be faster
-        rebinned_orbit_vel_hist = np.einsum('ijk,lj->ilk',
-                                            losvd_histograms.y,
-                                            f,
-                                            optimize=False)
+        # This contraction is a gemm over the velocity axis, so how it is
+        # spelled matters a lot. Measured on a 549 MiB stand-in for y:
+        #
+        #   np.einsum(..., optimize=False)  2401 ms, peak alloc 220 MiB
+        #   np.einsum(..., optimize=True)    363 ms, peak alloc 769 MiB
+        #   chunked gemm (below)             371 ms, peak alloc 290 MiB
+        #
+        # optimize=False makes einsum run its own naive loop instead of BLAS.
+        # optimize=True does reach BLAS, but only by transposing a full copy of
+        # losvd_histograms.y - the largest array in the whole run - because its
+        # cost model counts flops, not bytes. Chunking over orbits gets the BLAS
+        # speed with a bounded temporary, which is the only version that is
+        # safe at omega Cen scale.
+        y = losvd_histograms.y
+        n_orb, n_vbin, n_ap = y.shape
+        rebinned_orbit_vel_hist = np.empty((n_orb, f.shape[0], n_ap),
+                                           dtype=y.dtype)
+        chunk = max(1, (64 << 20) // max(1, n_vbin * n_ap * y.itemsize))
+        for start in range(0, n_orb, chunk):
+            end = min(start + chunk, n_orb)
+            blk = y[start:end].transpose(1, 0, 2).reshape(n_vbin, -1)
+            rebinned_orbit_vel_hist[start:end] = \
+                (f @ blk).reshape(f.shape[0], end - start, n_ap) \
+                         .transpose(1, 0, 2)
         return rebinned_orbit_vel_hist
 
     def transform_orblib_to_observables(self,
