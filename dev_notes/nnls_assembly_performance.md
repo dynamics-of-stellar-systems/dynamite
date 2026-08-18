@@ -308,3 +308,47 @@ own dimension, plus the mapping back to global aperture indices.
 
 Correctness is cheaply checkable: run both paths on the same real library and
 compare the filled histograms with `np.array_equal`.
+
+## Bulk read implemented (2026-08-18)
+
+`_read_pm_hist_vectorised` + `_walk_pm_records` now parse the 2d proper-motion
+file the same way `_read_losvd_hist_vectorised` parses the 1d one, and the
+gate in `read_orbit_base` became
+
+    vectorised = not legacy_file and not return_intrinsic_moments
+
+i.e. the per-record loop is now only for the legacy format (orbit data
+interlaced with histograms) and the intrinsic-moments read. Both parsers take
+the subset of apertures belonging to their own file, so a mixed library
+bulk-reads both.
+
+Measured on the NGC5139 combined library, same script, warm cache:
+
+    read_vel_histograms   50.9s  ->  13.7s      (3.7x)
+    under cProfile       163.2s  ->  12.5s
+    function calls       119,106,779  ->  198,708
+
+Bit-identical: sha256 of both filled histogram arrays matches the per-record
+loop exactly ((3840, 25, 163) and (3840, 15, 15, 1405)), as do their sums and
+nonzero counts.
+
+The speedup is 3.7x rather than the 24x the 1d path won because what is left
+is no longer parsing. 7.3s of the remaining 12.5s is `BufferedReader.read`
+inside bz2 decompression - the read is now decompression-bound, which is the
+right place to be. The 13x figure under cProfile is the fairer measure of the
+parsing change itself, since profiling 119 million calls is what made the old
+path look worse than it was.
+
+One trap worth recording: **the pm_hist file has no header record**, unlike
+losvd_hist. `read_orbit_base` consumes a header from the losvd file only, and
+the pm file's first record is already data. Copying the 1d walker's
+`p = (4 + mv[0] + 4) // 4` skip silently consumed the first real record and
+the walk then ran off the end of the file. Starting at `p = 0` is correct, and
+this is exactly the kind of thing the truncation error message was there for.
+
+Tests: `dev_tests/test_pm_hist_bulk_read.py` writes small pm_hist files with
+scipy's FortranFile, across three histogram geometries with empty sentinels
+and a deliberately tiny batch size, and compares the bulk parser against a
+transcription of the original loop. `dev_tests/_real_hist_read_check.py`
+fingerprints the histograms read from a real library for revision-to-revision
+comparison.

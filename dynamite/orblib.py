@@ -1418,7 +1418,7 @@ class LegacyOrbitLibrary(OrbitLibrary):
         return out
 
     def _read_losvd_hist_vectorised(
-        self, fname, norb, kin_idx_per_ap, idx_ap_reset, hist_bins, velhist0, chunk=2000000
+        self, fname, norb, ap_global, kin_idx_per_ap, idx_ap_reset, hist_bins, velhist0, chunk=2000000
     ):
         """Fill ``velhist0`` from a losvd histogram file, without a read loop.
 
@@ -1428,8 +1428,8 @@ class LegacyOrbitLibrary(OrbitLibrary):
         an omega Cen library (12000 orbits x 1012 apertures), where 77% of the
         pairs are empty and the loop spends most of its time reading sentinels.
 
-        Only valid for non-legacy files whose kinematics all have 1d (losvd)
-        histograms; :meth:`read_orbit_base` checks this before calling.
+        Only valid for non-legacy files, and only for the 1d (losvd)
+        kinematic sets; :meth:`read_orbit_base` checks this before calling.
 
         Parameters
         ----------
@@ -1437,6 +1437,11 @@ class LegacyOrbitLibrary(OrbitLibrary):
             the decompressed ``{fileroot}_losvd_hist_{ml}.dat`` file
         norb : int
             number of orbits in the library
+        ap_global : 1d numpy array of int
+            global indices of the apertures stored in THIS file, in the order
+            they appear in it. A library with proper motions writes its 1d and
+            2d histograms to separate files, so each file holds only the
+            apertures of its own kinematic sets.
         kin_idx_per_ap : 1d numpy array of int
             ``kin_idx_per_ap[i]`` = index of the kinematic set of aperture i
         idx_ap_reset : 1d numpy array of int
@@ -1455,8 +1460,9 @@ class LegacyOrbitLibrary(OrbitLibrary):
         # memory-map rather than read: the file is only touched once, and this
         # keeps a large library off the heap (and is marginally faster)
         buf = np.memmap(fname, dtype=np.uint8, mode="r")
-        n_ap_total = len(kin_idx_per_ap)
-        n_pairs = norb * n_ap_total
+        ap_global = np.asarray(ap_global)
+        n_ap_file = ap_global.size
+        n_pairs = norb * n_ap_file
         try:
             start, ivmin, nv = self._walk_losvd_records(buf, n_pairs)
         except IndexError:
@@ -1467,7 +1473,7 @@ class LegacyOrbitLibrary(OrbitLibrary):
             err_msg = (
                 f"{fname} (model {self.mod_dir}) ended before the expected "
                 f"{n_pairs} (orbit, aperture) pairs ({norb} orbits x "
-                f"{n_ap_total} apertures) had been read; the file is "
+                f"{n_ap_file} apertures) had been read; the file is "
                 "truncated. Delete the orbit library and the datfil/*_done "
                 "flags to have it rebuilt."
             )
@@ -1475,7 +1481,9 @@ class LegacyOrbitLibrary(OrbitLibrary):
             raise ValueError(err_msg) from None
         kin_idx_per_ap = np.asarray(kin_idx_per_ap)
         idx_ap_reset = np.asarray(idx_ap_reset)
-        nv0 = np.array([(b - 1) // 2 for b in hist_bins])
+        # 2d sets are absent from this file; their entry is never indexed
+        nv0 = np.array([(b - 1) // 2 if isinstance(b, (int, np.integer)) else 0
+                        for b in hist_bins])
         # Split on the number of velocity values, not on the number of pairs:
         # the scatter below builds several arrays as long as the expanded
         # values, so batching by pairs would let peak memory grow with the
@@ -1486,8 +1494,8 @@ class LegacyOrbitLibrary(OrbitLibrary):
             if k.size == 0:
                 continue
             nvs = nv[k]
-            orb = k // n_ap_total
-            ap = k - orb * n_ap_total
+            orb = k // n_ap_file
+            ap = ap_global[k - orb * n_ap_file]
             kin = kin_idx_per_ap[ap]
             # expand each pair into its nv individual values
             tot = int(nvs.sum())
@@ -1502,6 +1510,143 @@ class LegacyOrbitLibrary(OrbitLibrary):
                     (np.repeat(ivmin[k] + nv0[kin], nvs) + within)[m],
                     np.repeat(ap - idx_ap_reset[kin], nvs)[m],
                 ] = vals[m]
+
+    def _walk_pm_records(self, buf, n_pairs):
+        """Locate every 2d proper-motion histogram payload in a raw buffer.
+
+        Same idea as :meth:`_walk_losvd_records`, for the four-int header of a
+        ``{fileroot}_pm_hist.dat`` file::
+
+            record: [int32 ivmin0][int32 ivmin1][int32 ivmax0][int32 ivmax1]
+            record: [float64 x nv0*nv1]   ONLY if ivmin0<=ivmax0 and ivmin1<=ivmax1
+
+        The payload is written in Fortran order, i.e. the first axis varies
+        fastest. Kept as a separate loop from the 1d walker rather than sharing
+        one with a stride parameter: it runs once per (orbit, aperture) pair,
+        millions of times, and the branch would be in the hottest place.
+
+        Parameters
+        ----------
+        buf : 1d numpy array of uint8
+            the whole file
+        n_pairs : int
+            number of (orbit, aperture) pairs, i.e. norb * n_apertures_2d
+
+        Returns
+        -------
+        tuple of five 1d int64 arrays, each of length ``n_pairs``:
+            start : int32-index of the first float64 of the payload
+            ivmin0, ivmin1 : the record's two lower bin indices
+            n0 : length of the payload's first (fastest) axis
+            nv : total number of float64 values; ``0`` marks an empty pair
+        """
+        n32 = buf.nbytes // 4
+        mv = memoryview(buf.data)[: n32 * 4].cast("i")
+        # NB no header record here: read_orbit_base consumes one from the losvd
+        # file but never from the pm file, so the first record is already data
+        p = 0
+        start = [0] * n_pairs
+        ivmin0 = [0] * n_pairs
+        ivmin1 = [0] * n_pairs
+        n0 = [0] * n_pairs
+        nv = [0] * n_pairs
+        for k in range(n_pairs):
+            i_min0 = mv[p + 1]
+            i_min1 = mv[p + 2]
+            i_max0 = mv[p + 3]
+            i_max1 = mv[p + 4]
+            p += 6
+            if i_min0 <= i_max0 and i_min1 <= i_max1:
+                nbytes = mv[p]
+                start[k] = p + 1
+                ivmin0[k] = i_min0
+                ivmin1[k] = i_min1
+                n0[k] = i_max0 - i_min0 + 1
+                nv[k] = nbytes >> 3
+                p += 2 + (nbytes >> 2)
+        return (
+            np.array(start, dtype=np.int64),
+            np.array(ivmin0, dtype=np.int64),
+            np.array(ivmin1, dtype=np.int64),
+            np.array(n0, dtype=np.int64),
+            np.array(nv, dtype=np.int64),
+        )
+
+    def _read_pm_hist_vectorised(
+        self, fname, norb, ap_global, kin_idx_per_ap, idx_ap_reset, hist_bins, velhist0, chunk=2000000
+    ):
+        """Fill ``velhist0`` from a 2d proper-motion file, without a read loop.
+
+        The 2d counterpart of :meth:`_read_losvd_hist_vectorised`, and
+        equivalent to the ``hist_dim == 2`` branch of the per-record loop in
+        :meth:`read_orbit_base`. Results are bit-identical.
+
+        Parameters
+        ----------
+        fname : string
+            the decompressed ``{fileroot}_pm_hist_{ml}.dat`` file
+        norb : int
+            number of orbits in the library
+        ap_global : 1d numpy array of int
+            global indices of the apertures stored in this file, in file order
+        kin_idx_per_ap : 1d numpy array of int
+            ``kin_idx_per_ap[i]`` = index of the kinematic set of aperture i
+        idx_ap_reset : 1d numpy array of int
+            offset subtracted from a global aperture index to get the index
+            within its own kinematic set
+        hist_bins : list
+            per kinematic set; a length-2 sequence for the 2d sets
+        velhist0 : list of numpy arrays
+            modified in place; the 2d elements have shape
+            (norb, nv0, nv1, n_apertures)
+        chunk : int, optional
+            number of values processed per batch, bounding peak memory
+        """
+        buf = np.memmap(fname, dtype=np.uint8, mode="r")
+        ap_global = np.asarray(ap_global)
+        n_ap_file = ap_global.size
+        n_pairs = norb * n_ap_file
+        try:
+            start, ivmin0, ivmin1, n0, nv = self._walk_pm_records(buf, n_pairs)
+        except IndexError:
+            err_msg = (
+                f"{fname} (model {self.mod_dir}) ended before the expected "
+                f"{n_pairs} (orbit, aperture) pairs ({norb} orbits x "
+                f"{n_ap_file} apertures) had been read; the file is "
+                "truncated. Delete the orbit library and the datfil/*_done "
+                "flags to have it rebuilt."
+            )
+            self.logger.error(err_msg)
+            raise ValueError(err_msg) from None
+        # centre offsets per kinematic set; 1d sets are absent from this file
+        centre0 = np.array([0 if isinstance(b, (int, np.integer)) else (b[0] - 1) // 2
+                            for b in hist_bins])
+        centre1 = np.array([0 if isinstance(b, (int, np.integer)) else (b[1] - 1) // 2
+                            for b in hist_bins])
+        edges = self._value_batches(nv, chunk)
+        for lo, hi in zip(edges[:-1], edges[1:]):
+            k = np.arange(lo, hi)[nv[lo:hi] > 0]
+            if k.size == 0:
+                continue
+            nvs = nv[k]
+            orb = k // n_ap_file
+            ap = ap_global[k - orb * n_ap_file]
+            kin = kin_idx_per_ap[ap]
+            tot = int(nvs.sum())
+            within = np.arange(tot) - np.repeat(np.cumsum(nvs) - nvs, nvs)
+            vals = self._gather_float64(buf, np.repeat(start[k] * 4, nvs) + 8 * within)
+            # the payload is Fortran-ordered, so the first axis varies fastest
+            n0_e = np.repeat(n0[k], nvs)
+            i0 = within % n0_e
+            i1 = within // n0_e
+            kin_e = np.repeat(kin, nvs)
+            orb_e = np.repeat(orb, nvs)
+            ap_e = np.repeat(ap - idx_ap_reset[kin], nvs)
+            row = np.repeat(ivmin0[k] + centre0[kin], nvs) + i0
+            col = np.repeat(ivmin1[k] + centre1[kin], nvs) + i1
+            for kin_id in np.unique(kin_e):
+                m = kin_e == kin_id
+                velhist0[kin_id][orb_e[m], row[m], col[m], ap_e[m]] = vals[m]
 
     def _read_individual_orbit(self, fort_file, quad_light_grid_sizes):
         """Read individual orbit parameters from file
@@ -1738,12 +1883,25 @@ class LegacyOrbitLibrary(OrbitLibrary):
             # Next read the histograms themselves.
             # The loop below does two FortranFile record reads per (orbit,
             # aperture) pair, which for a large library is tens of millions of
-            # python-level calls. When the file holds nothing but 1d losvd
-            # histograms its layout is regular enough to parse in bulk, so
-            # prefer that and keep the loop for everything else.
-            vectorised = not legacy_file and not return_intrinsic_moments and all(i == 1 for i in hist_dim)
+            # python-level calls. Both file layouts are regular enough to parse
+            # in bulk instead, so prefer that and keep the loop for the legacy
+            # format (where orbit data is interlaced with the histograms) and
+            # for the intrinsic-moments read.
+            # 1d and 2d histograms live in SEPARATE files, each holding only
+            # the apertures of its own kinematic sets, in ascending global
+            # aperture order - which is the order the loop below writes them.
+            vectorised = not legacy_file and not return_intrinsic_moments
             if vectorised:
-                self._read_losvd_hist_vectorised(tmpfname, norb, kin_idx_per_ap, idx_ap_reset, hist_bins, velhist0)
+                ap_all = np.arange(len(kin_idx_per_ap))
+                hist_dim_per_ap = np.asarray(hist_dim)[kin_idx_per_ap]
+                ap_1d = ap_all[hist_dim_per_ap == 1]
+                ap_2d = ap_all[hist_dim_per_ap == 2]
+                if ap_1d.size:
+                    self._read_losvd_hist_vectorised(
+                        tmpfname, norb, ap_1d, kin_idx_per_ap, idx_ap_reset, hist_bins, velhist0)
+                if ap_2d.size:
+                    self._read_pm_hist_vectorised(
+                        tmpfname_pm, norb, ap_2d, kin_idx_per_ap, idx_ap_reset, hist_bins, velhist0)
             for j in range(0 if vectorised else norb):
                 if legacy_file:  # orbit info is interlaced in the legacy file
                     if return_intrinsic_moments:
