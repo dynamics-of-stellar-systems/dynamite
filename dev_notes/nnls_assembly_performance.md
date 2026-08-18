@@ -146,11 +146,20 @@ Verified in `dev_tests/test_alm_chi2_from_resid.py`, which drives the real
 `adelie.solver.bvls` through the same warm-started ALM loop and compares both
 chi2 forms every iteration (agreement 0 to 3e-15 relative).
 
-NOT verified at production scale. `dev_tests/_real_alm_chi2_check.py` runs
-`solve_adelie_alm` on a row-subsampled real matrix and recomputes chi2 from
-the returned weights, but every attempt to run it on this laptop died without
-a traceback shortly after the matrix was built - consistent with the
-Accelerate/BLAS crash the configs already work around. Run it on the cluster.
+Also verified end to end by `dev_tests/_real_alm_chi2_check.py`, which runs
+the real `solve_adelie_alm` on a row-subsampled real matrix and recomputes
+chi2 directly from the returned weights. Two runs, both 200 ALM iterations:
+
+    rows    reported (from resid)   direct A@w - b      final gap
+    8000    16910.98                16910.9799656940    3.5e-09
+    40000   91786.1095              91786.109536        7.3e-08
+
+Exact to the four decimal places the solver logs in both cases. Not yet run at
+full omega Cen scale, where the matrix has ~40x more rows than the larger of
+these.
+
+(An earlier version of this note claimed these runs died on the laptop. They
+did not - they were killed by the way they were launched. They complete.)
 
 ## Possible follow-up: dropping A during the solve
 
