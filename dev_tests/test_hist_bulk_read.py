@@ -54,7 +54,7 @@ def build(kin_specs, norb, rng, losvd_path, pm_path, empty_frac=0.5):
     idx_ap_reset = np.concatenate(([0], np.cumsum(n_aps)[:-1]))
 
     truth = []
-    for kin, (dim, n_ap, bins) in enumerate(kin_specs):
+    for dim, n_ap, bins in kin_specs:
         if dim == 1:
             truth.append(np.zeros((norb, bins, n_ap)))
         else:
