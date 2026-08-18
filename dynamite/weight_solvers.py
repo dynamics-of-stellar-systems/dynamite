@@ -1059,10 +1059,15 @@ class NNLS(WeightSolver):
         # and the column norms here span about 15 orders of magnitude. The array
         # is stored F-contiguous because coordinate descent accesses one column
         # at a time.
-        X = np.vstack([np.full((1, n_orbs), sqrt_mu, dtype=dtype), A_rest])
+        # Filled in place into an F-ordered buffer: np.vstack + `X / col_norm`
+        # + np.asfortranarray would each allocate a full copy of X, so the
+        # naive version peaks at 4x the matrix (~500 GiB for omega Cen).
+        X = np.empty((A_rest.shape[0] + 1, n_orbs), dtype=dtype, order='F')
+        X[0, :] = sqrt_mu
+        X[1:, :] = A_rest
         col_norm = np.linalg.norm(X, axis=0)
         col_norm[col_norm == 0] = 1.0
-        X = np.asfortranarray(X / col_norm)
+        X /= col_norm
         y = np.concatenate([[0.0], b_rest]).astype(dtype)
         lower = np.zeros(n_orbs, dtype=dtype)
         upper = np.full(n_orbs, np.inf, dtype=dtype)
@@ -1084,8 +1089,10 @@ class NNLS(WeightSolver):
             w = (np.asarray(state.beta).ravel() / col_norm).astype(np.float64)
             gap = float(w.sum() - 1.0)
             lam -= mu * gap
-            chi2 = float(np.sum((A.astype(np.float64) @ w
-                                  - b.astype(np.float64)) ** 2))
+            # copy=False: with the default nnls_dtype these casts are no-ops,
+            # but .astype() would still copy all of A every ALM iteration
+            chi2 = float(np.sum((A.astype(np.float64, copy=False) @ w
+                                  - b.astype(np.float64, copy=False)) ** 2))
             if chi2 < best_chi2:
                 best_chi2, best_w, best_it = chi2, w.copy(), it
             if abs(gap) < self.adelie_gap_tol:
@@ -1166,11 +1173,14 @@ class NNLS(WeightSolver):
                     [p.astype(np.float32) for p in orblib.projected_masses]
             A, b = self.construct_nnls_matrix_and_rhs(orblib)
 
-            # Normalize the data
-            A_max = np.max(np.abs(A), axis=0)
-            A_normalized = A / A_max
-            b_max = np.max(np.abs(b))
-            b_normalized = b / b_max
+            # Normalize the data. The adelie path does its own scaling and
+            # never touches A_normalized - building it there would hold a
+            # second full copy of A (~125 GiB for omega Cen) for the whole run.
+            if self.nnls_solver != "adelie":
+                A_max = np.max(np.abs(A), axis=0)
+                A_normalized = A / A_max
+                b_max = np.max(np.abs(b))
+                b_normalized = b / b_max
 
             if self.nnls_solver == "adelie":
                 # NB: the ALM solver takes the UNNORMALISED A, b. It applies
