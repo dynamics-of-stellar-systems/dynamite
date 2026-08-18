@@ -260,3 +260,51 @@ built" item above: it would take peak from ~2.5x the matrix to ~1.5x.
 Assembly is now 2.0s of a 3150s solve, i.e. no longer worth optimising.
 Reproduce with `dev_tests/_real_solve_profile.py adelie`; note it takes ~55
 minutes on a laptop.
+
+## Bulk-reading the PM histograms needs no format change (2026-08-18)
+
+Checked directly, by walking the raw record markers of a decompressed
+`orblib_pm_hist.dat` (232 MiB):
+
+    file 231.9 MiB, header record 16 bytes
+      rec 0: hdr=16B ints=[8, 8, -9, -9] EMPTY (no payload)
+      ...
+      rec 7: hdr=16B ints=[0, -2, 0, 2] markers_match=True
+             payload=5 values, expected 5, match=True
+
+The 2D file has exactly the same shape as the 1D one that
+`_walk_losvd_records` already parses, with a four-int header instead of two::
+
+    1D:  record: [int32 ivmin][int32 ivmax]
+         record: [float64 x nv]                       if ivmin <= ivmax
+    2D:  record: [int32 ivmin0][int32 ivmin1][int32 ivmax0][int32 ivmax1]
+         record: [float64 x nv0*nv1], Fortran order   if both ranges non-empty
+
+So bulk-reading it is a parser change, not a format change: the same bytes,
+read once into a buffer and scattered with numpy, instead of two
+`scipy.io.FortranFile` record reads per (orbit, aperture) pair.
+
+Three things make this more tractable than it looks:
+
+- **1D and 2D histograms are in separate files** (`orblib_in` and
+  `orblib_in_pm`), so the two parsers never interleave. The existing
+  `all(i == 1 for i in hist_dim)` gate is stricter than it needs to be: a
+  library with proper motions could already bulk-read its 1D sets today.
+  That alone is small here though - the PM set has 1405 apertures against the
+  LOSVD set's 163, so the PM file is where the calls are.
+- `_gather_float64` and `_value_batches` are dimension-agnostic and can be
+  reused unchanged. The new work is the walker stride (6 int32 slots per
+  header record instead of 4) and a 2D scatter, where a payload index `t`
+  maps to `(t % nv0, t // nv0)` because the payload is Fortran-ordered.
+- The pairs are very sparse - 11 of the first 12 are empty, and the 1D case
+  measured 77% empty - so the loop currently spends most of its time reading
+  sentinels. The 24x won on the 1D path is a reasonable floor for what this
+  would win, not a ceiling.
+
+The generalisation that is actually needed: `_read_losvd_hist_vectorised`
+assumes `n_pairs = norb * n_ap_total`, i.e. that every aperture is in its
+file. For a mixed library each parser must be given only the apertures of its
+own dimension, plus the mapping back to global aperture indices.
+
+Correctness is cheaply checkable: run both paths on the same real library and
+compare the filled histograms with `np.array_equal`.
