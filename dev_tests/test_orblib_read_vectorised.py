@@ -29,13 +29,19 @@ import dynamite as dyn                                    # noqa: E402
 from dynamite.orblib import LegacyOrbitLibrary            # noqa: E402
 
 
-def reference_loop(self, fname, norb, kin_idx_per_ap, idx_ap_reset,
+def reference_loop(self, fname, norb, ap_global, kin_idx_per_ap, idx_ap_reset,
                    hist_bins, velhist0, chunk=None):
-    """The original read loop, kept as the reference implementation."""
+    """The original read loop, kept as the reference implementation.
+
+    ``ap_global`` holds the apertures stored in this file: since proper-motion
+    libraries write their 2d histograms to a separate file, the losvd file
+    holds only the apertures of the 1d kinematic sets.
+    """
     fort_file = FortranFile(fname, 'r')
     _ = fort_file.read_record(np.int32, np.int32, float)   # header record
     for j in range(norb):
-        for i_ap, kin_idx in enumerate(kin_idx_per_ap):
+        for i_ap in ap_global:
+            kin_idx = kin_idx_per_ap[i_ap]
             i_ap0 = i_ap - idx_ap_reset[kin_idx]
             ivmin, ivmax = fort_file.read_ints(np.int32)
             if ivmin <= ivmax:
