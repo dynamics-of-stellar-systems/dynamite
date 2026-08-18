@@ -352,3 +352,34 @@ and a deliberately tiny batch size, and compares the bulk parser against a
 transcription of the original loop. `dev_tests/_real_hist_read_check.py`
 fingerprints the histograms read from a real library for revision-to-revision
 comparison.
+
+### Testing the bulk read
+
+The parsers walk binary record markers, so a mistake does not raise - it puts
+values in the wrong place, or reads the wrong bytes. Three layers:
+
+1. `dev_tests/test_hist_bulk_read.py` writes both files with scipy's
+   FortranFile and compares against a transcription of the original loop.
+   18 combinations: six library layouts (1d only, 2d only, mixed, 2d-before-1d,
+   single-aperture, wide-2d) x three conditions (norb=5 half empty, norb=1 with
+   nothing empty, norb=3 entirely empty), each at batch sizes 1, 7 and 1e9.
+   The mixed layout is interleaved 1d, 2d, 1d, 2d - the omega Cen production
+   shape - so the aperture subsets are not contiguous blocks. A truncated file
+   is checked to raise ValueError rather than read past the end.
+
+2. `dev_tests/_mutate_hist_bulk_read.py` deliberately breaks each load-bearing
+   line and checks the suite goes red. All seven caught:
+
+       walker stride 6->4
+       restoring the bogus header skip
+       payload decoded as C order not F
+       row/col destination swapped
+       idx_ap_reset dropped from the pm scatter
+       wrong fast-axis length n0
+       1d parser ignoring the aperture subset
+
+   Two of these (the header skip and the stride) are mistakes that were
+   actually made while writing this.
+
+3. `dev_tests/_real_hist_read_check.py` on the real library: sha256 of both
+   filled histograms identical to the per-record loop.
