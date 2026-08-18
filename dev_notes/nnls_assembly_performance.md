@@ -160,3 +160,56 @@ through `X` and `col_norm`, A could be released once X is built, halving the
 resident matrix count from two to one (~125 GiB). Not attempted: it changes
 what `kkt_violation` is handed, and that function is the only optimality
 certificate in the code.
+
+## The next win: the bulk read is disabled by proper motions (2026-08-18)
+
+With assembly and the ALM loop fixed, `orblib.read_vel_histograms()` is what
+is left, and it is far slower than the data justifies. Profiled on the
+NGC5139 combined library:
+
+    read_vel_histograms: 163.2s, 119 million python calls
+
+      ncalls    tottime  function
+     5134940     71.05   numpy.fromfile
+    10269878     24.38   _io.BufferedReader.read
+     5134936     15.78   scipy/io/_fortran.py:170(read_record)
+    10269872      9.09   scipy/io/_fortran.py:127(_read_size)
+    10269872      7.81   numpy.frombuffer
+           2     10.50   orblib.py:1542(read_orbit_base)
+           2      4.95   orblib.py:1848(combine_and_mirror_orblibs)
+
+That is 5.13 million individual scipy FortranFile record reads at ~32 us
+each, roughly 111s of the 163s, against a few hundred MB of actual data
+(the two qgrid files decompress to 157 MB each). The read is overhead-bound
+by about two orders of magnitude, not I/O-bound.
+
+The cause is a one-line gate in `read_orbit_base`:
+
+    vectorised = (not legacy_file and not return_intrinsic_moments
+                  and all(i == 1 for i in hist_dim))
+
+`_read_losvd_hist_vectorised` - the bulk parser behind the earlier 24x LOSVD
+read speedup - only runs when the library contains **nothing but 1D LOSVD
+histograms**. Any proper-motion set makes `hist_dim` contain a 2, the gate
+fails, and the whole library falls back to the per-(orbit, aperture) Python
+loop. The code comment there already anticipates this ("tens of millions of
+python-level calls").
+
+So the optimisation is switched off precisely for the omega Cen production
+configuration, which is MUSE LOSVDs plus two proper-motion sets. The 1405
+apertures of the PM set dominate the call count.
+
+The fix is to extend the bulk parser to 2D histograms, or failing that to
+parse the 1D sets in bulk and loop only over the 2D ones. Not attempted here.
+
+## Smaller remaining items
+
+- A is read three times per solve outside the ALM loop: the final
+  `chi2_vector`, and two matvecs in `kkt_violation`. ~3 full passes over the
+  matrix, minor now that the per-iteration pass is gone.
+- `A` and `X` are both resident for the whole solve (~250 GiB at omega Cen).
+  Now that chi2 comes from the residual, A is used inside `solve_adelie_alm`
+  only for `A[0] @ w`. Everything else it is needed for - `chi2_vector`,
+  `kkt_violation` - is expressible through `X` and `col_norm`, so A could in
+  principle be released once X is built, halving the resident matrices. This
+  is the largest remaining memory win and has not been attempted.
