@@ -213,3 +213,41 @@ parse the 1D sets in bulk and loop only over the 2D ones. Not attempted here.
   `kkt_violation` - is expressible through `X` and `col_norm`, so A could in
   principle be released once X is built, halving the resident matrices. This
   is the largest remaining memory win and has not been attempted.
+
+## Measured: a full adelie solve on real data (2026-08-18)
+
+A complete `NNLS.solve()` with `nnls_solver = "adelie"` on the NGC5139
+combined library (A = 322403 x 3840 = 9.2 GiB) finally ran to completion:
+
+    orblib read   51.6s, peak RSS 15.9 GiB
+    solve()     3149.9s, peak RSS 23.2 GiB
+    chi2_tot=899080.802753  chi2_kin=762905.557097
+    sum(w)=0.9999999998  nonzero=659 of 3840 orbits
+
+Profile (tottime), taken BEFORE the chi2-from-residual change but WITH the
+assembly and F-ordering changes:
+
+        200  1777.7s  adelie/solver.py bvls
+        200   572.1s  adelie/state.py:3272 (lambda)
+          1   417.5s  weight_solvers.py solve_adelie_alm  (own time)
+       1035   305.1s  numpy.ufunc.reduce
+          2    67.3s  orblib.py read_orbit_base (cumulative)
+          1     2.0s  weight_solvers.py construct_nnls_matrix_and_rhs
+
+Two things worth taking from this.
+
+**The chi2 line was ~20-25% of the whole solve.** `solve_adelie_alm`'s own
+tottime of 417.5s is dominated by the `A @ w` matmul in the old chi2 line
+(numpy C calls are attributed to the calling Python frame), and much of the
+305s of ufunc reduces is the `np.sum` of the squared residual next to it.
+The standalone microbenchmark puts the matmul alone at 2618ms x 200 = 524s.
+So the residual shortcut removes roughly a fifth to a quarter of total solve
+wall time here - measured, not extrapolated.
+
+**Peak RSS is 23.2 GiB for a 9.2 GiB matrix**, which is A and X resident
+together plus change. That is the direct evidence for the "release A once X is
+built" item above: it would take peak from ~2.5x the matrix to ~1.5x.
+
+Assembly is now 2.0s of a 3150s solve, i.e. no longer worth optimising.
+Reproduce with `dev_tests/_real_solve_profile.py adelie`; note it takes ~55
+minutes on a laptop.
