@@ -90,3 +90,73 @@ that is the next thing to profile.
 The ALM loop itself has not been re-run end to end on real data, so the
 predicted knock-on win from F-ordered `A` in `solve_adelie_alm` is inferred
 from the microbenchmark above, not measured in situ.
+
+## Still open
+
+- No full `solve()` has been profiled on real data here. The solvers are slow
+  enough on this laptop to look hung; they run fine on the compute cluster, so
+  profile the solve there rather than chasing it locally.
+- `nnls_solver: "cvxopt"` builds `P = A_normalized.T @ A_normalized`, an
+  (n_orbs, n_orbs) Gram matrix. At omega Cen's 45000 orbits that is 16 GB and
+  ~7.5e14 flops. Unusable at production scale; fine for small problems.
+- The configs here set `VECLIB_MAXIMUM_THREADS=1` to dodge an Accelerate
+  SIGSEGV in `scipy.optimize.nnls`. That also serialises every BLAS call in
+  the solve, which is worth remembering when timing the scipy path.
+
+## The ALM chi2 shortcut (2026-08-18, follow-up)
+
+With adelie as the production solver for omega Cen, the per-iteration cost of
+the ALM loop is what matters. Each multiplier update recomputed
+
+    chi2 = sum((A @ w - b)**2)
+
+which is a full pass over the matrix - 125 GiB read for omega Cen - repeated
+up to `adelie_alm_iters` times, on top of the solve itself.
+
+It is not needed. `X` is built as `A[1:]` with unit-L2 column scaling and
+`w = beta / col_norm`, so `X[1:] @ beta == A[1:] @ w` exactly, and adelie's
+returned state already carries `resid = y - X @ beta` (verified: equal to
+`y - X @ beta` to 2e-15, for uniform and non-uniform observation weights
+alike; `state.loss` is `0.5 * sum(weights * resid**2)`). Only row 0 of A needs
+evaluating, because `X` replaces it with the ALM penalty row, and that is one
+dot product over the orbits:
+
+    chi2 = (A[0] @ w - b[0])**2 + resid[1:] @ resid[1:]
+
+Per-iteration passes over A therefore go from one to zero. Outside the loop A
+is still read three times per solve: the final `chi2_vector`, and the two
+matvecs inside `kkt_violation`.
+
+What that is worth, measured on the real 9.2 GiB matrix (F-ordered, as
+`solve_adelie_alm` now receives it):
+
+    old chi2 line, A @ w      2618 ms   (3.5 GiB/s effective on this laptop)
+    new chi2 line, resid dot     0.04 ms
+
+`adelie_alm_iters` defaults to 200 and the real subsampled solve used all 200,
+so this is ~520s per model here. The cost is one full read of A per iteration,
+so it scales with the matrix: omega Cen's ~125 GiB matrix means ~25 TiB of
+reads per model, which is 8 to 40 minutes depending on the node's achievable
+memory bandwidth (~50 GiB/s to ~10 GiB/s). The laptop's 3.5 GiB/s figure
+should NOT be extrapolated directly - a production node is much wider.
+
+Either way it is pure overhead outside the solver, and it is now gone.
+
+Verified in `dev_tests/test_alm_chi2_from_resid.py`, which drives the real
+`adelie.solver.bvls` through the same warm-started ALM loop and compares both
+chi2 forms every iteration (agreement 0 to 3e-15 relative).
+
+NOT verified at production scale. `dev_tests/_real_alm_chi2_check.py` runs
+`solve_adelie_alm` on a row-subsampled real matrix and recomputes chi2 from
+the returned weights, but every attempt to run it on this laptop died without
+a traceback shortly after the matrix was built - consistent with the
+Accelerate/BLAS crash the configs already work around. Run it on the cluster.
+
+## Possible follow-up: dropping A during the solve
+
+After this change A is used inside `solve_adelie_alm` only for `A[0] @ w`
+(a single row). If `chi2_vector` and `kkt_violation` were also expressed
+through `X` and `col_norm`, A could be released once X is built, halving the
+resident matrix count from two to one (~125 GiB). Not attempted: it changes
+what `kkt_violation` is handed, and that function is the only optimality
+certificate in the code.

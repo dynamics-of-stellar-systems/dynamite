@@ -1060,9 +1060,17 @@ class NNLS(WeightSolver):
            Consecutive subproblems differ by one number and converge in 1 to 2
            inner iterations.
 
+        4. chi2 for the iterate is taken from ``state.resid`` rather than
+           recomputed as ``A @ w - b``. The column scaling is exact, so
+           ``X[1:] @ beta == A[1:] @ w`` and adelie's residual already holds
+           everything except row 0 of A, which is one dot product over the
+           orbits. Evaluating ``A @ w`` instead costs a full pass over the
+           matrix (125 GiB for omega Cen) on every multiplier update.
+
         Items 2 and 3 reduced the per-iteration cost from 18.2 s to 0.6 s on
         NGC6278, which is what makes several hundred multiplier updates
-        affordable.
+        affordable. Item 4 matters on omega Cen rather than NGC6278: it is
+        proportional to the size of the matrix, not to the solve.
 
         The inner solves are inexact, so the multiplier oscillates about its
         fixed point and the final iterate is arbitrary within that spread. The
@@ -1146,10 +1154,19 @@ class NNLS(WeightSolver):
             w = (np.asarray(state.beta).ravel() / col_norm).astype(np.float64)
             gap = float(w.sum() - 1.0)
             lam -= mu * gap
-            # copy=False: with the default nnls_dtype these casts are no-ops,
-            # but .astype() would still copy all of A every ALM iteration
-            chi2 = float(np.sum((A.astype(np.float64, copy=False) @ w
-                                  - b.astype(np.float64, copy=False)) ** 2))
+            # chi2 without touching A at all. X[1:] is A[1:] with unit-L2
+            # column scaling and w = beta/col_norm, so X[1:] @ beta is exactly
+            # A[1:] @ w, and adelie already returns resid = y - X @ beta from
+            # the solve we just did. Only row 0 of A needs evaluating here,
+            # because X replaces it with the ALM penalty row. This drops a full
+            # pass over A (~125 GiB for omega Cen) from every iteration.
+            # The astype is a no-op at the default nnls_dtype and a deliberate
+            # 3 MB upcast at float32, where summing 371212 float32 terms would
+            # lose precision that the old float64 accumulation had.
+            resid = np.asarray(state.resid).ravel()[1:]
+            resid = resid.astype(np.float64, copy=False)
+            row0 = float(A[0] @ w) - float(b[0])
+            chi2 = row0 * row0 + float(resid @ resid)
             if chi2 < best_chi2:
                 best_chi2, best_w, best_it = chi2, w.copy(), it
             if abs(gap) < self.adelie_gap_tol:
