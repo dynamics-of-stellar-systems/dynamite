@@ -758,15 +758,49 @@ class NNLS(WeightSolver):
         Returns
         -------
         tuple
-            (orbmat, rhs)
+            (orbmat, rhs). ``orbmat`` has shape (n_constraints, n_orbs) and is
+            **Fortran-ordered** - see the note below, and keep it that way.
+
+        Notes
+        -----
+        This assembles the largest array in the run (125 GiB for omega Cen at
+        45000 orbits), so it is written to touch that array as few times as
+        possible: sizes are computed up front rather than grown by np.vstack,
+        the memory order is chosen to match how the blocks arrive and how the
+        solvers want to read them, and blocks are written through a reshaped
+        view of the destination so no full-size temporary is ever materialised.
+        Each of those is commented at its site.
+
+        On the NGC5139 MUSE+HST test library (322403 x 3840, 9.9 GiB) this
+        takes 3.9s, against 17.2s before those three changes, and produces a
+        bit-identical matrix. dev_tests/_real_orblib_check.py reproduces both
+        the timing and the comparison; dev_tests/test_nnls_matrix_assembly.py
+        checks the assembly arithmetic without needing a stored orbit library.
 
         """
         # construct vector of observed constraints (con), errors (econ) and
         # matrix of orbit propertites (orbmat)
         dtype = self.nnls_dtype
-        con = np.zeros(self.n_mass_constraints, dtype=dtype)
-        econ = np.zeros(self.n_mass_constraints, dtype=dtype)
-        orbmat = np.zeros((self.n_mass_constraints, orblib.n_orbs), dtype=dtype)
+        stars = self.system.get_unique_triaxial_visible_component()
+        # Size con/econ/orbmat up front. The observed values depend only on the
+        # kinematic data, not on the orbit library, so this pre-pass is cheap -
+        # and it avoids growing orbmat by np.vstack per kinematic set, which
+        # reallocates and copies the whole matrix each time (~125 GiB for
+        # omega Cen). The results are kept and reused in the loop below.
+        obs_values = [kins.get_observed_values_and_uncertainties(self.settings)
+                      for kins in stars.kinematic_data]
+        n_rows = self.n_mass_constraints + sum(np.size(v) for v, _ in obs_values)
+        con = np.zeros(n_rows, dtype=dtype)
+        econ = np.zeros(n_rows, dtype=dtype)
+        # F order matters here. Each kinematic block arrives as
+        # (n_orbs, n_constraints) and is written in transposed; against an
+        # F-ordered destination that is a memcpy, against a C-ordered one it is
+        # a strided shuffle of the whole matrix (measured 1.00s -> 0.08s per
+        # 2.3 GiB block). It also hands the solvers the layout they want:
+        # solve_adelie_alm's X is F-contiguous, so building it from A stops
+        # being a full reorder (2.38s -> 0.33s). Only the chi2 matvec A @ w is
+        # slightly slower (0.04s -> 0.07s), which is noise beside the rest.
+        orbmat = np.zeros((n_rows, orblib.n_orbs), dtype=dtype, order='F')
         # total mass
         con[0] = self.total_mass
         econ[0] = self.total_mass_error
@@ -787,10 +821,11 @@ class NNLS(WeightSolver):
         econ[idx] = np.abs(self.projected_masses * self.projected_mass_error)
         orbmat[idx, :] = np.hstack(orblib.projected_masses).T
         # add kinematics to con, econ, orbmat
-        stars = self.system.get_unique_triaxial_visible_component()
-        kins_and_orb_veldist = zip(stars.kinematic_data, orblib.vel_histograms)
+        kins_and_orb_veldist = zip(stars.kinematic_data, orblib.vel_histograms,
+                                   obs_values)
         idx_ap_start = 0
-        for (kins, orb_veldist) in kins_and_orb_veldist:
+        idx_row = self.n_mass_constraints
+        for (kins, orb_veldist, tmp) in kins_and_orb_veldist:
             hist_dim = len(orb_veldist.y[0,...,0].shape)  # 1D or 2D vel hists
             # pick out the projected masses for this kinematic set
             n_ap = kins.n_spatial_bins  # OK for all kinematics
@@ -798,7 +833,6 @@ class NNLS(WeightSolver):
             prj_mass_i = self.projected_masses[idx_ap_start:idx_ap_end]
             idx_ap_start += n_ap
             # scale observed kinematics and errors by projected masses
-            tmp = kins.get_observed_values_and_uncertainties(self.settings)
             obs_kins, obs_kins_err = tmp
             obs_kins = (obs_kins.T * prj_mass_i).T
             obs_kins_err = (obs_kins_err.T * prj_mass_i).T
@@ -814,12 +848,35 @@ class NNLS(WeightSolver):
                 # note: this only has an effect if type(kins) is GaussHermite
                 orb_kins = self.apply_CR_cut(kins, orb_veldist, orb_kins)
             # append constraints/errors/orbits to con/econ/orbmat
-            obs_kins = np.ravel(obs_kins).astype(dtype)
-            con = np.concatenate((con, obs_kins))
-            obs_kins_err = np.ravel(obs_kins_err).astype(dtype)
-            econ = np.concatenate((econ, obs_kins_err))
-            orb_kins = np.reshape(orb_kins, (orblib.n_orbs, -1)).astype(dtype)
-            orbmat = np.vstack((orbmat, orb_kins.T))
+            obs_kins = np.ravel(obs_kins)
+            n_orb_constraints = orb_kins.size // orblib.n_orbs
+            idx_row_end = idx_row + obs_kins.size
+            assert n_orb_constraints == obs_kins.size, \
+                f'{type(kins).__name__}: orbit library gives ' \
+                f'{n_orb_constraints} constraints per orbit but the ' \
+                f'kinematic data gives {obs_kins.size}'
+            # slice assignment casts to dtype in place, no extra full copy
+            con[idx_row:idx_row_end] = obs_kins
+            econ[idx_row:idx_row_end] = np.ravel(obs_kins_err)
+            # orb_kins comes back from transform_orblib_to_observables as a
+            # transposed/moveaxis'd view, so np.reshape(orb_kins, (n_orbs, -1))
+            # cannot be a view and copies the whole block - 2.1s and a full
+            # extra copy of the matrix on NGC5139, so ~100 GiB for omega Cen.
+            # Reshaping the *destination* is a view instead, and the write then
+            # goes straight from orb_kins with no temporary at all.
+            #
+            # ndarray.reshape() silently returns a COPY when it cannot return a
+            # view. As an assignment target that is a silent no-op: the block
+            # would be left as zeros with no error raised anywhere. The assert
+            # is what makes that failure loud, so do not drop it. (The .shape=
+            # setter raises natively, but is deprecated in numpy 2.5 and we
+            # support numpy>=1.26.)
+            dest = orbmat[idx_row:idx_row_end, :].T.reshape(orb_kins.shape)
+            assert np.shares_memory(dest, orbmat), \
+                'orbmat block write got a copy, not a view - block would be ' \
+                'silently left at zero'
+            dest[...] = orb_kins
+            idx_row = idx_row_end
         # divide constraint vector and matrix by errors
         if np.any(con[econ==0] != 0):
             txt = 'Weight solving fail: zero errors for nonzero constraints!'
