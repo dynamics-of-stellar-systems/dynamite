@@ -16,6 +16,7 @@ Run from the repo root:
     PYTHONPATH=. python dev_tests/test_fused_assembly.py
 """
 
+import copy
 import logging
 import types
 
@@ -71,6 +72,7 @@ def _make_fake_nnls(dtype):
     fake.adelie_tol = 1e-10
     fake.adelie_gap_tol = 1e-10
     fake.adelie_alm_iters = 5
+    fake.stream_reads = False
     fake.CRcut = False
     fake.settings = {}
     fake.n_intrinsic = 4
@@ -193,6 +195,135 @@ def test_alm_end_to_end(dtype):
     assert np.isclose(kkt_new[1], kkt_ref[1], rtol=1e-6), (kkt_new, kkt_ref)
 
 
+rng = np.random.default_rng(20260821)
+
+
+class RecordingReadOrbitBase:
+    """Stub replacing LegacyOrbitLibrary.read_orbit_base: records calls and
+    returns canned per-family (hist-list, density) honoring kin_sets /
+    want_density exactly like the real implementation's contract."""
+
+    def __init__(self, tube_hists, box_hists, tube_dens, box_dens):
+        self.tube_hists = tube_hists  # list over sets
+        self.box_hists = box_hists
+        self.tube_dens = tube_dens
+        self.box_dens = box_dens
+        self.calls = []
+
+    def __call__(
+        self,
+        fileroot,
+        return_intrinsic_moments=False,
+        pops=False,
+        kin_sets=None,
+        want_density=True,
+    ):
+        requested = (
+            list(range(len(self.tube_hists))) if kin_sets is None else sorted(kin_sets)
+        )
+        self.calls.append((fileroot, tuple(requested), want_density))
+        if fileroot == "orblib":
+            hists, dens = self.tube_hists, self.tube_dens
+        else:
+            hists, dens = self.box_hists, self.box_dens
+        out = [
+            copy.deepcopy(h) if i in requested else None for i, h in enumerate(hists)
+        ]
+        # fresh copies per call: a real read produces new objects, and
+        # read_vel_histograms scales x values IN PLACE
+        return out, (copy.deepcopy(dens) if want_density else None)
+
+
+def _make_read_fake_orblib(norb_t=4, norb_b=2):
+    """An orblib carrying the REAL read_vel_histograms +
+    combine_and_mirror_orblibs, with read_orbit_base stubbed. Uses a LOCAL
+    seeded generator so every instance holds identical data."""
+    import types as _t
+
+    from dynamite.orblib import LegacyOrbitLibrary
+
+    rng = np.random.default_rng(20260821)  # local: identical data per call
+
+    from dynamite.orblib import LegacyOrbitLibrary
+
+    edg1 = np.linspace(-3.0, 3.0, 7)  # symmetric -> mirror ok
+    edg2 = np.linspace(-2.0, 2.0, 6)
+    edg2b = np.linspace(-2.5, 2.5, 6)
+    tube = [
+        dyn_kin.Histogram(xedg=edg1, y=rng.random((norb_t, 6, 3))),
+        dyn_kin.Histogram2D(xedg=(edg2, edg2b), y=rng.random((norb_t, 5, 5, 2))),
+    ]
+    box = [
+        dyn_kin.Histogram(xedg=edg1, y=rng.random((norb_b, 6, 3))),
+        dyn_kin.Histogram2D(xedg=(edg2, edg2b), y=rng.random((norb_b, 5, 5, 2))),
+    ]
+    lib = LegacyOrbitLibrary.__new__(LegacyOrbitLibrary)
+    lib.mod_dir = "fake/"
+    lib.logger = logging.getLogger("test_fused_assembly.reads")
+    lib.logger.addHandler(logging.NullHandler())
+    lib.velocity_scaling_factor = 1.5
+    lib.stars = types.SimpleNamespace(
+        kinematic_data=[FakeKins1D(), FakeKins2D()], population_data=[]
+    )
+    lib.system = types.SimpleNamespace(is_bar_disk_system=lambda: False)
+    stub = RecordingReadOrbitBase(
+        tube, box, rng.random((norb_t, 4)), rng.random((norb_b, 4))
+    )
+    lib.read_orbit_base = stub
+    lib.combine_and_mirror_orblibs = _t.MethodType(
+        LegacyOrbitLibrary.combine_and_mirror_orblibs, lib
+    )
+    lib.read_vel_histograms = _t.MethodType(LegacyOrbitLibrary.read_vel_histograms, lib)
+    return lib, stub
+
+
+def test_streamed_reads_orchestration():
+    """Per-set reads populate only their entries; projected masses
+    accumulate across calls; and each streamed result is bit-identical to
+    the corresponding entry of one full read."""
+    full, full_stub = _make_read_fake_orblib()
+    full.read_vel_histograms()
+    assert full_stub.calls == [("orblib", (0, 1), True), ("orblibbox", (0, 1), True)]
+    assert full.n_orbs == 10  # 2*4 mirrored + 2 box
+
+    part, part_stub = _make_read_fake_orblib()
+    part.read_vel_histograms(kin_sets=[0], skip_density=False)
+    assert part_stub.calls[-2:] == [("orblib", (0,), True), ("orblibbox", (0,), True)]
+    assert part.vel_histograms[0] is not None
+    assert part.vel_histograms[1] is None
+    assert part.n_orbs == 10
+
+    part.read_vel_histograms(kin_sets=[1], skip_density=True)
+    assert part_stub.calls[-2:] == [("orblib", (1,), False), ("orblibbox", (1,), False)]
+    assert part.vel_histograms[0] is None  # freed by the caller
+    assert part.vel_histograms[1] is not None
+
+    # bit-identical against the full read, scaling included
+    assert np.array_equal(part.vel_histograms[1].y, full.vel_histograms[1].y)
+    assert np.array_equal(part.projected_masses[1], full.projected_masses[1])
+    assert np.array_equal(part.projected_masses[0], full.projected_masses[0])
+
+
+def test_fused_constructor_streaming(dtype):
+    """The fused constructor with stream_reads=True must produce bitwise the
+    same AdelieProblem as with stream_reads=False on identical data."""
+    fake_s = _make_fake_nnls(dtype)
+    fake_s.stream_reads = True
+    orblib_s, _stub = _make_read_fake_orblib()
+    prob_s = NNLS.construct_adelie_matrix_and_rhs(fake_s, orblib_s)
+
+    fake_r = _make_fake_nnls(dtype)
+    orblib_r, _stub_r = _make_read_fake_orblib()
+    orblib_r.read_vel_histograms()
+    prob_r = NNLS.construct_adelie_matrix_and_rhs(fake_r, orblib_r)
+
+    assert np.array_equal(prob_s.X, prob_r.X), "streamed X differs"
+    assert np.array_equal(prob_s.col_norm, prob_r.col_norm)
+    assert np.array_equal(prob_s.y, prob_r.y)
+    assert np.array_equal(prob_s.row0_vec, prob_r.row0_vec)
+    assert prob_s.b0 == prob_r.b0
+
+
 if __name__ == "__main__":
     test_bitwise(np.float64)
     print("float64 OK")
@@ -201,4 +332,9 @@ if __name__ == "__main__":
     test_alm_end_to_end(np.float64)
     test_alm_end_to_end(np.float32)
     print("alm end-to-end OK")
+    test_streamed_reads_orchestration()
+    print("streamed reads orchestration OK")
+    test_fused_constructor_streaming(np.float64)
+    test_fused_constructor_streaming(np.float32)
+    print("fused constructor streaming OK")
     print("test_fused_assembly OK")

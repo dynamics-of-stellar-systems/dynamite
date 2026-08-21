@@ -318,6 +318,8 @@ Settings relevant for solving for orbital weights.
     - ``lum_intr_rel_err``: float, typical 0.01, the systematic error (fraction) applied to the intrinsic luminosity constraint
     - ``sb_proj_rel_err``: float, typical 0.01, the systematic error (fraction) applied to the projected surface brightness constraint
     - ``CRcut``: Boolean, default False, whether to use the ``CRcut`` solution for the counter-rotating orbit problem. See `Zhu et al. 2018 <https://ui.adsabs.harvard.edu/abs/2018MNRAS.473.3000Z/abstract>`_ for more details.
+    - ``nnls_dtype``: string, optional, one of ``float64`` (default) or ``float32``. Only used by ``type = NNLS``. Downcasts the retained orbit-library data and the NNLS matrix/solve arrays; a memory setting that reduces peak RAM by ~25% with chi2 validated to agree to <0.001%.
+    - ``stream_orblib_reads``: Boolean, default False. Only used by ``type = NNLS`` with ``nnls_solver = adelie``. Reads orbit-library histograms one kinematic set at a time during assembly (freeing each before reading the next) instead of holding all sets resident; a memory setting — results are bit-identical either way.
 
 If any kinematics have of type ``GaussHermite``, the following additional settings are needed.
 
