@@ -1280,8 +1280,15 @@ class NNLS(WeightSolver):
         scale = np.where(scale > 0, scale, np.inf)
         return float(np.max(viol / scale)), raw
 
-    def solve_adelie_alm(self, A, b):
+    def solve_adelie_alm(self, problem):
         r"""Solve the NNLS problem with adelie BVLS + an augmented Lagrangian.
+
+        Consumes an :class:`AdelieProblem` built by
+        :meth:`construct_adelie_matrix_and_rhs` (or
+        :meth:`_build_augmented_X` from a classic A, b pair) and returns
+        ``(best_w, resid_full)``: the best weights and the plain residual
+        ``A @ w - b`` aligned to A's rows (slot 0 = total-mass row), so the
+        caller can compute chi2 without A.
 
         **Why an augmented Lagrangian.** Row 0 enforces
         :math:`\sum_j w_j = M_{tot}` with ``econ[0] = 1e-8``, so it contributes
@@ -1346,13 +1353,13 @@ class NNLS(WeightSolver):
 
         Parameters
         ----------
-        A : array (n_constraints, n_orbits)
-        b : array (n_constraints,)
+        problem : AdelieProblem
 
         Returns
         -------
-        array
-            orbit weights
+        tuple (array, array)
+            ``(best_w, resid_full)``: orbit weights and the plain residual
+            aligned to A's rows.
 
         References
         ----------
@@ -1371,16 +1378,10 @@ class NNLS(WeightSolver):
         n_threads = int(os.environ.get("OMP_NUM_THREADS", os.cpu_count() or 1))
         mu = self.adelie_mu
         sqrt_mu = np.sqrt(mu)
-        dtype = A.dtype
-        A_rest, b_rest = A[1:, :], b[1:]
-        n_orbs = A.shape[1]
+        X, col_norm, y = problem.X, problem.col_norm, problem.y
+        dtype = X.dtype
+        n_orbs = X.shape[1]
 
-        # Build the augmented matrix once. Unit-L2 column scaling is an exact
-        # change of variable, since positive diagonal scaling preserves w >= 0,
-        # and the column norms here span about 15 orders of magnitude. The
-        # array is F-contiguous because coordinate descent accesses one column
-        # at a time. (Extraction comment history lives on _build_augmented_X.)
-        X, col_norm, y = self._build_augmented_X(A_rest, b_rest, sqrt_mu, dtype)
         lower = np.zeros(n_orbs, dtype=dtype)
         upper = np.full(n_orbs, np.inf, dtype=dtype)
         # adelie's bvls() infers a state dtype from X but defaults `weights`
@@ -1419,7 +1420,8 @@ class NNLS(WeightSolver):
             # lose precision that the old float64 accumulation had.
             resid = np.asarray(state.resid).ravel()[1:]
             resid = resid.astype(np.float64, copy=False)
-            row0 = float(A[0] @ w) - float(b[0])
+            # row0_vec is bitwise A[0], so this equals the old float(A[0]@w)
+            row0 = float(problem.row0_vec @ w) - problem.b0
             chi2 = row0 * row0 + float(resid @ resid)
             if chi2 < best_chi2:
                 best_chi2, best_w, best_it = chi2, w.copy(), it
@@ -1431,7 +1433,18 @@ class NNLS(WeightSolver):
             f"final gap={gap:.2e}, best iterate {best_it}, "
             f"chi2={best_chi2:.4f}, sum(w)={best_w.sum():.10f}"
         )
-        kkt, kkt_raw = self.kkt_violation(A, b, best_w)
+        # plain residual at the returned weights, aligned to A's rows, built
+        # from X: rows 1.. via the exact column scaling (round-off-level
+        # difference vs a gemv over A), row 0 via row0_vec. Serves both the
+        # surrogate KKT below and solve()'s final chi2_vector.
+        r0 = float(problem.row0_vec @ best_w) - problem.b0
+        r_rest = y[1:].astype(np.float64) - X[1:, :] @ (
+            col_norm.astype(np.float64) * best_w
+        )
+        resid_full = np.concatenate(([r0], r_rest))
+        kkt, kkt_raw = self.kkt_violation_augmented(
+            problem.row0_vec, problem.b0, X, col_norm, resid_full, best_w, mu
+        )
         self.logger.info(
             f"adelie ALM: KKT violation scaled={kkt:.3e} (in [0,1]), raw={kkt_raw:.3e}"
         )
@@ -1447,7 +1460,7 @@ class NNLS(WeightSolver):
                 "maximum of 1 - the solution is far from optimal. Check "
                 "adelie_mu against a scipy solve on this dataset."
             )
-        return best_w
+        return best_w, resid_full
 
     def solve(self, orblib, ignore_existing_weights=False):
         """Solve for orbit weights
@@ -1501,22 +1514,10 @@ class NNLS(WeightSolver):
                 orblib.projected_masses = [
                     p.astype(np.float32) for p in orblib.projected_masses
                 ]
-            A, b = self.construct_nnls_matrix_and_rhs(orblib)
-
-            # Normalize the data. The adelie path does its own scaling and
-            # never touches A_normalized - building it there would hold a
-            # second full copy of A (~125 GiB for omega Cen) for the whole run.
-            if self.nnls_solver != "adelie":
-                A_max = np.max(np.abs(A), axis=0)
-                A_normalized = A / A_max
-                b_max = np.max(np.abs(b))
-                b_normalized = b / b_max
-
             if self.nnls_solver == "adelie":
-                # NB: the ALM solver takes the UNNORMALISED A, b. It applies
-                # its own unit-L2 column scaling to the augmented matrix and
-                # undoes it on the solution, so the A_max/b_max normalisation
-                # above must not be applied here.
+                # The fused constructor assembles adelie's augmented matrix X
+                # directly from the orbit library - A is never built on this
+                # path, which halves the resident set during the solve.
                 if not _ADELIE_AVAILABLE:
                     text = (
                         "nnls_solver 'adelie' is not installed. Run: pip install adelie"
@@ -1524,7 +1525,8 @@ class NNLS(WeightSolver):
                     self.logger.error(text)
                     raise ImportError(text)
                 try:
-                    weights = self.solve_adelie_alm(A, b)
+                    problem = self.construct_adelie_matrix_and_rhs(orblib)
+                    weights, resid_full = self.solve_adelie_alm(problem)
                 except Exception as e:
                     txt = (
                         f"Orblib {orblib.mod_dir}, ml={orblib.parset['ml']}"
@@ -1532,8 +1534,17 @@ class NNLS(WeightSolver):
                         "and chi2 set to nan. Consider trying scipy."
                     )
                     self.logger.warning(txt)
-                    weights = np.full(A.shape[1], np.nan)
+                    weights = np.full(orblib.n_orbs, np.nan)
             elif self.nnls_solver == "scipy":
+                # scipy/cvxopt keep the classic A-based path. The adelie
+                # branch above builds its augmented matrix directly instead.
+                A, b = self.construct_nnls_matrix_and_rhs(orblib)
+                # Normalize the data: building it on the adelie path would
+                # hold a second full copy of A (~125 GiB for omega Cen).
+                A_max = np.max(np.abs(A), axis=0)
+                A_normalized = A / A_max
+                b_max = np.max(np.abs(b))
+                b_normalized = b / b_max
                 try:
                     # Solve the NNLS problem with normalized data
                     x_normalized, rnorm = optimize.nnls(A_normalized, b_normalized)
@@ -1549,6 +1560,11 @@ class NNLS(WeightSolver):
                     self.logger.warning(txt)
                     weights = np.full(A.shape[1], np.nan)
             elif self.nnls_solver == "cvxopt":
+                A, b = self.construct_nnls_matrix_and_rhs(orblib)
+                A_max = np.max(np.abs(A), axis=0)
+                A_normalized = A / A_max
+                b_max = np.max(np.abs(b))
+                b_normalized = b / b_max
                 try:
                     P = np.dot(A_normalized.T, A_normalized)
                     q = -1.0 * np.dot(A_normalized.T, b_normalized)
@@ -1570,7 +1586,17 @@ class NNLS(WeightSolver):
                 raise ValueError(text)
             if not np.isnan(weights[0]):
                 # calculate chi2s
-                chi2_vector = (np.dot(A, weights) - b) ** 2.0
+                if self.nnls_solver == "adelie":
+                    # chi2 without A: the plain residual at the returned
+                    # weights, aligned to A's rows, plus the total-mass row
+                    # term. Algebraically identical to (A@w - b)**2; differs
+                    # only in gemv rounding (quantified in the perf notes).
+                    row0_resid = float(problem.row0_vec @ weights) - problem.b0
+                    chi2_vector = chi2_vector_from_residuals(
+                        resid_full, row0_resid * row0_resid
+                    )
+                else:
+                    chi2_vector = (np.dot(A, weights) - b) ** 2.0
                 chi2_tot = np.sum(chi2_vector)
                 chi2_kin = np.sum(chi2_vector[self.n_mass_constraints :])
                 chi2_kinmap = self.chi2_kinmap(weights)
