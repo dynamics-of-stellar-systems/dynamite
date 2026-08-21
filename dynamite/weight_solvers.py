@@ -5,6 +5,7 @@ from astropy import table
 from astropy.io import ascii
 import subprocess
 import logging
+from typing import NamedTuple
 from scipy import optimize
 
 try:
@@ -35,6 +36,20 @@ except ImportError:
 from dynamite import constants
 from dynamite import analysis
 from dynamite import kinematics as dyn_kin
+
+
+class AdelieProblem(NamedTuple):
+    """Everything the adelie path needs, built without materializing A.
+
+    ``X`` has exactly n_rows rows: the sqrt(mu) penalty row REPLACES A's
+    total-mass row, which survives only as the small vector ``row0_vec``
+    (bitwise equal to A[0], i.e. ones/econ[0])."""
+
+    X: np.ndarray  # (n_rows, n_orbs) F-order, column-scaled
+    col_norm: np.ndarray  # (n_orbs,) unit-L2 norms incl. penalty row
+    y: np.ndarray  # (n_rows,) ALM target; slot 0 updated per iter
+    row0_vec: np.ndarray  # (n_orbs,) == A[0] bitwise
+    b0: float  # rhs[0] = total_mass/total_mass_error
 
 
 def chi2_vector_from_residuals(resid_full, row0_sq):
@@ -873,28 +888,15 @@ class NNLS(WeightSolver):
         idx_ap_start = 0
         idx_row = self.n_mass_constraints
         for kins, orb_veldist, tmp in kins_and_orb_veldist:
-            hist_dim = len(orb_veldist.y[0, ..., 0].shape)  # 1D or 2D vel hists
             # pick out the projected masses for this kinematic set
             n_ap = kins.n_spatial_bins  # OK for all kinematics
             idx_ap_end = idx_ap_start + n_ap
             prj_mass_i = self.projected_masses[idx_ap_start:idx_ap_end]
             idx_ap_start += n_ap
-            # scale observed kinematics and errors by projected masses
-            obs_kins, obs_kins_err = tmp
-            obs_kins = (obs_kins.T * prj_mass_i).T
-            obs_kins_err = (obs_kins_err.T * prj_mass_i).T
-            if hist_dim == 1:  # Do we need this for proper motions (2d hists)?
-                # set the first and last point in the velocity histograms to
-                # zero to mimic what is done in `triaxnnnls_CRcut.f90`
-                orb_veldist.y[:, 0, :] = 0.0
-                orb_veldist.y[:, -1, :] = 0.0
-            # transform orblib to same parameterisation as observed kinematics
-            orb_kins = kins.transform_orblib_to_observables(orb_veldist, self.settings)
-            if self.CRcut:
-                # note: this only has an effect if type(kins) is GaussHermite
-                orb_kins = self.apply_CR_cut(kins, orb_veldist, orb_kins)
+            obs_kins, obs_kins_err, orb_kins = self._prepare_kinematic_block(
+                kins, orb_veldist, tmp, prj_mass_i
+            )
             # append constraints/errors/orbits to con/econ/orbmat
-            obs_kins = np.ravel(obs_kins)
             n_orb_constraints = orb_kins.size // orblib.n_orbs
             idx_row_end = idx_row + obs_kins.size
             assert n_orb_constraints == obs_kins.size, (
@@ -947,6 +949,140 @@ class NNLS(WeightSolver):
         orbmat = orbmat.T
         np.divide(orbmat, econ, out=orbmat, where=econ != 0)
         return orbmat.T, rhs
+
+    def construct_adelie_matrix_and_rhs(self, orblib):
+        """Assemble adelie's augmented matrix directly — A never exists.
+
+        Writes the sqrt(mu) penalty row into X row 0, streams every
+        constraint block straight into rows 1.., divides by econ, then
+        finishes with the SAME col_norm/divide/y steps as
+        _build_augmented_X, so X/col_norm/y are bit-identical to the
+        two-step construction used by the scipy/cvxopt paths. Saves one full
+        matrix of RAM (~125 GiB for omega Cen), which is what lets several
+        weight solves share a node.
+
+        Returns an :class:`AdelieProblem`.
+        """
+        dtype = self.nnls_dtype
+        stars = self.system.get_unique_triaxial_visible_component()
+        # observed values depend only on the kinematic data; same pre-pass,
+        # kept and reused, as in construct_nnls_matrix_and_rhs
+        obs_values = [
+            kins.get_observed_values_and_uncertainties(self.settings)
+            for kins in stars.kinematic_data
+        ]
+        n_rows = self.n_mass_constraints + sum(np.size(v) for v, _ in obs_values)
+        n_orbs = orblib.n_orbs
+        sqrt_mu = np.sqrt(self.adelie_mu)
+        con = np.zeros(n_rows, dtype=dtype)
+        econ = np.zeros(n_rows, dtype=dtype)
+        # F-ordered like orbmat: block writes become memcpy and the solver
+        # wants F-contiguous columns.
+        X = np.empty((n_rows, n_orbs), dtype=dtype, order="F")
+        # row 0 is the ALM penalty row; it REPLACES A's total-mass row
+        X[0, :] = sqrt_mu
+        con[0] = self.total_mass
+        econ[0] = self.total_mass_error
+        # intrinsic mass -> X rows 1..n_intrinsic
+        idx = slice(1, 1 + self.n_intrinsic)
+        con[idx] = np.ravel(self.intrinsic_masses)
+        error = self.intrinsic_masses * self.intrinsic_mass_error
+        error = np.abs(np.ravel(error))
+        error[np.where(error <= 0.0)] = 1.0e-16
+        econ[idx] = error
+        X[idx, :] = np.reshape(orblib.intrinsic_masses, (n_orbs, -1)).T
+        # projected mass
+        idx = slice(1 + self.n_intrinsic, 1 + self.n_intrinsic + self.n_apertures)
+        con[idx] = self.projected_masses
+        econ[idx] = np.abs(self.projected_masses * self.projected_mass_error)
+        X[idx, :] = np.hstack(orblib.projected_masses).T
+        # kinematics: identical block sequence to construct_nnls_matrix_and_rhs
+        kins_and_orb_veldist = zip(
+            stars.kinematic_data, orblib.vel_histograms, obs_values
+        )
+        idx_ap_start = 0
+        idx_row = self.n_mass_constraints
+        for kins, orb_veldist, tmp in kins_and_orb_veldist:
+            n_ap = kins.n_spatial_bins
+            prj_mass_i = self.projected_masses[idx_ap_start : idx_ap_start + n_ap]
+            idx_ap_start += n_ap
+            obs_kins, obs_kins_err, orb_kins = self._prepare_kinematic_block(
+                kins, orb_veldist, tmp, prj_mass_i
+            )
+            n_orb_constraints = orb_kins.size // n_orbs
+            idx_row_end = idx_row + obs_kins.size
+            assert n_orb_constraints == obs_kins.size, (
+                f"{type(kins).__name__}: orbit library gives "
+                f"{n_orb_constraints} constraints per orbit but the "
+                f"kinematic data gives {obs_kins.size}"
+            )
+            con[idx_row:idx_row_end] = obs_kins
+            econ[idx_row:idx_row_end] = obs_kins_err
+            dest = X[idx_row:idx_row_end, :].T.reshape(orb_kins.shape)
+            assert np.shares_memory(dest, X), (
+                "X block write got a copy, not a view - block would be "
+                "silently left at zero"
+            )
+            dest[...] = orb_kins
+            idx_row = idx_row_end
+        # guards: mirror the stock constructor. Row 0 has no econ semantics
+        # (it is the penalty row); A's total-mass row becomes row0_vec below.
+        if np.any(con[econ == 0] != 0):
+            txt = "Weight solving fail: zero errors for nonzero constraints!"
+            self.logger.error(txt)
+            raise ValueError(txt)
+        rhs = np.zeros_like(con)
+        np.divide(con, econ, out=rhs, where=econ != 0)  # con = econ = 0 ok
+        econ_body = econ[1:]
+        nz = (X[1:, :] != 0) & (econ_body == 0)[:, None]
+        if np.any(nz):
+            rr, oo = np.nonzero(nz)
+            txt = (
+                f"Weight solving problem in {self.direc_with_ml}: "
+                "zero errors for nonzero matrix coefficients at "
+                f"[constraint no, orbit no] = {(rr + 1, oo)}! Matrix "
+                f"value(s) there ({X[1:, :][nz]}) will be considered zero."
+            )
+            self.logger.warning(txt)
+            X[1:, :][nz] = 0
+        # divide rows by their errors: the same elementwise op as the stock
+        # transposed-view divide, restricted to rows 1.. (row 0 of A becomes
+        # row0_vec below, divided elementwise by econ[0] exactly as stock's
+        # broadcast divide did to it).
+        body = X[1:, :].T  # view (n_orbs, n_rows-1)
+        np.divide(body, econ_body, out=body, where=econ_body != 0)
+        # finish exactly like _build_augmented_X does from A
+        col_norm = np.linalg.norm(X, axis=0)
+        col_norm[col_norm == 0] = 1.0
+        X /= col_norm
+        y = np.concatenate([[0.0], rhs[1:]]).astype(dtype)
+        row0_vec = np.full(n_orbs, 1.0, dtype=dtype) / econ[0]
+        return AdelieProblem(
+            X=X, col_norm=col_norm, y=y, row0_vec=row0_vec, b0=float(rhs[0])
+        )
+
+    def _prepare_kinematic_block(self, kins, orb_veldist, tmp, prj_mass_i):
+        """Shared by both NNLS constructors.
+
+        Scales the observed kinematics and their errors by this set's
+        projected masses, zeroes the first and last point of 1D orbit
+        velocity histograms IN PLACE (mimicking ``triaxnnls_CRcut.f90``),
+        transforms the orbit library into the observed parameterisation,
+        and applies the CRcut if enabled (only has an effect for
+        GaussHermite). Returns flat ``(obs_kins, obs_kins_err, orb_kins)``.
+        """
+        hist_dim = len(orb_veldist.y[0, ..., 0].shape)  # 1D or 2D vel hists
+        obs_kins, obs_kins_err = tmp
+        obs_kins = (obs_kins.T * prj_mass_i).T
+        obs_kins_err = (obs_kins_err.T * prj_mass_i).T
+        if hist_dim == 1:  # Do we need this for proper motions (2d hists)?
+            orb_veldist.y[:, 0, :] = 0.0
+            orb_veldist.y[:, -1, :] = 0.0
+        # transform orblib to same parameterisation as observed kinematics
+        orb_kins = kins.transform_orblib_to_observables(orb_veldist, self.settings)
+        if self.CRcut:
+            orb_kins = self.apply_CR_cut(kins, orb_veldist, orb_kins)
+        return np.ravel(obs_kins), np.ravel(obs_kins_err), orb_kins
 
     def apply_CR_cut(self, kins, orb_losvd, orb_gh):
         r"""apply `CRcut`
