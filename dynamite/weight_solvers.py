@@ -37,6 +37,24 @@ from dynamite import analysis
 from dynamite import kinematics as dyn_kin
 
 
+def chi2_vector_from_residuals(resid_full, row0_sq):
+    """Per-row squared residuals of ``A @ w - b`` without materializing A.
+
+    ``resid_full`` holds rows 1..n of that residual (from adelie's
+    ``state.resid``, which is exactly the plain residual on rows 1.. because
+    ``y[1:] == b_rest``); the total-mass row's contribution arrives separately
+    as ``row0_sq = (A[0] @ w - b[0])**2`` because X replaces that row with the
+    ALM penalty row. Index 0 of the result is ``row0_sq`` itself, keeping the
+    indexing of the A-based chi2_vector (chi2_kin slices
+    ``[n_mass_constraints:]``).
+
+    Algebraically identical to ``(A @ w - b)**2``; differs only in rounding,
+    since the gemv over A is replaced by the solver's accumulated residual.
+    """
+    resid_full = np.asarray(resid_full, dtype=np.float64).ravel()
+    return np.concatenate(([row0_sq], resid_full[1:] ** 2))
+
+
 class WeightSolver(object):
     """Generic WeightSolver class
 
@@ -1081,6 +1099,50 @@ class NNLS(WeightSolver):
         X /= col_norm
         y = np.concatenate([[0.0], b_rest]).astype(dtype)
         return X, col_norm, y
+
+    @staticmethod
+    def kkt_violation_augmented(
+        row0_vec, b0, X_scaled, col_norm, resid_full, weights, mu
+    ):
+        r"""Optimality certificate computed from the augmented matrix alone.
+
+        Same semantics as :meth:`kkt_violation` — returns ``(scaled, raw)``
+        with scaled in [0, 1] — but expressed through the fused augmented
+        matrix so A never has to exist:
+
+            A[1:, j]   = col_norm[j] * X_scaled[1:, j]
+            grad[j]    = row0_vec[j]*r0 + col_norm[j]*(X_scaled[1:]^T r)[j]
+            ||A_.j||^2 = row0_vec[j]^2 + col_norm[j]^2 - mu
+
+        where ``r`` is the plain residual ``Aw - b`` aligned to A's rows
+        (slot 0 = the total-mass row) and col_norm includes the penalty row.
+        Two passes over X instead of three over A.
+
+        Algebraically identical to kkt_violation(A, b, w); differs in rounding
+        only. dev_tests/test_surrogate_chi2_kkt.py checks agreement to rtol
+        1e-10 and the exact-fit / degenerate-column guards.
+        """
+        r0 = float(row0_vec @ weights) - float(b0)
+        r_rest = np.asarray(resid_full, dtype=np.float64).ravel()[1:]
+        resid = np.concatenate(([r0], r_rest))
+        grad = row0_vec.astype(np.float64) * r0 + col_norm.astype(np.float64) * (
+            X_scaled[1:, :].T @ r_rest
+        )
+        viol = np.where(weights > 0, np.abs(grad), np.maximum(-grad, 0.0))
+        raw = float(np.max(viol))
+        # Cauchy-Schwarz denominator as in kkt_violation, rebuilt through the
+        # identities above; round-off can make the expression dip below zero,
+        # hence the clip. An exactly-fitting solution reports 0 like the stock
+        # version's 0/0 guard.
+        col_sq = np.maximum(
+            col_norm.astype(np.float64) ** 2 - mu + row0_vec.astype(np.float64) ** 2,
+            0.0,
+        )
+        scale = np.sqrt(col_sq) * np.linalg.norm(resid)
+        if not np.any(scale > 0):
+            return 0.0, raw
+        scale = np.where(scale > 0, scale, np.inf)
+        return float(np.max(viol / scale)), raw
 
     def solve_adelie_alm(self, A, b):
         r"""Solve the NNLS problem with adelie BVLS + an augmented Lagrangian.
