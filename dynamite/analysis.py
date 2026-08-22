@@ -852,7 +852,8 @@ class Analysis:
                                     kin_set=None,
                                     v_sigma_option='fit',
                                     kinematics_as='table',
-                                    weights=None):
+                                    weights=None,
+                                    orblib=None):
         """
         Generates an astropy table that holds the
         model's data for creating Gauss-Hermite kinematic maps:
@@ -880,6 +881,12 @@ class Analysis:
         weights : ``numpy.array`` like, optional
             Orbital weights to use. The default is ``None`` and will
             determine the weights via ``model.get_weights(orblib)``.
+        orblib : ``dyn.orblib.OrbitLibrary``, optional
+            An already-read orbit library to reuse (``read_vel_histograms()``
+            already called). If not given, a fresh one is fetched via
+            ``model.get_orblib()`` and read from scratch - this repeats work
+            a caller that already has one (e.g. ``WeightSolver.chi2_kinmap``)
+            would otherwise duplicate once per kinematic set.
 
         Raises
         ------
@@ -913,7 +920,8 @@ class Analysis:
         kin_name = stars.kinematic_data[kin_set].name
         self.logger.info('Getting projected masses and losvds for kinematics '
                          f'{kin_name} and model {model.directory}.')
-        orblib = model.get_orblib()
+        if orblib is None:
+            orblib = model.get_orblib()
         if weights is None:
             _ = model.get_weights(orblib)
             weights = model.weights

@@ -34,6 +34,7 @@
 program counterrotation
     use numeric_kinds
     use high_level, only: setup, run, stob
+    use integrator, only: integrator_set_seed
     implicit none
     real(kind=dp) :: t1, t2
 
@@ -56,6 +57,10 @@ program counterrotation
     print *, "  ** Triaxial Orbit library by Remco C.E. van den Bosch <bosch@strw.leidenuniv.nl>"
     print *, "  * Jan 2007 "
     print *, "  * $Id: orblibprogram.f90,v 1.1 2010/03/17 12:56:57 bosch Exp $"
+
+    ! hand the base seed to the integrator, which derives a per-orbit seed
+    ! from it so results do not depend on how the orbits were divided up
+    call integrator_set_seed(r_seed)
 
     call setup()
     print *, "Starting orbit integration routines"

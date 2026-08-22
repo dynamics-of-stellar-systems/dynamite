@@ -289,6 +289,50 @@ class ModelInnerIterator(object):
         self.ncpus_ext = config.settings.multiprocessing_settings['ncpus_ext']
         self.n_to_do = 0
 
+    def resolve_orblib_chunks(self, n_orblib):
+        """Choose how many chunks to split each orbit library into.
+
+        With ``orblib_chunks: auto``, the chunk count is decided per iteration
+        rather than once in the configuration file, because it depends on how
+        many orbit libraries this iteration actually builds. A wide iteration
+        already occupies the machine and gets no chunking; a narrow one, such
+        as the later stages of a parameter search or the tail of any
+        iteration, spreads each library over the cores that would otherwise
+        sit idle.
+
+        Chunking only reduces a model's wall-clock time, never the total CPU
+        time, so there is nothing to gain from splitting further than the
+        available cores.
+
+        Parameters
+        ----------
+        n_orblib : int
+            number of new orbit libraries to be built this iteration
+
+        Returns
+        -------
+        int
+            the chunk count, also written back into the multiprocessing
+            settings so that the worker processes pick it up
+
+        """
+        settings = self.config.settings.multiprocessing_settings
+        if not settings.get('orblib_chunks_auto', False):
+            return settings['orblib_chunks']
+        if n_orblib == 0:  # nothing to integrate, only weights to solve
+            settings['orblib_chunks'] = 1
+            return 1
+        # the chunked script runs both orbit families concurrently whatever
+        # orblibs_in_parallel says, so the divisor is always 2 here
+        families = 2
+        chunks = max(1, settings['total_cores'] // (n_orblib * families))
+        settings['orblib_chunks'] = chunks
+        self.logger.info(
+            f'{n_orblib} orbit librar(y/ies) this iteration, '
+            f"{settings['total_cores']} total cores -> orblib_chunks="
+            f'{chunks} ({n_orblib * families * chunks} integration processes).')
+        return chunks
+
     def run_iteration(self, split_orblib_weights=False):
         """Run one iteration step
 
@@ -330,6 +374,10 @@ class ModelInnerIterator(object):
             # rows_to_do_orblib are the rows that need orblib and weight_solver
             rows_to_do_orblib=[i for i in rows_to_do if self.is_new_orblib(i)]
             n_orblib = len(rows_to_do_orblib)
+            # decide the chunk count before any pool is started: the workers
+            # read it from the (pickled) configuration when they build a
+            # library, so it must be settled now
+            self.resolve_orblib_chunks(n_orblib)
             # rows_to_do_ml are the rows that need weight_solver only
             rows_to_do_ml=[i for i in rows_to_do if i not in rows_to_do_orblib]
             self.assign_model_directories(rows_to_do_orblib, rows_to_do_ml)
@@ -356,7 +404,10 @@ class ModelInnerIterator(object):
                 input_list_ml = [i + (do_orblib, do_weights, do_chi2_ext)
                         for i in enumerate(rows_to_do_orblib + rows_to_do_ml)]
                 if len(rows_to_do_orblib + rows_to_do_ml) > 0:
-                    with Pool(self.ncpus_weights) as p:
+                    maxtasksperchild = getattr(
+                        self, 'ncpus_weights_maxtasksperchild', None)
+                    with Pool(self.ncpus_weights,
+                              maxtasksperchild=maxtasksperchild) as p:
                         output = p.map(self.create_and_run_model, input_list_ml)
                     self.write_output_to_all_models_table(
                         rows_to_do_orblib + rows_to_do_ml, output)
@@ -650,6 +701,19 @@ class SplitModelIterator(ModelInnerIterator):
         self.logger = logging.getLogger(f'{__name__}.{__class__.__name__}')
         self.ncpus_weights = \
             self.config.settings.multiprocessing_settings['ncpus_weights']
+        # optional: recycle each weight-solving worker after N models rather
+        # than reusing it for the whole run. Guards against RSS creep across
+        # models in a long-lived worker (heap fragmentation from the orbit
+        # library's read/combine copy chain was measured to prevent freed
+        # memory from being returned to the OS - see
+        # dev_notes/oom_memory_investigation.md). Does not reduce the memory
+        # used *during* one model's solve; only `nnls_dtype`
+        # (weight_solver_settings) or restructuring the orbit library read
+        # path do that. None (default) matches the previous behaviour of
+        # reusing workers for the whole run.
+        self.ncpus_weights_maxtasksperchild = \
+            self.config.settings.multiprocessing_settings.get(
+                'ncpus_weights_maxtasksperchild', None)
 
     def run_iteration(self):
         """Execute one iteration step

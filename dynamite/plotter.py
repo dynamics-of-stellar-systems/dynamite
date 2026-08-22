@@ -24,6 +24,21 @@ import cmasher as cmr
 class ReorderLOSVDError(Exception):
     pass
 
+
+def _sample_std(values):
+    """Sample standard deviation, returning 0 rather than NaN for one value.
+
+    ``np.var(x, ddof=1)`` is NaN when ``x`` has a single entry. That NaN
+    propagates into the uncertainty bands and then into axis limits
+    (``set_ylim(nan)``), so a run with only one model produced a broken
+    plot rather than an uncertainty-free one. Zero spread is the honest
+    answer: no models to compare against means no error bar.
+    """
+    values = np.asarray(values)
+    if values.size < 2:
+        return 0.0
+    return np.sqrt(np.var(values, ddof=1))
+
 class Plotter():
     """Class to hold plotting routines
 
@@ -670,7 +685,11 @@ class Plotter():
                 ax_losvds += [ax]
                 if i<2:
                     ax.set_xticks([])
-                else:
+                elif j == 1:
+                    # ponytail: was set on all 3 bottom-row axes -- with
+                    # wspace=0 between them the identical labels overlapped
+                    # into unreadable text. One shared label, centered under
+                    # the middle column, is enough.
                     ax.set_xlabel(r'$v_\mathrm{LOS}$ [km/s]')
                 ax.set_yticks([])
         # get cmap
@@ -1161,8 +1180,14 @@ class Plotter():
 
         # select the models within 1 sigma confidence level
         n = len(np.ravel(np.where(val[which_chi2] <= chi2pmin + chlim*3)))
-        if n < 3:
-            n = 3
+        # Widen to at least 3 models so there is something to estimate an
+        # uncertainty band from, but never ask for more models than exist.
+        # Without the upper clamp a run with fewer than 3 models (a single
+        # model, a smoke test, an early iteration) bumped n to 3 and then
+        # indexed val[1], raising IndexError. With fewer than 3 the band
+        # collapses onto the best-fit profile: no uncertainties, which is
+        # the honest answer rather than a crash.
+        n = min(max(n, 3), len(val))
 
         self.logger.debug(f'Selecting {n} models')
 
@@ -1239,11 +1264,27 @@ class Plotter():
             np.isfinite(1)
 
         mm = np.sum(mass, axis=2)
-        maxmass = (int(np.max(mm/10**10.)) + 1.)*10**10.
+        # ponytail: was hardcoded to a galaxy-scale [1e6, next-1e10-up] range,
+        # which silently blanks the plot for anything much smaller than a
+        # galaxy (e.g. NGC5139's ~1e6 Msun total sits at ~0.01% of that axis).
+        # Round to a "nice" ceiling (1/2/5 x a power of ten) derived from the
+        # data itself instead, so this works at any mass scale.
+        def _nice_ceiling(x):
+            if not x > 0:
+                return 1.0
+            mag = 10 ** np.floor(np.log10(x))
+            for mult in (1, 2, 5, 10):
+                if mult * mag >= x:
+                    return mult * mag
+            return 10 * mag
+        maxmass = _nice_ceiling(np.max(mm))
+        mm_pos = mm[mm > 0]
+        ymin = maxmass * 1e-4 if y_scale == 'log' and mm_pos.size \
+            else 0.0
 
         ## plot in linear scale
         xrange = np.array([0.1, Rmax_arcs])
-        yrange = np.array([1.0e6,maxmass])
+        yrange = np.array([ymin, maxmass])
 
         filename = self.plotdir + 'enclosed_mass' + figtype
         fig = plt.figure(figsize=(5,5))
@@ -1770,8 +1811,6 @@ class Plotter():
         -------
         fig1 : matplotlib.pyplot.figure
             Figure instance.
-        fig2 : matplotlib.pyplot.figure
-            Figure instance.
 
         """
 
@@ -1796,8 +1835,14 @@ class Plotter():
 
         # select the models within 1 sigma confidence level, minimum 3
         n = len(np.ravel(np.where(val[which_chi2] <= chi2pmin + chlim*3)))
-        if n < 3:
-            n = 3
+        # Widen to at least 3 models so there is something to estimate an
+        # uncertainty band from, but never ask for more models than exist.
+        # Without the upper clamp a run with fewer than 3 models (a single
+        # model, a smoke test, an early iteration) bumped n to 3 and then
+        # indexed val[1], raising IndexError. With fewer than 3 the band
+        # collapses onto the best-fit profile: no uncertainties, which is
+        # the honest answer rather than a crash.
+        n = min(max(n, 3), len(val))
 
 
         for i in range(n):
@@ -1826,9 +1871,9 @@ class Plotter():
         orot_e2 = np.zeros(nrr)
         for j in range(0, nrr):
             RRn_m[j] = np.average(rrn[:,j])
-            RRn_e[j] = np.sqrt(np.var(rrn[:,j], ddof=1))
+            RRn_e[j] = _sample_std(rrn[:,j])
             orot_m2[j] = np.average(all_betar[:,j])
-            orot_e2[j] = np.sqrt(np.var(all_betar[:,j], ddof=1))
+            orot_e2[j] = _sample_std(all_betar[:,j])
 
         radialrange=np.array([np.min(rr),Rmax_arcs])
         yrange= np.array([min(-1,min(orot_m2-orot_e2)),1])
@@ -2004,8 +2049,14 @@ class Plotter():
         chlim = np.sqrt(self.config.get_2n_obs())
 
         n = len(np.ravel(np.where(val[which_chi2] <= chi2pmin + chlim*3)))
-        if n < 3:
-            n = 3
+        # Widen to at least 3 models so there is something to estimate an
+        # uncertainty band from, but never ask for more models than exist.
+        # Without the upper clamp a run with fewer than 3 models (a single
+        # model, a smoke test, an early iteration) bumped n to 3 and then
+        # indexed val[1], raising IndexError. With fewer than 3 the band
+        # collapses onto the best-fit profile: no uncertainties, which is
+        # the honest answer rather than a crash.
+        n = min(max(n, 3), len(val))
 
         q_all = np.zeros((101,n))
         p_all = np.zeros((101,n))
@@ -2052,11 +2103,11 @@ class Plotter():
             cc = T_all[i,:] > 0.
             if sum(cc)>0:
                 p_m[i] = np.average(p_all[i,cc])
-                p_var[i] = np.sqrt(np.var(p_all[i,cc],ddof=1))
+                p_var[i] = _sample_std(p_all[i,cc])
                 q_m[i] = np.average(q_all[i,cc])
-                q_var[i] = np.sqrt(np.var(q_all[i,cc],ddof=1))
+                q_var[i] = _sample_std(q_all[i,cc])
                 T_m[i] = np.average(T_all[i,cc])
-                T_var[i] = np.sqrt(np.var(T_all[i,cc],ddof=1))
+                T_var[i] = _sample_std(T_all[i,cc])
             else:
                 p_m[i] = -1.
 
