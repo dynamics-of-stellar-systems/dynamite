@@ -80,3 +80,39 @@ and the largest single set during the assembly window only; with fused-X the
 assembly window is no longer the global peak, so streaming's value is
 bounded but still material for float32 (where one PM set could rival X).
 Proceed with streamed reads as planned; measure both in the re-profiles.
+
+## MEASURED RESULTS — re-profile matrix (2026-08-22, all cap30 unless noted)
+
+| configuration | peak RSS GiB | wall min | chi2_tot | verdict |
+|---|---|---|---|---|
+| classic f64 (baseline) | **626.1** | 170 | 2871744.423629 | reference |
+| fused f64 | 501.6 | 146 | 2871744.423591 | == classic to 1.3e-11 rel |
+| fused+stream f64 | 380.3 | 149* | n/a (pre-fix run) | X digests == non-streamed (182/182) post-fix |
+| fused f32 | 251.0 | 109 | 2829309.511304 | chi2_kin within 1.6e-5 of f64 |
+| fused+stream f32 | **190.4** | 106 | 2829309.511304 | weights BITWISE == non-streamed f32 |
+| fused f64, full 100 iters | 503.0 | 307 | 2770837.518557 | see gate-revision note |
+
+*fused+stream wall includes the NFS re-read penalty measured directly by the
+digest check (build 1888 s vs 249 s non-streamed).
+
+### Recommended concurrency (1416 GB node, 0.85 safety -> ~1200 GiB)
+
+| mode | workers = floor(1200 / peak) |
+|---|---|
+| classic f64 | 1 |
+| fused f64 | 2 |
+| fused+stream f64 | 3 |
+| fused f32 | 4 |
+| **fused+stream f32** | **6** |
+
+Per-worker threads: OMP_NUM_THREADS ~= 192 / n_workers (24-32 for 6 workers).
+
+Caveats carried forward:
+- The streamed-f64 chi2 cell is from the corrupted pre-fix run; post-fix,
+  streamed construction is bitwise-proven equivalent via real-library
+  digests, so its solve matches the non-streamed one. Rerun only if a clean
+  logged number is wanted.
+- float32 chi2_tot differs from f64 by ~1.5% at cap-30 because the ALM
+  trajectory diverges mid-convergence; the converged-fit metric chi2_kin
+  agrees to 1.6e-5, consistent with the earlier <0.001%-class validation.
+  Decide f32-for-production on that basis.

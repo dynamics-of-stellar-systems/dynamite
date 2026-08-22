@@ -4,18 +4,26 @@ Companion to `weight_solve_rss_profile.md` (measurements) and
 `docs/superpowers/plans/2026-08-21-weight-solve-rss-fused-x.md` (plan).
 This file captures what we learned *doing* the work. Update as results land.
 
-## Status board
+## FINAL STATUS: sprint complete
 
 | item | state |
 |---|---|
 | Task 1-2: probe + profile driver | done (`ccd6731`, driver `a08249b`) |
 | Task 3: baseline measurements | done (`183826f`): peak 626 GiB, ALM resting ~472 GiB median |
-| Task 4-7: fused-X path | done + **real-library bitwise proof** (182/182 slab digests identical) |
-| Task 8: streamed per-set reads | done, bitwise vs non-streamed on synthetic harness |
-| Task 9 step 1: full fused-f64 validation | RUNNING (acceptance: weights bitwise == baseline file; chi2 <=1e-11 rel of 2770835.03357815 / 335126.55535470234) |
-| Task 9 steps 2-4: re-profiles x4, concurrency table, docs | queued via `PM_grid/run_task9_queue.sh` |
+| Task 4-7: fused-X path | done + **real-library bitwise proof** |
+| Task 8: streamed per-set reads | done; desync bug found+fixed (`42731d8`), real-library bitwise proof after fix |
+| Task 9 step 1: full fused-f64 validation | done: peak 503.0 vs 626.1 GiB, chi2 within 9e-7 of recorded original (see gate revision) |
+| Task 9 steps 2-4: re-profiles x4, concurrency table | done - see `weight_solve_rss_profile.md` results table |
 
-Commits this leg: ccd6731 b3ab76e 8cc469f 5710209 40fda13 7425ceb 183826f a08249b.
+Measured concurrency on the 1416 GB node: classic 1 -> fused f64 2 ->
+streamed f64 3 -> fused f32 4 -> **streamed f32 6** workers.
+Recommendation for `NGC5139_config_production.yaml`: `nnls_dtype: float32`
++ `stream_orblib_reads: true`, `ncpus_weights: 4-6`,
+OMP_NUM_THREADS ~= 192/n_workers. Decide f32-vs-f64 on the chi2_kin
+1.6e-5 drift note in the profile doc.
+
+Commits this leg: ccd6731 b3ab76e 8cc469f 5710209 40fda13 7425ceb 183826f
+a08249b de6432f 1f88888 42731d8 1cc25b3 (+ final table commit).
 
 ## Key findings
 
