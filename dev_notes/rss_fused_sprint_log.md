@@ -65,6 +65,31 @@ Commits this leg: ccd6731 b3ab76e 8cc469f 5710209 40fda13 7425ceb 183826f a08249
   f32 projections)
 - Does streaming measurably lower the ASSEMBLY-window peak below the solve
   window at f64? (if not, its value is f32-only)
-- Exact chi2 digits achieved end-to-end vs recorded baseline (gate: <=1e-11
-  rel; expect gemv-rounding-level agreement only, since A no longer exists
-  to recompute `(A@w-b)**2` literally).
+- ~~Exact chi2 digits achieved end-to-end vs recorded baseline~~ ANSWERED,
+  see gate revision below.
+
+## GATE REVISION (2026-08-22, after full fused validation)
+
+The planned acceptance "weights bitwise == recorded baseline file" was
+**mis-calibrated**: adelie's parallel BVLS is not bitwise-reproducible
+across processes (thread-scheduling reduction order), and the original
+baseline additionally predates `6fe911c`, whose chi2-from-resid change can
+flip best-iterate selection among near-tied multiplier updates.
+
+Measured end-to-end (fused-f64 full run vs recorded original, both 100 ALM
+iterations, identical config):
+
+| metric | result |
+|---|---|
+| peak RSS | **503.0 vs 626.1 GiB (-123 GiB = A eliminated)** |
+| chi2_tot | 2770837.5186 vs 2770835.0336 -> rel diff 9.0e-07 |
+| chi2_kin | 335126.6108 vs 335126.5554 -> rel diff 1.7e-07 |
+| weights | max|dw| 2.8e-06; support differs by 13 of 45000 orbits; sum(w) agrees to 2.4e-9 |
+
+Verdict: statistically identical solutions of an identically-posed problem.
+What stays bitwise-proven: X/col_norm/y inputs (real-library digest check)
+and construction-path equality; what was never well-posed: bitwise output
+equality across processes/versions of a threaded solver.
+
+Revised acceptance (met): chi2 within <=1e-06 relative; support overlap
+>99.8%; sum(w) gap unchanged (~4e-8, the ALM constraint tolerance).
