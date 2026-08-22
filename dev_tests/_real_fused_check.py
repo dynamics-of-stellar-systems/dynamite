@@ -41,11 +41,18 @@ def main():
     ap.add_argument("--mode", required=True, choices=["reference", "fused"])
     ap.add_argument("--out", required=True)
     ap.add_argument("--slab", type=int, default=2048)
+    ap.add_argument(
+        "--stream",
+        action="store_true",
+        help="set solver.stream_reads=True (streamed fused path)",
+    )
     args = ap.parse_args()
 
     c = dyn.config_reader.Configuration(args.config, reset_logging=True)
     model = c.all_models.get_model_from_row(0)
     solver = dyn.weight_solvers.NNLS(config=c, model=model)
+    if args.stream:
+        solver.stream_reads = True
     orblib = model.get_orblib()
     t0 = time.perf_counter()
     orblib.read_vel_histograms()

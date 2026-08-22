@@ -1540,6 +1540,7 @@ class LegacyOrbitLibrary(OrbitLibrary):
         hist_bins,
         velhist0,
         chunk=2000000,
+        keep=None,
     ):
         """Fill ``velhist0`` from a losvd histogram file, without a read loop.
 
@@ -1577,6 +1578,13 @@ class LegacyOrbitLibrary(OrbitLibrary):
             index arrays as long as the expanded values, so this is what bounds
             peak memory; roughly 56 bytes are needed per value. The default
             keeps the temporaries near 110 MB regardless of library size.
+        keep : 1d boolean array over ``ap_global``, optional
+            If given, only these of the file's apertures are scattered into
+            ``velhist0`` (used by streaming reads that fill one kinematic set
+            at a time). The record walk ALWAYS covers every aperture in the
+            file - ``n_pairs = norb * len(ap_global)`` is the file's layout -
+            so a subset must never be passed AS ap_global; doing so desyncs
+            the walk and silently corrupts everything after orbit 0.
         """
         # memory-map rather than read: the file is only touched once, and this
         # keeps a large library off the heap (and is marginally faster)
@@ -1613,6 +1621,10 @@ class LegacyOrbitLibrary(OrbitLibrary):
         edges = self._value_batches(nv, chunk)
         for lo, hi in zip(edges[:-1], edges[1:]):
             k = np.arange(lo, hi)[nv[lo:hi] > 0]
+            if keep is not None:
+                # pair k belongs to file-aperture slot k % n_ap_file; drop
+                # pairs whose aperture is not being kept (walk stays synced)
+                k = k[keep[k % n_ap_file]]
             if k.size == 0:
                 continue
             nvs = nv[k]
@@ -1704,6 +1716,7 @@ class LegacyOrbitLibrary(OrbitLibrary):
         hist_bins,
         velhist0,
         chunk=2000000,
+        keep=None,
     ):
         """Fill ``velhist0`` from a 2d proper-motion file, without a read loop.
 
@@ -1731,6 +1744,10 @@ class LegacyOrbitLibrary(OrbitLibrary):
             (norb, nv0, nv1, n_apertures)
         chunk : int, optional
             number of values processed per batch, bounding peak memory
+        keep : 1d boolean array over ``ap_global``, optional
+            Same contract as in :meth:`_read_losvd_hist_vectorised`: walk
+            every record in the file, scatter only kept apertures. Never
+            pass a subset AS ap_global.
         """
         buf = np.memmap(fname, dtype=np.uint8, mode="r")
         ap_global = np.asarray(ap_global)
@@ -1764,6 +1781,10 @@ class LegacyOrbitLibrary(OrbitLibrary):
         edges = self._value_batches(nv, chunk)
         for lo, hi in zip(edges[:-1], edges[1:]):
             k = np.arange(lo, hi)[nv[lo:hi] > 0]
+            if keep is not None:
+                # same file-layout rule as the 1d parser: pair k belongs to
+                # file-aperture slot k % n_ap_file
+                k = k[keep[k % n_ap_file]]
             if k.size == 0:
                 continue
             nvs = nv[k]
@@ -2079,9 +2100,16 @@ class LegacyOrbitLibrary(OrbitLibrary):
             if vectorised:
                 ap_all = np.arange(len(kin_idx_per_ap))
                 hist_dim_per_ap = np.asarray(hist_dim)[kin_idx_per_ap]
-                req_mask = np.isin(kin_idx_per_ap, requested_sets)
-                ap_1d = ap_all[(hist_dim_per_ap == 1) & req_mask]
-                ap_2d = ap_all[(hist_dim_per_ap == 2) & req_mask]
+                # The parsers' record walk requires ap_global to enumerate
+                # EVERY aperture stored in the file (n_pairs = norb*len), so
+                # streaming reads pass the full per-file list plus a keep
+                # mask over it - never a subset as ap_global. See
+                # dev_tests/test_streamed_parser_subset.py for the failure
+                # mode this avoids.
+                ap_1d = ap_all[hist_dim_per_ap == 1]
+                ap_2d = ap_all[hist_dim_per_ap == 2]
+                keep_1d = np.isin(kin_idx_per_ap[ap_1d], requested_sets)
+                keep_2d = np.isin(kin_idx_per_ap[ap_2d], requested_sets)
                 if ap_1d.size:
                     self._read_losvd_hist_vectorised(
                         tmpfname,
@@ -2091,6 +2119,7 @@ class LegacyOrbitLibrary(OrbitLibrary):
                         idx_ap_reset,
                         hist_bins,
                         velhist0,
+                        keep=keep_1d,
                     )
                 if ap_2d.size:
                     self._read_pm_hist_vectorised(
@@ -2101,6 +2130,7 @@ class LegacyOrbitLibrary(OrbitLibrary):
                         idx_ap_reset,
                         hist_bins,
                         velhist0,
+                        keep=keep_2d,
                     )
             for j in range(0 if vectorised else norb):
                 if legacy_file:  # orbit info is interlaced in the legacy file
