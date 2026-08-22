@@ -93,3 +93,32 @@ equality across processes/versions of a threaded solver.
 
 Revised acceptance (met): chi2 within <=1e-06 relative; support overlap
 >99.8%; sum(w) gap unchanged (~4e-8, the ALM constraint tolerance).
+
+## BUG FOUND AND FIXED (2026-08-22, commit 42731d8)
+
+`fused_stream_f64_cap30` returned chi2 = 8.1e9 (garbage) while saving
+exactly the predicted memory (peak 380 GiB). Root cause, found via
+systematic debugging after the synthetic suite had passed:
+
+- `read_orbit_base(kin_sets=[i])` passed set-i's apertures AS `ap_global`
+  to the bulk histogram parsers. But the parsers walk
+  `n_pairs = norb * len(ap_global)` record pairs and require ap_global to
+  enumerate EVERY aperture stored in the file, in file order (their own
+  docstrings say so - read them!). omega Cen's losvd file holds TWO 1d
+  sets and the pm file holds TWO 2d sets, so the subset desynced the walk
+  from orbit 1 onward: silent garbage with no exception.
+- Why the tests missed it: the streaming orchestration test stubbed out
+  read_orbit_base wholesale, so the parser contract was never exercised.
+  Stubbed-boundary tests test the stub's contract, not the real one.
+- Fix: parsers take `keep=` (bool mask over the FULL per-file aperture
+  list); walk everything, scatter only kept apertures.
+  `dev_tests/test_streamed_parser_subset.py` pins it with interleaved
+  multi-set-per-file libraries (the omega Cen layout).
+- Verified end-to-end: `_real_fused_check.py --mode fused --stream`
+  digests are IDENTICAL to the non-streamed fused run (182/182 slabs +
+  col_norm/y/row0_vec/b0) on the production orblib.
+
+Cost of streaming made explicit by this run: build 1888 s vs 249 s
+non-streamed at production scale (per-set bz2 re-reads over NFS), for
+another -121 GiB peak. Whether that trade is worth it per dtype gets
+decided from the re-profile table.
