@@ -9,11 +9,12 @@ solve()'s weight-file write cannot touch recorded evidence. --alm-iters caps
 the multiplier loop for fast memory observation only (per-iteration memory is
 flat); never use capped runs for numerical comparisons.
 
-Run (from the dynamite repo root):
+Run (cwd MUST be PM_grid - config paths resolve against it):
+    cd /nexus/.../PM_grid
     OPENBLAS_CORETYPE=Haswell OMP_NUM_THREADS=24 \
-    PYTHONPATH=$PWD \
-    ENV/bin/python dev_tests/_real_solve_rss_profile.py \
-      /nexus/.../PM_grid/NGC5139_config_adelie_xeast_profile.yaml \
+    PYTHONPATH=<repo> \
+    <env>/bin/python <repo>/dev_tests/_real_solve_rss_profile.py \
+      NGC5139_config_adelie_xeast_profile.yaml \
       --tag base_f64_cap30 --alm-iters 30
 """
 
