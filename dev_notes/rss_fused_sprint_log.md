@@ -130,3 +130,32 @@ Cost of streaming made explicit by this run: build 1888 s vs 249 s
 non-streamed at production scale (per-set bz2 re-reads over NFS), for
 another -121 GiB peak. Whether that trade is worth it per dtype gets
 decided from the re-profile table.
+
+## Future directions (deliberately NOT done this sprint)
+
+1. **ALM stagnation-based early stopping** (~40-50% solve wall-clock win).
+   The gap floor is oscillation-limited (~1e-7..3e-6 at mu=1e7; gap_tol
+   1e-10 was never reached - every run ends on its iteration cap) and the
+   best iterate was 38 of 100 in the only uncapped run. A composite stop
+   (it_min, patience on best-chi2 improvement, gap ceiling) was drafted and
+   judged not yet conservative enough: parameters extrapolated from two
+   endpoints, the proposed gap guard was vacuous on this data (gap crossed
+   it mid-descent), and adaptive stopping adds heterogeneous-convergence
+   noise to the grid's chi2 surface that uniform caps avoid. If pursued:
+   log per-iteration chi2/gap traces across several diverse parsets first,
+   set patience from measured inter-improvement intervals, certify the stop
+   with a one-shot scaled-KKT pass over X (~30 s), validate against caps
+   before defaulting on.
+2. **adelie BVLS internal transients** (~128 GiB @f32 / ~250 GiB @f64 per
+   call, scaling with dtype => roughly one extra matrix-sized allocation
+   inside the solver per multiplier iteration). Understanding/slimming these
+   would drop peak RSS to ~X alone (~65 GiB f32 => ~17 workers/node). Start
+   with an n_threads=1 vs N transient-size A/B to separate thread-local
+   buffers from whole-array copies.
+3. **Archive codec swap bz2 -> zstd/lz4**: read/decompress ~20 min/model
+   (x n_sets when streaming); zstd cuts most of it and shrinks the streaming
+   re-read penalty. Python-side compression only.
+4. **Grid-level pipeline overlap**: integration (CPU-bound Fortran chunks)
+   and weight solves (bandwidth-bound) could overlap instead of serializing.
+5. **Column screening** for BVLS: KKT-based removal of provably-zero orbits
+   shrinks effective X late in the solve (final support ~6.5k/45k).
