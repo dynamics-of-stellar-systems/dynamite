@@ -43,6 +43,11 @@ def main():
     ap.add_argument("--tag", required=True)
     ap.add_argument("--alm-iters", type=int, default=None)
     ap.add_argument("--dtype", default=None, choices=["float32", "float64"])
+    ap.add_argument(
+        "--stream",
+        action="store_true",
+        help="set solver.stream_reads=True (fused+streaming path)",
+    )
     args = ap.parse_args()
 
     csv_path = f"{PM_GRID}/rss_{args.tag}.csv"
@@ -53,6 +58,8 @@ def main():
     solver.nnls_solver = "adelie"
     if args.dtype == "float32":
         solver.nnls_dtype = np.float32
+    if args.stream:
+        solver.stream_reads = True
     if args.alm_iters is not None:
         solver.adelie_alm_iters = args.alm_iters
 
