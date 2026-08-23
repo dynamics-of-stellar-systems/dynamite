@@ -50,6 +50,43 @@ class AdelieProblem(NamedTuple):
     b0: float  # rhs[0] = total_mass/total_mass_error
 
 
+def _downcast_orblib(orblib, dtype):
+    """Downcast the retained orbit-library data to ``dtype``, in place.
+
+    This is most of the resident memory of a solve, not the matrix itself.
+    No-op unless ``dtype`` is float32. ``None`` entries are tolerated so the
+    streamed path can call it per set as each one arrives; ``copy=False``
+    makes re-converting an already-downcast set free.
+    """
+    if dtype != np.float32:
+        return
+    for hist in orblib.vel_histograms:
+        if hist is not None:
+            hist.y = hist.y.astype(np.float32, copy=False)
+    intrinsic = getattr(orblib, "intrinsic_masses", None)
+    if intrinsic is not None:
+        orblib.intrinsic_masses = intrinsic.astype(np.float32, copy=False)
+    projected = getattr(orblib, "projected_masses", None)
+    if projected is not None:
+        orblib.projected_masses = [
+            p.astype(np.float32, copy=False) if p is not None else None for p in projected
+        ]
+
+
+def _scale_columns(X, b_rest, dtype):
+    """Unit-L2 scale ``X``'s columns in place; returns ``(col_norm, y)``.
+
+    Shared by both augmented-matrix builders (`_build_augmented_X` from an
+    existing A, `construct_adelie_matrix_and_rhs` from the orbit library) so
+    they cannot drift. Zero columns are left unscaled.
+    """
+    col_norm = np.linalg.norm(X, axis=0)
+    col_norm[col_norm == 0] = 1.0
+    X /= col_norm
+    y = np.concatenate([[0.0], b_rest]).astype(dtype)
+    return col_norm, y
+
+
 def chi2_vector_from_residuals(resid_full, row0_sq):
     """Per-row squared residuals of ``A @ w - b`` without materializing A.
 
@@ -182,13 +219,12 @@ class WeightSolver(object):
         if orblib is None:
             orblib = self.model.get_orblib()
             orblib.read_vel_histograms()
-        fresh_orblib = orblib
         for kin_set, kin_data in enumerate(stars.kinematic_data):
             n_gh = min(number_gh, kin_data.max_gh_order)
             coefs = ["v", "sigma"] + [f"h{i}" for i in range(3, n_gh + 1)]
             # get the model's projected masses=flux (unused) and kinematic data
             a = analysis.Analysis(config=self.config, model=self.model, kin_set=kin_set)
-            model_gh_coef = a.get_gh_model_kinematic_maps(v_sigma_option="fit", weights=weights, orblib=fresh_orblib)
+            model_gh_coef = a.get_gh_model_kinematic_maps(v_sigma_option="fit", weights=weights, orblib=orblib)
             # get the observed projected masses (unused) and kinematic data
             kinematics_data = kin_data.get_data()
             # calculate chi2_kinmap
@@ -946,128 +982,71 @@ class NNLS(WeightSolver):
         con = np.zeros(n_rows, dtype=dtype)
         econ = np.zeros(n_rows, dtype=dtype)
 
-        def _downcast_orblib_data():
-            # same downcast solve() applies on the classic path; here it is
-            # applied to each streamed set as it arrives (and to the masses)
-            if self.nnls_dtype != np.float32:
-                return
-            for hist in orblib.vel_histograms:
-                if hist is not None:
-                    hist.y = hist.y.astype(np.float32)
-            if getattr(orblib, "intrinsic_masses", None) is not None:
-                orblib.intrinsic_masses = orblib.intrinsic_masses.astype(np.float32)
-            if getattr(orblib, "projected_masses", None) is not None:
-                orblib.projected_masses = [
-                    p.astype(np.float32) if p is not None else None for p in orblib.projected_masses
-                ]
-
         if self.stream_reads:
             # Stream one kinematic set at a time: read -> transform -> write
             # its block into X -> free, so only that set's histograms and the
-            # accumulated X are ever co-resident. Row contents are identical
-            # to the non-streamed path (rows are independent), so X is
-            # bit-identical.
-            n_kins = len(stars.kinematic_data)
+            # accumulated X are ever co-resident.
             orblib.read_vel_histograms(kin_sets=[0], skip_density=False)
-            _downcast_orblib_data()
-            n_orbs = orblib.n_orbs
-            X = np.empty((n_rows, n_orbs), dtype=dtype, order="F")
-            # row 0 is the ALM penalty row; it REPLACES A's total-mass row
-            X[0, :] = sqrt_mu
-            con[0] = self.total_mass
-            econ[0] = self.total_mass_error
-            idx = slice(1, 1 + self.n_intrinsic)
-            con[idx] = np.ravel(self.intrinsic_masses)
-            error = np.abs(np.ravel(self.intrinsic_masses * self.intrinsic_mass_error))
-            error[np.where(error <= 0.0)] = 1.0e-16
-            econ[idx] = error
-            X[idx, :] = np.reshape(orblib.intrinsic_masses, (n_orbs, -1)).T
-            idx_ap_start = 0
-            idx_row = self.n_mass_constraints
-            proj_parts = [None] * n_kins
-            for si in range(n_kins):
-                kins = stars.kinematic_data[si]
-                if si > 0:
-                    orblib.read_vel_histograms(kin_sets=[si], skip_density=True)
-                    _downcast_orblib_data()
-                orb_veldist = orblib.vel_histograms[si]
-                assert orb_veldist is not None, f"streamed read returned no histogram for set {si}"
-                prj_parts_i = orblib.projected_masses[si]
-                assert prj_parts_i is not None
-                proj_parts[si] = prj_parts_i
-                n_ap = kins.n_spatial_bins
-                prj_mass_i = self.projected_masses[idx_ap_start : idx_ap_start + n_ap]
-                obs_kins, obs_kins_err, orb_kins = self._prepare_kinematic_block(
-                    kins, orb_veldist, obs_values[si], prj_mass_i
-                )
-                n_orb_constraints = orb_kins.size // n_orbs
-                idx_row_end = idx_row + obs_kins.size
-                assert n_orb_constraints == obs_kins.size, (
-                    f"{type(kins).__name__}: orbit library gives "
-                    f"{n_orb_constraints} constraints per orbit but the "
-                    f"kinematic data gives {obs_kins.size}"
-                )
-                con[idx_row:idx_row_end] = obs_kins
-                econ[idx_row:idx_row_end] = obs_kins_err
-                dest = X[idx_row:idx_row_end, :].T.reshape(orb_kins.shape)
-                assert np.shares_memory(dest, X), (
-                    "X block write got a copy, not a view - block would be silently left at zero"
-                )
-                dest[...] = orb_kins
-                idx_row = idx_row_end
-                idx_ap_start += n_ap
+            _downcast_orblib(orblib, self.nnls_dtype)
+        n_orbs = orblib.n_orbs
+        X = np.empty((n_rows, n_orbs), dtype=dtype, order="F")
+        # row 0 is the ALM penalty row; it REPLACES A's total-mass row
+        X[0, :] = sqrt_mu
+        con[0] = self.total_mass
+        econ[0] = self.total_mass_error
+        # intrinsic mass -> X rows 1..n_intrinsic
+        idx = slice(1, 1 + self.n_intrinsic)
+        con[idx] = np.ravel(self.intrinsic_masses)
+        error = np.abs(np.ravel(self.intrinsic_masses * self.intrinsic_mass_error))
+        error[np.where(error <= 0.0)] = 1.0e-16
+        econ[idx] = error
+        X[idx, :] = np.reshape(orblib.intrinsic_masses, (n_orbs, -1)).T
+        # projected mass: the constraint vector is known up front, the matrix
+        # rows are filled per set inside the loop below (each set owns a
+        # contiguous aperture range, so this is the same content the old
+        # np.hstack(projected_masses).T produced, without the full-size
+        # temporary it needed to build it).
+        idx_prj = slice(1 + self.n_intrinsic, 1 + self.n_intrinsic + self.n_apertures)
+        con[idx_prj] = self.projected_masses
+        econ[idx_prj] = np.abs(self.projected_masses * self.projected_mass_error)
+        # kinematics: identical block sequence in both read modes. Rows are
+        # independent, so streaming produces a bit-identical X.
+        idx_ap_start = 0
+        idx_row = self.n_mass_constraints
+        for si, kins in enumerate(stars.kinematic_data):
+            if self.stream_reads and si > 0:
+                orblib.read_vel_histograms(kin_sets=[si], skip_density=True)
+                _downcast_orblib(orblib, self.nnls_dtype)
+            orb_veldist = orblib.vel_histograms[si]
+            assert orb_veldist is not None, f"no histogram for kinematic set {si}"
+            n_ap = kins.n_spatial_bins
+            prj_mass_i = self.projected_masses[idx_ap_start : idx_ap_start + n_ap]
+            prj_parts_i = orblib.projected_masses[si]
+            assert prj_parts_i is not None, f"no projected masses for kinematic set {si}"
+            X[1 + self.n_intrinsic + idx_ap_start : 1 + self.n_intrinsic + idx_ap_start + n_ap, :] = prj_parts_i.T
+            obs_kins, obs_kins_err, orb_kins = self._prepare_kinematic_block(
+                kins, orb_veldist, obs_values[si], prj_mass_i
+            )
+            n_orb_constraints = orb_kins.size // n_orbs
+            idx_row_end = idx_row + obs_kins.size
+            assert n_orb_constraints == obs_kins.size, (
+                f"{type(kins).__name__}: orbit library gives "
+                f"{n_orb_constraints} constraints per orbit but the "
+                f"kinematic data gives {obs_kins.size}"
+            )
+            con[idx_row:idx_row_end] = obs_kins
+            econ[idx_row:idx_row_end] = obs_kins_err
+            dest = X[idx_row:idx_row_end, :].T.reshape(orb_kins.shape)
+            assert np.shares_memory(dest, X), (
+                "X block write got a copy, not a view - block would be silently left at zero"
+            )
+            dest[...] = orb_kins
+            idx_row = idx_row_end
+            idx_ap_start += n_ap
+            if self.stream_reads:
                 # free this set's histograms before reading the next one;
                 # glibc returns these mmap-backed pages immediately
                 orblib.vel_histograms[si] = None
-            # projected-mass rows once every set has contributed its part
-            idx = slice(1 + self.n_intrinsic, 1 + self.n_intrinsic + self.n_apertures)
-            con[idx] = self.projected_masses
-            econ[idx] = np.abs(self.projected_masses * self.projected_mass_error)
-            X[idx, :] = np.hstack(proj_parts).T
-        else:
-            n_orbs = orblib.n_orbs
-            X = np.empty((n_rows, n_orbs), dtype=dtype, order="F")
-            # row 0 is the ALM penalty row; it REPLACES A's total-mass row
-            X[0, :] = sqrt_mu
-            con[0] = self.total_mass
-            econ[0] = self.total_mass_error
-            # intrinsic mass -> X rows 1..n_intrinsic
-            idx = slice(1, 1 + self.n_intrinsic)
-            con[idx] = np.ravel(self.intrinsic_masses)
-            error = self.intrinsic_masses * self.intrinsic_mass_error
-            error = np.abs(np.ravel(error))
-            error[np.where(error <= 0.0)] = 1.0e-16
-            econ[idx] = error
-            X[idx, :] = np.reshape(orblib.intrinsic_masses, (n_orbs, -1)).T
-            # projected mass
-            idx = slice(1 + self.n_intrinsic, 1 + self.n_intrinsic + self.n_apertures)
-            con[idx] = self.projected_masses
-            econ[idx] = np.abs(self.projected_masses * self.projected_mass_error)
-            X[idx, :] = np.hstack(orblib.projected_masses).T
-            # kinematics: identical block sequence to construct_nnls_matrix_and_rhs
-            kins_and_orb_veldist = zip(stars.kinematic_data, orblib.vel_histograms, obs_values)
-            idx_ap_start = 0
-            idx_row = self.n_mass_constraints
-            for kins, orb_veldist, tmp in kins_and_orb_veldist:
-                n_ap = kins.n_spatial_bins
-                prj_mass_i = self.projected_masses[idx_ap_start : idx_ap_start + n_ap]
-                idx_ap_start += n_ap
-                obs_kins, obs_kins_err, orb_kins = self._prepare_kinematic_block(kins, orb_veldist, tmp, prj_mass_i)
-                n_orb_constraints = orb_kins.size // n_orbs
-                idx_row_end = idx_row + obs_kins.size
-                assert n_orb_constraints == obs_kins.size, (
-                    f"{type(kins).__name__}: orbit library gives "
-                    f"{n_orb_constraints} constraints per orbit but the "
-                    f"kinematic data gives {obs_kins.size}"
-                )
-                con[idx_row:idx_row_end] = obs_kins
-                econ[idx_row:idx_row_end] = obs_kins_err
-                dest = X[idx_row:idx_row_end, :].T.reshape(orb_kins.shape)
-                assert np.shares_memory(dest, X), (
-                    "X block write got a copy, not a view - block would be silently left at zero"
-                )
-                dest[...] = orb_kins
-                idx_row = idx_row_end
         # guards: mirror the stock constructor. Row 0 has no econ semantics
         # (it is the penalty row); A's total-mass row becomes row0_vec below.
         if np.any(con[econ == 0] != 0):
@@ -1077,28 +1056,34 @@ class NNLS(WeightSolver):
         rhs = np.zeros_like(con)
         np.divide(con, econ, out=rhs, where=econ != 0)  # con = econ = 0 ok
         econ_body = econ[1:]
-        nz = (X[1:, :] != 0) & (econ_body == 0)[:, None]
-        if np.any(nz):
-            rr, oo = np.nonzero(nz)
-            txt = (
-                f"Weight solving problem in {self.direc_with_ml}: "
-                "zero errors for nonzero matrix coefficients at "
-                f"[constraint no, orbit no] = {(rr + 1, oo)}! Matrix "
-                f"value(s) there ({X[1:, :][nz]}) will be considered zero."
-            )
-            self.logger.warning(txt)
-            X[1:, :][nz] = 0
+        # Only zero-error rows can offend, and normally there are none. Restrict
+        # to those rows instead of building a (n_rows-1, n_orbs) bool mask: at
+        # production scale that mask is ~16 GiB, and the `&` allocates a second
+        # one before the first is freed - ~31 GiB transient at the exact moment
+        # assembly is already at its RSS peak. The stock constructor above gets
+        # this for free by masking rows first; keep the fused path equivalent.
+        bad = np.nonzero(econ_body == 0)[0]
+        if bad.size:
+            blk = X[1:, :][bad]  # (n_bad, n_orbs), n_bad is normally 0
+            nz_rows, nz_cols = np.nonzero(blk)
+            if nz_rows.size:
+                rr = bad[nz_rows]
+                txt = (
+                    f"Weight solving problem in {self.direc_with_ml}: "
+                    "zero errors for nonzero matrix coefficients at "
+                    f"[constraint no, orbit no] = {(rr + 1, nz_cols)}! Matrix "
+                    f"value(s) there ({blk[nz_rows, nz_cols]}) will be "
+                    "considered zero."
+                )
+                self.logger.warning(txt)
+                X[1 + rr, nz_cols] = 0
         # divide rows by their errors: the same elementwise op as the stock
         # transposed-view divide, restricted to rows 1.. (row 0 of A becomes
         # row0_vec below, divided elementwise by econ[0] exactly as stock's
         # broadcast divide did to it).
         body = X[1:, :].T  # view (n_orbs, n_rows-1)
         np.divide(body, econ_body, out=body, where=econ_body != 0)
-        # finish exactly like _build_augmented_X does from A
-        col_norm = np.linalg.norm(X, axis=0)
-        col_norm[col_norm == 0] = 1.0
-        X /= col_norm
-        y = np.concatenate([[0.0], rhs[1:]]).astype(dtype)
+        col_norm, y = _scale_columns(X, rhs[1:], dtype)
         row0_vec = np.full(n_orbs, 1.0, dtype=dtype) / econ[0]
         return AdelieProblem(X=X, col_norm=col_norm, y=y, row0_vec=row0_vec, b0=float(rhs[0]))
 
@@ -1284,10 +1269,7 @@ class NNLS(WeightSolver):
         X = np.empty((A_rest.shape[0] + 1, n_orbs), dtype=dtype, order="F")
         X[0, :] = sqrt_mu
         X[1:, :] = A_rest
-        col_norm = np.linalg.norm(X, axis=0)
-        col_norm[col_norm == 0] = 1.0
-        X /= col_norm
-        y = np.concatenate([[0.0], b_rest]).astype(dtype)
+        col_norm, y = _scale_columns(X, b_rest, dtype)
         return X, col_norm, y
 
     @staticmethod
@@ -1548,18 +1530,17 @@ class NNLS(WeightSolver):
             # On the fused+streaming path the constructor drives per-set reads
             # itself (freeing each set after use), so no eager full read here.
             adelie_streaming = self.nnls_solver == "adelie" and self.stream_reads
+            # chi2_kinmap needs the library exactly as assembly received it.
+            # Assembly restores the edge bins it zeroes, but streaming frees
+            # each set's histograms and float32 rewrites hist.y in place.
+            orblib_reusable = not adelie_streaming and self.nnls_dtype != np.float32
             if not adelie_streaming:
                 orblib.read_vel_histograms()  # sets orblib.vel_histograms,
                 # orblib.intrinsic_masses, and
                 # orblib.projected_masses
-                if self.nnls_dtype == np.float32:
-                    # downcast the retained orbit-library data before building
-                    # the NNLS matrix - this is most of the memory (see
-                    # construct_nnls_matrix_and_rhs), not the matrix itself
-                    for hist in orblib.vel_histograms:
-                        hist.y = hist.y.astype(np.float32)
-                    orblib.intrinsic_masses = orblib.intrinsic_masses.astype(np.float32)
-                    orblib.projected_masses = [p.astype(np.float32) for p in orblib.projected_masses]
+                # downcast the retained orbit-library data before building the
+                # NNLS matrix (no-op unless nnls_dtype is float32)
+                _downcast_orblib(orblib, self.nnls_dtype)
             if self.nnls_solver == "adelie":
                 # The fused constructor assembles adelie's augmented matrix X
                 # directly from the orbit library - A is never built on this
@@ -1637,11 +1618,16 @@ class NNLS(WeightSolver):
                     # only in gemv rounding (quantified in the perf notes).
                     row0_resid = float(problem.row0_vec @ weights) - problem.b0
                     chi2_vector = chi2_vector_from_residuals(resid_full, row0_resid * row0_resid)
+                    # X is dead from here on, and chi2_kinmap below may read a
+                    # fresh orbit library (~165 GiB at production scale). Drop
+                    # X first so the two peaks do not stack - glibc unmaps
+                    # numpy's buffers at `del`, measured at 100% reclaim.
+                    del problem, resid_full
                 else:
                     chi2_vector = (np.dot(A, weights) - b) ** 2.0
                 chi2_tot = np.sum(chi2_vector)
                 chi2_kin = np.sum(chi2_vector[self.n_mass_constraints :])
-                chi2_kinmap = self.chi2_kinmap(weights, orblib=orblib)
+                chi2_kinmap = self.chi2_kinmap(weights, orblib=orblib if orblib_reusable else None)
                 # save the output
                 results = table.Table()
                 results["weights"] = weights

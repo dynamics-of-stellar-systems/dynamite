@@ -25,6 +25,21 @@ class ReorderLOSVDError(Exception):
     pass
 
 
+def _n_band_models(val, which_chi2, chi2pmin, chlim):
+    """How many models make up the 1-sigma uncertainty band.
+
+    Widen to at least 3 models so there is something to estimate an
+    uncertainty band from, but never ask for more models than exist. Without
+    the upper clamp a run with fewer than 3 models (a single model, a smoke
+    test, an early iteration) bumped n to 3 and then indexed ``val[1]``,
+    raising IndexError. With fewer than 3 the band collapses onto the
+    best-fit profile: no uncertainties, which is the honest answer rather
+    than a crash.
+    """
+    n = len(np.ravel(np.where(val[which_chi2] <= chi2pmin + chlim * 3)))
+    return min(max(n, 3), len(val))
+
+
 def _sample_std(values):
     """Sample standard deviation, returning 0 rather than NaN for one value.
 
@@ -1179,15 +1194,7 @@ class Plotter():
         chlim = np.sqrt(self.config.get_2n_obs())
 
         # select the models within 1 sigma confidence level
-        n = len(np.ravel(np.where(val[which_chi2] <= chi2pmin + chlim*3)))
-        # Widen to at least 3 models so there is something to estimate an
-        # uncertainty band from, but never ask for more models than exist.
-        # Without the upper clamp a run with fewer than 3 models (a single
-        # model, a smoke test, an early iteration) bumped n to 3 and then
-        # indexed val[1], raising IndexError. With fewer than 3 the band
-        # collapses onto the best-fit profile: no uncertainties, which is
-        # the honest answer rather than a crash.
-        n = min(max(n, 3), len(val))
+        n = _n_band_models(val, which_chi2, chi2pmin, chlim)
 
         self.logger.debug(f'Selecting {n} models')
 
@@ -1834,15 +1841,7 @@ class Plotter():
         arctpc = distance*np.pi/0.648
 
         # select the models within 1 sigma confidence level, minimum 3
-        n = len(np.ravel(np.where(val[which_chi2] <= chi2pmin + chlim*3)))
-        # Widen to at least 3 models so there is something to estimate an
-        # uncertainty band from, but never ask for more models than exist.
-        # Without the upper clamp a run with fewer than 3 models (a single
-        # model, a smoke test, an early iteration) bumped n to 3 and then
-        # indexed val[1], raising IndexError. With fewer than 3 the band
-        # collapses onto the best-fit profile: no uncertainties, which is
-        # the honest answer rather than a crash.
-        n = min(max(n, 3), len(val))
+        n = _n_band_models(val, which_chi2, chi2pmin, chlim)
 
 
         for i in range(n):
@@ -2048,15 +2047,7 @@ class Plotter():
         chi2pmin = val[which_chi2][0]
         chlim = np.sqrt(self.config.get_2n_obs())
 
-        n = len(np.ravel(np.where(val[which_chi2] <= chi2pmin + chlim*3)))
-        # Widen to at least 3 models so there is something to estimate an
-        # uncertainty band from, but never ask for more models than exist.
-        # Without the upper clamp a run with fewer than 3 models (a single
-        # model, a smoke test, an early iteration) bumped n to 3 and then
-        # indexed val[1], raising IndexError. With fewer than 3 the band
-        # collapses onto the best-fit profile: no uncertainties, which is
-        # the honest answer rather than a crash.
-        n = min(max(n, 3), len(val))
+        n = _n_band_models(val, which_chi2, chi2pmin, chlim)
 
         q_all = np.zeros((101,n))
         p_all = np.zeros((101,n))

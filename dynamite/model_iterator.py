@@ -287,6 +287,21 @@ class ModelInnerIterator(object):
         self.dummy_chi2_function = dummy_chi2_function
         self.ncpus = config.settings.multiprocessing_settings['ncpus']
         self.ncpus_ext = config.settings.multiprocessing_settings['ncpus_ext']
+        self.ncpus_weights = \
+            config.settings.multiprocessing_settings['ncpus_weights']
+        # optional: recycle each weight-solving worker after N models rather
+        # than reusing it for the whole run. Guards against RSS creep across
+        # models in a long-lived worker (heap fragmentation from the orbit
+        # library's read/combine copy chain was measured to prevent freed
+        # memory from being returned to the OS - see
+        # dev_notes/oom_memory_investigation.md). Does not reduce the memory
+        # used *during* one model's solve; only `nnls_dtype`
+        # (weight_solver_settings) or restructuring the orbit library read
+        # path do that. None (default) matches the previous behaviour of
+        # reusing workers for the whole run.
+        self.ncpus_weights_maxtasksperchild = \
+            config.settings.multiprocessing_settings.get(
+                'ncpus_weights_maxtasksperchild', None)
         self.n_to_do = 0
 
     def resolve_orblib_chunks(self, n_orblib):
@@ -404,10 +419,8 @@ class ModelInnerIterator(object):
                 input_list_ml = [i + (do_orblib, do_weights, do_chi2_ext)
                         for i in enumerate(rows_to_do_orblib + rows_to_do_ml)]
                 if len(rows_to_do_orblib + rows_to_do_ml) > 0:
-                    maxtasksperchild = getattr(
-                        self, 'ncpus_weights_maxtasksperchild', None)
                     with Pool(self.ncpus_weights,
-                              maxtasksperchild=maxtasksperchild) as p:
+                              maxtasksperchild=self.ncpus_weights_maxtasksperchild) as p:
                         output = p.map(self.create_and_run_model, input_list_ml)
                     self.write_output_to_all_models_table(
                         rows_to_do_orblib + rows_to_do_ml, output)
@@ -699,21 +712,6 @@ class SplitModelIterator(ModelInnerIterator):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         self.logger = logging.getLogger(f'{__name__}.{__class__.__name__}')
-        self.ncpus_weights = \
-            self.config.settings.multiprocessing_settings['ncpus_weights']
-        # optional: recycle each weight-solving worker after N models rather
-        # than reusing it for the whole run. Guards against RSS creep across
-        # models in a long-lived worker (heap fragmentation from the orbit
-        # library's read/combine copy chain was measured to prevent freed
-        # memory from being returned to the OS - see
-        # dev_notes/oom_memory_investigation.md). Does not reduce the memory
-        # used *during* one model's solve; only `nnls_dtype`
-        # (weight_solver_settings) or restructuring the orbit library read
-        # path do that. None (default) matches the previous behaviour of
-        # reusing workers for the whole run.
-        self.ncpus_weights_maxtasksperchild = \
-            self.config.settings.multiprocessing_settings.get(
-                'ncpus_weights_maxtasksperchild', None)
 
     def run_iteration(self):
         """Execute one iteration step

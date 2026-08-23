@@ -181,7 +181,9 @@ def merge_files(chunk_files, out_file, kind, n_orbits=None):
         if the chunks do not together hold ``n_orbits`` orbits.
 
     """
-    bufs = [np.fromfile(f, dtype=np.uint8) for f in chunk_files]
+    # memmap, not np.fromfile: a heap read costs the full merged library in
+    # RSS. The framing helpers below touch only a few bytes each.
+    bufs = [np.memmap(f, dtype=np.uint8, mode='r') for f in chunk_files]
     head_len = header_length(bufs[0], HEADER_RECORDS[kind])
     header = bytearray(bufs[0][:head_len].tobytes())
     if kind == 'qgrid' and n_orbits is not None:
@@ -207,10 +209,11 @@ def merge_files(chunk_files, out_file, kind, n_orbits=None):
                 'were expected - the chunk ranges do not cover the library')
     with open(out_file, 'wb') as f:
         f.write(header)
+        # memoryview, not tobytes(): tobytes() is a second full-size copy
         for buf in bufs:
-            f.write(buf[header_length(buf, HEADER_RECORDS[kind]):
-                        footer_offset(buf)].tobytes())
-        f.write(bufs[-1][footer_offset(bufs[-1]):].tobytes())
+            f.write(memoryview(buf[header_length(buf, HEADER_RECORDS[kind]):
+                                   footer_offset(buf)]))
+        f.write(memoryview(bufs[-1][footer_offset(bufs[-1]):]))
     return out_file
 
 
@@ -295,7 +298,7 @@ def remove_chunks(datfil, fileroot, chunk_tags,
 
 
 def merge_chunks(datfil, fileroot, chunk_tags, n_orbits,
-                 kinds=('qgrid', 'losvd_hist'), cleanup=True, out_tag=''):
+                 kinds=('qgrid', 'losvd_hist'), out_tag=''):
     """Merge one orbit family's chunk files, and delete the chunks.
 
     Parameters
@@ -312,8 +315,6 @@ def merge_chunks(datfil, fileroot, chunk_tags, n_orbits,
     kinds : tuple of string, optional
         which output streams to merge. The default is
         ``('qgrid', 'losvd_hist')``.
-    cleanup : bool, optional
-        whether to delete the chunk files once merged. The default is True.
     out_tag : string, optional
         suffix for the merged file names. Concurrently evaluated models sharing
         an orbit library would otherwise merge into the same file at the same
@@ -344,6 +345,5 @@ def merge_chunks(datfil, fileroot, chunk_tags, n_orbits,
     # not returned with the others: this one is text, is not compressed, and is
     # already at its final name, so the caller must not post-process it
     merge_orbclass(datfil, fileroot, chunk_tags)
-    if cleanup:
-        remove_chunks(datfil, fileroot, chunk_tags, kinds)
+    remove_chunks(datfil, fileroot, chunk_tags, kinds)
     return merged

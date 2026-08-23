@@ -821,79 +821,85 @@ class LegacyOrbitLibrary(OrbitLibrary):
             if the integration script reports an error.
 
         """
-        cur_dir = os.getcwd()
         os.chdir(self.mod_dir)
-        try:
-            bounds = self.orbit_chunk_bounds(n_chunks)
-            cmdstr = self.write_executable_for_integrate_orbits_chunked(bounds)
-            self.logger.info(
-                f"Integrating orbit library for {self.mod_dir} in "
-                f"{len(bounds)} chunk(s) per family "
-                f"({2 * len(bounds)} processes)."
-            )
-            p = subprocess.run(
-                "bash " + cmdstr,
-                stdout=subprocess.PIPE,
-                stderr=subprocess.STDOUT,
-                shell=True,
-            )
-            if p.stdout.decode("UTF-8"):
-                text = f"...failed! {cmdstr} exit code {p.returncode}. Message: {p.stdout.decode('UTF-8')}"
-                if p.returncode == 127:
-                    text += "Check DYNAMITE legacy_fortran executables."
-                    self.logger.error(text)
-                    raise FileNotFoundError(text)
-                self.logger.warning(text + " Be wary: DYNAMITE may crash...")
-                raise RuntimeError(text)
-            # merge before compressing: the chunks are only meaningful together
-            tags = [tag for _, _, tag in bounds]
-            n_orbits = self.settings["nE"] * self.settings["nI2"] * self.settings["nI3"]
-            kinds = self.chunk_kinds()
-            for fileroot in ("orblib", "orblibbox"):
-                # Models sharing an orbit library may be evaluated
-                # concurrently, in which case more than one of them integrates
-                # into this directory. If another has already merged and
-                # compressed this family, its chunks are gone and there is
-                # nothing left to do.
-                done = [f"datfil/{fileroot}_{kind}.dat.bz2" for kind in kinds]
-                if all(os.path.isfile(f) for f in done):
-                    self.logger.debug(
-                        f"{self.mod_dir}: {fileroot} already merged by a "
-                        "concurrent model, discarding this process' chunks."
-                    )
-                    orblib_chunks.remove_chunks("datfil", fileroot, tags, kinds)
-                    continue
-                # Every intermediate is per-process; only the final .bz2 has a
-                # shared name, and it appears atomically via mv. Concurrent
-                # models therefore overwrite each other with identical content,
-                # exactly as the unchunked path does, instead of colliding
-                # halfway through.
-                out_tag = f".p{os.getpid()}"
-                merged = orblib_chunks.merge_chunks(
-                    "datfil", fileroot, tags, n_orbits, kinds=kinds, out_tag=out_tag
+        bounds = self.orbit_chunk_bounds(n_chunks)
+        cmdstr = self.write_executable_for_integrate_orbits_chunked(bounds)
+        self.logger.info(
+            f"Integrating orbit library for {self.mod_dir} in "
+            f"{len(bounds)} chunk(s) per family "
+            f"({2 * len(bounds)} processes)."
+        )
+        p = subprocess.run(
+            "bash " + cmdstr,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            shell=True,
+        )
+        if p.stdout.decode("UTF-8"):
+            text = f"...failed! {cmdstr} exit code {p.returncode}. Message: {p.stdout.decode('UTF-8')}"
+            if p.returncode == 127:
+                text += "Check DYNAMITE legacy_fortran executables."
+                self.logger.error(text)
+                raise FileNotFoundError(text)
+            self.logger.warning(text + " Be wary: DYNAMITE may crash...")
+            raise RuntimeError(text)
+        # merge before compressing: the chunks are only meaningful together
+        tags = [tag for _, _, tag in bounds]
+        n_orbits = self.n_orbit_starting_points()
+        kinds = self.chunk_kinds()
+        compressions = []
+        for fileroot in ("orblib", "orblibbox"):
+            # Models sharing an orbit library may be evaluated
+            # concurrently, in which case more than one of them integrates
+            # into this directory. If another has already merged and
+            # compressed this family, its chunks are gone and there is
+            # nothing left to do.
+            done = [f"datfil/{fileroot}_{kind}.dat.bz2" for kind in kinds]
+            if all(os.path.isfile(f) for f in done):
+                self.logger.debug(
+                    f"{self.mod_dir}: {fileroot} already merged by a "
+                    "concurrent model, discarding this process' chunks."
                 )
-                for f_name in merged:
-                    final = f_name[: -len(out_tag)] + ".bz2"
-                    subprocess.run(
+                orblib_chunks.remove_chunks("datfil", fileroot, tags, kinds)
+                continue
+            # Every intermediate is per-process; only the final .bz2 has a
+            # shared name, and it appears atomically via mv. Concurrent
+            # models therefore overwrite each other with identical content,
+            # exactly as the unchunked path does, instead of colliding
+            # halfway through.
+            out_tag = f".p{os.getpid()}"
+            merged = orblib_chunks.merge_chunks(
+                "datfil", fileroot, tags, n_orbits, kinds=kinds, out_tag=out_tag
+            )
+            # bzip2 is single-digit MB/s and the node is idle by now:
+            # launch all of them, wait once below.
+            for f_name in merged:
+                final = f_name[: -len(out_tag)] + ".bz2"
+                compressions.append((
+                    f_name,
+                    subprocess.Popen(
                         f"bzip2 -c {f_name} > {f_name}.bz2 && mv {f_name}.bz2 {final} && rm -f {f_name}",
                         shell=True,
-                        check=True,
-                    )
-                self.logger.debug(
-                    f"{self.mod_dir}: merged {len(tags)} {fileroot} chunks."
-                )
-            # the unchunked scripts touch these themselves; the chunked script
-            # only clears them, so without this the library is never recorded
-            # as done and every later model reintegrates it
-            pathlib.Path("datfil/tube_done").touch()
-            pathlib.Path("datfil/box_done").touch()
-            self.logger.info(
-                f"...done - {cmdstr} exit code {p.returncode}. "
-                f"Logfiles: {self.mod_dir}datfil/orblib.log, "
-                f"{self.mod_dir}datfil/orblibbox.log."
+                    ),
+                ))
+            self.logger.debug(
+                f"{self.mod_dir}: merged {len(tags)} {fileroot} chunks."
             )
-        finally:
-            os.chdir(cur_dir)
+        for f_name, proc in compressions:
+            if proc.wait() != 0:
+                text = f"{self.mod_dir}: compressing {f_name} failed with exit code {proc.returncode}."
+                self.logger.error(text)
+                raise RuntimeError(text)
+        # the unchunked scripts touch these themselves; the chunked script
+        # only clears them, so without this the library is never recorded
+        # as done and every later model reintegrates it
+        pathlib.Path("datfil/tube_done").touch()
+        pathlib.Path("datfil/box_done").touch()
+        self.logger.info(
+            f"...done - {cmdstr} exit code {p.returncode}. "
+            f"Logfiles: {self.mod_dir}datfil/orblib.log, "
+            f"{self.mod_dir}datfil/orblibbox.log."
+        )
 
     @restores_cwd
     def get_orbit_library_par(self):
@@ -1161,15 +1167,12 @@ class LegacyOrbitLibrary(OrbitLibrary):
         txt_file.write("# clear flags\n")
         txt_file.write("rm -f datfil/tube_done datfil/box_done datfil/tube_box_done\n")
         txt_file.write("# check whether executables exist\n")
-        execs = [orb_prgrm]
-        if self.LegacyWeightSolver:
-            execs += ["triaxmass", "triaxmass_bar", "triaxmassbin", "triaxmassbin_bar"]
-        for f_name in execs:
-            txt_file.write(
-                f"test -e {self.legacy_directory}/{f_name} || "
-                + f'{{ echo "File {self.legacy_directory}/{f_name} '
-                + 'not found." && exit 127; }\n'
-            )
+        # no triaxmass: can_chunk_orbits() is False for LegacyWeightSolver
+        txt_file.write(
+            f"test -e {self.legacy_directory}/{orb_prgrm} || "
+            + f'{{ echo "File {self.legacy_directory}/{orb_prgrm} '
+            + 'not found." && exit 127; }\n'
+        )
         txt_file.write(
             f"# integrate {len(bounds)} chunk(s) of each orbit family, all in parallel\n"
         )
@@ -1447,7 +1450,9 @@ class LegacyOrbitLibrary(OrbitLibrary):
         # a memoryview of python ints is ~2x faster to index than a numpy
         # array, and this loop runs once per (orbit, aperture) pair
         mv = memoryview(buf.data)[: n32 * 4].cast("i")
-        p = (4 + mv[0] + 4) // 4  # skip the header record
+        # skip the header record - record count from orblib_chunks, which
+        # merges these same files and must agree with this walk
+        p = orblib_chunks.header_length(buf, orblib_chunks.HEADER_RECORDS["losvd_hist"]) // 4
         start = [0] * n_pairs
         ivmin = [0] * n_pairs
         nv = [0] * n_pairs
@@ -1636,14 +1641,14 @@ class LegacyOrbitLibrary(OrbitLibrary):
             within = np.arange(tot) - np.repeat(np.cumsum(nvs) - nvs, nvs)
             vals = self._gather_float64(buf, np.repeat(start[k] * 4, nvs) + 8 * within)
             kin_e = np.repeat(kin, nvs)
+            # loop-invariant; the 2d parser hoists these too
+            orb_e = np.repeat(orb, nvs)
+            row_e = np.repeat(ivmin[k] + nv0[kin], nvs) + within
+            ap_e = np.repeat(ap - idx_ap_reset[kin], nvs)
             # each kinematic set has its own velhist0 array
             for kin_id in np.unique(kin_e):
                 m = kin_e == kin_id
-                velhist0[kin_id][
-                    np.repeat(orb, nvs)[m],
-                    (np.repeat(ivmin[k] + nv0[kin], nvs) + within)[m],
-                    np.repeat(ap - idx_ap_reset[kin], nvs)[m],
-                ] = vals[m]
+                velhist0[kin_id][orb_e[m], row_e[m], ap_e[m]] = vals[m]
 
     def _walk_pm_records(self, buf, n_pairs):
         """Locate every 2d proper-motion histogram payload in a raw buffer.
@@ -2009,22 +2014,27 @@ class LegacyOrbitLibrary(OrbitLibrary):
             hist_dim = [
                 1 if type(k.hist_bins) is int else 2 for k in stars.kinematic_data
             ]
+            # 1d and 2d histograms live in separate files: a streamed 1d
+            # set must not bunzip2 and walk the pm file. kin_sets=None means
+            # every set, so these reduce to the old any(hist_dim) conditions.
+            need_1d = any(hist_dim[si] == 1 for si in requested_sets)
+            need_2d = any(hist_dim[si] == 2 for si in requested_sets)
             if not legacy_file:  # open losvd_hist and pm_hist files if needed
                 os.chdir(self.mod_dir)
-                if any(i == 1 for i in hist_dim):
+                if need_1d:
                     orblib_file = f"datfil/{fileroot}_losvd_hist.dat.bz2"
                     tmpfname = f"datfil/{fileroot}_losvd_hist_{ml}.dat"
                     self._decompress(orblib_file, tmpfname)
                     # read the fortran file
                     orblib_in = FortranFile(tmpfname, "r")
-                if any(i == 2 for i in hist_dim):
+                if need_2d:
                     orblib_file = f"datfil/{fileroot}_pm_hist.dat.bz2"
                     tmpfname_pm = f"datfil/{fileroot}_pm_hist_{ml}.dat"
                     self._decompress(orblib_file, tmpfname_pm)
                     orblib_in_pm = FortranFile(tmpfname_pm, "r")
             # read the losvd and pm histogram data
             # from histogram_setup_write, lines 1917-1926: (losvd only)
-            if legacy_file or any(i == 1 for i in hist_dim):
+            if legacy_file or need_1d:
                 _ = orblib_in.read_record(np.int32, np.int32, float)
             # tmp = orblib_in.read_record(np.int32, np.int32, float)
             # nconstr = tmp[0][0] # = total number of apertures for ALL kinematics
@@ -2043,10 +2053,10 @@ class LegacyOrbitLibrary(OrbitLibrary):
             if np.any(hist_bins_flat % 2 == 0):
                 error_msg = f"{self.mod_dir}{tmpfname}: all kinematics need odd number of velocity bins."
                 self.logger.error(error_msg)
-                if legacy_file or any(i == 1 for i in hist_dim):
+                if legacy_file or need_1d:
                     orblib_in.close()
                     os.remove(tmpfname)
-                if any(i == 2 for i in hist_dim):
+                if need_2d:
                     orblib_in_pm.close()
                     os.remove(tmpfname_pm)
                 os.chdir(cur_dir)
@@ -2110,7 +2120,7 @@ class LegacyOrbitLibrary(OrbitLibrary):
                 ap_2d = ap_all[hist_dim_per_ap == 2]
                 keep_1d = np.isin(kin_idx_per_ap[ap_1d], requested_sets)
                 keep_2d = np.isin(kin_idx_per_ap[ap_2d], requested_sets)
-                if ap_1d.size:
+                if ap_1d.size and keep_1d.any():
                     self._read_losvd_hist_vectorised(
                         tmpfname,
                         norb,
@@ -2121,7 +2131,7 @@ class LegacyOrbitLibrary(OrbitLibrary):
                         velhist0,
                         keep=keep_1d,
                     )
-                if ap_2d.size:
+                if ap_2d.size and keep_2d.any():
                     self._read_pm_hist_vectorised(
                         tmpfname_pm,
                         norb,
@@ -2132,70 +2142,72 @@ class LegacyOrbitLibrary(OrbitLibrary):
                         velhist0,
                         keep=keep_2d,
                     )
-            for j in range(0 if vectorised else norb):
-                if legacy_file:  # orbit info is interlaced in the legacy file
-                    if return_intrinsic_moments:
-                        _, _, intrinsic_moms[j] = self._read_individual_orbit(
-                            orblib_in, quad_light_grid_sizes
-                        )
-                    else:
-                        orbtypes[j, :], density_3D[j], _ = self._read_individual_orbit(
-                            orblib_in, quad_light_grid_sizes
-                        )
-                for i_ap, kin_idx in enumerate(kin_idx_per_ap):
-                    if velhist0[kin_idx] is None:
-                        # streaming mode: still consume the record to keep
-                        # the file walk in sync, but discard the values
+            # per-record loop: legacy format and intrinsic moments only
+            if not vectorised:
+                for j in range(norb):
+                    if legacy_file:  # orbit info is interlaced in the legacy file
+                        if return_intrinsic_moments:
+                            _, _, intrinsic_moms[j] = self._read_individual_orbit(
+                                orblib_in, quad_light_grid_sizes
+                            )
+                        else:
+                            orbtypes[j, :], density_3D[j], _ = self._read_individual_orbit(
+                                orblib_in, quad_light_grid_sizes
+                            )
+                    for i_ap, kin_idx in enumerate(kin_idx_per_ap):
+                        if velhist0[kin_idx] is None:
+                            # streaming mode: still consume the record to keep
+                            # the file walk in sync, but discard the values
+                            if hist_dim[kin_idx] == 1:
+                                ivmin, ivmax = orblib_in.read_ints(np.int32)
+                                if ivmin <= ivmax:
+                                    _ = orblib_in.read_reals(float)
+                            elif hist_dim[kin_idx] == 2:
+                                ivmin0, ivmin1, ivmax0, ivmax1 = orblib_in_pm.read_ints(
+                                    np.int32
+                                )
+                                if ivmin0 <= ivmax0 and ivmin1 <= ivmax1:
+                                    _ = orblib_in_pm.read_reals(float)
+                            continue
+                        i_ap0 = i_ap - idx_ap_reset[kin_idx]
                         if hist_dim[kin_idx] == 1:
                             ivmin, ivmax = orblib_in.read_ints(np.int32)
                             if ivmin <= ivmax:
-                                _ = orblib_in.read_reals(float)
+                                nv0 = (hist_bins[kin_idx] - 1) // 2
+                                # ^--- this is an integer since hist_bins is odd
+                                tmp = orblib_in.read_reals(float)
+                                velhist0[kin_idx][
+                                    j, ivmin + nv0 : ivmax + nv0 + 1, i_ap0
+                                ] = tmp
                         elif hist_dim[kin_idx] == 2:
                             ivmin0, ivmin1, ivmax0, ivmax1 = orblib_in_pm.read_ints(
                                 np.int32
                             )
                             if ivmin0 <= ivmax0 and ivmin1 <= ivmax1:
-                                _ = orblib_in_pm.read_reals(float)
-                        continue
-                    i_ap0 = i_ap - idx_ap_reset[kin_idx]
-                    if hist_dim[kin_idx] == 1:
-                        ivmin, ivmax = orblib_in.read_ints(np.int32)
-                        if ivmin <= ivmax:
-                            nv0 = (hist_bins[kin_idx] - 1) // 2
-                            # ^--- this is an integer since hist_bins is odd
-                            tmp = orblib_in.read_reals(float)
-                            velhist0[kin_idx][
-                                j, ivmin + nv0 : ivmax + nv0 + 1, i_ap0
-                            ] = tmp
-                    elif hist_dim[kin_idx] == 2:
-                        ivmin0, ivmin1, ivmax0, ivmax1 = orblib_in_pm.read_ints(
-                            np.int32
-                        )
-                        if ivmin0 <= ivmax0 and ivmin1 <= ivmax1:
-                            nv0 = [
-                                (hist_bins[kin_idx][0] - 1) // 2,
-                                (hist_bins[kin_idx][1] - 1) // 2,
-                            ]
-                            # ^--- these are integers since hist_bins is odd
-                            tmp = orblib_in_pm.read_reals(float)
-                            tmp = tmp.reshape(
-                                (ivmax0 - ivmin0 + 1, ivmax1 - ivmin1 + 1), order="F"
-                            )
-                            velhist0[kin_idx][
-                                j,
-                                ivmin0 + nv0[0] : ivmax0 + nv0[0] + 1,
-                                ivmin1 + nv0[1] : ivmax1 + nv0[1] + 1,
-                                i_ap0,
-                            ] = tmp
-                    else:
-                        error_msg = "Invalid histogram dimension."
-                        self.logger.error(error_msg)  # should never happen
-                        raise ValueError(error_msg)
+                                nv0 = [
+                                    (hist_bins[kin_idx][0] - 1) // 2,
+                                    (hist_bins[kin_idx][1] - 1) // 2,
+                                ]
+                                # ^--- these are integers since hist_bins is odd
+                                tmp = orblib_in_pm.read_reals(float)
+                                tmp = tmp.reshape(
+                                    (ivmax0 - ivmin0 + 1, ivmax1 - ivmin1 + 1), order="F"
+                                )
+                                velhist0[kin_idx][
+                                    j,
+                                    ivmin0 + nv0[0] : ivmax0 + nv0[0] + 1,
+                                    ivmin1 + nv0[1] : ivmax1 + nv0[1] + 1,
+                                    i_ap0,
+                                ] = tmp
+                        else:
+                            error_msg = "Invalid histogram dimension."
+                            self.logger.error(error_msg)  # should never happen
+                            raise ValueError(error_msg)
 
-            if legacy_file or any(i == 1 for i in hist_dim):
+            if legacy_file or need_1d:
                 orblib_in.close()
                 os.remove(tmpfname)
-            if any(i == 2 for i in hist_dim):
+            if need_2d:
                 orblib_in_pm.close()
                 os.remove(tmpfname_pm)
             os.chdir(cur_dir)
